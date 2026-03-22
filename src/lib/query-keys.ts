@@ -22,6 +22,24 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
+  sourceDocumentsAll: (
+    ledgerId: string,
+    params?: {
+      startDate?: string | null | undefined;
+      endDate?: string | null | undefined;
+      minAmount?: number | null | undefined;
+      maxAmount?: number | null | undefined;
+    }
+  ) =>
+    [
+      "sourceDocuments",
+      ledgerId,
+      "all",
+      params?.startDate ?? null,
+      params?.endDate ?? null,
+      params?.minAmount ?? null,
+      params?.maxAmount ?? null,
+    ] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
@@ -36,7 +54,21 @@ export const queryKeys = {
   summary: (ledgerId: string, ...params: (string | null | undefined)[]) =>
     ["summary", ledgerId, ...params.filter((v) => v !== undefined)] as const,
   tokenStats: (ledgerId: string) => ["token-stats", ledgerId] as const,
-  enhancedStats: (ledgerId: string) => ["enhanced-stats", ledgerId] as const,
+  enhancedStats: (
+    ledgerId: string,
+    params?: {
+      startDate?: string | null | undefined;
+      rangeType?: string | null | undefined;
+      mainCurrency?: string | null | undefined;
+    }
+  ) =>
+    [
+      "enhanced-stats",
+      ledgerId,
+      params?.startDate ?? null,
+      params?.rangeType ?? null,
+      params?.mainCurrency ?? null,
+    ] as const,
 
   // === Currency ===
   convert: (amount: number, from: string, to: string, date?: string) =>

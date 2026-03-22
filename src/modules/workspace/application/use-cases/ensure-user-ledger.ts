@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { ledgers } from "@/persistence";
 import { createDefaultLedger } from "@/modules/ledger/use-cases";
@@ -40,7 +41,10 @@ export async function ensureUserLedger(
   if (existingLedgers.length > 0) {
     const firstLedger = existingLedgers[0];
     if (firstLedger == null) {
-      throw new Error("Invariant violation: existing ledger list is unexpectedly empty");
+      throw new AppError(
+        "Invariant violation: existing ledger list is unexpectedly empty",
+        "INVARIANT_VIOLATION"
+      );
     }
     return {
       ledgerId: firstLedger.id,

@@ -26,7 +26,12 @@ const createTouchHarness = (root: HTMLDivElement) => {
   const originalDispatchEvent = root.dispatchEvent;
 
   // Simulate iOS Safari missing the current `touchend` when the listener is attached mid-gesture.
-  const hookAdd: typeof root.addEventListener = function (this: HTMLDivElement, type, listener, options) {
+  const hookAdd: typeof root.addEventListener = function (
+    this: HTMLDivElement,
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions
+  ) {
     if (type === 'touchend' && gestureActive) {
       dropNextTouchEnd = true;
     }

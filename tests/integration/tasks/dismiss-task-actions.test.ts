@@ -11,6 +11,37 @@ import {
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
 
+function normalizeSql(sqlStatement: string): string {
+  return sqlStatement.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+async function captureSqlStatements<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; statements: string[] }> {
+  const dbWithClient = getTestDb() as unknown as {
+    $client?: { prepare: (sql: string, ...args: unknown[]) => unknown };
+  };
+  const client = dbWithClient.$client;
+  if (client == null) {
+    throw new Error("Expected drizzle client to exist in integration tests");
+  }
+
+  const originalPrepare = client.prepare.bind(client);
+  const statements: string[] = [];
+
+  client.prepare = ((sqlStatement: string, ...args: unknown[]) => {
+    statements.push(sqlStatement);
+    return originalPrepare(sqlStatement, ...args);
+  }) as typeof client.prepare;
+
+  try {
+    const result = await fn();
+    return { result, statements };
+  } finally {
+    client.prepare = originalPrepare;
+  }
+}
+
 describe("dismissTaskAction", () => {
   let ledgerId: string;
 
@@ -45,6 +76,25 @@ describe("dismissTaskAction", () => {
 
   it("throws 'Task not found' when task does not exist", async () => {
     await expect(dismissTaskAction(ledgerId, uuidv4())).rejects.toThrow("Task not found");
+  });
+
+  it("does not dismiss a soft-deleted task again", async () => {
+    const db = getTestDb();
+    const taskId = uuidv4();
+    const initialDeletedAt = new Date("2024-03-01T00:00:00.000Z");
+    await db.insert(taskRuns).values({
+      id: taskId,
+      type: "categorize_entry",
+      title: "Deleted Task",
+      status: "completed",
+      scopeId: ledgerId,
+      deletedAt: initialDeletedAt,
+    });
+
+    await expect(dismissTaskAction(ledgerId, taskId)).rejects.toThrow("Task not found");
+
+    const task = await db.query.taskRuns.findFirst({ where: eq(taskRuns.id, taskId) });
+    expect(task?.deletedAt?.toISOString()).toBe(initialDeletedAt.toISOString());
   });
 
   it("throws 'Task does not belong to this ledger' for wrong ledger", async () => {
@@ -196,5 +246,40 @@ describe("batchDismissTasksAction", () => {
     const otherTask = await db.query.taskRuns.findFirst({ where: eq(taskRuns.id, otherTaskId) });
     expect(ourTask?.deletedAt).not.toBeNull();
     expect(otherTask?.deletedAt).toBeNull(); // not touched
+  });
+
+  it("pushes ledger/deleted constraints into SQL for batch dismiss update", async () => {
+    const db = getTestDb();
+    const id1 = uuidv4();
+    const id2 = uuidv4();
+    await db.insert(taskRuns).values([
+      {
+        id: id1,
+        type: "categorize_entry",
+        title: "Task 1",
+        status: "completed",
+        scopeId: ledgerId,
+      },
+      {
+        id: id2,
+        type: "categorize_entry",
+        title: "Task 2",
+        status: "failed",
+        scopeId: ledgerId,
+      },
+    ]);
+
+    const { statements } = await captureSqlStatements(() =>
+      batchDismissTasksAction(ledgerId, [id1, id2])
+    );
+    const normalized = statements.map(normalizeSql);
+
+    const taskRunsUpdate = normalized.find((sqlStatement) =>
+      sqlStatement.startsWith('update "task_runs"')
+    );
+
+    expect(taskRunsUpdate).toBeDefined();
+    expect(taskRunsUpdate).toContain('"scope_id" = ?');
+    expect(taskRunsUpdate).toContain('"deleted_at" is null');
   });
 });

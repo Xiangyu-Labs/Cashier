@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { taskRuns } from "@/persistence";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export function createDrizzleStorage(): StorageAdapter {
         .returning({ id: taskRuns.id });
 
       if (record == null) {
-        throw new Error("Failed to create task record");
+        throw new AppError("Failed to create task record", "TASK_RECORD_CREATE_FAILED");
       }
 
       return record.id;

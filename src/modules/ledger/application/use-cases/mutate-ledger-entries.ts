@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
-import { NotFoundError } from "@/lib/errors";
+import { AppError, NotFoundError } from "@/lib/errors";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { mapLedgerEntryDto } from "../mappers";
 import { getLedgerMainCurrency } from "../queries/get-ledger-main-currency";
@@ -99,7 +99,7 @@ export async function createLedgerEntryWithConversion(input: {
     .returning();
 
   if (entry == null) {
-    throw new Error("Failed to create ledger entry");
+    throw new AppError("Failed to create ledger entry", "ENTRY_CREATE_FAILED");
   }
 
   return mapLedgerEntryDto(entry);

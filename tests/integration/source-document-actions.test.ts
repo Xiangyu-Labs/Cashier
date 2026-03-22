@@ -10,7 +10,7 @@ import {
   createLedgerEntryData,
 } from "../helpers/factories";
 import { v4 as uuidv4 } from "uuid";
-import { UnauthorizedError } from "@/lib/errors";
+import { NotFoundError } from "@/lib/errors";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -216,7 +216,7 @@ describe("getSourceDocumentLightAction", () => {
     expect(result).toBeNull();
   });
 
-  it("should throw UnauthorizedError when user does not have access to ledger", async () => {
+  it("documents that inaccessible ledgers surface NotFoundError semantics", async () => {
     const db = getTestDb();
     const otherUserId = "33333333-3333-3333-3333-333333333333";
     await db
@@ -235,8 +235,9 @@ describe("getSourceDocumentLightAction", () => {
     const docData = createSourceDocumentData(ledgerData.id);
     await db.insert(sourceDocuments).values(docData);
 
+    // withSourceDocumentLedgerAccess preserves ledger-not-found semantics for inaccessible ledgers.
     await expect(
       getSourceDocumentLightAction(ledgerData.id, docData.id)
-    ).rejects.toBeInstanceOf(UnauthorizedError);
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

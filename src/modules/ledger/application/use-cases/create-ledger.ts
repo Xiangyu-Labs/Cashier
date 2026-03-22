@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ConflictError } from "@/lib/errors";
+import { AppError, ConflictError } from "@/lib/errors";
 import { mapLedgerDto } from "@/modules/ledger/application/mappers";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
@@ -29,7 +29,10 @@ export async function createLedger(input: { userId: string; locale?: string }): 
     const ledger = await createDefaultLedger(payload);
 
     if (ledger === undefined) {
-      throw new Error("Failed to create ledger: transaction returned no result");
+      throw new AppError(
+        "Failed to create ledger: transaction returned no result",
+        "LEDGER_CREATION_FAILED"
+      );
     }
 
     return mapLedgerDto(ledger);

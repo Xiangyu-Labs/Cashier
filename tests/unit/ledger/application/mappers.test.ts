@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapLedgerEntryDto } from "@/modules/ledger/application/mappers";
+import { mapLedgerEntryDto } from "../../../../src/modules/ledger/application/mappers";
 import type { LedgerEntry } from "@/persistence";
 
 describe("mapLedgerEntryDto", () => {

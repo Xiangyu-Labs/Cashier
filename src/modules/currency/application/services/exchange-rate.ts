@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
 
@@ -47,7 +48,7 @@ export async function fetchWithRetry(
     }
   }
 
-  throw new Error("Unreachable");
+  throw new AppError("Unreachable", "UNREACHABLE_CODE_PATH");
 }
 
 // service
@@ -116,9 +117,15 @@ export class ExchangeRateService {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(`Exchange rates unavailable for date: ${targetDateStr}`);
+          throw new AppError(
+            `Exchange rates unavailable for date: ${targetDateStr}`,
+            "EXCHANGE_RATES_UNAVAILABLE"
+          );
         }
-        throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
+        throw new AppError(
+          `Failed to fetch exchange rates: ${response.statusText}`,
+          "EXCHANGE_RATES_FETCH_FAILED"
+        );
       }
 
       const data: ExchangeRates = await response.json();
@@ -170,8 +177,12 @@ export class ExchangeRateService {
     const fromRate = fullRates[fromCurrency];
     const toRate = fullRates[toCurrency];
 
-    if (fromRate === undefined) throw new Error(`Currency not found: ${fromCurrency}`);
-    if (toRate === undefined) throw new Error(`Currency not found: ${toCurrency}`);
+    if (fromRate === undefined) {
+      throw new AppError(`Currency not found: ${fromCurrency}`, "CURRENCY_NOT_FOUND");
+    }
+    if (toRate === undefined) {
+      throw new AppError(`Currency not found: ${toCurrency}`, "CURRENCY_NOT_FOUND");
+    }
 
     // Cross-Rate Calculation:
     // Target = Amount * (ToRate / FromRate)

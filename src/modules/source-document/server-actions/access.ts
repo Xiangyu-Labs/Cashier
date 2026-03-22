@@ -1,4 +1,3 @@
-import { AppError, UnauthorizedError } from "@/lib/errors";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 
 type SourceDocumentLedgerAccess = Awaited<ReturnType<typeof requireLedgerAccess>>;
@@ -14,16 +13,7 @@ export function withSourceDocumentLedgerAccess<TArgs extends unknown[], TReturn>
   ) => Promise<TReturn>
 ): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
   return async (ledgerId: string, ...args: TArgs) => {
-    let access: SourceDocumentLedgerAccess;
-
-    try {
-      access = await requireLedgerAccess(ledgerId);
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw new UnauthorizedError("Unauthorized or Ledger not found");
-      }
-      throw error;
-    }
+    const access = await requireLedgerAccess(ledgerId);
 
     return action({ ledgerId, ...access }, ...args);
   };

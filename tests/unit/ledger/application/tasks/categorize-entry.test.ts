@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   categorizeEntryHandler,
   type CategorizeEntryInput,
-} from "@/modules/ledger/application/tasks/categorize-entry";
+} from "../../../../../src/modules/ledger/application/tasks/categorize-entry";
 import { getTestDb } from "tests/setup";
 import { ledgerEntries, entryCategories } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";

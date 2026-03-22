@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { StorageProvider } from "./index";
+import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
@@ -31,17 +32,17 @@ export class LocalStorageProvider implements StorageProvider {
   private validateKey(key: string): void {
     // Reject keys with path traversal sequences
     if (key.includes("..")) {
-      throw new Error(`Invalid key: path traversal detected in "${key}"`);
+      throw new ValidationError(`Invalid key: path traversal detected in "${key}"`);
     }
 
     // Reject keys with backslashes (Windows-style paths)
     if (key.includes("\\")) {
-      throw new Error(`Invalid key: backslash detected in "${key}"`);
+      throw new ValidationError(`Invalid key: backslash detected in "${key}"`);
     }
 
     // Reject absolute paths
     if (key.startsWith("/")) {
-      throw new Error(`Invalid key: absolute path detected in "${key}"`);
+      throw new ValidationError(`Invalid key: absolute path detected in "${key}"`);
     }
   }
 
@@ -76,8 +77,9 @@ export class LocalStorageProvider implements StorageProvider {
       return this.getPublicUrl(key);
     } catch (error) {
       logger.error({ error, key }, "Failed to upload file to local storage");
-      throw new Error(
-        `Failed to upload file: ${error instanceof Error ? error.message : "Unknown error"}`
+      throw new AppError(
+        `Failed to upload file: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "LOCAL_STORAGE_UPLOAD_FAILED"
       );
     }
   }
@@ -90,10 +92,11 @@ export class LocalStorageProvider implements StorageProvider {
     } catch (error) {
       logger.error({ error, key }, "Failed to download file from local storage");
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        throw new Error(`File not found: ${key}`);
+        throw new AppError(`File not found: ${key}`, "FILE_NOT_FOUND", 404, { key });
       }
-      throw new Error(
-        `Failed to download file: ${error instanceof Error ? error.message : "Unknown error"}`
+      throw new AppError(
+        `Failed to download file: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "LOCAL_STORAGE_DOWNLOAD_FAILED"
       );
     }
   }

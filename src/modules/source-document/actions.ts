@@ -19,6 +19,7 @@ export {
 export { batchRetrySourceDocumentsAction } from "./server-actions/batch-retry";
 export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
+export { createSourceDocumentFromCredentialAction } from "./server-actions/create-from-credential";
 export { retrySourceDocumentAction } from "./server-actions/retry";
 export { getProcessingTasksAction, getProcessingStatsAction } from "./server-actions/processing";
 export { canAccessSourceDocumentUpload } from "./server-actions/uploads";

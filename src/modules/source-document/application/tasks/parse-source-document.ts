@@ -4,6 +4,7 @@ import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { buildStageContext } from "../parse-source-document/context";
 import { executeParseSourceDocument } from "../parse-source-document/execute";
 import {
@@ -46,14 +47,20 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
     const { signal, updateProgress, ai } = context;
     const { ledgerId } = input;
 
-    if (ledgerId == null || ledgerId === "") throw new Error("Missing ledgerId in task input");
+    if (ledgerId == null || ledgerId === "") {
+      throw new ValidationError("Missing ledgerId in task input");
+    }
 
     // Validate document exists
     const doc = await db.query.sourceDocuments.findFirst({
-      where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+      where: and(
+        eq(sourceDocuments.id, input.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      ),
     });
     if (!doc) {
-      throw new Error(`Source document not found: ${input.sourceDocumentId}`);
+      throw new NotFoundError("Source document");
     }
 
     const stageContext = buildStageContext({

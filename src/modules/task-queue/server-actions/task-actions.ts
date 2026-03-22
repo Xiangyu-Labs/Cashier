@@ -9,22 +9,23 @@ import {
   batchDismissTasksUseCase,
   dismissTaskUseCase,
 } from "../application/use-cases/dismiss-task";
+import { parseTaskId, parseTaskIds } from "../contract-schemas";
 import type { TaskQueueResult } from "../contracts";
 
 export const cancelTaskAction = withLedgerAccess((ledgerId: string, taskId: string) =>
-  cancelTaskUseCase(ledgerId, taskId)
+  cancelTaskUseCase(ledgerId, parseTaskId(taskId))
 );
 
 export const batchCancelTasksAction = withLedgerAccess((ledgerId: string, taskIds: string[]) =>
-  batchCancelTasksUseCase(ledgerId, taskIds)
+  batchCancelTasksUseCase(ledgerId, parseTaskIds(taskIds))
 );
 
 export const dismissTaskAction = withLedgerAccess((ledgerId: string, taskId: string) =>
-  dismissTaskUseCase(ledgerId, taskId)
+  dismissTaskUseCase(ledgerId, parseTaskId(taskId))
 );
 
 export const batchDismissTasksAction = withLedgerAccess((ledgerId: string, taskIds: string[]) =>
-  batchDismissTasksUseCase(ledgerId, taskIds)
+  batchDismissTasksUseCase(ledgerId, parseTaskIds(taskIds))
 );
 
 export async function getTaskQueueForAuthorizedLedger(

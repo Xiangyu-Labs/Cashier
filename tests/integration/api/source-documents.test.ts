@@ -198,7 +198,7 @@ describe("SourceDocument Actions", () => {
   it("should return error for non-existent ledger", async () => {
     await expect(
       createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })
-    ).rejects.toThrow("Unauthorized or Ledger not found");
+    ).rejects.toThrow("Ledger not found");
   });
 
   it("should handle image input", async () => {

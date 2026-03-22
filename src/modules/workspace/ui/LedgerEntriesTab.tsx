@@ -1,12 +1,11 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { type PeriodParams } from "@/lib/period-utils";
 import { invalidateLedgerStats, invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -21,6 +20,7 @@ import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesCompletedGroups } from "./LedgerEntriesCompletedGroups";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
+import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 interface LedgerEntriesTabProps {
   ledgerId: string;
   categories: EntryCategory[];
@@ -47,21 +47,8 @@ export function LedgerEntriesTab({
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
-  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
-  const filters: EntryFilters = useMemo(
-    () => ({
-      ...(dateRange.startDate != null && dateRange.startDate !== ""
-        ? { startDate: parseDateString(dateRange.startDate) }
-        : {}),
-      ...(dateRange.endDate != null && dateRange.endDate !== ""
-        ? { endDate: parseDateString(dateRange.endDate) }
-        : {}),
-    }),
-    [dateRange]
-  );
+  const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const startDateStr = formatDateTimeForApi(filters.startDate) ?? undefined;
-  const endDateStr = formatDateTimeForApi(filters.endDate) ?? undefined;
   const { data: summaryData } = useQuery({
     queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, null),
     queryFn: () =>

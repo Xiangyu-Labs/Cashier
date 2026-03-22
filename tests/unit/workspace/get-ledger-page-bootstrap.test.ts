@@ -115,6 +115,30 @@ describe("getLedgerPageBootstrap", () => {
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
 
+  it("passes min/max amount filters into stream source-document bootstrap queries", async () => {
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: {
+        period: "custom",
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+      },
+      advancedFilters: {
+        minAmount: 20,
+        maxAmount: 100,
+      },
+    });
+
+    expect(result).not.toBeNull();
+    expect(getAllSourceDocumentsMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      minAmount: 20,
+      maxAmount: 100,
+    });
+  });
+
   it("prefetches details tab summary and paged entries", async () => {
     await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
@@ -126,6 +150,47 @@ describe("getLedgerPageBootstrap", () => {
     expect(listLedgerEntriesMock).toHaveBeenCalledOnce();
     expect(getPendingSourceDocumentsMock).not.toHaveBeenCalled();
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
+  });
+
+  it("passes advanced filters into details tab summary and entries prefetch", async () => {
+    await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "details",
+      periodParams: {
+        period: "custom",
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+      },
+      advancedFilters: {
+        categoryId: "cat-1",
+        currency: "USD",
+        minAmount: 20,
+        maxAmount: 100,
+      },
+    });
+
+    expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
+      "ledger-1",
+      "2026-03-01",
+      "2026-03-31",
+      "USD",
+      {
+        categoryId: "cat-1",
+        currency: "USD",
+        minAmount: 20,
+        maxAmount: 100,
+      }
+    );
+    expect(listLedgerEntriesMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      categoryId: "cat-1",
+      currency: "USD",
+      minAmount: 20,
+      maxAmount: 100,
+      cursor: undefined,
+      limit: 50,
+    });
   });
 
   it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {

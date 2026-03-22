@@ -14,30 +14,39 @@ async function softDeleteQueuedOrProcessingSourceDocument(
   }
 
   const q = forLedger(sourceDocuments, ledgerId);
-  const doc = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(entityId),
-  });
-
-  if (doc && (doc.status === "processing" || doc.status === "queued")) {
-    await db.update(sourceDocuments).set({ deletedAt: new Date() }).where(q.whereId(entityId));
-  }
+  await db
+    .update(sourceDocuments)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        q.whereId(entityId),
+        inArray(sourceDocuments.status, ["processing", "queued"])
+      )
+    );
 }
 
 export async function cancelTaskUseCase(ledgerId: string, taskId: string): Promise<void> {
   const task = await db.query.taskRuns.findFirst({
-    where: and(eq(taskRuns.id, taskId), isNull(taskRuns.deletedAt)),
+    where: and(
+      eq(taskRuns.id, taskId),
+      eq(taskRuns.scopeId, ledgerId),
+      isNull(taskRuns.deletedAt),
+      inArray(taskRuns.status, ["pending", "running"])
+    ),
   });
 
-  if (!task) {
-    throw new NotFoundError("Task");
-  }
-
-  if (task.scopeId !== ledgerId) {
-    throw new ForbiddenError("Task does not belong to this ledger");
-  }
-
-  if (task.status !== "pending" && task.status !== "running") {
-    throw new ValidationError(`Cannot cancel task with status '${task.status}'`);
+  if (task == null) {
+    const existingTask = await db.query.taskRuns.findFirst({
+      where: and(eq(taskRuns.id, taskId), isNull(taskRuns.deletedAt)),
+      columns: { id: true, scopeId: true, status: true },
+    });
+    if (existingTask == null) {
+      throw new NotFoundError("Task");
+    }
+    if (existingTask.scopeId !== ledgerId) {
+      throw new ForbiddenError("Task does not belong to this ledger");
+    }
+    throw new ValidationError(`Cannot cancel task with status '${existingTask.status}'`);
   }
 
   await cancelFlowTask(taskId);
@@ -53,20 +62,21 @@ export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[
   }
 
   const tasks = await db.query.taskRuns.findMany({
-    where: and(inArray(taskRuns.id, taskIds), isNull(taskRuns.deletedAt)),
+    where: and(
+      inArray(taskRuns.id, taskIds),
+      eq(taskRuns.scopeId, ledgerId),
+      isNull(taskRuns.deletedAt),
+      inArray(taskRuns.status, ["pending", "running"])
+    ),
   });
 
-  const validTasks = tasks.filter(
-    (task) => task.scopeId === ledgerId && (task.status === "pending" || task.status === "running")
-  );
-
-  if (validTasks.length === 0) {
+  if (tasks.length === 0) {
     return;
   }
 
-  await Promise.all(validTasks.map((task) => cancelFlowTask(task.id)));
+  await Promise.all(tasks.map((task) => cancelFlowTask(task.id)));
 
-  const sourceDocTasks = validTasks.filter(
+  const sourceDocTasks = tasks.filter(
     (task) => task.entityType === "source_document" && task.entityId != null && task.entityId !== ""
   );
 
@@ -76,25 +86,15 @@ export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[
 
   const q = forLedger(sourceDocuments, ledgerId);
   const entityIds = sourceDocTasks.map((task) => task.entityId!);
-  const docs = await db.query.sourceDocuments.findMany({
-    where: and(inArray(sourceDocuments.id, entityIds), q.whereActive),
-  });
-
-  const docsToDelete = docs.filter((doc) => doc.status === "processing" || doc.status === "queued");
-  if (docsToDelete.length === 0) {
-    return;
-  }
 
   await db
     .update(sourceDocuments)
     .set({ deletedAt: new Date() })
     .where(
       and(
-        inArray(
-          sourceDocuments.id,
-          docsToDelete.map((doc) => doc.id)
-        ),
-        q.whereActive
+        inArray(sourceDocuments.id, entityIds),
+        q.whereActive,
+        inArray(sourceDocuments.status, ["processing", "queued"])
       )
     );
 }

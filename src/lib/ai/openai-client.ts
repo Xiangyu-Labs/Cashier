@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export class OpenAIClient {
@@ -10,7 +11,7 @@ export class OpenAIClient {
     const baseURL = process.env.OPENAI_BASE_URL;
 
     if (apiKey == null || apiKey === "") {
-      throw new Error("OPENAI_API_KEY is not set");
+      throw new AppError("OPENAI_API_KEY is not set", "OPENAI_API_KEY_MISSING");
     }
 
     this.client = new OpenAI({
@@ -45,7 +46,7 @@ export class OpenAIClient {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       // Check if aborted before each attempt
       if (signal?.aborted) {
-        throw new Error("Request was aborted");
+        throw new AppError("Request was aborted", "REQUEST_ABORTED");
       }
 
       try {
@@ -82,7 +83,7 @@ export class OpenAIClient {
           response.choices.length === 0
         ) {
           logger.error({ response }, "OpenAI response missing choices");
-          throw new Error("Invalid OpenAI response: missing choices");
+          throw new AppError("Invalid OpenAI response: missing choices", "OPENAI_INVALID_RESPONSE");
         }
 
         const choice = response.choices[0];
@@ -91,12 +92,16 @@ export class OpenAIClient {
         // Handle empty response with specific finish reasons
         if (content === "" && choice?.finish_reason != null) {
           if (choice.finish_reason === "content_filter") {
-            throw new Error(
+            throw new AppError(
               "Content was filtered by OpenAI safety systems. The image may contain content that cannot be processed."
+              ,
+              "OPENAI_CONTENT_FILTERED"
             );
           } else if (choice.finish_reason === "length") {
-            throw new Error(
+            throw new AppError(
               "Input too large: The images consume too many tokens, leaving no space for output. Try with fewer or smaller images."
+              ,
+              "OPENAI_INPUT_TOO_LARGE"
             );
           }
         }

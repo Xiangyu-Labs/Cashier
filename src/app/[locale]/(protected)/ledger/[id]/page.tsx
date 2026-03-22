@@ -9,6 +9,13 @@ import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
 import { LedgerPageSkeleton } from "@/components/skeletons";
 
+interface LedgerPageAdvancedFilters {
+  categoryId: string | null;
+  currency: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+}
+
 interface LedgerPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -18,18 +25,47 @@ interface LedgerPageContentProps {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
+  advancedFilters: LedgerPageAdvancedFilters;
+}
+
+function getSingleSearchParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
+function readAdvancedFilters(
+  searchParams: Record<string, string | string[] | undefined>
+): LedgerPageAdvancedFilters {
+  const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
+    const raw = getSingleSearchParam(searchParams[key]);
+    if (raw == null) return null;
+
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  return {
+    categoryId: getSingleSearchParam(searchParams.categoryId) ?? null,
+    currency: getSingleSearchParam(searchParams.currency) ?? null,
+    minAmount: readNumber("minAmount"),
+    maxAmount: readNumber("maxAmount"),
+  };
 }
 
 async function LedgerPageContent({
   ledgerId,
   initialTab,
   periodParams,
+  advancedFilters,
 }: LedgerPageContentProps) {
   const t = await getTranslations("LedgerPage");
   const pageData = await getLedgerPageBootstrap({
     ledgerId,
     initialTab,
     periodParams,
+    advancedFilters,
   });
 
   if (pageData == null) {
@@ -56,6 +92,7 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
+  const advancedFilters = readAdvancedFilters(resolvedSearchParams);
   const initialTab = parseLedgerTab(resolvedSearchParams);
   const session = await auth();
   const locale = await getLocale();
@@ -66,7 +103,12 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
 
   return (
     <Suspense fallback={<LedgerPageSkeleton activeTab={initialTab} />}>
-      <LedgerPageContent ledgerId={ledgerId} initialTab={initialTab} periodParams={periodParams} />
+      <LedgerPageContent
+        ledgerId={ledgerId}
+        initialTab={initialTab}
+        periodParams={periodParams}
+        advancedFilters={advancedFilters}
+      />
     </Suspense>
   );
 }

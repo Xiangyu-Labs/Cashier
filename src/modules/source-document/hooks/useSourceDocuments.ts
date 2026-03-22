@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAllSourceDocumentsAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto as SourceDocumentListItemWithEntries } from "@/modules/source-document/contracts";
+import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
@@ -9,7 +10,6 @@ import {
   calculateSourceDocumentStats,
   type GroupedSourceDocuments,
 } from "@/modules/source-document/grouping";
-import { parseAmount } from "@/lib/formatters";
 
 export type { SourceDocumentListItemWithEntries as SourceDocumentWithEntries };
 
@@ -29,35 +29,13 @@ export interface UseSourceDocumentsOptions {
   maxAmount?: number;
 }
 
-function calculateTotalAmount(doc: SourceDocumentListItemWithEntries): number {
-  if (doc.ledgerEntries == null || doc.ledgerEntries.length === 0) return 0;
-  return doc.ledgerEntries.reduce((sum, entry) => {
-    const convertedAmount = entry.convertedAmount;
-    const amount =
-      convertedAmount != null ? parseAmount(convertedAmount) : parseAmount(entry.amount);
-    return sum + Math.abs(amount);
-  }, 0);
-}
-
-function filterAndGroup(
-  docs: SourceDocumentListItemWithEntries[],
-  minAmount?: number,
-  maxAmount?: number
+function groupAndSummarize(
+  docs: SourceDocumentListItemWithEntries[]
 ): {
   groups: GroupedSourceDocuments<SourceDocumentListItemWithEntries>;
   stats: SourceDocumentsStats;
 } {
-  let filtered = docs;
-  if (minAmount != null || maxAmount != null) {
-    filtered = docs.filter((doc) => {
-      const total = calculateTotalAmount(doc);
-      if (minAmount != null && total < minAmount) return false;
-      if (maxAmount != null && total > maxAmount) return false;
-      return true;
-    });
-  }
-
-  const groups = groupSourceDocumentsByStatus(filtered);
+  const groups = groupSourceDocumentsByStatus(docs);
   const stats = calculateSourceDocumentStats(groups);
 
   return { groups, stats };
@@ -68,21 +46,29 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
+  const processingPolling = useSmartPolling<{ items: SourceDocumentListItemWithEntries[] }>({
+    isPollingActive: useCallback(
+      (data) =>
+        data?.items.some((doc) => doc.status === "queued" || doc.status === "processing") ?? false,
+      []
+    ),
+  });
 
   const { data: response, isLoading } = useQuery({
-    queryKey: queryKeys.sourceDocuments(ledgerId, "all", startDate, endDate),
+    queryKey: queryKeys.sourceDocumentsAll(ledgerId, {
+      startDate,
+      endDate,
+      ...(minAmount != null ? { minAmount } : {}),
+      ...(maxAmount != null ? { maxAmount } : {}),
+    }),
     queryFn: () =>
       getAllSourceDocumentsAction(ledgerId, {
         ...(startDate !== null ? { startDate } : {}),
         ...(endDate !== null ? { endDate } : {}),
+        ...(minAmount != null ? { minAmount } : {}),
+        ...(maxAmount != null ? { maxAmount } : {}),
       }),
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (!data) return false;
-      return data.items.some((doc) => doc.status === "queued" || doc.status === "processing")
-        ? 3000
-        : false;
-    },
+    refetchInterval: processingPolling,
   });
 
   const rawData = response?.items;
@@ -106,8 +92,8 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
       };
     }
 
-    return filterAndGroup(rawData, minAmount, maxAmount);
-  }, [rawData, minAmount, maxAmount]);
+    return groupAndSummarize(rawData);
+  }, [rawData]);
 
   return {
     groups,

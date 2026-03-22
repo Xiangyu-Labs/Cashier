@@ -32,7 +32,7 @@ vi.mock("@/modules/ledger/actions", () => ({
   deleteLedgerEntryAction: vi.fn(),
 }));
 
-import { useEntryMutations } from "@/modules/ledger/hooks/useEntryMutations";
+import { useEntryMutations } from "../../../../src/modules/ledger/hooks/useEntryMutations";
 
 function getOption(index: number) {
   const option = mutationOptions[index];

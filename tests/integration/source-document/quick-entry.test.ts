@@ -195,7 +195,7 @@ describe("createQuickEntryAction", () => {
         categoryId,
         amount: 100,
       })
-    ).rejects.toThrow("Unauthorized or Ledger not found");
+    ).rejects.toThrow("Ledger not found");
   });
 
   it("should reject negative amount", async () => {

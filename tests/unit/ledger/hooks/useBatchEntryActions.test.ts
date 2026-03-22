@@ -44,7 +44,7 @@ vi.mock("@/modules/ledger/actions", () => ({
   submitBatchCategorizeAction: submitBatchCategorizeActionMock,
 }));
 
-import { useBatchEntryActions } from "@/modules/ledger/hooks/useBatchEntryActions";
+import { useBatchEntryActions } from "../../../../src/modules/ledger/hooks/useBatchEntryActions";
 
 function getOption(index: number) {
   const option = mutationOptions[index];

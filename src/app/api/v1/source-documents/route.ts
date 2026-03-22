@@ -1,14 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listSourceDocuments } from "@/modules/source-document/actions";
+import {
+  createSourceDocumentFromCredentialAction,
+  listSourceDocuments,
+} from "@/modules/source-document/actions";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
-import { parseApiInput } from "@/app/api/v1/_shared/validation";
-import { createSourceDocumentFromCredential } from "@/modules/source-document/use-cases";
-import {
-  createSourceDocumentInputSchema,
-  listSourceDocumentsInputSchema,
-} from "@/modules/source-document/contract-schemas";
-import { omitNullishProperties, omitUndefinedProperties } from "@/lib/validation";
+import { omitNullishProperties } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   return handleApiV1Route(request, {
@@ -21,11 +18,9 @@ export async function POST(request: NextRequest) {
         throw new ValidationError("Invalid JSON body");
       }
 
-      const payload = omitUndefinedProperties(parseApiInput(createSourceDocumentInputSchema, body));
-
-      const createResult = await createSourceDocumentFromCredential({
+      const createResult = await createSourceDocumentFromCredentialAction({
         credentialId: credential.id,
-        payload,
+        payload: body,
       });
 
       return NextResponse.json(createResult, { status: 201 });
@@ -35,20 +30,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {
-    logContext: "api/v1/source-documents:GET",
+    logContext: "api/v1/source-documents",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const rawParams = omitNullishProperties({
+      const result = await listSourceDocuments(credential.ledgerId, omitNullishProperties({
         status: searchParams.get("status"),
         startDate: searchParams.get("startDate"),
         endDate: searchParams.get("endDate"),
         cursor: searchParams.get("cursor"),
         limit: searchParams.get("limit"),
         includeEntries: searchParams.get("includeEntries"),
-      });
-      const params = parseApiInput(listSourceDocumentsInputSchema, rawParams);
-
-      const result = await listSourceDocuments(credential.ledgerId, params);
+      }));
 
       return NextResponse.json(result);
     },

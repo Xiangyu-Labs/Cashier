@@ -1,16 +1,12 @@
 import { db } from "@/lib/db";
-import { currencyRates, ledgerEntries, ledgers } from "@/persistence";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { forLedger } from "@/lib/db/scoped-query";
+import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
+import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
-
-interface GetEnhancedStatsQueryInput {
-  ledgerId: string;
-  queryRange: { from: string; to: string };
-  compareRange: { from: string; to: string };
-}
 
 function calculateStats(amounts: number[]): CalendarHeatmapStats {
   if (amounts.length === 0) {
@@ -26,7 +22,7 @@ function calculateStats(amounts: number[]): CalendarHeatmapStats {
   const min = sorted[0] ?? 0;
   const max = sorted[sorted.length - 1] ?? min;
   const avg = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
-  const p80Index = Math.floor(sorted.length * 0.8);
+  const p80Index = Math.max(0, Math.ceil(sorted.length * 0.8) - 1);
 
   return {
     minAmount: min,
@@ -40,7 +36,7 @@ export async function getEnhancedStatsQuery({
   ledgerId,
   queryRange,
   compareRange,
-}: GetEnhancedStatsQueryInput): Promise<EnhancedStatsDto> {
+}: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
   const ledger = await db.query.ledgers.findFirst({
     where: eq(ledgers.id, ledgerId),
     columns: {
@@ -51,16 +47,25 @@ export async function getEnhancedStatsQuery({
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const currentStart = parseDateString(queryRange.from);
   const currentEnd = parseDateString(queryRange.to);
+  const entryScope = forLedger(ledgerEntries, ledgerId);
 
   const fetchEntries = async (startStr: string, endStr: string) => {
+    const sourceDocumentsInRange = db
+      .select({ id: sourceDocuments.id })
+      .from(sourceDocuments)
+      .where(
+        and(
+          eq(sourceDocuments.ledgerId, ledgerId),
+          isNull(sourceDocuments.deletedAt),
+          gte(sourceDocuments.entryDate, startStr),
+          lte(sourceDocuments.entryDate, endStr)
+        )
+      );
+
     return db.query.ledgerEntries.findMany({
       where: and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        isNull(ledgerEntries.deletedAt),
-        sql`${ledgerEntries.sourceDocumentId} IN (
-          SELECT id FROM source_documents
-          WHERE ledger_id = ${ledgerId} AND entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
-        )`
+        entryScope.whereActive,
+        inArray(ledgerEntries.sourceDocumentId, sourceDocumentsInRange)
       ),
       with: {
         category: true,
@@ -211,4 +216,9 @@ export async function getEnhancedStatsQuery({
       stats: calculateStats(heatmapDays.map((day) => day.totalAmount)),
     },
   };
+}
+
+export async function getEnhancedStats(input: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
+  const validatedInput = parseEnhancedStatsInput(input);
+  return getEnhancedStatsQuery(validatedInput);
 }
