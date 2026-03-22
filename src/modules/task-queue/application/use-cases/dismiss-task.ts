@@ -33,21 +33,12 @@ export async function batchDismissTasksUseCase(
     return;
   }
 
-  const tasks = await db.query.taskRuns.findMany({
-    where: and(inArray(taskRuns.id, taskIds), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt)),
-  });
-  const validTaskIds = tasks.map((task) => task.id);
-
-  if (validTaskIds.length === 0) {
-    return;
-  }
-
   await db
     .update(taskRuns)
     .set({ deletedAt: new Date() })
     .where(
       and(
-        inArray(taskRuns.id, validTaskIds),
+        inArray(taskRuns.id, taskIds),
         eq(taskRuns.scopeId, ledgerId),
         isNull(taskRuns.deletedAt)
       )

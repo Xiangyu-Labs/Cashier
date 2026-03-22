@@ -270,4 +270,40 @@ describe("getEnhancedStatsQuery", () => {
     expect(result.summary.currency).toBe("CNY");
     expect(result.summary.total).toBe(10);
   });
+
+  it("computes heatmap p80Amount using zero-based percentile indexing", async () => {
+    const db = getTestDb();
+    const dailyAmounts = [10, 20, 30, 40, 50];
+
+    for (const [index, amount] of dailyAmounts.entries()) {
+      const day = String(index + 1).padStart(2, "0");
+      const [doc] = await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId,
+          text: `day-${day}`,
+          status: "completed",
+          imageUrls: [],
+          entryDate: `2024-06-${day}`,
+        })
+        .returning();
+
+      await db.insert(ledgerEntries).values({
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: String(amount),
+        currency: "CNY",
+        itemName: `item-${day}`,
+        categoryId,
+      });
+    }
+
+    const result = await getEnhancedStatsQuery({
+      ledgerId,
+      queryRange: { from: "2024-06-01", to: "2024-06-30" },
+      compareRange: { from: "2024-05-01", to: "2024-05-31" },
+    });
+
+    expect(result.heatmap.stats.p80Amount).toBe(40);
+  });
 });

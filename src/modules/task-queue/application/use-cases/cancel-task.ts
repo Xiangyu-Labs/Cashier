@@ -14,13 +14,15 @@ async function softDeleteQueuedOrProcessingSourceDocument(
   }
 
   const q = forLedger(sourceDocuments, ledgerId);
-  const doc = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(entityId),
-  });
-
-  if (doc && (doc.status === "processing" || doc.status === "queued")) {
-    await db.update(sourceDocuments).set({ deletedAt: new Date() }).where(q.whereId(entityId));
-  }
+  await db
+    .update(sourceDocuments)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        q.whereId(entityId),
+        inArray(sourceDocuments.status, ["processing", "queued"])
+      )
+    );
 }
 
 export async function cancelTaskUseCase(ledgerId: string, taskId: string): Promise<void> {
@@ -84,27 +86,13 @@ export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[
 
   const q = forLedger(sourceDocuments, ledgerId);
   const entityIds = sourceDocTasks.map((task) => task.entityId!);
-  const docs = await db.query.sourceDocuments.findMany({
-    where: and(
-      inArray(sourceDocuments.id, entityIds),
-      q.whereActive,
-      inArray(sourceDocuments.status, ["processing", "queued"])
-    ),
-  });
-
-  if (docs.length === 0) {
-    return;
-  }
 
   await db
     .update(sourceDocuments)
     .set({ deletedAt: new Date() })
     .where(
       and(
-        inArray(
-          sourceDocuments.id,
-          docs.map((doc) => doc.id)
-        ),
+        inArray(sourceDocuments.id, entityIds),
         q.whereActive,
         inArray(sourceDocuments.status, ["processing", "queued"])
       )

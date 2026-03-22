@@ -248,7 +248,7 @@ describe("batchDismissTasksAction", () => {
     expect(otherTask?.deletedAt).toBeNull(); // not touched
   });
 
-  it("pushes ledger/deleted constraints into SQL for batch dismiss select and update", async () => {
+  it("pushes ledger/deleted constraints into SQL for batch dismiss update", async () => {
     const db = getTestDb();
     const id1 = uuidv4();
     const id2 = uuidv4();
@@ -274,16 +274,9 @@ describe("batchDismissTasksAction", () => {
     );
     const normalized = statements.map(normalizeSql);
 
-    const taskRunsSelect = normalized.find(
-      (sqlStatement) => sqlStatement.startsWith("select") && sqlStatement.includes('from "task_runs"')
-    );
     const taskRunsUpdate = normalized.find((sqlStatement) =>
       sqlStatement.startsWith('update "task_runs"')
     );
-
-    expect(taskRunsSelect).toBeDefined();
-    expect(taskRunsSelect).toContain('"scope_id" = ?');
-    expect(taskRunsSelect).toContain('"deleted_at" is null');
 
     expect(taskRunsUpdate).toBeDefined();
     expect(taskRunsUpdate).toContain('"scope_id" = ?');
