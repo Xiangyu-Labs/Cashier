@@ -75,7 +75,7 @@ describe("useTaskQueue", () => {
       options?.refetchInterval({
         state: { data: { stats: { pendingCount: 0, runningCount: 0 } } },
       })
-    ).toBe(60000);
+    ).toBe(15000);
   });
 
   it("does not report loading when data exists", () => {
