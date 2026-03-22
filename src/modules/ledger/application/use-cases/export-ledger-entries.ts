@@ -106,10 +106,6 @@ export async function exportLedgerEntries(
   }
 
   const headers = CSV_HEADERS[locale] ?? CSV_HEADERS.en;
-  if (headers == null) {
-    throw new Error("Missing CSV headers");
-  }
-
   const lines = [headers.join(",")];
 
   for (const entry of entries) {

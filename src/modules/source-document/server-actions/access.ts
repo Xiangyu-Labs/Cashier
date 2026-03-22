@@ -1,4 +1,10 @@
-import { AppError, UnauthorizedError } from "@/lib/errors";
+import {
+  AppError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from "@/lib/errors";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 
 type SourceDocumentLedgerAccess = Awaited<ReturnType<typeof requireLedgerAccess>>;
@@ -19,6 +25,12 @@ export function withSourceDocumentLedgerAccess<TArgs extends unknown[], TReturn>
     try {
       access = await requireLedgerAccess(ledgerId);
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new NotFoundError("Unauthorized or Ledger");
+      }
+      if (error instanceof ForbiddenError || error instanceof ValidationError) {
+        throw error;
+      }
       if (error instanceof AppError) {
         throw new UnauthorizedError("Unauthorized or Ledger not found");
       }

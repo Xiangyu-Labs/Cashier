@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
 import { ledgers, taskRuns } from "@/persistence";
 import { and, eq, inArray } from "drizzle-orm";
+import { parseSourceDocumentHandler } from "@/modules/source-document/application/tasks/parse-source-document";
+import { NotFoundError } from "@/lib/errors";
+import type { FlowContext } from "@/lib/flow";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -84,5 +87,26 @@ describe("Task status query", () => {
 
     expect(validStatuses).not.toContain(invalidStatus);
     expect(validStatuses).toContain("pending");
+  });
+
+  it("throws NotFoundError when parseSourceDocumentHandler source document is missing", async () => {
+    const ledgerId = `ledger-missing-doc-${counter}`;
+    const context = {
+      updateProgress: vi.fn(),
+      signal: new AbortController().signal,
+      ai: { generate: vi.fn() },
+    } as unknown as FlowContext;
+
+    await expect(
+      parseSourceDocumentHandler.execute(
+        {
+          ledgerId,
+          sourceDocumentId: "missing-source-document-id",
+          categories: [],
+          settings: {},
+        },
+        context
+      )
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

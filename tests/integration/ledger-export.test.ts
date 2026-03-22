@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { exportLedgerEntriesAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, users, sourceDocuments, entryCategories } from "@/persistence";
@@ -325,5 +327,14 @@ describe("exportLedgerEntriesAction", () => {
     // Last field (createdAt) should be in yyyy-MM-dd HH:mm:ss format
     const createdAtField = fields[fields.length - 1];
     expect(createdAtField).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  });
+
+  it("should not keep raw Error branch for missing CSV headers", async () => {
+    const sourceFile = await fs.readFile(
+      path.join(process.cwd(), "src/modules/ledger/application/use-cases/export-ledger-entries.ts"),
+      "utf8"
+    );
+
+    expect(sourceFile).not.toContain('throw new Error("Missing CSV headers")');
   });
 });
