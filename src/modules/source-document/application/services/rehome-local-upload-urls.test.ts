@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ValidationError } from "@/lib/errors";
 
 const { downloadMock, uploadMock, extractKeyFromUrlMock, getLocalStorageMock } = vi.hoisted(() => ({
   downloadMock: vi.fn(),
@@ -98,19 +99,20 @@ describe("rehomeLocalUploadUrls", () => {
     expect(result).toEqual([localUrl]);
   });
 
-  it("passes through URLs when the ledger differs even if doc ID matches", async () => {
+  it("rejects local upload URLs when the ledger differs even if doc ID matches", async () => {
     extractKeyFromUrlMock.mockReturnValue("other-ledger/new-doc/image.webp");
 
     const crossLedgerUrl = "/api/uploads/other-ledger/new-doc/image.webp";
 
-    const result = await rehomeLocalUploadUrls({
-      ledgerId: "ledger-1",
-      sourceDocumentId: "new-doc",
-      imageUrls: [crossLedgerUrl],
-    });
+    await expect(
+      rehomeLocalUploadUrls({
+        ledgerId: "ledger-1",
+        sourceDocumentId: "new-doc",
+        imageUrls: [crossLedgerUrl],
+      })
+    ).rejects.toThrow(ValidationError);
 
     expect(downloadMock).not.toHaveBeenCalled();
     expect(uploadMock).not.toHaveBeenCalled();
-    expect(result).toEqual([crossLedgerUrl]);
   });
 });

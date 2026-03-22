@@ -17,6 +17,7 @@ import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { createDrizzleStorage } from "@/lib/flow/adapters/drizzle-storage";
 import { initializeFlowRuntime, resetFlowRuntime } from "@/lib/flow/runtime";
 import { processAllPendingTasks } from "../../helpers/processing";
+import { ValidationError } from "@/lib/errors";
 
 // Mock OpenAI
 vi.mock("@/lib/ai/openai-client", () => ({
@@ -162,6 +163,29 @@ describe("SourceDocument Retry Action", () => {
     expect(retriedDoc?.imageUrls).toHaveLength(1);
     expect(retriedDoc?.imageUrls?.[0]).toContain(`/${retryRes.sourceDocumentId}/`);
     expect(retriedDoc?.imageUrls?.[0]).not.toContain(`/${createRes.sourceDocumentId}/`);
+  });
+
+  it("should reject retry input when images contain a foreign-ledger local upload URL", async () => {
+    const db = getTestDb();
+    const { ledgerId: foreignLedgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      "Foreign Ledger",
+      crypto.randomUUID()
+    );
+    const createRes = await createSourceDocumentAction(testLedgerId, { text: "Lunch 25" });
+    const foreignLedgerLocalUrl = `/api/uploads/${foreignLedgerId}/${createRes.sourceDocumentId}/image.webp`;
+
+    await expect(
+      retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
+        images: [{ data: foreignLedgerLocalUrl, mimeType: "image/png" }],
+      })
+    ).rejects.toThrow(ValidationError);
+
+    const sourceDocumentAfterFailedRetry = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
+    });
+    expect(sourceDocumentAfterFailedRetry?.deletedAt).toBeNull();
   });
 
   it("should retry an anomaly document", async () => {

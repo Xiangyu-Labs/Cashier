@@ -1,5 +1,6 @@
 import { inferImageMimeType } from "@/lib/storage/utils";
 import { getLocalStorage } from "@/lib/storage/local";
+import { ValidationError } from "@/lib/errors";
 
 export interface RehomeLocalUploadUrlsInput {
   ledgerId: string;
@@ -47,7 +48,11 @@ export async function rehomeLocalUploadUrls({
       }
 
       if (currentLedgerId !== ledgerId) {
-        return url;
+        throw new ValidationError("Cross-ledger local upload URLs are not allowed", {
+          imageUrl: url,
+          currentLedgerId,
+          ledgerId,
+        });
       }
 
       if (currentLedgerId === ledgerId && currentDocId === sourceDocumentId) {
