@@ -29,14 +29,16 @@ describe("loadFlowRuntimeEnvConfig", () => {
     expect(config.maxConcurrentTasks).toBe(10);
   });
 
-  it("throws when a required AI model config is missing", () => {
-    expect(() =>
-      loadFlowRuntimeEnvConfig({
-        MAX_TASK_WORKER: "3",
-        AI_MODEL_VISION: "gpt-vision",
-        NODE_ENV: "test",
-      } as NodeJS.ProcessEnv)
-    ).toThrow("AI_MODEL_TEXT environment variable is required");
+  it("defaults AI model config when values are unset", () => {
+    const config = loadFlowRuntimeEnvConfig({
+      MAX_TASK_WORKER: "3",
+      NODE_ENV: "test",
+    } as NodeJS.ProcessEnv);
+
+    expect(config.aiModelConfig).toEqual({
+      text: "gpt-4o-mini",
+      vision: "gpt-4o",
+    });
   });
 
   it("throws when MAX_TASK_WORKER is invalid", () => {

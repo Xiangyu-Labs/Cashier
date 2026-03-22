@@ -40,7 +40,8 @@ Configuration is organized into three tiers:
 | `OPENAI_API_KEY`     | Yes      | OpenAI API key                  | `sk-...`                    |
 | `OPENAI_BASE_URL`    | No       | Custom API base URL             | `https://api.openai.com/v1` |
 | `AUTH_SECRET`        | Yes      | Secret for signing tokens       | `openssl rand -base64 32`   |
-| `AUTH_RESEND_KEY`    | Yes      | Resend API key for email OTP    | `re_...`                    |
+| `AUTH_URL`           | No       | Auth callback base URL          | `http://localhost:3000`     |
+| `AUTH_RESEND_KEY`    | No       | Resend API key for email OTP    | `re_...`                    |
 | `AUTH_EMAIL_FROM`    | No       | Email sender address            | `noreply@example.com`       |
 | `LOCAL_STORAGE_PATH` | No       | File storage path               | `./data/uploads`            |
 | `TRUSTED_PROXY`      | No       | Trusted proxy for IP extraction | `10.0.0.0/8`                |

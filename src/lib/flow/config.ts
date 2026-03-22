@@ -1,5 +1,6 @@
 import type { AIModelConfig } from "./types";
 import { AppError } from "@/lib/errors";
+import { getEnvValue } from "@/lib/env/catalog";
 
 export interface FlowRuntimeEnvConfig {
   maxConcurrentTasks: number;
@@ -7,7 +8,7 @@ export interface FlowRuntimeEnvConfig {
 }
 
 function getRequiredEnv(env: NodeJS.ProcessEnv, key: string): string {
-  const value = env[key];
+  const value = getEnvValue(env, key);
   if (value == null || value.trim() === "") {
     throw new AppError(`${key} environment variable is required`, "FLOW_ENV_CONFIG_MISSING");
   }
@@ -19,7 +20,8 @@ function parseNonNegativeInteger(
   key: string,
   fallback: number
 ): number {
-  const normalizedValue = rawValue == null || rawValue.trim() === "" ? String(fallback) : rawValue;
+  const normalizedValue =
+    rawValue == null || rawValue.trim() === "" ? String(fallback) : rawValue;
   const parsed = Number.parseInt(normalizedValue, 10);
 
   if (!Number.isFinite(parsed) || Number.isNaN(parsed) || parsed < 0) {

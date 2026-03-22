@@ -22,7 +22,7 @@ Cashier organizes configuration into three tiers:
 
 |                 | Value                                                       |
 | --------------- | ----------------------------------------------------------- |
-| **Required**    | Yes                                                         |
+| **Required**    | No                                                          |
 | **Default**     | `file:./data/sqlite.db`                                     |
 | **Description** | SQLite database file path                                   |
 | **Example**     | `file:./data/sqlite.db`, `file:/absolute/path/to/db.sqlite` |
@@ -71,6 +71,8 @@ Use this for proxy servers or compatible APIs like Groq, DeepSeek.
 
 Called once per document. When set, downstream stages use `AI_MODEL_TEXT` instead.
 
+Startup validation applies the documented defaults for both model settings before the flow runtime initializes.
+
 #### `AI_MAX_RETRIES`
 
 |                 | Value                                   |
@@ -102,15 +104,25 @@ Called once per document. When set, downstream stages use `AI_MODEL_TEXT` instea
 
 **Critical**: Must be set in production.
 
+#### `AUTH_URL`
+
+|                 | Value                                  |
+| --------------- | -------------------------------------- |
+| **Required**    | No                                     |
+| **Default**     | `http://localhost:3000`                |
+| **Description** | Server-side base URL for auth callbacks |
+
+If unset, local development should still use the localhost default from `.env.example`.
+
 #### `AUTH_RESEND_KEY`
 
 |                 | Value                                 |
 | --------------- | ------------------------------------- |
-| **Required**    | Yes (for email OTP)                   |
+| **Required**    | No                                    |
 | **Default**     | None                                  |
 | **Description** | Resend API key for sending OTP emails |
 
-Get your API key from [Resend Dashboard](https://resend.com/api-keys).
+Get your API key from [Resend Dashboard](https://resend.com/api-keys). Without this key, Cashier logs OTPs in development instead of sending email.
 
 #### `AUTH_EMAIL_FROM`
 
@@ -197,7 +209,7 @@ These variables are embedded in the JavaScript bundle at **build time**. Changin
 
 |                 | Value                                          |
 | --------------- | ---------------------------------------------- |
-| **Required**    | Yes                                            |
+| **Required**    | No                                             |
 | **Default**     | `http://localhost:3000`                        |
 | **Description** | Public application URL accessible from browser |
 

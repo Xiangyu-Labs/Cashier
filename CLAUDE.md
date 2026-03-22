@@ -226,16 +226,16 @@ Sensitive and startup-required settings. **Never expose to frontend.**
 
 - `OPENAI_API_KEY` - Your OpenAI API Key
 - `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies
-- `AI_MODEL_TEXT` - Text model for business logic (default: `gpt-4o-mini`)
-- `AI_MODEL_VISION` - Vision model for image description (default: `gpt-4o`)
+- `AI_MODEL_TEXT` - Text model for business logic (optional, default: `gpt-4o-mini`)
+- `AI_MODEL_VISION` - Vision model for image description (optional, default: `gpt-4o`)
 - `AI_MAX_RETRIES` - Max retry attempts (default: 3)
 - `AI_RETRY_DELAY_MS` - Retry delay in ms (default: 1000)
 
 **Authentication:**
 
 - `AUTH_SECRET` - Secret key for signing cookies and tokens
-- `AUTH_RESEND_KEY` - Resend API key for OTP emails
-- `AUTH_EMAIL_FROM` - Email address for sending OTPs
+- `AUTH_RESEND_KEY` - Resend API key for OTP emails (optional; without it OTPs are logged instead of emailed)
+- `AUTH_EMAIL_FROM` - Email address for sending OTPs (optional, default: `noreply@example.com`)
 - `DISABLE_REGISTRATION` - Set to 'true' to disable new registrations
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` - (Optional) SSO configuration
 
@@ -269,6 +269,8 @@ Exposed to browser via `NEXT_PUBLIC_` prefix. **Requires rebuild to change.**
 - `NEXT_PUBLIC_APP_URL` - Public app URL
 - `NEXT_PUBLIC_OIDC_ENABLED` - Show SSO button (default: `false`)
 - `NEXT_PUBLIC_OIDC_BUTTON_NAME` - SSO button text (default: `SSO`)
+
+Startup validates required environment variables and malformed optional values during `instrumentation.register()` before the flow runtime initializes.
 
 ## Workflow
 

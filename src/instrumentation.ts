@@ -1,3 +1,4 @@
+import { validateStartupEnv } from "@/lib/env/startup";
 import { logger } from "@/lib/logger";
 
 export async function register() {
@@ -9,16 +10,18 @@ export async function register() {
   logger.info("Starting Cashier service...");
 
   // Log critical configuration status for diagnostics (safe, no secrets exposed)
-  logger.info(
-    {
-      nodeEnv: process.env.NODE_ENV ?? "not set",
-      databaseUrl: process.env.DATABASE_URL != null ? "configured" : "not configured",
-      localStorage: process.env.LOCAL_STORAGE_PATH ?? "./data/uploads",
-    },
-    "Service configuration status"
-  );
-
   try {
+    const startupEnv = validateStartupEnv();
+
+    logger.info(
+      {
+        nodeEnv: process.env.NODE_ENV ?? "not set",
+        databaseUrl: startupEnv.DATABASE_URL !== "" ? "configured" : "not configured",
+        localStorage: startupEnv.LOCAL_STORAGE_PATH,
+      },
+      "Service configuration status"
+    );
+
     const { initializeDefaultFlowRuntime } = await import("@/lib/flow/runtime");
     await initializeDefaultFlowRuntime();
 
