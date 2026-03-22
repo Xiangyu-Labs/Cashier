@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { listSourceDocuments } from "@/modules/source-document/actions";
+import {
+  createSourceDocumentFromCredentialApiAction,
+  listSourceDocuments,
+} from "@/modules/source-document/actions";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
-import { createSourceDocumentFromCredential } from "@/modules/source-document/use-cases";
 import {
   createSourceDocumentInputSchema,
   listSourceDocumentsInputSchema,
@@ -23,7 +25,7 @@ export async function POST(request: NextRequest) {
 
       const payload = omitUndefinedProperties(parseApiInput(createSourceDocumentInputSchema, body));
 
-      const createResult = await createSourceDocumentFromCredential({
+      const createResult = await createSourceDocumentFromCredentialApiAction({
         credentialId: credential.id,
         payload,
       });

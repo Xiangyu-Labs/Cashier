@@ -4,12 +4,12 @@ import type { NextRequest, NextResponse } from "next/server";
 const {
   handleApiV1RouteMock,
   parseApiInputMock,
-  createSourceDocumentFromCredentialMock,
+  createSourceDocumentFromCredentialApiActionMock,
   listSourceDocumentsMock,
 } = vi.hoisted(() => ({
   handleApiV1RouteMock: vi.fn(),
   parseApiInputMock: vi.fn(),
-  createSourceDocumentFromCredentialMock: vi.fn(),
+  createSourceDocumentFromCredentialApiActionMock: vi.fn(),
   listSourceDocumentsMock: vi.fn(),
 }));
 
@@ -21,11 +21,8 @@ vi.mock("@/app/api/v1/_shared/validation", () => ({
   parseApiInput: parseApiInputMock,
 }));
 
-vi.mock("@/modules/source-document/use-cases", () => ({
-  createSourceDocumentFromCredential: createSourceDocumentFromCredentialMock,
-}));
-
 vi.mock("@/modules/source-document/actions", () => ({
+  createSourceDocumentFromCredentialApiAction: createSourceDocumentFromCredentialApiActionMock,
   listSourceDocuments: listSourceDocumentsMock,
 }));
 
@@ -54,7 +51,7 @@ describe("api/v1/source-documents omission semantics", () => {
         })
     );
     parseApiInputMock.mockImplementation((_schema: unknown, raw: unknown) => raw);
-    createSourceDocumentFromCredentialMock.mockResolvedValue({
+    createSourceDocumentFromCredentialApiActionMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
       status: "queued",
     });
@@ -72,7 +69,7 @@ describe("api/v1/source-documents omission semantics", () => {
 
     await POST(request);
 
-    const payload = createSourceDocumentFromCredentialMock.mock.calls[0]?.[0]?.payload as Record<
+    const payload = createSourceDocumentFromCredentialApiActionMock.mock.calls[0]?.[0]?.payload as Record<
       string,
       unknown
     >;
