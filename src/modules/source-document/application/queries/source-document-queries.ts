@@ -3,6 +3,8 @@ import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeEnd, parseDateRangeStart } from "@/lib/date-utils";
+import { NotFoundError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import {
   calculatePendingTotal,
@@ -14,10 +16,13 @@ import {
   mapSourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/mappers";
 import {
+  listAllSourceDocumentsInputSchema,
   listSourceDocumentsInputSchema,
+  type ListAllSourceDocumentsInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { sourceDocuments } from "@/persistence";
+import { z } from "zod";
 import type {
   PendingSourceDocumentsResponseDto,
   SourceDocumentCollectionDto,
@@ -49,6 +54,9 @@ export interface ListAllSourceDocumentsParams {
   page?: number;
   pageSize?: number;
 }
+
+type ParsedListSourceDocumentsInput = z.output<typeof listSourceDocumentsInputSchema>;
+type ParsedListAllSourceDocumentsInput = z.output<typeof listAllSourceDocumentsInputSchema>;
 
 function buildStatusCondition(status: string | null | undefined): SQL<unknown> | null {
   if (status == null || status === "") return null;
@@ -241,7 +249,18 @@ export async function listSourceDocuments(
   ledgerId: string,
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
-  const validated = listSourceDocumentsInputSchema.parse(params);
+  const parsed = listSourceDocumentsInputSchema.safeParse(params);
+  if (!parsed.success) {
+    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+  }
+
+  return listSourceDocumentsFromValidatedInput(ledgerId, parsed.data);
+}
+
+export async function listSourceDocumentsFromValidatedInput(
+  ledgerId: string,
+  validated: ParsedListSourceDocumentsInput
+): Promise<SourceDocumentPageDto> {
   return listSourceDocumentsQuery(ledgerId, {
     status: validated.status ?? null,
     startDate: validated.startDate ?? null,
@@ -302,9 +321,42 @@ export async function listAllSourceDocumentsQuery(
 
 export async function getAllSourceDocuments(
   ledgerId: string,
-  params: ListAllSourceDocumentsParams = {}
+  params: ListAllSourceDocumentsInput = {}
 ): Promise<SourceDocumentCollectionDto> {
-  return listAllSourceDocumentsQuery(ledgerId, params);
+  const parsed = listAllSourceDocumentsInputSchema.safeParse(params);
+  if (!parsed.success) {
+    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+  }
+
+  return getAllSourceDocumentsFromValidatedInput(ledgerId, parsed.data);
+}
+
+export async function getAllSourceDocumentsFromValidatedInput(
+  ledgerId: string,
+  validated: ParsedListAllSourceDocumentsInput
+): Promise<SourceDocumentCollectionDto> {
+  const queryParams: ListAllSourceDocumentsParams = {
+    startDate: validated.startDate ?? null,
+    endDate: validated.endDate ?? null,
+    page: validated.page,
+    pageSize: validated.pageSize,
+  };
+
+  const result = await listAllSourceDocumentsQuery(ledgerId, queryParams);
+
+  if (queryParams.page == null && result.items.length === DEFAULT_PAGE_LIMIT) {
+    logger.warn(
+      {
+        ledgerId,
+        limit: DEFAULT_PAGE_LIMIT,
+        startDate: queryParams.startDate,
+        endDate: queryParams.endDate,
+      },
+      "getAllSourceDocuments hit result limit - consider using cursor pagination"
+    );
+  }
+
+  return result;
 }
 
 export async function getPendingSourceDocumentsQuery(
@@ -340,14 +392,14 @@ export async function getPendingSourceDocuments(
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string
-): Promise<SourceDocumentFullDto | null> {
+): Promise<SourceDocumentFullDto> {
   const q = forLedger(sourceDocuments, ledgerId);
   const document = await db.query.sourceDocuments.findFirst({
     where: q.whereId(sourceDocumentId),
   });
 
   if (document == null) {
-    return null;
+    throw new NotFoundError("Source document");
   }
 
   return {
@@ -362,10 +414,6 @@ export async function getSourceDocumentFullQuery(
 export async function getSourceDocumentFull(
   ledgerId: string,
   sourceDocumentId: string
-): Promise<SourceDocumentFullDto | null> {
+): Promise<SourceDocumentFullDto> {
   return getSourceDocumentFullQuery(ledgerId, sourceDocumentId);
 }
-
-export const sourceDocumentPaginationConfig = {
-  DEFAULT_PAGE_LIMIT,
-};

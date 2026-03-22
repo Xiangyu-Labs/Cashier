@@ -1,14 +1,12 @@
 "use server";
+import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
-import { safeError } from "@/lib/safe-error";
-import { logger } from "@/lib/logger";
-import { AppError } from "@/lib/errors";
+import { z } from "zod";
 import {
-  getPendingSourceDocumentsQuery,
+  getAllSourceDocumentsFromValidatedInput,
+  getPendingSourceDocuments,
   getSourceDocumentFullQuery,
-  listAllSourceDocumentsQuery,
-  listSourceDocumentsQuery,
-  sourceDocumentPaginationConfig,
+  listSourceDocumentsFromValidatedInput,
 } from "@/modules/source-document/application/queries/source-document-queries";
 import type {
   PendingSourceDocumentsResponseDto,
@@ -17,9 +15,20 @@ import type {
   SourceDocumentPageDto,
 } from "@/modules/source-document/contracts";
 import {
+  listAllSourceDocumentsInputSchema,
   listSourceDocumentsInputSchema,
+  sourceDocumentIdSchema,
+  type ListAllSourceDocumentsInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
+
+function parseOrThrowValidation<T>(result: z.SafeParseReturnType<unknown, T>): T {
+  if (!result.success) {
+    throw new ValidationError("Validation failed", { issues: result.error.issues });
+  }
+
+  return result.data;
+}
 
 /**
  * Get paginated source documents with cursor-based pagination
@@ -28,18 +37,14 @@ export async function listSourceDocuments(
   ledgerId: string,
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
-  const validated = listSourceDocumentsInputSchema.parse(params);
-  return listSourceDocumentsQuery(ledgerId, {
-    status: validated.status ?? null,
-    startDate: validated.startDate ?? null,
-    endDate: validated.endDate ?? null,
-    cursor: validated.cursor ?? null,
-    limit: validated.limit,
-    includeLedgerEntries: validated.includeEntries,
-  });
+  const validated = parseOrThrowValidation(listSourceDocumentsInputSchema.safeParse(params));
+  return listSourceDocumentsFromValidatedInput(ledgerId, validated);
 }
 
-export const getSourceDocumentsAction = withLedgerAccess(listSourceDocuments);
+export const getSourceDocumentsAction = withLedgerAccess(
+  async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> =>
+    listSourceDocuments(ledgerId, params)
+);
 
 /**
  * Get all source documents as a flat array (not grouped) with proper pagination.
@@ -52,36 +57,10 @@ export const getSourceDocumentsAction = withLedgerAccess(listSourceDocuments);
 export const getAllSourceDocumentsAction = withLedgerAccess(
   async (
     ledgerId: string,
-    params: {
-      startDate?: string | null;
-      endDate?: string | null;
-      page?: number;
-      pageSize?: number;
-    } = {}
+    params: ListAllSourceDocumentsInput = {}
   ): Promise<SourceDocumentCollectionDto> => {
-    try {
-      const result = await listAllSourceDocumentsQuery(ledgerId, params);
-
-      if (
-        params.page == null &&
-        result.items.length === sourceDocumentPaginationConfig.DEFAULT_PAGE_LIMIT
-      ) {
-        logger.warn(
-          {
-            ledgerId,
-            limit: sourceDocumentPaginationConfig.DEFAULT_PAGE_LIMIT,
-            startDate: params.startDate,
-            endDate: params.endDate,
-          },
-          "getAllSourceDocumentsAction hit result limit - consider using cursor pagination"
-        );
-      }
-
-      return result;
-    } catch (error) {
-      logger.error({ error, ledgerId }, "Failed to get all source documents");
-      throw new AppError(safeError(error), "QUERY_ERROR", 500);
-    }
+    const validated = parseOrThrowValidation(listAllSourceDocumentsInputSchema.safeParse(params));
+    return getAllSourceDocumentsFromValidatedInput(ledgerId, validated);
   }
 );
 
@@ -90,14 +69,8 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
  * Used for the pending source documents modal that should always show ALL pending items.
  */
 export const getPendingSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
-    try {
-      return await getPendingSourceDocumentsQuery(ledgerId);
-    } catch (error) {
-      logger.error({ error, ledgerId }, "Failed to get pending source documents");
-      throw new AppError(safeError(error), "QUERY_ERROR", 500);
-    }
-  }
+  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> =>
+    getPendingSourceDocuments(ledgerId)
 );
 
 /**
@@ -105,6 +78,9 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
  * Used for edit-retry when the list view has stripped imageUrls.
  */
 export const getSourceDocumentFullAction = withLedgerAccess(
-  async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto | null> =>
-    getSourceDocumentFullQuery(ledgerId, sourceDocumentId)
+  async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto> =>
+    getSourceDocumentFullQuery(
+      ledgerId,
+      parseOrThrowValidation(sourceDocumentIdSchema.safeParse(sourceDocumentId))
+    )
 );

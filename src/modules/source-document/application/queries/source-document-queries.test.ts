@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { NotFoundError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
@@ -111,7 +112,7 @@ describe("source-document-queries", () => {
     );
   });
 
-  it("returns full payload for an existing document and null for a missing one", async () => {
+  it("returns full payload for an existing document and throws NotFoundError for a missing one", async () => {
     const db = getTestDb();
     const docs = await db
       .insert(sourceDocuments)
@@ -134,6 +135,8 @@ describe("source-document-queries", () => {
       createdAt: expect.any(String),
     });
 
-    await expect(getSourceDocumentFullQuery(ledgerId, crypto.randomUUID())).resolves.toBeNull();
+    await expect(getSourceDocumentFullQuery(ledgerId, crypto.randomUUID())).rejects.toThrow(
+      NotFoundError
+    );
   });
 });
