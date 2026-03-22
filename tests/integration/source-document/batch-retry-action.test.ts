@@ -216,6 +216,11 @@ describe("batchRetrySourceDocumentsAction", () => {
       Buffer.from("local-image"),
       "image/webp"
     );
+    const oldOriginalLocalUrl = await localStorage.upload(
+      `${testLedgerId}/${oldDocId}/original.webp`,
+      Buffer.from("original-local-image"),
+      "image/webp"
+    );
 
     const oldDoc = firstItem(
       await db
@@ -225,6 +230,7 @@ describe("batchRetrySourceDocumentsAction", () => {
           ledgerId: testLedgerId,
           text: "Local image retry",
           imageUrls: [oldLocalUrl],
+          metadata: { originalImageUrls: [oldOriginalLocalUrl] },
           status: "failed",
           entryDate: "2025-03-03",
         })
@@ -257,6 +263,23 @@ describe("batchRetrySourceDocumentsAction", () => {
     }
     expect(firstImageUrl).toContain(`/${newDoc.id}/`);
     expect(firstImageUrl).not.toContain(`/${oldDoc.id}/`);
+
+    expect(isRecord(newDoc.metadata)).toBe(true);
+    if (!isRecord(newDoc.metadata)) {
+      throw new Error("Expected retried document metadata to be an object");
+    }
+    const originalImageUrls = newDoc.metadata.originalImageUrls;
+    expect(Array.isArray(originalImageUrls)).toBe(true);
+    if (!Array.isArray(originalImageUrls)) {
+      throw new Error("Expected retried document metadata.originalImageUrls to be an array");
+    }
+    const firstOriginalImageUrl = originalImageUrls[0];
+    expect(typeof firstOriginalImageUrl).toBe("string");
+    if (typeof firstOriginalImageUrl !== "string") {
+      throw new Error("Expected retried document original image URL to exist");
+    }
+    expect(firstOriginalImageUrl).toContain(`/${newDoc.id}/`);
+    expect(firstOriginalImageUrl).not.toContain(`/${oldDoc.id}/`);
   });
 
   it("should cancel running tasks and create new tasks", async () => {
