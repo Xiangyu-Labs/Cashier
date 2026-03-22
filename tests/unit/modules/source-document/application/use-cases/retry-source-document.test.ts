@@ -66,6 +66,8 @@ vi.mock("@/lib/flow", () => ({
 vi.mock("@/lib/logger", () => ({
   logger: {
     debug: loggerDebugMock,
+    error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -75,7 +77,7 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   processImages: processImagesMock,
 }));
 
-vi.mock("../services/rehome-local-upload-urls", () => ({
+vi.mock("@/modules/source-document/application/services/rehome-local-upload-urls", () => ({
   rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
 }));
 
