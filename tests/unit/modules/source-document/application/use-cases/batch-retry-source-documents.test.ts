@@ -104,12 +104,15 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   prepareSourceDocumentTask: prepareSourceDocumentTaskMock,
 }));
 
-vi.mock("../services/rehome-local-upload-urls", () => ({
+vi.mock("@/modules/source-document/application/services/rehome-local-upload-urls", () => ({
   rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: loggerMock,
+  logger: {
+    ...loggerMock,
+    error: vi.fn(),
+  },
 }));
 
 import { batchRetrySourceDocuments } from "../../../../../../src/modules/source-document/application/use-cases/batch-retry-source-documents";
