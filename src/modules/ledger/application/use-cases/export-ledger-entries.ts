@@ -1,5 +1,6 @@
-import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 
@@ -78,29 +79,29 @@ export async function exportLedgerEntries(
     throw new NotFoundError("Ledger");
   }
 
-  const conditions = [eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)];
+  const entryScope = forLedger(ledgerEntries, ledgerId);
+  const conditions = [entryScope.whereActive];
 
   if (
     (options?.startDate != null && options.startDate !== "") ||
     (options?.endDate != null && options.endDate !== "")
   ) {
-    const sourceDocumentDateConditions = [
-      sql`ledger_id = ${ledgerId}`,
-      sql`deleted_at IS NULL`,
-    ];
+    const sourceDocumentScope = forLedger(sourceDocuments, ledgerId);
+    const sourceDocumentDateConditions = [sourceDocumentScope.whereActive];
 
     if (options?.startDate != null && options.startDate !== "") {
-      sourceDocumentDateConditions.push(sql`entry_date >= ${options.startDate}`);
+      sourceDocumentDateConditions.push(gte(sourceDocuments.entryDate, options.startDate));
     }
     if (options?.endDate != null && options.endDate !== "") {
-      sourceDocumentDateConditions.push(sql`entry_date <= ${options.endDate}`);
+      sourceDocumentDateConditions.push(lte(sourceDocuments.entryDate, options.endDate));
     }
 
-    conditions.push(sql`${ledgerEntries.sourceDocumentId} IN (
-      SELECT id
-      FROM source_documents
-      WHERE ${sql.join(sourceDocumentDateConditions, sql` AND `)}
-    )`);
+    const sourceDocumentsInRange = db
+      .select({ id: sourceDocuments.id })
+      .from(sourceDocuments)
+      .where(and(...sourceDocumentDateConditions));
+
+    conditions.push(inArray(ledgerEntries.sourceDocumentId, sourceDocumentsInRange));
   }
 
   const entries = await db.query.ledgerEntries.findMany({

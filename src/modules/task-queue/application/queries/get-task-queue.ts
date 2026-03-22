@@ -50,7 +50,11 @@ export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResu
   const anomalySourceDocIds = new Set<string>();
   if (completedSourceDocIds.length > 0) {
     const docs = await db.query.sourceDocuments.findMany({
-      where: inArray(sourceDocuments.id, completedSourceDocIds),
+      where: and(
+        inArray(sourceDocuments.id, completedSourceDocIds),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      ),
       columns: { id: true, title: true, status: true },
     });
     for (const doc of docs) {

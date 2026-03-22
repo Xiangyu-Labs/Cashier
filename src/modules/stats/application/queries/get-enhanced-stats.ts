@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
-import { currencyRates, ledgerEntries, ledgers } from "@/persistence";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { forLedger } from "@/lib/db/scoped-query";
+import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
 import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
@@ -46,16 +47,25 @@ export async function getEnhancedStatsQuery({
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const currentStart = parseDateString(queryRange.from);
   const currentEnd = parseDateString(queryRange.to);
+  const entryScope = forLedger(ledgerEntries, ledgerId);
 
   const fetchEntries = async (startStr: string, endStr: string) => {
+    const sourceDocumentsInRange = db
+      .select({ id: sourceDocuments.id })
+      .from(sourceDocuments)
+      .where(
+        and(
+          eq(sourceDocuments.ledgerId, ledgerId),
+          isNull(sourceDocuments.deletedAt),
+          gte(sourceDocuments.entryDate, startStr),
+          lte(sourceDocuments.entryDate, endStr)
+        )
+      );
+
     return db.query.ledgerEntries.findMany({
       where: and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        isNull(ledgerEntries.deletedAt),
-        sql`${ledgerEntries.sourceDocumentId} IN (
-          SELECT id FROM source_documents
-          WHERE ledger_id = ${ledgerId} AND entry_date >= ${startStr} AND entry_date <= ${endStr} AND deleted_at IS NULL
-        )`
+        entryScope.whereActive,
+        inArray(ledgerEntries.sourceDocumentId, sourceDocumentsInRange)
       ),
       with: {
         category: true,

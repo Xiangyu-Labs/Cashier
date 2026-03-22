@@ -11,6 +11,37 @@ import {
   createCategoryData,
 } from "../helpers/factories";
 
+function normalizeSql(sqlStatement: string): string {
+  return sqlStatement.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+async function captureSqlStatements<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; statements: string[] }> {
+  const dbWithClient = getTestDb() as unknown as {
+    $client?: { prepare: (sql: string, ...args: unknown[]) => unknown };
+  };
+  const client = dbWithClient.$client;
+  if (client == null) {
+    throw new Error("Expected drizzle client to exist in integration tests");
+  }
+
+  const originalPrepare = client.prepare.bind(client);
+  const statements: string[] = [];
+
+  client.prepare = ((sqlStatement: string, ...args: unknown[]) => {
+    statements.push(sqlStatement);
+    return originalPrepare(sqlStatement, ...args);
+  }) as typeof client.prepare;
+
+  try {
+    const result = await fn();
+    return { result, statements };
+  } finally {
+    client.prepare = originalPrepare;
+  }
+}
+
 // Mock auth module
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -264,6 +295,47 @@ describe("exportLedgerEntriesAction", () => {
     expect(result.isEmpty).toBe(false);
     expect(result.csvContent).toContain("April item");
     expect(result.csvContent).not.toContain("March item");
+  });
+
+  it("keeps ledger/date/deleted constraints inside SQL for export query", async () => {
+    const db = getTestDb();
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const sourceDocData = createSourceDocumentData(ledgerData.id, {
+      title: "May entry",
+      entryDate: "2024-05-10",
+    });
+    await db.insert(sourceDocuments).values(sourceDocData);
+
+    await db.insert(ledgerEntries).values(
+      createLedgerEntryData(ledgerData.id, {
+        sourceDocumentId: sourceDocData.id,
+        itemName: "May item",
+      })
+    );
+
+    const { statements } = await captureSqlStatements(() =>
+      exportLedgerEntriesAction(ledgerData.id, "en", {
+        startDate: "2024-05-01",
+        endDate: "2024-05-31",
+      })
+    );
+
+    const entryQuery = statements
+      .map(normalizeSql)
+      .find((sqlStatement) =>
+        sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
+      );
+
+    expect(entryQuery).toBeDefined();
+    expect(entryQuery).toContain('"ledgerentries"."ledger_id" = ?');
+    expect(entryQuery).toContain('"ledgerentries"."deleted_at" is null');
+    expect(entryQuery).toContain('select "id" from "source_documents"');
+    expect(entryQuery).toContain('"source_documents"."ledger_id" = ?');
+    expect(entryQuery).toContain('"source_documents"."deleted_at" is null');
+    expect(entryQuery).toContain('"source_documents"."entry_date" >= ?');
+    expect(entryQuery).toContain('"source_documents"."entry_date" <= ?');
   });
 
   it("should handle null values gracefully", async () => {

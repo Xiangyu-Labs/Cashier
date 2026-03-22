@@ -13,6 +13,37 @@ function requireFirst<T>(rows: readonly T[], label: string): T {
   return first;
 }
 
+function normalizeSql(sqlStatement: string): string {
+  return sqlStatement.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+async function captureSqlStatements<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; statements: string[] }> {
+  const dbWithClient = getTestDb() as unknown as {
+    $client?: { prepare: (sql: string, ...args: unknown[]) => unknown };
+  };
+  const client = dbWithClient.$client;
+  if (client == null) {
+    throw new Error("Expected drizzle client to exist in integration tests");
+  }
+
+  const originalPrepare = client.prepare.bind(client);
+  const statements: string[] = [];
+
+  client.prepare = ((sqlStatement: string, ...args: unknown[]) => {
+    statements.push(sqlStatement);
+    return originalPrepare(sqlStatement, ...args);
+  }) as typeof client.prepare;
+
+  try {
+    const result = await fn();
+    return { result, statements };
+  } finally {
+    client.prepare = originalPrepare;
+  }
+}
+
 describe("Enhanced Stats Actions", () => {
   let testLedgerId: string;
   let testCategoryId: string;
@@ -160,6 +191,55 @@ describe("Enhanced Stats Actions", () => {
       const januaryPoint = requireFirst(result.chart, "chart point");
       expect(januaryPoint.date).toBe("2024-01-15");
       expect(januaryPoint.total).toBe(100);
+    });
+
+    it("keeps ledger/date/deleted constraints inside SQL for entry fetches", async () => {
+      const db = getTestDb();
+      const createdDoc = await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          text: "SQL filter test",
+          status: "completed",
+          imageUrls: [],
+          entryDate: "2024-03-05",
+        })
+        .returning();
+      const doc = requireFirst(createdDoc, "source document");
+
+      await db.insert(ledgerEntries).values({
+        ledgerId: testLedgerId,
+        sourceDocumentId: doc.id,
+        amount: "10",
+        currency: "CNY",
+        itemName: "Filter Item",
+        categoryId: testCategoryId,
+      });
+
+      const { statements } = await captureSqlStatements(() =>
+        getEnhancedStats({
+          ledgerId: testLedgerId,
+          queryRange: { from: "2024-03-01", to: "2024-03-31" },
+          compareRange: { from: "2024-02-01", to: "2024-02-29" },
+        })
+      );
+
+      const entryQueries = statements
+        .map(normalizeSql)
+        .filter((sqlStatement) =>
+          sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
+        );
+
+      expect(entryQueries.length).toBeGreaterThanOrEqual(2);
+      for (const query of entryQueries.slice(0, 2)) {
+        expect(query).toContain('"ledgerentries"."ledger_id" = ?');
+        expect(query).toContain('"ledgerentries"."deleted_at" is null');
+        expect(query).toContain('select "id" from "source_documents"');
+        expect(query).toContain('"source_documents"."ledger_id" = ?');
+        expect(query).toContain('"source_documents"."deleted_at" is null');
+        expect(query).toContain('"source_documents"."entry_date" >= ?');
+        expect(query).toContain('"source_documents"."entry_date" <= ?');
+      }
     });
 
     it("should calculate correct summary totals", async () => {

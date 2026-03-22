@@ -27,6 +27,37 @@ function requireFirst<T>(rows: readonly T[], label: string): T {
   return first;
 }
 
+function normalizeSql(sqlStatement: string): string {
+  return sqlStatement.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+async function captureSqlStatements<T>(
+  fn: () => Promise<T>
+): Promise<{ result: T; statements: string[] }> {
+  const dbWithClient = getTestDb() as unknown as {
+    $client?: { prepare: (sql: string, ...args: unknown[]) => unknown };
+  };
+  const client = dbWithClient.$client;
+  if (client == null) {
+    throw new Error("Expected drizzle client to exist in integration tests");
+  }
+
+  const originalPrepare = client.prepare.bind(client);
+  const statements: string[] = [];
+
+  client.prepare = ((sqlStatement: string, ...args: unknown[]) => {
+    statements.push(sqlStatement);
+    return originalPrepare(sqlStatement, ...args);
+  }) as typeof client.prepare;
+
+  try {
+    const result = await fn();
+    return { result, statements };
+  } finally {
+    client.prepare = originalPrepare;
+  }
+}
+
 describe("cancelTaskAction", () => {
   let ledgerId: string;
 
@@ -73,6 +104,22 @@ describe("cancelTaskAction", () => {
 
   it("throws 'Task not found' when task does not exist", async () => {
     await expect(cancelTaskAction(ledgerId, uuidv4())).rejects.toThrow("Task not found");
+  });
+
+  it("treats a soft-deleted task as not found", async () => {
+    const db = getTestDb();
+    const taskId = uuidv4();
+    await db.insert(taskRuns).values({
+      id: taskId,
+      type: "parse_source_document",
+      title: "Deleted Task",
+      status: "running",
+      scopeId: ledgerId,
+      deletedAt: new Date("2024-03-01T00:00:00.000Z"),
+    });
+
+    await expect(cancelTaskAction(ledgerId, taskId)).rejects.toThrow("Task not found");
+    expect(cancelFlowTask).not.toHaveBeenCalled();
   });
 
   it("throws 'Task does not belong to this ledger' for wrong ledger", async () => {
@@ -359,6 +406,40 @@ describe("batchCancelTasksAction", () => {
     await batchCancelTasksAction(ledgerId, [pendingId, completedId]);
     expect(cancelFlowTask).toHaveBeenCalledTimes(1);
     expect(cancelFlowTask).toHaveBeenCalledWith(pendingId);
+  });
+
+  it("pushes ledger/status/deleted filtering into SQL in batch lookup", async () => {
+    const db = getTestDb();
+    const pendingId = uuidv4();
+    const runningId = uuidv4();
+    await db.insert(taskRuns).values([
+      {
+        id: pendingId,
+        type: "parse_source_document",
+        title: "Pending",
+        status: "pending",
+        scopeId: ledgerId,
+      },
+      {
+        id: runningId,
+        type: "parse_source_document",
+        title: "Running",
+        status: "running",
+        scopeId: ledgerId,
+      },
+    ]);
+
+    const { statements } = await captureSqlStatements(() =>
+      batchCancelTasksAction(ledgerId, [pendingId, runningId])
+    );
+    const taskRunsSelect = statements
+      .map(normalizeSql)
+      .find((sqlStatement) => sqlStatement.startsWith("select") && sqlStatement.includes('from "task_runs"'));
+
+    expect(taskRunsSelect).toBeDefined();
+    expect(taskRunsSelect).toContain('"scope_id" = ?');
+    expect(taskRunsSelect).toContain('"deleted_at" is null');
+    expect(taskRunsSelect).toContain('"status" in (?, ?)');
   });
 
   it("soft-deletes processing source docs for batch cancel", async () => {

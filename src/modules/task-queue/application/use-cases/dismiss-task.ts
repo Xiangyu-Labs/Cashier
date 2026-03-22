@@ -3,24 +3,26 @@ import { db } from "@/lib/db";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { taskRuns } from "@/persistence";
 
-function getLedgerIdFromTask(task: typeof taskRuns.$inferSelect): string | null {
-  return task.scopeId ?? null;
-}
-
 export async function dismissTaskUseCase(ledgerId: string, taskId: string): Promise<void> {
   const task = await db.query.taskRuns.findFirst({
-    where: and(eq(taskRuns.id, taskId), isNull(taskRuns.deletedAt)),
+    where: and(eq(taskRuns.id, taskId), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt)),
   });
 
-  if (!task) {
-    throw new NotFoundError("Task");
-  }
-
-  if (getLedgerIdFromTask(task) !== ledgerId) {
+  if (task == null) {
+    const existingTask = await db.query.taskRuns.findFirst({
+      where: and(eq(taskRuns.id, taskId), isNull(taskRuns.deletedAt)),
+      columns: { id: true, scopeId: true },
+    });
+    if (existingTask == null) {
+      throw new NotFoundError("Task");
+    }
     throw new ForbiddenError("Task does not belong to this ledger");
   }
 
-  await db.update(taskRuns).set({ deletedAt: new Date() }).where(eq(taskRuns.id, taskId));
+  await db
+    .update(taskRuns)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(taskRuns.id, taskId), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt)));
 }
 
 export async function batchDismissTasksUseCase(
@@ -32,12 +34,9 @@ export async function batchDismissTasksUseCase(
   }
 
   const tasks = await db.query.taskRuns.findMany({
-    where: and(inArray(taskRuns.id, taskIds), isNull(taskRuns.deletedAt)),
+    where: and(inArray(taskRuns.id, taskIds), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt)),
   });
-
-  const validTaskIds = tasks
-    .filter((task) => getLedgerIdFromTask(task) === ledgerId)
-    .map((task) => task.id);
+  const validTaskIds = tasks.map((task) => task.id);
 
   if (validTaskIds.length === 0) {
     return;
@@ -46,5 +45,11 @@ export async function batchDismissTasksUseCase(
   await db
     .update(taskRuns)
     .set({ deletedAt: new Date() })
-    .where(inArray(taskRuns.id, validTaskIds));
+    .where(
+      and(
+        inArray(taskRuns.id, validTaskIds),
+        eq(taskRuns.scopeId, ledgerId),
+        isNull(taskRuns.deletedAt)
+      )
+    );
 }
