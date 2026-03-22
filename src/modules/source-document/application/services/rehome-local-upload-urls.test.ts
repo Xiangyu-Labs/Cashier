@@ -67,4 +67,19 @@ describe("rehomeLocalUploadUrls", () => {
       "/api/uploads/ledger-1/new-doc/already-owned.webp",
     ]);
   });
+
+  it("passes through local uploads when the storage key cannot be inferred", async () => {
+    extractKeyFromUrlMock.mockReturnValue(null);
+
+    const localUrl = "/api/uploads/ledger-1/new-doc/unmappable.webp";
+    const result = await rehomeLocalUploadUrls({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: [localUrl],
+    });
+
+    expect(downloadMock).not.toHaveBeenCalled();
+    expect(uploadMock).not.toHaveBeenCalled();
+    expect(result).toEqual([localUrl]);
+  });
 });
