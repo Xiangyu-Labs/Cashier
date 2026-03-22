@@ -72,7 +72,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { RateLimitError } from "@/lib/errors";
-import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
+import { sendOTP } from "../../../../../src/modules/auth/application/use-cases/send-otp";
 
 type SendOTPInput = Parameters<typeof sendOTP>[0];
 

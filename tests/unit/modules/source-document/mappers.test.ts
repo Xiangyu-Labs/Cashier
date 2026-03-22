@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeSourceDocumentLight } from "@/modules/source-document/mappers";
+import { serializeSourceDocumentLight } from "../../../../src/modules/source-document/mappers";
 
 describe("serializeSourceDocumentLight", () => {
   it("keeps light-detail semantics explicit without carrying image arrays", () => {

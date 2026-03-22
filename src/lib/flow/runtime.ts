@@ -2,6 +2,7 @@ import { createAIContext } from "./ai-context";
 import { loadFlowRuntimeEnvConfig } from "./config";
 import { createFlowEngine } from "./engine";
 import { registerAllTasks, resetTaskRegistry } from "./task-registry";
+import { AppError } from "@/lib/errors";
 import type { FlowEngine, FlowRuntime, FlowRuntimeConfig, FlowTaskMetadata } from "./types";
 
 let runtime: FlowRuntime | null = null;
@@ -13,7 +14,10 @@ async function ensureFlowRuntime(): Promise<FlowRuntime> {
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
-    throw new Error("Flow runtime is not supported in the Edge Runtime.");
+    throw new AppError(
+      "Flow runtime is not supported in the Edge Runtime.",
+      "FLOW_RUNTIME_EDGE_UNSUPPORTED"
+    );
   }
 
   return initializeDefaultFlowRuntime();
@@ -86,8 +90,9 @@ export async function initializeDefaultFlowRuntime(): Promise<FlowRuntime> {
 
 export function getFlowRuntime(): FlowRuntime {
   if (runtime == null) {
-    throw new Error(
-      "Flow runtime has not been initialized. Call initializeDefaultFlowRuntime() during startup."
+    throw new AppError(
+      "Flow runtime has not been initialized. Call initializeDefaultFlowRuntime() during startup.",
+      "FLOW_RUNTIME_NOT_INITIALIZED"
     );
   }
 

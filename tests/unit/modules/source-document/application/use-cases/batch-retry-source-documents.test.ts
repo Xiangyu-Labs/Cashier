@@ -105,7 +105,7 @@ vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
 
-import { batchRetrySourceDocuments } from "@/modules/source-document/application/use-cases/batch-retry-source-documents";
+import { batchRetrySourceDocuments } from "../../../../../../src/modules/source-document/application/use-cases/batch-retry-source-documents";
 
 describe("batchRetrySourceDocuments", () => {
   beforeEach(() => {

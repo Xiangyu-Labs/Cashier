@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMessageContent } from "@/modules/source-document/application/parse-source-document/message-content";
+import { buildMessageContent } from "../../../../../../src/modules/source-document/application/parse-source-document/message-content";
 
 describe("buildMessageContent", () => {
   it("returns labeled text when only text provided", () => {

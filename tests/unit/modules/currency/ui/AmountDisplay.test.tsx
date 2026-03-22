@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
+import { AmountDisplay } from "../../../../../src/modules/currency/ui/AmountDisplay";
 
 const mockUseAmountDisplay = vi.hoisted(() => vi.fn());
 

@@ -7,7 +7,7 @@ import {
   getAllSourceDocuments,
   getSourceDocumentFullQuery,
   listSourceDocumentsQuery,
-} from "@/modules/source-document/application/queries/source-document-queries";
+} from "../../../../../../src/modules/source-document/application/queries/source-document-queries";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {

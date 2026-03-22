@@ -30,7 +30,7 @@ vi.mock("@/modules/stats/lib/heatmap-colors", () => ({
   ],
 }));
 
-import { CalendarHeatmapSection } from "@/modules/stats/ui/CalendarHeatmapSection";
+import { CalendarHeatmapSection } from "../../../../../src/modules/stats/ui/CalendarHeatmapSection";
 
 const stats: CalendarHeatmapStats = {
   minAmount: 0,

@@ -74,7 +74,7 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
 }));
 
 import { NotFoundError } from "@/lib/errors";
-import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
+import { retrySourceDocument } from "../../../../../../src/modules/source-document/application/use-cases/retry-source-document";
 
 describe("retrySourceDocument", () => {
   beforeEach(() => {

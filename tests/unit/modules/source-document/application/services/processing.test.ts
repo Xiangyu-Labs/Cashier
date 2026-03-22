@@ -44,7 +44,7 @@ import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
   processImages,
-} from "@/modules/source-document/application/services/processing";
+} from "../../../../../../src/modules/source-document/application/services/processing";
 
 describe("source-document processing helpers", () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { StatsRanking } from "@/modules/stats/ui/StatsRanking";
+import { StatsRanking } from "../../../../../src/modules/stats/ui/StatsRanking";
 
 vi.mock("@/components/CategoryIcon", () => ({
   CategoryIcon: ({ iconName, className }: { iconName?: string | null; className?: string }) => (

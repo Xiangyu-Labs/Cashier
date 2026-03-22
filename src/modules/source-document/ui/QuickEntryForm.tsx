@@ -41,7 +41,7 @@ export function QuickEntryForm({
     ledgerId,
     categories,
     mainCurrency,
-    onSuccess,
+    ...(onSuccess !== undefined ? { onSuccess } : {}),
   });
 
   return (

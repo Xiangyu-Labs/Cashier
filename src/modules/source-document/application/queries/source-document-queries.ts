@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeEnd, parseDateRangeStart } from "@/lib/date-utils";
@@ -21,8 +21,8 @@ import {
   type ListAllSourceDocumentsInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
-import { z } from "zod";
+import { sourceDocuments } from "@/persistence";
+import type { z } from "zod";
 import type {
   PendingSourceDocumentsResponseDto,
   SourceDocumentCollectionDto,

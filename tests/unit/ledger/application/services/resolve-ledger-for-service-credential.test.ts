@@ -10,7 +10,7 @@ vi.mock("@/lib/error-handlers", () => ({
   logError: logErrorMock,
 }));
 
-import { resolveLedgerForServiceCredential } from "@/modules/ledger/application/services/resolve-ledger-for-service-credential";
+import { resolveLedgerForServiceCredential } from "../../../../../src/modules/ledger/application/services/resolve-ledger-for-service-credential";
 
 describe("resolveLedgerForServiceCredential", () => {
   let ledgerId = "";

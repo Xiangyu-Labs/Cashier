@@ -1,7 +1,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { StatsChart } from "@/modules/stats/ui/StatsChart";
+import { StatsChart } from "../../../../../src/modules/stats/ui/StatsChart";
 
 describe("StatsChart", () => {
   beforeEach(() => {

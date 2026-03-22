@@ -44,7 +44,7 @@ vi.mock("drizzle-orm", async () => {
 import {
   getProcessingStats,
   listProcessingTasks,
-} from "@/modules/source-document/application/queries/source-document-processing";
+} from "../../../../../../src/modules/source-document/application/queries/source-document-processing";
 
 describe("source-document-processing queries", () => {
   beforeEach(() => {

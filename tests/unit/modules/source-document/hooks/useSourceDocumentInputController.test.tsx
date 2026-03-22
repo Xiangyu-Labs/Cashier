@@ -6,7 +6,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { compressImage } from "@/lib/image-utils";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
 import { toast } from "sonner";
-import { useSourceDocumentInputController } from "@/modules/source-document/hooks/useSourceDocumentInputController";
+import { useSourceDocumentInputController } from "../../../../../src/modules/source-document/hooks/useSourceDocumentInputController";
 
 vi.mock("@/modules/source-document/actions", () => ({
   createSourceDocumentAction: vi.fn(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { QueueItem } from "@/modules/task-queue/contracts";
-import { canCancel, canDelete, canDismiss, canRetry, hasSourceDocument } from "@/modules/task-queue/types";
+import type { QueueItem } from "../../../src/modules/task-queue/contracts";
+import { canCancel, canDelete, canDismiss, canRetry, hasSourceDocument } from "../../../src/modules/task-queue/types";
 
 function createQueueItem(overrides: Partial<QueueItem> = {}): QueueItem {
   return {

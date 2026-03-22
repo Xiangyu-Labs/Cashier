@@ -1,5 +1,6 @@
 import { getLocalStorage } from "./local";
 import { isLocalUploadUrl } from "./index";
+import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
@@ -24,7 +25,7 @@ export async function loadImageForAI(url: string): Promise<string> {
 
   // Must be a local upload URL
   if (!isLocalUploadUrl(url)) {
-    throw new Error(
+    throw new ValidationError(
       `Invalid image URL format. Only local upload URLs (/api/uploads/...) or base64 data URLs are supported: ${url.substring(0, 50)}...`
     );
   }
@@ -33,7 +34,7 @@ export async function loadImageForAI(url: string): Promise<string> {
   const key = storage.extractKeyFromUrl(url);
 
   if (key == null) {
-    throw new Error(`Invalid local upload URL: ${url}`);
+    throw new ValidationError(`Invalid local upload URL: ${url}`);
   }
 
   try {
@@ -43,8 +44,9 @@ export async function loadImageForAI(url: string): Promise<string> {
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
     logger.error({ error, url, key }, "Failed to load image from local storage for AI");
-    throw new Error(
-      `Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`
+    throw new AppError(
+      `Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`,
+      "IMAGE_LOAD_FAILED"
     );
   }
 }
@@ -111,7 +113,10 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
 
   if (failures.length > 0) {
     const errorMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
-    throw new Error(`Failed to load ${failures.length} image(s): ${errorMessages}`);
+    throw new AppError(
+      `Failed to load ${failures.length} image(s): ${errorMessages}`,
+      "IMAGE_BATCH_LOAD_FAILED"
+    );
   }
 
   return results.map((r) => r.dataUrl!);

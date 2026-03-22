@@ -15,7 +15,7 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
   createAndQueueSourceDocument: createAndQueueSourceDocumentMock,
 }));
 
-import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
+import { createSourceDocumentFromCredential } from "../../../../../../src/modules/source-document/application/use-cases/create-from-credential";
 
 describe("createSourceDocumentFromCredential omission semantics", () => {
   beforeEach(() => {

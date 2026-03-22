@@ -3,7 +3,7 @@ import { getTestDb } from "../setup";
 import { ledgers, sourceDocuments, taskRuns, users } from "@/persistence";
 import { and, eq, inArray } from "drizzle-orm";
 import { getProcessingTasksAction } from "@/modules/source-document/actions";
-import { parseSourceDocumentHandler } from "@/modules/source-document/application/tasks/parse-source-document";
+import { parseSourceDocumentHandler } from "../../src/modules/source-document/application/tasks/parse-source-document";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import type { FlowContext } from "@/lib/flow";
 

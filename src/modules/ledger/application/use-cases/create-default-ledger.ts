@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { entryCategories, ledgers, type Ledger } from "@/persistence";
 import { getDefaultLedger } from "@/config/default-ledger";
 
@@ -24,12 +25,12 @@ export async function createDefaultLedger(input: {
       .all();
 
     if (result.length === 0) {
-      throw new Error("Failed to create default ledger");
+      throw new AppError("Failed to create default ledger", "LEDGER_CREATION_FAILED");
     }
 
     const createdLedger = result[0];
     if (createdLedger == null) {
-      throw new Error("Failed to create default ledger");
+      throw new AppError("Failed to create default ledger", "LEDGER_CREATION_FAILED");
     }
 
     if (defaultLedger.categories.length > 0) {

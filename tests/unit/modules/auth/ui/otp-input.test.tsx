@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { OTPInput } from "@/modules/auth/ui/otp-input";
+import { OTPInput } from "../../../../../src/modules/auth/ui/otp-input";
 
 function requireInput(inputs: HTMLElement[], index: number): HTMLElement {
   const input = inputs[index];

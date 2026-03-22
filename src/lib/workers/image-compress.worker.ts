@@ -35,7 +35,7 @@ self.onmessage = async (
 
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get canvas context");
+    if (!ctx) throw new TypeError("Failed to get canvas context");
 
     ctx.drawImage(bitmap, 0, 0, width, height);
 

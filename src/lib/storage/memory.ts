@@ -1,4 +1,5 @@
 import type { StorageProvider } from "./index";
+import { AppError } from "@/lib/errors";
 
 /**
  * In-memory storage provider for testing
@@ -16,7 +17,7 @@ export class MemoryStorageProvider implements StorageProvider {
   async download(key: string): Promise<Buffer> {
     const file = this.storage.get(key);
     if (!file) {
-      throw new Error(`File not found: ${key}`);
+      throw new AppError(`File not found: ${key}`, "FILE_NOT_FOUND", 404, { key });
     }
     return Buffer.from(file.data);
   }

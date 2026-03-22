@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import { mapServiceCredentialDto } from "@/modules/ledger/application/mappers";
 import type { ServiceCredentialDto } from "@/modules/ledger/contracts";
 import { serviceCredentials } from "@/persistence/schema/ledger";
@@ -20,7 +21,7 @@ export async function createServiceCredential(
     .returning();
 
   if (credential == null) {
-    throw new Error("Failed to create credential");
+    throw new AppError("Failed to create credential", "SERVICE_CREDENTIAL_CREATION_FAILED");
   }
 
   return mapServiceCredentialDto(credential);

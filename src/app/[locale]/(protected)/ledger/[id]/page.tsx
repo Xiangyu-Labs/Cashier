@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { LedgerPageClient } from "@/modules/workspace/ui";
-import { readLedgerFilterParams } from "@/modules/workspace/ledger-url-params";
 import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -9,7 +8,13 @@ import { redirect } from "@/i18n/routing";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { parsePeriodFromSearchParams, type PeriodParams } from "@/lib/period-utils";
 import { LedgerPageSkeleton } from "@/components/skeletons";
-import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
+
+interface LedgerPageAdvancedFilters {
+  categoryId: string | null;
+  currency: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+}
 
 interface LedgerPageProps {
   params: Promise<{ id: string }>;
@@ -20,7 +25,33 @@ interface LedgerPageContentProps {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
-  advancedFilters: LedgerAdvancedFilters;
+  advancedFilters: LedgerPageAdvancedFilters;
+}
+
+function getSingleSearchParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
+function readAdvancedFilters(
+  searchParams: Record<string, string | string[] | undefined>
+): LedgerPageAdvancedFilters {
+  const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
+    const raw = getSingleSearchParam(searchParams[key]);
+    if (raw == null) return null;
+
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  return {
+    categoryId: getSingleSearchParam(searchParams.categoryId) ?? null,
+    currency: getSingleSearchParam(searchParams.currency) ?? null,
+    minAmount: readNumber("minAmount"),
+    maxAmount: readNumber("maxAmount"),
+  };
 }
 
 async function LedgerPageContent({
@@ -61,7 +92,7 @@ export default async function LedgerPage({ params, searchParams }: LedgerPagePro
   const { id: ledgerId } = await params;
   const resolvedSearchParams = await searchParams;
   const periodParams = parsePeriodFromSearchParams(resolvedSearchParams);
-  const advancedFilters = readLedgerFilterParams(new URLSearchParams(resolvedSearchParams as Record<string, string>));
+  const advancedFilters = readAdvancedFilters(resolvedSearchParams);
   const initialTab = parseLedgerTab(resolvedSearchParams);
   const session = await auth();
   const locale = await getLocale();

@@ -12,35 +12,35 @@ describe("Modal Stack Store", () => {
   });
 
   it("should push a modal onto the stack", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1" });
+    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
     const state = useModalStackStore.getState();
     expect(state.stack).toHaveLength(1);
-    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1" });
+    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
   });
 
   it("should stack multiple modals", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1" });
-    useModalStackStore.getState().push({ type: "source-document", id: "2" });
+    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    useModalStackStore.getState().push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
     const state = useModalStackStore.getState();
     expect(state.stack).toHaveLength(2);
-    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1" });
-    expect(state.stack[1]).toEqual({ type: "source-document", id: "2" });
+    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    expect(state.stack[1]).toEqual({ type: "source-document", id: "2", ledgerId: "ledger-1" });
   });
 
   it("should pop the top modal", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1" });
-    useModalStackStore.getState().push({ type: "source-document", id: "2" });
+    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    useModalStackStore.getState().push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
 
     useModalStackStore.getState().pop();
 
     const state = useModalStackStore.getState();
     expect(state.stack).toHaveLength(1);
-    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1" });
+    expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
   });
 
   it("should close all modals", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1" });
-    useModalStackStore.getState().push({ type: "source-document", id: "2" });
+    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    useModalStackStore.getState().push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
 
     useModalStackStore.getState().closeAll();
 
@@ -49,7 +49,7 @@ describe("Modal Stack Store", () => {
   });
 
   it("should check if a modal is open", () => {
-    useModalStackStore.getState().push({ type: "ledger-entry", id: "1" });
+    useModalStackStore.getState().push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
     const state = useModalStackStore.getState();
 
     expect(state.isOpen("1")).toBe(true);

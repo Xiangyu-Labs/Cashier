@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useAmountDisplay } from "@/modules/currency/useAmountDisplay";
+import { useAmountDisplay } from "../../../../src/modules/currency/useAmountDisplay";
 
 const mockUseConvertedAmount = vi.hoisted(() => vi.fn());
 

@@ -33,7 +33,7 @@ export function SourceDocumentPreview({ ledgerId, sourceDocumentId }: SourceDocu
 
     getSourceDocumentFullAction(ledgerId, sourceDocumentId)
       .then((result) => {
-        if (!cancelled && result) {
+        if (!cancelled && result != null) {
           setState({
             isLoading: false,
             data: {

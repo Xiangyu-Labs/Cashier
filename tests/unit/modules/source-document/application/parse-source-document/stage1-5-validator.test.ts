@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   executeStage1_5Validation,
   type ValidationInput,
-} from "@/modules/source-document/application/parse-source-document/stage1-5-validator";
+} from "../../../../../../src/modules/source-document/application/parse-source-document/stage1-5-validator";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow/types";
-import type { Stage1Results } from "@/modules/source-document/application/parse-source-document/types";
+import type { Stage1Results } from "../../../../../../src/modules/source-document/application/parse-source-document/types";
 
 // Helper to create mock AI context
 function createMockAI(response: string): AIContext {

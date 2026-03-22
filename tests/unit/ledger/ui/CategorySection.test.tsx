@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { CategorySection } from "@/modules/ledger/ui/CategorySection";
+import { CategorySection } from "../../../../src/modules/ledger/ui/CategorySection";
 import type { EntryCategoryDto as EntryCategory } from "@/modules/ledger/contracts";
 
 vi.mock("next-intl", () => ({
@@ -28,7 +28,9 @@ vi.mock("@dnd-kit/sortable", () => ({
   arrayMove: <T,>(items: T[], from: number, to: number) => {
     const next = [...items];
     const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
+    if (item !== undefined) {
+      next.splice(to, 0, item);
+    }
     return next;
   },
   SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,

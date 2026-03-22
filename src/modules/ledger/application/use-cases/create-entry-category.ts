@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { AppError } from "@/lib/errors";
 import type { EntryCategoryDto } from "@/modules/ledger/contracts";
 import { mapEntryCategoryDto } from "@/modules/ledger/mappers";
 import { entryCategories } from "@/persistence";
@@ -37,7 +38,7 @@ export async function createEntryCategory(
     .returning();
 
   if (createdCategory == null) {
-    throw new Error("Failed to create entry category");
+    throw new AppError("Failed to create entry category", "ENTRY_CATEGORY_CREATION_FAILED");
   }
 
   await submitCategoryMetadataTaskIfNeeded({

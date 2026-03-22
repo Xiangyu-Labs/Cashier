@@ -143,7 +143,7 @@ export function CategorySection({
     categories,
     onCreateCategory,
     onReorderCategories,
-    onCategoryCreated,
+    ...(onCategoryCreated !== undefined ? { onCategoryCreated } : {}),
   });
 
   return (

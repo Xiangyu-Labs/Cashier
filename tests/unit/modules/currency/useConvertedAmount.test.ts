@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useConvertedAmount } from "@/modules/currency/useConvertedAmount";
+import { useConvertedAmount } from "../../../../src/modules/currency/useConvertedAmount";
 
 const mockConvertCurrencyAction = vi.hoisted(() => vi.fn(async () => ({ converted: 42 })));
 

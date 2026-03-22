@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { AppError } from "@/lib/errors";
 import { recordTaskExecution, detectDeadTasks, calculateQueueDepth } from "./monitoring";
 import type {
   AIContext,
@@ -15,7 +16,10 @@ import type {
 function createUnconfiguredAIContext(): AIContext {
   return {
     async generate() {
-      throw new Error("Flow engine AI context is not configured");
+      throw new AppError(
+        "Flow engine AI context is not configured",
+        "FLOW_AI_CONTEXT_NOT_CONFIGURED"
+      );
     },
   };
 }
@@ -259,7 +263,10 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   return {
     register<TInput, TOutput>(name: string, handler: FlowTaskHandler<TInput, TOutput>): void {
       if (handlers.has(name)) {
-        throw new Error(`Task handler already registered: ${name}`);
+        throw new AppError(
+          `Task handler already registered: ${name}`,
+          "TASK_HANDLER_ALREADY_REGISTERED"
+        );
       }
       handlers.set(name, handler as FlowTaskHandler<unknown, unknown>);
       logger.debug({ taskName: name }, "Task handler registered");
@@ -278,7 +285,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     ): Promise<string> {
       // Validate handler exists
       if (!handlers.has(name)) {
-        throw new Error(`No handler registered for task: ${name}`);
+        throw new AppError(`No handler registered for task: ${name}`, "TASK_HANDLER_NOT_REGISTERED");
       }
 
       // Check for duplicate tasks if deduplicationKey provided

@@ -12,7 +12,7 @@ vi.mock("@/lib/flow", () => ({
   cancelFlowTask: cancelFlowTaskMock,
 }));
 
-import { batchCancelTasksUseCase, cancelTaskUseCase } from "@/modules/task-queue/application/use-cases/cancel-task";
+import { batchCancelTasksUseCase, cancelTaskUseCase } from "../../../../../../src/modules/task-queue/application/use-cases/cancel-task";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 

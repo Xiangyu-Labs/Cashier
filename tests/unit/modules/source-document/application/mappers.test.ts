@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mapSourceDocumentLedgerEntryDto,
   mapSourceDocumentListItemDto,
-} from "@/modules/source-document/application/mappers";
+} from "../../../../../src/modules/source-document/application/mappers";
 
 describe("mapSourceDocumentLedgerEntryDto", () => {
   it("omits category when the relation is absent", () => {

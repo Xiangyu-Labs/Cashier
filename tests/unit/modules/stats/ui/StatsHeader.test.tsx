@@ -2,7 +2,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { DateRangeType } from "@/lib/date-utils";
-import { StatsHeader } from "@/modules/stats/ui/StatsHeader";
+import { StatsHeader } from "../../../../../src/modules/stats/ui/StatsHeader";
 
 const addPeriodMock = vi.fn((date: Date, _type: DateRangeType, amount: number) => {
   const next = new Date(date);

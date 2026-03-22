@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { authenticateServiceCredential } from "@/modules/ledger/application/services/authenticate-service-credential";
-import { resolveLedgerForServiceCredential } from "@/modules/ledger/application/services/resolve-ledger-for-service-credential";
+import { authenticateServiceCredential } from "../../../src/modules/ledger/application/services/authenticate-service-credential";
+import { resolveLedgerForServiceCredential } from "../../../src/modules/ledger/application/services/resolve-ledger-for-service-credential";
 import * as credentialAccess from "@/modules/ledger/credential-access";
 
 describe("credential-access barrel", () => {

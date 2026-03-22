@@ -7,6 +7,7 @@
  */
 
 import type { AIContext } from "@/lib/flow/types";
+import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
 
@@ -104,7 +105,10 @@ export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<
   const failures = loadedResults.filter((r) => !r.success);
   if (failures.length > 0) {
     const failureMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
-    throw new Error(`Failed to load ${failures.length} image(s): ${failureMessages}`);
+    throw new AppError(
+      `Failed to load ${failures.length} image(s): ${failureMessages}`,
+      "IMAGE_BATCH_LOAD_FAILED"
+    );
   }
 
   for (const result of loadedResults) {

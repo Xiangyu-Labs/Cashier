@@ -70,7 +70,7 @@ vi.mock("@/lib/safe-async", () => ({
   fireAndForget: fireAndForgetMock,
 }));
 
-import { useLedgerSettings } from "@/modules/ledger/hooks/useLedgerSettings";
+import { useLedgerSettings } from "../../../../src/modules/ledger/hooks/useLedgerSettings";
 
 function getOption(index: number) {
   const option = mutationOptions[index];

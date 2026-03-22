@@ -227,7 +227,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
         push({ type: "source-document", id: item.sourceDocumentId, ledgerId });
       }
     },
-    [push]
+    [push, ledgerId]
   );
 
   const isEmpty = stats.total === 0 && groupedItems.completed.length === 0;

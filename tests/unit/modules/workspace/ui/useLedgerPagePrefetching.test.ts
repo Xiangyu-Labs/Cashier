@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useLedgerPagePrefetching } from "@/modules/workspace/ui/useLedgerPagePrefetching";
+import { useLedgerPagePrefetching } from "../../../../../src/modules/workspace/ui/useLedgerPagePrefetching";
 
 const fireAndForgetMock = vi.hoisted(() => vi.fn());
 const getLedgerActionMock = vi.hoisted(() => vi.fn());

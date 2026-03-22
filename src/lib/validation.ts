@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { isValidDateString } from "./date-utils";
+import { ValidationError } from "./errors";
 
 /**
  * UUID v4 validation regex.
@@ -36,7 +37,7 @@ export function isValidUuid(id: string): boolean {
  */
 export function assertValidUuid(id: string, message?: string): void {
   if (isValidUuid(id) === false) {
-    throw new Error(message ?? `Invalid UUID: ${id}`);
+    throw new ValidationError(message ?? `Invalid UUID: ${id}`);
   }
 }
 

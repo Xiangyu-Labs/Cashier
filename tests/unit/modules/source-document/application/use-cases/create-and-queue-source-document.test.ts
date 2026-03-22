@@ -60,7 +60,7 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
 }));
 
 import { ValidationError } from "@/lib/errors";
-import { createAndQueueSourceDocument } from "@/modules/source-document/application/use-cases/create-and-queue-source-document";
+import { createAndQueueSourceDocument } from "../../../../../../src/modules/source-document/application/use-cases/create-and-queue-source-document";
 
 describe("createAndQueueSourceDocument", () => {
   beforeEach(() => {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { v4 as uuidv4 } from "uuid";
 import { getTestDb } from "tests/setup";
 import { ledgers, sourceDocuments, taskRuns } from "@/persistence";
-import { getTaskQueueQuery } from "@/modules/task-queue/application/queries/get-task-queue";
+import { getTaskQueueQuery } from "../../../../../../src/modules/task-queue/application/queries/get-task-queue";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 

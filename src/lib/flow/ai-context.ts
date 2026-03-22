@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { isValidJson, extractJson, buildRepairPrompt } from "./json-utils";
+import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 interface CreateAIContextOptions {
@@ -61,7 +62,7 @@ export function createAIContext({
             Array.isArray(msg.content) && msg.content.some((part) => part.type === "image_url")
         );
         if (hasImages) {
-          throw new Error(
+          throw new ValidationError(
             "text model tier does not support image content — use vision tier for image inputs"
           );
         }
@@ -74,7 +75,10 @@ export function createAIContext({
       };
       const model = modelMap[options.model];
       if (model == null || model === "") {
-        throw new Error(`AI model configuration for tier "${options.model}" is required`);
+        throw new AppError(
+          `AI model configuration for tier "${options.model}" is required`,
+          "AI_MODEL_CONFIG_REQUIRED"
+        );
       }
 
       const maxTokens = options.maxTokens ?? 8192;
@@ -113,7 +117,10 @@ export function createAIContext({
           // Use text model for repair (via AIModelTier selection)
           const textModel = modelMap["text"];
           if (textModel == null || textModel === "") {
-            throw new Error('AI model configuration for tier "text" is required for JSON repair');
+            throw new AppError(
+              'AI model configuration for tier "text" is required for JSON repair',
+              "AI_MODEL_CONFIG_REQUIRED"
+            );
           }
 
           const repairPrompt = buildRepairPrompt(result.content);
@@ -140,7 +147,10 @@ export function createAIContext({
               },
               "JSON repair failed"
             );
-            throw new Error("AI returned invalid JSON and repair attempt also failed");
+            throw new AppError(
+              "AI returned invalid JSON and repair attempt also failed",
+              "AI_JSON_REPAIR_FAILED"
+            );
           }
 
           logger.info("JSON repair successful");

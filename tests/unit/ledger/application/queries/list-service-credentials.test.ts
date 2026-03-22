@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { serviceCredentials } from "@/persistence";
-import { listServiceCredentials } from "@/modules/ledger/application/queries/list-service-credentials";
+import { listServiceCredentials } from "../../../../../src/modules/ledger/application/queries/list-service-credentials";
 
 describe("listServiceCredentials", () => {
   let ledgerId = "";

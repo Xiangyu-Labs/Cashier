@@ -1,4 +1,5 @@
 "use server";
+import { ValidationError } from "@/lib/errors";
 import { convertAmountsBatch } from "../application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "../application/use-cases/convert-currency";
 import type {
@@ -26,7 +27,7 @@ export async function batchConvertCurrencyAction(
   targetCurrency: string
 ): Promise<BatchConvertCurrencyResult> {
   if (items.length === 0 || targetCurrency === "") {
-    throw new Error("Missing required parameters");
+    throw new ValidationError("Missing required parameters");
   }
 
   const results = await convertAmountsBatch(
