@@ -88,25 +88,41 @@ describe("API v1 source-documents route", () => {
 
   it("GET /api/v1/source-documents returns 200 for valid credential request", async () => {
     const db = getTestDb();
-    await db.insert(sourceDocuments).values({
-      ledgerId,
-      text: "Route API GET test document",
-      status: "completed",
-      imageUrls: [],
-      entryDate: new Date().toISOString().split("T")[0],
-    });
-
-    const request = new NextRequest("http://localhost/api/v1/source-documents?limit=10", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${credentialKey}`,
+    const today = new Date().toISOString().split("T")[0];
+    await db.insert(sourceDocuments).values([
+      {
+        ledgerId,
+        text: "Completed route document",
+        status: "completed",
+        imageUrls: [],
+        entryDate: today,
       },
-    });
+      {
+        ledgerId,
+        text: "Failed route document",
+        status: "failed",
+        imageUrls: [],
+        entryDate: today,
+      },
+    ]);
+
+    const request = new NextRequest(
+      "http://localhost/api/v1/source-documents?status=completed&limit=1",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+      }
+    );
 
     const response = await GET(request);
     expect(response.status).toBe(200);
 
     const data = await response.json();
     expect(Array.isArray(data.items)).toBe(true);
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0]?.status).toBe("completed");
+    expect(data.items[0]?.text).toBeNull();
   });
 });
