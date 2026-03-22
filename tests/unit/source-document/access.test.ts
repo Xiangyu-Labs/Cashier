@@ -24,25 +24,30 @@ describe("withSourceDocumentLedgerAccess", () => {
 
     expect(error).toBeInstanceOf(NotFoundError);
     expect(error).not.toBeInstanceOf(UnauthorizedError);
+    expect(error.message).toBe("Unauthorized or Ledger not found");
   });
 
   it("preserves ForbiddenError from requireLedgerAccess", async () => {
-    requireLedgerAccessMock.mockRejectedValue(new ForbiddenError("Forbidden"));
+    const forbidden = new ForbiddenError("Forbidden");
+    requireLedgerAccessMock.mockRejectedValue(forbidden);
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
     const error = await wrapped("ledger-id").catch((caught) => caught as Error);
 
     expect(error).toBeInstanceOf(ForbiddenError);
     expect(error).not.toBeInstanceOf(UnauthorizedError);
+    expect(error).toBe(forbidden);
   });
 
   it("preserves ValidationError from requireLedgerAccess", async () => {
-    requireLedgerAccessMock.mockRejectedValue(new ValidationError("Invalid ledger id"));
+    const validation = new ValidationError("Invalid ledger id");
+    requireLedgerAccessMock.mockRejectedValue(validation);
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
     const error = await wrapped("ledger-id").catch((caught) => caught as Error);
 
     expect(error).toBeInstanceOf(ValidationError);
     expect(error).not.toBeInstanceOf(UnauthorizedError);
+    expect(error).toBe(validation);
   });
 });

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
@@ -80,11 +80,27 @@ export async function exportLedgerEntries(
 
   const conditions = [eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)];
 
-  if (options?.startDate != null && options.startDate !== "") {
-    conditions.push(gte(sourceDocuments.entryDate, options.startDate));
-  }
-  if (options?.endDate != null && options.endDate !== "") {
-    conditions.push(lte(sourceDocuments.entryDate, options.endDate));
+  if (
+    (options?.startDate != null && options.startDate !== "") ||
+    (options?.endDate != null && options.endDate !== "")
+  ) {
+    const sourceDocumentDateConditions = [
+      sql`ledger_id = ${ledgerId}`,
+      sql`deleted_at IS NULL`,
+    ];
+
+    if (options?.startDate != null && options.startDate !== "") {
+      sourceDocumentDateConditions.push(sql`entry_date >= ${options.startDate}`);
+    }
+    if (options?.endDate != null && options.endDate !== "") {
+      sourceDocumentDateConditions.push(sql`entry_date <= ${options.endDate}`);
+    }
+
+    conditions.push(sql`${ledgerEntries.sourceDocumentId} IN (
+      SELECT id
+      FROM source_documents
+      WHERE ${sql.join(sourceDocumentDateConditions, sql` AND `)}
+    )`);
   }
 
   const entries = await db.query.ledgerEntries.findMany({

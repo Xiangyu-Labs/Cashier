@@ -53,7 +53,11 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
 
     // Validate document exists
     const doc = await db.query.sourceDocuments.findFirst({
-      where: and(eq(sourceDocuments.id, input.sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+      where: and(
+        eq(sourceDocuments.id, input.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      ),
     });
     if (!doc) {
       throw new NotFoundError("Source document");

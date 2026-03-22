@@ -229,6 +229,43 @@ describe("exportLedgerEntriesAction", () => {
     );
   });
 
+  it("filters exported rows by source document entryDate range", async () => {
+    const db = getTestDb();
+
+    const ledgerData = createLedgerData({ userId: testUserId });
+    await db.insert(ledgers).values(ledgerData);
+
+    const firstDoc = createSourceDocumentData(ledgerData.id, {
+      title: "March entry",
+      entryDate: "2024-03-10",
+    });
+    const secondDoc = createSourceDocumentData(ledgerData.id, {
+      title: "April entry",
+      entryDate: "2024-04-10",
+    });
+    await db.insert(sourceDocuments).values([firstDoc, secondDoc]);
+
+    await db.insert(ledgerEntries).values([
+      createLedgerEntryData(ledgerData.id, {
+        sourceDocumentId: firstDoc.id,
+        itemName: "March item",
+      }),
+      createLedgerEntryData(ledgerData.id, {
+        sourceDocumentId: secondDoc.id,
+        itemName: "April item",
+      }),
+    ]);
+
+    const result = await exportLedgerEntriesAction(ledgerData.id, "en", {
+      startDate: "2024-04-01",
+      endDate: "2024-04-30",
+    });
+
+    expect(result.isEmpty).toBe(false);
+    expect(result.csvContent).toContain("April item");
+    expect(result.csvContent).not.toContain("March item");
+  });
+
   it("should handle null values gracefully", async () => {
     const db = getTestDb();
 
