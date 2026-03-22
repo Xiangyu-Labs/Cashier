@@ -4,9 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { LedgerDto as Ledger, EntryCategoryDto as EntryCategory } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 import { queryKeys } from "@/lib/query-keys";
-import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
-import { DetailsTab } from "@/modules/workspace/ui/DetailsTab";
-import { StatsTab } from "@/modules/workspace/ui/StatsTab";
+import { LedgerEntriesTab } from "../../../src/modules/workspace/ui/LedgerEntriesTab";
+import { DetailsTab } from "../../../src/modules/workspace/ui/DetailsTab";
+import { StatsTab } from "../../../src/modules/workspace/ui/StatsTab";
 
 const pullToRefreshProps: Array<{ onRefresh: () => Promise<void> }> = [];
 
