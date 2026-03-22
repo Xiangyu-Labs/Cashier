@@ -1,12 +1,13 @@
 import { defineRouting } from "next-intl/routing";
 import { createNavigation } from "next-intl/navigation";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./locales";
 
 export const routing = defineRouting({
   // A list of all locales that are supported
-  locales: ["zh", "en"],
+  locales: SUPPORTED_LOCALES,
 
   // Used when no locale matches
-  defaultLocale: "zh",
+  defaultLocale: DEFAULT_LOCALE,
 
   // Use a cookie to remember the locale and don't
   // show the locale prefix in the URL
