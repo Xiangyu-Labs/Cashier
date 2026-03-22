@@ -12,7 +12,7 @@ vi.mock("@/lib/storage/local", () => ({
   getLocalStorage: getLocalStorageMock,
 }));
 
-import { rehomeLocalUploadUrls } from "./rehome-local-upload-urls";
+import { rehomeLocalUploadUrls } from "../../../src/modules/source-document/application/services/rehome-local-upload-urls";
 
 describe("rehomeLocalUploadUrls", () => {
   beforeEach(() => {
@@ -109,6 +109,26 @@ describe("rehomeLocalUploadUrls", () => {
         ledgerId: "ledger-1",
         sourceDocumentId: "new-doc",
         imageUrls: [crossLedgerUrl],
+      })
+    ).rejects.toThrow(ValidationError);
+
+    expect(downloadMock).not.toHaveBeenCalled();
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
+
+  it("validates the full image url array before copying any local uploads", async () => {
+    extractKeyFromUrlMock
+      .mockReturnValueOnce("ledger-1/old-doc/receipt.webp")
+      .mockReturnValueOnce("other-ledger/new-doc/image.webp");
+
+    await expect(
+      rehomeLocalUploadUrls({
+        ledgerId: "ledger-1",
+        sourceDocumentId: "new-doc",
+        imageUrls: [
+          "/api/uploads/ledger-1/old-doc/receipt.webp",
+          "/api/uploads/other-ledger/new-doc/image.webp",
+        ],
       })
     ).rejects.toThrow(ValidationError);
 
