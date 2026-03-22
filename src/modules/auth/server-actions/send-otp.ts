@@ -1,7 +1,7 @@
 "use server";
 import { headers } from "next/headers";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
-import { sendOTP } from "../application/use-cases/send-otp";
+import { sendOTP } from "@/modules/auth/use-cases";
 import { parseSendOTPEmail } from "../contract-schemas";
 
 export async function sendOTPAction(email: string, _locale: string = "en") {

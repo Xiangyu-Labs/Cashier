@@ -17,14 +17,12 @@ describe("withSourceDocumentLedgerAccess", () => {
   });
 
   it("preserves NotFoundError from requireLedgerAccess", async () => {
-    requireLedgerAccessMock.mockRejectedValue(new NotFoundError("Ledger"));
+    const notFound = new NotFoundError("Ledger");
+    requireLedgerAccessMock.mockRejectedValue(notFound);
 
     const wrapped = withSourceDocumentLedgerAccess(async () => "ok");
-    await expect(wrapped("ledger-id")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(wrapped("ledger-id")).rejects.toBe(notFound);
     await expect(wrapped("ledger-id")).rejects.not.toBeInstanceOf(UnauthorizedError);
-    await expect(wrapped("ledger-id")).rejects.toMatchObject({
-      message: "Unauthorized or Ledger not found",
-    });
   });
 
   it("preserves ForbiddenError from requireLedgerAccess", async () => {

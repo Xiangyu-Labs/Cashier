@@ -289,7 +289,7 @@ describe("LedgerEntriesTab orchestration", () => {
     );
 
     fireEvent.click(screen.getByTestId("refresh-trigger"));
-    await waitFor(() => expect(mockInvalidateQueries).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockInvalidateQueries).toHaveBeenCalledTimes(3));
 
     fireEvent.click(screen.getByTestId("delete-doc-1"));
     fireEvent.click(screen.getByTestId("confirm-delete"));

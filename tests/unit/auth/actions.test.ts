@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ValidationError } from "@/lib/errors";
 
 const { headersMock, sendOTPMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
@@ -9,7 +10,7 @@ vi.mock("next/headers", () => ({
   headers: headersMock,
 }));
 
-vi.mock("@/modules/auth/application/use-cases/send-otp", () => ({
+vi.mock("@/modules/auth/use-cases", () => ({
   sendOTP: sendOTPMock,
 }));
 
@@ -42,6 +43,15 @@ describe("sendOTPAction", () => {
       ip: "203.0.113.7",
       host: "cashier.example",
     });
+  });
+
+  it("rejects invalid email before invoking use case", async () => {
+    headersMock.mockResolvedValue({
+      get: (_key: string) => null,
+    });
+
+    await expect(sendOTPAction("not-an-email", "en")).rejects.toBeInstanceOf(ValidationError);
+    expect(sendOTPMock).not.toHaveBeenCalled();
   });
 
   it("falls back to unknown ip and localhost host", async () => {
