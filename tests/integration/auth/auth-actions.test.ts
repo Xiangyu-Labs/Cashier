@@ -13,7 +13,7 @@ vi.mock("resend", () => ({
   },
 }));
 
-// Mock headers
+// Mock headers and cookies
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue({
     get: vi.fn((key: string) => {
@@ -21,6 +21,9 @@ vi.mock("next/headers", () => ({
       if (key === "x-real-ip") return "127.0.0.1";
       return null;
     }),
+  }),
+  cookies: vi.fn().mockResolvedValue({
+    get: vi.fn(() => undefined),
   }),
 }));
 

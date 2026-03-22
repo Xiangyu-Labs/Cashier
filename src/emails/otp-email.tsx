@@ -9,35 +9,44 @@ import {
   Section,
 } from "@react-email/components";
 import * as React from "react";
+import type { SupportedLocale } from "@/i18n/locales";
+
+export interface OTPEmailCopy {
+  preview: string;
+  heading: string;
+  intro: string;
+  codeLabel: string;
+  expiry: string;
+  warning: string;
+  footer: string;
+}
 
 interface OTPEmailProps {
   otp: string;
   host: string;
   expiresInMinutes: number;
+  locale: SupportedLocale;
+  copy: OTPEmailCopy;
 }
 
-export default function OTPEmail({ otp, host, expiresInMinutes = 5 }: OTPEmailProps) {
+export default function OTPEmail({ otp, host, expiresInMinutes = 5, copy }: OTPEmailProps) {
   return (
     <Html>
       <Head />
-      <Preview>Your verification code is ready</Preview>
+      <Preview>{copy.preview}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={h1}>Sign in to {host}</Heading>
+          <Heading style={h1}>{copy.heading}</Heading>
           <Section style={section}>
-            <Text style={text}>Enter the verification code below to sign in to your account:</Text>
+            <Text style={text}>{copy.intro}</Text>
             <Section style={codeSection}>
-              <Text style={codeLabel}>Your verification code:</Text>
+              <Text style={codeLabel}>{copy.codeLabel}</Text>
               <Text style={codeText}>{otp}</Text>
             </Section>
-            <Text style={expiryText}>This code will expire in {expiresInMinutes} minutes.</Text>
+            <Text style={expiryText}>{copy.expiry}</Text>
           </Section>
-          <Text style={warningText}>
-            Do not share this code with anyone. We will never ask for your verification code.
-          </Text>
-          <Text style={footer}>
-            If you didn&apos;t request this code, you can safely ignore this email.
-          </Text>
+          <Text style={warningText}>{copy.warning}</Text>
+          <Text style={footer}>{copy.footer}</Text>
         </Container>
       </Body>
     </Html>
@@ -73,10 +82,9 @@ const section = {
 
 const text = {
   fontSize: "16px",
-  lineHeight: "24px",
+  lineHeight: "1.5",
   color: "#374151",
-  marginBottom: "16px",
-  textAlign: "center" as const,
+  marginBottom: "24px",
 };
 
 const codeSection = {

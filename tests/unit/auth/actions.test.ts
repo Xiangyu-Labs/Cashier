@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ValidationError } from "@/lib/errors";
 
-const { headersMock, sendOTPMock } = vi.hoisted(() => ({
+const { headersMock, cookiesMock, sendOTPMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
+  cookiesMock: vi.fn(),
   sendOTPMock: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
   headers: headersMock,
+  cookies: cookiesMock,
 }));
 
 vi.mock("@/modules/auth/use-cases", () => ({
@@ -20,6 +22,9 @@ describe("sendOTPAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.TRUSTED_PROXY;
+    cookiesMock.mockResolvedValue({
+      get: () => undefined,
+    });
     sendOTPMock.mockResolvedValue({
       expiresIn: 300,
       expiresAt: Math.floor(Date.now() / 1000) + 300,
@@ -42,6 +47,7 @@ describe("sendOTPAction", () => {
       email: "User@Example.com",
       ip: "203.0.113.7",
       host: "cashier.example",
+      locale: "zh",
     });
   });
 
@@ -65,6 +71,7 @@ describe("sendOTPAction", () => {
       email: "test@example.com",
       ip: "unknown",
       host: "localhost",
+      locale: "en",
     });
   });
 
@@ -86,6 +93,7 @@ describe("sendOTPAction", () => {
       email: "test@example.com",
       ip: "198.51.100.12",
       host: "cashier.example",
+      locale: "en",
     });
   });
 });

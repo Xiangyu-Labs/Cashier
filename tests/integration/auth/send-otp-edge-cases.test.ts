@@ -5,13 +5,15 @@ import { otpTokens } from "@/persistence/schema/auth";
 import { getTestDb } from "tests/setup";
 import { memoryStore } from "@/lib/memory-store";
 
-const { headersMock, resendSendMock } = vi.hoisted(() => ({
+const { headersMock, cookiesMock, resendSendMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
+  cookiesMock: vi.fn(),
   resendSendMock: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
   headers: headersMock,
+  cookies: cookiesMock,
 }));
 
 vi.mock("resend", () => ({
@@ -44,6 +46,9 @@ describe("sendOTPAction edge cases", () => {
         return null;
       },
     });
+    cookiesMock.mockResolvedValue({
+      get: () => undefined,
+    });
     resendSendMock.mockResolvedValue({ id: "test-email-id" });
   });
 
@@ -64,6 +69,24 @@ describe("sendOTPAction edge cases", () => {
       where: eq(otpTokens.email, testEmail),
     });
     expect(token).toBeDefined();
+  });
+
+  it("falls back to Accept-Language when sendOTPAction is called without locale", async () => {
+    process.env.AUTH_RESEND_KEY = "test-resend-key";
+    headersMock.mockResolvedValue({
+      get: (key: string) => {
+        if (key === "x-forwarded-for") return "203.0.113.18";
+        if (key === "accept-language") return "en-US,en;q=0.9";
+        return null;
+      },
+    });
+
+    await sendOTPAction(testEmail);
+
+    const firstCall = resendSendMock.mock.calls[0]?.[0];
+    const renderedEmail = await render(firstCall?.react);
+    expect(firstCall?.subject).toMatch(/^Your verification code is \d{6}$/);
+    expect(renderedEmail).toContain("Sign in to localhost");
   });
 
   it("returns user-facing error when email provider send fails", async () => {

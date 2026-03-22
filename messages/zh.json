@@ -649,5 +649,23 @@
     "noCategories": "暂无分类，点击右上角新建",
     "tipTitle": "提示：",
     "tipDesc": "分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。"
+  },
+  "AuthEmail": {
+    "otpSubject": "您的验证码是 {otp}",
+    "otpPreview": "您的验证码已生成",
+    "otpHeading": "登录 {host}",
+    "otpIntro": "请输入下方验证码以登录您的账户：",
+    "otpCodeLabel": "您的验证码：",
+    "otpExpiry": "该验证码将在 {minutes} 分钟后失效。",
+    "otpWarning": "请勿将验证码透露给任何人。我们绝不会主动向您索取验证码。",
+    "otpFooter": "如果这不是您本人操作，可以忽略这封邮件。",
+    "loginSubject": "您的账户有新的登录",
+    "loginPreview": "检测到您的账户有新的登录",
+    "loginHeading": "检测到新登录",
+    "loginIntro": "检测到您的账户有新的登录。",
+    "loginTimeLabel": "登录时间：",
+    "loginEmailLabel": "登录邮箱：",
+    "loginSafe": "如果这是您本人操作，无需采取任何行动。",
+    "loginWarn": "如果不是您本人登录，请立即保护您的账户安全。"
   }
 }

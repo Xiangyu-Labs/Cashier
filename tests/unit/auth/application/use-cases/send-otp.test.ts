@@ -152,12 +152,17 @@ describe("sendOTP use case", () => {
       otp: "123456",
       host: "cashier.example",
       expiresInMinutes: 5,
+      locale: "zh",
+      copy: expect.objectContaining({
+        heading: "登录 cashier.example",
+        codeLabel: "您的验证码：",
+      }),
     });
     expect(resendSendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         from: "noreply@example.com",
         to: "user@example.com",
-        subject: "Your verification code is 123456",
+        subject: "您的验证码是 123456",
         react: { kind: "otp-email-component" },
       })
     );
@@ -188,6 +193,33 @@ describe("sendOTP use case", () => {
         }),
       }),
       "Send OTP use case error"
+    );
+  });
+
+  it("builds a Chinese subject and localized OTP template props", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+
+    await sendOTP({
+      email: validEmail("user@example.com"),
+      ip: "203.0.113.2",
+      host: "cashier.example",
+      locale: "zh",
+    });
+
+    expect(otpEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "cashier.example",
+        locale: "zh",
+        copy: expect.objectContaining({
+          heading: "登录 cashier.example",
+          codeLabel: "您的验证码：",
+        }),
+      })
+    );
+    expect(resendSendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "您的验证码是 123456",
+      })
     );
   });
 

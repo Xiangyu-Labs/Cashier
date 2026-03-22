@@ -90,7 +90,7 @@ export function useLoginFlow(
     setError(null);
 
     try {
-      const result = await sendOTPAction(email);
+      const result = await sendOTPAction(email, locale);
       setExpiresAt(result.expiresAt ?? null);
       setCanResendAt(result.canResendAt ?? null);
       setStep("otp");
@@ -147,7 +147,7 @@ export function useLoginFlow(
     setError(null);
     setOtp("");
     try {
-      const result = await sendOTPAction(email);
+      const result = await sendOTPAction(email, locale);
       setExpiresAt(result.expiresAt ?? null);
       setCanResendAt(result.canResendAt ?? null);
     } catch (err) {

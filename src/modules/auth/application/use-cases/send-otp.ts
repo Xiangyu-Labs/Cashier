@@ -2,6 +2,8 @@ import OTPEmail from "@/emails/otp-email";
 import { logger } from "@/lib/logger";
 import { RateLimitError, AppError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/utils/email";
+import type { SupportedLocale } from "@/i18n/locales";
+import { DEFAULT_LOCALE } from "@/i18n/locales";
 import type { SendOTPEmail } from "@/modules/auth/contract-schemas";
 import { createOTPToken } from "@/modules/auth/repositories/otp-repository";
 import {
@@ -12,6 +14,25 @@ import {
   setResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP } from "@/modules/auth/services/otp";
+
+async function getOTPEmailCopy(locale: SupportedLocale, host: string, otp: string, expiresInMinutes: number) {
+  const messages = (await import(`../../../../../messages/${locale}.json`)).default as {
+    AuthEmail: Record<string, string>;
+  };
+  const t = messages.AuthEmail;
+  return {
+    subject: t.otpSubject.replace("{otp}", otp),
+    copy: {
+      preview: t.otpPreview,
+      heading: t.otpHeading.replace("{host}", host),
+      intro: t.otpIntro,
+      codeLabel: t.otpCodeLabel,
+      expiry: t.otpExpiry.replace("{minutes}", String(expiresInMinutes)),
+      warning: t.otpWarning,
+      footer: t.otpFooter,
+    },
+  };
+}
 
 type AuthResendEmailClient = {
   emails: {
@@ -41,7 +62,7 @@ function getResendClient(): AuthResendEmailClient | null {
   };
 }
 
-export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: string }): Promise<{
+export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: string; locale?: SupportedLocale }): Promise<{
   expiresIn: number;
   expiresAt: number;
   canResendAt: number | null;
@@ -88,14 +109,19 @@ export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: s
       logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
     } else {
       try {
+        const locale = params.locale ?? DEFAULT_LOCALE;
+        const expiresInMinutes = 5;
+        const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
         await resend.emails.send({
           from: process.env.AUTH_EMAIL_FROM ?? "noreply@example.com",
           to: normalizedEmail,
-          subject: `Your verification code is ${otp}`,
+          subject,
           react: OTPEmail({
             otp,
             host: params.host,
-            expiresInMinutes: 5,
+            expiresInMinutes,
+            locale,
+            copy,
           }),
         });
 
