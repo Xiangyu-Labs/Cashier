@@ -216,7 +216,7 @@ describe("getSourceDocumentLightAction", () => {
     expect(result).toBeNull();
   });
 
-  it("should throw NotFoundError when user does not have access to ledger", async () => {
+  it("documents that inaccessible ledgers surface NotFoundError semantics", async () => {
     const db = getTestDb();
     const otherUserId = "33333333-3333-3333-3333-333333333333";
     await db
@@ -235,6 +235,7 @@ describe("getSourceDocumentLightAction", () => {
     const docData = createSourceDocumentData(ledgerData.id);
     await db.insert(sourceDocuments).values(docData);
 
+    // withSourceDocumentLedgerAccess preserves ledger-not-found semantics for inaccessible ledgers.
     await expect(
       getSourceDocumentLightAction(ledgerData.id, docData.id)
     ).rejects.toBeInstanceOf(NotFoundError);
