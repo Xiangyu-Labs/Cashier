@@ -4,6 +4,9 @@ import { normalizeEmail } from "@/lib/utils/email";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+declare const sendOTPEmailBrand: unique symbol;
+
+export type SendOTPEmail = string & { readonly [sendOTPEmailBrand]: true };
 
 const sendOTPEmailSchema = z
   .unknown()
@@ -23,9 +26,9 @@ const sendOTPEmailSchema = z
       });
     }
   })
-  .transform((value) => value as string);
+  .transform((value) => value as SendOTPEmail);
 
-export function parseSendOTPEmail(input: unknown): string {
+export function parseSendOTPEmail(input: unknown): SendOTPEmail {
   const result = sendOTPEmailSchema.safeParse(input);
   if (!result.success) {
     const firstIssue = result.error.issues[0];

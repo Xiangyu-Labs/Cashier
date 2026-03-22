@@ -1,7 +1,8 @@
 import OTPEmail from "@/emails/otp-email";
 import { logger } from "@/lib/logger";
-import { RateLimitError, ValidationError, AppError } from "@/lib/errors";
+import { RateLimitError, AppError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/utils/email";
+import type { SendOTPEmail } from "@/modules/auth/contract-schemas";
 import { createOTPToken } from "@/modules/auth/repositories/otp-repository";
 import {
   checkResendCooldown,
@@ -11,9 +12,6 @@ import {
   setResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP } from "@/modules/auth/services/otp";
-
-const MAX_EMAIL_LENGTH = 254;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthResendEmailClient = {
   emails: {
@@ -43,25 +41,13 @@ function getResendClient(): AuthResendEmailClient | null {
   };
 }
 
-export async function sendOTP(params: { email: string; ip: string; host: string }): Promise<{
+export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: string }): Promise<{
   expiresIn: number;
   expiresAt: number;
   canResendAt: number | null;
 }> {
   try {
-    if (params.email === "" || typeof params.email !== "string") {
-      throw new ValidationError("Invalid email address");
-    }
-
-    if (params.email.length > MAX_EMAIL_LENGTH) {
-      logger.warn({ emailLength: params.email.length }, "Email too long, rejecting");
-      throw new ValidationError("Invalid email address");
-    }
-
     const normalizedEmail = normalizeEmail(params.email);
-    if (!EMAIL_REGEX.test(normalizedEmail)) {
-      throw new ValidationError("Invalid email format");
-    }
 
     const cooldownCheck = await checkResendCooldown(normalizedEmail);
     if (!cooldownCheck.allowed) {

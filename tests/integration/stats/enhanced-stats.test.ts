@@ -50,12 +50,32 @@ describe("Enhanced Stats Actions", () => {
   });
 
   describe("getEnhancedStats", () => {
+    it("rejects invalid ledger ids", async () => {
+      await expect(
+        getEnhancedStats({
+          ledgerId: "not-a-uuid",
+          queryRange: { from: "2024-01-01", to: "2024-01-31" },
+          compareRange: { from: "2023-12-01", to: "2023-12-31" },
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
     it("rejects invalid date ranges", async () => {
       await expect(
         getEnhancedStats({
           ledgerId: testLedgerId,
           queryRange: { from: "bad", to: "bad" },
           compareRange: { from: "bad", to: "bad" },
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it("rejects reversed date ranges", async () => {
+      await expect(
+        getEnhancedStats({
+          ledgerId: testLedgerId,
+          queryRange: { from: "2024-03-31", to: "2024-03-01" },
+          compareRange: { from: "2024-02-29", to: "2024-02-01" },
         })
       ).rejects.toThrow(ValidationError);
     });

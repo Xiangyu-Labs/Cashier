@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
-import { dateStringSchema } from "@/lib/validation";
+import { dateStringSchema, UUID_REGEX } from "@/lib/validation";
 
 const dateRangeSchema = z.object({
   from: dateStringSchema,
   to: dateStringSchema,
+}).refine(({ from, to }) => from <= to, {
+  message: "Invalid date range",
+  path: ["to"],
 });
 
 const getEnhancedStatsInputSchema = z.object({
-  ledgerId: z.string().min(1, "Invalid ledgerId"),
+  ledgerId: z.string().regex(UUID_REGEX, "Invalid ledgerId"),
   queryRange: dateRangeSchema,
   compareRange: dateRangeSchema,
 });

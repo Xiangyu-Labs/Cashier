@@ -71,8 +71,14 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { RateLimitError, ValidationError } from "@/lib/errors";
+import { RateLimitError } from "@/lib/errors";
 import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
+
+type SendOTPInput = Parameters<typeof sendOTP>[0];
+
+function validEmail(email: string) {
+  return email as SendOTPInput["email"];
+}
 
 describe("sendOTP use case", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;
@@ -117,16 +123,6 @@ describe("sendOTP use case", () => {
     }
   });
 
-  it("rejects invalid email format", async () => {
-    await expect(
-      sendOTP({
-        email: "not-an-email",
-        ip: "127.0.0.1",
-        host: "cashier.example",
-      })
-    ).rejects.toThrow(ValidationError);
-  });
-
   it("rejects when IP rate limit is exceeded", async () => {
     checkSendRateLimitByIPMock.mockResolvedValueOnce({
       allowed: false,
@@ -135,7 +131,7 @@ describe("sendOTP use case", () => {
 
     await expect(
       sendOTP({
-        email: "test@example.com",
+        email: validEmail("test@example.com"),
         ip: "203.0.113.9",
         host: "cashier.example",
       })
@@ -146,7 +142,7 @@ describe("sendOTP use case", () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
 
     const result = await sendOTP({
-      email: "User@Example.COM",
+      email: validEmail("User@Example.COM"),
       ip: "203.0.113.2",
       host: "cashier.example",
     });
@@ -175,7 +171,7 @@ describe("sendOTP use case", () => {
 
     await expect(
       sendOTP({
-        email: "test@example.com",
+        email: validEmail("test@example.com"),
         ip: "127.0.0.1",
         host: "cashier.example",
       })
@@ -200,7 +196,7 @@ describe("sendOTP use case", () => {
     process.env.AUTH_EMAIL_FROM = "security@cashier.example";
 
     await sendOTP({
-      email: "test@example.com",
+      email: validEmail("test@example.com"),
       ip: "127.0.0.1",
       host: "cashier.example",
     });

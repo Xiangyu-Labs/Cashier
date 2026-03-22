@@ -9,9 +9,8 @@ vi.mock("next/headers", () => ({
   headers: headersMock,
 }));
 
-vi.mock("@/modules/auth/use-cases", () => ({
+vi.mock("@/modules/auth/application/use-cases/send-otp", () => ({
   sendOTP: sendOTPMock,
-  deleteAccount: vi.fn(),
 }));
 
 import { sendOTPAction } from "@/modules/auth/actions";

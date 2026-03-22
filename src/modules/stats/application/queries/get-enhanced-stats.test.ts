@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
+import { ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { currencyRates, entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { getEnhancedStatsQuery } from "./get-enhanced-stats";
+import { getEnhancedStats, getEnhancedStatsQuery } from "./get-enhanced-stats";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -31,6 +32,16 @@ describe("getEnhancedStatsQuery", () => {
       })
       .returning();
     categoryId = requireFirst(insertedCategories, "category").id;
+  });
+
+  it("validates public query inputs before executing", async () => {
+    await expect(
+      getEnhancedStats({
+        ledgerId: "not-a-uuid",
+        queryRange: { from: "2024-03-31", to: "2024-03-01" },
+        compareRange: { from: "2024-02-29", to: "2024-02-01" },
+      })
+    ).rejects.toThrow(ValidationError);
   });
 
   it("converts mixed currencies by entry date using ledger main currency", async () => {

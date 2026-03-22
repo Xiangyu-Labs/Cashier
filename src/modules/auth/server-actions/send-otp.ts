@@ -1,8 +1,8 @@
 "use server";
 import { headers } from "next/headers";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
+import { sendOTP } from "../application/use-cases/send-otp";
 import { parseSendOTPEmail } from "../contract-schemas";
-import { sendOTP } from "../use-cases";
 
 export async function sendOTPAction(email: string, _locale: string = "en") {
   const validatedEmail = parseSendOTPEmail(email);

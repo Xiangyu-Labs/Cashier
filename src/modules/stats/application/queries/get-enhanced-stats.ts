@@ -2,15 +2,10 @@ import { db } from "@/lib/db";
 import { currencyRates, ledgerEntries, ledgers } from "@/persistence";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
+import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
-
-interface GetEnhancedStatsQueryInput {
-  ledgerId: string;
-  queryRange: { from: string; to: string };
-  compareRange: { from: string; to: string };
-}
 
 function calculateStats(amounts: number[]): CalendarHeatmapStats {
   if (amounts.length === 0) {
@@ -40,7 +35,7 @@ export async function getEnhancedStatsQuery({
   ledgerId,
   queryRange,
   compareRange,
-}: GetEnhancedStatsQueryInput): Promise<EnhancedStatsDto> {
+}: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
   const ledger = await db.query.ledgers.findFirst({
     where: eq(ledgers.id, ledgerId),
     columns: {
@@ -211,4 +206,9 @@ export async function getEnhancedStatsQuery({
       stats: calculateStats(heatmapDays.map((day) => day.totalAmount)),
     },
   };
+}
+
+export async function getEnhancedStats(input: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
+  const validatedInput = parseEnhancedStatsInput(input);
+  return getEnhancedStatsQuery(validatedInput);
 }
