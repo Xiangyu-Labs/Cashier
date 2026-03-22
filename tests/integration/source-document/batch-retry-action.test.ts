@@ -4,6 +4,7 @@ import { getTestDb } from "../../setup";
 import { sourceDocuments, taskRuns, ledgers, entryCategories } from "@/persistence";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import { getLocalStorage } from "@/lib/storage/local";
 
 const { submitMock, cancelMock } = vi.hoisted(() => ({
   submitMock: vi.fn(),
@@ -204,6 +205,58 @@ describe("batchRetrySourceDocumentsAction", () => {
       ["https://example.com/specific1.jpg"],
       ["https://example.com/specific2.jpg", "https://example.com/specific3.jpg"],
     ]);
+  });
+
+  it("should rehome local image urls into each new source document namespace", async () => {
+    const db = getTestDb();
+    const localStorage = getLocalStorage();
+    const oldDocId = crypto.randomUUID();
+    const oldLocalUrl = await localStorage.upload(
+      `${testLedgerId}/${oldDocId}/local.webp`,
+      Buffer.from("local-image"),
+      "image/webp"
+    );
+
+    const oldDoc = firstItem(
+      await db
+        .insert(sourceDocuments)
+        .values({
+          id: oldDocId,
+          ledgerId: testLedgerId,
+          text: "Local image retry",
+          imageUrls: [oldLocalUrl],
+          status: "failed",
+          entryDate: "2025-03-03",
+        })
+        .returning(),
+      "Expected local-image source document to be created"
+    );
+
+    await batchRetrySourceDocumentsAction(testLedgerId, [oldDoc.id]);
+
+    const newDocs = await db.query.sourceDocuments.findMany({
+      where: and(
+        eq(sourceDocuments.ledgerId, testLedgerId),
+        isNull(sourceDocuments.deletedAt),
+        inArray(sourceDocuments.id, [oldDoc.id])
+      ),
+    });
+    expect(newDocs.length).toBe(0);
+
+    const activeDocs = await db.query.sourceDocuments.findMany({
+      where: and(eq(sourceDocuments.ledgerId, testLedgerId), isNull(sourceDocuments.deletedAt)),
+    });
+    expect(activeDocs.length).toBe(1);
+    const newDoc = firstItem(activeDocs, "Expected one active retried document");
+    expect(newDoc.id).not.toBe(oldDoc.id);
+    expect(newDoc.imageUrls).toBeDefined();
+    const firstImageUrl = newDoc.imageUrls?.[0];
+    expect(typeof firstImageUrl).toBe("string");
+    if (typeof firstImageUrl !== "string") {
+      throw new Error("Expected retried document image URL to exist");
+    }
+    expect(firstImageUrl).toContain(`/${newDoc.id}/`);
+    expect(firstImageUrl).not.toContain(`/${oldDoc.id}/`);
   });
 
   it("should cancel running tasks and create new tasks", async () => {
