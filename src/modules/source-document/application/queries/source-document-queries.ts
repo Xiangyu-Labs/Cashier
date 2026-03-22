@@ -338,8 +338,8 @@ export async function getAllSourceDocumentsFromValidatedInput(
   const queryParams: ListAllSourceDocumentsParams = {
     startDate: validated.startDate ?? null,
     endDate: validated.endDate ?? null,
-    page: validated.page,
-    pageSize: validated.pageSize,
+    ...(validated.page !== undefined ? { page: validated.page } : {}),
+    ...(validated.pageSize !== undefined ? { pageSize: validated.pageSize } : {}),
   };
 
   const result = await listAllSourceDocumentsQuery(ledgerId, queryParams);

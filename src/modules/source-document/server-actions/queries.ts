@@ -1,7 +1,6 @@
 "use server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
-import { z } from "zod";
 import {
   getAllSourceDocumentsFromValidatedInput,
   getPendingSourceDocuments,
@@ -22,14 +21,6 @@ import {
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 
-function parseOrThrowValidation<T>(result: z.SafeParseReturnType<unknown, T>): T {
-  if (!result.success) {
-    throw new ValidationError("Validation failed", { issues: result.error.issues });
-  }
-
-  return result.data;
-}
-
 /**
  * Get paginated source documents with cursor-based pagination
  */
@@ -37,7 +28,12 @@ export async function listSourceDocuments(
   ledgerId: string,
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
-  const validated = parseOrThrowValidation(listSourceDocumentsInputSchema.safeParse(params));
+  const parsed = listSourceDocumentsInputSchema.safeParse(params);
+  if (!parsed.success) {
+    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+  }
+
+  const validated = parsed.data;
   return listSourceDocumentsFromValidatedInput(ledgerId, validated);
 }
 
@@ -59,7 +55,12 @@ export const getAllSourceDocumentsAction = withLedgerAccess(
     ledgerId: string,
     params: ListAllSourceDocumentsInput = {}
   ): Promise<SourceDocumentCollectionDto> => {
-    const validated = parseOrThrowValidation(listAllSourceDocumentsInputSchema.safeParse(params));
+    const parsed = listAllSourceDocumentsInputSchema.safeParse(params);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+
+    const validated = parsed.data;
     return getAllSourceDocumentsFromValidatedInput(ledgerId, validated);
   }
 );
@@ -78,9 +79,12 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
  * Used for edit-retry when the list view has stripped imageUrls.
  */
 export const getSourceDocumentFullAction = withLedgerAccess(
-  async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto> =>
-    getSourceDocumentFullQuery(
-      ledgerId,
-      parseOrThrowValidation(sourceDocumentIdSchema.safeParse(sourceDocumentId))
-    )
+  async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto> => {
+    const parsed = sourceDocumentIdSchema.safeParse(sourceDocumentId);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+
+    return getSourceDocumentFullQuery(ledgerId, parsed.data);
+  }
 );
