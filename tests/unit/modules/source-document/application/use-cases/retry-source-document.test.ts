@@ -10,6 +10,7 @@ const {
   loggerDebugMock,
   prepareSourceDocumentTaskMock,
   processImagesMock,
+  rehomeLocalUploadUrlsMock,
   updateMock,
   updateSetMock,
   updateWhereMock: _updateWhereMock,
@@ -30,6 +31,7 @@ const {
     loggerDebugMock: vi.fn(),
     prepareSourceDocumentTaskMock: vi.fn(),
     processImagesMock: vi.fn(),
+    rehomeLocalUploadUrlsMock: vi.fn(),
     updateMock,
     updateSetMock,
     updateWhereMock,
@@ -71,6 +73,10 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   getSourceDocumentTaskContext: getSourceDocumentTaskContextMock,
   prepareSourceDocumentTask: prepareSourceDocumentTaskMock,
   processImages: processImagesMock,
+}));
+
+vi.mock("../services/rehome-local-upload-urls", () => ({
+  rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
 }));
 
 import { NotFoundError } from "@/lib/errors";
@@ -117,6 +123,9 @@ describe("retrySourceDocument", () => {
       },
     });
     findManyTasksMock.mockResolvedValueOnce([{ id: "task-1" }]);
+    rehomeLocalUploadUrlsMock
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current.webp"])
+      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original.webp"]);
 
     await retrySourceDocument({
       ledgerId: "ledger-1",
@@ -138,9 +147,9 @@ describe("retrySourceDocument", () => {
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         ledgerId: "ledger-1",
-        imageUrls: ["/api/uploads/old.jpg"],
+        imageUrls: ["/api/uploads/ledger-1/new-doc/current.webp"],
         metadata: {
-          originalImageUrls: ["/api/uploads/original.jpg"],
+          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original.webp"],
         },
       })
     );

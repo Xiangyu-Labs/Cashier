@@ -131,6 +131,30 @@ describe("SourceDocument Retry Action", () => {
     expect(oldEntries.length).toBeGreaterThan(0);
   });
 
+  it("should rehome local image urls into the new source document namespace on retry", async () => {
+    const db = getTestDb();
+    const imageData =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=";
+
+    const createRes = await createSourceDocumentAction(testLedgerId, {
+      text: "Receipt with image",
+      images: [{ data: imageData, mimeType: "image/png" }],
+    });
+    await processAllPendingTasks();
+
+    const retryRes = await retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
+      text: "Retried receipt with image",
+    });
+
+    const retriedDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, retryRes.sourceDocumentId),
+    });
+
+    expect(retriedDoc?.imageUrls).toHaveLength(1);
+    expect(retriedDoc?.imageUrls?.[0]).toContain(`/${retryRes.sourceDocumentId}/`);
+    expect(retriedDoc?.imageUrls?.[0]).not.toContain(`/${createRes.sourceDocumentId}/`);
+  });
+
   it("should retry an anomaly document", async () => {
     // 1. Simulate an anomaly
     const db = getTestDb();

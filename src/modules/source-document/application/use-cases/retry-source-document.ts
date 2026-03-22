@@ -10,6 +10,7 @@ import {
   prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
+import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
 
 interface SourceDocumentRetryPayload {
@@ -52,17 +53,26 @@ export async function retrySourceDocument({
   const processedImageUrls = images
     ? await processImages(images, ledgerId, newDocumentId)
     : undefined;
-  let processedOriginalImageUrls: Array<string | null> | undefined;
-  if (existingOriginalImageUrls.length > 0) {
-    processedOriginalImageUrls = existingOriginalImageUrls;
-  } else if (originalImages != null && originalImages.length > 0) {
-    processedOriginalImageUrls = await processImages(originalImages, ledgerId, newDocumentId);
-  }
-
   const finalImageUrls =
     processedImageUrls != null && processedImageUrls.length > 0
       ? processedImageUrls
-      : (existingDocument.imageUrls ?? []);
+      : await rehomeLocalUploadUrls({
+          ledgerId,
+          sourceDocumentId: newDocumentId,
+          imageUrls: existingDocument.imageUrls ?? [],
+        });
+  let processedOriginalImageUrls: string[] | undefined;
+  if (existingOriginalImageUrls.length > 0) {
+    processedOriginalImageUrls = await rehomeLocalUploadUrls({
+      ledgerId,
+      sourceDocumentId: newDocumentId,
+      imageUrls: existingOriginalImageUrls.filter(
+        (url): url is string => typeof url === "string" && url !== ""
+      ),
+    });
+  } else if (originalImages != null && originalImages.length > 0) {
+    processedOriginalImageUrls = await processImages(originalImages, ledgerId, newDocumentId);
+  }
 
   await db.insert(sourceDocuments).values({
     id: newDocumentId,
