@@ -166,5 +166,6 @@ export async function authenticateWithOTP(params: {
     email: user.email,
     name: user.name,
     image: user.image,
+    locale,
   };
 }

@@ -160,7 +160,7 @@ describe("sendOTP use case", () => {
     });
     expect(resendSendMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "noreply@example.com",
+        from: "Cashier <noreply@example.com>",
         to: "user@example.com",
         subject: "您的验证码是 123456",
         react: { kind: "otp-email-component" },

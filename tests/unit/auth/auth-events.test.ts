@@ -125,13 +125,14 @@ describe("auth.ts adapter wiring", () => {
       | undefined;
 
     await signInEvent?.({
-      user: { id: "user-signin", email: "user@example.com" },
+      user: { id: "user-signin", email: "user@example.com", locale: "en" },
       isNewUser: false,
     });
 
     expect(handleAuthUserSignedInMock).toHaveBeenCalledWith({
       userId: "user-signin",
       email: "user@example.com",
+      locale: "en",
       isNewUser: false,
     });
   });

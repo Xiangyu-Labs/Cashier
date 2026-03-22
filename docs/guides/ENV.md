@@ -126,13 +126,14 @@ Get your API key from [Resend Dashboard](https://resend.com/api-keys). Without t
 
 #### `AUTH_EMAIL_FROM`
 
-|                 | Value                          |
-| --------------- | ------------------------------ |
-| **Required**    | No                             |
-| **Default**     | `noreply@example.com`          |
-| **Description** | Email address for sending OTPs |
+|                 | Value                                                         |
+| --------------- | ------------------------------------------------------------- |
+| **Required**    | No                                                            |
+| **Default**     | `Cashier <noreply@example.com>`                               |
+| **Description** | Sender mailbox for OTP and security-notification emails       |
+| **Format**      | Bare email or `Display Name <email>`                          |
 
-Must be a verified domain in your Resend account.
+Must be a verified sender domain in your Resend account. For example: `AUTH_EMAIL_FROM=Cashier <noreply@cashier.app>`.
 
 #### `DISABLE_REGISTRATION`
 
@@ -257,7 +258,7 @@ DATABASE_URL=file:./data/sqlite.db
 OPENAI_API_KEY=sk-...
 AUTH_SECRET=$(openssl rand -base64 32)
 AUTH_RESEND_KEY=re_...
-AUTH_EMAIL_FROM=auth@example.com
+AUTH_EMAIL_FROM=Cashier <noreply@example.com>
 
 # Runtime
 OTP_EXPIRES_SECONDS=300

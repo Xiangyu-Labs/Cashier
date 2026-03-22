@@ -4,6 +4,7 @@ import { sendLoginNotification } from "@/modules/auth/services/notifications";
 export async function handleAuthUserSignedIn(params: {
   userId?: string | null;
   email?: string | null;
+  locale?: string | null;
   isNewUser?: boolean;
 }): Promise<void> {
   if (params.isNewUser === true) {
@@ -18,5 +19,8 @@ export async function handleAuthUserSignedIn(params: {
     userId: params.userId,
   });
 
-  await sendLoginNotification(params.email);
+  await sendLoginNotification({
+    email: params.email,
+    locale: params.locale ?? undefined,
+  });
 }

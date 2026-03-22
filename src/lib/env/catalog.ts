@@ -256,8 +256,8 @@ export const APP_ENV_CATALOG: EnvCatalogEntry[] = [
     name: "AUTH_EMAIL_FROM",
     tier: "runtime",
     required: false,
-    defaultValue: "noreply@example.com",
-    description: "Sender email address for OTP and security notifications.",
+    defaultValue: "Cashier <noreply@example.com>",
+    description: "Sender mailbox for OTP and security notifications. Supports bare email or Display Name <email>.",
     validateOnStartup: true,
   },
   {

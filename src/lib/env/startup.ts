@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { getEnvValue } from "./catalog";
+import { isValidAuthEmailFrom, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 
 function blankToUndefined(value: unknown): unknown {
   return typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -80,9 +81,14 @@ const startupEnvSchema = z
     AUTH_RESEND_KEY: z.preprocess(blankToUndefined, z.string().trim().optional()),
     AUTH_EMAIL_FROM: z.preprocess(
       blankToUndefined,
-      z.email({ error: "AUTH_EMAIL_FROM must be a valid email address" }).default(
-        getDefaultString("AUTH_EMAIL_FROM")
-      )
+      z
+        .string()
+        .trim()
+        .refine(
+          isValidAuthEmailFrom,
+          "AUTH_EMAIL_FROM must be a valid email address or Display Name <email> mailbox"
+        )
+        .default(DEFAULT_AUTH_EMAIL_FROM)
     ),
     OIDC_ISSUER: optionalUrl("OIDC_ISSUER"),
     OIDC_CLIENT_ID: z.preprocess(blankToUndefined, z.string().trim().optional()),

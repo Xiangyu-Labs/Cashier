@@ -30,6 +30,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+import { render } from "@react-email/render";
 import { sendLoginNotification } from "../../../../src/modules/auth/services/notifications";
 
 describe("sendLoginNotification", () => {
@@ -58,7 +59,7 @@ describe("sendLoginNotification", () => {
   });
 
   it("returns early when AUTH_RESEND_KEY is missing", async () => {
-    await sendLoginNotification("notify@example.com");
+    await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
 
     expect(sendMock).not.toHaveBeenCalled();
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -66,18 +67,40 @@ describe("sendLoginNotification", () => {
     );
   });
 
+  it("renders a Chinese login-notification email when locale is zh", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+
+    await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
+
+    const firstCall = sendMock.mock.calls[0]?.[0];
+    expect(firstCall?.subject).toBe("您的账户有新的登录");
+    const rendered = await render(firstCall?.react);
+    expect(rendered).toContain("检测到您的账户有新的登录");
+    expect(rendered).toContain("登录时间");
+  });
+
+  it("renders an English login-notification email when locale is en", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+
+    await sendLoginNotification({ email: "notify@example.com", locale: "en" });
+
+    const firstCall = sendMock.mock.calls[0]?.[0];
+    expect(firstCall?.subject).toBe("New sign-in to your account");
+    const rendered = await render(firstCall?.react);
+    expect(rendered).toContain("New sign-in detected");
+    expect(rendered).toContain("Time:");
+  });
+
   it("sends with fallback sender when AUTH_EMAIL_FROM is missing", async () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
 
-    await sendLoginNotification("notify@example.com");
+    await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "noreply@example.com",
+        from: "Cashier <noreply@example.com>",
         to: "notify@example.com",
-        subject: "New login to your account",
-        html: expect.stringContaining("notify@example.com"),
       })
     );
     expect(loggerInfoMock).toHaveBeenCalledWith(
@@ -90,7 +113,7 @@ describe("sendLoginNotification", () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
     process.env.AUTH_EMAIL_FROM = "security@cashier.example";
 
-    await sendLoginNotification("notify@example.com");
+    await sendLoginNotification({ email: "notify@example.com", locale: "zh" });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -104,7 +127,7 @@ describe("sendLoginNotification", () => {
     const sendError = new Error("smtp down");
     sendMock.mockRejectedValueOnce(sendError);
 
-    await expect(sendLoginNotification("notify@example.com")).resolves.toBeUndefined();
+    await expect(sendLoginNotification({ email: "notify@example.com", locale: "zh" })).resolves.toBeUndefined();
     expect(loggerErrorMock).toHaveBeenCalledWith(
       { error: sendError, email: "notify@example.com" },
       "Failed to send login notification"

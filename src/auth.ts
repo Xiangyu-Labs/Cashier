@@ -124,6 +124,7 @@ export const authOptions = {
       await handleAuthUserSignedIn({
         ...(user.id != null ? { userId: user.id } : {}),
         ...(user.email != null ? { email: user.email } : {}),
+        ...(typeof user.locale === "string" ? { locale: user.locale } : {}),
         ...(isNewUser != null ? { isNewUser } : {}),
       });
     },
@@ -171,5 +172,9 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
     };
+  }
+
+  interface User {
+    locale?: string | null;
   }
 }

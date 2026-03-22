@@ -62,11 +62,14 @@ describe("auth lifecycle use cases", () => {
     await handleAuthUserSignedIn({
       userId: "user-signin",
       email: "user@example.com",
+      locale: "en",
       isNewUser: false,
     });
 
     expect(ensureUserLedgerMock).toHaveBeenCalledWith({ userId: "user-signin" });
-    expect(sendLoginNotificationMock).toHaveBeenCalledWith("user@example.com");
+    expect(sendLoginNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "user@example.com" })
+    );
   });
 
   it("skips existing-user sign-in side effects for new users or missing email", async () => {

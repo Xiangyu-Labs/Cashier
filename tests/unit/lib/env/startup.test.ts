@@ -39,4 +39,22 @@ describe("validateStartupEnv", () => {
     expect(result.AI_RETRY_DELAY_MS).toBe(1000);
     expect(result.NEXT_PUBLIC_OIDC_ENABLED).toBe("false");
   });
+
+  it("accepts AUTH_EMAIL_FROM in named mailbox format", () => {
+    const result = validateStartupEnv({
+      ...baseEnv,
+      AUTH_EMAIL_FROM: "Cashier <noreply@example.com>",
+    });
+
+    expect(result.AUTH_EMAIL_FROM).toBe("Cashier <noreply@example.com>");
+  });
+
+  it("rejects invalid AUTH_EMAIL_FROM", () => {
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        AUTH_EMAIL_FROM: "not-an-email",
+      })
+    ).toThrow(/AUTH_EMAIL_FROM/);
+  });
 });

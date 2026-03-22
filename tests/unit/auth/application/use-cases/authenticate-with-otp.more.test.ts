@@ -140,6 +140,7 @@ describe("authenticateWithOTP additional coverage", () => {
       email: "new-user@example.com",
       name: null,
       image: null,
+      locale: "zh",
     });
   });
 
