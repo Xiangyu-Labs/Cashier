@@ -82,4 +82,39 @@ describe("rehomeLocalUploadUrls", () => {
     expect(uploadMock).not.toHaveBeenCalled();
     expect(result).toEqual([localUrl]);
   });
+
+  it("passes through malformed extracted keys instead of rehoming", async () => {
+    extractKeyFromUrlMock.mockReturnValue("old.jpg");
+
+    const localUrl = "/api/uploads/ledger-1/blah/old.jpg";
+    const result = await rehomeLocalUploadUrls({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: [localUrl],
+    });
+
+    expect(downloadMock).not.toHaveBeenCalled();
+    expect(uploadMock).not.toHaveBeenCalled();
+    expect(result).toEqual([localUrl]);
+  });
+
+  it("rehomes URLs when the ledger differs even if doc ID matches", async () => {
+    extractKeyFromUrlMock.mockReturnValue("other-ledger/new-doc/image.webp");
+    downloadMock.mockResolvedValue(Buffer.from("image-bytes"));
+    uploadMock.mockResolvedValue("/api/uploads/ledger-1/new-doc/image.webp");
+
+    const result = await rehomeLocalUploadUrls({
+      ledgerId: "ledger-1",
+      sourceDocumentId: "new-doc",
+      imageUrls: ["/api/uploads/other-ledger/new-doc/image.webp"],
+    });
+
+    expect(downloadMock).toHaveBeenCalledWith("other-ledger/new-doc/image.webp");
+    expect(uploadMock).toHaveBeenCalledWith(
+      "ledger-1/new-doc/image.webp",
+      Buffer.from("image-bytes"),
+      "image/webp"
+    );
+    expect(result).toEqual(["/api/uploads/ledger-1/new-doc/image.webp"]);
+  });
 });

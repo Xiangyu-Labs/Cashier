@@ -32,8 +32,17 @@ export async function rehomeLocalUploadUrls({
       }
 
       const parts = key.split("/");
+      if (parts.length < 3) {
+        return url;
+      }
+
+      const currentLedgerId = parts[0];
       const currentDocId = parts[1];
-      if (currentDocId === sourceDocumentId) {
+      if (!currentLedgerId || !currentDocId) {
+        return url;
+      }
+
+      if (currentLedgerId === ledgerId && currentDocId === sourceDocumentId) {
         return url;
       }
 
