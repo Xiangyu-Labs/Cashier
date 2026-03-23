@@ -2,17 +2,12 @@ import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, memo } from "react";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations } from "next-intl";
-import { LedgerEntryItem } from "./LedgerEntryItem";
-import {
-  getSafeImageSrc,
-  getSourceDocumentPreview,
-  sortSourceDocumentEntries,
-} from "./source-document-card.utils";
+import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
+import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
+import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -61,7 +56,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   isSelected = false,
   onToggleSelect,
 }: SourceDocumentCardProps) {
-  const t = useTranslations("SourceDocumentCard");
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
 
@@ -119,51 +113,16 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
             className="overflow-hidden"
           >
             {status !== "completed" && (
-              <div className="bg-surface2/30 border-b border-border">
-                <div className="p-4 space-y-3">
-                  {images.length > 0 && (
-                    <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
-                      {images.map((img, idx) => (
-                        <div
-                          key={idx}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-border bg-surface2 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => _onViewDetails?.()}
-                        >
-                          <Image
-                            src={getSafeImageSrc(img)}
-                            alt={t("imageAlt", { index: idx + 1 })}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {text !== "" && (
-                    <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
-                      {text}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <SourceDocumentCardPreview text={text} images={images} onViewDetails={_onViewDetails} />
             )}
 
             {status === "completed" && sortedEntries.length > 0 && (
-              <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
-                {sortedEntries.map((entry) => (
-                  <LedgerEntryItem
-                    key={entry.id}
-                    ledgerEntry={entry}
-                    onView={() => onViewLedgerEntry?.(entry)}
-                    mainCurrency={mainCurrency}
-                    sourceDocumentEntryDate={sourceDocument.entryDate}
-                    variant={
-                      entry.category != null && !entry.category.isEditable ? "warning" : "default"
-                    }
-                  />
-                ))}
-              </div>
+              <SourceDocumentCardEntries
+                entries={sortedEntries}
+                mainCurrency={mainCurrency}
+                sourceDocumentEntryDate={sourceDocument.entryDate}
+                onViewLedgerEntry={onViewLedgerEntry}
+              />
             )}
           </motion.div>
         )}
