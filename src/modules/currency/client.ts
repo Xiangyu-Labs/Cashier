@@ -1,2 +1,2 @@
-export { useConvertedAmount } from "./useConvertedAmount";
-export { useAmountDisplay } from "./useAmountDisplay";
+export { useConvertedAmount } from "./hooks/useConvertedAmount";
+export { useAmountDisplay } from "./hooks/useAmountDisplay";

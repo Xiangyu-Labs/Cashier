@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useAmountDisplay } from "@/modules/currency/useAmountDisplay";
+import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
 
 const mockUseConvertedAmount = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/currency/useConvertedAmount", () => ({
+vi.mock("@/modules/currency/hooks/useConvertedAmount", () => ({
   useConvertedAmount: mockUseConvertedAmount,
 }));
 
