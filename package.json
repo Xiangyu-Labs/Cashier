@@ -9,7 +9,7 @@
     "lint": "eslint",
     "tsc": "tsc --noEmit",
     "validate:i18n": "node scripts/validate-i18n-catalogs.mjs",
-    "check": "npm run lint && npm run test:unit && npm run test:integration && npm run build && npm run validate:i18n",
+    "check": "npm run lint && npm run tsc && npm run test:unit && npm run test:integration && npm run build && npm run validate:i18n",
     "test": "vitest --config vitest.config.ts",
     "test:run": "vitest run --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.unit.config.ts",
