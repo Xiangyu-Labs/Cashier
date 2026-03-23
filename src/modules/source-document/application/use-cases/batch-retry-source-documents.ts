@@ -10,7 +10,6 @@ import {
   whereSourceDocumentNotDeleted,
 } from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
-import { SourceDocumentStatus } from "../../types";
 
 export interface BatchRetrySourceDocumentsInput {
   ledgerId: string;
@@ -32,15 +31,9 @@ export async function batchRetrySourceDocuments({
     };
   }
 
-  const candidateDocs = await db.query.sourceDocuments.findMany({
-    where: and(
-      eq(sourceDocuments.ledgerId, ledgerId),
-      inArray(sourceDocuments.id, sourceDocumentIds)
-    ),
+  const oldDocs = await db.query.sourceDocuments.findMany({
+    where: and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
   });
-  const oldDocs = candidateDocs.filter(
-    (document) => document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
-  );
 
   if (oldDocs.length === 0) {
     logger.debug({ ledgerId, sourceDocumentIds }, "No active documents found for batch retry");

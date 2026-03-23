@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   sourceDocumentsFindFirstMock,
+  sourceDocumentsFindManyMock,
   taskRunsFindManyMock,
   cancelFlowTaskMock,
   softDeleteSourceDocumentLedgerEntriesMock,
@@ -11,6 +12,7 @@ const {
   loggerMock,
 } = vi.hoisted(() => {
   const sourceDocumentsFindFirstMock = vi.fn();
+  const sourceDocumentsFindManyMock = vi.fn();
   const taskRunsFindManyMock = vi.fn();
   const cancelFlowTaskMock = vi.fn();
   const softDeleteSourceDocumentLedgerEntriesMock = vi.fn();
@@ -26,6 +28,7 @@ const {
 
   return {
     sourceDocumentsFindFirstMock,
+    sourceDocumentsFindManyMock,
     taskRunsFindManyMock,
     cancelFlowTaskMock,
     softDeleteSourceDocumentLedgerEntriesMock,
@@ -41,6 +44,7 @@ vi.mock("@/lib/db", () => ({
     query: {
       sourceDocuments: {
         findFirst: sourceDocumentsFindFirstMock,
+        findMany: sourceDocumentsFindManyMock,
       },
       taskRuns: {
         findMany: taskRunsFindManyMock,
@@ -75,6 +79,20 @@ vi.mock("@/lib/db/scoped-query", () => ({
   })),
 }));
 
+vi.mock("@/modules/source-document/application/source-document-state", () => ({
+  deletedSourceDocumentPatch: vi.fn((now = new Date("2026-03-20T00:00:00.000Z")) => ({
+    status: "deleted",
+    deletedAt: now,
+    updatedAt: now,
+  })),
+  whereSourceDocumentNotDeleted: vi.fn((ledgerId: string) => ({
+    whereSourceDocumentNotDeleted: [ledgerId],
+  })),
+  whereSourceDocumentNotDeletedId: vi.fn((ledgerId: string, sourceDocumentId: string) => ({
+    whereSourceDocumentNotDeletedId: [ledgerId, sourceDocumentId],
+  })),
+}));
+
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...parts: unknown[]) => ({ and: parts })),
   eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
@@ -95,7 +113,10 @@ vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
 
-import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
+import {
+  deleteSourceDocument,
+  batchDeleteSourceDocuments,
+} from "@/modules/source-document/application/use-cases/delete-source-document";
 
 describe("deleteSourceDocument", () => {
   beforeEach(() => {
@@ -116,6 +137,11 @@ describe("deleteSourceDocument", () => {
       sourceDocumentId: "doc-1",
       deleted: false,
     });
+    expect(sourceDocumentsFindFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
+      })
+    );
     expect(cancelFlowTaskMock).not.toHaveBeenCalled();
     expect(transactionMock).not.toHaveBeenCalled();
   });
@@ -153,6 +179,32 @@ describe("deleteSourceDocument", () => {
       expect.objectContaining({
         status: "deleted",
         deletedAt: expect.any(Date),
+      })
+    );
+  });
+});
+
+describe("batchDeleteSourceDocuments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cancelFlowTaskMock.mockResolvedValue(undefined);
+    taskRunsFindManyMock.mockResolvedValue([]);
+  });
+
+  it("queries active source documents at the SQL boundary before deleting in batch", async () => {
+    sourceDocumentsFindManyMock.mockResolvedValue([{ id: "doc-1" }, { id: "doc-2" }]);
+
+    const result = await batchDeleteSourceDocuments({
+      ledgerId: "ledger-1",
+      sourceDocumentIds: ["doc-1", "doc-2"],
+    });
+
+    expect(result.deletedCount).toBe(2);
+    expect(sourceDocumentsFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([{ whereSourceDocumentNotDeleted: ["ledger-1"] }]),
+        }),
       })
     );
   });

@@ -207,6 +207,13 @@ describe("batchRetrySourceDocuments", () => {
 
     expect(cancelFlowTaskMock).toHaveBeenCalledTimes(1);
     expect(cancelFlowTaskMock).toHaveBeenCalledWith("task-1");
+    expect(sourceDocumentsFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([{ whereSourceDocumentNotDeleted: ["ledger-1"] }]),
+        }),
+      })
+    );
     expect(insertValuesMock).toHaveBeenCalledTimes(1);
 
     const insertedDocuments = insertValuesMock.mock.calls[0]?.[0] as Array<Record<string, unknown>>;
@@ -258,5 +265,12 @@ describe("batchRetrySourceDocuments", () => {
         metadata: { originalImageUrls: ["/api/uploads/ledger-1/new-1/original.webp"] },
       }),
     ]);
+    expect(sourceDocumentsFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          and: expect.arrayContaining([{ whereSourceDocumentNotDeleted: ["ledger-1"] }]),
+        }),
+      })
+    );
   });
 });

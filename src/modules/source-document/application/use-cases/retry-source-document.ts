@@ -15,7 +15,6 @@ import {
 } from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
-import { SourceDocumentStatus } from "../../types";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -38,14 +37,10 @@ export async function retrySourceDocument({
   input,
 }: RetrySourceDocumentInput): Promise<RetrySourceDocumentResponseDto> {
   const existingDocument = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)),
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
 
-  if (
-    existingDocument == null ||
-    existingDocument.status === SourceDocumentStatus.Deleted ||
-    existingDocument.deletedAt != null
-  ) {
+  if (existingDocument == null) {
     throw new NotFoundError("Source document");
   }
 

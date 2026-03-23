@@ -1,9 +1,12 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { sourceDocuments } from "@/persistence";
 import { SourceDocumentStatus } from "../types";
 
 export function sourceDocumentNotDeletedCondition() {
-  return ne(sourceDocuments.status, SourceDocumentStatus.Deleted);
+  return and(
+    ne(sourceDocuments.status, SourceDocumentStatus.Deleted),
+    isNull(sourceDocuments.deletedAt)
+  )!;
 }
 
 export function whereSourceDocumentNotDeleted(ledgerId: string) {

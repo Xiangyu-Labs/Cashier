@@ -11,8 +11,8 @@ import {
 import {
   deletedSourceDocumentPatch,
   whereSourceDocumentNotDeleted,
+  whereSourceDocumentNotDeletedId,
 } from "@/modules/source-document/application/source-document-state";
-import { SourceDocumentStatus } from "@/modules/source-document/types";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
@@ -78,14 +78,10 @@ export async function deleteSourceDocument({
   sourceDocumentId,
 }: DeleteSourceDocumentInput): Promise<DeleteSourceDocumentResultDto> {
   const sourceDoc = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)),
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
 
-  if (
-    !sourceDoc ||
-    sourceDoc.status === SourceDocumentStatus.Deleted ||
-    sourceDoc.deletedAt != null
-  ) {
+  if (sourceDoc == null) {
     return {
       sourceDocumentId,
       deleted: false,
@@ -120,17 +116,10 @@ export async function batchDeleteSourceDocuments({
   }
 
   const documents = await db.query.sourceDocuments.findMany({
-    where: and(
-      eq(sourceDocuments.ledgerId, ledgerId),
-      inArray(sourceDocuments.id, sourceDocumentIds)
-    ),
-    columns: { id: true, status: true, deletedAt: true },
+    where: and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
+    columns: { id: true },
   });
-  const activeDocumentIds = documents
-    .filter(
-      (document) => document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
-    )
-    .map((document) => document.id);
+  const activeDocumentIds = documents.map((document) => document.id);
 
   if (activeDocumentIds.length === 0) {
     return {

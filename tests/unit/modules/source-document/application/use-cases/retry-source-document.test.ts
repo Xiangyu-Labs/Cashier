@@ -121,6 +121,12 @@ describe("retrySourceDocument", () => {
         sourceDocumentId: "doc-1",
       })
     ).rejects.toThrow(NotFoundError);
+
+    expect(findFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
+      })
+    );
   });
 
   it("reuses existing originals, falls back to existing imageUrls, cancels running tasks, and omits null text", async () => {
@@ -173,6 +179,11 @@ describe("retrySourceDocument", () => {
       expect.objectContaining({
         status: "deleted",
         deletedAt: expect.any(Date),
+      })
+    );
+    expect(findFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
       })
     );
     expect(updateSetMock).toHaveBeenNthCalledWith(
@@ -239,6 +250,11 @@ describe("retrySourceDocument", () => {
         metadata: {
           originalImageUrls: ["/api/uploads/ledger-1/new-doc/original-from-input.webp"],
         },
+      })
+    );
+    expect(findFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
       })
     );
     randomUUIDMock.mockRestore();
