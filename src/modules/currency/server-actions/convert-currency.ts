@@ -2,6 +2,7 @@
 import { ValidationError } from "@/lib/errors";
 import { convertAmountsBatch } from "../application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "../application/use-cases/convert-currency";
+import { parseConvertCurrencyInput } from "../contract-schemas";
 import type {
   BatchConversionItem,
   BatchConvertCurrencyResult,
@@ -14,12 +15,14 @@ export async function convertCurrencyAction(
   to: string,
   date?: string
 ): Promise<ConvertCurrencyResult> {
-  return convertCurrency({
+  return convertCurrency(
+    parseConvertCurrencyInput({
     amount,
     from,
     to,
     ...(date != null ? { date } : {}),
-  });
+    })
+  );
 }
 
 export async function batchConvertCurrencyAction(

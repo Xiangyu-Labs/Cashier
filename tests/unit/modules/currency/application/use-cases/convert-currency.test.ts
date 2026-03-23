@@ -7,32 +7,6 @@ describe("convertCurrency", () => {
     vi.restoreAllMocks();
   });
 
-  it("throws when required parameters are missing", async () => {
-    await expect(
-      convertCurrency({
-        amount: 0,
-        from: "USD",
-        to: "CNY",
-      })
-    ).rejects.toThrow("Missing required parameters");
-
-    await expect(
-      convertCurrency({
-        amount: 100,
-        from: "",
-        to: "CNY",
-      })
-    ).rejects.toThrow("Missing required parameters");
-
-    await expect(
-      convertCurrency({
-        amount: 100,
-        from: "USD",
-        to: "",
-      })
-    ).rejects.toThrow("Missing required parameters");
-  });
-
   it("normalizes YYYY-MM-DD input to a Date and delegates conversion", async () => {
     const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue(14.67);
 

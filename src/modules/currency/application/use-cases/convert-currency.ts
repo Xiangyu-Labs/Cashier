@@ -1,13 +1,8 @@
 import { parseDateString } from "@/lib/date-utils";
-import { ValidationError } from "@/lib/errors";
 import { ExchangeRateService } from "../services/exchange-rate";
+import type { ConvertCurrencyInput } from "../../contract-schemas";
 
-export interface ConvertCurrencyInput {
-  amount: number;
-  from: string;
-  to: string;
-  date?: string;
-}
+export type { ConvertCurrencyInput } from "../../contract-schemas";
 
 export interface ConvertCurrencyResult {
   converted: number;
@@ -18,10 +13,6 @@ function normalizeConversionDate(date?: string): Date | undefined {
 }
 
 export async function convertCurrency(input: ConvertCurrencyInput): Promise<ConvertCurrencyResult> {
-  if (input.amount === 0 || input.from === "" || input.to === "") {
-    throw new ValidationError("Missing required parameters");
-  }
-
   const converted = await ExchangeRateService.convert(
     input.amount,
     input.from,
