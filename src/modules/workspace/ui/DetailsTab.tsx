@@ -20,6 +20,7 @@ import {
   LedgerEntryDetailModal,
 } from "@/modules/ledger/ui";
 import type { EntryFilters } from "@/modules/ledger/ui";
+import type { LedgerAdvancedFilters } from "../initial-query-state";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -32,18 +33,8 @@ interface DetailsTabProps {
   periodParams: PeriodParams;
   onPeriodChange: (params: PeriodParams) => void;
   _onFiltersChange: (filters: EntryFilters) => void;
-  advancedFilters: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  };
-  onAdvancedFiltersChange: (filters: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  }) => void;
+  advancedFilters: LedgerAdvancedFilters;
+  onAdvancedFiltersChange: (filters: LedgerAdvancedFilters) => void;
 }
 
 export function DetailsTab({

@@ -5,13 +5,15 @@ import {
   periodToDateRange,
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
-import { parseDateString } from "@/lib/date-utils";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import {
+  type LedgerUrlUpdate,
   readLedgerFilterParams,
   updateLedgerSearchParams,
 } from "../ledger-url-params";
 import { replaceLedgerUrl } from "../ledger-url-navigation";
+import { buildLedgerEntryFilters, splitLedgerFilterChange } from "../ledger-filter-state";
+import type { LedgerAdvancedFilters } from "../initial-query-state";
 
 export interface FilterParams {
   categoryId: string | null;
@@ -32,7 +34,27 @@ interface UsePeriodFilterReturn {
   filters: EntryFilters;
   filterParams: FilterParams;
   handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
+  handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
   handleFiltersChange: (newFilters: EntryFilters) => void;
+}
+
+function buildPeriodUrlUpdate(
+  newPeriod: PeriodParams
+): Pick<LedgerUrlUpdate, "period" | "startDate" | "endDate"> {
+  const periodUpdate: Pick<LedgerUrlUpdate, "period" | "startDate" | "endDate"> = {
+    period: newPeriod.period,
+  };
+
+  if (newPeriod.period === "custom") {
+    if ("startDate" in newPeriod) {
+      periodUpdate.startDate = newPeriod.startDate ?? null;
+    }
+    if ("endDate" in newPeriod) {
+      periodUpdate.endDate = newPeriod.endDate ?? null;
+    }
+  }
+
+  return periodUpdate;
 }
 
 export function usePeriodFilter({
@@ -53,43 +75,23 @@ export function usePeriodFilter({
   );
 
   const filters: EntryFilters = useMemo(
-    () => {
-      const nextFilters: EntryFilters = {
-        categoryId: filterParams.categoryId ?? null,
-        currency: filterParams.currency ?? null,
-        minAmount: filterParams.minAmount,
-        maxAmount: filterParams.maxAmount,
-      };
-
-      if (dateRange.startDate !== null) {
-        nextFilters.startDate = parseDateString(dateRange.startDate);
-      }
-      if (dateRange.endDate !== null) {
-        nextFilters.endDate = parseDateString(dateRange.endDate);
-      }
-
-      return nextFilters;
-    },
-    [dateRange, filterParams]
+    () => buildLedgerEntryFilters(periodParams, filterParams),
+    [filterParams, periodParams]
   );
 
   const handlePeriodChange = useCallback(
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
       if (options?.skipUrlUpdate) return;
 
-      const periodUpdate: {
-        period: PeriodParams["period"];
-        startDate?: string | null;
-        endDate?: string | null;
-      } = {
-        period: newPeriod.period,
-      };
-      if (newPeriod.period === "custom") {
-        if ("startDate" in newPeriod) periodUpdate.startDate = newPeriod.startDate ?? null;
-        if ("endDate" in newPeriod) periodUpdate.endDate = newPeriod.endDate ?? null;
-      }
+      const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod));
+      replaceLedgerUrl(pathname, params);
+    },
+    [pathname, searchParams]
+  );
 
-      const params = updateLedgerSearchParams(searchParams, periodUpdate);
+  const handleAdvancedFiltersChange = useCallback(
+    (newFilters: LedgerAdvancedFilters) => {
+      const params = updateLedgerSearchParams(searchParams, newFilters);
       replaceLedgerUrl(pathname, params);
     },
     [pathname, searchParams]
@@ -97,48 +99,19 @@ export function usePeriodFilter({
 
   const handleFiltersChange = useCallback(
     (newFilters: EntryFilters) => {
-      const formatDate = (d?: Date): string | null => {
-        if (!d) return null;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      };
-
-      const nextStartDate = formatDate(newFilters.startDate);
-      const nextEndDate = formatDate(newFilters.endDate);
-      const datesChanged = nextStartDate !== dateRange.startDate || nextEndDate !== dateRange.endDate;
-      const nextPeriod: PeriodParams["period"] = datesChanged
-        ? nextStartDate != null || nextEndDate != null
-          ? "custom"
-          : "thisMonth"
-        : periodParams.period;
-
-      const filterUpdate: {
-        period: PeriodParams["period"];
-        startDate?: string | null;
-        endDate?: string | null;
-        categoryId?: string | null;
-        currency?: string | null;
-        minAmount?: number | null;
-        maxAmount?: number | null;
-      } = {
-        period: nextPeriod,
-        categoryId: newFilters.categoryId ?? null,
-        currency: newFilters.currency ?? null,
-        minAmount: newFilters.minAmount ?? null,
-        maxAmount: newFilters.maxAmount ?? null,
-      };
-      if (nextPeriod === "custom" && datesChanged) {
-        filterUpdate.startDate = nextStartDate;
-        filterUpdate.endDate = nextEndDate;
-      }
-
-      const params = updateLedgerSearchParams(searchParams, filterUpdate);
+      const { periodUpdate, advancedFilterUpdate } = splitLedgerFilterChange({
+        currentPeriod: periodParams,
+        currentFilters: filters,
+        nextFilters: newFilters,
+      });
+      const params = updateLedgerSearchParams(searchParams, {
+        ...(periodUpdate != null ? buildPeriodUrlUpdate(periodUpdate) : {}),
+        ...advancedFilterUpdate,
+      });
 
       replaceLedgerUrl(pathname, params);
     },
-    [dateRange.endDate, dateRange.startDate, pathname, periodParams.period, searchParams]
+    [filters, pathname, periodParams, searchParams]
   );
 
   return {
@@ -147,6 +120,7 @@ export function usePeriodFilter({
     filters,
     filterParams,
     handlePeriodChange,
+    handleAdvancedFiltersChange,
     handleFiltersChange,
   };
 }

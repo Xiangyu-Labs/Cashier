@@ -6,6 +6,7 @@ import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
 const replaceLedgerUrlMock = vi.hoisted(() => vi.fn());
 const useLedgerTabsMock = vi.hoisted(() => vi.fn());
 const usePeriodFilterMock = vi.hoisted(() => vi.fn());
+const handleAdvancedFiltersChangeMock = vi.hoisted(() => vi.fn());
 const useDrilldownNavigationMock = vi.hoisted(() => vi.fn());
 const useLedgerDialogStateMock = vi.hoisted(() => vi.fn());
 const useLedgerPagePrefetchingMock = vi.hoisted(() => vi.fn());
@@ -190,6 +191,7 @@ describe("LedgerPageClient", () => {
       periodParams: { period: "thisMonth" },
       filterParams: {},
       handlePeriodChange: vi.fn(),
+      handleAdvancedFiltersChange: handleAdvancedFiltersChangeMock,
       handleFiltersChange: vi.fn(),
     });
     useDrilldownNavigationMock.mockReturnValue({
@@ -243,7 +245,7 @@ describe("LedgerPageClient", () => {
     expect(screen.getByText("notFound")).toBeTruthy();
   });
 
-  it("wires prefetching and advanced filter url replacement in details flow", () => {
+  it("wires prefetching and delegates advanced filter writes to usePeriodFilter", () => {
     render(
       <LedgerPageClient
         ledgerId="ledger-1"
@@ -255,7 +257,8 @@ describe("LedgerPageClient", () => {
     expect(useLedgerPagePrefetchingMock).toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("details-tab-trigger-filters"));
-    expect(replaceLedgerUrlMock).toHaveBeenCalled();
+    expect(handleAdvancedFiltersChangeMock).toHaveBeenCalledWith({ categoryId: "cat-1" });
+    expect(replaceLedgerUrlMock).not.toHaveBeenCalled();
   });
 
   it("opens task queue through header callback wiring", () => {
