@@ -20,18 +20,18 @@
 ## 2. 服务端边界
 
 - 需要登录态或账本权限的内部读写走 Server Actions，并使用对应 access wrapper
-- API v1 route handlers 必须复用 [`src/app/api/v1/_shared/route-helper.ts`](/home/dev/workspace/worktrees/2026-03-23-source-document-contract-and-docs-consolidation/src/app/api/v1/_shared/route-helper.ts)，统一处理 service credential 鉴权、限流和错误响应
+- API v1 route handlers 必须复用 `src/app/api/v1/_shared/route-helper.ts`，统一处理 service credential 鉴权、限流和错误响应
 - 业务错误使用 `src/lib/errors.ts` 中的标准错误类型；Server Actions 直接抛错，HTTP 边界负责转成响应
 
 ## 3. 查询与缓存
 
-- React Query key 统一定义在 [`src/lib/query-keys.ts`](/home/dev/workspace/worktrees/2026-03-23-source-document-contract-and-docs-consolidation/src/lib/query-keys.ts)，不要在组件或 hook 中手写字符串数组
+- React Query key 统一定义在 `src/lib/query-keys.ts`，不要在组件或 hook 中手写字符串数组
 - 通用 source-document 列表合同只保留 cursor pagination；workspace stream 如需一次取回有限集合，必须使用显式的 bounded collection key 和 caller-owned `limit`
 - 乐观更新统一通过 `useLedgerMutation` 和 Query Cache 完成；失效放在 `onSettled`，不要用本地 `useState` 维护服务端真值
 
 ## 4. 后台任务
 
-- 任务注册集中在 [`src/lib/flow/task-registry.ts`](/home/dev/workspace/worktrees/2026-03-23-source-document-contract-and-docs-consolidation/src/lib/flow/task-registry.ts)；不要在其他位置零散调用 `engine.register`
+- 任务注册集中在 `src/lib/flow/task-registry.ts`；不要在其他位置零散调用 `engine.register`
 - 提交任务时，关联实体必须把 `entityType` 和 `entityId` 作为一等元数据传入，供任务队列、取消、回溯和序列化使用
 - 任务执行与编排规则以 `src/lib/flow/` 下的实现为准，不额外维护 Markdown 版任务注册清单
 
@@ -39,7 +39,7 @@
 
 - 账本隔离和软删除过滤必须在查询条件中落实，不依赖取回后再做内存过滤
 - 业务日期字段使用 `yyyy-MM-dd` 字符串，时间与时区换算在边界层处理
-- 环境变量定义的唯一事实源是 [`src/lib/env/catalog.ts`](/home/dev/workspace/worktrees/2026-03-23-source-document-contract-and-docs-consolidation/src/lib/env/catalog.ts)；不要维护手工同步的 Markdown 变量表
+- 环境变量定义的唯一事实源是 `src/lib/env/catalog.ts`；不要维护手工同步的 Markdown 变量表
 
 ## 6. 客户端状态
 
