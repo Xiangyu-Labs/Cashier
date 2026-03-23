@@ -1,8 +1,7 @@
 "use client";
-import { useMemo, useCallback } from "react";
+import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { invalidateTaskQueue } from "@/lib/query-keys";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import type { QueueItem } from "@/modules/task-queue/contracts";
 import {
@@ -16,6 +15,7 @@ import type {
   TaskQueueRetryStatus,
 } from "./taskQueueModal.types";
 import { useTaskQueueDialogState } from "./useTaskQueueDialogState";
+import { useTaskQueueModalActions } from "./useTaskQueueModalActions";
 import { useTaskQueueSectionState } from "./useTaskQueueSectionState";
 import { useTaskQueue } from "./useTaskQueue";
 import { useTaskQueueMutations } from "./useTaskQueueMutations";
@@ -75,8 +75,9 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const t = useTranslations("TaskQueue");
   const queryClient = useQueryClient();
   const { items, stats, isLoading } = useTaskQueue(ledgerId);
+  const mutations = useTaskQueueMutations(ledgerId);
   const { deleteSourceDocument, batchDelete, batchRetry, cancelTask, dismissTask, batchDismiss } =
-    useTaskQueueMutations(ledgerId);
+    mutations;
   const sectionState = useTaskQueueSectionState();
   const dialogState = useTaskQueueDialogState();
   const {
@@ -105,108 +106,22 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const groupedItems = useMemo(() => groupTaskQueueItems(items), [items]);
   const { withSourceDoc: failedWithSourceDoc, withoutSourceDoc: failedWithoutSourceDoc } =
     useMemo(() => partitionFailedItems(groupedItems.failed), [groupedItems.failed]);
-
-  const handleDeleteConfirmAction = useCallback(() => {
-    if (deleteConfirm.type == null) return;
-
-    if (deleteConfirm.type === "single" && deleteConfirm.id != null && deleteConfirm.id !== "") {
-      deleteSourceDocument.mutate(deleteConfirm.id, {
-        onSuccess: () => setDeleteConfirm((previous) => ({ ...previous, open: false })),
-      });
-      return;
-    }
-
-    if (deleteConfirm.type === "all") {
-      const ids = groupedItems.failed
-        .filter((item) => item.sourceDocumentId != null && item.sourceDocumentId !== "")
-        .map((item) => item.sourceDocumentId!);
-      batchDelete.mutate(ids, {
-        onSuccess: () => setDeleteConfirm((previous) => ({ ...previous, open: false })),
-      });
-    }
-  }, [deleteConfirm, deleteSourceDocument, batchDelete, groupedItems.failed]);
-
-  const handleRetry = useCallback((item: QueueItem) => {
-    if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
-      setRetrySourceDocId(item.sourceDocumentId);
-    }
-  }, []);
-
-  const handleDeleteSingle = useCallback(
-    (item: QueueItem) => {
-      if (item.sourceDocumentId == null || item.sourceDocumentId === "") return;
-
-      openSingleDeleteConfirm(item.sourceDocumentId, t("deleteConfirmTitle"), t("deleteConfirmDesc"));
-    },
-    [openSingleDeleteConfirm, t]
-  );
-
-  const handleDeleteAll = useCallback(() => {
-    openDeleteAllConfirm(t("deleteAllConfirmTitle"), t("deleteAllConfirmDesc"));
-  }, [openDeleteAllConfirm, t]);
-
-  const handleDeleteAllAnomaly = useCallback(() => {
-    const ids = groupedItems.anomaly
-      .map((item) => item.sourceDocumentId)
-      .filter((id): id is string => id != null && id !== "");
-
-    if (ids.length > 0) {
-      batchDelete.mutate(ids);
-    }
-  }, [groupedItems.anomaly, batchDelete]);
-
-  const handleRetryAll = useCallback(
-    (status: TaskQueueRetryStatus) => {
-      const itemsToRetry = groupedItems[status].filter(
-        (item) => item.sourceDocumentId != null && item.sourceDocumentId !== ""
-      );
-      const ids = itemsToRetry.map((item) => item.sourceDocumentId!);
-      batchRetry.mutate(ids);
-    },
-    [groupedItems, batchRetry]
-  );
-
-  const handleCancel = useCallback(
-    (item: QueueItem) => {
-      if (item.taskId != null && item.taskId !== "") {
-        cancelTask.mutate(item.taskId);
-      }
-    },
-    [cancelTask]
-  );
-
-  const handleDismiss = useCallback(
-    (item: QueueItem) => {
-      if (item.taskId != null && item.taskId !== "") {
-        dismissTask.mutate(item.taskId);
-      }
-    },
-    [dismissTask]
-  );
-
   const push = useModalStackStore((state) => state.push);
-
-  const handleViewDetails = useCallback(
-    (item: QueueItem) => {
-      if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
-        push({ type: "source-document", id: item.sourceDocumentId, ledgerId });
-      }
-    },
-    [push, ledgerId]
-  );
-
   const isEmpty = isTaskQueueEmpty(stats, groupedItems);
-
-  const handleDismissAll = useCallback(() => {
-    const ids = failedWithoutSourceDoc.map((item) => item.id);
-    if (ids.length > 0) {
-      batchDismiss.mutate(ids);
-    }
-  }, [failedWithoutSourceDoc, batchDismiss]);
-
-  const handleRetrySuccess = useCallback(async () => {
-    await queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) });
-  }, [queryClient, ledgerId]);
+  const actions = useTaskQueueModalActions({
+    ledgerId,
+    t,
+    groupedItems,
+    failedWithoutSourceDoc,
+    deleteConfirm,
+    openSingleDeleteConfirm,
+    openDeleteAllConfirm,
+    closeDeleteConfirm,
+    setRetrySourceDocId,
+    mutations,
+    push,
+    queryClient,
+  });
 
   return {
     isPendingCollapsed,
@@ -238,16 +153,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     closeDeleteConfirm,
     setRetrySourceDocId,
     setDeleteConfirm,
-    handleDeleteConfirmAction,
-    handleRetry,
-    handleDeleteSingle,
-    handleDeleteAll,
-    handleDeleteAllAnomaly,
-    handleRetryAll,
-    handleCancel,
-    handleDismiss,
-    handleDismissAll,
-    handleViewDetails,
-    handleRetrySuccess,
+    ...actions,
   };
 }

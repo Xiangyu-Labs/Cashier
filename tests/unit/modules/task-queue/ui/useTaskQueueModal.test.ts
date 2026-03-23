@@ -202,7 +202,7 @@ describe("useTaskQueueModal", () => {
       ["doc-1"],
       expect.objectContaining({ onSuccess: expect.any(Function) })
     );
-    expect(batchDismissMutateMock).toHaveBeenCalledWith(["failed-no-doc"]);
+    expect(batchDismissMutateMock).toHaveBeenCalledWith(["task-failed-no-doc"]);
     expect(cancelTaskMutateMock).toHaveBeenCalledWith("task-pending");
     expect(dismissTaskMutateMock).toHaveBeenCalledWith("task-failed-no-doc");
     expect(result.current.retrySourceDocId).toBe("doc-1");
