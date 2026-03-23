@@ -10,7 +10,29 @@ export const resolveAliases = {
 export const coverageConfig = {
   provider: "v8" as const,
   reporter: ["text", "json", "html"],
-  exclude: ["node_modules", ".next", "tests", "src/**/*.test.ts", "src/**/*.test.tsx"],
+  reportsDirectory: "./coverage",
+  all: true,
+  include: ["src/**/*.ts", "src/**/*.tsx"],
+  thresholds: {
+    lines: 70,
+    statements: 70,
+    functions: 70,
+    branches: 60,
+  },
+  exclude: [
+    "node_modules",
+    ".next",
+    "tests",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/app/**/page.tsx",
+    "src/app/**/layout.tsx",
+    "src/app/**/loading.tsx",
+    "src/app/**/error.tsx",
+    "src/app/**/not-found.tsx",
+    "src/app/manifest.ts",
+    "src/modules/**/ui/**/*.tsx",
+  ],
 };
 
 export const defaultProjectExcludes = ["node_modules", ".next"];
@@ -41,6 +63,7 @@ export const dbUnitFiles = [
   "tests/unit/ledger/application/use-cases/create-default-ledger.test.ts",
   "tests/unit/ledger/server/actions/delete.test.ts",
   "tests/unit/lib/auth-actions.test.ts",
+  "tests/unit/modules/source-document/application/parse-source-document/parse-result-handler.test.ts",
 ];
 
 export const unitProjects = [

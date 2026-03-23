@@ -28,6 +28,7 @@ function createMockRequest(url: string): NextRequest {
 
 describe("GET /api/uploads/[...path]", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     mockExtractKeyFromUrl.mockImplementation((url: string) => {
       if (!url.startsWith("/api/uploads/")) return null;
@@ -158,5 +159,87 @@ describe("GET /api/uploads/[...path]", () => {
 
     expect(response.status).toBe(404);
     expect(mockDownload).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [["..", "doc", "a.jpg"]],
+    [["ledger", ".", "a.jpg"]],
+    [["ledger", "doc", "..\\\\a.jpg"]],
+    [["/ledger", "doc", "a.jpg"]],
+  ])("returns 404 for invalid path segments: %j", async (pathSegments) => {
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({ path: pathSegments }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when storage reports file not found", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const docId = crypto.randomUUID();
+    const storageKey = `${ledgerId}/${docId}/receipt.jpg`;
+
+    await db.insert(sourceDocuments).values({
+      id: docId,
+      ledgerId,
+      status: "completed",
+      imageUrls: [`/api/uploads/${storageKey}`],
+    });
+
+    mockDownload.mockRejectedValueOnce(new Error("File not found"));
+
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({ path: [ledgerId, docId, "receipt.jpg"] }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 500 for unexpected storage errors", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const docId = crypto.randomUUID();
+    const storageKey = `${ledgerId}/${docId}/receipt.jpg`;
+
+    await db.insert(sourceDocuments).values({
+      id: docId,
+      ledgerId,
+      status: "completed",
+      imageUrls: [`/api/uploads/${storageKey}`],
+    });
+
+    mockDownload.mockRejectedValueOnce(new Error("boom"));
+
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({ path: [ledgerId, docId, "receipt.jpg"] }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("sets content headers for successful image responses", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const docId = crypto.randomUUID();
+    const storageKey = `${ledgerId}/${docId}/receipt.jpg`;
+
+    await db.insert(sourceDocuments).values({
+      id: docId,
+      ledgerId,
+      status: "completed",
+      imageUrls: [`/api/uploads/${storageKey}`],
+    });
+
+    mockDownload.mockResolvedValueOnce(Buffer.from("image"));
+
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({ path: [ledgerId, docId, "receipt.jpg"] }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
   });
 });
