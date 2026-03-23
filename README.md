@@ -25,28 +25,17 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 - Node.js 20+
 - npm or pnpm
 
-### Environment Variables
+### Configuration
 
-Copy `.env.example` to `.env.local` and fill in the required values:
+Copy `.env.example` to `.env.local` and fill in the values you need:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Key variables:
-
-```bash
-# Database (SQLite file path)
-DATABASE_URL="file:./data/sqlite.db"
-
-# Auth
-AUTH_SECRET="your-secret-key"  # Generate with `openssl rand -base64 32`
-AUTH_URL="http://localhost:3000"
-AUTH_RESEND_KEY="re_..."       # Resend API Key for emails
-
-# AI
-OPENAI_API_KEY="sk-..."
-```
+- Canonical key list and descriptions: `src/lib/env/catalog.ts`
+- Startup validation rules: `src/lib/env/startup.ts`
+- Example defaults and comments: `.env.example`
 
 ### Installation
 

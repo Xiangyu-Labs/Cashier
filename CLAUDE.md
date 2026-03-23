@@ -210,67 +210,18 @@ Place module-specific hooks in `src/modules/{domain}/hooks/`. Keep hooks under 2
 - Keep feature-private state helpers and URL coordination inside the owning feature rather than `src/lib` or `src/hooks`.
 - Separate pure URL/search-param utilities from navigation side effects (`router.replace`, `window.history`, transitions) instead of mixing them in one helper module.
 
-### Environment Variables
+### Configuration
 
-Configuration is organized into three tiers:
+Copy `.env.example` to `.env.local` and fill in the values you need:
 
-#### 1. System Configuration (`.env.local`)
+```bash
+cp .env.example .env.local
+```
 
-Sensitive and startup-required settings. **Never expose to frontend.**
-
-**Database:**
-
-- `DATABASE_URL` - SQLite path (e.g., `file:./data/sqlite.db`)
-
-**OpenAI:**
-
-- `OPENAI_API_KEY` - Your OpenAI API Key
-- `OPENAI_BASE_URL` - (Optional) Custom Base URL for proxies
-- `AI_MODEL_TEXT` - Text model for business logic (optional, default: `gpt-4o-mini`)
-- `AI_MODEL_VISION` - Vision model for image description (optional, default: `gpt-4o`)
-- `AI_MAX_RETRIES` - Max retry attempts (default: 3)
-- `AI_RETRY_DELAY_MS` - Retry delay in ms (default: 1000)
-
-**Authentication:**
-
-- `AUTH_SECRET` - Secret key for signing cookies and tokens
-- `AUTH_RESEND_KEY` - Resend API key for OTP emails (optional; without it OTPs are logged instead of emailed)
-- `AUTH_EMAIL_FROM` - Email address for sending OTPs (optional, default: `noreply@example.com`)
-- `DISABLE_REGISTRATION` - Set to 'true' to disable new registrations
-- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` - (Optional) SSO configuration
-
-**Storage & Network:**
-
-- `LOCAL_STORAGE_PATH` - Local file storage path (default: `./data/uploads`)
-- `TRUSTED_PROXY` - (Optional) Trusted proxy for IP extraction
-
-#### 2. Runtime Configuration (`.env.local` → Future: Admin Panel)
-
-Business logic settings. Currently in `.env`, future migration to admin panel.
-
-**OTP Settings:**
-
-- `OTP_EXPIRES_SECONDS` - OTP expiration time (default: 300)
-- `OTP_LOCKOUT_MINUTES` - Account lockout duration (default: 15)
-- `OTP_MAX_ATTEMPTS` - Max verification attempts (default: 5)
-- `OTP_RESEND_COOLDOWN_SECONDS` - Resend cooldown (default: 60)
-- `AUTH_RATE_LIMIT_MAX` - Max OTP sends per window (default: 10)
-- `AUTH_RATE_LIMIT_WINDOW` - Rate limit window in seconds (default: 900)
-
-**System Settings:**
-
-- `LOG_LEVEL` - Logging level (default: `info`)
-- `MAX_TASK_WORKER` - Max concurrent background tasks (default: 10)
-
-#### 3. Frontend Configuration (Build-time)
-
-Exposed to browser via `NEXT_PUBLIC_` prefix. **Requires rebuild to change.**
-
-- `NEXT_PUBLIC_APP_URL` - Public app URL
-- `NEXT_PUBLIC_OIDC_ENABLED` - Show SSO button (default: `false`)
-- `NEXT_PUBLIC_OIDC_BUTTON_NAME` - SSO button text (default: `SSO`)
-
-Startup validates required environment variables and malformed optional values during `instrumentation.register()` before the flow runtime initializes.
+- Canonical key list and descriptions: `src/lib/env/catalog.ts`
+- Startup validation rules: `src/lib/env/startup.ts`
+- Example defaults and comments: `.env.example`
+- Durable env governance rules: `docs/architecture/coding-patterns.md`
 
 ## Workflow
 
