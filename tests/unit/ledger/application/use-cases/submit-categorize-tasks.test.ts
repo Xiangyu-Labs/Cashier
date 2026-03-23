@@ -48,7 +48,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { submitAutoCategorize, submitBatchCategorize } from "../../../../../src/modules/ledger/application/use-cases/submit-categorize-tasks";
+import { submitAutoCategorize, submitBatchCategorize } from "@/modules/ledger/application/use-cases/submit-categorize-tasks";
 
 describe("submit categorize tasks", () => {
   beforeEach(() => {

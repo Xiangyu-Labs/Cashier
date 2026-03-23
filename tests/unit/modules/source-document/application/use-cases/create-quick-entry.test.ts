@@ -54,7 +54,7 @@ vi.mock("@/modules/source-document/application/services/source-document-ledger-e
   insertSourceDocumentLedgerEntry: insertSourceDocumentLedgerEntryMock,
 }));
 
-import { createQuickEntry } from "../../../../../../src/modules/source-document/application/use-cases/create-quick-entry";
+import { createQuickEntry } from "@/modules/source-document/application/use-cases/create-quick-entry";
 
 describe("createQuickEntry", () => {
   let randomUuidSpy: ReturnType<typeof vi.spyOn>;

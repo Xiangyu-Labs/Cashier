@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { LedgerPageClient } from "../../../../../src/modules/workspace/ui/LedgerPageClient";
+import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
 
 const replaceLedgerUrlMock = vi.hoisted(() => vi.fn());
 const useLedgerTabsMock = vi.hoisted(() => vi.fn());

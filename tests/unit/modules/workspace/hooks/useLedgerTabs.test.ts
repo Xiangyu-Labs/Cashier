@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useLedgerTabs } from "../../../../../src/modules/workspace/hooks/useLedgerTabs";
+import { useLedgerTabs } from "@/modules/workspace/hooks/useLedgerTabs";
 
 vi.mock("@/i18n/routing", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),

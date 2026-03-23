@@ -15,7 +15,7 @@ vi.mock("@/modules/source-document/actions", () => ({
   getAllSourceDocumentsAction: getAllSourceDocumentsActionMock,
 }));
 
-import { useSourceDocuments } from "../../../src/modules/source-document/hooks/useSourceDocuments";
+import { useSourceDocuments } from "@/modules/source-document/hooks/useSourceDocuments";
 
 const completedDoc = {
   id: "doc-1",

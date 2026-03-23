@@ -20,7 +20,7 @@ vi.mock("@/modules/stats/ui/AdaptiveHeatmap/SmallGrid", () => ({
   },
 }));
 
-import { AdaptiveHeatmap } from "../../../../../../src/modules/stats/ui/AdaptiveHeatmap/index";
+import { AdaptiveHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/index";
 
 const stats: CalendarHeatmapStats = {
   minAmount: 0,

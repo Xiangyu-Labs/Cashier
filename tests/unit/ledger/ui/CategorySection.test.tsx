@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { CategorySection } from "../../../../src/modules/ledger/ui/CategorySection";
+import { CategorySection } from "@/modules/ledger/ui/CategorySection";
 import type { EntryCategoryDto as EntryCategory } from "@/modules/ledger/contracts";
 
 vi.mock("next-intl", () => ({

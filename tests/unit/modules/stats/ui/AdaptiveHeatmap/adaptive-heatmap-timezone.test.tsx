@@ -1,8 +1,8 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { LargeGridHeatmap } from "../../../../../../src/modules/stats/ui/AdaptiveHeatmap/LargeGrid";
-import { SmallGridHeatmap } from "../../../../../../src/modules/stats/ui/AdaptiveHeatmap/SmallGrid";
+import { LargeGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/LargeGrid";
+import { SmallGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/SmallGrid";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
 vi.mock("@/modules/stats/ui/AdaptiveHeatmap/DayCellLarge", () => ({

@@ -52,7 +52,7 @@ vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
 
-import { getSourceDocumentDetail } from "../../../../../../src/modules/source-document/application/queries/get-source-document-detail";
+import { getSourceDocumentDetail } from "@/modules/source-document/application/queries/get-source-document-detail";
 
 describe("getSourceDocumentDetail", () => {
   beforeEach(() => {

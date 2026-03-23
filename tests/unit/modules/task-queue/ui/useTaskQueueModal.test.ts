@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { QueueItem, TaskQueueStats } from "../../../../../src/modules/task-queue/contracts";
+import type { QueueItem, TaskQueueStats } from "@/modules/task-queue/contracts";
 
 const {
   batchDeleteMutateMock,
@@ -49,7 +49,7 @@ vi.mock("@/lib/store/modal-stack", () => ({
     selector({ push: pushMock }),
 }));
 
-import { useTaskQueueModal } from "../../../../../src/modules/task-queue/ui/useTaskQueueModal";
+import { useTaskQueueModal } from "@/modules/task-queue/ui/useTaskQueueModal";
 
 function createItem(overrides: Partial<QueueItem>): QueueItem {
   return {

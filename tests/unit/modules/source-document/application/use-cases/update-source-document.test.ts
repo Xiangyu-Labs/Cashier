@@ -68,7 +68,7 @@ vi.mock("@/modules/source-document/application/services/processing", () => ({
   processImages: processImagesMock,
 }));
 
-import { updateSourceDocumentImages } from "../../../../../../src/modules/source-document/application/use-cases/update-source-document";
+import { updateSourceDocumentImages } from "@/modules/source-document/application/use-cases/update-source-document";
 
 describe("updateSourceDocumentImages", () => {
   beforeEach(() => {

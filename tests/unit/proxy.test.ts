@@ -34,7 +34,7 @@ vi.mock("../../src/i18n/routing", () => ({
 }));
 
 // Import the proxy (this executes the mocked NextAuth and exports the callback)
-import proxy from "../../src/proxy";
+import proxy from "@/proxy";
 
 describe("Proxy Logic", () => {
   beforeEach(() => {

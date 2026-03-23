@@ -63,6 +63,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects relative module imports from app files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getEnhancedStats } from "../../../../../modules/stats/actions";
+        export const leak = getEnhancedStats;
+      `,
+      "src/app/[locale]/(protected)/ledger/[id]/page.tsx"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
   it("rejects module server-action deep imports from shared library files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -399,6 +411,30 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
+  it("rejects cross-module relative imports from module files", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getPendingSourceDocuments } from "../../../source-document/queries";
+        export const leak = getPendingSourceDocuments;
+      `,
+      "src/modules/ledger/application/use-cases/mutate-ledger-entries.ts"
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+  });
+
+  it("allows same-module relative imports", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { mapLedgerEntryDto } from "../mappers";
+        export const value = mapLedgerEntryDto;
+      `,
+      "src/modules/ledger/application/queries/list-ledger-entry-page.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects same-module action imports from application files", async () => {
     const messages = await lintRestrictedImports(
       `
@@ -710,25 +746,37 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  it("rejects auth helper imports from test files", async () => {
+  it("allows explicit auth helper imports from test files via aliases", async () => {
     const messages = await lintRestrictedImports(
       `
         import { requireLedgerAccess } from "@/modules/auth/helpers";
-        export const leak = requireLedgerAccess;
+        export const value = requireLedgerAccess;
       `,
       "tests/integration/auth/auth-helpers.test.ts"
     );
 
-    expect(messages.length).toBeGreaterThan(0);
+    expect(messages).toHaveLength(0);
   });
 
-  it("rejects currency services imports from test files", async () => {
+  it("allows explicit internal service imports from test files via aliases", async () => {
     const messages = await lintRestrictedImports(
       `
         import { ExchangeRateService } from "@/modules/currency/services";
-        export const leak = ExchangeRateService;
+        export const value = ExchangeRateService;
       `,
       "tests/integration/ledger/entry-actions.test.ts"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
+  it("rejects relative src imports from tests", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { getTaskQueueQuery } from "../../../../../../src/modules/task-queue/application/queries/get-task-queue";
+        export const leak = getTaskQueueQuery;
+      `,
+      "tests/integration/modules/task-queue/application/queries/get-task-queue.test.ts"
     );
 
     expect(messages.length).toBeGreaterThan(0);
@@ -890,16 +938,16 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
-  it("rejects deep stats ui imports from test files", async () => {
+  it("allows deep stats ui imports from test files via aliases", async () => {
     const messages = await lintRestrictedImports(
       `
         import { LargeGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap/LargeGrid";
-        export const leak = LargeGridHeatmap;
+        export const value = LargeGridHeatmap;
       `,
       "tests/unit/components/providers.test.ts"
     );
 
-    expect(messages.length).toBeGreaterThan(0);
+    expect(messages).toHaveLength(0);
   });
 
   it("rejects flowEngine compatibility imports from module files", async () => {

@@ -31,7 +31,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { render } from "@react-email/render";
-import { sendLoginNotification } from "../../../../src/modules/auth/services/notifications";
+import { sendLoginNotification } from "@/modules/auth/services/notifications";
 
 describe("sendLoginNotification", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;

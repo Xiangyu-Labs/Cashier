@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { LedgerEntriesTab } from "../../../../../src/modules/workspace/ui/LedgerEntriesTab";
+import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import type {
   EntryCategoryDto as EntryCategory,
   LedgerDto as Ledger,

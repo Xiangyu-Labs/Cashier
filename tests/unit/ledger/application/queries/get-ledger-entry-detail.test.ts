@@ -7,7 +7,7 @@ import {
   createSourceDocumentData,
 } from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { getLedgerEntryDetail } from "../../../../../src/modules/ledger/application/queries/get-ledger-entry-detail";
+import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 
 describe("getLedgerEntryDetail", () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@ import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { authenticateWithOTP, RegistrationDisabledError } from "@/modules/auth/use-cases";
 import { memoryStore } from "@/lib/memory-store";
-import { hashOTP } from "../../../src/modules/auth/services/otp";
+import { hashOTP } from "@/modules/auth/services/otp";
 
 vi.mock("resend", () => ({
   Resend: class MockResend {

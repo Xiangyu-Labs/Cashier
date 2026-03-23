@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
-import { useQuickEntryFormController } from "../../../../../src/modules/source-document/hooks/useQuickEntryFormController";
-import type { EntryCategory } from "../../../../../src/modules/ledger/contracts";
+import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,

@@ -2,11 +2,11 @@ import type {
   BatchConversionItem,
   BatchConvertCurrencyResult,
   ConvertCurrencyResult,
-} from "../../../src/modules/currency/contracts";
+} from "@/modules/currency/contracts";
 import type {
   ConvertCurrencyResult as UseCaseConvertCurrencyResult,
-} from "../../../src/modules/currency/use-cases";
-import * as contracts from "../../../src/modules/currency/contracts";
+} from "@/modules/currency/use-cases";
+import * as contracts from "@/modules/currency/contracts";
 
 describe("currency contracts exports", () => {
   it("imports contracts module at runtime", () => {

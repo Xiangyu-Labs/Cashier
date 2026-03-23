@@ -3,11 +3,11 @@ import {
   buildLedgerUrl,
   readLedgerFilterParams,
   updateLedgerSearchParams,
-} from "../../../src/modules/workspace/ledger-url-params";
+} from "@/modules/workspace/ledger-url-params";
 import {
   replaceAndNavigateLedgerUrl,
   replaceLedgerUrl,
-} from "../../../src/modules/workspace/ledger-url-navigation";
+} from "@/modules/workspace/ledger-url-navigation";
 
 describe("ledger-url-params", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useLedgerDialogState } from "../../../../../src/modules/workspace/ui/useLedgerDialogState";
+import { useLedgerDialogState } from "@/modules/workspace/ui/useLedgerDialogState";
 
 describe("useLedgerDialogState", () => {
   it("defaults to closed input, ai mode, and closed pending modal", () => {

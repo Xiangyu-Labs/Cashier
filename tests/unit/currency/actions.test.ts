@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   batchConvertCurrencyAction,
   convertCurrencyAction,
-} from "../../../src/modules/currency/actions";
-import type { BatchConversionItem } from "../../../src/modules/currency/contracts";
-import { convertCurrency } from "../../../src/modules/currency/application/use-cases/convert-currency";
-import { convertAmountsBatch } from "../../../src/modules/currency/application/use-cases/convert-amounts-batch";
+} from "@/modules/currency/actions";
+import type { BatchConversionItem } from "@/modules/currency/contracts";
+import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
+import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
 
 vi.mock("../../../src/modules/currency/application/use-cases/convert-currency", () => ({
   convertCurrency: vi.fn(),

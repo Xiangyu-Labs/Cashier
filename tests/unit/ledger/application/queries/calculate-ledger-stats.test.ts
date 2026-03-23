@@ -6,7 +6,7 @@ vi.mock("@/modules/ledger/application/queries/calculate-ledger-entry-stats", () 
   calculateLedgerEntryStats: calculateLedgerEntryStatsMock,
 }));
 
-import { calculateLedgerStats } from "../../../../../src/modules/ledger/application/queries/calculate-ledger-stats";
+import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 
 describe("calculateLedgerStats", () => {
   it("passes through only provided filters and main currency", async () => {

@@ -55,7 +55,7 @@ vi.mock("@/lib/storage/local", () => ({
   getLocalStorage: getLocalStorageMock,
 }));
 
-import { canAccessSourceDocumentUploadQuery } from "../../../../../../src/modules/source-document/application/queries/can-access-source-document-upload";
+import { canAccessSourceDocumentUploadQuery } from "@/modules/source-document/application/queries/can-access-source-document-upload";
 
 describe("canAccessSourceDocumentUploadQuery", () => {
   beforeEach(() => {

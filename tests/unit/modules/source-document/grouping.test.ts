@@ -4,7 +4,7 @@ import {
   calculateSourceDocumentStats,
   groupPendingSourceDocuments,
   groupSourceDocumentsByStatus,
-} from "../../../../src/modules/source-document/grouping";
+} from "@/modules/source-document/grouping";
 
 describe("grouping helpers", () => {
   const docs = [

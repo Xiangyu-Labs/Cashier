@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCaseExpression } from "../../../../src/modules/ledger/server-actions/helpers";
-import type { fetchEntriesForConversion } from "../../../../src/modules/ledger/server-actions/helpers";
+import { buildCaseExpression } from "@/modules/ledger/server-actions/helpers";
+import type { fetchEntriesForConversion } from "@/modules/ledger/server-actions/helpers";
 
 describe("buildCaseExpression", () => {
   it("throws a clear error when a conversion result is missing for an entry", () => {

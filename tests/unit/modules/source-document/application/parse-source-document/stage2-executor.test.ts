@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   executeStage2,
   type Stage2Input,
-} from "../../../../../../src/modules/source-document/application/parse-source-document/stage2-executor";
+} from "@/modules/source-document/application/parse-source-document/stage2-executor";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow/types";
-import type { ValidationSummary } from "../../../../../../src/modules/source-document/application/parse-source-document/types";
+import type { ValidationSummary } from "@/modules/source-document/application/parse-source-document/types";
 
 describe("Stage 2 Executor", () => {
   const baseValidationSummary: ValidationSummary = {

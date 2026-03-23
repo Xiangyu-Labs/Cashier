@@ -10,7 +10,7 @@ vi.mock("@/config/default-ledger", () => ({
   getDefaultLedger: getDefaultLedgerMock,
 }));
 
-import { createDefaultLedger } from "../../../../../src/modules/ledger/application/use-cases/create-default-ledger";
+import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
 
 describe("createDefaultLedger", () => {
   beforeEach(() => {

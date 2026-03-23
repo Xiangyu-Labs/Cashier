@@ -1,8 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
-const featureNames = [
+const LEGACY_FEATURE_NAMES = [
   "auth",
   "calendar",
   "currency",
@@ -12,31 +14,25 @@ const featureNames = [
   "task-queue",
 ];
 
-const moduleNames = [
-  "auth",
-  "currency",
-  "ledger",
-  "source-document",
-  "stats",
-  "task-queue",
-  "workspace",
-];
-
 const LEGACY_FEATURE_IMPORT_PATTERNS = ["@/features/**"];
+const MAX_PROJECT_RELATIVE_DEPTH = 8;
+const MAX_MODULE_RELATIVE_DEPTH = 6;
+const MAX_LOCAL_RELATIVE_DEPTH = 4;
 
+// Public module entrypoints are the only stable cross-module import surface.
 const MODULE_PUBLIC_ENTRYPOINTS = {
   auth: [
     "access",
     "actions",
     "constants",
+    "contract-schemas",
     "contracts",
     "errors",
-    "hooks",
     "queries",
     "ui",
     "use-cases",
   ],
-  currency: ["client", "events", "ui", "use-cases"],
+  currency: ["actions", "client", "contracts", "events", "ui", "use-cases"],
   ledger: [
     "access",
     "actions",
@@ -59,11 +55,33 @@ const MODULE_PUBLIC_ENTRYPOINTS = {
     "ui",
     "use-cases",
   ],
-  stats: ["actions", "contracts", "queries", "ui"],
-  "task-queue": ["actions", "ui"],
+  stats: ["actions", "contract-schemas", "contracts", "queries", "types", "ui"],
+  "task-queue": ["actions", "contract-schemas", "contracts", "types", "ui"],
   workspace: ["queries", "tabs", "ui", "use-cases"],
 };
+const moduleNames = Object.keys(MODULE_PUBLIC_ENTRYPOINTS);
 
+function moduleEntrypointExists(moduleName, entrypoint) {
+  const moduleRoot = path.join(import.meta.dirname, "src/modules", moduleName);
+  return [
+    path.join(moduleRoot, `${entrypoint}.ts`),
+    path.join(moduleRoot, `${entrypoint}.tsx`),
+    path.join(moduleRoot, entrypoint, "index.ts"),
+    path.join(moduleRoot, entrypoint, "index.tsx"),
+  ].some((candidate) => fs.existsSync(candidate));
+}
+
+for (const [moduleName, entrypoints] of Object.entries(MODULE_PUBLIC_ENTRYPOINTS)) {
+  for (const entrypoint of entrypoints) {
+    if (!moduleEntrypointExists(moduleName, entrypoint)) {
+      throw new Error(
+        `eslint module boundary manifest references missing entrypoint "${moduleName}/${entrypoint}"`
+      );
+    }
+  }
+}
+
+// These paths exist today but are deprecated or intentionally hidden behind narrower facades.
 const SHARED_FACADE_IMPORT_RESTRICTIONS = [
   {
     name: "@/modules/auth/helpers",
@@ -135,6 +153,7 @@ const FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS = [
   },
 ];
 
+// Domain rules that sit on top of the generic public/private boundary model.
 function createModuleSpecificPathRestrictions(currentModule) {
   if (currentModule === "source-document") {
     return [
@@ -217,21 +236,6 @@ function createDeepFeatureImportPatterns(targetFeatures) {
   ]);
 }
 
-function createCrossFeatureBoundaryRule(currentFeature) {
-  const disallowedFeatures = featureNames.filter((featureName) => featureName !== currentFeature);
-  return [
-    "error",
-    {
-      patterns: [
-        {
-          group: createDeepFeatureImportPatterns(disallowedFeatures),
-          message: "Cross-feature imports must go through the target feature's public entrypoint.",
-        },
-      ],
-    },
-  ];
-}
-
 function createModuleRootImportRestrictions(targetModules) {
   return targetModules.map((moduleName) => ({
     name: `@/modules/${moduleName}`,
@@ -264,6 +268,29 @@ function createDeepModuleImportPatterns(targetModules) {
   }));
 }
 
+function createRelativeImportPatterns(targetPaths, maxDepth) {
+  return targetPaths.flatMap((targetPath) =>
+    Array.from({ length: maxDepth }, (_, index) => {
+      const prefix = "../".repeat(index + 1);
+      return [`${prefix}${targetPath}`, `${prefix}${targetPath}/**`];
+    }).flat()
+  );
+}
+
+function createCrossModuleRelativeImportPatterns(targetModules) {
+  return targetModules.map((moduleName) => ({
+    group: createRelativeImportPatterns([moduleName], MAX_MODULE_RELATIVE_DEPTH),
+    message: `Cross-module relative imports are private. Use one of: ${describeModulePublicEntrypoints(moduleName)}.`,
+  }));
+}
+
+function createRelativeProjectEscapePattern(targetPaths, message) {
+  return {
+    group: createRelativeImportPatterns(targetPaths, MAX_PROJECT_RELATIVE_DEPTH),
+    message,
+  };
+}
+
 function createCrossModuleBoundaryRule(currentModule) {
   const options = createCrossModuleBoundaryOptions(currentModule);
   return ["error", options];
@@ -280,6 +307,7 @@ function createCrossModuleBoundaryOptions(currentModule) {
       ...createModuleSpecificImportPatterns(currentModule),
       ...createExplicitModuleBoundaryPatterns(disallowedModules),
       ...createDeepModuleImportPatterns(disallowedModules),
+      ...createCrossModuleRelativeImportPatterns(disallowedModules),
     ],
     paths: [
       ...createModuleRootImportRestrictions(disallowedModules),
@@ -306,18 +334,7 @@ function createApplicationLayerBoundaryRule(currentModule) {
             `@/modules/${currentModule}/actions`,
             `@/modules/${currentModule}/actions/**`,
             `@/modules/${currentModule}/server-actions/**`,
-            "../actions",
-            "../actions/**",
-            "../../actions",
-            "../../actions/**",
-            "../../../actions",
-            "../../../actions/**",
-            "../../../../actions",
-            "../../../../actions/**",
-            "../server-actions/**",
-            "../../server-actions/**",
-            "../../../server-actions/**",
-            "../../../../server-actions/**",
+            ...createRelativeImportPatterns(["actions", "server-actions"], MAX_LOCAL_RELATIVE_DEPTH),
           ],
           message:
             "Application layer must not depend on actions or server-actions. Move shared logic into application/services or use-cases instead.",
@@ -403,28 +420,6 @@ function createLedgerServerActionBoundaryRule() {
             "Ledger server-actions must not depend on persistence directly. Move data access into ledger application queries or use-cases.",
         },
       ],
-    },
-  ];
-}
-
-function createFeatureBoundaryConfigs(currentFeature) {
-  return [
-    {
-      files: [
-        `src/features/${currentFeature}/components/**/*.ts`,
-        `src/features/${currentFeature}/components/**/*.tsx`,
-        `src/features/${currentFeature}/client/**/*.ts`,
-        `src/features/${currentFeature}/client/**/*.tsx`,
-      ],
-      rules: {
-        "no-restricted-imports": createCrossFeatureBoundaryRule(currentFeature),
-      },
-    },
-    {
-      files: [`src/features/${currentFeature}/server/**/*.ts`],
-      rules: {
-        "no-restricted-imports": createCrossFeatureBoundaryRule(currentFeature),
-      },
     },
   ];
 }
@@ -536,7 +531,7 @@ const eslintConfig = defineConfig([
               message: "App and shared UI code must not import removed feature paths.",
             },
             {
-              group: createDeepFeatureImportPatterns(featureNames),
+              group: createDeepFeatureImportPatterns(LEGACY_FEATURE_NAMES),
               message:
                 "App and shared UI code must import features via public root/server/client/components entrypoints.",
             },
@@ -546,6 +541,10 @@ const eslintConfig = defineConfig([
               group: ["@/persistence", "@/persistence/**"],
               message: "App and shared UI code must not depend directly on persistence.",
             },
+            createRelativeProjectEscapePattern(
+              ["modules", "features", "persistence"],
+              'App and shared UI code must use "@/..." aliases instead of relative project paths.'
+            ),
           ],
         },
       ],
@@ -584,11 +583,15 @@ const eslintConfig = defineConfig([
               message: "Shared library/types code must not import removed feature paths.",
             },
             {
-              group: createDeepFeatureImportPatterns(featureNames),
+              group: createDeepFeatureImportPatterns(LEGACY_FEATURE_NAMES),
               message: "Shared library/types code must not deep-import feature internals.",
             },
             ...createExplicitModuleBoundaryPatterns(moduleNames),
             ...createDeepModuleImportPatterns(moduleNames),
+            createRelativeProjectEscapePattern(
+              ["modules", "features", "persistence"],
+              'Shared library/types code must use "@/..." aliases instead of relative project paths.'
+            ),
           ],
         },
       ],
@@ -606,6 +609,10 @@ const eslintConfig = defineConfig([
               message:
                 "Shared UI primitives must not depend on domain modules. Move domain-aware UI into the owning module.",
             },
+            createRelativeProjectEscapePattern(
+              ["modules"],
+              'Shared UI primitives must use "@/..." aliases instead of relative module paths.'
+            ),
           ],
         },
       ],
@@ -640,25 +647,21 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          paths: [
-            ...createModuleRootImportRestrictions(moduleNames),
-            ...AUTH_ACCESS_IMPORT_RESTRICTIONS,
-            ...LEDGER_QUERY_IMPORT_RESTRICTIONS,
-            ...FLOW_COMPATIBILITY_IMPORT_RESTRICTIONS,
-          ],
+          paths: [...createModuleRootImportRestrictions(moduleNames)],
           patterns: [
             {
               group: LEGACY_FEATURE_IMPORT_PATTERNS,
               message: "Tests must import modules or lib paths, not removed feature paths.",
             },
-            ...createExplicitModuleBoundaryPatterns(moduleNames),
-            ...createDeepModuleImportPatterns(moduleNames),
+            {
+              group: createRelativeImportPatterns(["src"], MAX_PROJECT_RELATIVE_DEPTH),
+              message: 'Tests must import source files through "@/..." aliases instead of relative "src" paths.',
+            },
           ],
         },
       ],
     },
   },
-  ...featureNames.flatMap((featureName) => createFeatureBoundaryConfigs(featureName)),
   ...moduleNames.map((moduleName) => ({
     files: [`src/modules/${moduleName}/**/*.ts`, `src/modules/${moduleName}/**/*.tsx`],
     rules: {

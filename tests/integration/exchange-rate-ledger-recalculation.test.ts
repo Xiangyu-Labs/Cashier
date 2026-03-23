@@ -6,7 +6,7 @@ import {
   initializeExchangeRateLedgerRecalculationOrchestration,
   onExchangeRatesStored,
 } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
-import { batchConvertCurrencyAction } from "../../src/modules/currency/actions";
+import { batchConvertCurrencyAction } from "@/modules/currency/actions";
 
 const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
   recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),

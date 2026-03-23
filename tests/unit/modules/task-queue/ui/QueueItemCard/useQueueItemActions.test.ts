@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { QueueItem } from "../../../../../../src/modules/task-queue/contracts";
-import { useQueueItemActions } from "../../../../../../src/modules/task-queue/ui/QueueItemCard/useQueueItemActions";
+import type { QueueItem } from "@/modules/task-queue/contracts";
+import { useQueueItemActions } from "@/modules/task-queue/ui/QueueItemCard/useQueueItemActions";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => `translated:${key}`,

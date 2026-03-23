@@ -51,7 +51,7 @@ vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
 
-import { getSourceDocumentLight } from "../../../../../../src/modules/source-document/application/queries/get-source-document-light";
+import { getSourceDocumentLight } from "@/modules/source-document/application/queries/get-source-document-light";
 
 describe("getSourceDocumentLight", () => {
   beforeEach(() => {

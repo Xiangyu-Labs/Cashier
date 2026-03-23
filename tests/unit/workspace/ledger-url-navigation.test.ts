@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { replaceAndNavigateLedgerUrl, replaceLedgerUrl } from "../../../src/modules/workspace/ledger-url-navigation";
+import { replaceAndNavigateLedgerUrl, replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
 
 describe("ledger-url-navigation", () => {
   it("replaceLedgerUrl updates history and returns the built url", () => {

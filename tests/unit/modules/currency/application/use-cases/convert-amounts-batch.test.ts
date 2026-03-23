@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { convertAmountsBatch } from "../../../../../../src/modules/currency/application/use-cases/convert-amounts-batch";
-import { ExchangeRateService } from "../../../../../../src/modules/currency/application/services/exchange-rate";
+import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
+import { ExchangeRateService } from "@/modules/currency/application/services/exchange-rate";
 
 describe("convertAmountsBatch", () => {
   afterEach(() => {

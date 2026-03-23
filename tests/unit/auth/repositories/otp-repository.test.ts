@@ -4,13 +4,13 @@ import {
   createOTPToken,
   deleteOTPToken,
   cleanupExpiredOTPTokens,
-} from "../../../../src/modules/auth/repositories/otp-repository";
+} from "@/modules/auth/repositories/otp-repository";
 import {
   findOTPRecord,
   verifyOTPWithPolicy,
   isAccountLocked,
-} from "../../../../src/modules/auth/services/otp-verification";
-import { generateOTP, verifyOTP } from "../../../../src/modules/auth/services/otp";
+} from "@/modules/auth/services/otp-verification";
+import { generateOTP, verifyOTP } from "@/modules/auth/services/otp";
 import { otpTokens } from "@/persistence/schema/auth";
 import { eq } from "drizzle-orm";
 

@@ -12,7 +12,7 @@ vi.mock("@/lib/storage/local", () => ({
   getLocalStorage: getLocalStorageMock,
 }));
 
-import { rehomeLocalUploadUrls } from "../../../src/modules/source-document/application/services/rehome-local-upload-urls";
+import { rehomeLocalUploadUrls } from "@/modules/source-document/application/services/rehome-local-upload-urls";
 
 describe("rehomeLocalUploadUrls", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useLedgerEntriesTabState } from "../../../../../src/modules/workspace/ui/useLedgerEntriesTabState";
+import { useLedgerEntriesTabState } from "@/modules/workspace/ui/useLedgerEntriesTabState";
 
 describe("useLedgerEntriesTabState", () => {
   it("opens source-document delete confirm with payload", () => {

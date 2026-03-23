@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { executeStage0 } from "../../../../../../src/modules/source-document/application/parse-source-document/stage0-vision";
+import { executeStage0 } from "@/modules/source-document/application/parse-source-document/stage0-vision";
 import type { AIContext } from "@/lib/flow/types";
 
 function createMockAI(responseText: string): AIContext {

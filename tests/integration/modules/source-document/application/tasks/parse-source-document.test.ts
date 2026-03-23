@@ -11,7 +11,7 @@ import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   type ParseSourceDocumentOutput,
-} from "../../../../../../src/modules/source-document/application/tasks/parse-source-document";
+} from "@/modules/source-document/application/tasks/parse-source-document";
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";

@@ -13,7 +13,7 @@ vi.mock("@/modules/task-queue/actions", () => ({
   getTaskQueueAction: getTaskQueueActionMock,
 }));
 
-import { useTaskQueue } from "../../../../../src/modules/task-queue/ui/useTaskQueue";
+import { useTaskQueue } from "@/modules/task-queue/ui/useTaskQueue";
 
 describe("useTaskQueue", () => {
   beforeEach(() => {

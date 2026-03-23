@@ -15,7 +15,7 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 
 import { ValidationError } from "@/lib/errors";
 import type { CreateSourceDocumentInput } from "@/modules/source-document/contracts";
-import { createSourceDocumentFromCredential } from "../../../../../../src/modules/source-document/application/use-cases/create-from-credential";
+import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
 
 describe("createSourceDocumentFromCredential", () => {
   beforeEach(() => {

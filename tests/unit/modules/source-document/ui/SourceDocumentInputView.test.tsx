@@ -1,7 +1,7 @@
 import { createRef, type ComponentProps } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SourceDocumentInputView } from "../../../../../src/modules/source-document/ui/SourceDocumentInputView";
+import { SourceDocumentInputView } from "@/modules/source-document/ui/SourceDocumentInputView";
 
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text

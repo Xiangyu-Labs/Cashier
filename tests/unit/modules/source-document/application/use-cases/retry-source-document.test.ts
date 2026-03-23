@@ -92,7 +92,7 @@ vi.mock("@/modules/source-document/application/services/rehome-local-upload-urls
 }));
 
 import { NotFoundError } from "@/lib/errors";
-import { retrySourceDocument } from "../../../../../../src/modules/source-document/application/use-cases/retry-source-document";
+import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 
 describe("retrySourceDocument", () => {
   beforeEach(() => {

@@ -9,7 +9,7 @@ vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 
-import { withSourceDocumentLedgerAccess } from "../../../src/modules/source-document/server-actions/access";
+import { withSourceDocumentLedgerAccess } from "@/modules/source-document/server-actions/access";
 
 describe("withSourceDocumentLedgerAccess", () => {
   beforeEach(() => {

@@ -4,7 +4,7 @@ import {
   getHeatmapColor,
   getHeatmapLegend,
   getHeatmapLevel,
-} from "../../../../../src/modules/stats/lib/heatmap-colors";
+} from "@/modules/stats/lib/heatmap-colors";
 
 describe("heatmap-colors", () => {
   it("returns level 0 for zero and negative amounts", () => {

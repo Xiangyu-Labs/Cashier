@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useDetailsTabState } from "../../../../../src/modules/workspace/ui/useDetailsTabState";
+import { useDetailsTabState } from "@/modules/workspace/ui/useDetailsTabState";
 
 describe("useDetailsTabState", () => {
   it("opens details modal when viewing an entry", () => {

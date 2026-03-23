@@ -81,7 +81,7 @@ import {
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
-} from "../../../../../src/modules/auth/application/use-cases/authenticate-with-otp";
+} from "@/modules/auth/application/use-cases/authenticate-with-otp";
 
 describe("authenticateWithOTP additional coverage", () => {
   beforeEach(() => {

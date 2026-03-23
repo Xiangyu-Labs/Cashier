@@ -95,7 +95,7 @@ vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
 
-import { deleteSourceDocument } from "../../../../../../src/modules/source-document/application/use-cases/delete-source-document";
+import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 
 describe("deleteSourceDocument", () => {
   beforeEach(() => {

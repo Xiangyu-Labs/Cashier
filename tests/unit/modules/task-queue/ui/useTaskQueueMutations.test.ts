@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { queryKeys } from "@/lib/query-keys";
-import type { TaskQueueResult } from "../../../../../src/modules/task-queue/contracts";
+import type { TaskQueueResult } from "@/modules/task-queue/contracts";
 
 const {
   createListSnapshotsMock,
@@ -44,7 +44,7 @@ vi.mock("@/modules/task-queue/actions", () => ({
   batchCancelTasksAction: vi.fn(),
 }));
 
-import { useTaskQueueMutations } from "../../../../../src/modules/task-queue/ui/useTaskQueueMutations";
+import { useTaskQueueMutations } from "@/modules/task-queue/ui/useTaskQueueMutations";
 
 function setTaskQueueCache(queryClient: QueryClient, ledgerId: string, data: TaskQueueResult) {
   queryClient.setQueryData(queryKeys.taskQueue(ledgerId), data);
