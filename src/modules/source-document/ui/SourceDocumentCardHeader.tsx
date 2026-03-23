@@ -24,7 +24,7 @@ import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   status: SourceDocumentStatusType;
-  anomalyReason?: string | null;
+  anomalyReason?: string | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
   isExpanded: boolean;
@@ -32,10 +32,10 @@ interface SourceDocumentCardHeaderProps {
   selectionMode: boolean;
   isSelected: boolean;
   onToggleExpanded: () => void;
-  onViewDetails?: () => void;
-  onToggleSelect?: () => void;
-  onRetry?: () => void | Promise<void>;
-  onDelete?: () => void;
+  onViewDetails?: (() => void) | undefined;
+  onToggleSelect?: (() => void) | undefined;
+  onRetry?: (() => void | Promise<void>) | undefined;
+  onDelete?: (() => void) | undefined;
 }
 
 function getProcessingStatus(status: SourceDocumentStatusType) {

@@ -66,7 +66,7 @@ function createSourceDocument(overrides: Partial<SourceDocument> = {}): SourceDo
     text: null,
     imageUrls: [],
     status: "completed",
-    type: "text",
+    type: "ai_parsed",
     anomalyReason: null,
     entryDate: "2024-01-01",
     metadata: {},
@@ -110,7 +110,6 @@ function renderCard(
     <SourceDocumentCard
       sourceDocument={createSourceDocument()}
       ledgerEntries={createEntries()}
-      categories={[defaultCategory]}
       mainCurrency="CNY"
       status="completed"
       {...overrides}
@@ -136,7 +135,6 @@ describe("SourceDocumentCard", () => {
       <SourceDocumentCard
         sourceDocument={createSourceDocument()}
         ledgerEntries={createEntries()}
-        categories={[defaultCategory]}
         mainCurrency="CNY"
         status="completed"
         selectionMode
@@ -238,7 +236,7 @@ describe("SourceDocumentCard", () => {
 
   it("shows retry loading state and delete action from the menu", async () => {
     const user = userEvent.setup();
-    let resolveRetry: (() => void) | null = null;
+    let resolveRetry!: () => void;
 
     const onRetry = vi.fn(
       () =>
@@ -249,7 +247,7 @@ describe("SourceDocumentCard", () => {
     const onDelete = vi.fn();
 
     renderCard({
-      sourceDocument: createSourceDocument({ type: "image" }),
+      sourceDocument: createSourceDocument({ type: "ai_parsed" }),
       ledgerEntries: [],
       status: "failed",
       onRetry,
@@ -267,7 +265,7 @@ describe("SourceDocumentCard", () => {
     await user.click(screen.getByLabelText("source-document-card-actions"));
     expect(screen.getByText("retry").closest("[data-disabled]")).not.toBeNull();
 
-    resolveRetry?.();
+    resolveRetry();
     await waitFor(() => expect(onRetry).toHaveBeenCalledTimes(1));
   });
 

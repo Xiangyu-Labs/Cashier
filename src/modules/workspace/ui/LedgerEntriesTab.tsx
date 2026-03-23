@@ -81,7 +81,7 @@ export function LedgerEntriesTab({
     closeDeleteConfirm,
     closeRetrySourceDocument,
   } = useLedgerEntriesTabState();
-  const { updateEntry, deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
+  const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
   const { groups, isLoading } = useSourceDocumentCollection(ledgerId, {
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
@@ -133,12 +133,6 @@ export function LedgerEntriesTab({
       pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
     },
     [pushModal]
-  );
-  const handleUpdateLedgerEntry = useCallback(
-    (id: string, data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }) => {
-      updateEntry.mutate({ ledgerEntryId: id, data });
-    },
-    [updateEntry]
   );
   const handleDeleteSourceConfirm = useCallback(
     (doc: SourceDocument) =>
@@ -192,9 +186,7 @@ export function LedgerEntriesTab({
           ) : (
             <LedgerEntriesCompletedGroups
               groupedCompletedByDate={groupedCompletedByDate}
-              categories={categories}
               mainCurrency={mainCurrency}
-              onUpdateLedgerEntry={handleUpdateLedgerEntry}
               onViewLedgerEntry={handleViewLedgerEntry}
               onViewSourceDetail={handleViewSourceDetail}
               onRetry={setRetrySourceDocument}

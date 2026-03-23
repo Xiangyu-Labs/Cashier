@@ -6,8 +6,8 @@ import { LedgerEntryItem } from "./LedgerEntryItem";
 interface SourceDocumentCardEntriesProps {
   entries: LedgerEntry[];
   mainCurrency: string;
-  sourceDocumentEntryDate?: string | null;
-  onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
+  sourceDocumentEntryDate?: string | null | undefined;
+  onViewLedgerEntry?: ((ledgerEntry: LedgerEntry) => void) | undefined;
 }
 
 export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries({
@@ -22,10 +22,14 @@ export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries
         <LedgerEntryItem
           key={entry.id}
           ledgerEntry={entry}
-          onView={() => onViewLedgerEntry?.(entry)}
+          onView={() => {
+            onViewLedgerEntry?.(entry);
+          }}
           mainCurrency={mainCurrency}
-          sourceDocumentEntryDate={sourceDocumentEntryDate}
           variant={entry.category != null && !entry.category.isEditable ? "warning" : "default"}
+          {...(sourceDocumentEntryDate !== undefined
+            ? { sourceDocumentEntryDate }
+            : {})}
         />
       ))}
     </div>

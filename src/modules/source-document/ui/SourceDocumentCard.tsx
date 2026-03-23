@@ -1,4 +1,4 @@
-import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, memo } from "react";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
@@ -12,18 +12,7 @@ import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   ledgerEntries: LedgerEntry[];
-  categories: EntryCategory[];
   mainCurrency?: string;
-  onUpdateLedgerEntry?: (
-    ledgerEntryId: string,
-    data: {
-      categoryId?: string | null;
-      itemName?: string;
-      amount?: number;
-      currency?: string | null;
-    }
-  ) => void;
-  onDeleteLedgerEntry?: (ledgerEntryId: string) => void;
   onDelete?: () => void;
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
@@ -40,10 +29,7 @@ interface SourceDocumentCardProps {
 export const SourceDocumentCard = memo(function SourceDocumentCard({
   sourceDocument,
   ledgerEntries,
-  categories: _,
   mainCurrency = "CNY",
-  onUpdateLedgerEntry: __,
-  onDeleteLedgerEntry: ___,
   onDelete,
   onViewLedgerEntry,
   onViewDetails: _onViewDetails,

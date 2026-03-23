@@ -7,7 +7,7 @@ import { getSafeImageSrc } from "./source-document-card.utils";
 interface SourceDocumentCardPreviewProps {
   text: string;
   images: string[];
-  onViewDetails?: () => void;
+  onViewDetails?: (() => void) | undefined;
 }
 
 export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview({

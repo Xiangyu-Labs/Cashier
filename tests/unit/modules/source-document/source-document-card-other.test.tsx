@@ -54,7 +54,7 @@ const mockSourceDocument: SourceDocument = {
   text: null,
   imageUrls: [],
   status: "completed",
-  type: "text",
+  type: "ai_parsed",
   anomalyReason: null,
   entryDate: "2024-01-01",
   metadata: {},
@@ -82,7 +82,6 @@ describe("SourceDocumentCard - other category entry", () => {
       <SourceDocumentCard
         sourceDocument={mockSourceDocument}
         ledgerEntries={[mockEntry]}
-        categories={[otherCategory]}
         mainCurrency="CNY"
         status="completed"
         anomalyReason={null}
@@ -110,7 +109,6 @@ describe("SourceDocumentCard - other category entry", () => {
       <SourceDocumentCard
         sourceDocument={mockSourceDocument}
         ledgerEntries={[normalEntry]}
-        categories={[normalCategory]}
         mainCurrency="CNY"
         status="completed"
         anomalyReason={null}

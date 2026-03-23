@@ -30,7 +30,7 @@ function createSourceDocument(overrides: Partial<SourceDocument> = {}): SourceDo
     text: "原始文本",
     imageUrls: [],
     status: "completed",
-    type: "text",
+    type: "ai_parsed",
     anomalyReason: null,
     entryDate: "2024-01-01",
     metadata: {},
@@ -51,7 +51,7 @@ function createSourceDocumentLight(
     title: "轻量单据",
     text: "轻量文本",
     status: "processing",
-    type: "text",
+    type: "manual",
     anomalyReason: null,
     entryDate: "2024-01-01",
     metadata: {},
@@ -110,7 +110,7 @@ describe("source-document-card utils", () => {
       }),
     ]);
 
-    expect([first.id, second.id, third.id]).toEqual(["a", "c", "b"]);
+    expect([first?.id, second?.id, third?.id]).toEqual(["a", "c", "b"]);
   });
 
   it("normalizes preview text and image arrays from a source document", () => {

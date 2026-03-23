@@ -1,7 +1,6 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { AnimatePresence, motion } from "framer-motion";
-import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocumentGroup } from "@/lib/serialization";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui";
@@ -14,12 +13,7 @@ export interface GroupedCompletedDateGroup {
 
 interface LedgerEntriesCompletedGroupsProps {
   groupedCompletedByDate: GroupedCompletedDateGroup[];
-  categories: EntryCategory[];
   mainCurrency: string;
-  onUpdateLedgerEntry: (
-    id: string,
-    data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
-  ) => void;
   onViewLedgerEntry: (entry: LedgerEntry) => void;
   onViewSourceDetail: (group: {
     sourceDocument: SourceDocument;
@@ -38,9 +32,7 @@ interface LedgerEntriesCompletedGroupsProps {
 
 export function LedgerEntriesCompletedGroups({
   groupedCompletedByDate,
-  categories,
   mainCurrency,
-  onUpdateLedgerEntry,
   onViewLedgerEntry,
   onViewSourceDetail,
   onRetry,
@@ -96,9 +88,7 @@ export function LedgerEntriesCompletedGroups({
                     <SourceDocumentCard
                       sourceDocument={group.sourceDocument}
                       ledgerEntries={group.ledgerEntries}
-                      categories={categories}
                       mainCurrency={mainCurrency}
-                      onUpdateLedgerEntry={onUpdateLedgerEntry}
                       onViewLedgerEntry={onViewLedgerEntry}
                       onViewDetails={() => onViewSourceDetail(group)}
                       onRetry={() => onRetry(group.sourceDocument)}
