@@ -12,10 +12,7 @@ import {
 import { ImageEditorDrawPane } from "./image-editor-draw-pane";
 import { ImageEditorToolbar } from "./image-editor-toolbar";
 import type { EditorImage, EditorTool, ImageEditorHandle } from "./image-editor.types";
-import {
-  mapPointerToCanvasPosition,
-  scaleCropToImagePixels,
-} from "./image-editor.utils";
+import { mapPointerToCanvasPosition, scaleCropToImagePixels } from "./image-editor.utils";
 
 interface ImageEditorProps {
   image: string; // base64 data URL

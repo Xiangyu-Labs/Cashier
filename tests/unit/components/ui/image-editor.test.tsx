@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, type ReactNode } from "react";
+import type * as ReactModule from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEditorImage,
@@ -12,7 +13,7 @@ import { ImageEditor, type ImageEditorHandle } from "@/components/ui/image-edito
 import type { EditorImage } from "@/components/ui/image-editor.types";
 
 vi.mock("react-image-crop", async () => {
-  const React = await vi.importActual<typeof import("react")>("react");
+  const React = (await vi.importActual("react")) as typeof ReactModule;
 
   return {
     __esModule: true,
@@ -246,13 +247,7 @@ describe("ImageEditor", () => {
   it("exposes the confirmed image through the imperative handle", () => {
     const ref = createRef<ImageEditorHandle>();
 
-    render(
-      <ImageEditor
-        ref={ref}
-        image="data:image/png;base64,original"
-        onChange={vi.fn()}
-      />
-    );
+    render(<ImageEditor ref={ref} image="data:image/png;base64,original" onChange={vi.fn()} />);
 
     expect(ref.current?.getConfirmedImage()).toEqual({
       data: "data:image/png;base64,original",
@@ -264,13 +259,7 @@ describe("ImageEditor", () => {
     const ref = createRef<ImageEditorHandle>();
     const user = userEvent.setup();
 
-    render(
-      <ImageEditor
-        ref={ref}
-        image="data:image/png;base64,original"
-        onChange={vi.fn()}
-      />
-    );
+    render(<ImageEditor ref={ref} image="data:image/png;base64,original" onChange={vi.fn()} />);
 
     await enterCropModeAndChangeSelection(user);
 
@@ -288,13 +277,7 @@ describe("ImageEditor", () => {
     const ref = createRef<ImageEditorHandle>();
     const user = userEvent.setup();
 
-    render(
-      <ImageEditor
-        ref={ref}
-        image="data:image/png;base64,original"
-        onChange={onChange}
-      />
-    );
+    render(<ImageEditor ref={ref} image="data:image/png;base64,original" onChange={onChange} />);
 
     await enterCropModeAndChangeSelection(user);
 
@@ -344,10 +327,7 @@ describe("ImageEditor", () => {
   it("marks draw mode as dirty after a completed pointer stroke", async () => {
     const user = userEvent.setup();
     const { container } = render(
-      <ImageEditor
-        image="data:image/png;base64,original"
-        onChange={vi.fn()}
-      />
+      <ImageEditor image="data:image/png;base64,original" onChange={vi.fn()} />
     );
 
     const canvas = await enterDrawMode(user, container);
@@ -367,10 +347,7 @@ describe("ImageEditor", () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     const { container } = render(
-      <ImageEditor
-        image="data:image/png;base64,original"
-        onChange={onChange}
-      />
+      <ImageEditor image="data:image/png;base64,original" onChange={onChange} />
     );
 
     expect(screen.queryByLabelText("画笔大小")).toBeNull();
