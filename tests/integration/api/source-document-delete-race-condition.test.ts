@@ -5,6 +5,8 @@ import { entryCategories as categories, sourceDocuments, ledgers } from "@/persi
 import { eq, and, isNull } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 
+const debugLog = process.env.DEBUG_TEST_LOGS === "1" ? console.log : () => {};
+
 /**
  * 删除流水幂等性测试
  *
@@ -119,7 +121,7 @@ describe("SourceDocument Delete Race Condition", () => {
       "Expected source document for timeline demonstration"
     );
 
-    console.log("T0: 创建流水记录", { id: sourceDoc.id, deletedAt: sourceDoc.deletedAt });
+    debugLog("T0: 创建流水记录", { id: sourceDoc.id, deletedAt: sourceDoc.deletedAt });
 
     // T1: User clicks delete button, dialog opens
     // (Frontend shows confirmation dialog)
@@ -130,13 +132,13 @@ describe("SourceDocument Delete Race Condition", () => {
       .set({ deletedAt: new Date() })
       .where(eq(sourceDocuments.id, sourceDoc.id));
 
-    console.log("T2: 后台进程软删除了记录");
+    debugLog("T2: 后台进程软删除了记录");
 
     // T3: User clicks "confirm delete"
     // [Before fix] Server Action throws NotFoundError
     // [After fix] Server Action silently succeeds
     const result = await deleteSourceDocumentAction(testLedgerId, sourceDoc.id);
-    console.log("T3: 删除操作成功完成（幂等）", result);
+    debugLog("T3: 删除操作成功完成（幂等）", result);
 
     // T4: Verify record still exists (soft-deleted)
     const docInDb = await db.query.sourceDocuments.findFirst({
@@ -144,14 +146,14 @@ describe("SourceDocument Delete Race Condition", () => {
     });
     expect(docInDb).toBeDefined();
     expect(docInDb?.deletedAt).not.toBeNull();
-    console.log("T4: 记录仍在数据库中，只是被软删除");
+    debugLog("T4: 记录仍在数据库中，只是被软删除");
 
     // T5: Simulate frontend refresh - query active records (excluding soft-deleted)
     const activeDocs = await db.query.sourceDocuments.findMany({
       where: and(eq(sourceDocuments.ledgerId, testLedgerId), isNull(sourceDocuments.deletedAt)),
     });
     const foundDoc = activeDocs.find((d) => d.id === sourceDoc.id);
-    console.log("T5: 刷新后查询结果", {
+    debugLog("T5: 刷新后查询结果", {
       totalActiveDocs: activeDocs.length,
       foundDoc: foundDoc?.id ?? null,
     });

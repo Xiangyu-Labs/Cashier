@@ -252,11 +252,42 @@ const t = useTranslations("LedgerPage");
 
 ## 11. 测试
 
-- **测试使用内存 SQLite**：`:memory:`，不需要外部数据库。
-- **`fileParallelism: false`**：vitest 配置，保证数据库一致性。
-- **测试文件放在 `tests/unit/` 或 `tests/integration/`**，不放在 `src/` 内（已有的 `*.test.ts` 在模块根级是历史遗留，新测试不应延续此模式）。
-- **测试数据用 factories**：`tests/helpers/factories.ts` 中的 `createTestUser`、`createTestLedger` 等，不在测试中硬编码 ID 或数据结构。
-- **Global mock 在 `tests/setup.ts`**：`@/lib/db`、`@/auth`、`next-intl`、`next/cache` 已全局 mock，测试中无需重复 mock。
+### 测试分层
+
+- **测试只放在 `tests/` 下**：新测试只能放在 `tests/unit/` 或 `tests/integration/`；不要再把新测试放进 `src/`。
+- **`unit` 与 `integration` 必须严格分离**：`npm run test:unit` 只能跑单元测试和 governance 测试，绝对不允许通过泛化 glob 把 `tests/integration/**` 混进来。
+- **`npm run test:integration` 只跑集成测试**：集成测试保持真实边界覆盖，不要为了提速把它们偷偷降级成 mock-heavy unit test。
+- **governance 测试单独对待**：像 ESLint / 架构约束这类扫描型测试属于 `unit` 的 governance 子类，可以独立调度，但仍归 `test:unit` 管理。
+
+### Vitest 配置与 setup 约定
+
+- **共享配置在 `vitest.shared.config.ts`**：alias、coverage、project 公共选项统一从这里出，不要在多个 Vitest 配置里手抄一份。
+- **入口配置固定为三份**：
+  - `vitest.config.ts`：全量入口，聚合 unit + integration projects。
+  - `vitest.unit.config.ts`：只包含 unit 相关 projects。
+  - `vitest.integration.config.ts`：只包含 integration 相关 projects。
+- **公共 mock 放在 `tests/setup.common.ts`**：`@/auth`、`next-intl`、`next/image`、`next/cache` 这类与数据库无关的全局 mock 放这里。
+- **DOM 清理放在 `tests/setup.dom.ts`**：只有需要浏览器环境的测试才走这个 setup；这里负责 `cleanup()`、`confirm` 等 DOM 侧处理。
+- **数据库隔离放在 `tests/setup.ts`**：只有真实使用 `@/lib/db`、`getTestDb()` 或需要内存 SQLite 的测试才走这里；不要让所有 unit 测试都背数据库初始化成本。
+
+### 环境选择
+
+- **Node 优先，DOM 按需**：不依赖浏览器 API 的测试默认使用 `node` 环境；只有真正需要 `render`、`screen`、`window`、`document` 的测试才使用 `happy-dom`。
+- **集成测试默认走 `node`**：只有明确的 client integration 测试才放进 DOM project。
+- **数据库测试使用内存 SQLite**：继续使用 `:memory:`，不引入外部数据库依赖。
+
+### 测试数据与隔离
+
+- **测试数据优先使用 helpers/factories**：使用 `tests/helpers/factories.ts`、`tests/helpers/schema-setup.ts`，不要在测试里随手硬编码大段数据结构。
+- **不要在全新内存库上做多余初始化**：像重复 drop 全表这种工作，如果数据库本来就是每文件新建的，就不应该再额外做一次。
+- **并行度按 project 控制**：不要再用一个全局 `fileParallelism: false` 粗暴串行化整个套件；需要隔离的 project 单独收紧，不需要的保持并行。
+
+### 性能与质量约束
+
+- **优化测试速度不能降级测试**：不能通过删除断言、跳过测试、把 integration 改成 unit mock、或降低覆盖范围来换速度。
+- **改动测试结构后必须验证测试边界**：至少确认 `test:unit` 不包含 `tests/integration/**`，`test:integration` 不包含 unit 文件。
+- **高成本 helper 要复用**：像 ESLint 这类初始化昂贵的对象，应在同一测试文件内复用实例，不要每个 case 重建。
+- **测试期日志默认收敛**：除非正在专项排查，不要让测试默认刷大量 `console.log` / 业务日志；调试日志应显式开关控制。
 - **修复 bug 先写测试复现**：先写能复现 bug 的测试，确认测试失败后再修复。
 
 ---

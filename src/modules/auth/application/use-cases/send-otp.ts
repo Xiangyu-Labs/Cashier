@@ -15,9 +15,20 @@ import {
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP } from "@/modules/auth/services/otp";
 
+type OTPAuthEmailMessages = {
+  otpSubject: string;
+  otpPreview: string;
+  otpHeading: string;
+  otpIntro: string;
+  otpCodeLabel: string;
+  otpExpiry: string;
+  otpWarning: string;
+  otpFooter: string;
+};
+
 async function getOTPEmailCopy(locale: SupportedLocale, host: string, otp: string, expiresInMinutes: number) {
   const messages = (await import(`../../../../../messages/${locale}.json`)).default as {
-    AuthEmail: Record<string, string>;
+    AuthEmail: OTPAuthEmailMessages;
   };
   const t = messages.AuthEmail;
   return {

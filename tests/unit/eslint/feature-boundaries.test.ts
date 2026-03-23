@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ESLint } from "eslint";
 
-async function lintRestrictedImports(code: string, filePath: string) {
-  const eslint = new ESLint({
-    overrideConfigFile: `${process.cwd()}/eslint.config.mjs`,
-  });
+const eslint = new ESLint({
+  overrideConfigFile: `${process.cwd()}/eslint.config.mjs`,
+});
 
+async function lintRestrictedImports(code: string, filePath: string) {
   const [result] = await eslint.lintText(code, { filePath });
   expect(result).toBeDefined();
   if (result == null) {

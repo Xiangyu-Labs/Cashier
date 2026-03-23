@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
-import { getEnvValue } from "./catalog";
+import { getEnvCatalogEntry } from "./catalog";
 import { isValidAuthEmailFrom, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 
 function blankToUndefined(value: unknown): unknown {
@@ -8,7 +8,7 @@ function blankToUndefined(value: unknown): unknown {
 }
 
 function getDefaultString(name: string): string {
-  const value = getEnvValue({}, name);
+  const value = getEnvCatalogEntry(name)?.defaultValue;
 
   if (value == null) {
     throw new Error(`Missing default value for ${name}`);

@@ -10,8 +10,8 @@ export async function sendOTPAction(email: string, locale?: string) {
   const requestHeaders = await headers();
   const cookieStore = await cookies();
   const resolvedLocale = resolveSupportedLocale({
-    explicitLocale: locale,
-    cookieLocale: cookieStore.get("NEXT_LOCALE")?.value,
+    explicitLocale: locale ?? null,
+    cookieLocale: cookieStore.get("NEXT_LOCALE")?.value ?? null,
     acceptLanguage: requestHeaders.get("accept-language"),
   });
   return sendOTP({

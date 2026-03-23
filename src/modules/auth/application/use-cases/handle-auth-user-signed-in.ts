@@ -21,6 +21,6 @@ export async function handleAuthUserSignedIn(params: {
 
   await sendLoginNotification({
     email: params.email,
-    locale: params.locale ?? undefined,
+    ...(params.locale != null && params.locale !== "" ? { locale: params.locale } : {}),
   });
 }

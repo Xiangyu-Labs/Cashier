@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type Database from "better-sqlite3";
 import * as schema from "@/persistence";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
@@ -14,20 +13,8 @@ function requireDefined<T>(value: T | undefined, message: string): T {
 }
 
 export async function createTestSchema(
-  db: BetterSQLite3Database<typeof schema>,
-  client: Database.Database
+  db: BetterSQLite3Database<typeof schema>
 ) {
-  // Drop all tables to start fresh
-  const tables = client.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
-    name: string;
-  }[];
-  for (const { name } of tables) {
-    if (name === "sqlite_sequence") continue; // Don't drop sequence table
-    client.prepare(`DROP TABLE IF EXISTS "${name}"`).run();
-  }
-
-  // Run migrations
-  // Adjust path if needed. Tests run from project root?
   await migrate(db, { migrationsFolder: "src/persistence/migrations" });
 }
 

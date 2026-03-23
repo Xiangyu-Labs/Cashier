@@ -319,14 +319,30 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {(ledgerEntries.length === 0 || status === "anomaly" || status === "failed") && (
+          {(() => {
+            const processingStatus =
+              status === "anomaly" || status === "failed"
+                ? "error"
+                : status === "queued" || status === "processing" || status === "completed"
+                  ? status
+                  : null;
+
+            if (
+              processingStatus == null ||
+              (ledgerEntries.length !== 0 && status !== "anomaly" && status !== "failed")
+            ) {
+              return null;
+            }
+
+            return (
             <ProcessingStatus
-              status={status === "anomaly" || status === "failed" ? "error" : status}
+              status={processingStatus}
               {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
                 ? { label: anomalyReason }
                 : {})}
             />
-          )}
+            );
+          })()}
 
           {!["queued", "processing", "anomaly", "failed"].includes(status) && (
             <SourceDocumentTotal entries={ledgerEntries} mainCurrency={mainCurrency} />

@@ -41,7 +41,8 @@ export function isValidAuthEmailFrom(value: string): boolean {
 
   const match = MAILBOX_REGEX.exec(value.trim());
   if (match != null) {
-    return RAW_EMAIL_REGEX.test(match[1]);
+    const address = match[1];
+    return address != null && RAW_EMAIL_REGEX.test(address);
   }
 
   return false;

@@ -5,6 +5,17 @@ import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import type { SupportedLocale } from "@/i18n/locales";
 import { DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 
+type LoginAuthEmailMessages = {
+  loginSubject: string;
+  loginPreview: string;
+  loginHeading: string;
+  loginIntro: string;
+  loginTimeLabel: string;
+  loginEmailLabel: string;
+  loginSafe: string;
+  loginWarn: string;
+};
+
 function getResendClient(): Resend | null {
   const apiKey = process.env.AUTH_RESEND_KEY;
   if (apiKey == null || apiKey === "") {
@@ -16,7 +27,7 @@ function getResendClient(): Resend | null {
 
 async function getLoginNotificationCopy(locale: SupportedLocale) {
   const messages = (await import(`../../../../messages/${locale}.json`)).default as {
-    AuthEmail: Record<string, string>;
+    AuthEmail: LoginAuthEmailMessages;
   };
   const t = messages.AuthEmail;
   return {
@@ -46,7 +57,7 @@ export async function sendLoginNotification(params: {
     return;
   }
 
-  const locale = resolveSupportedLocale({ explicitLocale: params.locale });
+  const locale = resolveSupportedLocale({ explicitLocale: params.locale ?? null });
 
   try {
     const loginTime = new Intl.DateTimeFormat(locale, {

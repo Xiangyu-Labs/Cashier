@@ -4,7 +4,7 @@ import { resolveSupportedLocale } from "./resolve-locale";
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
-  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value ?? null;
 
   const headersList = await headers();
   const acceptLanguage = headersList.get("accept-language");

@@ -1,0 +1,141 @@
+import path from "path";
+import { defineProject } from "vitest/config";
+
+export const resolveAliases = {
+  "@": path.resolve(__dirname, "src"),
+  messages: path.resolve(__dirname, "messages"),
+  tests: path.resolve(__dirname, "tests"),
+};
+
+export const coverageConfig = {
+  provider: "v8" as const,
+  reporter: ["text", "json", "html"],
+  exclude: ["node_modules", ".next", "tests", "src/**/*.test.ts", "src/**/*.test.tsx"],
+};
+
+export const defaultProjectExcludes = ["node_modules", ".next"];
+
+export const sharedProjectTestConfig = {
+  globals: true,
+  env: {
+    NODE_ENV: "test" as const,
+  },
+  pool: "threads" as const,
+  fileParallelism: true,
+  isolate: true,
+};
+
+export const dbUnitFiles = [
+  "tests/unit/auth/application/queries/get-session-user.test.ts",
+  "tests/unit/auth/application/use-cases/registration-policy.test.ts",
+  "tests/unit/auth/repositories/otp-repository.test.ts",
+  "tests/unit/auth/services/otp-verification.test.ts",
+  "tests/unit/currency/ExchangeRateService.test.ts",
+  "tests/unit/db/ledger-entries.test.ts",
+  "tests/unit/ledger/application/queries/get-ledger-entry-detail.test.ts",
+  "tests/unit/ledger/application/queries/list-service-credentials.test.ts",
+  "tests/unit/ledger/application/services/authenticate-service-credential.test.ts",
+  "tests/unit/ledger/application/services/resolve-ledger-for-service-credential.test.ts",
+  "tests/unit/ledger/application/tasks/categorize-entry.test.ts",
+  "tests/unit/ledger/application/tasks/generate-category-metadata.test.ts",
+  "tests/unit/ledger/application/use-cases/create-default-ledger.test.ts",
+  "tests/unit/ledger/server/actions/delete.test.ts",
+  "tests/unit/lib/auth-actions.test.ts",
+];
+
+export const unitProjects = [
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "unit-general",
+      sequence: {
+        groupOrder: 0,
+      },
+      include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
+      exclude: [...defaultProjectExcludes, "tests/unit/eslint/**/*.test.ts", ...dbUnitFiles],
+      environment: "happy-dom",
+      setupFiles: ["./tests/setup.dom.ts"],
+      maxWorkers: "100%",
+      testTimeout: 10000,
+    },
+  }),
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "unit-db",
+      sequence: {
+        groupOrder: 1,
+      },
+      include: dbUnitFiles,
+      exclude: defaultProjectExcludes,
+      environment: "node",
+      setupFiles: ["./tests/setup.ts"],
+      maxWorkers: "50%",
+      testTimeout: 30000,
+    },
+  }),
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "governance",
+      sequence: {
+        groupOrder: 2,
+      },
+      include: ["tests/unit/eslint/**/*.test.ts"],
+      exclude: defaultProjectExcludes,
+      environment: "node",
+      setupFiles: ["./tests/setup.common.ts"],
+      fileParallelism: false,
+      maxWorkers: 1,
+      testTimeout: 30000,
+    },
+  }),
+];
+
+export const integrationProjects = [
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "integration-node",
+      sequence: {
+        groupOrder: 0,
+      },
+      include: ["tests/integration/**/*.test.ts", "tests/integration/**/*.test.tsx"],
+      exclude: [...defaultProjectExcludes, "tests/integration/client/category-mutations-optimistic.test.tsx"],
+      environment: "node",
+      setupFiles: ["./tests/setup.ts"],
+      maxWorkers: "50%",
+      testTimeout: 30000,
+    },
+  }),
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "integration-dom",
+      sequence: {
+        groupOrder: 1,
+      },
+      include: ["tests/integration/client/category-mutations-optimistic.test.tsx"],
+      exclude: defaultProjectExcludes,
+      environment: "happy-dom",
+      setupFiles: ["./tests/setup.dom.ts"],
+      maxWorkers: 1,
+      testTimeout: 30000,
+    },
+  }),
+];
