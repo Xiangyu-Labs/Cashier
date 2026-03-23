@@ -25,3 +25,7 @@ export interface SourceDocumentInputControllerMessages {
   retryError: string;
   imageTooLarge: (fileName: string) => string;
 }
+
+export type SourceDocumentInputImageLoadResult =
+  | { kind: "ready"; image: EditableInputImage }
+  | { kind: "too-large"; fileName: string };

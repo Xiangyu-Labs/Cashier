@@ -8,7 +8,6 @@ import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import { compressImage } from "@/lib/image-utils";
 import { fireAndForget } from "@/lib/safe-async";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
@@ -21,13 +20,12 @@ import {
   toEditableImages,
   toModalImages,
 } from "./source-document-input-controller.core";
+import { loadSourceDocumentInputFiles } from "./source-document-input-images";
 import type {
   EditableInputImage,
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
 } from "./source-document-input-controller.types";
-
-const MAX_FALLBACK_SIZE = 5 * 1024 * 1024;
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -48,26 +46,6 @@ function createExactPredicate(target: readonly unknown[]): QueryPredicate {
     Array.isArray(query.queryKey) &&
     query.queryKey.length === target.length &&
     target.every((value, index) => query.queryKey[index] === value);
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error("Unexpected FileReader result"));
-    };
-
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("Failed to read file"));
-    };
-
-    reader.readAsDataURL(file);
-  });
 }
 
 function invalidateSubmitQueries(
@@ -209,31 +187,16 @@ export function useSourceDocumentInputController({
   const isPending = activeMutation.isPending || isTransitionPending;
 
   const appendFiles = async (files: File[]) => {
-    for (const file of files) {
-      try {
-        const compressed = await compressImage(file);
-        setImages((previousImages) => [...previousImages, toEditableImage(compressed)]);
-      } catch (error) {
-        console.error("Failed to compress image:", error);
+    const results = await loadSourceDocumentInputFiles(files);
 
-        if (file.size > MAX_FALLBACK_SIZE) {
-          toast.error(messages.imageTooLarge(file.name));
-          continue;
-        }
-
-        const base64 = await readFileAsDataUrl(file);
-        const mimeMatch = base64.match(/^data:([^;]+);base64,/);
-        const mimeType = mimeMatch?.[1] ?? (file.type !== "" ? file.type : "image/jpeg");
-
-        setImages((previousImages) => [
-          ...previousImages,
-          toEditableImage({
-            data: base64,
-            mimeType,
-          }),
-        ]);
+    results.forEach((result) => {
+      if (result.kind === "too-large") {
+        toast.error(messages.imageTooLarge(result.fileName));
+        return;
       }
-    }
+
+      setImages((previousImages) => [...previousImages, result.image]);
+    });
   };
 
   const handleSubmit = () => {
