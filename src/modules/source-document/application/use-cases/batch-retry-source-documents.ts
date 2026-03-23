@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
 import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import type { BatchRetrySourceDocumentsResultDto } from "@/modules/source-document/contracts";
@@ -9,7 +8,12 @@ import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
 } from "../services/processing";
+import {
+  deletedSourceDocumentPatch,
+  whereSourceDocumentNotDeleted,
+} from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
+import { SourceDocumentStatus } from "../../types";
 
 export interface BatchRetrySourceDocumentsInput {
   ledgerId: string;
@@ -31,10 +35,13 @@ export async function batchRetrySourceDocuments({
     };
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
-  const oldDocs = await db.query.sourceDocuments.findMany({
-    where: and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)),
+  const candidateDocs = await db.query.sourceDocuments.findMany({
+    where: and(eq(sourceDocuments.ledgerId, ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
   });
+  const oldDocs = candidateDocs.filter(
+    (document) =>
+      document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
+  );
 
   if (oldDocs.length === 0) {
     logger.debug({ ledgerId, sourceDocumentIds }, "No active documents found for batch retry");
@@ -107,8 +114,8 @@ export async function batchRetrySourceDocuments({
 
   await db
     .update(sourceDocuments)
-    .set({ deletedAt: new Date() })
-    .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)));
+    .set(deletedSourceDocumentPatch())
+    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)));
 
   logger.debug(
     { ledgerId, oldDocIds: sourceDocumentIds },

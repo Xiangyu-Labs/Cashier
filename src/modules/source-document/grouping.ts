@@ -57,6 +57,8 @@ export function groupSourceDocumentsByStatus<
           groups.completed.push(group);
         }
         break;
+      case "deleted":
+        break;
     }
   }
 

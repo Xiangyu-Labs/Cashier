@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
 import { cancelFlowTask } from "@/lib/flow";
 import type {
   BatchDeleteSourceDocumentsResultDto,
@@ -9,6 +8,11 @@ import {
   softDeleteSourceDocumentLedgerEntries,
   type SourceDocumentTransaction,
 } from "@/modules/source-document/application/services/source-document-ledger-entries";
+import {
+  deletedSourceDocumentPatch,
+  whereSourceDocumentNotDeleted,
+} from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/types";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
@@ -61,11 +65,9 @@ function softDeleteSourceDocuments(
   ledgerId: string,
   sourceDocumentIds: string[]
 ): void {
-  const q = forLedger(sourceDocuments, ledgerId);
-
   tx.update(sourceDocuments)
-    .set(q.softDelete)
-    .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)))
+    .set(deletedSourceDocumentPatch())
+    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)))
     .run();
 }
 
@@ -73,12 +75,15 @@ export async function deleteSourceDocument({
   ledgerId,
   sourceDocumentId,
 }: DeleteSourceDocumentInput): Promise<DeleteSourceDocumentResultDto> {
-  const q = forLedger(sourceDocuments, ledgerId);
   const sourceDoc = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.ledgerId, ledgerId), q.whereId(sourceDocumentId)),
+    where: and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)),
   });
 
-  if (!sourceDoc || sourceDoc.deletedAt != null) {
+  if (
+    !sourceDoc ||
+    sourceDoc.status === SourceDocumentStatus.Deleted ||
+    sourceDoc.deletedAt != null
+  ) {
     return {
       sourceDocumentId,
       deleted: false,
@@ -112,12 +117,16 @@ export async function batchDeleteSourceDocuments({
     };
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
-  const activeDocuments = await db.query.sourceDocuments.findMany({
-    where: and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)),
-    columns: { id: true },
+  const documents = await db.query.sourceDocuments.findMany({
+    where: and(eq(sourceDocuments.ledgerId, ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
+    columns: { id: true, status: true, deletedAt: true },
   });
-  const activeDocumentIds = activeDocuments.map((document) => document.id);
+  const activeDocumentIds = documents
+    .filter(
+      (document) =>
+        document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
+    )
+    .map((document) => document.id);
 
   if (activeDocumentIds.length === 0) {
     return {

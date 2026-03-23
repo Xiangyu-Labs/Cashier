@@ -1,6 +1,4 @@
 import type { AIContext } from "@/lib/flow/types";
-import { forLedger } from "@/lib/db/scoped-query";
-import { sourceDocuments } from "@/persistence";
 
 export interface StageContext {
   signal: AbortSignal;
@@ -8,7 +6,6 @@ export interface StageContext {
   setProgress: (message: string) => Promise<void>;
   docId: string;
   ledgerId: string;
-  q: ReturnType<typeof forLedger>;
 }
 
 interface BuildStageContextParams {
@@ -32,6 +29,5 @@ export function buildStageContext({
     setProgress,
     docId,
     ledgerId,
-    q: forLedger(sourceDocuments, ledgerId),
   };
 }

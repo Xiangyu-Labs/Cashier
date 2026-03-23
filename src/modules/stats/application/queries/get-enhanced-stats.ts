@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
 import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
+import { whereSourceDocumentNotDeleted } from "@/modules/source-document/queries";
 
 function calculateStats(amounts: number[]): CalendarHeatmapStats {
   if (amounts.length === 0) {
@@ -55,8 +56,7 @@ export async function getEnhancedStatsQuery({
       .from(sourceDocuments)
       .where(
         and(
-          eq(sourceDocuments.ledgerId, ledgerId),
-          isNull(sourceDocuments.deletedAt),
+          whereSourceDocumentNotDeleted(ledgerId),
           gte(sourceDocuments.entryDate, startStr),
           lte(sourceDocuments.entryDate, endStr)
         )

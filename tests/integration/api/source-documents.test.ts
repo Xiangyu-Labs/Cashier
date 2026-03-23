@@ -290,6 +290,7 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
+    expect(docAfter?.status).toBe("deleted");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({
@@ -317,7 +318,10 @@ describe("SourceDocument Actions", () => {
       where: inArray(sourceDocuments.id, ids),
     });
     expect(docs).toHaveLength(2);
-    docs.forEach((d) => expect(d.deletedAt).not.toBeNull());
+    docs.forEach((d) => {
+      expect(d.status).toBe("deleted");
+      expect(d.deletedAt).not.toBeNull();
+    });
 
     const retained = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, res3.sourceDocumentId!),
@@ -367,6 +371,14 @@ describe("SourceDocument Actions", () => {
       ),
     });
     expect(oldDocs).toHaveLength(0);
+
+    const deletedDocs = await db.query.sourceDocuments.findMany({
+      where: inArray(sourceDocuments.id, [doc1.id, doc2.id]),
+    });
+    deletedDocs.forEach((doc) => {
+      expect(doc.status).toBe("deleted");
+      expect(doc.deletedAt).not.toBeNull();
+    });
 
     // 4. Verify new docs are created (status may be queued/processing due to background tasks)
     // New docs have different IDs, same ledgerId, preserved text

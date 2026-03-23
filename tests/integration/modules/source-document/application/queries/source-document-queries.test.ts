@@ -3,6 +3,7 @@ import { NotFoundError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
+import { eq } from "drizzle-orm";
 import {
   getAllSourceDocuments,
   getSourceDocumentFullQuery,
@@ -142,6 +143,37 @@ describe("source-document-queries", () => {
     await expect(getSourceDocumentFullQuery(ledgerId, crypto.randomUUID())).rejects.toThrow(
       NotFoundError
     );
+  });
+
+  it("hides documents whose status is deleted even when deletedAt is null", async () => {
+    const db = getTestDb();
+    const deletedDoc = requireDefined(
+      (
+        await db
+          .insert(sourceDocuments)
+          .values({
+            ledgerId,
+            text: "should be hidden",
+            status: "deleted",
+            deletedAt: null,
+            imageUrls: [],
+            entryDate: "2026-03-22",
+          })
+          .returning()
+      )[0],
+      "deleted source document"
+    );
+
+    const page = await listSourceDocumentsQuery(ledgerId, {});
+    expect(page.items.find((item) => item.id === deletedDoc.id)).toBeUndefined();
+
+    const storedDeletedDoc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, deletedDoc.id),
+    });
+    expect(storedDeletedDoc?.status).toBe("deleted");
+    expect(storedDeletedDoc?.deletedAt).toBeNull();
+
+    await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(NotFoundError);
   });
 
   it("filters source documents by aggregated converted amount", async () => {

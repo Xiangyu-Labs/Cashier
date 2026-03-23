@@ -2,6 +2,8 @@ import { and, eq, lt, or, sql, type SQL } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
 
+const DELETED_SOURCE_DOCUMENT_STATUS = "deleted";
+
 export interface LedgerEntryFilterParams {
   startDate?: string | null;
   endDate?: string | null;
@@ -25,7 +27,7 @@ export function buildLedgerEntryFilterConditions(
     conditions.push(
       sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND entry_date >= ${filters.startDate} AND deleted_at IS NULL
+                WHERE ledger_id = ${ledgerId} AND status != ${DELETED_SOURCE_DOCUMENT_STATUS} AND entry_date >= ${filters.startDate}
             )`
     );
   }
@@ -34,7 +36,7 @@ export function buildLedgerEntryFilterConditions(
     conditions.push(
       sql`${ledgerEntries.sourceDocumentId} IN (
                 SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND entry_date <= ${filters.endDate} AND deleted_at IS NULL
+                WHERE ledger_id = ${ledgerId} AND status != ${DELETED_SOURCE_DOCUMENT_STATUS} AND entry_date <= ${filters.endDate}
             )`
     );
   }

@@ -59,6 +59,17 @@ vi.mock("@/lib/db/scoped-query", () => ({
   })),
 }));
 
+vi.mock("@/modules/source-document/application/source-document-state", () => ({
+  deletedSourceDocumentPatch: vi.fn((now = new Date("2026-03-20T00:00:00.000Z")) => ({
+    status: "deleted",
+    deletedAt: now,
+    updatedAt: now,
+  })),
+  whereSourceDocumentNotDeletedId: vi.fn((ledgerId: string, sourceDocumentId: string) => ({
+    whereSourceDocumentNotDeletedId: [ledgerId, sourceDocumentId],
+  })),
+}));
+
 vi.mock("@/lib/flow", () => ({
   cancelFlowTask: cancelFlowTaskMock,
 }));
@@ -118,6 +129,8 @@ describe("retrySourceDocument", () => {
       ledgerId: "ledger-1",
       entryDate: "2026-03-20",
       text: null,
+      status: "failed",
+      deletedAt: null,
       imageUrls: ["/api/uploads/old.jpg"],
       metadata: {
         originalImageUrls: ["/api/uploads/original.jpg"],
@@ -155,8 +168,17 @@ describe("retrySourceDocument", () => {
       })
     );
     expect(cancelFlowTaskMock).toHaveBeenCalledWith("task-1");
-    expect(updateSetMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ deletedAt: expect.any(Date) }));
-    expect(updateSetMock).toHaveBeenNthCalledWith(2, expect.objectContaining({ deletedAt: expect.any(Date) }));
+    expect(updateSetMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        status: "deleted",
+        deletedAt: expect.any(Date),
+      })
+    );
+    expect(updateSetMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ deletedAt: expect.any(Date) })
+    );
     expect(prepareSourceDocumentTaskMock).toHaveBeenCalledWith(
       expect.not.objectContaining({
         text: expect.anything(),
@@ -171,6 +193,8 @@ describe("retrySourceDocument", () => {
       ledgerId: "ledger-1",
       entryDate: "2026-03-20",
       text: "old text",
+      status: "anomaly",
+      deletedAt: null,
       imageUrls: ["/api/uploads/ledger-1/doc-1/fallback.webp"],
       metadata: {},
     });

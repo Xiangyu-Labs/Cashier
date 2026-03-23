@@ -1,5 +1,4 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
 import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
@@ -10,8 +9,13 @@ import {
   prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
+import {
+  deletedSourceDocumentPatch,
+  whereSourceDocumentNotDeletedId,
+} from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
+import { SourceDocumentStatus } from "../../types";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -33,12 +37,15 @@ export async function retrySourceDocument({
   sourceDocumentId,
   input,
 }: RetrySourceDocumentInput): Promise<RetrySourceDocumentResponseDto> {
-  const q = forLedger(sourceDocuments, ledgerId);
   const existingDocument = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(sourceDocumentId),
+    where: and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)),
   });
 
-  if (existingDocument == null) {
+  if (
+    existingDocument == null ||
+    existingDocument.status === SourceDocumentStatus.Deleted ||
+    existingDocument.deletedAt != null
+  ) {
     throw new NotFoundError("Source document");
   }
 
@@ -107,8 +114,8 @@ export async function retrySourceDocument({
 
   await db
     .update(sourceDocuments)
-    .set({ deletedAt: new Date() })
-    .where(q.whereId(sourceDocumentId));
+    .set(deletedSourceDocumentPatch())
+    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
 
   logger.debug(
     { oldDocId: sourceDocumentId, ledgerId },

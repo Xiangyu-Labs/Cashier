@@ -4,7 +4,8 @@ import { getLocalStorage } from "@/lib/storage/local";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import type { SourceDocMetadata } from "@/modules/source-document/types";
 import { sourceDocuments } from "@/persistence";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 
 function getReferencedStorageKeys(
   document: {
@@ -56,7 +57,7 @@ export async function canAccessSourceDocumentUploadQuery(
     where: and(
       eq(sourceDocuments.id, sourceDocumentId),
       eq(sourceDocuments.ledgerId, ledgerId),
-      isNull(sourceDocuments.deletedAt)
+      sourceDocumentNotDeletedCondition()
     ),
     columns: {
       imageUrls: true,

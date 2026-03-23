@@ -88,6 +88,17 @@ vi.mock("@/lib/db/scoped-query", () => ({
   })),
 }));
 
+vi.mock("@/modules/source-document/application/source-document-state", () => ({
+  deletedSourceDocumentPatch: vi.fn((now = new Date("2026-03-20T00:00:00.000Z")) => ({
+    status: "deleted",
+    deletedAt: now,
+    updatedAt: now,
+  })),
+  whereSourceDocumentNotDeleted: vi.fn((ledgerId: string) => ({
+    whereSourceDocumentNotDeleted: [ledgerId],
+  })),
+}));
+
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...parts: unknown[]) => ({ and: parts })),
   eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
@@ -167,12 +178,16 @@ describe("batchRetrySourceDocuments", () => {
         id: "old-1",
         text: "Lunch",
         entryDate: "2026-03-20",
+        status: "anomaly",
+        deletedAt: null,
         imageUrls: ["/img/1.jpg"],
       },
       {
         id: "old-2",
         text: "Dinner",
         entryDate: "2026-03-21",
+        status: "failed",
+        deletedAt: null,
         imageUrls: ["/img/2.jpg"],
       },
     ]);
@@ -216,6 +231,8 @@ describe("batchRetrySourceDocuments", () => {
         id: "old-1",
         text: "Specific text 1",
         entryDate: "2026-03-20",
+        status: "failed",
+        deletedAt: null,
         imageUrls: ["/api/uploads/ledger-1/old-1/local.webp"],
         metadata: { originalImageUrls: ["/api/uploads/ledger-1/old-1/original.webp"] },
       },

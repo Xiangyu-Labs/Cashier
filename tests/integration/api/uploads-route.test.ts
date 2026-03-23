@@ -103,6 +103,28 @@ describe("GET /api/uploads/[...path]", () => {
     expect(mockDownload).not.toHaveBeenCalled();
   });
 
+  it("returns 404 for a deleted-status document even when it still references the upload", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const docId = crypto.randomUUID();
+    const storageKey = `${ledgerId}/${docId}/receipt.jpg`;
+
+    await db.insert(sourceDocuments).values({
+      id: docId,
+      ledgerId,
+      status: "deleted",
+      deletedAt: null,
+      imageUrls: [`/api/uploads/${storageKey}`],
+    });
+
+    const response = await uploadsGET(createMockRequest("http://localhost/api/uploads/test"), {
+      params: Promise.resolve({ path: [ledgerId, docId, "receipt.jpg"] }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(mockDownload).not.toHaveBeenCalled();
+  });
+
   it("returns 401 when the user is not authenticated", async () => {
     vi.spyOn(authModule, "auth").mockResolvedValue(null as never);
 

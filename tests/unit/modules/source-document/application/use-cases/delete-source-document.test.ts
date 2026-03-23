@@ -5,6 +5,7 @@ const {
   taskRunsFindManyMock,
   cancelFlowTaskMock,
   softDeleteSourceDocumentLedgerEntriesMock,
+  txUpdateSetMock,
   txMock,
   transactionMock,
   loggerMock,
@@ -28,6 +29,7 @@ const {
     taskRunsFindManyMock,
     cancelFlowTaskMock,
     softDeleteSourceDocumentLedgerEntriesMock,
+    txUpdateSetMock,
     txMock,
     transactionMock,
     loggerMock,
@@ -52,6 +54,7 @@ vi.mock("@/persistence", () => ({
   sourceDocuments: {
     id: "sourceDocuments.id",
     ledgerId: "sourceDocuments.ledgerId",
+    status: "sourceDocuments.status",
     deletedAt: "sourceDocuments.deletedAt",
   },
   taskRuns: {
@@ -77,6 +80,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
   inArray: vi.fn((column: unknown, values: unknown[]) => ({ inArray: [column, values] })),
   isNull: vi.fn((column: unknown) => ({ isNull: column })),
+  ne: vi.fn((left: unknown, right: unknown) => ({ ne: [left, right] })),
 }));
 
 vi.mock("@/lib/flow", () => ({
@@ -119,6 +123,7 @@ describe("deleteSourceDocument", () => {
   it("cancels running tasks and soft deletes related records in one transaction", async () => {
     sourceDocumentsFindFirstMock.mockResolvedValue({
       id: "doc-1",
+      status: "completed",
       deletedAt: null,
     });
     taskRunsFindManyMock
@@ -146,5 +151,11 @@ describe("deleteSourceDocument", () => {
       ["doc-1"]
     );
     expect(txMock.update).toHaveBeenCalledTimes(2);
+    expect(txUpdateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "deleted",
+        deletedAt: expect.any(Date),
+      })
+    );
   });
 });

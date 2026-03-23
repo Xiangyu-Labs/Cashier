@@ -32,7 +32,7 @@ vi.mock("@/persistence", async () => {
     sourceDocuments: {
       id: "sourceDocuments.id",
       ledgerId: "sourceDocuments.ledgerId",
-      deletedAt: "sourceDocuments.deletedAt",
+      status: "sourceDocuments.status",
     },
   };
 });
@@ -43,7 +43,7 @@ vi.mock("drizzle-orm", async () => {
     ...actual,
     and: vi.fn((...parts: unknown[]) => ({ and: parts })),
     eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
-    isNull: vi.fn((column: unknown) => ({ isNull: column })),
+    ne: vi.fn((left: unknown, right: unknown) => ({ ne: [left, right] })),
   };
 });
 
@@ -94,5 +94,14 @@ describe("canAccessSourceDocumentUploadQuery", () => {
     );
 
     expect(result).toBe(true);
+  });
+
+  it("returns false when the document is hidden by deleted status filtering", async () => {
+    requireLedgerAccessMock.mockResolvedValueOnce({ ledger: { id: "ledger-1" } });
+    sourceDocumentsFindFirstMock.mockResolvedValueOnce(null);
+
+    const result = await canAccessSourceDocumentUploadQuery("ledger-1", "doc-1", "key-1");
+
+    expect(result).toBe(false);
   });
 });

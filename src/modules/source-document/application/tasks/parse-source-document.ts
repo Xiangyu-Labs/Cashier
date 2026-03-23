@@ -1,7 +1,6 @@
 import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
-import { eq, and, isNull } from "drizzle-orm";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import { NotFoundError, ValidationError } from "@/lib/errors";
@@ -12,6 +11,7 @@ import {
   handleParseError,
   handleParseCancel,
 } from "../parse-source-document/parse-result-handler";
+import { whereSourceDocumentNotDeletedId } from "../source-document-state";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -53,11 +53,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
 
     // Validate document exists
     const doc = await db.query.sourceDocuments.findFirst({
-      where: and(
-        eq(sourceDocuments.id, input.sourceDocumentId),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt)
-      ),
+      where: whereSourceDocumentNotDeletedId(ledgerId, input.sourceDocumentId),
     });
     if (!doc) {
       throw new NotFoundError("Source document");
@@ -74,7 +70,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
     await db
       .update(sourceDocuments)
       .set({ status: "processing" })
-      .where(stageContext.q.whereId(input.sourceDocumentId));
+      .where(whereSourceDocumentNotDeletedId(ledgerId, input.sourceDocumentId));
 
     return executeParseSourceDocument(input, stageContext);
   },

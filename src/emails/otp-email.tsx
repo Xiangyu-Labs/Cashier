@@ -29,7 +29,7 @@ interface OTPEmailProps {
   copy: OTPEmailCopy;
 }
 
-export default function OTPEmail({ otp, host, expiresInMinutes = 5, copy }: OTPEmailProps) {
+export default function OTPEmail({ otp, copy }: OTPEmailProps) {
   return (
     <Html>
       <Head />

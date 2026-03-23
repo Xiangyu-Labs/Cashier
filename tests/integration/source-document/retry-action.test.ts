@@ -119,6 +119,7 @@ describe("retrySourceDocumentAction", () => {
     const oldDocAfter = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, oldDocId),
     });
+    expect(oldDocAfter?.status).toBe("deleted");
     expect(oldDocAfter?.deletedAt).not.toBeNull();
     expect(oldDocAfter?.deletedAt).toBeInstanceOf(Date);
 

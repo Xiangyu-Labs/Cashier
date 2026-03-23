@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
-import { eq, and, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { ArbitrationFailedError } from "@/lib/ai/dual-gpt-runner";
 import { TaskCancelledError, throwIfCancelled } from "@/lib/flow/cancellation";
@@ -17,6 +17,10 @@ import { executeStage1_5Validation } from "./stage1-5-validator";
 import { executeStage2 } from "./stage2-executor";
 import { convertToParsedEntries } from "./result-mapper";
 import type { Stage1Results } from "./types";
+import {
+  sourceDocumentNotDeletedCondition,
+  whereSourceDocumentNotDeletedId,
+} from "../source-document-state";
 
 export function buildStage1Input(
   input: ParseSourceDocumentInput,
@@ -102,13 +106,13 @@ async function runStage0(
 
   if (stage0Result.description != null && stage0Result.description !== "") {
     const doc = await db.query.sourceDocuments.findFirst({
-      where: and(eq(sourceDocuments.id, ctx.docId), isNull(sourceDocuments.deletedAt)),
+      where: and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()),
     });
     if (doc != null) {
       await db
         .update(sourceDocuments)
         .set({ metadata: { ...doc.metadata, visionDescription: stage0Result.description } })
-        .where(ctx.q.whereId(ctx.docId));
+        .where(whereSourceDocumentNotDeletedId(ctx.ledgerId, ctx.docId));
     }
     return stage0Result.description;
   }

@@ -1,4 +1,5 @@
-import { SUPPORTED_LOCALES, DEFAULT_LOCALE, SupportedLocale } from "./locales";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./locales";
+import type { SupportedLocale } from "./locales";
 
 interface ResolveLocaleOptions {
   explicitLocale?: string | null;
@@ -35,17 +36,17 @@ function resolveFromAcceptLanguage(header: string): SupportedLocale | null {
 export function resolveSupportedLocale(options: ResolveLocaleOptions): SupportedLocale {
   const { explicitLocale, cookieLocale, acceptLanguage } = options;
 
-  if (explicitLocale) {
+  if (explicitLocale != null && explicitLocale !== "") {
     const match = matchSupportedLocale(explicitLocale);
     if (match !== null) return match;
   }
 
-  if (cookieLocale) {
+  if (cookieLocale != null && cookieLocale !== "") {
     const match = matchSupportedLocale(cookieLocale);
     if (match !== null) return match;
   }
 
-  if (acceptLanguage) {
+  if (acceptLanguage != null && acceptLanguage !== "") {
     const match = resolveFromAcceptLanguage(acceptLanguage);
     if (match !== null) return match;
   }

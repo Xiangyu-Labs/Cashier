@@ -132,6 +132,15 @@ describe("batchRetrySourceDocumentsAction", () => {
     });
     expect(oldDocs.length).toBe(0);
 
+    const deletedOldDocs = await db.query.sourceDocuments.findMany({
+      where: inArray(sourceDocuments.id, oldDocIds),
+    });
+    expect(deletedOldDocs).toHaveLength(2);
+    deletedOldDocs.forEach((doc) => {
+      expect(doc.status).toBe("deleted");
+      expect(doc.deletedAt).not.toBeNull();
+    });
+
     // Verify new documents are created
     const allDocs = await db.query.sourceDocuments.findMany({
       where: eq(sourceDocuments.ledgerId, testLedgerId),

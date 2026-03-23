@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
@@ -44,6 +44,14 @@ const CSV_HEADERS: Record<string, string[]> = {
 };
 
 const DEFAULT_EXPORT_LIMIT = Number.parseInt(process.env.EXPORT_MAX_ENTRIES ?? "2000", 10);
+const DELETED_SOURCE_DOCUMENT_STATUS = "deleted";
+
+function whereLedgerSourceDocumentNotDeleted(ledgerId: string) {
+  return and(
+    eq(sourceDocuments.ledgerId, ledgerId),
+    ne(sourceDocuments.status, DELETED_SOURCE_DOCUMENT_STATUS)
+  )!;
+}
 
 function escapeCsvField(value: string): string {
   if (value.includes(",") || value.includes("\n") || value.includes('"')) {
@@ -86,8 +94,7 @@ export async function exportLedgerEntries(
     (options?.startDate != null && options.startDate !== "") ||
     (options?.endDate != null && options.endDate !== "")
   ) {
-    const sourceDocumentScope = forLedger(sourceDocuments, ledgerId);
-    const sourceDocumentDateConditions = [sourceDocumentScope.whereActive];
+    const sourceDocumentDateConditions = [whereLedgerSourceDocumentNotDeleted(ledgerId)];
 
     if (options?.startDate != null && options.startDate !== "") {
       sourceDocumentDateConditions.push(gte(sourceDocuments.entryDate, options.startDate));

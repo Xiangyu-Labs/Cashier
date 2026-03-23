@@ -333,7 +333,8 @@ describe("exportLedgerEntriesAction", () => {
     expect(entryQuery).toContain('"ledgerentries"."deleted_at" is null');
     expect(entryQuery).toContain('select "id" from "source_documents"');
     expect(entryQuery).toContain('"source_documents"."ledger_id" = ?');
-    expect(entryQuery).toContain('"source_documents"."deleted_at" is null');
+    expect(entryQuery).toMatch(/"source_documents"\."status"\s*(<>|!=)\s*\?/);
+    expect(entryQuery).not.toContain('"source_documents"."deleted_at" is null');
     expect(entryQuery).toContain('"source_documents"."entry_date" >= ?');
     expect(entryQuery).toContain('"source_documents"."entry_date" <= ?');
   });

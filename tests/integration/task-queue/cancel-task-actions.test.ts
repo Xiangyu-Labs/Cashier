@@ -220,6 +220,7 @@ describe("cancelTaskAction", () => {
     const updated = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, doc.id),
     });
+    expect(updated?.status).toBe("deleted");
     expect(updated?.deletedAt).not.toBeNull();
   });
 
@@ -255,6 +256,7 @@ describe("cancelTaskAction", () => {
     const updated = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, doc.id),
     });
+    expect(updated?.status).toBe("deleted");
     expect(updated?.deletedAt).not.toBeNull();
   });
 
@@ -290,6 +292,7 @@ describe("cancelTaskAction", () => {
     const updated = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, doc.id),
     });
+    expect(updated?.status).toBe("completed");
     expect(updated?.deletedAt).toBeNull();
   });
 });
@@ -503,7 +506,9 @@ describe("batchCancelTasksAction", () => {
       where: eq(sourceDocuments.id, doc2.id),
     });
 
+    expect(updatedDoc1?.status).toBe("deleted");
     expect(updatedDoc1?.deletedAt).not.toBeNull(); // processing → soft deleted
+    expect(updatedDoc2?.status).toBe("completed");
     expect(updatedDoc2?.deletedAt).toBeNull(); // completed → not deleted
   });
 });

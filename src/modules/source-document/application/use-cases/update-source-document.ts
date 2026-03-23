@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
 import type {
   BatchUpdateSourceDocumentsResultDto,
   UpdateSourceDocumentResultDto,
@@ -11,6 +10,10 @@ import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
 } from "../../contract-schemas";
+import {
+  whereSourceDocumentNotDeleted,
+  whereSourceDocumentNotDeletedId,
+} from "../source-document-state";
 import { processImages } from "../services/processing";
 
 interface UpdateSourceDocumentInput {
@@ -47,7 +50,6 @@ export async function updateSourceDocument({
   sourceDocumentId,
   data,
 }: UpdateSourceDocumentInput): Promise<UpdateSourceDocumentResultDto> {
-  const q = forLedger(sourceDocuments, ledgerId);
   const updatePatch = {
     updatedAt: new Date(),
     ...(data.title !== undefined ? { title: data.title } : {}),
@@ -57,7 +59,7 @@ export async function updateSourceDocument({
   const updatedDocuments = await db
     .update(sourceDocuments)
     .set(updatePatch)
-    .where(q.whereId(sourceDocumentId))
+    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
     .returning({ id: sourceDocuments.id });
 
   return {
@@ -79,9 +81,8 @@ export async function updateSourceDocumentImages({
     };
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
   const existingDoc = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(sourceDocumentId),
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
 
   if (!existingDoc) {
@@ -135,7 +136,7 @@ export async function updateSourceDocumentImages({
       metadata,
       updatedAt: new Date(),
     })
-    .where(q.whereId(sourceDocumentId))
+    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
     .returning({ id: sourceDocuments.id });
 
   return {
@@ -156,7 +157,6 @@ export async function batchUpdateSourceDocuments({
     };
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
   const updatePatch = {
     updatedAt: new Date(),
     ...(data.status !== undefined ? { status: data.status } : {}),
@@ -167,7 +167,7 @@ export async function batchUpdateSourceDocuments({
   const updatedDocuments = await db
     .update(sourceDocuments)
     .set(updatePatch)
-    .where(and(q.whereActive, inArray(sourceDocuments.id, sourceDocumentIds)))
+    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)))
     .returning({ id: sourceDocuments.id });
 
   return {

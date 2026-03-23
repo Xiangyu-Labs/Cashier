@@ -3,7 +3,8 @@ import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 import { serializeSourceDocument } from "@/modules/source-document/mappers";
 import { sourceDocuments } from "@/persistence";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
 
 export async function getSourceDocumentLight(
@@ -16,7 +17,7 @@ export async function getSourceDocumentLight(
   }
 
   const document = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+    where: and(eq(sourceDocuments.id, sourceDocumentId), sourceDocumentNotDeletedCondition()),
     columns: {
       id: true,
       ledgerId: true,

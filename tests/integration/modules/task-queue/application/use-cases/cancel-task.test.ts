@@ -140,7 +140,9 @@ describe("cancel-task use cases", () => {
       where: eq(sourceDocuments.id, completedDocId),
     });
 
+    expect(processingDoc?.status).toBe("deleted");
     expect(processingDoc?.deletedAt).not.toBeNull();
+    expect(completedDoc?.status).toBe("completed");
     expect(completedDoc?.deletedAt).toBeNull();
   });
 

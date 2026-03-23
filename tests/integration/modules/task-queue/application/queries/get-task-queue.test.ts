@@ -66,10 +66,9 @@ describe("getTaskQueueQuery", () => {
         id: deletedAnomalyId,
         ledgerId,
         text: "deleted anomaly",
-        status: "anomaly",
+        status: "deleted",
         type: "ai_parsed",
         imageUrls: [],
-        deletedAt: new Date(),
       },
     ]);
 

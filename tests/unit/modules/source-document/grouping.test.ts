@@ -13,6 +13,7 @@ describe("grouping helpers", () => {
     { id: "anomaly-1", status: "anomaly" },
     { id: "failed-1", status: "failed" },
     { id: "completed-1", status: "completed" },
+    { id: "deleted-1", status: "deleted" },
   ] as const;
 
   it("groups by status and preserves ledgerEntries references", () => {
@@ -22,6 +23,9 @@ describe("grouping helpers", () => {
     expect(groups.queued[0]?.sourceDocument.id).toBe("queued-1");
     expect(groups.queued[0]?.ledgerEntries).toEqual([{ id: "entry-1" }]);
     expect(groups.completed).toHaveLength(1);
+    expect(
+      groups.queued.concat(groups.processing, groups.anomaly, groups.failed, groups.completed)
+    ).not.toContainEqual(expect.objectContaining({ sourceDocument: expect.objectContaining({ id: "deleted-1" }) }));
   });
 
   it("excludes completed docs from pending groups and computes counts", () => {

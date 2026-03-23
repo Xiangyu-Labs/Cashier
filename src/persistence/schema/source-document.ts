@@ -6,7 +6,7 @@ import {
   type SourceDocumentTypeValue,
   SourceDocumentStatus,
   SourceDocumentType,
-} from "@/modules/source-document/contracts";
+} from "@/modules/source-document/types";
 import { ledgers } from "./ledger";
 
 export const sourceDocuments = sqliteTable(

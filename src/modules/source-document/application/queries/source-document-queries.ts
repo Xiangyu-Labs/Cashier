@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { and, desc, eq, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
 import { parseDateRangeEnd, parseDateRangeStart } from "@/lib/date-utils";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -15,6 +14,10 @@ import {
   mapSourceDocumentListItemDto,
   mapSourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/mappers";
+import {
+  whereSourceDocumentNotDeleted,
+  whereSourceDocumentNotDeletedId,
+} from "@/modules/source-document/application/source-document-state";
 import {
   listAllSourceDocumentsInputSchema,
   listSourceDocumentsInputSchema,
@@ -232,10 +235,9 @@ export async function listSourceDocumentsQuery(
   params: ListSourceDocumentsParams
 ): Promise<SourceDocumentPageDto> {
   const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
-  const q = forLedger(sourceDocuments, ledgerId);
 
   const conditions = [
-    q.whereActive,
+    whereSourceDocumentNotDeleted(ledgerId),
     buildStatusCondition(status),
     ...buildDateConditions(startDate, endDate),
     buildCursorCondition(cursor),
@@ -312,9 +314,8 @@ export async function listAllSourceDocumentsQuery(
       : DEFAULT_PAGE_LIMIT;
   const offset = (page - 1) * pageSize;
 
-  const q = forLedger(sourceDocuments, ledgerId);
   const conditions = [
-    q.whereActive,
+    whereSourceDocumentNotDeleted(ledgerId),
     ...buildDateConditions(params.startDate, params.endDate),
     ...buildAmountConditions(ledgerId, params.minAmount, params.maxAmount),
   ];
@@ -429,9 +430,8 @@ export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentFullDto> {
-  const q = forLedger(sourceDocuments, ledgerId);
   const document = await db.query.sourceDocuments.findFirst({
-    where: q.whereId(sourceDocumentId),
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
 
   if (document == null) {

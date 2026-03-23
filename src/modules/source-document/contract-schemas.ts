@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
 import {
   omitUndefinedObjectFields,
   optionalDateStringSchema,
@@ -13,13 +14,7 @@ const optionalQueryNumberSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z.union([z.number(), z.string().min(1)]).pipe(z.coerce.number()).optional()
 );
-const sourceDocumentStatusSchema = z.enum([
-  "queued",
-  "processing",
-  "completed",
-  "anomaly",
-  "failed",
-]);
+const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
 const imagePayloadSchema = strictObjectSchema({
     data: z.string(),
     mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
@@ -49,12 +44,12 @@ export const sourceDocumentImagesInputSchema = imagesSchema;
 export const sourceDocumentIdSchema = uuidSchema;
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
-    text: z.string().max(10000, "Text too long").optional(),
-    images: imagesSchema.optional(),
-    originalImages: imagesSchema.optional(),
-    entryDate: optionalDateStringSchema,
-    timezone: z.string().max(50).optional(),
-  })
+  text: z.string().max(10000, "Text too long").optional(),
+  images: imagesSchema.optional(),
+  originalImages: imagesSchema.optional(),
+  entryDate: optionalDateStringSchema,
+  timezone: z.string().max(50).optional(),
+});
 
 export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.superRefine(
   (value, ctx) => {
@@ -73,47 +68,47 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 
 export const listSourceDocumentsInputSchema = strictObjectSchema({
-    status: sourceDocumentStatusSchema.optional(),
-    startDate: optionalDateStringSchema,
-    endDate: optionalDateStringSchema,
-    cursor: z.string().optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    includeEntries: z.coerce.boolean().default(false),
-  });
+  status: sourceDocumentStatusSchema.optional(),
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  includeEntries: z.coerce.boolean().default(false),
+});
 
 export const listAllSourceDocumentsInputSchema = strictObjectSchema({
-    startDate: optionalDateStringSchema,
-    endDate: optionalDateStringSchema,
-    minAmount: optionalQueryNumberSchema,
-    maxAmount: optionalQueryNumberSchema,
-    page: z.coerce.number().int().min(1).optional(),
-    pageSize: z.coerce.number().int().min(1).max(100).optional(),
-  });
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
+  minAmount: optionalQueryNumberSchema,
+  maxAmount: optionalQueryNumberSchema,
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
-    title: z.string().max(200).optional(),
-    entryDate: optionalDateStringSchema,
-  });
+  title: z.string().max(200).optional(),
+  entryDate: optionalDateStringSchema,
+});
 
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
-    status: sourceDocumentStatusSchema.optional(),
-    title: z.string().max(200).optional(),
-    entryDate: optionalDateStringSchema,
-  });
+  status: sourceDocumentStatusSchema.optional(),
+  title: z.string().max(200).optional(),
+  entryDate: optionalDateStringSchema,
+});
 
 export const createQuickEntryInputSchema = strictObjectSchema({
-    categoryId: uuidSchema,
-    amount: z.number().positive(),
-    currency: z.string().length(3).optional(),
-    itemName: z.string().trim().min(1).max(200).optional(),
-    description: z.string().max(500).nullable().optional(),
-    entryDate: optionalDateStringSchema,
-  });
+  categoryId: uuidSchema,
+  amount: z.number().positive(),
+  currency: z.string().length(3).optional(),
+  itemName: z.string().trim().min(1).max(200).optional(),
+  description: z.string().max(500).nullable().optional(),
+  entryDate: optionalDateStringSchema,
+});
 
 export const processingTasksQuerySchema = strictObjectSchema({
-    activeOnly: z.boolean().optional(),
-    limit: z.number().int().min(1).max(100).optional(),
-  });
+  activeOnly: z.boolean().optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
 
 export const sourceDocumentIdsSchema = z.array(uuidSchema);
 

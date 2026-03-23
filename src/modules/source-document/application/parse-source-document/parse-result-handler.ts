@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
-import { eq, and, isNull } from "drizzle-orm";
-import { forLedger } from "@/lib/db/scoped-query";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 import { buildEntriesForInsert, validateEntries, getEntryFallbackDate } from "./entry-builder";
 import { getLedgerMainCurrency } from "@/modules/ledger/source-document-queries";
 import { replaceSourceDocumentLedgerEntries } from "@/modules/source-document/application/services/source-document-ledger-entries";
+import {
+  deletedSourceDocumentPatch,
+  whereSourceDocumentNotDeletedId,
+} from "../source-document-state";
 
 export interface HandleParseResultParams {
   ledgerId: string;
@@ -30,12 +32,13 @@ export async function handleParseResult({
   verificationStatus,
   categories,
 }: HandleParseResultParams): Promise<void> {
-  const q = forLedger(sourceDocuments, ledgerId);
-
   // Query source document to get its entryDate for fallback
   const doc = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
+  if (doc == null) {
+    return;
+  }
 
   // Handle anomaly - do NOT save entries, just update document status
   if (verificationStatus === "anomaly" || verificationStatus === "invalid") {
@@ -50,7 +53,7 @@ export async function handleParseResult({
         anomalyReason: reason,
         title: title ?? undefined,
       })
-      .where(q.whereId(sourceDocumentId));
+      .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
     return;
   }
 
@@ -64,7 +67,7 @@ export async function handleParseResult({
         anomalyReason: validation.reason,
         title: title ?? undefined,
       })
-      .where(q.whereId(sourceDocumentId));
+      .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
     return;
   }
 
@@ -95,7 +98,7 @@ export async function handleParseResult({
         status: "completed",
         ...(title != null && title !== "" ? { title } : {}),
       })
-      .where(q.whereId(sourceDocumentId))
+      .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
       .run();
   });
 }
@@ -118,11 +121,12 @@ export async function handleParseError({
     return;
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
-
   // 系统错误时标记为 failed，让用户可以重试
   // anomaly 用于业务异常（用户输入问题），failed 用于系统错误
-  await db.update(sourceDocuments).set({ status: "failed" }).where(q.whereId(sourceDocumentId));
+  await db
+    .update(sourceDocuments)
+    .set({ status: "failed" })
+    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
 }
 
 export interface HandleCancelParams {
@@ -141,11 +145,9 @@ export async function handleParseCancel({
     return;
   }
 
-  const q = forLedger(sourceDocuments, ledgerId);
-
   // 软删除文档（取消 = 用户不想要了）
   await db
     .update(sourceDocuments)
-    .set({ deletedAt: new Date() })
-    .where(q.whereId(sourceDocumentId));
+    .set(deletedSourceDocumentPatch())
+    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
 }

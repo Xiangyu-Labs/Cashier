@@ -50,6 +50,15 @@ vi.mock("@/lib/db/scoped-query", () => ({
   })),
 }));
 
+vi.mock("@/modules/source-document/application/source-document-state", () => ({
+  whereSourceDocumentNotDeleted: vi.fn((ledgerId: string) => ({
+    whereSourceDocumentNotDeleted: [ledgerId],
+  })),
+  whereSourceDocumentNotDeletedId: vi.fn((ledgerId: string, sourceDocumentId: string) => ({
+    whereSourceDocumentNotDeletedId: [ledgerId, sourceDocumentId],
+  })),
+}));
+
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...parts: unknown[]) => ({ and: parts })),
   inArray: vi.fn((column: unknown, values: unknown[]) => ({ inArray: [column, values] })),

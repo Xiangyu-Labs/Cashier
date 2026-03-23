@@ -28,7 +28,7 @@ vi.mock("@/persistence", async () => {
     ...actual,
     sourceDocuments: {
       id: "sourceDocuments.id",
-      deletedAt: "sourceDocuments.deletedAt",
+      status: "sourceDocuments.status",
     },
   };
 });
@@ -39,7 +39,7 @@ vi.mock("drizzle-orm", async () => {
     ...actual,
     and: vi.fn((...parts: unknown[]) => ({ and: parts })),
     eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
-    isNull: vi.fn((column: unknown) => ({ isNull: column })),
+    ne: vi.fn((left: unknown, right: unknown) => ({ ne: [left, right] })),
   };
 });
 
@@ -92,5 +92,15 @@ describe("getSourceDocumentLight", () => {
     expect(result?.hasImages).toBe(true);
     expect((result as { imageUrls?: string[] } | null)?.imageUrls).toBeUndefined();
     expect(result?.metadata).toEqual({ note: "keep" });
+  });
+
+  it("returns null when the document is hidden by deleted status filtering", async () => {
+    sourceDocumentsFindFirstMock.mockResolvedValueOnce(null);
+
+    const result = await getSourceDocumentLight("doc-1");
+
+    expect(result).toBeNull();
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
+    expect(listLedgerEntryViewsBySourceDocumentIdsMock).not.toHaveBeenCalled();
   });
 });

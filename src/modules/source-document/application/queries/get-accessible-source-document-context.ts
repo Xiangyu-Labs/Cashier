@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import { sourceDocuments } from "@/persistence";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 
 export interface AccessibleSourceDocumentContext {
   ledgerId: string;
@@ -13,7 +14,7 @@ export async function getAccessibleSourceDocumentContext(
   sourceDocumentId: string
 ): Promise<AccessibleSourceDocumentContext | null> {
   const docMeta = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)),
+    where: and(eq(sourceDocuments.id, sourceDocumentId), sourceDocumentNotDeletedCondition()),
     columns: { ledgerId: true, imageUrls: true },
   });
 
