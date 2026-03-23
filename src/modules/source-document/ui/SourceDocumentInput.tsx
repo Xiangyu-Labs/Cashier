@@ -34,6 +34,7 @@ export function SourceDocumentInput({
     <SourceDocumentInputView
       mode={controller.mode}
       text={controller.text}
+      entryDate={controller.entryDate}
       images={controller.images}
       selectedImageIndex={controller.selectedImageIndex}
       fileInputRef={controller.fileInputRef}
@@ -46,7 +47,9 @@ export function SourceDocumentInput({
         retry: tCommon("retry"),
         delete: tCommon("delete"),
         sendingStatus: tCommon("sending_status"),
+        entryDate: t("entryDate"),
       }}
+      onEntryDateChange={controller.setEntryDate}
       onTextChange={controller.setText}
       onTextareaPaste={controller.handleTextareaPaste}
       onFileInputChange={controller.handleFileInputChange}

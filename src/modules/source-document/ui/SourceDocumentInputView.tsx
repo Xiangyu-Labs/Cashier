@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
 import { Camera, RefreshCw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Textarea } from "@/components/ui/textarea";
 import {
   SourceDocumentImageModal,
@@ -19,17 +20,20 @@ export interface SourceDocumentInputViewMessages {
   retry: string;
   delete: string;
   sendingStatus: string;
+  entryDate: string;
 }
 
 export interface SourceDocumentInputViewProps {
   mode: "create" | "retry";
   text: string;
+  entryDate: Date;
   images: SourceDocumentModalImage[];
   selectedImageIndex: number | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isPending: boolean;
   canSubmit: boolean;
   messages: SourceDocumentInputViewMessages;
+  onEntryDateChange: (date: Date) => void;
   onTextChange: (value: string) => void;
   onTextareaPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   onFileInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -44,12 +48,14 @@ export interface SourceDocumentInputViewProps {
 export function SourceDocumentInputView({
   mode,
   text,
+  entryDate,
   images,
   selectedImageIndex,
   fileInputRef,
   isPending,
   canSubmit,
   messages,
+  onEntryDateChange,
   onTextChange,
   onTextareaPaste,
   onFileInputChange,
@@ -100,6 +106,14 @@ export function SourceDocumentInputView({
         className="resize-none"
         rows={5}
         autoFocus
+      />
+
+      <DateFilter
+        value={entryDate}
+        onChange={(date) => onEntryDateChange(date ?? new Date())}
+        placeholder={messages.entryDate}
+        size="sm"
+        className="w-full"
       />
 
       <div className="flex items-center gap-2">

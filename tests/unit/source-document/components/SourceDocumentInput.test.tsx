@@ -6,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // Mock dependencies
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useFormatter: () => ({
+    dateTime: () => "Mar 20, 2026",
+  }),
 }));
 
 vi.mock("sonner", () => ({
@@ -23,6 +26,12 @@ vi.mock("@/modules/source-document/actions", () => ({
 vi.mock("@/modules/ledger/actions", () => ({
   getLedgerAction: vi.fn(),
   updateLedgerAction: vi.fn(),
+}));
+
+vi.mock("@/components/ui/date-filter", () => ({
+  DateFilter: ({ placeholder }: { placeholder?: string }) => (
+    <div data-testid="date-filter">{placeholder ?? "date-filter"}</div>
+  ),
 }));
 
 import {
