@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -18,25 +18,36 @@ function deletedSourceDocumentPatch(now = new Date()) {
 function whereLedgerSourceDocumentNotDeleted(ledgerId: string) {
   return and(
     eq(sourceDocuments.ledgerId, ledgerId),
-    ne(sourceDocuments.status, DELETED_SOURCE_DOCUMENT_STATUS)
+    ne(sourceDocuments.status, DELETED_SOURCE_DOCUMENT_STATUS),
+    isNull(sourceDocuments.deletedAt)
   )!;
 }
 
 export async function deleteLedger(userId: string, ledgerId: string): Promise<void> {
-  const existing = await db.query.ledgers.findFirst({
-    where: eq(ledgers.id, ledgerId),
+  const activeOwnedLedger = await db.query.ledgers.findFirst({
+    where: and(eq(ledgers.id, ledgerId), eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
   });
 
-  if (existing == null) {
+  if (activeOwnedLedger == null) {
+    const deletedOwnedLedger = await db.query.ledgers.findFirst({
+      where: and(eq(ledgers.id, ledgerId), eq(ledgers.userId, userId)),
+      columns: { id: true, deletedAt: true },
+    });
+
+    if (deletedOwnedLedger != null) {
+      return;
+    }
+
+    const foreignLedger = await db.query.ledgers.findFirst({
+      where: eq(ledgers.id, ledgerId),
+      columns: { id: true },
+    });
+
+    if (foreignLedger != null) {
+      throw new ForbiddenError("Access denied to this ledger");
+    }
+
     throw new NotFoundError("Ledger");
-  }
-
-  if (existing.userId !== userId) {
-    throw new ForbiddenError("Access denied to this ledger");
-  }
-
-  if (existing.deletedAt != null) {
-    return;
   }
 
   const qEntries = forLedger(ledgerEntries, ledgerId);
