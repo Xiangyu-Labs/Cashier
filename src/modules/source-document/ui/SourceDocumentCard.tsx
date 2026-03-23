@@ -18,21 +18,13 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
-import { parseAmount } from "@/lib/formatters";
 import { LedgerEntryItem } from "./LedgerEntryItem";
-
-function getSafeImageSrc(data: string): string {
-  if (data.startsWith("http") || data.startsWith("data:") || data.startsWith("/api/uploads/")) {
-    return data;
-  }
-  return `data:image/jpeg;base64,${data}`;
-}
-
-interface CurrencyBreakdown {
-  currency: string;
-  amount: number;
-  convertedAmount?: number;
-}
+import {
+  buildSourceDocumentCardTotals,
+  getSafeImageSrc,
+  getSourceDocumentPreview,
+  sortSourceDocumentEntries,
+} from "./source-document-card.utils";
 
 const SourceDocumentTotal = memo(function SourceDocumentTotal({
   entries,
@@ -44,51 +36,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({
   const t = useTranslations("SourceDocumentCard");
 
   const { subtotalsByCurrency, totalInMainCurrency, breakdownData } = useMemo(() => {
-    const groups: Record<string, number> = {};
-    let mainCurrencyTotal = 0;
-
-    entries.forEach((entry) => {
-      const curr = entry.currency != null && entry.currency !== "" ? entry.currency : mainCurrency;
-      const amount = parseAmount(entry.amount);
-      groups[curr] = (groups[curr] ?? 0) + amount;
-
-      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
-        mainCurrencyTotal += parseAmount(entry.convertedAmount);
-      } else if (curr === mainCurrency) {
-        mainCurrencyTotal += amount;
-      }
-    });
-
-    const uniqueCurrencies = Object.keys(groups);
-
-    const breakdown: CurrencyBreakdown[] = uniqueCurrencies.map((currency) => {
-      const convertedAmount = entries
-        .filter(
-          (e) => (e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === currency
-        )
-        .reduce((sum, e) => {
-          if (e.convertedAmount != null && e.convertedAmount !== "") {
-            return sum + parseAmount(e.convertedAmount);
-          } else if (
-            (e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === mainCurrency
-          ) {
-            return sum + parseAmount(e.amount);
-          }
-          return sum;
-        }, 0);
-
-      return {
-        currency,
-        amount: groups[currency] ?? 0,
-        convertedAmount,
-      };
-    });
-
-    return {
-      subtotalsByCurrency: groups,
-      totalInMainCurrency: mainCurrencyTotal,
-      breakdownData: breakdown,
-    };
+    return buildSourceDocumentCardTotals(entries, mainCurrency);
   }, [entries, mainCurrency]);
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
@@ -215,24 +163,11 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
 
-  const { sortedEntries } = useMemo(() => {
-    const sorted = [...ledgerEntries].sort((a, b) => {
-      const aOrder = a.category?.sortOrder ?? 999999;
-      const bOrder = b.category?.sortOrder ?? 999999;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return parseAmount(b.amount) - parseAmount(a.amount);
-    });
-
-    return { sortedEntries: sorted };
-  }, [ledgerEntries]);
-
-  const { text, images } = useMemo(() => {
-    const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
-    return {
-      text: sourceDocument.text ?? "",
-      images: imageUrls ?? [],
-    };
-  }, [sourceDocument]);
+  const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
+  const { text, images } = useMemo(
+    () => getSourceDocumentPreview(sourceDocument),
+    [sourceDocument]
+  );
 
   async function handleRetry() {
     if (onRetry == null) return;
