@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
@@ -14,6 +15,14 @@ const optionalQueryNumberSchema = z.preprocess(
     .pipe(z.coerce.number())
     .optional()
 );
+
+function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new ValidationError("Validation failed", { issues: result.error.issues });
+  }
+  return result.data;
+}
 
 export const createLedgerInputSchema = strictObjectSchema({
   aiLanguage: z.string().max(32).optional(),
@@ -47,6 +56,7 @@ export const reorderEntryCategoriesInputSchema = z.array(uuidSchema);
 export const ledgerEntryIdSchema = uuidSchema;
 export const ledgerEntryIdsSchema = z.array(uuidSchema);
 export const entryCategoryIdSchema = uuidSchema;
+export const serviceCredentialIdSchema = uuidSchema;
 
 export const createLedgerEntryInputSchema = strictObjectSchema({
   amount: z.number().positive(),
@@ -73,6 +83,10 @@ export const batchUpdateLedgerEntriesInputSchema = strictObjectSchema({
   itemName: z.string().trim().min(1).max(200).optional(),
 });
 
+export const createServiceCredentialInputSchema = strictObjectSchema({
+  name: z.string().trim().min(1).max(100),
+});
+
 export const listLedgerEntriesInputSchema = strictObjectSchema({
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
@@ -91,6 +105,33 @@ export const ledgerStatsQuerySchema = strictObjectSchema({
   currency: optionalCurrencyCodeSchema,
 });
 
+export const parseCreateLedgerInput = (input: unknown) =>
+  parseLedgerContract(createLedgerInputSchema, input);
+export const parseUpdateLedgerInput = (input: unknown) =>
+  parseLedgerContract(updateLedgerInputSchema, input);
+export const parseCreateEntryCategoryInput = (input: unknown) =>
+  parseLedgerContract(createEntryCategoryInputSchema, input);
+export const parseUpdateEntryCategoryInput = (input: unknown) =>
+  parseLedgerContract(updateEntryCategoryInputSchema, input);
+export const parseReorderEntryCategoriesInput = (input: unknown) =>
+  parseLedgerContract(reorderEntryCategoriesInputSchema, input);
+export const parseEntryCategoryId = (input: unknown) =>
+  parseLedgerContract(entryCategoryIdSchema, input);
+export const parseCreateLedgerEntryInput = (input: unknown) =>
+  parseLedgerContract(createLedgerEntryInputSchema, input);
+export const parseUpdateLedgerEntryInput = (input: unknown) =>
+  parseLedgerContract(updateLedgerEntryInputSchema, input);
+export const parseBatchUpdateLedgerEntriesInput = (input: unknown) =>
+  parseLedgerContract(batchUpdateLedgerEntriesInputSchema, input);
+export const parseLedgerEntryId = (input: unknown) =>
+  parseLedgerContract(ledgerEntryIdSchema, input);
+export const parseLedgerEntryIds = (input: unknown) =>
+  parseLedgerContract(ledgerEntryIdsSchema, input);
+export const parseCreateServiceCredentialInput = (input: unknown) =>
+  parseLedgerContract(createServiceCredentialInputSchema, input);
+export const parseServiceCredentialId = (input: unknown) =>
+  parseLedgerContract(serviceCredentialIdSchema, input);
+
 export type CreateLedgerInput = z.infer<typeof createLedgerInputSchema>;
 export type UpdateLedgerInput = z.infer<typeof updateLedgerInputSchema>;
 export type CreateEntryCategoryInput = z.infer<typeof createEntryCategoryInputSchema>;
@@ -98,5 +139,6 @@ export type UpdateEntryCategoryInput = z.infer<typeof updateEntryCategoryInputSc
 export type CreateLedgerEntryInput = z.infer<typeof createLedgerEntryInputSchema>;
 export type UpdateLedgerEntryInput = z.infer<typeof updateLedgerEntryInputSchema>;
 export type BatchUpdateLedgerEntriesInput = z.infer<typeof batchUpdateLedgerEntriesInputSchema>;
+export type CreateServiceCredentialInput = z.infer<typeof createServiceCredentialInputSchema>;
 export type ListLedgerEntriesInput = z.input<typeof listLedgerEntriesInputSchema>;
 export type LedgerStatsQueryInput = z.infer<typeof ledgerStatsQuerySchema>;

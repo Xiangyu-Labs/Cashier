@@ -6,10 +6,10 @@ import type {
   ReorderEntryCategoriesResultDto,
 } from "@/modules/ledger/contracts";
 import {
-  createEntryCategoryInputSchema,
-  entryCategoryIdSchema,
-  reorderEntryCategoriesInputSchema,
-  updateEntryCategoryInputSchema,
+  parseCreateEntryCategoryInput,
+  parseEntryCategoryId,
+  parseReorderEntryCategoriesInput,
+  parseUpdateEntryCategoryInput,
   type CreateEntryCategoryInput,
   type UpdateEntryCategoryInput,
 } from "@/modules/ledger/contract-schemas";
@@ -23,7 +23,7 @@ import {
 
 export const createEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateEntryCategoryInput): Promise<EntryCategoryDto> => {
-    const validated = createEntryCategoryInputSchema.parse(data);
+    const validated = parseCreateEntryCategoryInput(data);
     const payload: Parameters<typeof createEntryCategory>[1] = {
       name: validated.name,
     };
@@ -40,15 +40,15 @@ export const updateEntryCategoryAction = withLedgerAccess(
     categoryId: string,
     data: UpdateEntryCategoryInput
   ): Promise<EntryCategoryDto> => {
-    const validatedCategoryId = entryCategoryIdSchema.parse(categoryId);
-    const validated = updateEntryCategoryInputSchema.parse(data);
+    const validatedCategoryId = parseEntryCategoryId(categoryId);
+    const validated = parseUpdateEntryCategoryInput(data);
     return updateEntryCategory(ledgerId, validatedCategoryId, validated);
   }
 );
 
 export const deleteEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, categoryId: string): Promise<DeleteEntryCategoryResultDto> => {
-    const validatedCategoryId = entryCategoryIdSchema.parse(categoryId);
+    const validatedCategoryId = parseEntryCategoryId(categoryId);
     const deleted = await deleteEntryCategory(ledgerId, validatedCategoryId);
     return { categoryId: validatedCategoryId, deleted };
   }
@@ -56,7 +56,7 @@ export const deleteEntryCategoryAction = withLedgerAccess(
 
 export const reorderEntryCategoriesAction = withLedgerAccess(
   async (ledgerId: string, categoryIds: string[]): Promise<ReorderEntryCategoriesResultDto> => {
-    const validatedIds = reorderEntryCategoriesInputSchema.parse(categoryIds);
+    const validatedIds = parseReorderEntryCategoriesInput(categoryIds);
     await reorderEntryCategories(ledgerId, validatedIds);
     return {
       categoryIds: validatedIds,

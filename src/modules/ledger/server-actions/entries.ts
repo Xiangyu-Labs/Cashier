@@ -14,11 +14,11 @@ import {
 } from "@/modules/ledger/use-cases";
 import { listLedgerEntries } from "@/modules/ledger/queries";
 import {
-  batchUpdateLedgerEntriesInputSchema,
-  createLedgerEntryInputSchema,
-  ledgerEntryIdSchema,
-  ledgerEntryIdsSchema,
-  updateLedgerEntryInputSchema,
+  parseBatchUpdateLedgerEntriesInput,
+  parseCreateLedgerEntryInput,
+  parseLedgerEntryId,
+  parseLedgerEntryIds,
+  parseUpdateLedgerEntryInput,
   type BatchUpdateLedgerEntriesInput,
   type CreateLedgerEntryInput,
   type UpdateLedgerEntryInput,
@@ -26,7 +26,7 @@ import {
 
 export const createLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
-    const validated = createLedgerEntryInputSchema.parse(data);
+    const validated = parseCreateLedgerEntryInput(data);
     const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
       amount: validated.amount,
@@ -46,8 +46,8 @@ export const updateLedgerEntryAction = withLedgerAccess(
     ledgerEntryId: string,
     data: UpdateLedgerEntryInput
   ): Promise<LedgerEntryDto> => {
-    const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
-    const validated = updateLedgerEntryInputSchema.parse(data);
+    const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
+    const validated = parseUpdateLedgerEntryInput(data);
     const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
       ledgerId,
       ledgerEntryId: validatedLedgerEntryId,
@@ -63,7 +63,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
 
 export const deleteLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto> => {
-    const validatedLedgerEntryId = ledgerEntryIdSchema.parse(ledgerEntryId);
+    const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     return deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
   }
 );
@@ -73,7 +73,7 @@ export const batchDeleteLedgerEntriesAction = withLedgerAccess(
     ledgerId: string,
     ledgerEntryIds: string[]
   ): Promise<BatchLedgerEntriesMutationResultDto> => {
-    const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
+    const validatedLedgerEntryIds = parseLedgerEntryIds(ledgerEntryIds);
     return batchDeleteLedgerEntries(ledgerId, validatedLedgerEntryIds);
   }
 );
@@ -84,8 +84,8 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     ledgerEntryIds: string[],
     data: BatchUpdateLedgerEntriesInput
   ): Promise<BatchLedgerEntriesMutationResultDto> => {
-    const validatedLedgerEntryIds = ledgerEntryIdsSchema.parse(ledgerEntryIds);
-    const validated = batchUpdateLedgerEntriesInputSchema.parse(data);
+    const validatedLedgerEntryIds = parseLedgerEntryIds(ledgerEntryIds);
+    const validated = parseBatchUpdateLedgerEntriesInput(data);
     const payload: Parameters<typeof batchUpdateLedgerEntries>[0] = {
       ledgerId,
       ledgerEntryIds: validatedLedgerEntryIds,

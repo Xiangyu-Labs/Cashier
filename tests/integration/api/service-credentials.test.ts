@@ -12,6 +12,7 @@ import {
   getLedgerSettingsAction,
 } from "@/modules/ledger/actions";
 import { getDateInTimezone } from "@/lib/date-utils";
+import { ValidationError } from "@/lib/errors";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -83,6 +84,18 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     expect(listRes).toHaveLength(1);
     expect(listedCredential.id).toBe(createRes.id);
+  });
+
+  it("rejects blank credential name with ValidationError", async () => {
+    await expect(createServiceCredentialAction(testLedgerId, { name: "" } as never)).rejects.toThrow(
+      ValidationError
+    );
+  });
+
+  it("rejects invalid credential id with ValidationError", async () => {
+    await expect(deleteServiceCredentialAction(testLedgerId, "bad-id")).rejects.toThrow(
+      ValidationError
+    );
   });
 
   it("should ingest ledger entry with valid service credential", async () => {
