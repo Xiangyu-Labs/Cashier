@@ -8,29 +8,28 @@ import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-utils";
 import { fireAndForget } from "@/lib/safe-async";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 import type { SourceDocumentInputProps } from "../ui/source-document-input.types";
+import {
+  buildSubmitPayload,
+  mergeModalImagesIntoEditableImages,
+  resolveInitialEntryDate,
+  toEditableImage,
+  toEditableImages,
+  toModalImages,
+} from "./source-document-input-controller.core";
+import type {
+  EditableInputImage,
+  SourceDocumentInputControllerMessages,
+  SourceDocumentSubmitPayload,
+} from "./source-document-input-controller.types";
 
 const MAX_FALLBACK_SIZE = 5 * 1024 * 1024;
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
-
-interface EditableInputImage extends SourceDocumentModalImage {
-  originalData: string;
-  originalMimeType: string;
-  isEdited: boolean;
-}
-
-interface SubmitPayload {
-  entryDate: string;
-  text?: string;
-  images?: Array<{ data: string; mimeType: string }>;
-  originalImages?: Array<{ data: string; mimeType: string }>;
-}
 
 interface CreateRollbackContext {
   previousPending?: unknown;
@@ -38,14 +37,6 @@ interface CreateRollbackContext {
 
 interface RetryRollbackContext {
   previousDocument?: unknown;
-}
-
-export interface SourceDocumentInputControllerMessages {
-  uploadSuccess: string;
-  uploadError: string;
-  retrySuccess: string;
-  retryError: string;
-  imageTooLarge: (fileName: string) => string;
 }
 
 interface UseSourceDocumentInputControllerOptions extends SourceDocumentInputProps {
@@ -57,51 +48,6 @@ function createExactPredicate(target: readonly unknown[]): QueryPredicate {
     Array.isArray(query.queryKey) &&
     query.queryKey.length === target.length &&
     target.every((value, index) => query.queryKey[index] === value);
-}
-
-function toEditableImage(image: { data: string; mimeType: string }): EditableInputImage {
-  return {
-    ...image,
-    originalData: image.data,
-    originalMimeType: image.mimeType,
-    isEdited: false,
-  };
-}
-
-function toEditableImages(images?: Array<{ data: string; mimeType: string }>) {
-  return (images ?? []).map(toEditableImage);
-}
-
-function toModalImages(images: EditableInputImage[]) {
-  return images.map(({ data, mimeType }) => ({ data, mimeType }));
-}
-
-function resolveInitialEntryDate(entryDate?: string): Date {
-  if (entryDate != null) {
-    const parsed = parseDateString(entryDate);
-    if (!isNaN(parsed.getTime())) return parsed;
-  }
-
-  return new Date();
-}
-
-function buildSubmitPayload(
-  text: string,
-  images: EditableInputImage[],
-  entryDate: Date
-): SubmitPayload {
-  const nextImages = images.map(({ data, mimeType }) => ({ data, mimeType }));
-  const originalImages = images.map(({ originalData, originalMimeType }) => ({
-    data: originalData,
-    mimeType: originalMimeType,
-  }));
-
-  return {
-    entryDate: formatDateTimeForApi(entryDate),
-    ...(text !== "" ? { text } : {}),
-    ...(nextImages.length > 0 ? { images: nextImages } : {}),
-    ...(images.some((image) => image.isEdited) ? { originalImages } : {}),
-  };
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -175,7 +121,11 @@ export function useSourceDocumentInputController({
     });
   }, [initialData, startTransition]);
 
-  const createMutation = useLedgerMutation<unknown, SubmitPayload, CreateRollbackContext>(
+  const createMutation = useLedgerMutation<
+    unknown,
+    SourceDocumentSubmitPayload,
+    CreateRollbackContext
+  >(
     ledgerId,
     {
       mutationFn: async (payload) => createSourceDocumentAction(ledgerId, payload),
@@ -204,7 +154,11 @@ export function useSourceDocumentInputController({
     }
   );
 
-  const retryMutation = useLedgerMutation<unknown, SubmitPayload, RetryRollbackContext>(ledgerId, {
+  const retryMutation = useLedgerMutation<
+    unknown,
+    SourceDocumentSubmitPayload,
+    RetryRollbackContext
+  >(ledgerId, {
     mutationFn: async (payload) => {
       if (sourceDocumentId == null) return;
       await retrySourceDocumentAction(ledgerId, sourceDocumentId, payload);
@@ -328,21 +282,7 @@ export function useSourceDocumentInputController({
   };
 
   const handleModalSave = (updatedImages: SourceDocumentModalImage[]) => {
-    setImages((previousImages) =>
-      previousImages.map((image, index) => {
-        const updatedImage = updatedImages[index];
-        if (updatedImage == null) return image;
-
-        return {
-          ...image,
-          data: updatedImage.data,
-          mimeType: updatedImage.mimeType,
-          isEdited:
-            updatedImage.data !== image.originalData ||
-            updatedImage.mimeType !== image.originalMimeType,
-        };
-      })
-    );
+    setImages((previousImages) => mergeModalImagesIntoEditableImages(previousImages, updatedImages));
   };
 
   return {
