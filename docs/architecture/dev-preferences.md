@@ -166,9 +166,23 @@ Phase 4a-4d 专门把 600+ 行的组件拆到 350-430 行，提取自定义 hook
 | **Feature-based 模块化**        | 专门 8 个提交做目录重构                              | ★★★★   |
 | **直接 ORM > Repository 抽象**  | 移除 BaseRepository，用 Drizzle 直接查询             | ★★★★   |
 | **进程内 > 外部依赖**           | 移除 Redis，用内存 store；移除 BullMQ，用 Promise    | ★★★★   |
-| **显式边界 > 深层导入**         | 跨 feature 统一走 `index.ts` / `server` / `client` / `components` 入口 | ★★★★★  |
+| **显式边界 > 深层导入**         | 当前收敛为跨 module 只能走显式公共入口，内部实现禁止被跨模块直接依赖 | ★★★★★  |
 | **显式协议 > 隐式副作用**       | 任务注册集中在 registry，去重键升格为一等字段        | ★★★★★  |
 | **领域错误 > HTTP 返回值泄漏**  | 鉴权 helper 只抛领域错误，HTTP 响应在 route 边界处理 | ★★★★   |
+
+#### 5.1.1 模块边界与 ESLint 规则偏好
+
+当前项目已经从早期的 `src/features/*` 进一步收敛到 `src/modules/*`。这部分不只是目录风格，而是**架构边界本身**，应该由 ESLint 作为强约束来表达。
+
+- **单一事实来源**：公共入口列表必须集中定义在一份清单里，由规则生成器消费，不能在 ESLint 里到处分散写 allowlist。
+- **跨模块只走公共入口**：生产代码跨模块 import 只能使用 `@/modules/<module>/<public-entrypoint>`，不允许使用 `@/modules/<module>` 根路径，也不允许 deep import 到 `application/*`、`server-actions/*`、`services/*`、`mappers/*`、`tasks/*` 等内部实现。
+- **模块内部允许相对导入**：同一 module 内部实现之间可以使用相对路径；但相对路径不能跨出本 module 去引用别的 module。
+- **应用层单独收紧**：`src/modules/*/application/**` 不能依赖本模块或跨模块的 `actions` / `server-actions`，共享逻辑应该下沉到 queries / use-cases / services。
+- **App / shared / lib / types 必须用别名**：`src/app/**`、`src/components/**`、`src/lib/**`、`src/types/**` 不允许通过相对项目路径跳到 `modules` / `features` / `persistence`，统一使用 `@/` 别名。
+- **测试规则单独定义**：tests 可以通过 `@/` 直接 import 被测内部实现，不强制只能走公共入口；但 tests 不能再用 `../../src/...` 这种方式绕过规则，也不能引用已经废弃的 `@/features/*`。
+- **废弃入口显式标注**：像 `auth/helpers`、`currency/services`、`workspace/contracts` 这种历史兼容路径，如果要禁止，必须给出明确迁移目标，而不是只写“不要这么用”。
+- **例外必须是领域规则**：真正保留的特例应该是领域边界，例如 ledger/source-document 之间的受限依赖，而不是为了迁就某个文件临时开洞。
+- **规则要能自校验**：如果公共入口清单里声明了一个入口，但对应文件或 `index.ts` 不存在，配置应该直接失败，避免文档、目录和 lint 漂移。
 
 ### 5.2 前端模式
 
