@@ -25,7 +25,7 @@ export const legacyUnitTestAllowlist = [
   "tests/unit/hooks/useGroupedEntries.test.ts",
   "tests/unit/hooks/useInfiniteScroll.test.ts",
   "tests/unit/hooks/use-ledger-entries-mutations.test.ts",
-  "tests/unit/hooks/useSourceDocuments.test.ts",
+  "tests/unit/hooks/useSourceDocumentCollection.test.ts",
   "tests/unit/hooks/use-task-queue-mutations.test.ts",
   "tests/unit/ledger/access-public-api.test.ts",
   "tests/unit/ledger/actions-export-boundary.test.ts",

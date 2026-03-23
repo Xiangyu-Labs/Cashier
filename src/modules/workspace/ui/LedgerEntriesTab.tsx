@@ -18,7 +18,10 @@ import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useSelection } from "@/hooks/use-selection";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { useGroupedEntries, useLedgerEntriesMutations } from "@/modules/ledger/hooks";
-import { useBatchSourceDocumentActions, useSourceDocuments } from "@/modules/source-document/hooks";
+import {
+  useBatchSourceDocumentActions,
+  useSourceDocumentCollection,
+} from "@/modules/source-document/hooks";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
@@ -79,7 +82,7 @@ export function LedgerEntriesTab({
     closeRetrySourceDocument,
   } = useLedgerEntriesTabState();
   const { updateEntry, deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
-  const { groups, isLoading } = useSourceDocuments(ledgerId, {
+  const { groups, isLoading } = useSourceDocumentCollection(ledgerId, {
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
       ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),

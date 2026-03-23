@@ -6,6 +6,7 @@ import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
 const replaceLedgerUrlMock = vi.hoisted(() => vi.fn());
 const useLedgerTabsMock = vi.hoisted(() => vi.fn());
 const usePeriodFilterMock = vi.hoisted(() => vi.fn());
+const handleFiltersChangeMock = vi.hoisted(() => vi.fn());
 const useDrilldownNavigationMock = vi.hoisted(() => vi.fn());
 const useLedgerDialogStateMock = vi.hoisted(() => vi.fn());
 const useLedgerPagePrefetchingMock = vi.hoisted(() => vi.fn());
@@ -50,10 +51,8 @@ vi.mock("next/dynamic", () => ({
 
     if (text.includes("DetailsTab")) {
       return createComponent("details-tab-trigger-filters", "details-tab", (props) => {
-        const onAdvancedFiltersChange = props.onAdvancedFiltersChange as
-          | ((value: unknown) => void)
-          | undefined;
-        onAdvancedFiltersChange?.({ categoryId: "cat-1" });
+        const onFiltersChange = props.onFiltersChange as ((value: unknown) => void) | undefined;
+        onFiltersChange?.({ categoryId: "cat-1" });
       });
     }
 
@@ -190,7 +189,8 @@ describe("LedgerPageClient", () => {
       periodParams: { period: "thisMonth" },
       filterParams: {},
       handlePeriodChange: vi.fn(),
-      handleFiltersChange: vi.fn(),
+      handleAdvancedFiltersChange: vi.fn(),
+      handleFiltersChange: handleFiltersChangeMock,
     });
     useDrilldownNavigationMock.mockReturnValue({
       handleCategoryDrilldown: vi.fn(),
@@ -243,7 +243,7 @@ describe("LedgerPageClient", () => {
     expect(screen.getByText("notFound")).toBeTruthy();
   });
 
-  it("wires prefetching and advanced filter url replacement in details flow", () => {
+  it("wires prefetching and delegates filter writes to usePeriodFilter", () => {
     render(
       <LedgerPageClient
         ledgerId="ledger-1"
@@ -255,7 +255,8 @@ describe("LedgerPageClient", () => {
     expect(useLedgerPagePrefetchingMock).toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("details-tab-trigger-filters"));
-    expect(replaceLedgerUrlMock).toHaveBeenCalled();
+    expect(handleFiltersChangeMock).toHaveBeenCalledWith({ categoryId: "cat-1" });
+    expect(replaceLedgerUrlMock).not.toHaveBeenCalled();
   });
 
   it("opens task queue through header callback wiring", () => {

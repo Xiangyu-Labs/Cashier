@@ -8,7 +8,7 @@ export interface LedgerFilterParams {
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
 type SearchParamsStringLike = Pick<URLSearchParams, "toString">;
 
-interface LedgerUrlUpdate {
+export interface LedgerUrlUpdate {
   tab?: string | null;
   period?: string | null;
   startDate?: string | null;

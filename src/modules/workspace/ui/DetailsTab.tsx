@@ -40,19 +40,13 @@ interface DetailsTabProps {
   ledger?: Ledger;
   periodParams: PeriodParams;
   onPeriodChange: (params: PeriodParams) => void;
-  _onFiltersChange: (filters: EntryFilters) => void;
+  onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters: {
     categoryId?: string | null;
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
   };
-  onAdvancedFiltersChange: (filters: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-  }) => void;
 }
 
 export function DetailsTab({
@@ -61,9 +55,8 @@ export function DetailsTab({
   ledger,
   periodParams,
   onPeriodChange,
-  _onFiltersChange,
+  onFiltersChange,
   advancedFilters,
-  onAdvancedFiltersChange,
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
@@ -99,7 +92,7 @@ export function DetailsTab({
   const { groupedItems } = useDetailsTabGrouping(entries);
 
   // Filters
-  const { filters, handleFiltersChange } = useDetailsTabFilters({
+  const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,
   });
@@ -143,8 +136,6 @@ export function DetailsTab({
     ]);
   }, [queryClient, ledgerId]);
 
-  const handleLocalFiltersChange = handleFiltersChange(onPeriodChange, onAdvancedFiltersChange);
-
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
@@ -170,7 +161,7 @@ export function DetailsTab({
             )}
             <EntryFilterPanel
               filters={filters}
-              onFiltersChange={handleLocalFiltersChange}
+              onFiltersChange={onFiltersChange}
               periodParams={periodParams}
               onPeriodChange={onPeriodChange}
               categories={categories}

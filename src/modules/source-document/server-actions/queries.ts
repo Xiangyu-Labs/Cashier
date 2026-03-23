@@ -2,8 +2,8 @@
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import {
-  getAllSourceDocumentsFromValidatedInput,
   getPendingSourceDocuments,
+  getSourceDocumentCollectionFromValidatedInput,
   getSourceDocumentFullQuery,
   listSourceDocumentsFromValidatedInput,
 } from "@/modules/source-document/application/queries/source-document-queries";
@@ -14,10 +14,10 @@ import type {
   SourceDocumentPageDto,
 } from "@/modules/source-document/contracts";
 import {
-  listAllSourceDocumentsInputSchema,
   listSourceDocumentsInputSchema,
+  sourceDocumentCollectionInputSchema,
   sourceDocumentIdSchema,
-  type ListAllSourceDocumentsInput,
+  type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 
@@ -43,25 +43,20 @@ export const getSourceDocumentsAction = withLedgerAccess(
 );
 
 /**
- * Get all source documents as a flat array (not grouped) with proper pagination.
- * Used for the new optimistic update architecture.
- *
- * Note: For backward compatibility, when called without pagination params, it uses
- * a default limit of 1000 documents. For larger datasets, use explicit pagination
- * or cursor-based pagination via getSourceDocumentsAction.
+ * Get the bounded source document collection used by the workspace stream.
  */
-export const getAllSourceDocumentsAction = withLedgerAccess(
+export const getSourceDocumentCollectionAction = withLedgerAccess(
   async (
     ledgerId: string,
-    params: ListAllSourceDocumentsInput = {}
+    params: ListSourceDocumentCollectionInput
   ): Promise<SourceDocumentCollectionDto> => {
-    const parsed = listAllSourceDocumentsInputSchema.safeParse(params);
+    const parsed = sourceDocumentCollectionInputSchema.safeParse(params);
     if (!parsed.success) {
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
 
     const validated = parsed.data;
-    return getAllSourceDocumentsFromValidatedInput(ledgerId, validated);
+    return getSourceDocumentCollectionFromValidatedInput(ledgerId, validated);
   }
 );
 

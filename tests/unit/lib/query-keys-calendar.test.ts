@@ -38,7 +38,9 @@ describe("calendar and module invalidation helpers", () => {
       invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId, "all") })
     ).toBe(true);
     expect(
-      invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })
+      invalidateSourceDocuments(ledgerId)({
+        queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
+      })
     ).toBe(true);
     expect(
       invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getAllSourceDocumentsAction } from "@/modules/source-document/actions";
+import { getSourceDocumentCollectionAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto as SourceDocumentListItemWithEntries } from "@/modules/source-document/contracts";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { queryKeys } from "@/lib/query-keys";
@@ -13,6 +13,8 @@ import {
 
 export type { SourceDocumentListItemWithEntries as SourceDocumentWithEntries };
 
+const STREAM_COLLECTION_LIMIT = 1000;
+
 interface SourceDocumentsStats {
   queuedCount: number;
   processingCount: number;
@@ -20,7 +22,7 @@ interface SourceDocumentsStats {
   failedCount: number;
 }
 
-export interface UseSourceDocumentsOptions {
+export interface UseSourceDocumentCollectionOptions {
   dateRange?: {
     start?: Date;
     end?: Date;
@@ -39,7 +41,10 @@ function groupAndSummarize(docs: SourceDocumentListItemWithEntries[]): {
   return { groups, stats };
 }
 
-export function useSourceDocuments(ledgerId: string, options: UseSourceDocumentsOptions = {}) {
+export function useSourceDocumentCollection(
+  ledgerId: string,
+  options: UseSourceDocumentCollectionOptions = {}
+) {
   const { dateRange, minAmount, maxAmount } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
@@ -53,18 +58,20 @@ export function useSourceDocuments(ledgerId: string, options: UseSourceDocuments
   });
 
   const { data: response, isLoading } = useQuery({
-    queryKey: queryKeys.sourceDocumentsAll(ledgerId, {
+    queryKey: queryKeys.sourceDocumentCollection(ledgerId, {
       startDate,
       endDate,
       ...(minAmount != null ? { minAmount } : {}),
       ...(maxAmount != null ? { maxAmount } : {}),
+      limit: STREAM_COLLECTION_LIMIT,
     }),
     queryFn: () =>
-      getAllSourceDocumentsAction(ledgerId, {
+      getSourceDocumentCollectionAction(ledgerId, {
         ...(startDate !== null ? { startDate } : {}),
         ...(endDate !== null ? { endDate } : {}),
         ...(minAmount != null ? { minAmount } : {}),
         ...(maxAmount != null ? { maxAmount } : {}),
+        limit: STREAM_COLLECTION_LIMIT,
       }),
     refetchInterval: processingPolling,
   });

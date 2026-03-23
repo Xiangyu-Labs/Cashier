@@ -327,6 +327,31 @@ describe("usePeriodFilter", () => {
     expect(callUrl).not.toContain("maxAmount=");
   });
 
+  it("should update URL from advanced filter changes without touching period params", () => {
+    const searchParams = new URLSearchParams("period=thisMonth");
+    const { result } = renderHook(() =>
+      usePeriodFilter({
+        pathname: mockPathname,
+        searchParams,
+        initialPeriod: { period: "thisMonth" },
+      })
+    );
+
+    act(() => {
+      result.current.handleAdvancedFiltersChange({
+        categoryId: "cat_123",
+        currency: "USD",
+      });
+    });
+
+    const callUrl = getFirstReplacedUrl();
+    expect(callUrl).toContain("period=thisMonth");
+    expect(callUrl).toContain("categoryId=cat_123");
+    expect(callUrl).toContain("currency=USD");
+    expect(callUrl).not.toContain("startDate=");
+    expect(callUrl).not.toContain("endDate=");
+  });
+
   it("should update URL with both custom dates and amount filters", () => {
     const searchParams = new URLSearchParams("period=thisMonth");
     const { result } = renderHook(() =>

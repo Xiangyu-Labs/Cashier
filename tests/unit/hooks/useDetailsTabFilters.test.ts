@@ -1,49 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
-import { useDetailsTabFilters } from "@/modules/workspace/ui";
-
-vi.mock("@/i18n/routing", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
-}));
+import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { useDetailsTabFilters } from "@/modules/workspace/ui/useDetailsTabFilters";
 
 describe("useDetailsTabFilters", () => {
-  it("omits undefined advanced fields when relaying filter changes", () => {
-    const onPeriodChange = vi.fn();
-    const onAdvancedFiltersChange = vi.fn();
-
-    const { result } = renderHook(() =>
-      useDetailsTabFilters({
-        periodParams: { period: "thisMonth" },
-        advancedFilters: {},
-      })
-    );
-
-    const handleFiltersChange = result.current.handleFiltersChange(
-      onPeriodChange,
-      onAdvancedFiltersChange
-    );
-
-    act(() => {
-      handleFiltersChange({
-        ...(result.current.filters.startDate != null
-          ? { startDate: result.current.filters.startDate }
-          : {}),
-        ...(result.current.filters.endDate != null
-          ? { endDate: result.current.filters.endDate }
-          : {}),
-      });
-    });
-
-    expect(onPeriodChange).not.toHaveBeenCalled();
-    const advancedFiltersArg = onAdvancedFiltersChange.mock.calls[0]?.[0];
-    expect(advancedFiltersArg).toBeDefined();
-    expect(Object.keys(advancedFiltersArg)).toStrictEqual([]);
-  });
-
-  it("omits undefined date fields when emitting custom period updates", () => {
-    const onPeriodChange = vi.fn();
-    const onAdvancedFiltersChange = vi.fn();
-
+  it("builds entry filters from period and advanced filters", () => {
     const { result } = renderHook(() =>
       useDetailsTabFilters({
         periodParams: {
@@ -51,25 +11,35 @@ describe("useDetailsTabFilters", () => {
           startDate: "2024-01-01",
           endDate: "2024-01-31",
         },
-        advancedFilters: {},
+        advancedFilters: {
+          categoryId: "cat-1",
+          currency: "USD",
+          minAmount: 20,
+          maxAmount: 100,
+        },
       })
     );
 
-    const handleFiltersChange = result.current.handleFiltersChange(
-      onPeriodChange,
-      onAdvancedFiltersChange
+    expect(result.current.filters.categoryId).toBe("cat-1");
+    expect(result.current.filters.currency).toBe("USD");
+    expect(result.current.filters.minAmount).toBe(20);
+    expect(result.current.filters.maxAmount).toBe(100);
+    expect(result.current.filters.startDate?.toISOString()).toBe("2024-01-01T00:00:00.000Z");
+    expect(result.current.filters.endDate?.toISOString()).toBe("2024-01-31T00:00:00.000Z");
+  });
+
+  it("builds a stable filter key from advanced filters only", () => {
+    const { result } = renderHook(() =>
+      useDetailsTabFilters({
+        periodParams: { period: "thisMonth" },
+        advancedFilters: {
+          categoryId: "cat-1",
+          minAmount: 20,
+          maxAmount: 100,
+        },
+      })
     );
 
-    act(() => {
-      handleFiltersChange({ startDate: new Date("2024-02-01") });
-    });
-
-    const periodArg = onPeriodChange.mock.calls[0]?.[0];
-    expect(periodArg).toBeDefined();
-    expect(periodArg).toStrictEqual({
-      period: "custom",
-      startDate: "2024-02-01",
-    });
-    expect("endDate" in periodArg).toBe(false);
+    expect(result.current.filterKey).toBe("cat:cat-1|min:20|max:100");
   });
 });

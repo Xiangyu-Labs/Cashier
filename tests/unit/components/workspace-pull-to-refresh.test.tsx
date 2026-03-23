@@ -101,7 +101,7 @@ vi.mock("@/modules/ledger/hooks", () => ({
 }));
 
 vi.mock("@/modules/source-document/hooks", () => ({
-  useSourceDocuments: () => ({
+  useSourceDocumentCollection: () => ({
     groups: { completed: [], anomaly: [] },
     isLoading: false,
   }),
@@ -258,9 +258,8 @@ describe("workspace tab pull-to-refresh regression", () => {
         ledger={ledger}
         periodParams={periodParams}
         onPeriodChange={vi.fn()}
-        _onFiltersChange={vi.fn()}
+        onFiltersChange={vi.fn()}
         advancedFilters={{}}
-        onAdvancedFiltersChange={vi.fn()}
       />,
       queryClient
     );

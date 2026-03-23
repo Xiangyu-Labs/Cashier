@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useCallback } from "react";
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,8 +25,6 @@ import {
 import { useTaskQueue } from "@/modules/task-queue/ui";
 import { Header } from "./Header";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
-import { updateLedgerSearchParams } from "../ledger-url-params";
-import { replaceLedgerUrl } from "../ledger-url-navigation";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
@@ -160,19 +158,6 @@ export function LedgerPageClient({
     pathname,
   });
 
-  const handleAdvancedFiltersChange = useCallback(
-    (filters: {
-      categoryId?: string | null;
-      currency?: string | null;
-      minAmount?: number | null;
-      maxAmount?: number | null;
-    }) => {
-      const params = updateLedgerSearchParams(searchParams, filters);
-      replaceLedgerUrl(pathname, params);
-    },
-    [pathname, searchParams]
-  );
-
   const {
     isInputOpen,
     setIsInputOpen,
@@ -240,9 +225,8 @@ export function LedgerPageClient({
                 ledger={ledger}
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
-                _onFiltersChange={handleFiltersChange}
+                onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
-                onAdvancedFiltersChange={handleAdvancedFiltersChange}
               />
             </Suspense>
           </TabsContent>

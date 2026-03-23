@@ -45,13 +45,13 @@ vi.mock("@/modules/source-document/actions", () => ({
 
 vi.mock("@/modules/source-document/hooks/source-document-detail-cache", () => ({
   createSourceDocSnapshots: createSourceDocSnapshotsMock,
-  updatePaginatedSourceDocumentLists: (
+  updateSourceDocumentCollectionLists: (
     queryClient: QueryClient,
     ledgerId: string,
     updater: (doc: Record<string, unknown>) => Record<string, unknown> | null
   ) =>
     queryClient.setQueriesData(
-      { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
+      { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
       (old: { items: Array<Record<string, unknown>> } | undefined) =>
         old == null
           ? old
@@ -95,7 +95,7 @@ describe("useSourceDocumentRecordMutations", () => {
       id: "doc-1",
       title: "Old",
     });
-    queryClient.setQueryData(queryKeys.sourceDocuments("ledger-1", "all"), {
+    queryClient.setQueryData(queryKeys.sourceDocumentCollection("ledger-1", { limit: 1000 }), {
       items: [{ id: "doc-1", title: "Old" }],
       total: 1,
     });
@@ -112,9 +112,9 @@ describe("useSourceDocumentRecordMutations", () => {
     expect(queryClient.getQueryData(queryKeys.sourceDocumentLight("doc-1"))).toMatchObject({
       title: "New",
     });
-    expect(queryClient.getQueryData(queryKeys.sourceDocuments("ledger-1", "all"))).toMatchObject({
-      items: [{ id: "doc-1", title: "New", entryDate: "2026-03-20" }],
-    });
+    expect(
+      queryClient.getQueryData(queryKeys.sourceDocumentCollection("ledger-1", { limit: 1000 }))
+    ).toMatchObject({ items: [{ id: "doc-1", title: "New", entryDate: "2026-03-20" }] });
     expect(createSourceDocSnapshotsMock).toHaveBeenCalledWith(queryClient, "doc-1", "ledger-1");
   });
 
@@ -139,7 +139,7 @@ describe("useSourceDocumentRecordMutations", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(queryKeys.sourceDocument("doc-1"), { id: "doc-1" });
     queryClient.setQueryData(queryKeys.sourceDocumentLight("doc-1"), { id: "doc-1" });
-    queryClient.setQueryData(queryKeys.sourceDocuments("ledger-1", "all"), {
+    queryClient.setQueryData(queryKeys.sourceDocumentCollection("ledger-1", { limit: 1000 }), {
       items: [{ id: "doc-1" }, { id: "doc-2" }],
       total: 2,
     });
@@ -149,10 +149,9 @@ describe("useSourceDocumentRecordMutations", () => {
 
     expect(queryClient.getQueryData(queryKeys.sourceDocument("doc-1"))).toBeUndefined();
     expect(queryClient.getQueryData(queryKeys.sourceDocumentLight("doc-1"))).toBeUndefined();
-    expect(queryClient.getQueryData(queryKeys.sourceDocuments("ledger-1", "all"))).toEqual({
-      items: [{ id: "doc-2" }],
-      total: 1,
-    });
+    expect(
+      queryClient.getQueryData(queryKeys.sourceDocumentCollection("ledger-1", { limit: 1000 }))
+    ).toEqual({ items: [{ id: "doc-2" }], total: 1 });
     expect(onClose).toHaveBeenCalled();
   });
 });

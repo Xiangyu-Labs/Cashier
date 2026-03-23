@@ -2,7 +2,7 @@ export {
   listSourceDocuments,
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
-  getAllSourceDocumentsAction,
+  getSourceDocumentCollectionAction,
   getPendingSourceDocumentsAction,
 } from "./server-actions/queries";
 export { getSourceDocumentByIdAction } from "./server-actions/get-document";

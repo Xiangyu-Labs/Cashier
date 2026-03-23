@@ -8,7 +8,7 @@ const getLedgersMock = vi.hoisted(() => vi.fn());
 const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
 const getPendingSourceDocumentsMock = vi.hoisted(() => vi.fn());
-const getAllSourceDocumentsMock = vi.hoisted(() => vi.fn());
+const getSourceDocumentCollectionMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/ledger/access", () => ({
@@ -24,7 +24,7 @@ vi.mock("@/modules/ledger/queries", () => ({
 
 vi.mock("@/modules/source-document/queries", () => ({
   getPendingSourceDocuments: getPendingSourceDocumentsMock,
-  getAllSourceDocuments: getAllSourceDocumentsMock,
+  getSourceDocumentCollection: getSourceDocumentCollectionMock,
 }));
 
 vi.mock("@/modules/stats/queries", () => ({
@@ -55,7 +55,7 @@ describe("getLedgerPageBootstrap", () => {
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
     getPendingSourceDocumentsMock.mockResolvedValue([]);
-    getAllSourceDocumentsMock.mockResolvedValue({ items: [], nextCursor: null });
+    getSourceDocumentCollectionMock.mockResolvedValue({ items: [], hasMore: false, total: 0 });
     getEnhancedStatsMock.mockResolvedValue({});
   });
 
@@ -101,9 +101,10 @@ describe("getLedgerPageBootstrap", () => {
 
     expect(result).not.toBeNull();
     expect(getPendingSourceDocumentsMock).toHaveBeenCalledWith("ledger-1");
-    expect(getAllSourceDocumentsMock).toHaveBeenCalledWith("ledger-1", {
+    expect(getSourceDocumentCollectionMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
+      limit: 1000,
     });
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
@@ -131,11 +132,12 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(getAllSourceDocumentsMock).toHaveBeenCalledWith("ledger-1", {
+    expect(getSourceDocumentCollectionMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       minAmount: 20,
       maxAmount: 100,
+      limit: 1000,
     });
   });
 

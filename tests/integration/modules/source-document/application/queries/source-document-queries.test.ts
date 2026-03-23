@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 import {
-  getAllSourceDocuments,
+  getSourceDocumentCollection,
   getSourceDocumentFullQuery,
+  listSourceDocuments,
   listSourceDocumentsQuery,
 } from "@/modules/source-document/application/queries/source-document-queries";
+import { getPendingSourceDocuments } from "@/modules/source-document/queries";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -78,6 +80,14 @@ describe("source-document-queries", () => {
     expect(page1.nextCursor).not.toBeNull();
 
     expect(inserted).toHaveLength(3);
+  });
+
+  it("rejects legacy two-segment cursors", async () => {
+    await expect(
+      listSourceDocuments(ledgerId, {
+        cursor: "2026-03-23T10:00:00.000Z|doc-id",
+      } as never)
+    ).rejects.toThrow(ValidationError);
   });
 
   it("includes ledger entries when requested", async () => {
@@ -224,11 +234,39 @@ describe("source-document-queries", () => {
       },
     ]);
 
-    const result = await getAllSourceDocuments(ledgerId, {
+    const result = await getSourceDocumentCollection(ledgerId, {
       minAmount: 100,
+      limit: 1000,
     });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.id).toBe(secondDoc.id);
+  });
+
+  it("returns pending groups through the public query barrel", async () => {
+    const db = getTestDb();
+
+    await db.insert(sourceDocuments).values([
+      {
+        ledgerId,
+        text: "queued doc",
+        status: "queued",
+        imageUrls: [],
+        entryDate: "2026-03-23",
+      },
+      {
+        ledgerId,
+        text: "failed doc",
+        status: "failed",
+        imageUrls: [],
+        entryDate: "2026-03-22",
+      },
+    ]);
+
+    const result = await getPendingSourceDocuments(ledgerId);
+
+    expect(result.stats.total).toBeGreaterThan(0);
+    expect(result.groups.queued).toHaveLength(1);
+    expect(result.groups.failed).toHaveLength(1);
   });
 });

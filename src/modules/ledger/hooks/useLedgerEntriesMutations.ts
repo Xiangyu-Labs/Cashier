@@ -6,7 +6,7 @@ import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  matchPaginatedSourceDocuments,
+  matchSourceDocumentCollection,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
@@ -89,11 +89,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     ],
     onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old): SourceDocumentsQueryData => {
           if (old === undefined || old.items === undefined) return old;
           return {
@@ -133,11 +133,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     ],
     onOptimisticUpdate: (queryClient, ledgerEntryId) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old): SourceDocumentsQueryData => {
           if (old === undefined || old.items === undefined) return old;
           return {

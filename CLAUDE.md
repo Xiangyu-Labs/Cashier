@@ -118,11 +118,11 @@ src/modules/{domain}/
 - Component files should stay under 300-400 lines; extract custom hooks when exceeding this
 - Use `useLedgerMutation` factory (`src/lib/mutations/`) for all mutations — provides unified cancel/snapshot/rollback/invalidate lifecycle
 - Always put `invalidateQueries` in `onSettled` (not `onSuccess`) to ensure cache refresh even on error
-- Use centralized `queryKeys` factory (`src/lib/query-keys.ts`) and `invalidateLedgerCache()` predicate for cache invalidation
+- Use centralized `queryKeys` factory (`src/lib/query-keys.ts`) and the ledger-scoped invalidation helpers defined there for cache invalidation
 - Store dates as `yyyy-MM-dd` strings, never timestamps — frontend owns timezone, backend does string comparison
 - Use `metadata` JSONB column for extensible settings instead of adding individual columns
 - Prefer minimal infrastructure: in-process over external services, memory store over Redis, polling over SSE
-- Domain naming must be precise — invest in renaming if concepts don't match (see `docs/dev-preferences.md` for full evolution history)
+- Domain naming must be precise — invest in renaming when concepts no longer match their actual contract
 - **Coding patterns and conventions**: see `docs/architecture/coding-patterns.md` — all agents must read this before modifying existing code or adding new features
 
 ## Error Handling

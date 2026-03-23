@@ -16,13 +16,13 @@ export type BatchEntryUpdateData = Partial<Omit<LedgerEntry, "amount">> & {
   amount?: number;
 };
 
-export function updatePaginatedSourceDocumentLists(
+export function updateSourceDocumentCollectionLists(
   queryClient: QueryClient,
   ledgerId: string,
   updater: (doc: SourceDocumentListItemWithEntries) => SourceDocumentListItemWithEntries | null
 ) {
   queryClient.setQueriesData<SourceDocumentCollectionDto>(
-    { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
+    { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
     (old) => {
       if (!old) return old;
       const nextItems = old.items
@@ -45,7 +45,9 @@ export function createSourceDocSnapshots(
   snapshots.push(...createListSnapshots(queryClient, queryKeys.sourceDocumentLight(documentId)));
 
   if (ledgerId != null && ledgerId !== "") {
-    snapshots.push(...createListSnapshots(queryClient, queryKeys.sourceDocuments(ledgerId, "all")));
+    snapshots.push(
+      ...createListSnapshots(queryClient, queryKeys.sourceDocumentCollectionPrefix(ledgerId))
+    );
   }
 
   return snapshots;
@@ -92,7 +94,7 @@ export function updateSingleEntryInCaches(
   );
 
   if (ledgerId != null && ledgerId !== "") {
-    updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
       if (doc.id !== documentId) return doc;
       return {
         ...doc,
@@ -126,7 +128,7 @@ export function updateBatchEntriesInCaches(
   );
 
   if (ledgerId != null && ledgerId !== "") {
-    updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
       if (doc.id !== documentId) return doc;
       return {
         ...doc,
@@ -157,7 +159,7 @@ export function removeSingleEntryFromCaches(
   );
 
   if (ledgerId != null && ledgerId !== "") {
-    updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
       if (doc.id !== documentId) return doc;
       return {
         ...doc,
@@ -185,7 +187,7 @@ export function removeBatchEntriesFromCaches(
   );
 
   if (ledgerId != null && ledgerId !== "") {
-    updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) => {
+    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
       if (doc.id !== documentId) return doc;
       return {
         ...doc,
