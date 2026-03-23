@@ -22,6 +22,7 @@ test_output*.txt
 /build
 
 # misc
+.tmp/
 .DS_Store
 *.pem
 /data/
@@ -73,7 +74,5 @@ public/swe-worker-*.js
 # execute script
 chant.sh
 
-# local planning artifacts
-/docs/plans/
-/docs/superpowers/
-/docs/chant/
+# local docs artifacts
+/docs/
