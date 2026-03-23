@@ -55,6 +55,9 @@ export function SourceDocumentEditRetryDialog({
   });
 
   const initialData = useMemo(() => {
+    const sourceDocEntryDate =
+      "entryDate" in sourceDocument ? (sourceDocument.entryDate ?? undefined) : undefined;
+
     // If we fetched full data, use it
     if (fullData != null) {
       return {
@@ -64,6 +67,7 @@ export function SourceDocumentEditRetryDialog({
             mimeType: "image/jpeg",
           })) ?? [],
         ...(fullData.text != null ? { text: fullData.text } : {}),
+        ...(sourceDocEntryDate != null ? { entryDate: sourceDocEntryDate } : {}),
       };
     }
 
@@ -77,6 +81,7 @@ export function SourceDocumentEditRetryDialog({
           mimeType: "image/jpeg",
         })) ?? [],
       ...(text != null ? { text } : {}),
+      ...(sourceDocEntryDate != null ? { entryDate: sourceDocEntryDate } : {}),
     };
   }, [sourceDocument, fullData]);
 
