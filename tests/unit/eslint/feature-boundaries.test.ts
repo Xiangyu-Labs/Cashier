@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ESLint } from "eslint";
 
+const BOUNDARY_RULE_ID = "cashier/architecture-boundaries";
+
 const eslint = new ESLint({
   overrideConfigFile: `${process.cwd()}/eslint.config.mjs`,
 });
@@ -11,7 +13,7 @@ async function lintRestrictedImports(code: string, filePath: string) {
   if (result == null) {
     throw new Error("Expected ESLint result");
   }
-  return result.messages.filter((message) => message.ruleId === "no-restricted-imports");
+  return result.messages.filter((message) => message.ruleId === BOUNDARY_RULE_ID);
 }
 
 describe("boundary lint", { timeout: 30000 }, () => {
