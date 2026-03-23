@@ -31,8 +31,6 @@ interface SubmitPayload {
 
 interface CreateRollbackContext {
   previousPending?: unknown;
-  previousText: string;
-  previousImages: EditableInputImage[];
 }
 
 interface RetryRollbackContext {
@@ -177,20 +175,13 @@ export function useSourceDocumentInputController({
     skipInvalidation: true,
     onOptimisticUpdate: async (queryClient) => {
       const previousPending = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, "pending"));
-      const previousText = text;
-      const previousImages = [...images];
 
-      setText("");
-      setImages([]);
-
-      return { previousPending, previousText, previousImages };
+      return { previousPending };
     },
     onRollback: (queryClient, context) => {
       if (context.previousPending !== undefined) {
         queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "pending"), context.previousPending);
       }
-      setText(context.previousText);
-      setImages(context.previousImages);
     },
     onSettledExtra: (queryClient) => {
       invalidateSubmitQueries(queryClient, ledgerId);
