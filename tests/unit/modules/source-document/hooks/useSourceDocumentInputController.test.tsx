@@ -2,6 +2,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { compressImage } from "@/lib/image-utils";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
@@ -19,6 +20,7 @@ vi.mock("@/lib/image-utils", () => ({
 
 vi.mock("@/lib/date-utils", () => ({
   formatDateTimeForApi: vi.fn(() => "2026-03-20T12:00:00.000Z"),
+  parseDateString: vi.fn((dateStr: string) => new Date(`${dateStr}T00:00:00.000Z`)),
 }));
 
 vi.mock("sonner", () => ({
@@ -80,7 +82,11 @@ describe("useSourceDocumentInputController", () => {
     const { result, rerender } = renderHook(
       (props: {
         sourceDocumentId?: string;
-        initialData?: { text?: string; images?: Array<{ data: string; mimeType: string }> };
+        initialData?: {
+          text?: string;
+          images?: Array<{ data: string; mimeType: string }>;
+          entryDate?: string;
+        };
       }) =>
         useSourceDocumentInputController({
           ledgerId: "ledger-1",
@@ -120,7 +126,11 @@ describe("useSourceDocumentInputController", () => {
     const { result, rerender } = renderHook(
       (props: {
         sourceDocumentId?: string;
-        initialData?: { text?: string; images?: Array<{ data: string; mimeType: string }> };
+        initialData?: {
+          text?: string;
+          images?: Array<{ data: string; mimeType: string }>;
+          entryDate?: string;
+        };
       }) =>
         useSourceDocumentInputController({
           ledgerId: "ledger-1",
@@ -134,6 +144,7 @@ describe("useSourceDocumentInputController", () => {
           initialData: {
             text: "Document A",
             images: [{ data: "image-a", mimeType: "image/png" }],
+            entryDate: "2026-03-18",
           },
         },
         wrapper: createWrapper(queryClient),
@@ -142,6 +153,7 @@ describe("useSourceDocumentInputController", () => {
 
     act(() => {
       result.current.setText("User edits");
+      result.current.setEntryDate(new Date("2026-03-20T00:00:00.000Z"));
     });
 
     rerender({
@@ -149,6 +161,7 @@ describe("useSourceDocumentInputController", () => {
       initialData: {
         text: "Document B",
         images: [{ data: "image-b", mimeType: "image/jpeg" }],
+        entryDate: "2026-03-19",
       },
     });
 
@@ -156,6 +169,7 @@ describe("useSourceDocumentInputController", () => {
       expect(result.current.text).toBe("Document B");
     });
     expect(result.current.images).toEqual([{ data: "image-b", mimeType: "image/jpeg" }]);
+    expect(result.current.entryDate.getTime()).toBe(new Date("2026-03-19T00:00:00.000Z").getTime());
   });
 
   it("clears create input optimistically and restores it on failure", async () => {
@@ -372,6 +386,54 @@ describe("useSourceDocumentInputController", () => {
         images: [{ data: "original-image", mimeType: "image/png" }],
       },
     ]);
+  });
+
+  it("initializes entryDate from initialData and formats the selected date on submit", async () => {
+    vi.mocked(createSourceDocumentAction).mockResolvedValue({
+      sourceDocumentId: "doc-1",
+      status: "queued",
+    } as never);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentInputController({
+          ledgerId: "ledger-1",
+          mode: "create",
+          initialData: {
+            text: "Lunch",
+            entryDate: "2026-03-21",
+          },
+          messages: createMessages(),
+        }),
+      {
+        wrapper: createWrapper(queryClient),
+      }
+    );
+
+    expect(vi.mocked(parseDateString)).toHaveBeenCalledWith("2026-03-21");
+    expect(result.current.entryDate.getTime()).toBe(new Date("2026-03-21T00:00:00.000Z").getTime());
+
+    const selectedDate = new Date("2026-03-22T00:00:00.000Z");
+    act(() => {
+      result.current.setEntryDate(selectedDate);
+    });
+
+    act(() => {
+      result.current.handleSubmit();
+    });
+
+    await waitFor(() => {
+      expect(createSourceDocumentAction).toHaveBeenCalledTimes(1);
+    });
+
+    expect(vi.mocked(formatDateTimeForApi)).toHaveBeenCalledWith(selectedDate);
   });
 
   it("appends images from both file upload and paste flows", async () => {

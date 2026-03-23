@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-utils";
 import { fireAndForget } from "@/lib/safe-async";
 import type { SourceDocument } from "@/modules/source-document/contracts";
@@ -75,7 +75,20 @@ function toModalImages(images: EditableInputImage[]) {
   return images.map(({ data, mimeType }) => ({ data, mimeType }));
 }
 
-function buildSubmitPayload(text: string, images: EditableInputImage[]): SubmitPayload {
+function resolveInitialEntryDate(entryDate?: string): Date {
+  if (entryDate != null) {
+    const parsed = parseDateString(entryDate);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  return new Date();
+}
+
+function buildSubmitPayload(
+  text: string,
+  images: EditableInputImage[],
+  entryDate: Date
+): SubmitPayload {
   const nextImages = images.map(({ data, mimeType }) => ({ data, mimeType }));
   const originalImages = images.map(({ originalData, originalMimeType }) => ({
     data: originalData,
@@ -83,7 +96,7 @@ function buildSubmitPayload(text: string, images: EditableInputImage[]): SubmitP
   }));
 
   return {
-    entryDate: formatDateTimeForApi(new Date()),
+    entryDate: formatDateTimeForApi(entryDate),
     ...(text !== "" ? { text } : {}),
     ...(nextImages.length > 0 ? { images: nextImages } : {}),
     ...(images.some((image) => image.isEdited) ? { originalImages } : {}),
@@ -131,6 +144,7 @@ export function useSourceDocumentInputController({
 }: UseSourceDocumentInputControllerOptions) {
   const [text, setText] = useState(initialData?.text ?? "");
   const [images, setImages] = useState<EditableInputImage[]>(toEditableImages(initialData?.images));
+  const [entryDate, setEntryDate] = useState<Date>(() => resolveInitialEntryDate(initialData?.entryDate));
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isTransitionPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,6 +165,7 @@ export function useSourceDocumentInputController({
     startTransition(() => {
       setText(initialData.text ?? "");
       setImages(toEditableImages(initialData.images));
+      setEntryDate(resolveInitialEntryDate(initialData.entryDate));
     });
   }, [initialData, startTransition]);
 
@@ -261,7 +276,7 @@ export function useSourceDocumentInputController({
     if (!canSubmit) return;
     if (mode === "retry" && sourceDocumentId == null) return;
 
-    const payload = buildSubmitPayload(text, images);
+    const payload = buildSubmitPayload(text, images, entryDate);
     onSuccess?.();
 
     startTransition(() => {
@@ -323,12 +338,14 @@ export function useSourceDocumentInputController({
   return {
     mode,
     text,
+    entryDate,
     images: currentImages,
     selectedImageIndex,
     fileInputRef,
     isPending,
     canSubmit,
     setText,
+    setEntryDate,
     openImage: (index: number) => setSelectedImageIndex(index),
     closeImage: () => setSelectedImageIndex(null),
     removeImage: (index: number) => {
