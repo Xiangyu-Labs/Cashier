@@ -100,13 +100,20 @@ describe("useTaskQueueModal", () => {
           id: "completed-1",
           status: "completed",
         }),
+        createItem({
+          id: "anomaly-1",
+          kind: "anomaly",
+          status: "anomaly",
+          sourceDocumentId: "doc-anomaly-1",
+        }),
       ],
       stats: {
         ...baseStats,
         pendingCount: 1,
         failedCount: 2,
         completedCount: 1,
-        total: 3,
+        anomalyCount: 1,
+        total: 4,
       },
       isLoading: false,
     });
@@ -199,6 +206,42 @@ describe("useTaskQueueModal", () => {
     expect(cancelTaskMutateMock).toHaveBeenCalledWith("task-pending");
     expect(dismissTaskMutateMock).toHaveBeenCalledWith("task-failed-no-doc");
     expect(result.current.retrySourceDocId).toBe("doc-1");
+  });
+
+  it("closes retry and delete dialogs through semantic helpers", () => {
+    const { result } = renderHook(() => useTaskQueueModal("ledger-1"));
+
+    act(() => {
+      result.current.handleRetry(
+        createItem({
+          id: "failed-with-doc",
+          status: "failed",
+          sourceDocumentId: "doc-1",
+        })
+      );
+      result.current.handleDeleteAll();
+    });
+
+    expect(result.current.retrySourceDocId).toBe("doc-1");
+    expect(result.current.deleteConfirm.open).toBe(true);
+
+    act(() => {
+      result.current.closeRetryDialog();
+      result.current.closeDeleteConfirm();
+    });
+
+    expect(result.current.retrySourceDocId).toBeNull();
+    expect(result.current.deleteConfirm.open).toBe(false);
+  });
+
+  it("deletes anomaly source documents through a dedicated handler", () => {
+    const { result } = renderHook(() => useTaskQueueModal("ledger-1"));
+
+    act(() => {
+      result.current.handleDeleteAllAnomaly();
+    });
+
+    expect(batchDeleteMutateMock).toHaveBeenCalledWith(["doc-anomaly-1"]);
   });
 
   it("pushes source-document details and invalidates task-queue predicate on retry success", async () => {

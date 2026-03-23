@@ -46,6 +46,8 @@ export interface UseTaskQueueModalReturn {
   setIsFailedCollapsed: (value: boolean) => void;
   setIsAnomalyCollapsed: (value: boolean) => void;
   setIsCompletedCollapsed: (value: boolean) => void;
+  closeRetryDialog: () => void;
+  closeDeleteConfirm: () => void;
   setRetrySourceDocId: (id: string | null) => void;
   setDeleteConfirm: React.Dispatch<
     React.SetStateAction<{
@@ -60,6 +62,7 @@ export interface UseTaskQueueModalReturn {
   handleRetry: (item: QueueItem) => void;
   handleDeleteSingle: (item: QueueItem) => void;
   handleDeleteAll: () => void;
+  handleDeleteAllAnomaly: () => void;
   handleRetryAll: (status: "failed" | "anomaly") => void;
   handleCancel: (item: QueueItem) => void;
   handleDismiss: (item: QueueItem) => void;
@@ -159,6 +162,14 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     }
   }, [deleteConfirm, deleteSourceDocument, batchDelete, groupedItems.failed]);
 
+  const closeRetryDialog = useCallback(() => {
+    setRetrySourceDocId(null);
+  }, []);
+
+  const closeDeleteConfirm = useCallback(() => {
+    setDeleteConfirm((previous) => ({ ...previous, open: false }));
+  }, []);
+
   const handleRetry = useCallback((item: QueueItem) => {
     if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
       setRetrySourceDocId(item.sourceDocumentId);
@@ -189,6 +200,16 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
       description: t("deleteAllConfirmDesc"),
     });
   }, [t]);
+
+  const handleDeleteAllAnomaly = useCallback(() => {
+    const ids = groupedItems.anomaly
+      .map((item) => item.sourceDocumentId)
+      .filter((id): id is string => id != null && id !== "");
+
+    if (ids.length > 0) {
+      batchDelete.mutate(ids);
+    }
+  }, [groupedItems.anomaly, batchDelete]);
 
   const handleRetryAll = useCallback(
     (status: "failed" | "anomaly") => {
@@ -275,12 +296,15 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     setIsFailedCollapsed,
     setIsAnomalyCollapsed,
     setIsCompletedCollapsed,
+    closeRetryDialog,
+    closeDeleteConfirm,
     setRetrySourceDocId,
     setDeleteConfirm,
     handleDeleteConfirmAction,
     handleRetry,
     handleDeleteSingle,
     handleDeleteAll,
+    handleDeleteAllAnomaly,
     handleRetryAll,
     handleCancel,
     handleDismiss,
