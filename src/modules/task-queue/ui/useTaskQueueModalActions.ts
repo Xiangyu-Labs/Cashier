@@ -14,7 +14,7 @@ import type {
   TaskQueueGroupedItems,
   TaskQueueRetryStatus,
 } from "./taskQueueModal.types";
-import { useTaskQueueMutations } from "./useTaskQueueMutations";
+import type { useTaskQueueMutations } from "./useTaskQueueMutations";
 
 type SourceDocumentModal = Extract<ModalItem, { type: "source-document" }>;
 
