@@ -23,12 +23,15 @@ export function useSourceDocumentInputController({
   messages,
 }: UseSourceDocumentInputControllerOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const draft = useSourceDocumentInputDraft({ sourceDocumentId, initialData });
+  const draft = useSourceDocumentInputDraft({
+    ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
+    ...(initialData != null ? { initialData } : {}),
+  });
   const submitMutations = useSourceDocumentSubmitMutations({
     ledgerId,
     mode,
-    sourceDocumentId,
     messages,
+    ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
   });
 
   const appendFiles = async (files: File[]) => {

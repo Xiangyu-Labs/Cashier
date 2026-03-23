@@ -155,12 +155,15 @@ async function runStage2(
     ctx.ai
   );
 
-  const stage2Decision = resolveStage2ExecutionResult(stage2Result);
-  if (stage2Decision.kind === "anomaly") {
+  if (stage2Result.kind === "anomaly") {
     logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed");
-    return stage2Decision;
+    return resolveStage2ExecutionResult(stage2Result);
   }
 
+  const stage2Decision = resolveStage2ExecutionResult(stage2Result);
+  if (stage2Decision.kind !== "success") {
+    return stage2Decision;
+  }
   logger.info(
     {
       docId: ctx.docId,

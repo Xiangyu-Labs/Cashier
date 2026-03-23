@@ -1,5 +1,8 @@
-import type { ResolveHomeResult } from "../../contracts";
 import { ensureUserLedger } from "./ensure-user-ledger";
+
+type ResolveHomeResult =
+  | { kind: "redirect-created"; ledgerId: string }
+  | { kind: "redirect-existing"; ledgerId: string };
 
 export async function resolveHome(input: {
   userId: string;
