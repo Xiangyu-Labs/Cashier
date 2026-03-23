@@ -212,7 +212,7 @@
     "output": "Output",
     "sending_status": "Sending…",
     "unclassified": "Unclassified",
-    "needsCategory": "Needs Category",
+    "otherCategory": "Uncategorized",
     "needsCurrency": "Needs Currency",
     "noRecords": "No records",
     "noMore": "No more items",
