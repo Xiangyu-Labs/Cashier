@@ -3,15 +3,15 @@ import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { submitAutoCategorizeAction } from "@/modules/ledger/actions";
 import { CurrencySection } from "./CurrencySection";
 import { CategorySection } from "./CategorySection";
 import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
+import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
+  useAutoCategorizeMutation,
   useCategoryMutations,
   useCredentialMutations,
   useLedgerSettings,
@@ -85,6 +85,7 @@ export function SettingsTab({
   } = useCategoryMutations(ledgerId, categories);
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
+  const autoCategorizeMutation = useAutoCategorizeMutation(ledgerId);
 
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
@@ -196,17 +197,7 @@ export function SettingsTab({
                 onDeleteCategory={(id) => deleteCategory.mutate(id)}
                 onReorderCategories={(ids) => reorderCategories.mutate(ids)}
                 onCategoryCreated={categoryCreatedTrigger}
-                onAutoCategorize={async () => {
-                  const result = await submitAutoCategorizeAction(ledgerId);
-                  await queryClient.invalidateQueries({
-                    queryKey: queryKeys.uncategorizedCount(ledgerId),
-                  });
-                  await queryClient.invalidateQueries({ queryKey: queryKeys.taskQueue(ledgerId) });
-                  return {
-                    submittedCount: result.submittedCount,
-                    skippedCount: result.skippedCount,
-                  };
-                }}
+                onAutoCategorize={() => autoCategorizeMutation.mutateAsync()}
               />
             )}
           </div>

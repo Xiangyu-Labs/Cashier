@@ -19,8 +19,15 @@ const mockSetTheme = vi.fn();
 const mockUpdateLedgerAction = vi.fn((_id: string, _data: Partial<Ledger>) =>
   Promise.resolve({ success: true })
 );
+const mockSubmitAutoCategorizeAction = vi.fn().mockResolvedValue({
+  submittedCount: 2,
+  skippedCount: 1,
+});
 const mockSignOut = vi.fn();
 const pullToRefreshProps: Array<{ onRefresh: () => Promise<void> }> = [];
+const categorySectionProps: Array<{
+  onAutoCategorize?: () => Promise<{ submittedCount: number; skippedCount: number }>;
+}> = [];
 
 // Mock Redis to prevent connection attempts
 vi.mock("ioredis", () => {
@@ -76,6 +83,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/modules/ledger/actions", () => ({
   updateLedgerAction: (id: string, data: Partial<Ledger>) => mockUpdateLedgerAction(id, data),
+  submitAutoCategorizeAction: (ledgerId: string) => mockSubmitAutoCategorizeAction(ledgerId),
   createEntryCategoryAction: vi.fn(),
   updateEntryCategoryAction: vi.fn(),
   deleteEntryCategoryAction: vi.fn(),
@@ -89,7 +97,12 @@ vi.mock("@/modules/ledger/ui/CurrencySection", () => ({
 }));
 
 vi.mock("@/modules/ledger/ui/CategorySection", () => ({
-  CategorySection: () => <div>CategorySection</div>,
+  CategorySection: (props: {
+    onAutoCategorize?: () => Promise<{ submittedCount: number; skippedCount: number }>;
+  }) => {
+    categorySectionProps.push(props);
+    return <div>CategorySection</div>;
+  },
 }));
 
 vi.mock("@/modules/ledger/ui/ServiceCredentialSection", () => ({
@@ -144,6 +157,7 @@ describe("SettingsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     pullToRefreshProps.length = 0;
+    categorySectionProps.length = 0;
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -267,5 +281,41 @@ describe("SettingsTab", () => {
 
     expect(settingsMatched).toBe(true);
     expect(ledgerMatched).toBe(true);
+  });
+
+  it("delegates auto-categorize through the dedicated mutation hook", async () => {
+    const categoriesWithItem: EntryCategoryWithCount[] = [
+      {
+        id: "cat-1",
+        ledgerId: "l1",
+        name: "Food",
+        description: null,
+        icon: null,
+        sortOrder: 1,
+        isEditable: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deletedAt: null,
+        entryCount: 1,
+      },
+    ];
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsTab ledger={mockLedger} initialCategories={categoriesWithItem} ledgerId="l1" />
+      </QueryClientProvider>
+    );
+
+    const autoCategorize = categorySectionProps[0]?.onAutoCategorize;
+    expect(autoCategorize).toBeTypeOf("function");
+    if (autoCategorize == null) {
+      throw new Error("Expected CategorySection to receive onAutoCategorize");
+    }
+
+    await autoCategorize();
+
+    await waitFor(() => {
+      expect(mockSubmitAutoCategorizeAction).toHaveBeenCalledWith("l1");
+    });
   });
 });

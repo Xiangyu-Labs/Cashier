@@ -1,4 +1,5 @@
 export { useBatchEntryActions } from "./useBatchEntryActions";
+export { useAutoCategorizeMutation } from "./useAutoCategorizeMutation";
 export { useCategoryMutations } from "./useCategoryMutations";
 export { useCredentialMutations } from "./useCredentialMutations";
 export { useDetailsTabData } from "./useDetailsTabData";
