@@ -110,7 +110,7 @@ export const integrationProjects = [
       ...sharedProjectTestConfig,
       name: "integration-node",
       sequence: {
-        groupOrder: 0,
+        groupOrder: 3,
       },
       include: ["tests/integration/**/*.test.ts", "tests/integration/**/*.test.tsx"],
       exclude: [...defaultProjectExcludes, "tests/integration/client/category-mutations-optimistic.test.tsx"],
@@ -128,7 +128,7 @@ export const integrationProjects = [
       ...sharedProjectTestConfig,
       name: "integration-dom",
       sequence: {
-        groupOrder: 1,
+        groupOrder: 4,
       },
       include: ["tests/integration/client/category-mutations-optimistic.test.tsx"],
       exclude: defaultProjectExcludes,
