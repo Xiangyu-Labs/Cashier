@@ -20,7 +20,9 @@ export async function listEntryCategoriesWithCount(ledgerId: string) {
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
     .groupBy(ledgerEntries.categoryId);
 
-  const countMap = new Map(entryCounts.map((entryCount) => [entryCount.categoryId, entryCount.count]));
+  const countMap = new Map(
+    entryCounts.map((entryCount) => [entryCount.categoryId, entryCount.count])
+  );
 
   return categories.map((category) => ({
     ...category,

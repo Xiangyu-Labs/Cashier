@@ -25,10 +25,7 @@ interface PointerMappingInput {
   canvasHeight: number;
 }
 
-export function createCenteredCropSelection(
-  mediaWidth: number,
-  mediaHeight: number
-): Crop {
+export function createCenteredCropSelection(mediaWidth: number, mediaHeight: number): Crop {
   return centerCrop(
     {
       unit: "%",
@@ -40,10 +37,7 @@ export function createCenteredCropSelection(
   );
 }
 
-export function scaleCropToImagePixels(
-  image: CropImageLike,
-  crop: PixelCrop
-): PixelCrop {
+export function scaleCropToImagePixels(image: CropImageLike, crop: PixelCrop): PixelCrop {
   const renderedWidth =
     image.width > 0 ? image.width : image.naturalWidth > 0 ? image.naturalWidth : 1;
   const renderedHeight =
@@ -53,14 +47,8 @@ export function scaleCropToImagePixels(
 
   const x = Math.max(0, Math.round(crop.x * scaleX));
   const y = Math.max(0, Math.round(crop.y * scaleY));
-  const width = Math.min(
-    image.naturalWidth - x,
-    Math.max(1, Math.round(crop.width * scaleX))
-  );
-  const height = Math.min(
-    image.naturalHeight - y,
-    Math.max(1, Math.round(crop.height * scaleY))
-  );
+  const width = Math.min(image.naturalWidth - x, Math.max(1, Math.round(crop.width * scaleX)));
+  const height = Math.min(image.naturalHeight - y, Math.max(1, Math.round(crop.height * scaleY)));
 
   return {
     unit: "px",

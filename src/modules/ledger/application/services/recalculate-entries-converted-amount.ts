@@ -53,7 +53,10 @@ export function buildCaseExpression(
   const cases = entries.map((entry, index) => {
     const result = results[index];
     if (result == null) {
-      throw new AppError(`Missing conversion result for ledger entry ${entry.id} at index ${index}`, "MISSING_CONVERSION_RESULT");
+      throw new AppError(
+        `Missing conversion result for ledger entry ${entry.id} at index ${index}`,
+        "MISSING_CONVERSION_RESULT"
+      );
     }
 
     const value =

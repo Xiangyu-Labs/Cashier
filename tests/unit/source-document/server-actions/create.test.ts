@@ -31,7 +31,10 @@ describe("createSourceDocumentAction omission semantics", () => {
   it("omits absent optional fields when forwarding parsed input", async () => {
     await createSourceDocumentAction("ledger-1", { text: "Lunch 12.50" });
 
-    const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
 
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");

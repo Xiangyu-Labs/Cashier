@@ -28,7 +28,9 @@ describe("useDetailsTabFilters", () => {
         ...(result.current.filters.startDate != null
           ? { startDate: result.current.filters.startDate }
           : {}),
-        ...(result.current.filters.endDate != null ? { endDate: result.current.filters.endDate } : {}),
+        ...(result.current.filters.endDate != null
+          ? { endDate: result.current.filters.endDate }
+          : {}),
       });
     });
 

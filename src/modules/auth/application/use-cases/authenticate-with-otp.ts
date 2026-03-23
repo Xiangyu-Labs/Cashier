@@ -7,10 +7,7 @@ import { deleteOTPToken } from "@/modules/auth/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { isValidOTPFormat } from "@/modules/auth/services/otp";
 import { checkVerifyRateLimit } from "@/modules/auth/services/otp-rate-limit";
-import {
-  findOTPRecord,
-  verifyOTPWithPolicy,
-} from "@/modules/auth/services/otp-verification";
+import { findOTPRecord, verifyOTPWithPolicy } from "@/modules/auth/services/otp-verification";
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";

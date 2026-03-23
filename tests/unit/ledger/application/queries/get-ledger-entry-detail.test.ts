@@ -31,9 +31,7 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(ledgerEntries).values(entry);
 
     // pass a different ledgerId — should return null, not throw
-    await expect(
-      getLedgerEntryDetail(entry.id, crypto.randomUUID())
-    ).resolves.toBeNull();
+    await expect(getLedgerEntryDetail(entry.id, crypto.randomUUID())).resolves.toBeNull();
   });
 
   it("returns detail while stripping heavy source-document fields", async () => {

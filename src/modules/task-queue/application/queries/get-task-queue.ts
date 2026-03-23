@@ -30,10 +30,7 @@ export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResu
   });
 
   const anomalyDocs = await db.query.sourceDocuments.findMany({
-    where: and(
-      whereSourceDocumentNotDeleted(ledgerId),
-      eq(sourceDocuments.status, "anomaly"),
-    ),
+    where: and(whereSourceDocumentNotDeleted(ledgerId), eq(sourceDocuments.status, "anomaly")),
     orderBy: [desc(sourceDocuments.createdAt)],
   });
 

@@ -437,7 +437,10 @@ describe("batchCancelTasksAction", () => {
     );
     const taskRunsSelect = statements
       .map(normalizeSql)
-      .find((sqlStatement) => sqlStatement.startsWith("select") && sqlStatement.includes('from "task_runs"'));
+      .find(
+        (sqlStatement) =>
+          sqlStatement.startsWith("select") && sqlStatement.includes('from "task_runs"')
+      );
 
     expect(taskRunsSelect).toBeDefined();
     expect(taskRunsSelect).toContain('"scope_id" = ?');

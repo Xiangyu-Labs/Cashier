@@ -9,15 +9,12 @@ import type {
   TaskQueueStatsResponseDto,
 } from "@/modules/task-queue/contracts";
 
-const {
-  handleApiV1RouteMock,
-  listEntryCategoriesMock,
-  getTaskQueueForAuthorizedLedgerMock,
-} = vi.hoisted(() => ({
-  handleApiV1RouteMock: vi.fn(),
-  listEntryCategoriesMock: vi.fn(),
-  getTaskQueueForAuthorizedLedgerMock: vi.fn(),
-}));
+const { handleApiV1RouteMock, listEntryCategoriesMock, getTaskQueueForAuthorizedLedgerMock } =
+  vi.hoisted(() => ({
+    handleApiV1RouteMock: vi.fn(),
+    listEntryCategoriesMock: vi.fn(),
+    getTaskQueueForAuthorizedLedgerMock: vi.fn(),
+  }));
 
 vi.mock("@/app/api/v1/_shared/route-helper", () => ({
   handleApiV1Route: handleApiV1RouteMock,

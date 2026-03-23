@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { compressImage } from "@/lib/image-utils";
-import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
+import {
+  createSourceDocumentAction,
+  retrySourceDocumentAction,
+} from "@/modules/source-document/actions";
 import { toast } from "sonner";
 import { useSourceDocumentInputController } from "@/modules/source-document/hooks/useSourceDocumentInputController";
 
@@ -36,7 +39,8 @@ function createMessages() {
     uploadError: "Failed to submit",
     retrySuccess: "Retry submitted",
     retryError: "Failed to retry",
-    imageTooLarge: (fileName: string) => `Image too large: ${fileName}. Please use a smaller image.`,
+    imageTooLarge: (fileName: string) =>
+      `Image too large: ${fileName}. Please use a smaller image.`,
   };
 }
 
@@ -257,11 +261,14 @@ describe("useSourceDocumentInputController", () => {
     });
 
     await waitFor(() => {
-      expect(queryClient.getQueryData<{ status: string; text: string }>(queryKeys.sourceDocument("doc-1")))
-        .toMatchObject({
-          status: "processing",
-          text: "Edited retry text",
-        });
+      expect(
+        queryClient.getQueryData<{ status: string; text: string }>(
+          queryKeys.sourceDocument("doc-1")
+        )
+      ).toMatchObject({
+        status: "processing",
+        text: "Edited retry text",
+      });
     });
 
     deferred.reject(new Error("Retry failed"));

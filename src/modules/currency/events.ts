@@ -1,4 +1,7 @@
-import { ExchangeRateService, type ExchangeRatesStoredEvent } from "./application/services/exchange-rate";
+import {
+  ExchangeRateService,
+  type ExchangeRatesStoredEvent,
+} from "./application/services/exchange-rate";
 
 export type { ExchangeRatesStoredEvent } from "./application/services/exchange-rate";
 

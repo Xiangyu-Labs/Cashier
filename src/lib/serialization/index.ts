@@ -14,7 +14,4 @@ export type {
 } from "./types";
 
 // Utilities
-export {
-  serializeTask,
-  serializeDates,
-} from "./utils";
+export { serializeTask, serializeDates } from "./utils";

@@ -285,7 +285,10 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     ): Promise<string> {
       // Validate handler exists
       if (!handlers.has(name)) {
-        throw new AppError(`No handler registered for task: ${name}`, "TASK_HANDLER_NOT_REGISTERED");
+        throw new AppError(
+          `No handler registered for task: ${name}`,
+          "TASK_HANDLER_NOT_REGISTERED"
+        );
       }
 
       // Check for duplicate tasks if deduplicationKey provided

@@ -145,11 +145,9 @@ describe("deleteSourceDocument", () => {
     expect(cancelFlowTaskMock).toHaveBeenCalledTimes(1);
     expect(cancelFlowTaskMock).toHaveBeenCalledWith("task-1");
     expect(transactionMock).toHaveBeenCalledTimes(1);
-    expect(softDeleteSourceDocumentLedgerEntriesMock).toHaveBeenCalledWith(
-      txMock,
-      "ledger-1",
-      ["doc-1"]
-    );
+    expect(softDeleteSourceDocumentLedgerEntriesMock).toHaveBeenCalledWith(txMock, "ledger-1", [
+      "doc-1",
+    ]);
     expect(txMock.update).toHaveBeenCalledTimes(2);
     expect(txUpdateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({

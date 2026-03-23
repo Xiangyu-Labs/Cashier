@@ -39,9 +39,7 @@ describe("env catalog coverage", () => {
       }
 
       expect(documentedKeys).toContain(key);
-      expect(example).toMatch(
-        new RegExp(`# Required:\\s+.+\\n# Default:\\s+.+\\n${key}=`, "m")
-      );
+      expect(example).toMatch(new RegExp(`# Required:\\s+.+\\n# Default:\\s+.+\\n${key}=`, "m"));
     }
   });
 });

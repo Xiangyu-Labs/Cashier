@@ -15,10 +15,9 @@ describe("ledger-url-params", () => {
   });
 
   it("preserves unrelated params while updating tab only", () => {
-    const params = updateLedgerSearchParams(
-      new URLSearchParams("period=month&categoryId=cat_1"),
-      { tab: "details" }
-    );
+    const params = updateLedgerSearchParams(new URLSearchParams("period=month&categoryId=cat_1"), {
+      tab: "details",
+    });
 
     expect(params.toString()).toContain("tab=details");
     expect(params.toString()).toContain("period=month");
@@ -79,7 +78,9 @@ describe("ledger-url-params", () => {
   it("builds URLs without introducing navigation side effects", () => {
     const params = new URLSearchParams("tab=details&period=custom");
 
-    expect(buildLedgerUrl("/ledger/test-id", params)).toBe("/ledger/test-id?tab=details&period=custom");
+    expect(buildLedgerUrl("/ledger/test-id", params)).toBe(
+      "/ledger/test-id?tab=details&period=custom"
+    );
   });
 
   it("replaces browser URL and optionally navigates through router", () => {
@@ -93,6 +94,8 @@ describe("ledger-url-params", () => {
     expect(replacedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(navigatedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(replaceState).toHaveBeenCalled();
-    expect(router.replace).toHaveBeenCalledWith("/ledger/test-id?tab=details&period=custom", { scroll: false });
+    expect(router.replace).toHaveBeenCalledWith("/ledger/test-id?tab=details&period=custom", {
+      scroll: false,
+    });
   });
 });

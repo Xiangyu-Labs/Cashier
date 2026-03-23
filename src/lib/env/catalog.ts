@@ -257,7 +257,8 @@ export const APP_ENV_CATALOG: EnvCatalogEntry[] = [
     tier: "runtime",
     required: false,
     defaultValue: "Cashier <noreply@example.com>",
-    description: "Sender mailbox for OTP and security notifications. Supports bare email or Display Name <email>.",
+    description:
+      "Sender mailbox for OTP and security notifications. Supports bare email or Display Name <email>.",
     validateOnStartup: true,
   },
   {
@@ -334,10 +335,7 @@ export function getEnvCatalogEntry(name: string): EnvCatalogEntry | undefined {
   return APP_ENV_CATALOG_BY_NAME.get(name);
 }
 
-export function getEnvValue(
-  env: NodeJS.ProcessEnv,
-  name: string
-): string | undefined {
+export function getEnvValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
   const value = env[name];
 
   if (value != null && value.trim() !== "") {

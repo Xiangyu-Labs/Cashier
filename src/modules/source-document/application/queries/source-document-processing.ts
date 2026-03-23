@@ -1,8 +1,5 @@
 import { db } from "@/lib/db";
-import type {
-  ProcessingStatsDto,
-  ProcessingTaskDto,
-} from "@/modules/source-document/contracts";
+import type { ProcessingStatsDto, ProcessingTaskDto } from "@/modules/source-document/contracts";
 import type { ProcessingTasksQueryInput } from "@/modules/source-document/contract-schemas";
 import { taskRuns, type TaskRun } from "@/persistence";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";

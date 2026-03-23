@@ -195,7 +195,9 @@ describe("usePeriodFilter", () => {
   });
 
   it("should clear custom dates when switching back to a preset period", () => {
-    const searchParams = new URLSearchParams("period=custom&startDate=2024-03-01&endDate=2024-03-31");
+    const searchParams = new URLSearchParams(
+      "period=custom&startDate=2024-03-01&endDate=2024-03-31"
+    );
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: mockPathname,
@@ -281,7 +283,9 @@ describe("usePeriodFilter", () => {
         ...(result.current.filters.startDate != null
           ? { startDate: result.current.filters.startDate }
           : {}),
-        ...(result.current.filters.endDate != null ? { endDate: result.current.filters.endDate } : {}),
+        ...(result.current.filters.endDate != null
+          ? { endDate: result.current.filters.endDate }
+          : {}),
         minAmount: 100,
         maxAmount: 500,
       });
@@ -310,7 +314,9 @@ describe("usePeriodFilter", () => {
         ...(result.current.filters.startDate != null
           ? { startDate: result.current.filters.startDate }
           : {}),
-        ...(result.current.filters.endDate != null ? { endDate: result.current.filters.endDate } : {}),
+        ...(result.current.filters.endDate != null
+          ? { endDate: result.current.filters.endDate }
+          : {}),
         minAmount: null,
         maxAmount: null,
       });

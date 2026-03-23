@@ -36,11 +36,15 @@ export function DeleteAccountForm() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">{t("deleteButton") !== "" ? t("deleteButton") : "Delete Account"}</Button>
+        <Button variant="destructive">
+          {t("deleteButton") !== "" ? t("deleteButton") : "Delete Account"}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("confirmTitle") !== "" ? t("confirmTitle") : "Are you absolutely sure?"}</DialogTitle>
+          <DialogTitle>
+            {t("confirmTitle") !== "" ? t("confirmTitle") : "Are you absolutely sure?"}
+          </DialogTitle>
           <DialogDescription>
             {t("confirmDesc") !== ""
               ? t("confirmDesc")

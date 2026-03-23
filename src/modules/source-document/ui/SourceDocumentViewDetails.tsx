@@ -328,9 +328,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                     <ImagePlay className="h-2.5 w-2.5 text-primary/60" />
                     {tCard("image")}
                   </h5>
-                  <p className="mb-2 text-[11px] text-muted-foreground">
-                    {t("imageEditHint")}
-                  </p>
+                  <p className="mb-2 text-[11px] text-muted-foreground">{t("imageEditHint")}</p>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                     {isLoadingImages ? (
                       <>

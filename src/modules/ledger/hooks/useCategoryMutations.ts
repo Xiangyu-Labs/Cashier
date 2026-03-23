@@ -4,9 +4,17 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { invalidateLedgerSettings, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
-import { createEntryCategoryAction, updateEntryCategoryAction, deleteEntryCategoryAction, reorderEntryCategoriesAction, } from "@/modules/ledger/actions";
+import {
+  createEntryCategoryAction,
+  updateEntryCategoryAction,
+  deleteEntryCategoryAction,
+  reorderEntryCategoriesAction,
+} from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
-import type { DeleteEntryCategoryResultDto, ReorderEntryCategoriesResultDto, } from "@/modules/ledger/contracts";
+import type {
+  DeleteEntryCategoryResultDto,
+  ReorderEntryCategoriesResultDto,
+} from "@/modules/ledger/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
 export function useCategoryMutations(ledgerId: string, categories: EntryCategoryWithCount[]) {

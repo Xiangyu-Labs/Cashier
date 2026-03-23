@@ -70,7 +70,10 @@ function resolveBatchItemConversion(
       };
     }
 
-    throw new AppError(`Currency not found: ${fromRate === undefined ? item.fromCurrency : targetCurrency}`, "CURRENCY_NOT_FOUND");
+    throw new AppError(
+      `Currency not found: ${fromRate === undefined ? item.fromCurrency : targetCurrency}`,
+      "CURRENCY_NOT_FOUND"
+    );
   }
 
   const convertedAmount = item.amount * (toRate / fromRate);
@@ -95,7 +98,10 @@ export async function convertAmountsBatch(
     const dateKey = getDateKey(item.date);
     const ratesData = ratesByDate.get(dateKey);
     if (ratesData == null) {
-      throw new AppError(`Missing exchange rates for grouped date: ${dateKey}`, "MISSING_EXCHANGE_RATES");
+      throw new AppError(
+        `Missing exchange rates for grouped date: ${dateKey}`,
+        "MISSING_EXCHANGE_RATES"
+      );
     }
 
     return resolveBatchItemConversion(

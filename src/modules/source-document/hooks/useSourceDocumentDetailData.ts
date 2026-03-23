@@ -2,7 +2,10 @@
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getSourceDocumentByIdAction, getSourceDocumentLightAction } from "@/modules/source-document/actions";
+import {
+  getSourceDocumentByIdAction,
+  getSourceDocumentLightAction,
+} from "@/modules/source-document/actions";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 
 interface UseSourceDocumentDetailDataOptions {

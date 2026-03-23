@@ -42,9 +42,12 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     input: GenerateCategoryMetadataInput,
     context: FlowContext
   ): Promise<GenerateCategoryMetadataOutput> {
-    if (input.ledgerId == null || input.ledgerId === "") throw new ValidationError("Missing ledgerId in task input");
-    if (input.categoryId == null || input.categoryId === "") throw new ValidationError("Missing categoryId");
-    if (input.categoryName == null || input.categoryName === "") throw new ValidationError("Missing categoryName");
+    if (input.ledgerId == null || input.ledgerId === "")
+      throw new ValidationError("Missing ledgerId in task input");
+    if (input.categoryId == null || input.categoryId === "")
+      throw new ValidationError("Missing categoryId");
+    if (input.categoryName == null || input.categoryName === "")
+      throw new ValidationError("Missing categoryName");
 
     const prompt = buildCategoryMetadataPrompt(
       input.categoryName,
@@ -124,7 +127,12 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
     );
 
     // Set default values to prevent UI from showing "generating" forever
-    if (input.ledgerId != null && input.ledgerId !== "" && input.categoryId != null && input.categoryId !== "") {
+    if (
+      input.ledgerId != null &&
+      input.ledgerId !== "" &&
+      input.categoryId != null &&
+      input.categoryId !== ""
+    ) {
       const q = forLedger(entryCategories, input.ledgerId);
       await db
         .update(entryCategories)
@@ -140,14 +148,16 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   },
 
   // 4. Cancellation - set default values like onError
-  async onCancel(
-    input: GenerateCategoryMetadataInput,
-    _context: FlowContext
-  ): Promise<void> {
+  async onCancel(input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
     logger.info({ categoryId: input.categoryId }, "Generate category metadata task cancelled");
 
     // Set default values to prevent UI from showing "generating" forever
-    if (input.ledgerId != null && input.ledgerId !== "" && input.categoryId != null && input.categoryId !== "") {
+    if (
+      input.ledgerId != null &&
+      input.ledgerId !== "" &&
+      input.categoryId != null &&
+      input.categoryId !== ""
+    ) {
       const q = forLedger(entryCategories, input.ledgerId);
       await db
         .update(entryCategories)

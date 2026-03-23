@@ -74,9 +74,7 @@ export function useQueueItemActions({
     onViewDetails != null;
   const showSubtitleInline = typeof item.subtitle === "string" && item.subtitle.length > 0;
   const showProgressInline =
-    item.status === "running" &&
-    typeof item.progress === "string" &&
-    item.progress.length > 0;
+    item.status === "running" && typeof item.progress === "string" && item.progress.length > 0;
 
   async function handleRetry() {
     if (onRetry == null) return;

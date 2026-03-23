@@ -11,10 +11,7 @@ const SEND_MAX_ATTEMPTS = parseInt(process.env.AUTH_RATE_LIMIT_MAX ?? "10", 10);
 const SEND_WINDOW_SECONDS = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW ?? "900", 10);
 const IP_MAX_ATTEMPTS = parseInt(process.env.OTP_IP_MAX_ATTEMPTS_PER_HOUR ?? "10", 10);
 const IP_WINDOW_SECONDS = 60 * 60;
-const VERIFY_MAX_ATTEMPTS = parseInt(
-  process.env.OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE ?? "5",
-  10
-);
+const VERIFY_MAX_ATTEMPTS = parseInt(process.env.OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE ?? "5", 10);
 const VERIFY_WINDOW_SECONDS = 60;
 
 export async function checkSendRateLimit(email: string): Promise<{

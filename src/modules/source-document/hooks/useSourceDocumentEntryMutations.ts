@@ -73,28 +73,28 @@ export function useSourceDocumentEntryMutations({
     onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
   });
 
-  const batchUpdateMutation = useLedgerMutation<void, { ids: string[]; data: BatchEntryUpdateData }>(
-    ledgerId,
-    {
-      mutationFn: async ({ ids, data }) => {
-        if (ledgerId == null || ledgerId === "") return;
-        await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
-      },
-      errorMessage: tCommon("saveFailed"),
-      ...(sourceDocumentAndEntriesPredicates !== null
-        ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
-        : {}),
-      ...(sourceDocumentEntriesSummaryPredicates !== null
-        ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
-        : {}),
-      onOptimisticUpdate: (queryClient, { ids, data }) => {
-        const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-        updateBatchEntriesInCaches(queryClient, id, ledgerId, ids, data);
-        return { snapshots };
-      },
-      onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
-    }
-  );
+  const batchUpdateMutation = useLedgerMutation<
+    void,
+    { ids: string[]; data: BatchEntryUpdateData }
+  >(ledgerId, {
+    mutationFn: async ({ ids, data }) => {
+      if (ledgerId == null || ledgerId === "") return;
+      await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
+    },
+    errorMessage: tCommon("saveFailed"),
+    ...(sourceDocumentAndEntriesPredicates !== null
+      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
+      : {}),
+    ...(sourceDocumentEntriesSummaryPredicates !== null
+      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      : {}),
+    onOptimisticUpdate: (queryClient, { ids, data }) => {
+      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
+      updateBatchEntriesInCaches(queryClient, id, ledgerId, ids, data);
+      return { snapshots };
+    },
+    onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
+  });
 
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {
     mutationFn: async (entryId) => {

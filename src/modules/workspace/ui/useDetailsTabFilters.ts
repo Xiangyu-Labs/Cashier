@@ -36,24 +36,23 @@ export function useDetailsTabFilters({
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
 
   // Combine period-based dates with advanced filters
-  const filters: EntryFilters = useMemo(
-    () => {
-      const nextFilters: EntryFilters = {};
-      if (dateRange.startDate != null) nextFilters.startDate = parseDateString(dateRange.startDate);
-      if (dateRange.endDate != null) nextFilters.endDate = parseDateString(dateRange.endDate);
-      if (advancedFilters.categoryId !== undefined) nextFilters.categoryId = advancedFilters.categoryId;
-      if (advancedFilters.currency !== undefined) nextFilters.currency = advancedFilters.currency;
-      if (advancedFilters.minAmount !== undefined) nextFilters.minAmount = advancedFilters.minAmount;
-      if (advancedFilters.maxAmount !== undefined) nextFilters.maxAmount = advancedFilters.maxAmount;
-      return nextFilters;
-    },
-    [dateRange, advancedFilters]
-  );
+  const filters: EntryFilters = useMemo(() => {
+    const nextFilters: EntryFilters = {};
+    if (dateRange.startDate != null) nextFilters.startDate = parseDateString(dateRange.startDate);
+    if (dateRange.endDate != null) nextFilters.endDate = parseDateString(dateRange.endDate);
+    if (advancedFilters.categoryId !== undefined)
+      nextFilters.categoryId = advancedFilters.categoryId;
+    if (advancedFilters.currency !== undefined) nextFilters.currency = advancedFilters.currency;
+    if (advancedFilters.minAmount !== undefined) nextFilters.minAmount = advancedFilters.minAmount;
+    if (advancedFilters.maxAmount !== undefined) nextFilters.maxAmount = advancedFilters.maxAmount;
+    return nextFilters;
+  }, [dateRange, advancedFilters]);
 
   // Build filter key for queryKey
   const filterKey = useMemo(() => {
     const parts: string[] = [];
-    if (filters.categoryId != null && filters.categoryId !== "") parts.push(`cat:${filters.categoryId}`);
+    if (filters.categoryId != null && filters.categoryId !== "")
+      parts.push(`cat:${filters.categoryId}`);
     if (filters.currency != null && filters.currency !== "") parts.push(`cur:${filters.currency}`);
     if (filters.minAmount !== undefined && filters.minAmount !== null)
       parts.push(`min:${filters.minAmount}`);
@@ -94,10 +93,13 @@ export function useDetailsTabFilters({
           minAmount?: number | null;
           maxAmount?: number | null;
         } = {};
-        if (newFilters.categoryId !== undefined) advancedFilterUpdate.categoryId = newFilters.categoryId;
+        if (newFilters.categoryId !== undefined)
+          advancedFilterUpdate.categoryId = newFilters.categoryId;
         if (newFilters.currency !== undefined) advancedFilterUpdate.currency = newFilters.currency;
-        if (newFilters.minAmount !== undefined) advancedFilterUpdate.minAmount = newFilters.minAmount;
-        if (newFilters.maxAmount !== undefined) advancedFilterUpdate.maxAmount = newFilters.maxAmount;
+        if (newFilters.minAmount !== undefined)
+          advancedFilterUpdate.minAmount = newFilters.minAmount;
+        if (newFilters.maxAmount !== undefined)
+          advancedFilterUpdate.maxAmount = newFilters.maxAmount;
         onAdvancedFiltersChange(advancedFilterUpdate);
       },
     [filters.startDate, filters.endDate]

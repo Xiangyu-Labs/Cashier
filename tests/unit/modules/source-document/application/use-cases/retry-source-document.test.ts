@@ -257,8 +257,8 @@ describe("retrySourceDocument", () => {
       metadata: {},
     });
     processImagesMock.mockResolvedValueOnce([]);
-    rehomeLocalUploadUrlsMock.mockImplementation(
-      ({ imageUrls }: { imageUrls: string[] }) => Promise.resolve(imageUrls)
+    rehomeLocalUploadUrlsMock.mockImplementation(({ imageUrls }: { imageUrls: string[] }) =>
+      Promise.resolve(imageUrls)
     );
 
     await retrySourceDocument({
@@ -294,8 +294,8 @@ describe("retrySourceDocument", () => {
       metadata: {},
     });
     processImagesMock.mockResolvedValueOnce([]);
-    rehomeLocalUploadUrlsMock.mockImplementation(
-      ({ imageUrls }: { imageUrls: string[] }) => Promise.resolve(imageUrls)
+    rehomeLocalUploadUrlsMock.mockImplementation(({ imageUrls }: { imageUrls: string[] }) =>
+      Promise.resolve(imageUrls)
     );
 
     await retrySourceDocument({

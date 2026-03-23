@@ -7,10 +7,7 @@ import {
 } from "@/lib/period-utils";
 import { parseDateString } from "@/lib/date-utils";
 import type { EntryFilters } from "@/modules/ledger/ui";
-import {
-  readLedgerFilterParams,
-  updateLedgerSearchParams,
-} from "../ledger-url-params";
+import { readLedgerFilterParams, updateLedgerSearchParams } from "../ledger-url-params";
 import { replaceLedgerUrl } from "../ledger-url-navigation";
 
 export interface FilterParams {
@@ -52,26 +49,23 @@ export function usePeriodFilter({
     [searchParams]
   );
 
-  const filters: EntryFilters = useMemo(
-    () => {
-      const nextFilters: EntryFilters = {
-        categoryId: filterParams.categoryId ?? null,
-        currency: filterParams.currency ?? null,
-        minAmount: filterParams.minAmount,
-        maxAmount: filterParams.maxAmount,
-      };
+  const filters: EntryFilters = useMemo(() => {
+    const nextFilters: EntryFilters = {
+      categoryId: filterParams.categoryId ?? null,
+      currency: filterParams.currency ?? null,
+      minAmount: filterParams.minAmount,
+      maxAmount: filterParams.maxAmount,
+    };
 
-      if (dateRange.startDate !== null) {
-        nextFilters.startDate = parseDateString(dateRange.startDate);
-      }
-      if (dateRange.endDate !== null) {
-        nextFilters.endDate = parseDateString(dateRange.endDate);
-      }
+    if (dateRange.startDate !== null) {
+      nextFilters.startDate = parseDateString(dateRange.startDate);
+    }
+    if (dateRange.endDate !== null) {
+      nextFilters.endDate = parseDateString(dateRange.endDate);
+    }
 
-      return nextFilters;
-    },
-    [dateRange, filterParams]
-  );
+    return nextFilters;
+  }, [dateRange, filterParams]);
 
   const handlePeriodChange = useCallback(
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
@@ -107,7 +101,8 @@ export function usePeriodFilter({
 
       const nextStartDate = formatDate(newFilters.startDate);
       const nextEndDate = formatDate(newFilters.endDate);
-      const datesChanged = nextStartDate !== dateRange.startDate || nextEndDate !== dateRange.endDate;
+      const datesChanged =
+        nextStartDate !== dateRange.startDate || nextEndDate !== dateRange.endDate;
       const nextPeriod: PeriodParams["period"] = datesChanged
         ? nextStartDate != null || nextEndDate != null
           ? "custom"

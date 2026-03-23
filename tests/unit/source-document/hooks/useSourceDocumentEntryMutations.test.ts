@@ -116,7 +116,10 @@ describe("useSourceDocumentEntryMutations", () => {
     const updateEntryMutation = capturedMutations[0];
     const batchDeleteMutation = capturedMutations[3];
 
-    if (updateEntryMutation?.onOptimisticUpdate == null || batchDeleteMutation?.onOptimisticUpdate == null) {
+    if (
+      updateEntryMutation?.onOptimisticUpdate == null ||
+      batchDeleteMutation?.onOptimisticUpdate == null
+    ) {
       throw new Error("Expected optimistic update handlers");
     }
 

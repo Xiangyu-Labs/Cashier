@@ -22,13 +22,12 @@ export async function dismissTaskUseCase(ledgerId: string, taskId: string): Prom
   await db
     .update(taskRuns)
     .set({ deletedAt: new Date() })
-    .where(and(eq(taskRuns.id, taskId), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt)));
+    .where(
+      and(eq(taskRuns.id, taskId), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt))
+    );
 }
 
-export async function batchDismissTasksUseCase(
-  ledgerId: string,
-  taskIds: string[]
-): Promise<void> {
+export async function batchDismissTasksUseCase(ledgerId: string, taskIds: string[]): Promise<void> {
   if (taskIds.length === 0) {
     return;
   }
@@ -37,10 +36,6 @@ export async function batchDismissTasksUseCase(
     .update(taskRuns)
     .set({ deletedAt: new Date() })
     .where(
-      and(
-        inArray(taskRuns.id, taskIds),
-        eq(taskRuns.scopeId, ledgerId),
-        isNull(taskRuns.deletedAt)
-      )
+      and(inArray(taskRuns.id, taskIds), eq(taskRuns.scopeId, ledgerId), isNull(taskRuns.deletedAt))
     );
 }

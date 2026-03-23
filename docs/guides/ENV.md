@@ -106,10 +106,10 @@ Startup validation applies the documented defaults for both model settings befor
 
 #### `AUTH_URL`
 
-|                 | Value                                  |
-| --------------- | -------------------------------------- |
-| **Required**    | No                                     |
-| **Default**     | `http://localhost:3000`                |
+|                 | Value                                   |
+| --------------- | --------------------------------------- |
+| **Required**    | No                                      |
+| **Default**     | `http://localhost:3000`                 |
 | **Description** | Server-side base URL for auth callbacks |
 
 If unset, local development should still use the localhost default from `.env.example`.
@@ -126,12 +126,12 @@ Get your API key from [Resend Dashboard](https://resend.com/api-keys). Without t
 
 #### `AUTH_EMAIL_FROM`
 
-|                 | Value                                                         |
-| --------------- | ------------------------------------------------------------- |
-| **Required**    | No                                                            |
-| **Default**     | `Cashier <noreply@example.com>`                               |
-| **Description** | Sender mailbox for OTP and security-notification emails       |
-| **Format**      | Bare email or `Display Name <email>`                          |
+|                 | Value                                                   |
+| --------------- | ------------------------------------------------------- |
+| **Required**    | No                                                      |
+| **Default**     | `Cashier <noreply@example.com>`                         |
+| **Description** | Sender mailbox for OTP and security-notification emails |
+| **Format**      | Bare email or `Display Name <email>`                    |
 
 Must be a verified sender domain in your Resend account. For example: `AUTH_EMAIL_FROM=Cashier <noreply@cashier.app>`.
 

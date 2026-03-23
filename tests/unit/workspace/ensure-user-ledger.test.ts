@@ -37,9 +37,8 @@ describe("ensureUserLedger", () => {
   it("returns existing ledger without creating a new one", async () => {
     mockFindMany.mockResolvedValue([{ id: "ledger-existing" }]);
 
-    const { ensureUserLedger } = await import(
-      "@/modules/workspace/application/use-cases/ensure-user-ledger"
-    );
+    const { ensureUserLedger } =
+      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
     const result = await ensureUserLedger({ userId: "user-1" });
 
     expect(result).toEqual({ ledgerId: "ledger-existing", created: false });
@@ -50,9 +49,8 @@ describe("ensureUserLedger", () => {
     mockFindMany.mockResolvedValue([]);
     mockCreateDefaultLedger.mockResolvedValue({ id: "ledger-new" });
 
-    const { ensureUserLedger } = await import(
-      "@/modules/workspace/application/use-cases/ensure-user-ledger"
-    );
+    const { ensureUserLedger } =
+      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
     const result = await ensureUserLedger({ userId: "user-1", locale: "en" });
 
     expect(result).toEqual({ ledgerId: "ledger-new", created: true });
@@ -62,9 +60,8 @@ describe("ensureUserLedger", () => {
   it("logs when multiple active ledgers are found and returns the first one", async () => {
     mockFindMany.mockResolvedValue([{ id: "ledger-newer" }, { id: "ledger-older" }]);
 
-    const { ensureUserLedger } = await import(
-      "@/modules/workspace/application/use-cases/ensure-user-ledger"
-    );
+    const { ensureUserLedger } =
+      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
     const result = await ensureUserLedger({ userId: "user-1" });
 
     expect(result).toEqual({ ledgerId: "ledger-newer", created: false });
@@ -79,9 +76,8 @@ describe("ensureUserLedger", () => {
     mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: "ledger-race" }]);
     mockCreateDefaultLedger.mockRejectedValue(uniqueError);
 
-    const { ensureUserLedger } = await import(
-      "@/modules/workspace/application/use-cases/ensure-user-ledger"
-    );
+    const { ensureUserLedger } =
+      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
     const result = await ensureUserLedger({ userId: "user-1" });
 
     expect(result).toEqual({ ledgerId: "ledger-race", created: false });
@@ -96,9 +92,8 @@ describe("ensureUserLedger", () => {
     mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     mockCreateDefaultLedger.mockRejectedValue(uniqueError);
 
-    const { ensureUserLedger } = await import(
-      "@/modules/workspace/application/use-cases/ensure-user-ledger"
-    );
+    const { ensureUserLedger } =
+      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
 
     await expect(ensureUserLedger({ userId: "user-1" })).rejects.toThrow(
       "UNIQUE constraint failed: ledgers.user_id"

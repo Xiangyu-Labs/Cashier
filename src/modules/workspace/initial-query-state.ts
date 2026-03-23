@@ -31,7 +31,8 @@ export interface StatsInitialQueryState {
 export function buildDetailsFilterKey(filters: LedgerAdvancedFilters): string | null {
   const parts: string[] = [];
 
-  if (filters.categoryId != null && filters.categoryId !== "") parts.push(`cat:${filters.categoryId}`);
+  if (filters.categoryId != null && filters.categoryId !== "")
+    parts.push(`cat:${filters.categoryId}`);
   if (filters.currency != null && filters.currency !== "") parts.push(`cur:${filters.currency}`);
   if (filters.minAmount !== undefined && filters.minAmount !== null) {
     parts.push(`min:${filters.minAmount}`);

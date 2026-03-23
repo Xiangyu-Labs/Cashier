@@ -71,11 +71,7 @@ describe("LedgerEntryCard - other category", () => {
     };
 
     renderWithQueryClient(
-      <LedgerEntryCard
-        ledgerEntry={normalEntry}
-        categories={[normalCategory]}
-        mainCurrency="CNY"
-      />
+      <LedgerEntryCard ledgerEntry={normalEntry} categories={[normalCategory]} mainCurrency="CNY" />
     );
 
     expect(screen.queryByText("未精确分类")).toBeNull();

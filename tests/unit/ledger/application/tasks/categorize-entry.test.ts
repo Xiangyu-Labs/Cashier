@@ -323,7 +323,9 @@ describe("categorizeEntryHandler.onError", () => {
     const ctx = createMockContext(createMockAI(0));
 
     expect(categorizeEntryHandler.onError).toBeDefined();
-    await expect(categorizeEntryHandler.onError!(new Error("AI failed"), input, ctx)).resolves.not.toThrow();
+    await expect(
+      categorizeEntryHandler.onError!(new Error("AI failed"), input, ctx)
+    ).resolves.not.toThrow();
 
     const unchanged = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entry.id),

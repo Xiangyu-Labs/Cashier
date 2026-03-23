@@ -43,7 +43,9 @@ export default function SettingsPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
           <div className="space-y-1">
-            <h2 className="text-sm font-medium">{t("language") !== "" ? t("language") : "Language"}</h2>
+            <h2 className="text-sm font-medium">
+              {t("language") !== "" ? t("language") : "Language"}
+            </h2>
             <p className="text-xs text-muted-foreground">
               {t("languageDesc") !== "" ? t("languageDesc") : "Select your preferred language"}
             </p>

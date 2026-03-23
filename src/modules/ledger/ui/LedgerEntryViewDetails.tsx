@@ -84,10 +84,10 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
   const isDifferentCurrency = Boolean(
     displayData.currency !== "" &&
-      displayData.currency !== null &&
-      displayData.currency !== undefined &&
-      displayData.currency !== mainCurrency &&
-      displayData.currency !== "unknown"
+    displayData.currency !== null &&
+    displayData.currency !== undefined &&
+    displayData.currency !== mainCurrency &&
+    displayData.currency !== "unknown"
   );
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([

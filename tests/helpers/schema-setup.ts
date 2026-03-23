@@ -12,9 +12,7 @@ function requireDefined<T>(value: T | undefined, message: string): T {
   return value;
 }
 
-export async function createTestSchema(
-  db: BetterSQLite3Database<typeof schema>
-) {
+export async function createTestSchema(db: BetterSQLite3Database<typeof schema>) {
   await migrate(db, { migrationsFolder: "src/persistence/migrations" });
 }
 

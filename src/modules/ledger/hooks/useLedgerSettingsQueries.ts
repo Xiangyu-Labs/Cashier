@@ -9,11 +9,7 @@ import {
   getLedgerAction,
   getLedgerSettingsAction,
 } from "@/modules/ledger/actions";
-import type {
-  EntryCategoryWithCount,
-  Ledger,
-  ServiceCredential,
-} from "@/modules/ledger/contracts";
+import type { EntryCategoryWithCount, Ledger, ServiceCredential } from "@/modules/ledger/contracts";
 
 interface UseLedgerSettingsQueriesParams {
   ledgerId: string;

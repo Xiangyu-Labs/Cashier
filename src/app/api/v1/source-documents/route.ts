@@ -33,14 +33,17 @@ export async function GET(request: NextRequest) {
     logContext: "api/v1/source-documents",
     handler: async ({ credential, request: authorizedRequest }) => {
       const { searchParams } = new URL(authorizedRequest.url);
-      const result = await listSourceDocuments(credential.ledgerId, omitNullishProperties({
-        status: searchParams.get("status"),
-        startDate: searchParams.get("startDate"),
-        endDate: searchParams.get("endDate"),
-        cursor: searchParams.get("cursor"),
-        limit: searchParams.get("limit"),
-        includeEntries: searchParams.get("includeEntries"),
-      }));
+      const result = await listSourceDocuments(
+        credential.ledgerId,
+        omitNullishProperties({
+          status: searchParams.get("status"),
+          startDate: searchParams.get("startDate"),
+          endDate: searchParams.get("endDate"),
+          cursor: searchParams.get("cursor"),
+          limit: searchParams.get("limit"),
+          includeEntries: searchParams.get("includeEntries"),
+        })
+      );
 
       return NextResponse.json(result);
     },

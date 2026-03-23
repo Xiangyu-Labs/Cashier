@@ -13,10 +13,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
  * Delete a single source document (soft delete with cascade)
  */
 export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
-  async (
-    { ledgerId },
-    sourceId: string
-  ): Promise<DeleteSourceDocumentResultDto> =>
+  async ({ ledgerId }, sourceId: string): Promise<DeleteSourceDocumentResultDto> =>
     deleteSourceDocument({
       ledgerId,
       sourceDocumentId: sourceId,
@@ -27,10 +24,7 @@ export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
  * Batch delete multiple source documents (soft delete with cascade)
  */
 export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
-  async (
-    { ledgerId },
-    sourceDocumentIds: string[]
-  ): Promise<BatchDeleteSourceDocumentsResultDto> =>
+  async ({ ledgerId }, sourceDocumentIds: string[]): Promise<BatchDeleteSourceDocumentsResultDto> =>
     batchDeleteSourceDocuments({
       ledgerId,
       sourceDocumentIds,

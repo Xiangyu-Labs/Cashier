@@ -18,10 +18,7 @@ function getDefaultString(name: string): string {
 }
 
 function requiredString(name: string) {
-  return z.preprocess(
-    blankToUndefined,
-    z.string().trim().min(1, `${name} is required`)
-  );
+  return z.preprocess(blankToUndefined, z.string().trim().min(1, `${name} is required`));
 }
 
 function stringWithDefault(name: string) {
@@ -36,10 +33,7 @@ function urlWithDefault(name: string) {
 }
 
 function optionalUrl(name: string) {
-  return z.preprocess(
-    blankToUndefined,
-    z.url({ error: `${name} must be a valid URL` }).optional()
-  );
+  return z.preprocess(blankToUndefined, z.url({ error: `${name} must be a valid URL` }).optional());
 }
 
 function nonNegativeIntWithDefault(name: string) {

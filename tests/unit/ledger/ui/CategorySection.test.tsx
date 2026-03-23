@@ -104,9 +104,9 @@ describe("CategorySection", () => {
     );
 
     await waitFor(() => {
-      expect((screen.getByPlaceholderText("newCategoryPlaceholder") as HTMLInputElement).value).toBe(
-        ""
-      );
+      expect(
+        (screen.getByPlaceholderText("newCategoryPlaceholder") as HTMLInputElement).value
+      ).toBe("");
     });
   });
 });

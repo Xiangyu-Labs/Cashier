@@ -85,7 +85,9 @@ describe("useTaskQueueMutations - onOptimisticUpdate bug", () => {
       return {
         ...(old as object),
         items: items.map((item) =>
-          ids.includes(item.id ?? "") && item.sourceDocumentId !== undefined && item.sourceDocumentId !== ""
+          ids.includes(item.id ?? "") &&
+          item.sourceDocumentId !== undefined &&
+          item.sourceDocumentId !== ""
             ? { ...item, status: "pending" }
             : item
         ),

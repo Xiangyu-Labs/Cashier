@@ -1,8 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
-import {
-  useSourceDocumentInputController,
-} from "../hooks/useSourceDocumentInputController";
+import { useSourceDocumentInputController } from "../hooks/useSourceDocumentInputController";
 import type { SourceDocumentInputProps } from "./source-document-input.types";
 import { SourceDocumentInputView } from "./SourceDocumentInputView";
 

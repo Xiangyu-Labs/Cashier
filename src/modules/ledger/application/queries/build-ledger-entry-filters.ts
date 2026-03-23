@@ -60,7 +60,9 @@ export function buildLedgerEntryFilterConditions(
   return conditions;
 }
 
-export function buildLedgerEntryCursorCondition(cursor: string | null | undefined): SQL<unknown> | null {
+export function buildLedgerEntryCursorCondition(
+  cursor: string | null | undefined
+): SQL<unknown> | null {
   if (cursor == null || cursor === "") {
     return null;
   }

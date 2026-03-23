@@ -48,7 +48,10 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { submitAutoCategorize, submitBatchCategorize } from "@/modules/ledger/application/use-cases/submit-categorize-tasks";
+import {
+  submitAutoCategorize,
+  submitBatchCategorize,
+} from "@/modules/ledger/application/use-cases/submit-categorize-tasks";
 
 describe("submit categorize tasks", () => {
   beforeEach(() => {
@@ -99,7 +102,10 @@ describe("submit categorize tasks", () => {
   });
 
   it("submits batch categorize tasks for selected entries and logs selected total", async () => {
-    listSelectedEntriesForCategorizationMock.mockResolvedValue([{ id: "entry-1" }, { id: "entry-2" }]);
+    listSelectedEntriesForCategorizationMock.mockResolvedValue([
+      { id: "entry-1" },
+      { id: "entry-2" },
+    ]);
 
     const result = await submitBatchCategorize("ledger-1", ["entry-1", "entry-2", "missing"]);
 

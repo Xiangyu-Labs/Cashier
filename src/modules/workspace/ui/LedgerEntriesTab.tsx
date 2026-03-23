@@ -6,7 +6,12 @@ import { LayoutGroup } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { type PeriodParams } from "@/lib/period-utils";
-import { invalidateLedgerStats, invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
+import {
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  invalidateTaskQueue,
+  queryKeys,
+} from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
@@ -64,8 +69,15 @@ export function LedgerEntriesTab({
       ),
   });
   const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
-  const { deleteConfirm, setDeleteConfirm, retrySourceDocument, setRetrySourceDocument, openSourceDocumentDeleteConfirm, closeDeleteConfirm, closeRetrySourceDocument } =
-    useLedgerEntriesTabState();
+  const {
+    deleteConfirm,
+    setDeleteConfirm,
+    retrySourceDocument,
+    setRetrySourceDocument,
+    openSourceDocumentDeleteConfirm,
+    closeDeleteConfirm,
+    closeRetrySourceDocument,
+  } = useLedgerEntriesTabState();
   const { updateEntry, deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
   const { groups, isLoading } = useSourceDocuments(ledgerId, {
     dateRange: {
@@ -81,8 +93,15 @@ export function LedgerEntriesTab({
     _mainCurrency: mainCurrency,
     tDetails,
   });
-  const { isSelectionMode, setSelectionMode, selectedIds, toggleSelection, selectAll, clearSelection, isAllSelected } =
-    useSelection({ allIds: allSourceDocumentIds });
+  const {
+    isSelectionMode,
+    setSelectionMode,
+    selectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    isAllSelected,
+  } = useSelection({ allIds: allSourceDocumentIds });
   const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
     useBatchSourceDocumentActions(ledgerId, clearSelection);
   const handleRefresh = useCallback(async () => {
@@ -96,15 +115,28 @@ export function LedgerEntriesTab({
     if (isSelectionMode) clearSelection();
     else setSelectionMode(true);
   }, [isSelectionMode, clearSelection, setSelectionMode]);
-  const handleViewSourceDetail = useCallback((group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
-    pushModal({ type: "source-document", id: group.sourceDocument.id, ledgerId: group.sourceDocument.ledgerId });
-  }, [pushModal]);
-  const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
-    pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
-  }, [pushModal]);
-  const handleUpdateLedgerEntry = useCallback((id: string, data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }) => {
-    updateEntry.mutate({ ledgerEntryId: id, data });
-  }, [updateEntry]);
+  const handleViewSourceDetail = useCallback(
+    (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
+      pushModal({
+        type: "source-document",
+        id: group.sourceDocument.id,
+        ledgerId: group.sourceDocument.ledgerId,
+      });
+    },
+    [pushModal]
+  );
+  const handleViewLedgerEntry = useCallback(
+    (entry: LedgerEntry) => {
+      pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
+    },
+    [pushModal]
+  );
+  const handleUpdateLedgerEntry = useCallback(
+    (id: string, data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }) => {
+      updateEntry.mutate({ ledgerEntryId: id, data });
+    },
+    [updateEntry]
+  );
   const handleDeleteSourceConfirm = useCallback(
     (doc: SourceDocument) =>
       openSourceDocumentDeleteConfirm(doc.id, t("deleteConfirmTitle"), t("deleteConfirmDesc")),
@@ -113,13 +145,30 @@ export function LedgerEntriesTab({
   const handleDeleteConfirmAction = useCallback(() => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
     if (deleteConfirm.type === "sourceDocument") deleteSourceDocument.mutate(deleteConfirm.id);
-    else if (deleteConfirm.id === "ALL_ERRORS") batchDelete.mutate(groups.anomaly.map((g) => g.sourceDocument.id));
+    else if (deleteConfirm.id === "ALL_ERRORS")
+      batchDelete.mutate(groups.anomaly.map((g) => g.sourceDocument.id));
     else if (deleteConfirm.type === "ledgerEntry") deleteEntry.mutate(deleteConfirm.id);
     closeDeleteConfirm();
-  }, [deleteConfirm, deleteSourceDocument, batchDelete, groups.anomaly, deleteEntry, closeDeleteConfirm]);
-  const handleBatchUpdateDates = useCallback((date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }), [batchUpdateDates, selectedIds]);
-  const handleBatchDelete = useCallback(() => batchDelete.mutate(selectedIds), [batchDelete, selectedIds]);
-  const handleBatchRetry = useCallback(() => batchRetry.mutate(selectedIds), [batchRetry, selectedIds]);
+  }, [
+    deleteConfirm,
+    deleteSourceDocument,
+    batchDelete,
+    groups.anomaly,
+    deleteEntry,
+    closeDeleteConfirm,
+  ]);
+  const handleBatchUpdateDates = useCallback(
+    (date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }),
+    [batchUpdateDates, selectedIds]
+  );
+  const handleBatchDelete = useCallback(
+    () => batchDelete.mutate(selectedIds),
+    [batchDelete, selectedIds]
+  );
+  const handleBatchRetry = useCallback(
+    () => batchRetry.mutate(selectedIds),
+    [batchRetry, selectedIds]
+  );
   return (
     <LayoutGroup id={layoutGroupId}>
       <PullToRefresh onRefresh={handleRefresh}>

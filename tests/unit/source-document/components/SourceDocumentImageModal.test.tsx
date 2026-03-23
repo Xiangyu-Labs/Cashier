@@ -28,7 +28,13 @@ describe("SourceDocumentImageModal", () => {
 
   it("does not show editing controls in read-only mode", () => {
     render(
-      <SourceDocumentImageModal images={images} open initialIndex={0} editable={false} onOpenChange={vi.fn()} />
+      <SourceDocumentImageModal
+        images={images}
+        open
+        initialIndex={0}
+        editable={false}
+        onOpenChange={vi.fn()}
+      />
     );
 
     expect(screen.queryByRole("button", { name: "编辑当前图片" })).toBeNull();

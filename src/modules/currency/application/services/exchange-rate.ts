@@ -17,9 +17,7 @@ export interface ExchangeRatesStoredEvent {
   rates: Record<string, number>;
 }
 
-export type ExchangeRatesStoredHandler = (
-  event: ExchangeRatesStoredEvent
-) => void | Promise<void>;
+export type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => void | Promise<void>;
 
 // helpers
 export function formatExchangeRateDate(date: Date | string): string {
@@ -31,11 +29,7 @@ export function formatExchangeRateDate(date: Date | string): string {
   return format(date, "yyyy-MM-dd");
 }
 
-export async function fetchWithRetry(
-  url: string,
-  retries = 3,
-  delay = 1000
-): Promise<Response> {
+export async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       return await fetch(url, { signal: AbortSignal.timeout(5000) });

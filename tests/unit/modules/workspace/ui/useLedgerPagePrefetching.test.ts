@@ -23,18 +23,19 @@ describe("useLedgerPagePrefetching", () => {
     inputPrefetchCallback = null;
     getLedgerActionMock.mockResolvedValue({ id: "ledger-1" });
 
-    setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(
-      ((callback: TimerHandler, delay?: number) => {
-        if (delay === 2000 && typeof callback === "function") {
-          inputPrefetchCallback = callback as () => void;
-          return 2000 as unknown as ReturnType<typeof setTimeout>;
-        }
-        return 500 as unknown as ReturnType<typeof setTimeout>;
-      }) as unknown as typeof setTimeout
-    );
-    clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout").mockImplementation(
-      (() => undefined) as typeof clearTimeout
-    );
+    setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+      callback: TimerHandler,
+      delay?: number
+    ) => {
+      if (delay === 2000 && typeof callback === "function") {
+        inputPrefetchCallback = callback as () => void;
+        return 2000 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return 500 as unknown as ReturnType<typeof setTimeout>;
+    }) as unknown as typeof setTimeout);
+    clearTimeoutSpy = vi
+      .spyOn(globalThis, "clearTimeout")
+      .mockImplementation((() => undefined) as typeof clearTimeout);
   });
 
   afterEach(() => {

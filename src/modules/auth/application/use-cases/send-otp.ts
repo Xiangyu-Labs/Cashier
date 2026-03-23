@@ -26,7 +26,12 @@ type OTPAuthEmailMessages = {
   otpFooter: string;
 };
 
-async function getOTPEmailCopy(locale: SupportedLocale, host: string, otp: string, expiresInMinutes: number) {
+async function getOTPEmailCopy(
+  locale: SupportedLocale,
+  host: string,
+  otp: string,
+  expiresInMinutes: number
+) {
   const messages = (await import(`../../../../../messages/${locale}.json`)).default as {
     AuthEmail: OTPAuthEmailMessages;
   };
@@ -73,7 +78,12 @@ function getResendClient(): AuthResendEmailClient | null {
   };
 }
 
-export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: string; locale?: SupportedLocale }): Promise<{
+export async function sendOTP(params: {
+  email: SendOTPEmail;
+  ip: string;
+  host: string;
+  locale?: SupportedLocale;
+}): Promise<{
   expiresIn: number;
   expiresAt: number;
   canResendAt: number | null;
@@ -139,7 +149,10 @@ export async function sendOTP(params: { email: SendOTPEmail; ip: string; host: s
         logger.info({ email: normalizedEmail }, "OTP email sent successfully");
       } catch (error) {
         logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
-        throw new AppError("Failed to send verification code. Please try again.", "EMAIL_SEND_FAILED");
+        throw new AppError(
+          "Failed to send verification code. Please try again.",
+          "EMAIL_SEND_FAILED"
+        );
       }
     }
 

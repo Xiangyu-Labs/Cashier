@@ -17,9 +17,7 @@ function normalizeConversionDate(date?: string): Date | undefined {
   return date != null && date !== "" ? parseDateString(date) : undefined;
 }
 
-export async function convertCurrency(
-  input: ConvertCurrencyInput
-): Promise<ConvertCurrencyResult> {
+export async function convertCurrency(input: ConvertCurrencyInput): Promise<ConvertCurrencyResult> {
   if (input.amount === 0 || input.from === "" || input.to === "") {
     throw new ValidationError("Missing required parameters");
   }

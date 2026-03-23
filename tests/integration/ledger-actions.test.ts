@@ -123,6 +123,8 @@ describe("getLedgerEntryAction", () => {
     await db.insert(ledgerEntries).values(entryData);
 
     // 4. Action (Current authenticated user is testUserId) - now throws because ledgerId belongs to otherUserId
-    await expect(getLedgerEntryAction(ledgerData.id, entryData.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(getLedgerEntryAction(ledgerData.id, entryData.id)).rejects.toBeInstanceOf(
+      NotFoundError
+    );
   });
 });

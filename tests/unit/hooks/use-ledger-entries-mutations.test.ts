@@ -29,18 +29,14 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
       const items = (old as PaginatedItems).items;
       // This is the buggy code that exists in the codebase
       return {
-        ...old as object,
+        ...(old as object),
         items: items.filter((d) => d.id !== "doc-1"),
         total: (old as { total: number }).total - 1,
       };
     };
 
     // This should throw: "Cannot read properties of undefined (reading 'filter')"
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     expect(() => buggyOnOptimisticUpdate(queryData)).toThrow(
       "Cannot read properties of undefined (reading 'filter')"
@@ -51,33 +47,26 @@ describe("useLedgerEntriesMutations - onOptimisticUpdate bug", () => {
     const queryClient = new QueryClient();
 
     // Set cache with proper paginated response structure
-    queryClient.setQueryData(
-      ["sourceDocuments", "test-ledger-id", "all"],
-      {
-        items: [
-          { id: "doc-1", text: "Test Doc 1" },
-          { id: "doc-2", text: "Test Doc 2" },
-        ],
-        hasMore: false,
-        total: 2,
-      }
-    );
+    queryClient.setQueryData(["sourceDocuments", "test-ledger-id", "all"], {
+      items: [
+        { id: "doc-1", text: "Test Doc 1" },
+        { id: "doc-2", text: "Test Doc 2" },
+      ],
+      hasMore: false,
+      total: 2,
+    });
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
       const items = (old as PaginatedItems).items;
       return {
-        ...old as object,
+        ...(old as object),
         items: items.filter((d) => d.id !== "doc-1"),
         total: (old as { total: number }).total - 1,
       };
     };
 
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     // This should NOT throw because items exists
     expect(() => buggyOnOptimisticUpdate(queryData)).not.toThrow();

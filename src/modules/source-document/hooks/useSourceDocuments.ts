@@ -29,9 +29,7 @@ export interface UseSourceDocumentsOptions {
   maxAmount?: number;
 }
 
-function groupAndSummarize(
-  docs: SourceDocumentListItemWithEntries[]
-): {
+function groupAndSummarize(docs: SourceDocumentListItemWithEntries[]): {
   groups: GroupedSourceDocuments<SourceDocumentListItemWithEntries>;
   stats: SourceDocumentsStats;
 } {

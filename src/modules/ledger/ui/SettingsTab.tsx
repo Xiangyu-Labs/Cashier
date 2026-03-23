@@ -11,7 +11,11 @@ import { CollapsibleSection } from "./CollapsibleSection";
 import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
-import { useCategoryMutations, useCredentialMutations, useLedgerSettings, } from "@/modules/ledger/hooks";
+import {
+  useCategoryMutations,
+  useCredentialMutations,
+  useLedgerSettings,
+} from "@/modules/ledger/hooks";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";

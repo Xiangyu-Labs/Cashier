@@ -162,19 +162,19 @@ const DEPRECATED_PATH_RESTRICTIONS = [
   {
     name: "@/modules/workspace/hooks",
     message:
-      'Import workspace hooks via relative paths inside the workspace module instead of the removed workspace hooks public entrypoint.',
+      "Import workspace hooks via relative paths inside the workspace module instead of the removed workspace hooks public entrypoint.",
     appliesTo: ["app-shared", "module", "module-application", "module-public"],
   },
   {
     name: "@/modules/workspace/ledger-url-navigation",
     message:
-      'Import workspace URL navigation helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-navigation public entrypoint.',
+      "Import workspace URL navigation helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-navigation public entrypoint.",
     appliesTo: ["app-shared", "module", "module-application", "module-public"],
   },
   {
     name: "@/modules/workspace/ledger-url-params",
     message:
-      'Import workspace URL param helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-params public entrypoint.',
+      "Import workspace URL param helpers via relative paths inside the workspace module instead of the removed workspace ledger-url-params public entrypoint.",
     appliesTo: ["app-shared", "module", "module-application", "module-public"],
   },
   {
@@ -332,7 +332,11 @@ function checkDeprecatedPathRestrictions(node, specifier, contextKind, currentMo
     ) {
       return createReport(node, restriction.message);
     }
-    if (specifier !== "@/modules/workspace/hooks" && specifier !== "@/modules/workspace/ledger-url-navigation" && specifier !== "@/modules/workspace/ledger-url-params") {
+    if (
+      specifier !== "@/modules/workspace/hooks" &&
+      specifier !== "@/modules/workspace/ledger-url-navigation" &&
+      specifier !== "@/modules/workspace/ledger-url-params"
+    ) {
       return createReport(node, restriction.message);
     }
   }
@@ -363,7 +367,10 @@ function checkRelativeImport(node, specifier, filePath, fileContext) {
         : fileContext.kind === "lib-types"
           ? "Shared library/types code"
           : "App and shared UI code";
-    return createReport(node, `${scope} must use "@/..." aliases instead of relative project paths.`);
+    return createReport(
+      node,
+      `${scope} must use "@/..." aliases instead of relative project paths.`
+    );
   }
 
   if (!fileContext.moduleName) return null;
@@ -373,7 +380,9 @@ function checkRelativeImport(node, specifier, filePath, fileContext) {
   if (targetModule !== fileContext.moduleName) {
     return createReport(
       node,
-      `Cross-module relative imports are private. Use one of: ${MODULE_BOUNDARIES[targetModule].public
+      `Cross-module relative imports are private. Use one of: ${MODULE_BOUNDARIES[
+        targetModule
+      ].public
         .map((entrypoint) => `@/modules/${targetModule}/${entrypoint}`)
         .join(", ")}.`
     );
@@ -547,7 +556,10 @@ function checkModuleImport(node, specifier, fileContext) {
 
 function checkLegacyFeatureImport(node, specifier) {
   if (!specifier.startsWith("@/features/")) return null;
-  return createReport(node, "Legacy feature imports are forbidden. Import from modules or lib instead.");
+  return createReport(
+    node,
+    "Legacy feature imports are forbidden. Import from modules or lib instead."
+  );
 }
 
 const architectureBoundariesRule = {

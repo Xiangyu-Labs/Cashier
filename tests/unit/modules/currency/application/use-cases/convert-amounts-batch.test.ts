@@ -8,28 +8,30 @@ describe("convertAmountsBatch", () => {
   });
 
   it("loads rates once per unique date and preserves the original input order", async () => {
-    const getRatesSpy = vi.spyOn(ExchangeRateService, "getRates").mockImplementation(async (date) => {
-      if (date === "2026-02-03") {
+    const getRatesSpy = vi
+      .spyOn(ExchangeRateService, "getRates")
+      .mockImplementation(async (date) => {
+        if (date === "2026-02-03") {
+          return {
+            base: "EUR",
+            date: "2026-02-03",
+            rates: {
+              USD: 1.08,
+              CNY: 7.6,
+            },
+          };
+        }
+
         return {
           base: "EUR",
-          date: "2026-02-03",
+          date: "2026-02-04",
           rates: {
-            USD: 1.08,
-            CNY: 7.6,
+            USD: 1.1,
+            CNY: 7.5,
+            GBP: 0.85,
           },
         };
-      }
-
-      return {
-        base: "EUR",
-        date: "2026-02-04",
-        rates: {
-          USD: 1.1,
-          CNY: 7.5,
-          GBP: 0.85,
-        },
-      };
-    });
+      });
 
     const results = await convertAmountsBatch(
       [

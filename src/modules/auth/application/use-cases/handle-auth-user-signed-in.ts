@@ -11,7 +11,12 @@ export async function handleAuthUserSignedIn(params: {
     return;
   }
 
-  if (params.userId == null || params.userId === "" || params.email == null || params.email === "") {
+  if (
+    params.userId == null ||
+    params.userId === "" ||
+    params.email == null ||
+    params.email === ""
+  ) {
     return;
   }
 

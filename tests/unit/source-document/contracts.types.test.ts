@@ -10,17 +10,14 @@ import type {
   SourceDocumentPageDto,
   PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
-import {
-  SourceDocumentStatus,
-  SourceDocumentType,
-} from "@/modules/source-document/contracts";
+import { SourceDocumentStatus, SourceDocumentType } from "@/modules/source-document/contracts";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 
 describe("source-document contract types", () => {
   it("uses list item DTOs for collection items", () => {
-    expectTypeOf<SourceDocumentCollectionDto["items"][number]>().toEqualTypeOf<
-      SourceDocumentListItemDto
-    >();
+    expectTypeOf<
+      SourceDocumentCollectionDto["items"][number]
+    >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 
   it("keeps light DTOs free of imageUrls", () => {
@@ -37,7 +34,9 @@ describe("source-document contract types", () => {
   });
 
   it("uses list item DTOs for paginated page items", () => {
-    expectTypeOf<SourceDocumentPageDto["items"][number]>().toEqualTypeOf<SourceDocumentListItemDto>();
+    expectTypeOf<
+      SourceDocumentPageDto["items"][number]
+    >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 
   it("uses list item DTOs inside pending groups", () => {

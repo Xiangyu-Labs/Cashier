@@ -71,9 +71,7 @@ type WithoutNullishValues<T extends object> = {
   [K in keyof T]?: Exclude<T[K], null | undefined>;
 };
 
-export function omitUndefinedProperties<T extends object>(
-  input: T
-): WithoutUndefinedValues<T> {
+export function omitUndefinedProperties<T extends object>(input: T): WithoutUndefinedValues<T> {
   const result: WithoutUndefinedValues<T> = {};
 
   for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {
@@ -85,9 +83,7 @@ export function omitUndefinedProperties<T extends object>(
   return result;
 }
 
-export function omitNullishProperties<T extends object>(
-  input: T
-): WithoutNullishValues<T> {
+export function omitNullishProperties<T extends object>(input: T): WithoutNullishValues<T> {
   const result: WithoutNullishValues<T> = {};
 
   for (const [key, value] of Object.entries(input) as Array<[keyof T, T[keyof T]]>) {

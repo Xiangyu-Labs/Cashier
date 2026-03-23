@@ -25,7 +25,9 @@ describe("grouping helpers", () => {
     expect(groups.completed).toHaveLength(1);
     expect(
       groups.queued.concat(groups.processing, groups.anomaly, groups.failed, groups.completed)
-    ).not.toContainEqual(expect.objectContaining({ sourceDocument: expect.objectContaining({ id: "deleted-1" }) }));
+    ).not.toContainEqual(
+      expect.objectContaining({ sourceDocument: expect.objectContaining({ id: "deleted-1" }) })
+    );
   });
 
   it("excludes completed docs from pending groups and computes counts", () => {

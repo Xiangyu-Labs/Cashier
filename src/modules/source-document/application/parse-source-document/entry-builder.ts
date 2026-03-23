@@ -109,7 +109,8 @@ export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult 
   }
 
   const unknownCurrencyEntries = validEntries.filter(
-    (entry) => entry.currency == null || entry.currency === "" || entry.currency.toLowerCase() === "unknown"
+    (entry) =>
+      entry.currency == null || entry.currency === "" || entry.currency.toLowerCase() === "unknown"
   );
 
   if (unknownCurrencyEntries.length > 0) {

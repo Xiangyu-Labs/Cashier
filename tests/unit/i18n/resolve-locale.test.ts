@@ -24,9 +24,9 @@ describe("resolveSupportedLocale", () => {
   });
 
   it("prefers cookie over Accept-Language header", () => {
-    expect(
-      resolveSupportedLocale({ cookieLocale: "zh", acceptLanguage: "en-US,en;q=0.9" })
-    ).toBe("zh");
+    expect(resolveSupportedLocale({ cookieLocale: "zh", acceptLanguage: "en-US,en;q=0.9" })).toBe(
+      "zh"
+    );
   });
 
   it("normalizes locale variants from cookies and headers", () => {

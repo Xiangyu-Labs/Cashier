@@ -21,7 +21,10 @@ interface LedgerEntriesCompletedGroupsProps {
     data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   ) => void;
   onViewLedgerEntry: (entry: LedgerEntry) => void;
-  onViewSourceDetail: (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => void;
+  onViewSourceDetail: (group: {
+    sourceDocument: SourceDocument;
+    ledgerEntries: LedgerEntry[];
+  }) => void;
   onRetry: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
@@ -84,7 +87,12 @@ export function LedgerEntriesCompletedGroups({
 
               <div className="space-y-4">
                 {dateGroup.items.map((group) => (
-                  <motion.div key={group.sourceDocument.id} layout layoutId={group.sourceDocument.id} {...getItemProps()}>
+                  <motion.div
+                    key={group.sourceDocument.id}
+                    layout
+                    layoutId={group.sourceDocument.id}
+                    {...getItemProps()}
+                  >
                     <SourceDocumentCard
                       sourceDocument={group.sourceDocument}
                       ledgerEntries={group.ledgerEntries}
@@ -95,7 +103,9 @@ export function LedgerEntriesCompletedGroups({
                       onViewDetails={() => onViewSourceDetail(group)}
                       onRetry={() => onRetry(group.sourceDocument)}
                       onDelete={() => onDeleteSourceConfirm(group.sourceDocument)}
-                      status={(group.sourceDocument.status ?? "completed") as SourceDocumentStatusType}
+                      status={
+                        (group.sourceDocument.status ?? "completed") as SourceDocumentStatusType
+                      }
                       anomalyReason={group.sourceDocument.anomalyReason}
                       selectionMode={isSelectionMode}
                       isSelected={selectedIds.includes(group.sourceDocument.id)}

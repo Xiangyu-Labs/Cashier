@@ -27,7 +27,8 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
   };
 
   const envButtonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
-  const buttonName = envButtonName !== "" && envButtonName != null ? envButtonName : t("signInWithSSO");
+  const buttonName =
+    envButtonName !== "" && envButtonName != null ? envButtonName : t("signInWithSSO");
 
   return (
     <Button

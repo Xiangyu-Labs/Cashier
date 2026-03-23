@@ -22,9 +22,10 @@ export interface Stage0Output {
 }
 
 function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]): string {
-  const focusSection = (focusHints?.length ?? 0) > 0
-    ? `\n### Focus Areas\nPay special attention to:\n${(focusHints ?? []).map((h) => `- ${h}`).join("\n")}\n`
-    : "";
+  const focusSection =
+    (focusHints?.length ?? 0) > 0
+      ? `\n### Focus Areas\nPay special attention to:\n${(focusHints ?? []).map((h) => `- ${h}`).join("\n")}\n`
+      : "";
 
   return `You are a financial document transcription AI. Your job is to produce a complete, detailed text description of the document image(s) so that another AI can parse it WITHOUT seeing the original image.
 

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "tests/setup";
-import { createCategoryData, createLedgerData, createLedgerEntryData, createSourceDocumentData } from "tests/helpers/factories";
+import {
+  createCategoryData,
+  createLedgerData,
+  createLedgerEntryData,
+  createSourceDocumentData,
+} from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import { createTestUser } from "tests/helpers/schema-setup";

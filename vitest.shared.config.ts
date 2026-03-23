@@ -113,7 +113,10 @@ export const integrationProjects = [
         groupOrder: 3,
       },
       include: ["tests/integration/**/*.test.ts", "tests/integration/**/*.test.tsx"],
-      exclude: [...defaultProjectExcludes, "tests/integration/client/category-mutations-optimistic.test.tsx"],
+      exclude: [
+        ...defaultProjectExcludes,
+        "tests/integration/client/category-mutations-optimistic.test.tsx",
+      ],
       environment: "node",
       setupFiles: ["./tests/setup.ts"],
       maxWorkers: "50%",

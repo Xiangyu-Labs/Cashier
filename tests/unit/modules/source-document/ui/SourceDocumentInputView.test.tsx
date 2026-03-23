@@ -9,11 +9,9 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("@/modules/source-document/ui/SourceDocumentImageModal", () => ({
-  SourceDocumentImageModal: ({
-    open,
-  }: {
-    open: boolean;
-  }) => <div data-testid="source-document-image-modal" data-open={open ? "true" : "false"} />,
+  SourceDocumentImageModal: ({ open }: { open: boolean }) => (
+    <div data-testid="source-document-image-modal" data-open={open ? "true" : "false"} />
+  ),
 }));
 
 vi.mock("@/components/ui/date-filter", () => ({

@@ -64,18 +64,14 @@ export class OpenAIClient {
         if (responseFormat != null) {
           request = {
             ...requestBase,
-            response_format:
-              responseFormat as Exclude<
-                OpenAI.ChatCompletionCreateParams["response_format"],
-                undefined
-              >,
+            response_format: responseFormat as Exclude<
+              OpenAI.ChatCompletionCreateParams["response_format"],
+              undefined
+            >,
           };
         }
         const requestOptions = signal !== undefined ? { signal } : {};
-        const response = await this.client.chat.completions.create(
-          request,
-          requestOptions
-        );
+        const response = await this.client.chat.completions.create(request, requestOptions);
 
         if (
           response.choices == null ||
@@ -93,14 +89,12 @@ export class OpenAIClient {
         if (content === "" && choice?.finish_reason != null) {
           if (choice.finish_reason === "content_filter") {
             throw new AppError(
-              "Content was filtered by OpenAI safety systems. The image may contain content that cannot be processed."
-              ,
+              "Content was filtered by OpenAI safety systems. The image may contain content that cannot be processed.",
               "OPENAI_CONTENT_FILTERED"
             );
           } else if (choice.finish_reason === "length") {
             throw new AppError(
-              "Input too large: The images consume too many tokens, leaving no space for output. Try with fewer or smaller images."
-              ,
+              "Input too large: The images consume too many tokens, leaving no space for output. Try with fewer or smaller images.",
               "OPENAI_INPUT_TOO_LARGE"
             );
           }

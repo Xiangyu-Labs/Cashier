@@ -15,9 +15,7 @@ import {
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import {
-  type FlowContext,
-} from "@/lib/flow";
+import { type FlowContext } from "@/lib/flow";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 describe("parseSourceDocumentHandler.execute", () => {
@@ -169,57 +167,63 @@ describe("parseSourceDocumentHandler.onComplete", () => {
     categoryId = category.id;
   });
 
-  it("should save ledger entries and update document status on success", { timeout: 60_000 }, async () => {
-    const db = getTestDb();
+  it(
+    "should save ledger entries and update document status on success",
+    { timeout: 60_000 },
+    async () => {
+      const db = getTestDb();
 
-    const output: ParseSourceDocumentOutput = {
-      ledgerEntries: [
-        {
-          itemName: "Lunch",
-          amount: 10,
-          currency: "USD",
-          categoryIndex: 1,
-          entryDate: "2024-01-01",
-          notes: null,
-        },
-      ],
-      title: "Test Title",
-      verificationStatus: "passed",
-    };
+      const output: ParseSourceDocumentOutput = {
+        ledgerEntries: [
+          {
+            itemName: "Lunch",
+            amount: 10,
+            currency: "USD",
+            categoryIndex: 1,
+            entryDate: "2024-01-01",
+            notes: null,
+          },
+        ],
+        title: "Test Title",
+        verificationStatus: "passed",
+      };
 
-    const input: ParseSourceDocumentInput = {
-      ledgerId: currentLedgerId,
-      sourceDocumentId: sourceDocId,
-      categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
-      settings: {},
-    };
+      const input: ParseSourceDocumentInput = {
+        ledgerId: currentLedgerId,
+        sourceDocumentId: sourceDocId,
+        categories: [{ id: categoryId, name: "Food", description: "Food stuff" }],
+        settings: {},
+      };
 
-    const context = {
-      ledgerId: currentLedgerId,
-    } as unknown as FlowContext;
+      const context = {
+        ledgerId: currentLedgerId,
+      } as unknown as FlowContext;
 
-    await parseSourceDocumentHandler.onComplete?.(output, input, context);
+      await parseSourceDocumentHandler.onComplete?.(output, input, context);
 
-    // Check document status
-    const doc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, sourceDocId),
-    });
-    expect(doc?.status).toBe("completed");
-    expect(doc?.title).toBe("Test Title");
+      // Check document status
+      const doc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocId),
+      });
+      expect(doc?.status).toBe("completed");
+      expect(doc?.title).toBe("Test Title");
 
-    // Check ledger entries
-    const entries = await db
-      .select()
-      .from(ledgerEntries)
-      .where(and(eq(ledgerEntries.sourceDocumentId, sourceDocId), isNull(ledgerEntries.deletedAt)));
-    expect(entries).toHaveLength(1);
-    const firstEntry = entries[0];
-    expect(firstEntry).toBeDefined();
-    if (firstEntry == null) {
-      throw new Error("Expected saved ledger entry");
+      // Check ledger entries
+      const entries = await db
+        .select()
+        .from(ledgerEntries)
+        .where(
+          and(eq(ledgerEntries.sourceDocumentId, sourceDocId), isNull(ledgerEntries.deletedAt))
+        );
+      expect(entries).toHaveLength(1);
+      const firstEntry = entries[0];
+      expect(firstEntry).toBeDefined();
+      if (firstEntry == null) {
+        throw new Error("Expected saved ledger entry");
+      }
+      expect(firstEntry.itemName).toBe("Lunch");
     }
-    expect(firstEntry.itemName).toBe("Lunch");
-  });
+  );
 
   it("should set anomaly status when verificationStatus is anomaly", async () => {
     const db = getTestDb();

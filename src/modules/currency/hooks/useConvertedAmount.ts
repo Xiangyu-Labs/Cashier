@@ -9,8 +9,7 @@ export function useConvertedAmount(
   to: string | null | undefined,
   date?: string | null
 ) {
-  const normalizedFrom =
-    from == null || from === "" || from === "unknown" ? null : from;
+  const normalizedFrom = from == null || from === "" || from === "unknown" ? null : from;
   const normalizedTo = to == null || to === "" || to === "unknown" ? null : to;
   const normalizedDate = date == null || date === "" ? undefined : date;
 

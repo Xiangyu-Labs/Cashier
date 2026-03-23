@@ -95,9 +95,9 @@ describe("createAndQueueSourceDocument", () => {
   });
 
   it("creates queued document, resolves entry date from timezone, and updates image metadata", async () => {
-    processImagesMock.mockResolvedValueOnce(["/api/uploads/doc-1/a.jpg"]).mockResolvedValueOnce([
-      "/api/uploads/doc-1/original.jpg",
-    ]);
+    processImagesMock
+      .mockResolvedValueOnce(["/api/uploads/doc-1/a.jpg"])
+      .mockResolvedValueOnce(["/api/uploads/doc-1/original.jpg"]);
 
     const result = await createAndQueueSourceDocument({
       ledgerId: "ledger-1",

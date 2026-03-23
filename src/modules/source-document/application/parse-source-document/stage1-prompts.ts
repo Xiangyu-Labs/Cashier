@@ -97,7 +97,10 @@ export function buildCategoryRecognitionPrompt(
   categories: { name: string; description: string | null }[]
 ): string {
   const categoryList = categories
-    .map((c) => `- ${c.name}${c.description != null && c.description !== "" ? `: ${c.description}` : ""}`)
+    .map(
+      (c) =>
+        `- ${c.name}${c.description != null && c.description !== "" ? `: ${c.description}` : ""}`
+    )
     .join("\n");
 
   return `You are a category recognition AI. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.

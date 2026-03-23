@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createAndQueueSourceDocumentMock, resolveLedgerForServiceCredentialMock } = vi.hoisted(() => ({
-  createAndQueueSourceDocumentMock: vi.fn(),
-  resolveLedgerForServiceCredentialMock: vi.fn(),
-}));
+const { createAndQueueSourceDocumentMock, resolveLedgerForServiceCredentialMock } = vi.hoisted(
+  () => ({
+    createAndQueueSourceDocumentMock: vi.fn(),
+    resolveLedgerForServiceCredentialMock: vi.fn(),
+  })
+);
 
 vi.mock("@/modules/ledger/credential-access", () => ({
   resolveLedgerForServiceCredential: resolveLedgerForServiceCredentialMock,

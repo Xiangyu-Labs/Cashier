@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  batchConvertCurrencyAction,
-  convertCurrencyAction,
-} from "@/modules/currency/actions";
+import { batchConvertCurrencyAction, convertCurrencyAction } from "@/modules/currency/actions";
 import type { BatchConversionItem } from "@/modules/currency/contracts";
 import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";

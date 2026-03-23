@@ -22,9 +22,7 @@ export function AmountDisplay({
   showOriginal = true,
 }: AmountDisplayProps) {
   const amountDisplayInput =
-    date == null
-      ? { amount, currency, mainCurrency }
-      : { amount, currency, mainCurrency, date };
+    date == null ? { amount, currency, mainCurrency } : { amount, currency, mainCurrency, date };
 
   const { displayAmount, isDifferentCurrency, originalCurrency } = useAmountDisplay({
     ...amountDisplayInput,

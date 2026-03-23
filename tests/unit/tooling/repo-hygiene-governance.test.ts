@@ -19,11 +19,7 @@ describe("repo hygiene governance", () => {
 
   it("does not keep empty placeholder component directories", () => {
     const root = process.cwd();
-    const forbiddenDirs = [
-      "src/components/auth",
-      "src/components/entries",
-      "src/components/stats",
-    ];
+    const forbiddenDirs = ["src/components/auth", "src/components/entries", "src/components/stats"];
 
     const existing = forbiddenDirs.filter((dir) => existsSync(path.join(root, dir)));
     expect(existing).toEqual([]);

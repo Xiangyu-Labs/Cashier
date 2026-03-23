@@ -99,10 +99,15 @@ describe("useEntryMutations", () => {
     );
 
     const updateEntry = getOption(0);
-    (updateEntry.onOptimisticUpdate as (
-      queryClient: QueryClient,
-      variables: { ledgerEntryId: string; data: { itemName: string; amount: number; categoryId: string } }
-    ) => unknown)(queryClient, {
+    (
+      updateEntry.onOptimisticUpdate as (
+        queryClient: QueryClient,
+        variables: {
+          ledgerEntryId: string;
+          data: { itemName: string; amount: number; categoryId: string };
+        }
+      ) => unknown
+    )(queryClient, {
       ledgerEntryId: "entry-1",
       data: {
         itemName: "晚餐",
@@ -147,10 +152,9 @@ describe("useEntryMutations", () => {
     );
 
     const deleteEntry = getOption(1);
-    (deleteEntry.onOptimisticUpdate as (queryClient: QueryClient, ledgerEntryId: string) => unknown)(
-      queryClient,
-      "entry-1"
-    );
+    (
+      deleteEntry.onOptimisticUpdate as (queryClient: QueryClient, ledgerEntryId: string) => unknown
+    )(queryClient, "entry-1");
 
     const updated = queryClient.getQueryData<{ pages: Array<{ items?: Array<{ id: string }> }> }>(
       queryKeys.ledgerEntries(ledgerId, "details")

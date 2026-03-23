@@ -26,9 +26,8 @@ export function buildDetailedParsePrompt(
     categoryHints.length > 0 ? JSON.stringify(categoryHints, null, 2) : "No categories available";
 
   const rules = validationSummary.summary?.rules ?? [];
-  const userRules = rules.length > 0
-    ? `### User-Defined Rules\n${rules.map((r) => `- ${r}`).join("\n")}`
-    : "";
+  const userRules =
+    rules.length > 0 ? `### User-Defined Rules\n${rules.map((r) => `- ${r}`).join("\n")}` : "";
 
   return `You are a detailed financial document parser. You MUST respond with ONLY a JSON object — no explanations, no markdown, no other text.
 

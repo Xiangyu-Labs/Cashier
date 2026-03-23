@@ -90,12 +90,12 @@ describe("EntryFilterPanel", () => {
     };
 
     render(
-        <EntryFilterPanel
-          filters={filters}
-          onFiltersChange={mockOnFiltersChange}
-          categories={[category]}
-          preferredCurrencies={["CNY", "USD"]}
-        />
+      <EntryFilterPanel
+        filters={filters}
+        onFiltersChange={mockOnFiltersChange}
+        categories={[category]}
+        preferredCurrencies={["CNY", "USD"]}
+      />
     );
 
     // Should show badge with count (3 active filters)

@@ -1,9 +1,15 @@
 "use client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { invalidateCalendar, invalidateLedgerEntries, invalidateLedgerStats, invalidateSourceDocuments, queryKeys, } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/modules/ledger/actions";
-import { updateLedgerEntryAction, deleteLedgerEntryAction, } from "@/modules/ledger/actions";
+import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";

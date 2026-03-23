@@ -24,9 +24,7 @@ describe("AmountDisplay", () => {
       originalCurrency: "CNY",
     });
 
-    render(
-      <AmountDisplay amount={100} currency="CNY" mainCurrency="USD" date="2026-03-20" />
-    );
+    render(<AmountDisplay amount={100} currency="CNY" mainCurrency="USD" date="2026-03-20" />);
 
     expect(mockUseAmountDisplay).toHaveBeenCalledWith({
       amount: 100,
@@ -46,9 +44,7 @@ describe("AmountDisplay", () => {
       originalCurrency: "CNY",
     });
 
-    render(
-      <AmountDisplay amount={100} currency="CNY" mainCurrency="USD" showOriginal={false} />
-    );
+    render(<AmountDisplay amount={100} currency="CNY" mainCurrency="USD" showOriginal={false} />);
 
     expect(screen.queryByText(/≈/)).toBeNull();
   });

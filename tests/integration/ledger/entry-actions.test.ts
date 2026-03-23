@@ -7,19 +7,21 @@ import { eq } from "drizzle-orm";
 
 // Mock currency conversion use-case to avoid external API calls
 vi.mock("@/modules/currency/use-cases", () => ({
-  convertEntryAmount: vi.fn(async (input: { amount: number; fromCurrency: string; toCurrency: string }) => {
-    if (input.fromCurrency === input.toCurrency) {
+  convertEntryAmount: vi.fn(
+    async (input: { amount: number; fromCurrency: string; toCurrency: string }) => {
+      if (input.fromCurrency === input.toCurrency) {
+        return {
+          convertedAmount: input.amount.toFixed(2),
+          exchangeRate: "1",
+        };
+      }
+
       return {
-        convertedAmount: input.amount.toFixed(2),
-        exchangeRate: "1",
+        convertedAmount: "100.00",
+        exchangeRate: "1.00",
       };
     }
-
-    return {
-      convertedAmount: "100.00",
-      exchangeRate: "1.00",
-    };
-  }),
+  ),
 }));
 
 import { convertEntryAmount } from "@/modules/currency/use-cases";

@@ -66,7 +66,9 @@ function createMultiStageMockAI(options: {
       stage2CallCount += 1;
       if (stage2ArbitrationFails && stage2CallCount <= 2) {
         const modifiedEntries =
-          stage2CallCount === 1 ? entries : entries.map((entry) => ({ ...entry, amount: entry.amount * 2 }));
+          stage2CallCount === 1
+            ? entries
+            : entries.map((entry) => ({ ...entry, amount: entry.amount * 2 }));
         return {
           content: JSON.stringify({ ledger_entries: modifiedEntries, reasoning: "Parsed" }),
           usage: { promptTokens: 100, completionTokens: 50 },

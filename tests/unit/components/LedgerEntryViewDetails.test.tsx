@@ -1,10 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  LedgerEntryViewDetails,
-  type EntryPendingChanges,
-} from "@/modules/ledger/ui";
+import { LedgerEntryViewDetails, type EntryPendingChanges } from "@/modules/ledger/ui";
 import type {
   EntryCategoryDto as EntryCategory,
   LedgerEntryDto as LedgerEntry,

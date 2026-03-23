@@ -25,10 +25,7 @@ interface SourceDocumentImageModalProps {
 
 type PendingAction = "close" | "leave-editor" | null;
 
-function areImagesEqual(
-  left: SourceDocumentModalImage[],
-  right: SourceDocumentModalImage[]
-) {
+function areImagesEqual(left: SourceDocumentModalImage[], right: SourceDocumentModalImage[]) {
   return (
     left.length === right.length &&
     left.every(

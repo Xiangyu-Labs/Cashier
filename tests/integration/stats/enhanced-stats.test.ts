@@ -226,8 +226,9 @@ describe("Enhanced Stats Actions", () => {
 
       const entryQueries = statements
         .map(normalizeSql)
-        .filter((sqlStatement) =>
-          sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
+        .filter(
+          (sqlStatement) =>
+            sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
         );
 
       expect(entryQueries.length).toBeGreaterThanOrEqual(2);

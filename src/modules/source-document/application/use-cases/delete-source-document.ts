@@ -67,7 +67,9 @@ function softDeleteSourceDocuments(
 ): void {
   tx.update(sourceDocuments)
     .set(deletedSourceDocumentPatch())
-    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)))
+    .where(
+      and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds))
+    )
     .run();
 }
 
@@ -118,13 +120,15 @@ export async function batchDeleteSourceDocuments({
   }
 
   const documents = await db.query.sourceDocuments.findMany({
-    where: and(eq(sourceDocuments.ledgerId, ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
+    where: and(
+      eq(sourceDocuments.ledgerId, ledgerId),
+      inArray(sourceDocuments.id, sourceDocumentIds)
+    ),
     columns: { id: true, status: true, deletedAt: true },
   });
   const activeDocumentIds = documents
     .filter(
-      (document) =>
-        document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
+      (document) => document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
     )
     .map((document) => document.id);
 

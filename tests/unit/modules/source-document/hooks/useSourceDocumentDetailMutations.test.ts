@@ -80,8 +80,14 @@ describe("useSourceDocumentDetailMutations", () => {
 
     const queryClient = new QueryClient();
 
-    queryClient.setQueryData(queryKeys.sourceDocument(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocumentLight(targetId), createSourceDocument(ledgerId, targetId));
+    queryClient.setQueryData(
+      queryKeys.sourceDocument(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(
+      queryKeys.sourceDocumentLight(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
     queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "all"), {
       items: [createSourceDocument(ledgerId, targetId), createSourceDocument(ledgerId, otherId)],
       hasMore: false,
@@ -122,8 +128,14 @@ describe("useSourceDocumentDetailMutations", () => {
     expect(typeof updateImagesMutation?.onOptimisticUpdate).toBe("function");
 
     const queryClient = new QueryClient();
-    queryClient.setQueryData(queryKeys.sourceDocument(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocumentLight(targetId), createSourceDocument(ledgerId, targetId));
+    queryClient.setQueryData(
+      queryKeys.sourceDocument(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(
+      queryKeys.sourceDocumentLight(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
     queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "all"), {
       items: [createSourceDocument(ledgerId, targetId), createSourceDocument(ledgerId, otherId)],
       hasMore: false,
@@ -132,8 +144,12 @@ describe("useSourceDocumentDetailMutations", () => {
 
     updateImagesMutation?.onOptimisticUpdate?.(queryClient, { images: [] });
 
-    const detail = queryClient.getQueryData<{ imageUrls: string[] }>(queryKeys.sourceDocument(targetId));
-    const light = queryClient.getQueryData<{ hasImages: boolean }>(queryKeys.sourceDocumentLight(targetId));
+    const detail = queryClient.getQueryData<{ imageUrls: string[] }>(
+      queryKeys.sourceDocument(targetId)
+    );
+    const light = queryClient.getQueryData<{ hasImages: boolean }>(
+      queryKeys.sourceDocumentLight(targetId)
+    );
     const list = queryClient.getQueryData<{
       items: Array<{ id: string; imageUrls: unknown[]; hasImages: boolean }>;
     }>(queryKeys.sourceDocuments(ledgerId, "all"));
@@ -214,9 +230,7 @@ describe("useSourceDocumentDetailMutations", () => {
       )
     ).toBe(true);
     expect(
-      invalidatePredicates.some((predicate) =>
-        predicate({ queryKey: queryKeys.summary(ledgerId) })
-      )
+      invalidatePredicates.some((predicate) => predicate({ queryKey: queryKeys.summary(ledgerId) }))
     ).toBe(true);
     expect(
       invalidatePredicates.some((predicate) =>

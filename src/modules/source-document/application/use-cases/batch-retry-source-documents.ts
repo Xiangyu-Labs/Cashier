@@ -4,10 +4,7 @@ import { logger } from "@/lib/logger";
 import type { BatchRetrySourceDocumentsResultDto } from "@/modules/source-document/contracts";
 import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import {
-  getSourceDocumentTaskContext,
-  prepareSourceDocumentTask,
-} from "../services/processing";
+import { getSourceDocumentTaskContext, prepareSourceDocumentTask } from "../services/processing";
 import {
   deletedSourceDocumentPatch,
   whereSourceDocumentNotDeleted,
@@ -36,11 +33,13 @@ export async function batchRetrySourceDocuments({
   }
 
   const candidateDocs = await db.query.sourceDocuments.findMany({
-    where: and(eq(sourceDocuments.ledgerId, ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
+    where: and(
+      eq(sourceDocuments.ledgerId, ledgerId),
+      inArray(sourceDocuments.id, sourceDocumentIds)
+    ),
   });
   const oldDocs = candidateDocs.filter(
-    (document) =>
-      document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
+    (document) => document.status !== SourceDocumentStatus.Deleted && document.deletedAt == null
   );
 
   if (oldDocs.length === 0) {
@@ -115,7 +114,9 @@ export async function batchRetrySourceDocuments({
   await db
     .update(sourceDocuments)
     .set(deletedSourceDocumentPatch())
-    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)));
+    .where(
+      and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds))
+    );
 
   logger.debug(
     { ledgerId, oldDocIds: sourceDocumentIds },

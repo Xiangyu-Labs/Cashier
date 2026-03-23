@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { currencyRates } from "@/persistence/schema/currency";
-import {
-  convertCurrencyAction,
-  batchConvertCurrencyAction,
-} from "@/modules/currency/actions";
+import { convertCurrencyAction, batchConvertCurrencyAction } from "@/modules/currency/actions";
 
 /**
  * Helper to insert test exchange rates into the database

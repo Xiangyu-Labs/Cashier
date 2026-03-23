@@ -35,4 +35,3 @@ describe("useLedgerDialogState", () => {
     expect(result.current.inputMode).toBe("quick");
   });
 });
-

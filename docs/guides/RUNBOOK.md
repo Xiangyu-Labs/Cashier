@@ -34,17 +34,17 @@ Configuration is organized into three tiers:
 
 #### System Configuration (Required)
 
-| Variable             | Required | Description                     | Example                     |
-| -------------------- | -------- | ------------------------------- | --------------------------- |
-| `DATABASE_URL`       | No       | SQLite file path                | `file:./data/sqlite.db`     |
-| `OPENAI_API_KEY`     | Yes      | OpenAI API key                  | `sk-...`                    |
-| `OPENAI_BASE_URL`    | No       | Custom API base URL             | `https://api.openai.com/v1` |
-| `AUTH_SECRET`        | Yes      | Secret for signing tokens       | `openssl rand -base64 32`   |
-| `AUTH_URL`           | No       | Auth callback base URL          | `http://localhost:3000`     |
-| `AUTH_RESEND_KEY`    | No       | Resend API key for email OTP    | `re_...`                    |
+| Variable             | Required | Description                                           | Example                         |
+| -------------------- | -------- | ----------------------------------------------------- | ------------------------------- |
+| `DATABASE_URL`       | No       | SQLite file path                                      | `file:./data/sqlite.db`         |
+| `OPENAI_API_KEY`     | Yes      | OpenAI API key                                        | `sk-...`                        |
+| `OPENAI_BASE_URL`    | No       | Custom API base URL                                   | `https://api.openai.com/v1`     |
+| `AUTH_SECRET`        | Yes      | Secret for signing tokens                             | `openssl rand -base64 32`       |
+| `AUTH_URL`           | No       | Auth callback base URL                                | `http://localhost:3000`         |
+| `AUTH_RESEND_KEY`    | No       | Resend API key for email OTP                          | `re_...`                        |
 | `AUTH_EMAIL_FROM`    | No       | Sender mailbox (bare email or `Display Name <email>`) | `Cashier <noreply@example.com>` |
-| `LOCAL_STORAGE_PATH` | No       | File storage path               | `./data/uploads`            |
-| `TRUSTED_PROXY`      | No       | Trusted proxy for IP extraction | `10.0.0.0/8`                |
+| `LOCAL_STORAGE_PATH` | No       | File storage path                                     | `./data/uploads`                |
+| `TRUSTED_PROXY`      | No       | Trusted proxy for IP extraction                       | `10.0.0.0/8`                    |
 
 #### Runtime Configuration
 

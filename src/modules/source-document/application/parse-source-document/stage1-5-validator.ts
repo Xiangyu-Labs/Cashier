@@ -136,8 +136,6 @@ export async function executeStage1_5Validation(
           },
         }
       : {}),
-    ...(result.rejection_reason !== undefined
-      ? { rejection_reason: result.rejection_reason }
-      : {}),
+    ...(result.rejection_reason !== undefined ? { rejection_reason: result.rejection_reason } : {}),
   };
 }

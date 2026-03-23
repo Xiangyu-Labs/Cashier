@@ -59,11 +59,7 @@ export function EntryActions({
               <X className="h-3.5 w-3.5 mr-1.5" />
               {t("discardChanges")}
             </Button>
-            <Button
-              size="sm"
-              onClick={onSave}
-              className="h-9 gap-1.5 shadow-lg shadow-primary/20"
-            >
+            <Button size="sm" onClick={onSave} className="h-9 gap-1.5 shadow-lg shadow-primary/20">
               <Save className="h-3.5 w-3.5" />
               {tCommon("save")}
             </Button>

@@ -64,12 +64,11 @@ export async function retrySourceDocument({
     processedImageUrls != null && processedImageUrls.length > 0
       ? processedImageUrls
       : (existingDocument.imageUrls ?? []);
-  const finalImageUrls =
-    await rehomeLocalUploadUrls({
-      ledgerId,
-      sourceDocumentId: newDocumentId,
-      imageUrls: imageUrlsToPersist,
-    });
+  const finalImageUrls = await rehomeLocalUploadUrls({
+    ledgerId,
+    sourceDocumentId: newDocumentId,
+    imageUrls: imageUrlsToPersist,
+  });
   let processedOriginalImageUrls: string[] | undefined;
   if (existingOriginalImageUrls.length > 0) {
     processedOriginalImageUrls = await rehomeLocalUploadUrls({

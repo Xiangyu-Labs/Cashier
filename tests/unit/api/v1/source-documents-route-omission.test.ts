@@ -60,10 +60,8 @@ describe("api/v1/source-documents omission semantics", () => {
 
     await POST(request);
 
-    const payload = createSourceDocumentFromCredentialActionMock.mock.calls[0]?.[0]?.payload as Record<
-      string,
-      unknown
-    >;
+    const payload = createSourceDocumentFromCredentialActionMock.mock.calls[0]?.[0]
+      ?.payload as Record<string, unknown>;
     expect(payload.text).toBe("Lunch 12.50");
     expect(Object.prototype.hasOwnProperty.call(payload, "images")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(payload, "originalImages")).toBe(false);

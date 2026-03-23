@@ -4,7 +4,10 @@ import type { ChangeEvent, ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { createSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
+import {
+  createSourceDocumentAction,
+  retrySourceDocumentAction,
+} from "@/modules/source-document/actions";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { compressImage } from "@/lib/image-utils";
 import { fireAndForget } from "@/lib/safe-async";
@@ -121,9 +124,12 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function invalidateSubmitQueries(queryClient: {
-  invalidateQueries: (options: { predicate: QueryPredicate }) => Promise<unknown>;
-}, ledgerId: string) {
+function invalidateSubmitQueries(
+  queryClient: {
+    invalidateQueries: (options: { predicate: QueryPredicate }) => Promise<unknown>;
+  },
+  ledgerId: string
+) {
   fireAndForget(queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }), {
     context: "SourceDocumentInput",
   });
@@ -142,7 +148,9 @@ export function useSourceDocumentInputController({
 }: UseSourceDocumentInputControllerOptions) {
   const [text, setText] = useState(initialData?.text ?? "");
   const [images, setImages] = useState<EditableInputImage[]>(toEditableImages(initialData?.images));
-  const [entryDate, setEntryDate] = useState<Date>(() => resolveInitialEntryDate(initialData?.entryDate));
+  const [entryDate, setEntryDate] = useState<Date>(() =>
+    resolveInitialEntryDate(initialData?.entryDate)
+  );
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isTransitionPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,26 +175,34 @@ export function useSourceDocumentInputController({
     });
   }, [initialData, startTransition]);
 
-  const createMutation = useLedgerMutation<unknown, SubmitPayload, CreateRollbackContext>(ledgerId, {
-    mutationFn: async (payload) => createSourceDocumentAction(ledgerId, payload),
-    successMessage: messages.uploadSuccess,
-    errorMessage: messages.uploadError,
-    cancelPredicates: [createExactPredicate(queryKeys.sourceDocuments(ledgerId, "pending"))],
-    skipInvalidation: true,
-    onOptimisticUpdate: async (queryClient) => {
-      const previousPending = queryClient.getQueryData(queryKeys.sourceDocuments(ledgerId, "pending"));
+  const createMutation = useLedgerMutation<unknown, SubmitPayload, CreateRollbackContext>(
+    ledgerId,
+    {
+      mutationFn: async (payload) => createSourceDocumentAction(ledgerId, payload),
+      successMessage: messages.uploadSuccess,
+      errorMessage: messages.uploadError,
+      cancelPredicates: [createExactPredicate(queryKeys.sourceDocuments(ledgerId, "pending"))],
+      skipInvalidation: true,
+      onOptimisticUpdate: async (queryClient) => {
+        const previousPending = queryClient.getQueryData(
+          queryKeys.sourceDocuments(ledgerId, "pending")
+        );
 
-      return { previousPending };
-    },
-    onRollback: (queryClient, context) => {
-      if (context.previousPending !== undefined) {
-        queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "pending"), context.previousPending);
-      }
-    },
-    onSettledExtra: (queryClient) => {
-      invalidateSubmitQueries(queryClient, ledgerId);
-    },
-  });
+        return { previousPending };
+      },
+      onRollback: (queryClient, context) => {
+        if (context.previousPending !== undefined) {
+          queryClient.setQueryData(
+            queryKeys.sourceDocuments(ledgerId, "pending"),
+            context.previousPending
+          );
+        }
+      },
+      onSettledExtra: (queryClient) => {
+        invalidateSubmitQueries(queryClient, ledgerId);
+      },
+    }
+  );
 
   const retryMutation = useLedgerMutation<unknown, SubmitPayload, RetryRollbackContext>(ledgerId, {
     mutationFn: async (payload) => {
@@ -223,7 +239,10 @@ export function useSourceDocumentInputController({
     onRollback: (queryClient, context) => {
       if (sourceDocumentId == null || context.previousDocument === undefined) return;
 
-      queryClient.setQueryData(queryKeys.sourceDocument(sourceDocumentId), context.previousDocument);
+      queryClient.setQueryData(
+        queryKeys.sourceDocument(sourceDocumentId),
+        context.previousDocument
+      );
     },
     onSettledExtra: (queryClient) => {
       invalidateSubmitQueries(queryClient, ledgerId);

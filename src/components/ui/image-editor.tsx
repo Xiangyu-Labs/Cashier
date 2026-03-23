@@ -1,18 +1,7 @@
 "use client";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import ReactCrop, {
-  areCropsEqual,
-  type Crop,
-  type PixelCrop,
-} from "react-image-crop";
+import ReactCrop, { areCropsEqual, type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { Crop as CropIcon, Pencil, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -165,7 +154,8 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
   }, [hasDrawChanges]);
 
   const applyCurrentToolResult = useCallback((): EditorImage | null => {
-    const nextImage = activeTool === "crop" ? buildCropResult() : activeTool === "draw" ? buildDrawResult() : null;
+    const nextImage =
+      activeTool === "crop" ? buildCropResult() : activeTool === "draw" ? buildDrawResult() : null;
     if (nextImage === null) return null;
 
     setConfirmedImage(nextImage);

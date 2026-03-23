@@ -199,13 +199,7 @@ vi.mock("@/modules/source-document/ui", () => ({
 }));
 
 vi.mock("@/components/ui/confirm-dialog", () => ({
-  ConfirmDialog: ({
-    open,
-    onConfirm,
-  }: {
-    open: boolean;
-    onConfirm: () => void;
-  }) =>
+  ConfirmDialog: ({ open, onConfirm }: { open: boolean; onConfirm: () => void }) =>
     open ? (
       <button data-testid="confirm-delete" onClick={onConfirm}>
         confirm

@@ -127,7 +127,9 @@ describe("sendLoginNotification", () => {
     const sendError = new Error("smtp down");
     sendMock.mockRejectedValueOnce(sendError);
 
-    await expect(sendLoginNotification({ email: "notify@example.com", locale: "zh" })).resolves.toBeUndefined();
+    await expect(
+      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
+    ).resolves.toBeUndefined();
     expect(loggerErrorMock).toHaveBeenCalledWith(
       { error: sendError, email: "notify@example.com" },
       "Failed to send login notification"

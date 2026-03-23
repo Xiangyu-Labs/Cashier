@@ -12,7 +12,9 @@ describe("listEntryCategories", () => {
   it("delegates to listEntryCategoriesWithCount", async () => {
     listEntryCategoriesWithCountMock.mockResolvedValueOnce([{ id: "cat-1", entryCount: 3 }]);
 
-    await expect(listEntryCategories("ledger-1")).resolves.toEqual([{ id: "cat-1", entryCount: 3 }]);
+    await expect(listEntryCategories("ledger-1")).resolves.toEqual([
+      { id: "cat-1", entryCount: 3 },
+    ]);
     expect(listEntryCategoriesWithCountMock).toHaveBeenCalledWith("ledger-1");
   });
 });

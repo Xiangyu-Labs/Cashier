@@ -96,13 +96,7 @@ vi.mock("@/modules/ledger/ui/ServiceCredentialSection", () => ({
 }));
 
 vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
-  CollapsibleSection: ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
+  CollapsibleSection: ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div>
       <button type="button">{title}</button>
       <div>{children}</div>
@@ -259,13 +253,17 @@ describe("SettingsTab", () => {
 
     await refreshHandler();
 
-    const predicates = invalidateQueriesSpy.mock.calls.map((call) => call[0]?.predicate).filter(Boolean);
+    const predicates = invalidateQueriesSpy.mock.calls
+      .map((call) => call[0]?.predicate)
+      .filter(Boolean);
     expect(predicates.length).toBeGreaterThan(0);
 
     const settingsMatched = predicates.some((predicate) =>
       predicate({ queryKey: queryKeys.ledgerSettings("l1") })
     );
-    const ledgerMatched = predicates.some((predicate) => predicate({ queryKey: queryKeys.ledger("l1") }));
+    const ledgerMatched = predicates.some((predicate) =>
+      predicate({ queryKey: queryKeys.ledger("l1") })
+    );
 
     expect(settingsMatched).toBe(true);
     expect(ledgerMatched).toBe(true);

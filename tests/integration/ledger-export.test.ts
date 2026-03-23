@@ -324,8 +324,9 @@ describe("exportLedgerEntriesAction", () => {
 
     const entryQuery = statements
       .map(normalizeSql)
-      .find((sqlStatement) =>
-        sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
+      .find(
+        (sqlStatement) =>
+          sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
       );
 
     expect(entryQuery).toBeDefined();

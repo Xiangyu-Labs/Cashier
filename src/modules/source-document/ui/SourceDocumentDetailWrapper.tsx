@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
-import { useSourceDocumentDetailData, useSourceDocumentDetailMutations, } from "@/modules/source-document/hooks";
+import {
+  useSourceDocumentDetailData,
+  useSourceDocumentDetailMutations,
+} from "@/modules/source-document/hooks";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface SourceDocumentDetailWrapperProps {

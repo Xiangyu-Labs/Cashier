@@ -1,9 +1,6 @@
 import type { SourceDocumentGroupDto } from "./document-contracts";
 
-export {
-  SourceDocumentStatus,
-  SourceDocumentType,
-} from "./types";
+export { SourceDocumentStatus, SourceDocumentType } from "./types";
 export type {
   SourceDocMetadata,
   SourceDocumentMetadata,
@@ -23,7 +20,10 @@ export type {
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
 } from "./document-contracts";
-export type { SourceDocumentDto as SourceDocument, SourceDocumentLightDto as SourceDocumentLight } from "./document-contracts";
+export type {
+  SourceDocumentDto as SourceDocument,
+  SourceDocumentLightDto as SourceDocumentLight,
+} from "./document-contracts";
 
 export interface CreateSourceDocumentInput {
   text?: string;

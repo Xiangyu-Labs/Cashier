@@ -33,7 +33,10 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
       payload: { text: "Lunch 12.50" },
     });
 
-    const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");
     expect(callInput.text).toBe("Lunch 12.50");

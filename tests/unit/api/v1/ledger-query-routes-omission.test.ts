@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest, NextResponse } from "next/server";
 
-const {
-  handleApiV1RouteMock,
-  parseApiInputMock,
-  listLedgerEntriesMock,
-  calculateLedgerStatsMock,
-} = vi.hoisted(() => ({
-  handleApiV1RouteMock: vi.fn(),
-  parseApiInputMock: vi.fn(),
-  listLedgerEntriesMock: vi.fn(),
-  calculateLedgerStatsMock: vi.fn(),
-}));
+const { handleApiV1RouteMock, parseApiInputMock, listLedgerEntriesMock, calculateLedgerStatsMock } =
+  vi.hoisted(() => ({
+    handleApiV1RouteMock: vi.fn(),
+    parseApiInputMock: vi.fn(),
+    listLedgerEntriesMock: vi.fn(),
+    calculateLedgerStatsMock: vi.fn(),
+  }));
 
 vi.mock("@/app/api/v1/_shared/route-helper", () => ({
   handleApiV1Route: handleApiV1RouteMock,

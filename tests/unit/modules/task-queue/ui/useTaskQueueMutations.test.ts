@@ -4,11 +4,7 @@ import { renderHook } from "@testing-library/react";
 import { queryKeys } from "@/lib/query-keys";
 import type { TaskQueueResult } from "@/modules/task-queue/contracts";
 
-const {
-  createListSnapshotsMock,
-  mutationOptions,
-  useLedgerMutationMock,
-} = vi.hoisted(() => ({
+const { createListSnapshotsMock, mutationOptions, useLedgerMutationMock } = vi.hoisted(() => ({
   mutationOptions: [] as Array<Record<string, unknown>>,
   useLedgerMutationMock: vi.fn((_ledgerId: string, options: Record<string, unknown>) => {
     mutationOptions.push(options);

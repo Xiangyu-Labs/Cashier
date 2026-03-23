@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { anomalyDocToQueueItem, taskRunToQueueItem } from "@/modules/task-queue/application/mappers";
+import {
+  anomalyDocToQueueItem,
+  taskRunToQueueItem,
+} from "@/modules/task-queue/application/mappers";
 import type { SourceDocument, TaskRun } from "@/persistence";
 
 function hasOwnKey<T extends object>(obj: T, key: PropertyKey): boolean {

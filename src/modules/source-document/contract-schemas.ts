@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
-import {
-  omitUndefinedObjectFields,
-  optionalDateStringSchema,
-  UUID_REGEX,
-} from "@/lib/validation";
+import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
@@ -12,13 +8,16 @@ const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
 const optionalQueryNumberSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
-  z.union([z.number(), z.string().min(1)]).pipe(z.coerce.number()).optional()
+  z
+    .union([z.number(), z.string().min(1)])
+    .pipe(z.coerce.number())
+    .optional()
 );
 const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
 const imagePayloadSchema = strictObjectSchema({
-    data: z.string(),
-    mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
-  })
+  data: z.string(),
+  mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
+});
 
 const imagesSchema = z
   .array(imagePayloadSchema)

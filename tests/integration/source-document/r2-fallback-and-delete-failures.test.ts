@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { deleteSourceDocumentAction, retrySourceDocumentAction } from "@/modules/source-document/actions";
+import {
+  deleteSourceDocumentAction,
+  retrySourceDocumentAction,
+} from "@/modules/source-document/actions";
 import { getTestDb } from "tests/setup";
 import { ledgers, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "tests/helpers/schema-setup";
@@ -28,7 +31,12 @@ describe("source-document storage fallback and delete tolerance", () => {
 
     const db = getTestDb();
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
-    const setup = await createTestUserWithLedger(db, undefined, "Source Doc R2 Ledger", TEST_USER_ID);
+    const setup = await createTestUserWithLedger(
+      db,
+      undefined,
+      "Source Doc R2 Ledger",
+      TEST_USER_ID
+    );
     ledgerId = setup.ledgerId;
   });
 

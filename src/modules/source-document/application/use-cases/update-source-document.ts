@@ -167,7 +167,9 @@ export async function batchUpdateSourceDocuments({
   const updatedDocuments = await db
     .update(sourceDocuments)
     .set(updatePatch)
-    .where(and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)))
+    .where(
+      and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds))
+    )
     .returning({ id: sourceDocuments.id });
 
   return {

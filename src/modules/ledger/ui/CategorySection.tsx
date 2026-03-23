@@ -4,15 +4,8 @@ import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import {
-  DndContext,
-  closestCenter,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCategorySectionController } from "@/modules/ledger/hooks/useCategorySectionController";
 

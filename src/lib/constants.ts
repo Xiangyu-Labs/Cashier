@@ -79,15 +79,9 @@ export const QUERY = {
   /** Ledger数据staleTime - 10分钟（较稳定） */
   LEDGER_STALE_TIME_MS: 10 * 60 * 1000,
   /** 源文档staleTime - 2分钟（频繁变化但避免过度刷新） */
-  SOURCE_DOC_STALE_TIME_MS: parseInt(
-    process.env.SOURCE_DOC_STALE_TIME_MS ?? "120000",
-    10
-  ),
+  SOURCE_DOC_STALE_TIME_MS: parseInt(process.env.SOURCE_DOC_STALE_TIME_MS ?? "120000", 10),
   /** 货币汇率staleTime - 4小时（外部数据，工作日变化较快） */
-  CURRENCY_STALE_TIME_MS: parseInt(
-    process.env.CURRENCY_STALE_TIME_MS ?? "14400000",
-    10
-  ),
+  CURRENCY_STALE_TIME_MS: parseInt(process.env.CURRENCY_STALE_TIME_MS ?? "14400000", 10),
 } as const;
 
 // AI Configuration

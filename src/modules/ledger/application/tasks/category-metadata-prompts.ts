@@ -7,7 +7,10 @@ export function buildCategoryMetadataPrompt(
 ): string {
   const lang = aiLanguage ?? "zh-CN";
   const existingList = existingCategories
-    .map((c) => `- ${c.name}: ${c.description != null && c.description !== "" ? c.description : "无描述"} (图标: ${c.icon != null && c.icon !== "" ? c.icon : "无"})`)
+    .map(
+      (c) =>
+        `- ${c.name}: ${c.description != null && c.description !== "" ? c.description : "无描述"} (图标: ${c.icon != null && c.icon !== "" ? c.icon : "无"})`
+    )
     .join("\n");
 
   const prompt =

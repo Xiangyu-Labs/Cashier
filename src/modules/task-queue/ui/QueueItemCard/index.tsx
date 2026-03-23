@@ -148,7 +148,10 @@ export const QueueItemCard = memo(function QueueItemCard({
         </div>
 
         {showDirectCancel && (
-          <div className="ml-2 flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="ml-2 flex shrink-0 items-center gap-1"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Button
               variant="ghost"
               size="icon-sm"
@@ -161,7 +164,10 @@ export const QueueItemCard = memo(function QueueItemCard({
         )}
 
         {showDropdown && (
-          <div className="ml-2 flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="ml-2 flex shrink-0 items-center gap-1"
+            onClick={(event) => event.stopPropagation()}
+          >
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -215,7 +221,9 @@ export const QueueItemCard = memo(function QueueItemCard({
               {item.subtitle}
             </p>
           )}
-          {showProgressInline && <p className="truncate text-xs text-muted-foreground">{item.progress}</p>}
+          {showProgressInline && (
+            <p className="truncate text-xs text-muted-foreground">{item.progress}</p>
+          )}
         </div>
       )}
 

@@ -117,7 +117,8 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       }
 
       const sourceDocumentImageUrls = input.sourceDocumentImageUrls;
-      const hasImageUrls = sourceDocumentImageUrls !== undefined && sourceDocumentImageUrls.length > 0;
+      const hasImageUrls =
+        sourceDocumentImageUrls !== undefined && sourceDocumentImageUrls.length > 0;
       if (hasImageUrls) {
         for (const url of sourceDocumentImageUrls) {
           content.push({ type: "image_url", image_url: { url } });
@@ -160,7 +161,12 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       if (input.ledgerId === "" || input.entryId === "") return;
 
       // Only update if we have a valid category match
-      if (output.categoryIndex > 0 && output.categoryIndex <= input.categories.length && input.ledgerId !== "" && input.entryId !== "") {
+      if (
+        output.categoryIndex > 0 &&
+        output.categoryIndex <= input.categories.length &&
+        input.ledgerId !== "" &&
+        input.entryId !== ""
+      ) {
         const category = input.categories.find((c) => c.index === output.categoryIndex);
 
         if (category?.id != null && category.id !== "") {

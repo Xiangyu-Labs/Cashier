@@ -32,7 +32,8 @@ export function SourceDocumentEditRetryDialog({
     "imageUrls" in sourceDocument &&
     Array.isArray(sourceDocument.imageUrls) &&
     sourceDocument.imageUrls.length > 0;
-  const hasText = "text" in sourceDocument && sourceDocument.text != null && sourceDocument.text !== "";
+  const hasText =
+    "text" in sourceDocument && sourceDocument.text != null && sourceDocument.text !== "";
   const hasImages = "hasImages" in sourceDocument && sourceDocument.hasImages;
   // needsFetch is true when:
   // 1. No imageUrls but hasImages flag is true (stripped for performance)

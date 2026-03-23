@@ -11,10 +11,7 @@ export function whereSourceDocumentNotDeleted(ledgerId: string) {
 }
 
 export function whereSourceDocumentNotDeletedId(ledgerId: string, sourceDocumentId: string) {
-  return and(
-    eq(sourceDocuments.id, sourceDocumentId),
-    whereSourceDocumentNotDeleted(ledgerId)
-  )!;
+  return and(eq(sourceDocuments.id, sourceDocumentId), whereSourceDocumentNotDeleted(ledgerId))!;
 }
 
 export function deletedSourceDocumentPatch(now = new Date()) {

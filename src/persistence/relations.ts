@@ -1,11 +1,6 @@
 import { relations } from "drizzle-orm";
 import { users, accounts } from "./schema/auth";
-import {
-  ledgers,
-  entryCategories,
-  ledgerEntries,
-  serviceCredentials,
-} from "./schema/ledger";
+import { ledgers, entryCategories, ledgerEntries, serviceCredentials } from "./schema/ledger";
 import { sourceDocuments } from "./schema/source-document";
 
 export const usersRelations = relations(users, ({ many }) => ({

@@ -298,12 +298,9 @@ describe("API v1 Query Endpoints", () => {
     });
 
     it("should return 400 for invalid query params", async () => {
-      const request = createMockRequest(
-        `http://localhost:3000/api/v1/source-documents?limit=101`,
-        {
-          headers: { Authorization: `Bearer ${apiKey}` },
-        }
-      );
+      const request = createMockRequest(`http://localhost:3000/api/v1/source-documents?limit=101`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
       const response = await sourceDocumentsGET(request);
       expect(response.status).toBe(400);

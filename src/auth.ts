@@ -31,14 +31,24 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
   const clientSecret = process.env.OIDC_CLIENT_SECRET;
 
   // Only configure if all env vars are present
-  if (issuer == null || issuer === "" || clientId == null || clientId === "" || clientSecret == null || clientSecret === "") {
+  if (
+    issuer == null ||
+    issuer === "" ||
+    clientId == null ||
+    clientId === "" ||
+    clientSecret == null ||
+    clientSecret === ""
+  ) {
     return null;
   }
 
   // Build explicit redirect_uri to ensure consistency with IdP configuration
   // Falls back to NEXT_PUBLIC_APP_URL if AUTH_URL is not set
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  const redirectUri = baseUrl != null && baseUrl !== "" ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc` : undefined;
+  const redirectUri =
+    baseUrl != null && baseUrl !== ""
+      ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc`
+      : undefined;
 
   return {
     id: "oidc",
@@ -88,7 +98,12 @@ export const authOptions = {
         locale: { type: "text" },
       },
       async authorize(credentials, request) {
-        if (credentials?.email == null || credentials?.email === "" || credentials?.otp == null || credentials?.otp === "") {
+        if (
+          credentials?.email == null ||
+          credentials?.email === "" ||
+          credentials?.otp == null ||
+          credentials?.otp === ""
+        ) {
           return null;
         }
 

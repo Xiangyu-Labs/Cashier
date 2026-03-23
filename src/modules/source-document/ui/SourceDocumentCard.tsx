@@ -64,8 +64,7 @@ const SourceDocumentTotal = memo(function SourceDocumentTotal({
     const breakdown: CurrencyBreakdown[] = uniqueCurrencies.map((currency) => {
       const convertedAmount = entries
         .filter(
-          (e) =>
-            (e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === currency
+          (e) => (e.currency != null && e.currency !== "" ? e.currency : mainCurrency) === currency
         )
         .reduce((sum, e) => {
           if (e.convertedAmount != null && e.convertedAmount !== "") {
@@ -335,12 +334,12 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
             }
 
             return (
-            <ProcessingStatus
-              status={processingStatus}
-              {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
-                ? { label: anomalyReason }
-                : {})}
-            />
+              <ProcessingStatus
+                status={processingStatus}
+                {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
+                  ? { label: anomalyReason }
+                  : {})}
+              />
             );
           })()}
 
@@ -430,7 +429,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
                     sourceDocumentEntryDate={sourceDocument.entryDate}
-                    variant={entry.category != null && !entry.category.isEditable ? "warning" : "default"}
+                    variant={
+                      entry.category != null && !entry.category.isEditable ? "warning" : "default"
+                    }
                   />
                 ))}
               </div>

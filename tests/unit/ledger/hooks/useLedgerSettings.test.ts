@@ -111,18 +111,30 @@ describe("useLedgerSettings", () => {
     mutationOptions.length = 0;
     cache.clear();
     cache.set(JSON.stringify(queryKeys.ledger(ledgerId)), initialLedger);
-    useQueryMock.mockImplementation(({ queryKey, initialData }: { queryKey: readonly unknown[]; initialData?: unknown }) => {
-      if (queryKey[0] === "ledgerSettings") {
-        return {
-          data: {
-            uncategorizedCount: 2,
-            credentials: [{ id: "cred-1", name: "API", ledgerId, key: "sk_1", createdAt: "2026-03-01T00:00:00.000Z", deletedAt: null, lastUsedAt: null }],
-          },
-          isLoading: false,
-        };
+    useQueryMock.mockImplementation(
+      ({ queryKey, initialData }: { queryKey: readonly unknown[]; initialData?: unknown }) => {
+        if (queryKey[0] === "ledgerSettings") {
+          return {
+            data: {
+              uncategorizedCount: 2,
+              credentials: [
+                {
+                  id: "cred-1",
+                  name: "API",
+                  ledgerId,
+                  key: "sk_1",
+                  createdAt: "2026-03-01T00:00:00.000Z",
+                  deletedAt: null,
+                  lastUsedAt: null,
+                },
+              ],
+            },
+            isLoading: false,
+          };
+        }
+        return { data: initialData, isLoading: false };
       }
-      return { data: initialData, isLoading: false };
-    });
+    );
   });
 
   it("returns initial ledger/categories and settings data", () => {
@@ -184,14 +196,16 @@ describe("useLedgerSettings", () => {
     );
 
     const updateLedgerMutation = getOption(0);
-    (updateLedgerMutation.onOptimisticUpdate as (
-      qc: typeof queryClientMock,
-      newData: {
-        mainCurrency?: string;
-        preferredCurrencies?: string[];
-        collapseEntriesDefault?: boolean;
-      }
-    ) => unknown)(queryClientMock, {
+    (
+      updateLedgerMutation.onOptimisticUpdate as (
+        qc: typeof queryClientMock,
+        newData: {
+          mainCurrency?: string;
+          preferredCurrencies?: string[];
+          collapseEntriesDefault?: boolean;
+        }
+      ) => unknown
+    )(queryClientMock, {
       mainCurrency: "USD",
       preferredCurrencies: ["USD", "CNY"],
       collapseEntriesDefault: true,
@@ -212,12 +226,14 @@ describe("useLedgerSettings", () => {
     const afterSuccess = cache.get(JSON.stringify(queryKeys.ledger(ledgerId))) as Ledger;
     expect(afterSuccess.metadata?.settings?.mainCurrency).toBe("JPY");
 
-    (updateLedgerMutation.onSettledExtra as (
-      qc: typeof queryClientMock,
-      variables: unknown,
-      data: unknown,
-      error: Error | null
-    ) => void)(queryClientMock, {}, undefined, null);
+    (
+      updateLedgerMutation.onSettledExtra as (
+        qc: typeof queryClientMock,
+        variables: unknown,
+        data: unknown,
+        error: Error | null
+      ) => void
+    )(queryClientMock, {}, undefined, null);
 
     expect(fireAndForgetMock).toHaveBeenCalled();
     expect(invalidateQueriesMock).toHaveBeenCalledWith({

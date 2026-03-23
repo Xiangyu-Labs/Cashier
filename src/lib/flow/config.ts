@@ -20,8 +20,7 @@ function parseNonNegativeInteger(
   key: string,
   fallback: number
 ): number {
-  const normalizedValue =
-    rawValue == null || rawValue.trim() === "" ? String(fallback) : rawValue;
+  const normalizedValue = rawValue == null || rawValue.trim() === "" ? String(fallback) : rawValue;
   const parsed = Number.parseInt(normalizedValue, 10);
 
   if (!Number.isFinite(parsed) || Number.isNaN(parsed) || parsed < 0) {

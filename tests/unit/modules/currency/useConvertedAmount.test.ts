@@ -30,10 +30,9 @@ describe("useConvertedAmount", () => {
   });
 
   it("delegates conversion requests through currency actions", async () => {
-    const { result } = renderHook(
-      () => useConvertedAmount(100, "CNY", "USD", "2026-02-04"),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useConvertedAmount(100, "CNY", "USD", "2026-02-04"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

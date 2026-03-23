@@ -73,7 +73,7 @@ export function DateFilter({
           <span className="truncate flex-1">
             {dateValue != null
               ? format.dateTime(dateValue, { year: "numeric", month: "short", day: "numeric" })
-              : placeholder ?? t("selectDate")}
+              : (placeholder ?? t("selectDate"))}
           </span>
           {showClear && dateValue ? (
             <X

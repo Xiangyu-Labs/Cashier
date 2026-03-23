@@ -3,7 +3,10 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
-import { parseEnhancedStatsInput, type GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
+import {
+  parseEnhancedStatsInput,
+  type GetEnhancedStatsInput,
+} from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";

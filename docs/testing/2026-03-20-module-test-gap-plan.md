@@ -19,6 +19,7 @@
 ## Gap summary
 
 ### `ledger`
+
 - Broad action/integration coverage exists.
 - Missing direct tests for:
   - high-risk queries
@@ -27,6 +28,7 @@
   - mutation hooks and credential settings hooks
 
 ### `source-document`
+
 - Parse pipeline coverage is strong.
 - Missing direct tests for:
   - create-and-queue
@@ -36,6 +38,7 @@
   - R2 fallback and delete failure behavior
 
 ### `task-queue`
+
 - Action integrations exist.
 - Missing direct tests for:
   - queue shaping query
@@ -44,6 +47,7 @@
   - modal/card interaction and queue UI state
 
 ### `stats`
+
 - Integration coverage exists for enhanced stats and soft-delete.
 - Missing direct tests for:
   - enhanced stats query branches
@@ -52,6 +56,7 @@
   - stats chart/header/ranking UI
 
 ### `workspace`
+
 - URL params and several hooks are already covered.
 - Missing direct tests for:
   - page bootstrap query
@@ -60,6 +65,7 @@
   - dialog/prefetch/details state hooks
 
 ### `auth`
+
 - OTP repository, rate limit, core actions, and auth integrations are covered.
 - Missing direct tests for:
   - session-user query
@@ -68,6 +74,7 @@
   - otp verification failure/open behavior
 
 ### `currency`
+
 - Core exchange and action tests exist.
 - Missing direct tests for:
   - convert-currency use-case
@@ -78,6 +85,7 @@
 ## Execution order
 
 ### Batch A
+
 - `task-queue`
 - `stats`
 - `workspace`
@@ -85,6 +93,7 @@
 - `currency`
 
 ### Batch B
+
 - `ledger`
 - `source-document`
 

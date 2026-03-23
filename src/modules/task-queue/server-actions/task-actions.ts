@@ -1,10 +1,7 @@
 "use server";
 import { requireLedgerAccess, withLedgerAccess } from "@/modules/ledger/access";
 import { getTaskQueueQuery } from "../application/queries/get-task-queue";
-import {
-  batchCancelTasksUseCase,
-  cancelTaskUseCase,
-} from "../application/use-cases/cancel-task";
+import { batchCancelTasksUseCase, cancelTaskUseCase } from "../application/use-cases/cancel-task";
 import {
   batchDismissTasksUseCase,
   dismissTaskUseCase,
@@ -28,9 +25,7 @@ export const batchDismissTasksAction = withLedgerAccess((ledgerId: string, taskI
   batchDismissTasksUseCase(ledgerId, parseTaskIds(taskIds))
 );
 
-export async function getTaskQueueForAuthorizedLedger(
-  ledgerId: string
-): Promise<TaskQueueResult> {
+export async function getTaskQueueForAuthorizedLedger(ledgerId: string): Promise<TaskQueueResult> {
   await requireLedgerAccess(ledgerId);
   return getTaskQueueQuery(ledgerId);
 }

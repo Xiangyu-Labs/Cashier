@@ -236,8 +236,8 @@ describe("getSourceDocumentLightAction", () => {
     await db.insert(sourceDocuments).values(docData);
 
     // withSourceDocumentLedgerAccess preserves ledger-not-found semantics for inaccessible ledgers.
-    await expect(
-      getSourceDocumentLightAction(ledgerData.id, docData.id)
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(getSourceDocumentLightAction(ledgerData.id, docData.id)).rejects.toBeInstanceOf(
+      NotFoundError
+    );
   });
 });

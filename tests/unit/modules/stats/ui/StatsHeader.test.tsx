@@ -30,7 +30,8 @@ vi.mock("@/lib/date-utils", async () => {
   const actual = await vi.importActual("@/lib/date-utils");
   return {
     ...actual,
-    addPeriod: (date: Date, type: DateRangeType, amount: number) => addPeriodMock(date, type, amount),
+    addPeriod: (date: Date, type: DateRangeType, amount: number) =>
+      addPeriodMock(date, type, amount),
     getDateRange: (date: Date, type: DateRangeType) => getDateRangeMock(date, type),
   };
 });

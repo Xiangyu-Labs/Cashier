@@ -95,14 +95,14 @@ export async function POST(request: Request) {
 
 ### 错误类
 
-| 类 | HTTP 状态码 | 用途 |
-|---|---|---|
-| `ValidationError` | 400 | 输入校验失败 |
-| `UnauthorizedError` | 401 | 未登录 |
-| `ForbiddenError` | 403 | 无权限 |
-| `NotFoundError` | 404 | 资源不存在 |
-| `RateLimitError` | 429 | 请求频率超限 |
-| `AppError` | 500 | 通用业务错误基类 |
+| 类                  | HTTP 状态码 | 用途             |
+| ------------------- | ----------- | ---------------- |
+| `ValidationError`   | 400         | 输入校验失败     |
+| `UnauthorizedError` | 401         | 未登录           |
+| `ForbiddenError`    | 403         | 无权限           |
+| `NotFoundError`     | 404         | 资源不存在       |
+| `RateLimitError`    | 429         | 请求频率超限     |
+| `AppError`          | 500         | 通用业务错误基类 |
 
 ---
 
@@ -296,17 +296,17 @@ const t = useTranslations("LedgerPage");
 
 ## 12. 禁止模式（Anti-patterns）
 
-| 禁止 | 原因 | 替代方案 |
-|---|---|---|
-| Server Action 返回 `{ success, error }` | 非项目约定 | 直接 throw |
-| 在 `use-cases.ts` / `queries.ts` 中定义类型或实现逻辑 | barrel 职责混乱 | 移入 `application/use-cases/` 或 `application/queries/` |
-| 在 `actions.ts` 中直接实现函数体 | barrel 职责混乱 | 移入 `server-actions/` 子目录 |
-| 在 `contracts.ts` 中 import/re-export `application/` 内部类型 | 跨层耦合 | 在 `contracts.ts` 本地定义，或通过 `use-cases.ts` barrel 暴露 |
-| 跨模块 deep import（`@/modules/ledger/application/...`） | 破坏封装 | 通过模块公共入口 |
-| 手动 `useState` 做乐观更新 | 与 factory 冲突 | `useLedgerMutation` + `onOptimisticUpdate` |
-| `invalidateQueries` 放在 `onSuccess` | 出错时缓存不刷新 | 放在 `onSettled` |
-| 硬编码 query key 字符串 | 无法统一 invalidation | `queryKeys` 工厂 |
-| 存储日期为时间戳 | 时区问题 | `yyyy-MM-dd` 字符串 |
-| 在 `src/app` 中写业务逻辑 | 违反 thin app 原则 | 移入对应模块 `application/` |
-| `engine.register()` 在 task-registry 之外调用 | 注册入口分散 | 只在 `task-registry.ts` 注册 |
-| 用 Spinner 表示加载 | 与 UX 规范不符 | Skeleton |
+| 禁止                                                          | 原因                  | 替代方案                                                      |
+| ------------------------------------------------------------- | --------------------- | ------------------------------------------------------------- |
+| Server Action 返回 `{ success, error }`                       | 非项目约定            | 直接 throw                                                    |
+| 在 `use-cases.ts` / `queries.ts` 中定义类型或实现逻辑         | barrel 职责混乱       | 移入 `application/use-cases/` 或 `application/queries/`       |
+| 在 `actions.ts` 中直接实现函数体                              | barrel 职责混乱       | 移入 `server-actions/` 子目录                                 |
+| 在 `contracts.ts` 中 import/re-export `application/` 内部类型 | 跨层耦合              | 在 `contracts.ts` 本地定义，或通过 `use-cases.ts` barrel 暴露 |
+| 跨模块 deep import（`@/modules/ledger/application/...`）      | 破坏封装              | 通过模块公共入口                                              |
+| 手动 `useState` 做乐观更新                                    | 与 factory 冲突       | `useLedgerMutation` + `onOptimisticUpdate`                    |
+| `invalidateQueries` 放在 `onSuccess`                          | 出错时缓存不刷新      | 放在 `onSettled`                                              |
+| 硬编码 query key 字符串                                       | 无法统一 invalidation | `queryKeys` 工厂                                              |
+| 存储日期为时间戳                                              | 时区问题              | `yyyy-MM-dd` 字符串                                           |
+| 在 `src/app` 中写业务逻辑                                     | 违反 thin app 原则    | 移入对应模块 `application/`                                   |
+| `engine.register()` 在 task-registry 之外调用                 | 注册入口分散          | 只在 `task-registry.ts` 注册                                  |
+| 用 Spinner 表示加载                                           | 与 UX 规范不符        | Skeleton                                                      |

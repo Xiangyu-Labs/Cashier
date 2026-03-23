@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { TaskCancelledError } from "@/lib/flow/cancellation";
 import type { ParsePipelineResult } from "@/modules/source-document/application/parse-source-document/contracts";
-import { convertToParsedEntries, toParseSourceDocumentOutput } from "@/modules/source-document/application/parse-source-document/result-mapper";
+import {
+  convertToParsedEntries,
+  toParseSourceDocumentOutput,
+} from "@/modules/source-document/application/parse-source-document/result-mapper";
 
 describe("convertToParsedEntries", () => {
   it("keeps notes and forces entryDate to null", () => {

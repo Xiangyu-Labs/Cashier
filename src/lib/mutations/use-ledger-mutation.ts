@@ -70,10 +70,7 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
    * Only needed if not using the standard snapshot pattern.
    * If onOptimisticUpdate returns { snapshots }, this is not needed.
    */
-  onRollback?: (
-    queryClient: ReturnType<typeof useQueryClient>,
-    context: TContext
-  ) => void;
+  onRollback?: (queryClient: ReturnType<typeof useQueryClient>, context: TContext) => void;
 
   /**
    * Additional callback to run on success (e.g., close modal, clear selection)

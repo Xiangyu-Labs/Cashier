@@ -42,10 +42,7 @@ export async function listLedgerEntryPage({
   if (rows.length > limit) {
     const nextItem = rows[limit];
     if (nextItem == null) {
-      throw new AppError(
-        "Expected next ledger entry page cursor row",
-        "INVARIANT_VIOLATION"
-      );
+      throw new AppError("Expected next ledger entry page cursor row", "INVARIANT_VIOLATION");
     }
     nextCursor = `${nextItem.createdAt.toISOString()}|${nextItem.id}`;
     pagedRows = rows.slice(0, limit);

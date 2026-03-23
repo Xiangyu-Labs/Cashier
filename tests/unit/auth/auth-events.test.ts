@@ -87,7 +87,9 @@ describe("auth.ts adapter wiring", () => {
 
   it("delegates authorize to authenticateWithOTP", async () => {
     const { authOptions } = await loadAuthOptions();
-    const otpProvider = authOptions?.providers?.find?.((provider: { id?: string }) => provider.id === "otp");
+    const otpProvider = authOptions?.providers?.find?.(
+      (provider: { id?: string }) => provider.id === "otp"
+    );
 
     const request = { headers: new Headers({ "x-forwarded-for": "127.0.0.1" }) };
     const result = await otpProvider?.authorize?.(
@@ -121,7 +123,10 @@ describe("auth.ts adapter wiring", () => {
   it("delegates signIn events to the auth user-signed-in use case", async () => {
     const { authOptions } = await loadAuthOptions();
     const signInEvent = authOptions?.events?.signIn as
-      | ((params: { user: { id?: string | null; email?: string | null }; isNewUser?: boolean }) => Promise<void>)
+      | ((params: {
+          user: { id?: string | null; email?: string | null };
+          isNewUser?: boolean;
+        }) => Promise<void>)
       | undefined;
 
     await signInEvent?.({
@@ -154,10 +159,22 @@ describe("auth.ts adapter wiring", () => {
     const { authOptions } = await loadAuthOptions();
     const sessionCallback = authOptions?.callbacks?.session as
       | ((params: {
-          session: { user?: { id?: string; email?: string | null; name?: string | null; image?: string | null } };
+          session: {
+            user?: {
+              id?: string;
+              email?: string | null;
+              name?: string | null;
+              image?: string | null;
+            };
+          };
           token: { sub?: string | null };
         }) => Promise<{
-          user?: { id?: string; email?: string | null; name?: string | null; image?: string | null };
+          user?: {
+            id?: string;
+            email?: string | null;
+            name?: string | null;
+            image?: string | null;
+          };
         }>)
       | undefined;
 
@@ -181,7 +198,14 @@ describe("auth.ts adapter wiring", () => {
     const { authOptions } = await loadAuthOptions();
     const sessionCallback = authOptions?.callbacks?.session as
       | ((params: {
-          session: { user?: { id?: string; email?: string | null; name?: string | null; image?: string | null } };
+          session: {
+            user?: {
+              id?: string;
+              email?: string | null;
+              name?: string | null;
+              image?: string | null;
+            };
+          };
           token: { sub?: string | null };
         }) => Promise<unknown>)
       | undefined;
@@ -190,7 +214,9 @@ describe("auth.ts adapter wiring", () => {
 
     await expect(
       sessionCallback?.({
-        session: { user: { id: "session-user", email: "old@example.com", name: "Old", image: null } },
+        session: {
+          user: { id: "session-user", email: "old@example.com", name: "Old", image: null },
+        },
         token: { sub: "missing-user" },
       })
     ).rejects.toBeInstanceOf(UnauthorizedError);

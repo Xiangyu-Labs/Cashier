@@ -3,8 +3,17 @@ import { eq } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
-import { currencyRates, entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { getEnhancedStats, getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
+import {
+  currencyRates,
+  entryCategories,
+  ledgerEntries,
+  ledgers,
+  sourceDocuments,
+} from "@/persistence";
+import {
+  getEnhancedStats,
+  getEnhancedStatsQuery,
+} from "@/modules/stats/application/queries/get-enhanced-stats";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -305,5 +314,4 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.heatmap.stats.p80Amount).toBe(40);
   });
-
 });

@@ -8,7 +8,10 @@ import {
   listLedgerEntries,
 } from "@/modules/ledger/queries";
 import { getEnhancedStats } from "@/modules/stats/queries";
-import { getAllSourceDocuments, getPendingSourceDocuments } from "@/modules/source-document/queries";
+import {
+  getAllSourceDocuments,
+  getPendingSourceDocuments,
+} from "@/modules/source-document/queries";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,

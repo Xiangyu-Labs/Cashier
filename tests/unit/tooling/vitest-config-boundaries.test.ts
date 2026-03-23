@@ -14,9 +14,11 @@ describe("vitest unit config boundaries", () => {
 
   it("does not reuse the same groupOrder across projects with different maxWorkers", () => {
     const projects =
-      (fullConfig.test?.projects as Array<{
-        test?: { maxWorkers?: unknown; sequence?: { groupOrder?: number } };
-      }> | undefined) ?? [];
+      (fullConfig.test?.projects as
+        | Array<{
+            test?: { maxWorkers?: unknown; sequence?: { groupOrder?: number } };
+          }>
+        | undefined) ?? [];
 
     const seen = new Map<number, unknown>();
 

@@ -15,10 +15,7 @@ interface SubmitCategoryMetadataTaskInput {
 
 function shouldGenerateCategoryMetadata(input: SubmitCategoryMetadataTaskInput): boolean {
   return (
-    input.icon == null ||
-    input.icon === "" ||
-    input.description == null ||
-    input.description === ""
+    input.icon == null || input.icon === "" || input.description == null || input.description === ""
   );
 }
 

@@ -91,7 +91,9 @@ describe("useSourceDocuments", () => {
     renderHook(() => useSourceDocuments("ledger-1"));
 
     const queryOptions = useQueryMock.mock.calls[0]?.[0] as {
-      refetchInterval: (query: { state: { data: { items: Array<{ status: string }> } | undefined } }) => number | false;
+      refetchInterval: (query: {
+        state: { data: { items: Array<{ status: string }> } | undefined };
+      }) => number | false;
     };
 
     expect(

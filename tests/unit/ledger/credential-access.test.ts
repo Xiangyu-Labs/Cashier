@@ -6,6 +6,8 @@ import * as credentialAccess from "@/modules/ledger/credential-access";
 describe("credential-access barrel", () => {
   it("re-exports service credential access helpers", () => {
     expect(credentialAccess.authenticateServiceCredential).toBe(authenticateServiceCredential);
-    expect(credentialAccess.resolveLedgerForServiceCredential).toBe(resolveLedgerForServiceCredential);
+    expect(credentialAccess.resolveLedgerForServiceCredential).toBe(
+      resolveLedgerForServiceCredential
+    );
   });
 });

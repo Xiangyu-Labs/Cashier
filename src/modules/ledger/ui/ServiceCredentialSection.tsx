@@ -145,7 +145,10 @@ export function ServiceCredentialSection({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={createdCredential != null} onOpenChange={(open) => !open && setCreatedCredential(null)}>
+      <Dialog
+        open={createdCredential != null}
+        onOpenChange={(open) => !open && setCreatedCredential(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("createSuccessTitle")}</DialogTitle>
@@ -160,7 +163,11 @@ export function ServiceCredentialSection({
                 className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={() => handleCopy(createdCredential?.key ?? "")}
               >
-                {hasCopied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                {hasCopied ? (
+                  <Check size={14} className="mr-1" />
+                ) : (
+                  <Copy size={14} className="mr-1" />
+                )}
                 {hasCopied ? tCommon("success") : t("copy")}
               </Button>
             </div>
@@ -179,7 +186,10 @@ export function ServiceCredentialSection({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={credentialToDelete != null} onOpenChange={(open) => !open && setCredentialToDelete(null)}>
+      <Dialog
+        open={credentialToDelete != null}
+        onOpenChange={(open) => !open && setCredentialToDelete(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("deleteTitle")}</DialogTitle>

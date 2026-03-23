@@ -130,9 +130,9 @@ describe("createQuickEntryAction", () => {
   });
 
   it("should use provided currency", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(
-      new Error("network disabled in test")
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("network disabled in test"));
 
     try {
       const result = await createQuickEntryAction(ledgerId, {

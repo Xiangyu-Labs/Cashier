@@ -48,4 +48,3 @@ describe("useLedgerEntriesTabState", () => {
     expect(result.current.retrySourceDocument).toBeNull();
   });
 });
-

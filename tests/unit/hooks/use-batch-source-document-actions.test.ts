@@ -27,11 +27,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
       };
     };
 
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     expect(() => buggyOnOptimisticUpdate(queryData)).toThrow(
       "Cannot read properties of undefined (reading 'filter')"
@@ -55,17 +51,11 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
       const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: items.map((d) =>
-          d.id === "doc-1" ? { ...d, entryDate: "2024-03-17" } : d
-        ),
+        items: items.map((d) => (d.id === "doc-1" ? { ...d, entryDate: "2024-03-17" } : d)),
       };
     };
 
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     expect(() => buggyOnOptimisticUpdate(queryData)).toThrow(
       "Cannot read properties of undefined (reading 'map')"
@@ -89,17 +79,11 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
       const items = (old as PaginatedItems).items;
       return {
         ...(old as object),
-        items: items.map((d) =>
-          d.id === "doc-1" ? { ...d, status: "queued" } : d
-        ),
+        items: items.map((d) => (d.id === "doc-1" ? { ...d, status: "queued" } : d)),
       };
     };
 
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     expect(() => buggyOnOptimisticUpdate(queryData)).toThrow(
       "Cannot read properties of undefined (reading 'map')"
@@ -109,17 +93,14 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
   it("should PASS with proper paginated response structure", () => {
     const queryClient = new QueryClient();
 
-    queryClient.setQueryData(
-      ["sourceDocuments", "test-ledger-id", "all"],
-      {
-        items: [
-          { id: "doc-1", text: "Test Doc 1" },
-          { id: "doc-2", text: "Test Doc 2" },
-        ],
-        hasMore: false,
-        total: 2,
-      }
-    );
+    queryClient.setQueryData(["sourceDocuments", "test-ledger-id", "all"], {
+      items: [
+        { id: "doc-1", text: "Test Doc 1" },
+        { id: "doc-2", text: "Test Doc 2" },
+      ],
+      hasMore: false,
+      total: 2,
+    });
 
     const buggyOnOptimisticUpdate = (old: unknown) => {
       if (old === undefined) return old;
@@ -131,11 +112,7 @@ describe("useBatchSourceDocumentActions - onOptimisticUpdate bug", () => {
       };
     };
 
-    const queryData = queryClient.getQueryData([
-      "sourceDocuments",
-      "test-ledger-id",
-      "all",
-    ]);
+    const queryData = queryClient.getQueryData(["sourceDocuments", "test-ledger-id", "all"]);
 
     expect(() => buggyOnOptimisticUpdate(queryData)).not.toThrow();
   });

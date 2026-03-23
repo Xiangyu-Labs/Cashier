@@ -76,11 +76,11 @@ export function useDateGrouping<T>({
       }
 
       const group = groups[dateKey] ?? {
-          title: dateKey,
-          timestamp: sortTimestamp,
-          items: [],
-          total: 0,
-        };
+        title: dateKey,
+        timestamp: sortTimestamp,
+        items: [],
+        total: 0,
+      };
       groups[dateKey] = group;
 
       group.items.push(item);

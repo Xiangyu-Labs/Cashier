@@ -75,13 +75,21 @@ describe("useBatchEntryActions", () => {
       "entry-1",
       "entry-2",
     ]);
-    (batchCategorize.onSuccessExtra as (result: { submittedCount: number; skippedCount: number }) => void)({
+    (
+      batchCategorize.onSuccessExtra as (result: {
+        submittedCount: number;
+        skippedCount: number;
+      }) => void
+    )({
       submittedCount: 2,
       skippedCount: 1,
     });
 
     expect(result).toEqual({ submittedCount: 2, skippedCount: 1 });
-    expect(submitBatchCategorizeActionMock).toHaveBeenCalledWith("ledger-1", ["entry-1", "entry-2"]);
+    expect(submitBatchCategorizeActionMock).toHaveBeenCalledWith("ledger-1", [
+      "entry-1",
+      "entry-2",
+    ]);
     expect(toastSuccessMock).toHaveBeenCalledWith("aiCategorizeSubmitted:2");
     expect(toastInfoMock).toHaveBeenCalledWith("aiCategorizeSkipped:1");
     expect(clearSelection).toHaveBeenCalled();
@@ -95,10 +103,12 @@ describe("useBatchEntryActions", () => {
     const batchChangeCurrency = getOption(2);
     const batchDelete = getOption(3);
 
-    await (batchChangeCategory.mutationFn as (input: {
-      ids: string[];
-      categoryId: string | null;
-    }) => Promise<void>)({
+    await (
+      batchChangeCategory.mutationFn as (input: {
+        ids: string[];
+        categoryId: string | null;
+      }) => Promise<void>
+    )({
       ids: ["entry-1", "entry-2"],
       categoryId: "cat-1",
     });
@@ -107,10 +117,12 @@ describe("useBatchEntryActions", () => {
       { ids: ["entry-1", "entry-2"] }
     );
 
-    await (batchChangeCurrency.mutationFn as (input: {
-      ids: string[];
-      currency: string;
-    }) => Promise<void>)({
+    await (
+      batchChangeCurrency.mutationFn as (input: {
+        ids: string[];
+        currency: string;
+      }) => Promise<void>
+    )({
       ids: ["entry-3"],
       currency: "USD",
     });
@@ -121,13 +133,20 @@ describe("useBatchEntryActions", () => {
       "entry-5",
     ]);
 
-    expect(batchUpdateLedgerEntriesActionMock).toHaveBeenCalledWith("ledger-1", ["entry-1", "entry-2"], {
-      categoryId: "cat-1",
-    });
+    expect(batchUpdateLedgerEntriesActionMock).toHaveBeenCalledWith(
+      "ledger-1",
+      ["entry-1", "entry-2"],
+      {
+        categoryId: "cat-1",
+      }
+    );
     expect(batchUpdateLedgerEntriesActionMock).toHaveBeenCalledWith("ledger-1", ["entry-3"], {
       currency: "USD",
     });
-    expect(batchDeleteLedgerEntriesActionMock).toHaveBeenCalledWith("ledger-1", ["entry-4", "entry-5"]);
+    expect(batchDeleteLedgerEntriesActionMock).toHaveBeenCalledWith("ledger-1", [
+      "entry-4",
+      "entry-5",
+    ]);
     expect(clearSelection).toHaveBeenCalledTimes(2);
   });
 });
