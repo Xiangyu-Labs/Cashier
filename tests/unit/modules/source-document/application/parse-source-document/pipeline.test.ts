@@ -3,7 +3,7 @@ import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
 import { buildStageContext } from "@/modules/source-document/application/parse-source-document/context";
 import { executeParseSourceDocument } from "@/modules/source-document/application/parse-source-document/execute";
-import { buildStage1Input } from "@/modules/source-document/application/parse-source-document/pipeline";
+import { buildStage1Input } from "@/modules/source-document/application/parse-source-document/pipeline-stage-inputs";
 
 function createMultiStageMockAI(options: {
   isValid?: boolean;

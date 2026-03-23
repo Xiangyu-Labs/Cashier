@@ -6,82 +6,26 @@ import { ArbitrationFailedError } from "@/lib/ai/dual-gpt-runner";
 import { TaskCancelledError, throwIfCancelled } from "@/lib/flow/cancellation";
 import type { ParseSourceDocumentInput } from "../tasks/parse-source-document";
 import type { StageContext } from "./context";
-import type {
-  ParsePipelineResult,
-  Stage1ExecutionResult,
-  Stage1ValidationResult,
-} from "./contracts";
+import type { ParsePipelineResult, Stage1ExecutionResult, Stage1ValidationResult } from "./contracts";
 import { executeStage0 } from "./stage0-vision";
-import { executeStage1, type Stage1Input } from "./stage1-executor";
+import { executeStage1 } from "./stage1-executor";
 import { executeStage1_5Validation } from "./stage1-5-validator";
 import { executeStage2 } from "./stage2-executor";
-import { convertToParsedEntries } from "./result-mapper";
-import type { Stage1Results } from "./types";
+import type { Stage1Results, ValidationSummary } from "./types";
 import {
   sourceDocumentNotDeletedCondition,
   whereSourceDocumentNotDeletedId,
 } from "../source-document-state";
-
-export function buildStage1Input(
-  input: ParseSourceDocumentInput,
-  visionDescription: string | undefined
-): Stage1Input {
-  return {
-    categories: input.categories.map((c) => ({ name: c.name, description: c.description ?? null })),
-    ...(input.text !== undefined ? { text: input.text } : {}),
-    ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
-    ...(visionDescription !== undefined ? { visionDescription } : {}),
-    ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
-    ...(input.preferredCurrencies !== undefined
-      ? { preferredCurrencies: input.preferredCurrencies }
-      : {}),
-    ...(input.settings.aiCustomPrompt !== undefined
-      ? { aiCustomPrompt: input.settings.aiCustomPrompt }
-      : {}),
-  };
-}
-
-function checkStage1Results(
-  stage1Result: Awaited<ReturnType<typeof executeStage1>>,
-  docId: string
-): Extract<ParsePipelineResult, { kind: "invalid" | "anomaly" }> | null {
-  if (!stage1Result.isValid) {
-    logger.info({ docId }, "Stage 1: Document invalid");
-    return { kind: "invalid", title: stage1Result.title };
-  }
-
-  if (stage1Result.isIncomplete) {
-    logger.info(
-      {
-        docId,
-        reason: stage1Result.incompleteReason,
-      },
-      "Stage 1: Document incomplete"
-    );
-    return {
-      kind: "anomaly",
-      anomalyReason: stage1Result.incompleteReason ?? "Content incomplete",
-      title: stage1Result.title,
-    };
-  }
-
-  const currencies = stage1Result.results.currency.currencies;
-  const hasUnknownCurrency = currencies.some(
-    (currency) =>
-      currency === "" ||
-      currency.toLowerCase() === "unknown" ||
-      currency.toLowerCase() === "undefined"
-  );
-  if (hasUnknownCurrency) {
-    logger.info({ docId, currencies }, "Stage 1: Unknown currency detected");
-    return {
-      kind: "anomaly",
-      anomalyReason: "Unable to recognize currency type",
-    };
-  }
-
-  return null;
-}
+import {
+  resolveStage1ExecutionResult,
+  resolveStage1ValidationResult,
+  resolveStage2ExecutionResult,
+} from "./pipeline-stage-decisions";
+import {
+  buildStage1Input,
+  buildStage1ValidationInput,
+  buildStage2Input,
+} from "./pipeline-stage-inputs";
 
 async function runStage0(
   input: ParseSourceDocumentInput,
@@ -144,29 +88,24 @@ async function runStage1(
     throw error;
   }
 
-  const failureResult = checkStage1Results(stage1Result, ctx.docId);
-  if (failureResult != null) {
-    return failureResult;
+  const stage1Decision = resolveStage1ExecutionResult(stage1Result);
+  if (stage1Decision.kind !== "continue") {
+    logger.info({ docId: ctx.docId, kind: stage1Decision.kind }, "Stage 1 finished early");
+    return stage1Decision;
   }
-
-  const resultWithData = stage1Result as {
-    isValid: true;
-    isIncomplete: false;
-    results: Stage1Results;
-  };
 
   logger.info(
     {
       docId: ctx.docId,
-      currencies: resultWithData.results.currency.currencies,
-      categories: resultWithData.results.category.categories,
+      currencies: stage1Decision.results.currency.currencies,
+      categories: stage1Decision.results.category.categories,
     },
     "Stage 1: Pre-analysis completed"
   );
 
   return {
     kind: "continue",
-    results: resultWithData.results,
+    results: stage1Decision.results,
   };
 }
 
@@ -180,17 +119,12 @@ async function runStage1_5(
   await ctx.setProgress("正在核对分析结果...");
 
   const validationResult = await executeStage1_5Validation(
-    {
-      stage1Results,
-      ...(input.text !== undefined ? { text: input.text } : {}),
-      ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
-      ...(visionDescription !== undefined ? { visionDescription } : {}),
-      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
-    },
+    buildStage1ValidationInput(input, visionDescription, stage1Results),
     ctx.ai
   );
 
-  if (!validationResult.is_reasonable) {
+  const validationDecision = resolveStage1ValidationResult(validationResult);
+  if (validationDecision.kind !== "continue") {
     logger.info(
       {
         docId: ctx.docId,
@@ -198,66 +132,45 @@ async function runStage1_5(
       },
       "Stage 1.5: Validation rejected"
     );
-    return {
-      kind: "anomaly",
-      anomalyReason: validationResult.rejection_reason ?? "Pre-analysis results invalid",
-    };
+    return validationDecision;
   }
 
   return {
     kind: "continue",
-    validationResult,
+    validationResult: validationDecision.validationResult,
   };
 }
 
 async function runStage2(
   input: ParseSourceDocumentInput,
   visionDescription: string | undefined,
-  validationResult: Awaited<ReturnType<typeof executeStage1_5Validation>>,
+  validationResult: ValidationSummary,
   ctx: StageContext
 ): Promise<Extract<ParsePipelineResult, { kind: "success" | "anomaly" }>> {
   throwIfCancelled(ctx.signal);
   await ctx.setProgress("正在生成账单条目...");
 
   const stage2Result = await executeStage2(
-    {
-      validationSummary: validationResult,
-      originalCategories: input.categories.map((c) => ({
-        name: c.name,
-        description: c.description ?? null,
-      })),
-      ...(input.text !== undefined ? { text: input.text } : {}),
-      ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
-      ...(visionDescription !== undefined ? { visionDescription } : {}),
-      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
-    },
+    buildStage2Input(input, visionDescription, validationResult),
     ctx.ai
   );
 
-  if (stage2Result.kind === "anomaly") {
+  const stage2Decision = resolveStage2ExecutionResult(stage2Result);
+  if (stage2Decision.kind === "anomaly") {
     logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed");
-    return {
-      kind: "anomaly",
-      anomalyReason: "Parsing results diverged",
-    };
+    return stage2Decision;
   }
-
-  const ledgerEntries = convertToParsedEntries(stage2Result.output.entries);
 
   logger.info(
     {
       docId: ctx.docId,
-      entryCount: ledgerEntries.length,
+      entryCount: stage2Decision.ledgerEntries.length,
       wasArbitrated: stage2Result.output.wasArbitrated,
     },
     "Stage 2: Parsing completed"
   );
 
-  return {
-    kind: "success",
-    title: stage2Result.output.title,
-    ledgerEntries,
-  };
+  return stage2Decision;
 }
 
 export async function runParsePipeline(
