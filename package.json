@@ -9,11 +9,11 @@
     "lint": "eslint",
     "validate:i18n": "node scripts/validate-i18n-catalogs.mjs",
     "check": "npm run lint && npm run test:unit && npm run test:integration && npm run build && npm run validate:i18n",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "vitest --config vitest.config.ts",
+    "test:run": "vitest run --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.unit.config.ts",
-    "test:integration": "vitest run tests/integration",
-    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
     "docker:build": "docker compose build",
     "docker:prod": "docker compose up -d --build",
@@ -79,7 +79,9 @@
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
     "@react-email/body": "0.3.0",
-    "@react-email/tailwind": "1.0.0"
+    "@react-email/tailwind": "1.0.0",
+    "serialize-javascript": "7.0.4",
+    "esbuild": ">=0.25.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
