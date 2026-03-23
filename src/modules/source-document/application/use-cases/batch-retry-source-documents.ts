@@ -1,15 +1,16 @@
 import { db } from "@/lib/db";
-import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import type { BatchRetrySourceDocumentsResultDto } from "@/modules/source-document/contracts";
-import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { sourceDocuments, type Ledger } from "@/persistence";
+import { and, inArray } from "drizzle-orm";
 import { getSourceDocumentTaskContext, prepareSourceDocumentTask } from "../services/processing";
-import {
-  deletedSourceDocumentPatch,
-  whereSourceDocumentNotDeleted,
-} from "../source-document-state";
+import { whereSourceDocumentNotDeleted } from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
+import {
+  cancelActiveSourceDocumentTaskRuns,
+  listRelatedSourceDocumentTaskRuns,
+  softDeleteSourceDocumentsAndTaskRuns,
+} from "../services/source-document-lifecycle";
 
 export interface BatchRetrySourceDocumentsInput {
   ledgerId: string;
@@ -44,14 +45,8 @@ export async function batchRetrySourceDocuments({
     };
   }
 
-  const relatedTaskRuns = await db.query.taskRuns.findMany({
-    where: and(
-      isNull(taskRuns.deletedAt),
-      eq(taskRuns.scopeId, ledgerId),
-      eq(taskRuns.entityType, "source_document"),
-      inArray(taskRuns.entityId, sourceDocumentIds)
-    ),
-  });
+  const oldDocIds = oldDocs.map((oldDoc) => oldDoc.id);
+  const relatedTaskRuns = await listRelatedSourceDocumentTaskRuns(ledgerId, oldDocIds);
 
   const newDocMappings = await Promise.all(
     oldDocs.map(async (oldDoc) => {
@@ -104,32 +99,21 @@ export async function batchRetrySourceDocuments({
     "Created new source documents for batch retry"
   );
 
-  await db
-    .update(sourceDocuments)
-    .set(deletedSourceDocumentPatch())
-    .where(
-      and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds))
+  await cancelActiveSourceDocumentTaskRuns(relatedTaskRuns.map((task) => task.id));
+
+  db.transaction((tx) => {
+    softDeleteSourceDocumentsAndTaskRuns(
+      tx,
+      ledgerId,
+      oldDocIds,
+      relatedTaskRuns.map((task) => task.id)
     );
+  });
 
   logger.debug(
-    { ledgerId, oldDocIds: sourceDocumentIds },
+    { ledgerId, oldDocIds },
     "Soft deleted old source documents for batch retry"
   );
-
-  const runningTasks = relatedTaskRuns.filter(
-    (task) => task.status === "pending" || task.status === "running"
-  );
-  for (const task of runningTasks) {
-    await cancelFlowTask(task.id);
-  }
-
-  const taskIdsToDelete = relatedTaskRuns.map((task) => task.id);
-  if (taskIdsToDelete.length > 0) {
-    await db
-      .update(taskRuns)
-      .set({ deletedAt: new Date() })
-      .where(inArray(taskRuns.id, taskIdsToDelete));
-  }
 
   const taskContext = await getSourceDocumentTaskContext(ledgerId, ledger);
   const taskSubmissionResults = await Promise.allSettled(

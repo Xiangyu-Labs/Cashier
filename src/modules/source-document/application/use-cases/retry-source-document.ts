@@ -1,6 +1,5 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NotFoundError } from "@/lib/errors";
-import { cancelFlowTask } from "@/lib/flow";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
@@ -9,12 +8,14 @@ import {
   prepareSourceDocumentTask,
   processImages,
 } from "../services/processing";
-import {
-  deletedSourceDocumentPatch,
-  whereSourceDocumentNotDeletedId,
-} from "../source-document-state";
+import { whereSourceDocumentNotDeletedId } from "../source-document-state";
 import { rehomeLocalUploadUrls } from "../services/rehome-local-upload-urls";
-import { sourceDocuments, taskRuns, type Ledger } from "@/persistence";
+import { sourceDocuments, type Ledger } from "@/persistence";
+import {
+  cancelActiveSourceDocumentTaskRuns,
+  listRelatedSourceDocumentTaskRuns,
+  softDeleteSourceDocumentsAndTaskRuns,
+} from "../services/source-document-lifecycle";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -106,41 +107,22 @@ export async function retrySourceDocument({
     "Created new source document for retry"
   );
 
-  await db
-    .update(sourceDocuments)
-    .set(deletedSourceDocumentPatch())
-    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId));
+  const relatedTaskRuns = await listRelatedSourceDocumentTaskRuns(ledgerId, [sourceDocumentId]);
+  await cancelActiveSourceDocumentTaskRuns(relatedTaskRuns.map((task) => task.id));
+
+  db.transaction((tx) => {
+    softDeleteSourceDocumentsAndTaskRuns(
+      tx,
+      ledgerId,
+      [sourceDocumentId],
+      relatedTaskRuns.map((task) => task.id)
+    );
+  });
 
   logger.debug(
     { oldDocId: sourceDocumentId, ledgerId },
     "Soft deleted old source document for retry"
   );
-
-  const runningTasks = await db.query.taskRuns.findMany({
-    where: and(
-      isNull(taskRuns.deletedAt),
-      eq(taskRuns.entityType, "source_document"),
-      eq(taskRuns.entityId, sourceDocumentId),
-      eq(taskRuns.scopeId, ledgerId),
-      inArray(taskRuns.status, ["pending", "running"])
-    ),
-  });
-
-  for (const task of runningTasks) {
-    await cancelFlowTask(task.id);
-  }
-
-  await db
-    .update(taskRuns)
-    .set({ deletedAt: new Date() })
-    .where(
-      and(
-        isNull(taskRuns.deletedAt),
-        eq(taskRuns.entityType, "source_document"),
-        eq(taskRuns.entityId, sourceDocumentId),
-        eq(taskRuns.scopeId, ledgerId)
-      )
-    );
 
   const taskContext = await getSourceDocumentTaskContext(ledgerId, ledger);
   await prepareSourceDocumentTask({
