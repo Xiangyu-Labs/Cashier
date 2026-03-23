@@ -35,7 +35,11 @@ describe("calendar and module invalidation helpers", () => {
   it("应该继续匹配标准ledger查询", () => {
     expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
     expect(invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId, "all") })).toBe(true);
-    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })).toBe(true);
+    expect(
+      invalidateSourceDocuments(ledgerId)({
+        queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
+      })
+    ).toBe(true);
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(true);
   });
 });

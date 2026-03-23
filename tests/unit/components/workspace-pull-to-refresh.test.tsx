@@ -98,7 +98,7 @@ vi.mock("@/modules/ledger/hooks", () => ({
 }));
 
 vi.mock("@/modules/source-document/hooks", () => ({
-  useSourceDocuments: () => ({
+  useSourceDocumentCollection: () => ({
     groups: { completed: [], anomaly: [] },
     isLoading: false,
   }),

@@ -1,6 +1,6 @@
 export {
   listSourceDocuments,
-  getAllSourceDocuments,
+  getSourceDocumentCollection,
   getPendingSourceDocuments,
   getSourceDocumentFull,
 } from "./application/queries/source-document-queries";

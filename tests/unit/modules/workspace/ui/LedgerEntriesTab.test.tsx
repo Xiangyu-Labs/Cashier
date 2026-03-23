@@ -17,7 +17,7 @@ type MockSourceDocumentGroupItem = {
   ledgerEntries: unknown[];
 };
 
-type MockUseSourceDocumentsResult = {
+type MockUseSourceDocumentCollectionResult = {
   groups: {
     completed: MockSourceDocumentGroupItem[];
     anomaly: MockSourceDocumentGroupItem[];
@@ -34,12 +34,12 @@ const mockGetLedgerStatsAction = vi.hoisted(() =>
   }))
 );
 
-const mockUseSourceDocuments = vi.hoisted(() =>
+const mockUseSourceDocumentCollection = vi.hoisted(() =>
   vi.fn(
     (
       _ledgerId: string,
       _options?: { dateRange?: { start?: Date; end?: Date } }
-    ): MockUseSourceDocumentsResult => ({
+    ): MockUseSourceDocumentCollectionResult => ({
       groups: { completed: [], anomaly: [] },
       isLoading: false,
     })
@@ -73,7 +73,7 @@ vi.mock("@/modules/ledger/actions", () => ({
 }));
 
 vi.mock("@/modules/source-document/hooks", () => ({
-  useSourceDocuments: mockUseSourceDocuments,
+  useSourceDocumentCollection: mockUseSourceDocumentCollection,
   useBatchSourceDocumentActions: () => ({
     deleteSourceDocument: { mutate: mockDeleteSourceDocumentMutate, isPending: false },
     batchUpdateDates: { mutate: mockBatchUpdateDatesMutate, isPending: false },
@@ -226,7 +226,7 @@ const ledger: Ledger = {
 describe("LedgerEntriesTab orchestration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseSourceDocuments.mockReturnValue({
+    mockUseSourceDocumentCollection.mockReturnValue({
       groups: { completed: [], anomaly: [] },
       isLoading: false,
     });
@@ -245,7 +245,7 @@ describe("LedgerEntriesTab orchestration", () => {
     );
 
     await waitFor(() => expect(mockGetLedgerStatsAction).toHaveBeenCalled());
-    expect(mockUseSourceDocuments).toHaveBeenCalled();
+    expect(mockUseSourceDocumentCollection).toHaveBeenCalled();
 
     const statsCall = mockGetLedgerStatsAction.mock.calls[0];
     if (statsCall == null) throw new Error("Expected first getLedgerStatsAction call");
@@ -253,8 +253,10 @@ describe("LedgerEntriesTab orchestration", () => {
     expect(startDate).toBe("2026-03-01");
     expect(endDate).toBe("2026-03-31");
 
-    const sourceDocumentsCall = mockUseSourceDocuments.mock.calls[0];
-    if (sourceDocumentsCall == null) throw new Error("Expected first useSourceDocuments call");
+    const sourceDocumentsCall = mockUseSourceDocumentCollection.mock.calls[0];
+    if (sourceDocumentsCall == null) {
+      throw new Error("Expected first useSourceDocumentCollection call");
+    }
     const [, options] = sourceDocumentsCall;
     const start = options?.dateRange?.start;
     const end = options?.dateRange?.end;
@@ -264,7 +266,7 @@ describe("LedgerEntriesTab orchestration", () => {
   });
 
   it("keeps refresh invalidation scope and delete confirm routing stable", async () => {
-    mockUseSourceDocuments.mockReturnValue({
+    mockUseSourceDocumentCollection.mockReturnValue({
       groups: {
         completed: [
           {

@@ -79,13 +79,12 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   includeEntries: z.coerce.boolean().default(false),
 });
 
-export const listAllSourceDocumentsInputSchema = strictObjectSchema({
+export const sourceDocumentCollectionInputSchema = strictObjectSchema({
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
-  page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000),
 });
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
@@ -118,7 +117,7 @@ export const sourceDocumentIdsSchema = z.array(uuidSchema);
 export type CreateSourceDocumentInputContract = z.infer<typeof createSourceDocumentInputSchema>;
 export type RetrySourceDocumentInputContract = z.infer<typeof retrySourceDocumentInputSchema>;
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
-export type ListAllSourceDocumentsInput = z.input<typeof listAllSourceDocumentsInputSchema>;
+export type ListSourceDocumentCollectionInput = z.input<typeof sourceDocumentCollectionInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

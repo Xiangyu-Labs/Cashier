@@ -4,8 +4,8 @@ import {
   deleteSourceDocumentAction,
   batchDeleteSourceDocumentsAction,
   batchRetrySourceDocumentsAction,
-  getAllSourceDocumentsAction,
   getPendingSourceDocumentsAction,
+  getSourceDocumentCollectionAction,
   getSourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
@@ -541,7 +541,7 @@ describe("SourceDocument Actions", () => {
     expect(ids).not.toContain(docB.id);
   });
 
-  it("should return stripped list items from getAllSourceDocumentsAction", async () => {
+  it("should return stripped list items from getSourceDocumentCollectionAction", async () => {
     const db = getTestDb();
 
     const doc = firstItem(
@@ -571,7 +571,7 @@ describe("SourceDocument Actions", () => {
       categoryId: testCategoryId,
     });
 
-    const result = await getAllSourceDocumentsAction(testLedgerId);
+    const result = await getSourceDocumentCollectionAction(testLedgerId, { limit: 1000 });
     const item = result.items.find((sourceDocument) => sourceDocument.id === doc.id);
 
     expect(item).toBeDefined();

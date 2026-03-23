@@ -19,9 +19,9 @@ import {
   whereSourceDocumentNotDeletedId,
 } from "@/modules/source-document/application/source-document-state";
 import {
-  listAllSourceDocumentsInputSchema,
   listSourceDocumentsInputSchema,
-  type ListAllSourceDocumentsInput,
+  sourceDocumentCollectionInputSchema,
+  type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { sourceDocuments } from "@/persistence";
@@ -36,10 +36,6 @@ import type {
 } from "../../contracts";
 import type { SourceDocumentStatusType } from "../../types";
 
-const MAX_PAGE_SIZE = 100;
-const DEFAULT_PAGE_SIZE = 20;
-const DEFAULT_PAGE_LIMIT = 1000;
-
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
 
 export interface ListSourceDocumentsParams {
@@ -51,17 +47,16 @@ export interface ListSourceDocumentsParams {
   includeLedgerEntries?: boolean;
 }
 
-export interface ListAllSourceDocumentsParams {
+export interface SourceDocumentCollectionParams {
   startDate?: string | null;
   endDate?: string | null;
   minAmount?: number;
   maxAmount?: number;
-  page?: number;
-  pageSize?: number;
+  limit: number;
 }
 
 type ParsedListSourceDocumentsInput = z.output<typeof listSourceDocumentsInputSchema>;
-type ParsedListAllSourceDocumentsInput = z.output<typeof listAllSourceDocumentsInputSchema>;
+type ParsedSourceDocumentCollectionInput = z.output<typeof sourceDocumentCollectionInputSchema>;
 
 function buildStatusCondition(status: string | null | undefined): SQL<unknown> | null {
   if (status == null || status === "") return null;
@@ -254,17 +249,10 @@ export async function listSourceDocumentsFromValidatedInput(
   });
 }
 
-export async function listAllSourceDocumentsQuery(
+export async function listSourceDocumentCollectionQuery(
   ledgerId: string,
-  params: ListAllSourceDocumentsParams = {}
+  params: SourceDocumentCollectionParams
 ): Promise<SourceDocumentCollectionDto> {
-  const page = Math.max(1, params.page ?? 1);
-  const pageSize =
-    params.page != null
-      ? Math.min(MAX_PAGE_SIZE, Math.max(1, params.pageSize ?? DEFAULT_PAGE_SIZE))
-      : DEFAULT_PAGE_LIMIT;
-  const offset = (page - 1) * pageSize;
-
   const conditions = [
     whereSourceDocumentNotDeleted(ledgerId),
     ...buildDateConditions(params.startDate, params.endDate),
@@ -277,7 +265,6 @@ export async function listAllSourceDocumentsQuery(
     .where(and(...conditions));
   const total = Number(countResult[0]?.count) ?? 0;
 
-  const queryLimit = params.page != null ? pageSize + 1 : pageSize;
   const rows = await db.query.sourceDocuments.findMany({
     where: and(...conditions),
     orderBy: [
@@ -285,12 +272,11 @@ export async function listAllSourceDocumentsQuery(
       desc(sourceDocuments.createdAt),
       desc(sourceDocuments.id),
     ],
-    limit: queryLimit,
-    offset: params.page != null ? offset : 0,
+    limit: params.limit + 1,
   });
 
-  const hasMore = params.page != null ? rows.length > pageSize : false;
-  const resultItems = hasMore ? rows.slice(0, pageSize) : rows;
+  const hasMore = rows.length > params.limit;
+  const resultItems = hasMore ? rows.slice(0, params.limit) : rows;
   const entriesByDocId = await listEntriesBySourceDocumentIds(
     ledgerId,
     resultItems.map((item) => item.id)
@@ -305,42 +291,41 @@ export async function listAllSourceDocumentsQuery(
   };
 }
 
-export async function getAllSourceDocuments(
+export async function getSourceDocumentCollection(
   ledgerId: string,
-  params: ListAllSourceDocumentsInput = {}
+  params: ListSourceDocumentCollectionInput
 ): Promise<SourceDocumentCollectionDto> {
-  const parsed = listAllSourceDocumentsInputSchema.safeParse(params);
+  const parsed = sourceDocumentCollectionInputSchema.safeParse(params);
   if (!parsed.success) {
     throw new ValidationError("Validation failed", { issues: parsed.error.issues });
   }
 
-  return getAllSourceDocumentsFromValidatedInput(ledgerId, parsed.data);
+  return getSourceDocumentCollectionFromValidatedInput(ledgerId, parsed.data);
 }
 
-export async function getAllSourceDocumentsFromValidatedInput(
+export async function getSourceDocumentCollectionFromValidatedInput(
   ledgerId: string,
-  validated: ParsedListAllSourceDocumentsInput
+  validated: ParsedSourceDocumentCollectionInput
 ): Promise<SourceDocumentCollectionDto> {
-  const queryParams: ListAllSourceDocumentsParams = {
+  const queryParams: SourceDocumentCollectionParams = {
     startDate: validated.startDate ?? null,
     endDate: validated.endDate ?? null,
     ...(validated.minAmount !== undefined ? { minAmount: validated.minAmount } : {}),
     ...(validated.maxAmount !== undefined ? { maxAmount: validated.maxAmount } : {}),
-    ...(validated.page !== undefined ? { page: validated.page } : {}),
-    ...(validated.pageSize !== undefined ? { pageSize: validated.pageSize } : {}),
+    limit: validated.limit,
   };
 
-  const result = await listAllSourceDocumentsQuery(ledgerId, queryParams);
+  const result = await listSourceDocumentCollectionQuery(ledgerId, queryParams);
 
-  if (queryParams.page == null && result.items.length === DEFAULT_PAGE_LIMIT) {
+  if (result.hasMore) {
     logger.warn(
       {
         ledgerId,
-        limit: DEFAULT_PAGE_LIMIT,
+        limit: queryParams.limit,
         startDate: queryParams.startDate,
         endDate: queryParams.endDate,
       },
-      "getAllSourceDocuments hit result limit - consider using cursor pagination"
+      "getSourceDocumentCollection hit bounded collection limit"
     );
   }
 

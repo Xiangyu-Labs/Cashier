@@ -9,7 +9,7 @@ import {
   createSourceDocSnapshots,
   type SourceDocumentLightQueryData,
   type SourceDocumentQueryData,
-  updatePaginatedSourceDocumentLists,
+  updateSourceDocumentCollectionLists,
 } from "./source-document-detail-cache";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
@@ -67,7 +67,7 @@ export function useSourceDocumentRecordMutations({
         );
 
         if (ledgerId != null && ledgerId !== "") {
-          updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) =>
+          updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) =>
             doc.id === id ? { ...doc, ...data } : doc
           );
         }
@@ -108,7 +108,7 @@ export function useSourceDocumentRecordMutations({
       );
 
       if (ledgerId != null && ledgerId !== "") {
-        updatePaginatedSourceDocumentLists(queryClient, ledgerId, (doc) =>
+        updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) =>
           doc.id === id
             ? {
                 ...doc,
@@ -144,7 +144,7 @@ export function useSourceDocumentRecordMutations({
 
       if (ledgerId != null && ledgerId !== "") {
         queryClient.setQueriesData(
-          { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
+          { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
           (old: { items: Array<{ id: string }>; total: number } | undefined) => {
             if (!old) return old;
             return {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import {
-  getAllSourceDocumentsAction,
+  getSourceDocumentCollectionAction,
   getSourceDocumentFullAction,
   listSourceDocuments,
 } from "@/modules/source-document/actions";
@@ -33,10 +33,10 @@ describe("source-document query action boundaries", () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it("throws ValidationError when getAllSourceDocumentsAction receives invalid params", async () => {
+  it("throws ValidationError when getSourceDocumentCollectionAction receives invalid params", async () => {
     await expect(
-      getAllSourceDocumentsAction(ledgerId, {
-        page: 0,
+      getSourceDocumentCollectionAction(ledgerId, {
+        limit: 0,
       } as never)
     ).rejects.toThrow(ValidationError);
   });

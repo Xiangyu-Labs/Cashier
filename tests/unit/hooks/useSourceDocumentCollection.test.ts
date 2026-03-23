@@ -2,8 +2,8 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryKeys } from "@/lib/query-keys";
 
-const { getAllSourceDocumentsActionMock, useQueryMock } = vi.hoisted(() => ({
-  getAllSourceDocumentsActionMock: vi.fn(),
+const { getSourceDocumentCollectionActionMock, useQueryMock } = vi.hoisted(() => ({
+  getSourceDocumentCollectionActionMock: vi.fn(),
   useQueryMock: vi.fn(),
 }));
 
@@ -12,10 +12,10 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/modules/source-document/actions", () => ({
-  getAllSourceDocumentsAction: getAllSourceDocumentsActionMock,
+  getSourceDocumentCollectionAction: getSourceDocumentCollectionActionMock,
 }));
 
-import { useSourceDocuments } from "@/modules/source-document/hooks/useSourceDocuments";
+import { useSourceDocumentCollection } from "@/modules/source-document/hooks/useSourceDocumentCollection";
 
 const completedDoc = {
   id: "doc-1",
@@ -29,7 +29,7 @@ const completedDoc = {
   ],
 } as never;
 
-describe("useSourceDocuments", () => {
+describe("useSourceDocumentCollection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useQueryMock.mockImplementation((options: Record<string, unknown>) => ({
@@ -37,12 +37,16 @@ describe("useSourceDocuments", () => {
       isLoading: false,
       ...options,
     }));
-    getAllSourceDocumentsActionMock.mockResolvedValue({ items: [completedDoc] });
+    getSourceDocumentCollectionActionMock.mockResolvedValue({
+      items: [completedDoc],
+      hasMore: false,
+      total: 1,
+    });
   });
 
   it("includes amount filters in the query key and server action payload", async () => {
     renderHook(() =>
-      useSourceDocuments("ledger-1", {
+      useSourceDocumentCollection("ledger-1", {
         dateRange: {
           start: new Date("2026-03-01T00:00:00.000Z"),
           end: new Date("2026-03-31T00:00:00.000Z"),
@@ -58,27 +62,29 @@ describe("useSourceDocuments", () => {
     };
 
     expect(queryOptions.queryKey).toEqual(
-      queryKeys.sourceDocumentsAll("ledger-1", {
+      queryKeys.sourceDocumentCollection("ledger-1", {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
         minAmount: 20,
         maxAmount: 100,
+        limit: 1000,
       })
     );
 
     await queryOptions.queryFn();
 
-    expect(getAllSourceDocumentsActionMock).toHaveBeenCalledWith("ledger-1", {
+    expect(getSourceDocumentCollectionActionMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       minAmount: 20,
       maxAmount: 100,
+      limit: 1000,
     });
   });
 
   it("does not apply client-side amount filtering after data is returned", () => {
     const { result } = renderHook(() =>
-      useSourceDocuments("ledger-1", {
+      useSourceDocumentCollection("ledger-1", {
         minAmount: 100,
       })
     );
@@ -88,7 +94,7 @@ describe("useSourceDocuments", () => {
   });
 
   it("polls only while queued or processing documents exist", () => {
-    renderHook(() => useSourceDocuments("ledger-1"));
+    renderHook(() => useSourceDocumentCollection("ledger-1"));
 
     const queryOptions = useQueryMock.mock.calls[0]?.[0] as {
       refetchInterval: (query: { state: { data: { items: Array<{ status: string }> } | undefined } }) => number | false;

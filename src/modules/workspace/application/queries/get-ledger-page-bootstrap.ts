@@ -8,7 +8,7 @@ import {
   listLedgerEntries,
 } from "@/modules/ledger/queries";
 import { getEnhancedStats } from "@/modules/stats/queries";
-import { getAllSourceDocuments, getPendingSourceDocuments } from "@/modules/source-document/queries";
+import { getPendingSourceDocuments, getSourceDocumentCollection } from "@/modules/source-document/queries";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,
@@ -24,6 +24,8 @@ interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
   initialStatsDate: Date;
 }
+
+const STREAM_COLLECTION_LIMIT = 1000;
 
 export async function getLedgerPageBootstrap(input: {
   ledgerId: string;
@@ -79,7 +81,7 @@ export async function getLedgerPageBootstrap(input: {
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
           queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocumentsAll(input.ledgerId, {
+            queryKey: queryKeys.sourceDocumentCollection(input.ledgerId, {
               startDate: detailsState.startDateStr,
               endDate: detailsState.endDateStr,
               ...(input.advancedFilters?.minAmount != null
@@ -88,9 +90,10 @@ export async function getLedgerPageBootstrap(input: {
               ...(input.advancedFilters?.maxAmount != null
                 ? { maxAmount: input.advancedFilters.maxAmount }
                 : {}),
+              limit: STREAM_COLLECTION_LIMIT,
             }),
             queryFn: () =>
-              getAllSourceDocuments(input.ledgerId, {
+              getSourceDocumentCollection(input.ledgerId, {
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
@@ -101,6 +104,7 @@ export async function getLedgerPageBootstrap(input: {
                 ...(input.advancedFilters?.maxAmount != null
                   ? { maxAmount: input.advancedFilters.maxAmount }
                   : {}),
+                limit: STREAM_COLLECTION_LIMIT,
               }),
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),

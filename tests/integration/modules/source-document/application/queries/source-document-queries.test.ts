@@ -5,7 +5,7 @@ import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 import {
-  getAllSourceDocuments,
+  getSourceDocumentCollection,
   getSourceDocumentFullQuery,
   listSourceDocuments,
   listSourceDocumentsQuery,
@@ -231,8 +231,9 @@ describe("source-document-queries", () => {
       },
     ]);
 
-    const result = await getAllSourceDocuments(ledgerId, {
+    const result = await getSourceDocumentCollection(ledgerId, {
       minAmount: 100,
+      limit: 1000,
     });
 
     expect(result.items).toHaveLength(1);

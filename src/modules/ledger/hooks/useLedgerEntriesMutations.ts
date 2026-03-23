@@ -1,7 +1,13 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import { invalidateCalendar, invalidateLedgerEntries, invalidateLedgerStats, invalidateSourceDocuments, matchPaginatedSourceDocuments, } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  matchSourceDocumentCollection,
+} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
@@ -83,11 +89,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     ],
     onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old): SourceDocumentsQueryData => {
           if (old === undefined || old.items === undefined) return old;
           return {
@@ -127,11 +133,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     ],
     onOptimisticUpdate: (queryClient, ledgerEntryId) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old): SourceDocumentsQueryData => {
           if (old === undefined || old.items === undefined) return old;
           return {
