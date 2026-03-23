@@ -63,12 +63,14 @@ describe("Flow Engine onCancel Hook", () => {
   let engine: ReturnType<typeof createFlowEngine>;
   let onCancelCalled: boolean;
   let onCancelInput: unknown;
+  let onCancelSignalAborted: boolean | null;
 
   beforeEach(() => {
     storage = createMemoryStorage();
     engine = createFlowEngine({ storage, maxConcurrentTasks: 1 });
     onCancelCalled = false;
     onCancelInput = null;
+    onCancelSignalAborted = null;
   });
 
   it("should call onCancel when task is cancelled while pending", async () => {
@@ -87,9 +89,10 @@ describe("Flow Engine onCancel Hook", () => {
       async execute(input) {
         return { result: input.value * 2 };
       },
-      async onCancel(input) {
+      async onCancel(input, context) {
         onCancelCalled = true;
         onCancelInput = input;
+        onCancelSignalAborted = context.signal.aborted;
       },
     };
 
@@ -105,6 +108,8 @@ describe("Flow Engine onCancel Hook", () => {
 
     expect(onCancelCalled).toBe(true);
     expect(onCancelInput).toEqual({ value: 1 });
+    expect(onCancelSignalAborted).toBe(true);
+    await expect(engine.getStatus(taskId)).resolves.toMatchObject({ status: "cancelled" });
   });
 
   it("should call onCancel when task is cancelled while running", async () => {
@@ -117,9 +122,10 @@ describe("Flow Engine onCancel Hook", () => {
         }
         return { result: input.value * 2 };
       },
-      async onCancel(input) {
+      async onCancel(input, context) {
         onCancelCalled = true;
         onCancelInput = input;
+        onCancelSignalAborted = context.signal.aborted;
       },
     };
 
@@ -136,6 +142,7 @@ describe("Flow Engine onCancel Hook", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(onCancelCalled).toBe(true);
+    expect(onCancelSignalAborted).toBe(true);
   });
 
   it("should not break if onCancel is not defined", async () => {

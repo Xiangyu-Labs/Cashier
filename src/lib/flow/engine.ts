@@ -48,16 +48,20 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   // Concurrency control via semaphore pattern
   const maxConcurrent = config.maxConcurrentTasks ?? 10;
   let runningCount = 0;
-  const pendingQueue: Array<{ taskId: string; resolve: () => void }> = [];
+  type PendingWaiter = {
+    taskId: string;
+    resolve: (granted: boolean) => void;
+  };
+  const pendingQueue: PendingWaiter[] = [];
 
   /**
    * Acquire a slot to run a task.
    * If all slots are occupied, the task will wait in queue.
    */
-  async function acquireSlot(taskId: string): Promise<void> {
+  async function acquireSlot(taskId: string): Promise<boolean> {
     if (maxConcurrent <= 0 || runningCount < maxConcurrent) {
       runningCount++;
-      return;
+      return true;
     }
     // Wait for a slot to become available
     return new Promise((resolve) => {
@@ -73,7 +77,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     const next = pendingQueue.shift();
     if (next) {
       // Give slot directly to the next waiting task
-      next.resolve();
+      next.resolve(true);
     } else {
       // No waiting tasks, just decrement
       runningCount--;
@@ -81,12 +85,13 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   }
 
   /**
-   * Remove a task from the pending queue (e.g., when cancelled before running)
+   * Wake a cancelled waiter so its task can finalize its own cleanup.
    */
-  function removeFromQueue(taskId: string): boolean {
+  function wakeCancelledWaiter(taskId: string): boolean {
     const index = pendingQueue.findIndex((item) => item.taskId === taskId);
     if (index !== -1) {
-      pendingQueue.splice(index, 1);
+      const [waiter] = pendingQueue.splice(index, 1);
+      waiter?.resolve(false);
       return true;
     }
     return false;
@@ -102,21 +107,50 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     signal: AbortSignal
   ): Promise<void> {
     // Wait for an available slot (concurrency control)
-    await acquireSlot(taskId);
+    const slotGranted = await acquireSlot(taskId);
 
     // Get handler early so we can call onCancel if cancelled in queue
     const handler = handlers.get(name);
     if (!handler) {
-      releaseSlot();
+      if (slotGranted) {
+        releaseSlot();
+      }
       logger.error({ taskName: name, taskId }, "No handler registered for task");
       await config.storage.update(taskId, {
         status: "failed",
         error: `No handler registered for task: ${name}`,
       });
+      abortControllers.delete(taskId);
       return;
     }
 
-    // Check if cancelled while waiting in queue
+    // Check if cancellation woke the waiter before it acquired a slot.
+    if (!slotGranted) {
+      if (handler.onCancel) {
+        try {
+          const context: FlowContext = {
+            taskId,
+            signal,
+            reportTokens: () => {}, // No-op for cancellation
+            updateProgress: async () => {},
+            ai: buildAIContext(signal, () => {}),
+          };
+          await handler.onCancel(input, context);
+        } catch (cancelError) {
+          logger.error(
+            { error: cancelError, taskId },
+            "Error in task onCancel handler during queue cancellation"
+          );
+        }
+      }
+
+      await config.storage.update(taskId, { status: "cancelled", progress: null });
+      logger.info({ taskId }, "Task cancelled while waiting in queue");
+      abortControllers.delete(taskId);
+      return;
+    }
+
+    // Check if cancelled while waiting in queue after a slot was handed off
     if (signal.aborted) {
       releaseSlot();
 
@@ -350,38 +384,16 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     },
 
     async cancel(taskId: string): Promise<void> {
+      const controller = abortControllers.get(taskId);
+
       // First, check if task is waiting in the queue (hasn't started yet)
-      if (removeFromQueue(taskId)) {
-        // Task was pending in queue - get task details and call onCancel
-        const task = await config.storage.get(taskId);
-        if (task) {
-          const handler = handlers.get(task.type);
-          if (handler?.onCancel) {
-            try {
-              const context: FlowContext = {
-                taskId,
-                signal: new AbortController().signal,
-                reportTokens: () => {},
-                updateProgress: async () => {},
-                ai: buildAIContext(new AbortController().signal, () => {}),
-              };
-              await handler.onCancel(task.input, context);
-            } catch (cancelError) {
-              logger.error(
-                { error: cancelError, taskId },
-                "Error in task onCancel handler during pending cancellation"
-              );
-            }
-          }
-          await config.storage.update(taskId, { status: "cancelled", progress: null });
-        }
-        abortControllers.delete(taskId);
-        logger.info({ taskId }, "Task cancelled from pending queue");
+      if (wakeCancelledWaiter(taskId)) {
+        controller?.abort();
+        logger.info({ taskId }, "Task cancellation requested while pending");
         return;
       }
 
       // Task is running, send abort signal
-      const controller = abortControllers.get(taskId);
       if (controller) {
         controller.abort();
         logger.info({ taskId }, "Task cancellation requested");
