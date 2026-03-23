@@ -190,7 +190,7 @@ export async function runParsePipeline(
       return validationResult;
     }
 
-    return runStage2(input, visionDescription, validationResult.validationResult, ctx);
+    return await runStage2(input, visionDescription, validationResult.validationResult, ctx);
   } catch (error) {
     if (error instanceof TaskCancelledError) {
       return { kind: "cancelled" };

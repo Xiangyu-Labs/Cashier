@@ -3,6 +3,7 @@ import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
 import { buildStageContext } from "@/modules/source-document/application/parse-source-document/context";
 import { executeParseSourceDocument } from "@/modules/source-document/application/parse-source-document/execute";
+import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { buildStage1Input } from "@/modules/source-document/application/parse-source-document/pipeline-stage-inputs";
 
 function createMultiStageMockAI(options: {
@@ -218,6 +219,15 @@ describe("executeParseSourceDocument", () => {
     expect(result.anomalyReason).toContain("inconsistent");
   });
 
+  it("returns anomaly when stage 1 detects an unknown currency marker", async () => {
+    const { ai } = createMultiStageMockAI({ currencies: ["unknown"] });
+
+    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+
+    expect(result.verificationStatus).toBe("anomaly");
+    expect(result.anomalyReason).toBe("Unable to recognize currency type");
+  });
+
   it("returns anomaly when stage 2 arbitration fails", async () => {
     const { ai } = createMultiStageMockAI({ stage2ArbitrationFails: true });
 
@@ -226,6 +236,26 @@ describe("executeParseSourceDocument", () => {
     expect(result.ledgerEntries).toHaveLength(0);
     expect(result.verificationStatus).toBe("anomaly");
     expect("title" in result).toBe(false);
+  });
+
+  it("returns cancelled when the pipeline aborts between stage batches", async () => {
+    const controller = new AbortController();
+    const { ai } = createMultiStageMockAI({});
+    const ctx = buildStageContext({
+      signal: controller.signal,
+      ai,
+      setProgress: vi.fn(async (message: string) => {
+        if (message === "正在核对分析结果...") {
+          controller.abort();
+        }
+      }),
+      docId: "source-doc-1",
+      ledgerId: "ledger-1",
+    });
+
+    const result = await runParsePipeline(createInput(), ctx);
+
+    expect(result).toEqual({ kind: "cancelled" });
   });
 });
 
