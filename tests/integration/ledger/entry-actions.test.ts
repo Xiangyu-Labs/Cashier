@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories } from "@/persistence";
+import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
@@ -113,6 +113,49 @@ describe("createLedgerEntryAction", () => {
       fromCurrency: "USD",
       toCurrency: "CNY",
     });
+  });
+
+  it("rejects a source document that belongs to a different ledger", async () => {
+    const db = getTestDb();
+    const otherLedgerId = uuidv4();
+    await db.insert(users).values({
+      id: "11111111-1111-1111-1111-111111111111",
+      email: "other@example.com",
+      name: "Other User",
+      emailVerified: new Date(),
+    });
+    await db.insert(ledgers).values({
+      id: otherLedgerId,
+      userId: "11111111-1111-1111-1111-111111111111",
+      metadata: { settings: { mainCurrency: "CNY" } },
+    });
+    const otherDoc = await seedDoc(db, otherLedgerId);
+
+    await expect(
+      createLedgerEntryAction(ledgerId, {
+        amount: 12,
+        currency: "CNY",
+        itemName: "Cross-ledger doc",
+        sourceDocumentId: otherDoc.id,
+      })
+    ).rejects.toThrow("Source document");
+  });
+
+  it("rejects a deleted source document", async () => {
+    const db = getTestDb();
+    await db
+      .update(sourceDocuments)
+      .set({ status: "deleted", deletedAt: new Date() })
+      .where(eq(sourceDocuments.id, docId));
+
+    await expect(
+      createLedgerEntryAction(ledgerId, {
+        amount: 12,
+        currency: "CNY",
+        itemName: "Deleted doc",
+        sourceDocumentId: docId,
+      })
+    ).rejects.toThrow("Source document");
   });
 
   it("throws 'Ledger not found' for wrong ledger", async () => {

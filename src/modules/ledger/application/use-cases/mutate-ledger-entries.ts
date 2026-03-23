@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
@@ -56,6 +56,14 @@ function applyLedgerEntryPatch(
   return patch;
 }
 
+function whereActiveSourceDocumentForLedger(ledgerId: string, sourceDocumentId: string) {
+  return and(
+    eq(sourceDocuments.id, sourceDocumentId),
+    eq(sourceDocuments.ledgerId, ledgerId),
+    ne(sourceDocuments.status, "deleted")
+  )!;
+}
+
 export async function createLedgerEntryWithConversion(input: {
   ledgerId: string;
   amount: number;
@@ -69,12 +77,16 @@ export async function createLedgerEntryWithConversion(input: {
   const entryCurrency = normalizeCurrency(input.currency);
 
   const sourceDoc = await db.query.sourceDocuments.findFirst({
-    where: eq(sourceDocuments.id, input.sourceDocumentId),
+    where: whereActiveSourceDocumentForLedger(input.ledgerId, input.sourceDocumentId),
     columns: { entryDate: true },
   });
 
+  if (sourceDoc == null) {
+    throw new NotFoundError("Source document");
+  }
+
   const entryDate =
-    sourceDoc?.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
+    sourceDoc.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
 
   const conversion = await convertEntryAmount({
     amount: input.amount,
