@@ -9,13 +9,17 @@ import {
 } from "@/modules/task-queue/ui/taskQueueModal.selectors";
 
 function createItem(overrides: Partial<QueueItem> = {}): QueueItem {
+  const { sourceDocumentId, taskId, ...rest } = overrides;
+
   return {
     id: "item-1",
     kind: "task",
     status: "failed",
     title: "Queue item",
     createdAt: new Date().toISOString(),
-    ...overrides,
+    ...rest,
+    ...(sourceDocumentId !== undefined ? { sourceDocumentId } : {}),
+    ...(taskId !== undefined ? { taskId } : {}),
   };
 }
 
@@ -65,7 +69,7 @@ describe("taskQueueModal.selectors", () => {
         createItem({ sourceDocumentId: "doc-1" }),
         createItem({ sourceDocumentId: "" }),
         createItem({ sourceDocumentId: null as never }),
-        createItem({ sourceDocumentId: undefined }),
+        createItem({}),
       ])
     ).toEqual(["doc-1"]);
 
@@ -74,7 +78,7 @@ describe("taskQueueModal.selectors", () => {
         createItem({ taskId: "task-1" }),
         createItem({ taskId: "" }),
         createItem({ taskId: null as never }),
-        createItem({ taskId: undefined }),
+        createItem({}),
       ])
     ).toEqual(["task-1"]);
   });

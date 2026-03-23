@@ -29,7 +29,10 @@ describe("env catalog coverage", () => {
       const content = readFileSync(file, "utf8");
 
       for (const match of content.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
-        usedKeys.add(match[1]);
+        const key = match[1];
+        if (key != null) {
+          usedKeys.add(key);
+        }
       }
     }
 

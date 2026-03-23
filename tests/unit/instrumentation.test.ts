@@ -36,9 +36,12 @@ describe("instrumentation.register", () => {
     await register();
 
     expect(validateStartupEnv).toHaveBeenCalledTimes(1);
-    expect(validateStartupEnv.mock.invocationCallOrder[0]).toBeLessThan(
-      initializeDefaultFlowRuntime.mock.invocationCallOrder[0]
-    );
+    const validateOrder = validateStartupEnv.mock.invocationCallOrder.at(0);
+    const initializeOrder = initializeDefaultFlowRuntime.mock.invocationCallOrder.at(0);
+
+    expect(validateOrder).toBeDefined();
+    expect(initializeOrder).toBeDefined();
+    expect(validateOrder!).toBeLessThan(initializeOrder!);
   });
 
   it("rethrows when runtime initialization fails", async () => {

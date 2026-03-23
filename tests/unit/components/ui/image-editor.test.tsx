@@ -120,7 +120,9 @@ const mockCanvasContext = {
 } satisfies Partial<CanvasRenderingContext2D>;
 
 const canvasToDataUrl = vi.fn(() => "data:image/jpeg;base64,edited");
-const canvasGetContext = vi.fn(() => mockCanvasContext as CanvasRenderingContext2D);
+const canvasGetContext = vi.fn(
+  () => mockCanvasContext as unknown as CanvasRenderingContext2D
+);
 
 function setLoadedImageSize(element: HTMLImageElement, width = 400, height = 300) {
   Object.defineProperties(element, {

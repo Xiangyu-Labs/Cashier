@@ -4,28 +4,64 @@ import type { QueueItem } from "@/modules/task-queue/contracts";
 import { groupTaskQueueItems, partitionFailedItems } from "@/modules/task-queue/ui/taskQueueModal.selectors";
 import { EMPTY_TASK_QUEUE_DELETE_CONFIRM } from "@/modules/task-queue/ui/taskQueueModal.types";
 import { useTaskQueueModalActions } from "@/modules/task-queue/ui/useTaskQueueModalActions";
+import { asQueryLike } from "tests/helpers/react-query";
 
 function createItem(overrides: Partial<QueueItem> = {}): QueueItem {
+  const { sourceDocumentId, taskId, ...rest } = overrides;
+
   return {
     id: "item-1",
     kind: "task",
     status: "failed",
     title: "Queue item",
     createdAt: new Date().toISOString(),
-    ...overrides,
+    ...rest,
+    ...(sourceDocumentId !== undefined ? { sourceDocumentId } : {}),
+    ...(taskId !== undefined ? { taskId } : {}),
   };
 }
 
 function createMutations() {
+  type TaskQueueMutations = Parameters<typeof useTaskQueueModalActions>[0]["mutations"];
+  const deleteSourceDocumentMutate = vi.fn();
+  const batchDeleteMutate = vi.fn();
+  const batchRetryMutate = vi.fn();
+  const cancelTaskMutate = vi.fn();
+  const batchCancelMutate = vi.fn();
+  const dismissTaskMutate = vi.fn();
+  const batchDismissMutate = vi.fn();
+
   return {
-    deleteSourceDocument: { mutate: vi.fn() },
-    batchDelete: { mutate: vi.fn() },
-    batchRetry: { mutate: vi.fn() },
-    cancelTask: { mutate: vi.fn() },
-    dismissTask: { mutate: vi.fn() },
-    batchDismiss: { mutate: vi.fn() },
+    mutations: {
+      deleteSourceDocument: {
+        mutate: deleteSourceDocumentMutate,
+      } as unknown as TaskQueueMutations["deleteSourceDocument"],
+      batchDelete: { mutate: batchDeleteMutate } as unknown as TaskQueueMutations["batchDelete"],
+      batchRetry: { mutate: batchRetryMutate } as unknown as TaskQueueMutations["batchRetry"],
+      cancelTask: { mutate: cancelTaskMutate } as unknown as TaskQueueMutations["cancelTask"],
+      batchCancel: { mutate: batchCancelMutate } as unknown as TaskQueueMutations["batchCancel"],
+      dismissTask: { mutate: dismissTaskMutate } as unknown as TaskQueueMutations["dismissTask"],
+      batchDismiss: { mutate: batchDismissMutate } as unknown as TaskQueueMutations["batchDismiss"],
+    } satisfies TaskQueueMutations,
+    deleteSourceDocumentMutate,
+    batchDeleteMutate,
+    batchRetryMutate,
+    cancelTaskMutate,
+    batchCancelMutate,
+    dismissTaskMutate,
+    batchDismissMutate,
   };
 }
+
+type HookProps = {
+  deleteConfirm: {
+    open: boolean;
+    type: "single" | "all" | null;
+    id: string | null;
+    title: string;
+    description: string;
+  };
+};
 
 describe("useTaskQueueModalActions", () => {
   it("opens translated delete confirms and closes them after successful delete mutations", () => {
@@ -35,7 +71,7 @@ describe("useTaskQueueModalActions", () => {
     const setRetrySourceDocId = vi.fn();
     const push = vi.fn();
     const queryClient = { invalidateQueries: vi.fn() };
-    const mutations = createMutations();
+    const { mutations, deleteSourceDocumentMutate, batchDeleteMutate } = createMutations();
     const groupedItems = groupTaskQueueItems([
       createItem({
         id: "failed-doc",
@@ -50,9 +86,18 @@ describe("useTaskQueueModalActions", () => {
       }),
     ]);
     const failedWithoutSourceDoc = partitionFailedItems(groupedItems.failed).withoutSourceDoc;
+    const initialProps: HookProps = {
+      deleteConfirm: {
+        open: true,
+        type: "single",
+        id: "doc-1",
+        title: "title",
+        description: "description",
+      },
+    };
 
     const { result, rerender } = renderHook(
-      ({ deleteConfirm }) =>
+      ({ deleteConfirm }: HookProps) =>
         useTaskQueueModalActions({
           ledgerId: "ledger-1",
           t: (key: string) => key,
@@ -68,15 +113,7 @@ describe("useTaskQueueModalActions", () => {
           queryClient,
         }),
       {
-        initialProps: {
-          deleteConfirm: {
-            open: true,
-            type: "single" as const,
-            id: "doc-1",
-            title: "title",
-            description: "description",
-          },
-        },
+        initialProps,
       }
     );
 
@@ -95,13 +132,19 @@ describe("useTaskQueueModalActions", () => {
       "deleteAllConfirmTitle",
       "deleteAllConfirmDesc"
     );
-    expect(mutations.deleteSourceDocument.mutate).toHaveBeenCalledWith(
+    expect(deleteSourceDocumentMutate).toHaveBeenCalledWith(
       "doc-1",
       expect.objectContaining({ onSuccess: expect.any(Function) })
     );
 
+    const deleteMutationOptions = deleteSourceDocumentMutate.mock.calls[0]?.[1];
+    expect(deleteMutationOptions).toBeDefined();
+    if (deleteMutationOptions == null) {
+      throw new Error("Expected delete mutation options");
+    }
+
     act(() => {
-      mutations.deleteSourceDocument.mutate.mock.calls[0][1].onSuccess();
+      deleteMutationOptions.onSuccess();
     });
 
     expect(closeDeleteConfirm).toHaveBeenCalledTimes(1);
@@ -120,13 +163,19 @@ describe("useTaskQueueModalActions", () => {
       result.current.handleDeleteConfirmAction();
     });
 
-    expect(mutations.batchDelete.mutate).toHaveBeenCalledWith(
+    expect(batchDeleteMutate).toHaveBeenCalledWith(
       ["doc-1"],
       expect.objectContaining({ onSuccess: expect.any(Function) })
     );
 
+    const batchDeleteOptions = batchDeleteMutate.mock.calls[0]?.[1];
+    expect(batchDeleteOptions).toBeDefined();
+    if (batchDeleteOptions == null) {
+      throw new Error("Expected batch delete options");
+    }
+
     act(() => {
-      mutations.batchDelete.mutate.mock.calls[0][1].onSuccess();
+      batchDeleteOptions.onSuccess();
     });
 
     expect(closeDeleteConfirm).toHaveBeenCalledTimes(2);
@@ -141,7 +190,14 @@ describe("useTaskQueueModalActions", () => {
     const queryClient = {
       invalidateQueries: vi.fn().mockResolvedValue(undefined),
     };
-    const mutations = createMutations();
+    const {
+      mutations,
+      batchRetryMutate,
+      batchDeleteMutate,
+      batchDismissMutate,
+      cancelTaskMutate,
+      dismissTaskMutate,
+    } = createMutations();
     const groupedItems = groupTaskQueueItems([
       createItem({
         id: "failed-doc",
@@ -202,12 +258,12 @@ describe("useTaskQueueModalActions", () => {
     });
 
     expect(setRetrySourceDocId).toHaveBeenCalledWith("doc-1");
-    expect(mutations.batchRetry.mutate).toHaveBeenNthCalledWith(1, ["doc-1"]);
-    expect(mutations.batchRetry.mutate).toHaveBeenNthCalledWith(2, ["doc-anomaly-1"]);
-    expect(mutations.batchDelete.mutate).toHaveBeenCalledWith(["doc-anomaly-1"]);
-    expect(mutations.batchDismiss.mutate).toHaveBeenCalledWith(["task-failed-no-doc"]);
-    expect(mutations.cancelTask.mutate).toHaveBeenCalledWith("task-pending");
-    expect(mutations.dismissTask.mutate).toHaveBeenCalledWith("task-failed-no-doc");
+    expect(batchRetryMutate).toHaveBeenNthCalledWith(1, ["doc-1"]);
+    expect(batchRetryMutate).toHaveBeenNthCalledWith(2, ["doc-anomaly-1"]);
+    expect(batchDeleteMutate).toHaveBeenCalledWith(["doc-anomaly-1"]);
+    expect(batchDismissMutate).toHaveBeenCalledWith(["task-failed-no-doc"]);
+    expect(cancelTaskMutate).toHaveBeenCalledWith("task-pending");
+    expect(dismissTaskMutate).toHaveBeenCalledWith("task-failed-no-doc");
     expect(push).toHaveBeenCalledWith({
       type: "source-document",
       id: "doc-42",
@@ -222,12 +278,14 @@ describe("useTaskQueueModalActions", () => {
       predicate: expect.any(Function),
     });
 
-    const predicate = queryClient.invalidateQueries.mock.calls[0][0].predicate as (query: {
-      queryKey: readonly unknown[];
-    }) => boolean;
+    const predicate = queryClient.invalidateQueries.mock.calls[0]?.[0]?.predicate;
+    expect(predicate).toBeTypeOf("function");
+    if (predicate == null) {
+      throw new Error("Expected invalidate predicate");
+    }
 
-    expect(predicate({ queryKey: ["taskQueue", "ledger-1"] })).toBe(true);
-    expect(predicate({ queryKey: ["processingTasks", "ledger-1"] })).toBe(true);
-    expect(predicate({ queryKey: ["sourceDocuments", "ledger-1"] })).toBe(false);
+    expect(predicate(asQueryLike(["taskQueue", "ledger-1"]))).toBe(true);
+    expect(predicate(asQueryLike(["processingTasks", "ledger-1"]))).toBe(true);
+    expect(predicate(asQueryLike(["sourceDocuments", "ledger-1"]))).toBe(false);
   });
 });

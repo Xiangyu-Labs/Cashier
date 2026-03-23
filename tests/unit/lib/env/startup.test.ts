@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { validateStartupEnv } from "@/lib/env/startup";
 
 const baseEnv = {
+  NODE_ENV: "test",
   DATABASE_URL: "file:./data/sqlite.db",
   OPENAI_API_KEY: "sk-test",
   AUTH_SECRET: "auth-secret",
   AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-} as NodeJS.ProcessEnv;
+} satisfies NodeJS.ProcessEnv;
 
 describe("validateStartupEnv", () => {
   it("reports missing required startup env vars together", () => {
