@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { StorageProvider } from "./index";
 import { AppError, ValidationError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 
 /**
@@ -23,7 +24,7 @@ export class LocalStorageProvider implements StorageProvider {
   private basePath: string;
 
   constructor() {
-    this.basePath = process.env.LOCAL_STORAGE_PATH ?? "./data/uploads";
+    this.basePath = runtimeEnv.localStoragePath;
   }
 
   /**

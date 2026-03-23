@@ -1,4 +1,5 @@
 import { memoryStore } from "@/lib/memory-store";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { getResendCooldown } from "./otp";
 
@@ -7,12 +8,24 @@ const OTP_SEND_IP_PREFIX = "otp:send:ip:";
 const OTP_RESEND_PREFIX = "otp:resend:";
 const OTP_VERIFY_PREFIX = "otp:verify:";
 
-const SEND_MAX_ATTEMPTS = parseInt(process.env.AUTH_RATE_LIMIT_MAX ?? "10", 10);
-const SEND_WINDOW_SECONDS = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW ?? "900", 10);
-const IP_MAX_ATTEMPTS = parseInt(process.env.OTP_IP_MAX_ATTEMPTS_PER_HOUR ?? "10", 10);
 const IP_WINDOW_SECONDS = 60 * 60;
-const VERIFY_MAX_ATTEMPTS = parseInt(process.env.OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE ?? "5", 10);
 const VERIFY_WINDOW_SECONDS = 60;
+
+function getSendMaxAttempts(): number {
+  return runtimeEnv.authRateLimitMax;
+}
+
+function getSendWindowSeconds(): number {
+  return runtimeEnv.authRateLimitWindow;
+}
+
+function getIpMaxAttempts(): number {
+  return runtimeEnv.otpIpMaxAttemptsPerHour;
+}
+
+function getVerifyMaxAttempts(): number {
+  return runtimeEnv.otpVerifyMaxAttemptsPerMinute;
+}
 
 export async function checkSendRateLimit(email: string): Promise<{
   allowed: boolean;
@@ -22,29 +35,31 @@ export async function checkSendRateLimit(email: string): Promise<{
   try {
     const store = memoryStore;
     const key = `${OTP_SEND_PREFIX}${email.toLowerCase()}`;
+    const sendWindowSeconds = getSendWindowSeconds();
+    const sendMaxAttempts = getSendMaxAttempts();
 
     const attempts = await store.incr(key);
     if (attempts === 1) {
-      await store.expire(key, SEND_WINDOW_SECONDS);
+      await store.expire(key, sendWindowSeconds);
     }
 
-    if (attempts > SEND_MAX_ATTEMPTS) {
+    if (attempts > sendMaxAttempts) {
       const ttl = await store.ttl(key);
       logger.warn({ email, attempts }, "OTP send rate limit exceeded for email");
       return {
         allowed: false,
         remainingAttempts: 0,
-        retryAfter: ttl > 0 ? ttl : SEND_WINDOW_SECONDS,
+        retryAfter: ttl > 0 ? ttl : sendWindowSeconds,
       };
     }
 
     return {
       allowed: true,
-      remainingAttempts: SEND_MAX_ATTEMPTS - attempts,
+      remainingAttempts: sendMaxAttempts - attempts,
     };
   } catch (error) {
     logger.error({ error, email }, "OTP send rate limit check failed");
-    return { allowed: true, remainingAttempts: SEND_MAX_ATTEMPTS };
+    return { allowed: true, remainingAttempts: getSendMaxAttempts() };
   }
 }
 
@@ -56,13 +71,14 @@ export async function checkSendRateLimitByIP(ip: string): Promise<{
   try {
     const store = memoryStore;
     const key = `${OTP_SEND_IP_PREFIX}${ip}`;
+    const ipMaxAttempts = getIpMaxAttempts();
 
     const attempts = await store.incr(key);
     if (attempts === 1) {
       await store.expire(key, IP_WINDOW_SECONDS);
     }
 
-    if (attempts > IP_MAX_ATTEMPTS) {
+    if (attempts > ipMaxAttempts) {
       const ttl = await store.ttl(key);
       logger.warn({ ip, attempts }, "OTP send rate limit exceeded for IP");
       return {
@@ -74,11 +90,11 @@ export async function checkSendRateLimitByIP(ip: string): Promise<{
 
     return {
       allowed: true,
-      remainingAttempts: IP_MAX_ATTEMPTS - attempts,
+      remainingAttempts: ipMaxAttempts - attempts,
     };
   } catch (error) {
     logger.error({ error, ip }, "OTP send IP rate limit check failed");
-    return { allowed: true, remainingAttempts: IP_MAX_ATTEMPTS };
+    return { allowed: true, remainingAttempts: getIpMaxAttempts() };
   }
 }
 
@@ -140,13 +156,14 @@ export async function checkVerifyRateLimit(ip: string): Promise<boolean> {
   try {
     const store = memoryStore;
     const key = `${OTP_VERIFY_PREFIX}${ip}`;
+    const verifyMaxAttempts = getVerifyMaxAttempts();
 
     const attempts = await store.incr(key);
     if (attempts === 1) {
       await store.expire(key, VERIFY_WINDOW_SECONDS);
     }
 
-    if (attempts > VERIFY_MAX_ATTEMPTS) {
+    if (attempts > verifyMaxAttempts) {
       logger.warn({ ip, attempts }, "OTP verify rate limit exceeded for IP");
       return false;
     }

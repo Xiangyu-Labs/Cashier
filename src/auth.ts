@@ -13,6 +13,8 @@ import {
 } from "@/modules/auth/use-cases";
 import { getSessionUser } from "@/modules/auth/queries";
 import { TIME_SECONDS } from "@/lib/constants";
+import { runtimeEnv } from "@/lib/env/runtime";
+import { publicEnv } from "@/lib/env/public";
 
 // ==========================================
 // Generic OIDC/OAuth Provider (Authelia, Keycloak, etc.)
@@ -26,9 +28,9 @@ interface OIDCProfile {
 }
 
 const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
-  const issuer = process.env.OIDC_ISSUER;
-  const clientId = process.env.OIDC_CLIENT_ID;
-  const clientSecret = process.env.OIDC_CLIENT_SECRET;
+  const issuer = runtimeEnv.oidcIssuer;
+  const clientId = runtimeEnv.oidcClientId;
+  const clientSecret = runtimeEnv.oidcClientSecret;
 
   // Only configure if all env vars are present
   if (
@@ -44,7 +46,7 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
 
   // Build explicit redirect_uri to ensure consistency with IdP configuration
   // Falls back to NEXT_PUBLIC_APP_URL if AUTH_URL is not set
-  const baseUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = runtimeEnv.authUrl ?? publicEnv.appUrl;
   const redirectUri =
     baseUrl != null && baseUrl !== ""
       ? `${baseUrl.replace(/\/$/, "")}/api/auth/callback/oidc`
@@ -52,7 +54,7 @@ const OIDCProvider = ((): OAuthConfig<OIDCProfile> | null => {
 
   return {
     id: "oidc",
-    name: process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME ?? "SSO",
+    name: publicEnv.oidcButtonName,
     type: "oidc",
     issuer,
     wellKnown: `${issuer}/.well-known/openid-configuration`,
@@ -127,7 +129,7 @@ export const authOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: parseInt(process.env.SESSION_MAX_AGE_DAYS ?? "14", 10) * TIME_SECONDS.DAY,
+    maxAge: runtimeEnv.sessionMaxAgeDays * TIME_SECONDS.DAY,
     updateAge: TIME_SECONDS.DAY, // Refresh daily
   },
   pages: authConfig.pages,

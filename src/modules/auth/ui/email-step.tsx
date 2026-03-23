@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Loader2 } from "lucide-react";
+import { publicEnv } from "@/lib/env/public";
 import { SSOButton } from "./sso-button";
 
 interface EmailStepProps {
@@ -70,7 +71,7 @@ export function EmailStep({
 function SSOSection({ callbackUrl }: { callbackUrl: string }) {
   const t = useTranslations("Auth");
 
-  const isSSOEnabled = process.env.NEXT_PUBLIC_OIDC_ENABLED === "true";
+  const isSSOEnabled = publicEnv.oidcEnabled;
 
   if (!isSSOEnabled) {
     return null;

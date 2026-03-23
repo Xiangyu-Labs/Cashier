@@ -1,3 +1,5 @@
+import { runtimeEnv } from "@/lib/env/runtime";
+
 /**
  * Application constants
  *
@@ -79,13 +81,19 @@ export const QUERY = {
   /** Ledger数据staleTime - 10分钟（较稳定） */
   LEDGER_STALE_TIME_MS: 10 * 60 * 1000,
   /** 源文档staleTime - 2分钟（频繁变化但避免过度刷新） */
-  SOURCE_DOC_STALE_TIME_MS: parseInt(process.env.SOURCE_DOC_STALE_TIME_MS ?? "120000", 10),
+  get SOURCE_DOC_STALE_TIME_MS() {
+    return runtimeEnv.sourceDocStaleTimeMs;
+  },
   /** 货币汇率staleTime - 4小时（外部数据，工作日变化较快） */
-  CURRENCY_STALE_TIME_MS: parseInt(process.env.CURRENCY_STALE_TIME_MS ?? "14400000", 10),
+  get CURRENCY_STALE_TIME_MS() {
+    return runtimeEnv.currencyStaleTimeMs;
+  },
 } as const;
 
 // AI Configuration
 export const AI = {
   /** 默认 temperature - 结构化任务使用较低值提高确定性 */
-  TEMPERATURE: parseFloat(process.env.AI_TEMPERATURE ?? "0.3"),
+  get TEMPERATURE() {
+    return runtimeEnv.aiTemperature;
+  },
 } as const;

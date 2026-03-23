@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { OTP_LENGTH } from "../constants";
 
 export { OTP_LENGTH };
@@ -49,28 +50,19 @@ export function isValidOTPFormat(otp: string): boolean {
 }
 
 export function getOTPExpiration(): Date {
-  const expiresInSeconds = parseInt(
-    process.env.OTP_EXPIRES_SECONDS ?? String(DEFAULT_OTP_EXPIRES_SECONDS),
-    10
-  );
+  const expiresInSeconds = runtimeEnv.otpExpiresSeconds ?? DEFAULT_OTP_EXPIRES_SECONDS;
   return new Date(Date.now() + expiresInSeconds * 1000);
 }
 
 export function getLockoutExpiration(): Date {
-  const lockoutMinutes = parseInt(
-    process.env.OTP_LOCKOUT_MINUTES ?? String(DEFAULT_LOCKOUT_MINUTES),
-    10
-  );
+  const lockoutMinutes = runtimeEnv.otpLockoutMinutes ?? DEFAULT_LOCKOUT_MINUTES;
   return new Date(Date.now() + lockoutMinutes * 60 * 1000);
 }
 
 export function getMaxAttempts(): number {
-  return parseInt(process.env.OTP_MAX_ATTEMPTS ?? String(DEFAULT_MAX_ATTEMPTS), 10);
+  return runtimeEnv.otpMaxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 }
 
 export function getResendCooldown(): number {
-  return parseInt(
-    process.env.OTP_RESEND_COOLDOWN_SECONDS ?? String(DEFAULT_RESEND_COOLDOWN_SECONDS),
-    10
-  );
+  return runtimeEnv.otpResendCooldownSeconds ?? DEFAULT_RESEND_COOLDOWN_SECONDS;
 }

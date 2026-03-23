@@ -2,6 +2,7 @@ import { CredentialsSignin } from "@auth/core/errors";
 import { eq } from "drizzle-orm";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { db } from "@/lib/db";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { users } from "@/persistence/schema/auth";
 import { logger } from "@/lib/logger";
 
@@ -10,7 +11,7 @@ export class RegistrationDisabledError extends CredentialsSignin {
 }
 
 export async function isRegistrationAllowed(email: string): Promise<boolean> {
-  if (process.env.DISABLE_REGISTRATION !== "true") {
+  if (!runtimeEnv.disableRegistration) {
     return true;
   }
 

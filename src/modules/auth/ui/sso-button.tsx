@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { publicEnv } from "@/lib/env/public";
 import { fireAndForget } from "@/lib/safe-async";
 
 interface SSOButtonProps {
@@ -26,7 +27,7 @@ export function SSOButton({ callbackUrl = "/" }: SSOButtonProps) {
     });
   };
 
-  const envButtonName = process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
+  const envButtonName = publicEnv.oidcButtonName;
   const buttonName =
     envButtonName !== "" && envButtonName != null ? envButtonName : t("signInWithSSO");
 

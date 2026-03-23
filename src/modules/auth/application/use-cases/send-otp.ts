@@ -1,6 +1,7 @@
 import OTPEmail from "@/emails/otp-email";
 import { logger } from "@/lib/logger";
 import { RateLimitError, AppError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { normalizeEmail, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 import type { SupportedLocale } from "@/i18n/locales";
 import { DEFAULT_LOCALE } from "@/i18n/locales";
@@ -62,7 +63,7 @@ type AuthResendEmailClient = {
 };
 
 function getResendClient(): AuthResendEmailClient | null {
-  const apiKey = process.env.AUTH_RESEND_KEY;
+  const apiKey = runtimeEnv.authResendKey;
   if (apiKey == null || apiKey === "") {
     return null;
   }
@@ -134,7 +135,7 @@ export async function sendOTP(params: {
         const expiresInMinutes = 5;
         const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
         await resend.emails.send({
-          from: process.env.AUTH_EMAIL_FROM ?? DEFAULT_AUTH_EMAIL_FROM,
+          from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
           to: normalizedEmail,
           subject,
           react: OTPEmail({

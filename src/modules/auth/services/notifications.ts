@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import LoginNotificationEmail from "@/emails/login-notification-email";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import type { SupportedLocale } from "@/i18n/locales";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 
 type LoginAuthEmailMessages = {
@@ -17,7 +18,7 @@ type LoginAuthEmailMessages = {
 };
 
 function getResendClient(): Resend | null {
-  const apiKey = process.env.AUTH_RESEND_KEY;
+  const apiKey = runtimeEnv.authResendKey;
   if (apiKey == null || apiKey === "") {
     return null;
   }
@@ -63,13 +64,13 @@ export async function sendLoginNotification(params: {
     const loginTime = new Intl.DateTimeFormat(locale, {
       dateStyle: "medium",
       timeStyle: "short",
-      timeZone: process.env.TZ ?? "Asia/Shanghai",
+      timeZone: runtimeEnv.timeZone,
     }).format(new Date());
 
     const { subject, copy } = await getLoginNotificationCopy(locale);
 
     await resend.emails.send({
-      from: process.env.AUTH_EMAIL_FROM ?? DEFAULT_AUTH_EMAIL_FROM,
+      from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
       to: params.email,
       subject,
       react: LoginNotificationEmail({

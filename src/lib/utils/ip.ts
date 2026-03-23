@@ -1,3 +1,5 @@
+import { runtimeEnv } from "@/lib/env/runtime";
+
 export type HeadersLike = Pick<Headers, "get">;
 
 /**
@@ -13,7 +15,7 @@ export type HeadersLike = Pick<Headers, "get">;
  */
 export function getClientIPFromHeaders(headersList: HeadersLike): string {
   // If configured with trusted proxies, prefer X-Real-IP (set by nginx, etc.)
-  if (process.env.TRUSTED_PROXY != null && process.env.TRUSTED_PROXY !== "") {
+  if (runtimeTrustedProxyEnabled()) {
     const realIP = headersList.get("x-real-ip");
     if (realIP != null && realIP !== "") {
       const trimmed = realIP.trim();
@@ -34,6 +36,11 @@ export function getClientIPFromHeaders(headersList: HeadersLike): string {
   }
 
   return "unknown";
+}
+
+function runtimeTrustedProxyEnabled(): boolean {
+  const trustedProxy = runtimeEnv.trustedProxy;
+  return trustedProxy != null && trustedProxy !== "";
 }
 
 /**

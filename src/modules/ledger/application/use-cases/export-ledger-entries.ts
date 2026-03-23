@@ -2,6 +2,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { NotFoundError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 
 export interface ExportResult {
@@ -43,7 +44,6 @@ const CSV_HEADERS: Record<string, string[]> = {
   ],
 };
 
-const DEFAULT_EXPORT_LIMIT = Number.parseInt(process.env.EXPORT_MAX_ENTRIES ?? "2000", 10);
 const DELETED_SOURCE_DOCUMENT_STATUS = "deleted";
 
 function whereLedgerSourceDocumentNotDeleted(ledgerId: string) {
@@ -114,7 +114,7 @@ export async function exportLedgerEntries(
   const entries = await db.query.ledgerEntries.findMany({
     where: and(...conditions),
     orderBy: [asc(ledgerEntries.createdAt)],
-    limit: options?.limit ?? DEFAULT_EXPORT_LIMIT,
+    limit: options?.limit ?? runtimeEnv.exportMaxEntries,
     with: {
       category: true,
       sourceDocument: true,

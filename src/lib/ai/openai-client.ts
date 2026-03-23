@@ -2,13 +2,14 @@ import OpenAI from "openai";
 import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { runtimeEnv } from "@/lib/env/runtime";
 
 export class OpenAIClient {
   private client: OpenAI;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    const baseURL = process.env.OPENAI_BASE_URL;
+    const apiKey = runtimeEnv.openaiApiKey;
+    const baseURL = runtimeEnv.openaiBaseUrl;
 
     if (apiKey == null || apiKey === "") {
       throw new AppError("OPENAI_API_KEY is not set", "OPENAI_API_KEY_MISSING");
@@ -38,8 +39,8 @@ export class OpenAIClient {
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
     const effectiveMaxTokens = maxTokens ?? 8192;
     const effectiveTemperature = temperature ?? 1;
-    const maxRetries = parseInt(process.env.AI_MAX_RETRIES ?? "3", 10);
-    const baseDelay = parseInt(process.env.AI_RETRY_DELAY_MS ?? "1000", 10);
+    const maxRetries = runtimeEnv.aiMaxRetries;
+    const baseDelay = runtimeEnv.aiRetryDelayMs;
 
     let lastError: unknown;
 

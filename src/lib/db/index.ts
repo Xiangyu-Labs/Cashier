@@ -1,8 +1,15 @@
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import * as schema from "@/persistence";
+import { runtimeEnv } from "@/lib/env/runtime";
 
-const sqlitePath = (process.env.DATABASE_URL ?? "sqlite.db").replace(/^file:/, "");
+const sqlitePath = runtimeEnv.databaseUrl.replace(/^file:/, "");
+
+if (sqlitePath !== ":memory:") {
+  mkdirSync(path.dirname(sqlitePath), { recursive: true });
+}
 
 // Singleton pattern for database connection
 const globalForDb = global as unknown as {

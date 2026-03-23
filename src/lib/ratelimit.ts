@@ -7,6 +7,7 @@
  */
 
 import { memoryStore } from "@/lib/memory-store";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 
 // Warn about multi-instance deployment limitations
@@ -86,7 +87,9 @@ const rateLimiter = new MemoryRateLimiter();
 export const RateLimitConfig = {
   // API v1: configurable requests per minute per API key
   API_V1: {
-    limit: parseInt(process.env.API_RATE_LIMIT_PER_MINUTE ?? "60", 10),
+    get limit() {
+      return runtimeEnv.apiRateLimitPerMinute;
+    },
     windowMs: 60 * 1000,
   },
 } as const;

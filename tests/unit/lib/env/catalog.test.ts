@@ -45,4 +45,23 @@ describe("env catalog coverage", () => {
       expect(example).toMatch(new RegExp(`# Required:\\s+.+\\n# Default:\\s+.+\\n${key}=`, "m"));
     }
   });
+
+  it("only reads application env keys through src/lib/env", () => {
+    const offenders: string[] = [];
+
+    for (const file of collectSourceFiles(path.resolve("src"))) {
+      if (file.includes("/lib/env/")) continue;
+      if (file.endsWith("instrumentation.ts")) continue;
+
+      const content = readFileSync(file, "utf8");
+      for (const match of content.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
+        const key = match[1];
+        if (key != null && !FRAMEWORK_ENV_KEYS.has(key)) {
+          offenders.push(`${path.relative(process.cwd(), file)}:${key}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
 });
