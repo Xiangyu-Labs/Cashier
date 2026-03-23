@@ -306,15 +306,15 @@ describe("query invalidation helpers", () => {
   });
 
   it("matches settings queries only", () => {
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })).toBe(
-      true
-    );
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
+    ).toBe(true);
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
+    ).toBe(true);
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
+    ).toBe(true);
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
@@ -332,7 +332,9 @@ describe("query invalidation helpers", () => {
 
   it("matches calendar queries only", () => {
     expect(
-      invalidateCalendar(ledgerId)({ queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01") })
+      invalidateCalendar(ledgerId)({
+        queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01"),
+      })
     ).toBe(true);
     expect(
       invalidateCalendar(ledgerId)({

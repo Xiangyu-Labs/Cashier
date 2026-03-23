@@ -122,7 +122,16 @@ function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> |
   if (cursor == null || cursor === "") return null;
 
   const [cursorDate, cursorCreatedRaw, cursorId] = cursor.split("|");
-  if (!cursorDate || !cursorCreatedRaw || !cursorId) return null;
+  if (
+    cursorDate == null ||
+    cursorDate === "" ||
+    cursorCreatedRaw == null ||
+    cursorCreatedRaw === "" ||
+    cursorId == null ||
+    cursorId === ""
+  ) {
+    return null;
+  }
 
   const cursorCreated = new Date(cursorCreatedRaw);
   if (Number.isNaN(cursorCreated.getTime())) return null;

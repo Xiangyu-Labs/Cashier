@@ -182,7 +182,9 @@ describe("source-document-queries", () => {
     expect(storedDeletedDoc?.status).toBe("deleted");
     expect(storedDeletedDoc?.deletedAt).toBeNull();
 
-    await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(NotFoundError);
+    await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(
+      NotFoundError
+    );
   });
 
   it("filters source documents by aggregated converted amount", async () => {
