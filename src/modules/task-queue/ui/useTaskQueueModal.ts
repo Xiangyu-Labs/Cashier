@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { invalidateTaskQueue } from "@/lib/query-keys";
@@ -15,6 +15,8 @@ import type {
   TaskQueueGroupedItems,
   TaskQueueRetryStatus,
 } from "./taskQueueModal.types";
+import { useTaskQueueDialogState } from "./useTaskQueueDialogState";
+import { useTaskQueueSectionState } from "./useTaskQueueSectionState";
 import { useTaskQueue } from "./useTaskQueue";
 import { useTaskQueueMutations } from "./useTaskQueueMutations";
 
@@ -75,40 +77,30 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const { items, stats, isLoading } = useTaskQueue(ledgerId);
   const { deleteSourceDocument, batchDelete, batchRetry, cancelTask, dismissTask, batchDismiss } =
     useTaskQueueMutations(ledgerId);
-
-  const [collapsedSections, setCollapsedSections] = useState({
-    pending: false,
-    running: false,
-    failed: false,
-    anomaly: false,
-    completed: true,
-  });
-  const [retrySourceDocId, setRetrySourceDocId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<TaskQueueDeleteConfirmState>({
-    open: false,
-    type: null,
-    id: null,
-    title: "",
-    description: "",
-  });
-
+  const sectionState = useTaskQueueSectionState();
+  const dialogState = useTaskQueueDialogState();
   const {
-    pending: isPendingCollapsed,
-    running: isRunningCollapsed,
-    failed: isFailedCollapsed,
-    anomaly: isAnomalyCollapsed,
-    completed: isCompletedCollapsed,
-  } = collapsedSections;
-
-  const setSectionCollapsed = (section: keyof typeof collapsedSections, value: boolean) => {
-    setCollapsedSections((previous) => ({ ...previous, [section]: value }));
-  };
-
-  const setIsPendingCollapsed = (value: boolean) => setSectionCollapsed("pending", value);
-  const setIsRunningCollapsed = (value: boolean) => setSectionCollapsed("running", value);
-  const setIsFailedCollapsed = (value: boolean) => setSectionCollapsed("failed", value);
-  const setIsAnomalyCollapsed = (value: boolean) => setSectionCollapsed("anomaly", value);
-  const setIsCompletedCollapsed = (value: boolean) => setSectionCollapsed("completed", value);
+    isPendingCollapsed,
+    isRunningCollapsed,
+    isFailedCollapsed,
+    isAnomalyCollapsed,
+    isCompletedCollapsed,
+    setIsPendingCollapsed,
+    setIsRunningCollapsed,
+    setIsFailedCollapsed,
+    setIsAnomalyCollapsed,
+    setIsCompletedCollapsed,
+  } = sectionState;
+  const {
+    retrySourceDocId,
+    deleteConfirm,
+    setRetrySourceDocId,
+    setDeleteConfirm,
+    openSingleDeleteConfirm,
+    openDeleteAllConfirm,
+    closeDeleteConfirm,
+    closeRetryDialog,
+  } = dialogState;
 
   const groupedItems = useMemo(() => groupTaskQueueItems(items), [items]);
   const { withSourceDoc: failedWithSourceDoc, withoutSourceDoc: failedWithoutSourceDoc } =
@@ -134,14 +126,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     }
   }, [deleteConfirm, deleteSourceDocument, batchDelete, groupedItems.failed]);
 
-  const closeRetryDialog = useCallback(() => {
-    setRetrySourceDocId(null);
-  }, []);
-
-  const closeDeleteConfirm = useCallback(() => {
-    setDeleteConfirm((previous) => ({ ...previous, open: false }));
-  }, []);
-
   const handleRetry = useCallback((item: QueueItem) => {
     if (item.sourceDocumentId != null && item.sourceDocumentId !== "") {
       setRetrySourceDocId(item.sourceDocumentId);
@@ -152,26 +136,14 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     (item: QueueItem) => {
       if (item.sourceDocumentId == null || item.sourceDocumentId === "") return;
 
-      setDeleteConfirm({
-        open: true,
-        type: "single",
-        id: item.sourceDocumentId,
-        title: t("deleteConfirmTitle"),
-        description: t("deleteConfirmDesc"),
-      });
+      openSingleDeleteConfirm(item.sourceDocumentId, t("deleteConfirmTitle"), t("deleteConfirmDesc"));
     },
-    [t]
+    [openSingleDeleteConfirm, t]
   );
 
   const handleDeleteAll = useCallback(() => {
-    setDeleteConfirm({
-      open: true,
-      type: "all",
-      id: null,
-      title: t("deleteAllConfirmTitle"),
-      description: t("deleteAllConfirmDesc"),
-    });
-  }, [t]);
+    openDeleteAllConfirm(t("deleteAllConfirmTitle"), t("deleteAllConfirmDesc"));
+  }, [openDeleteAllConfirm, t]);
 
   const handleDeleteAllAnomaly = useCallback(() => {
     const ids = groupedItems.anomaly
