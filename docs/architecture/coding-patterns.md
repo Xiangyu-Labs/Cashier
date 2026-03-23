@@ -255,6 +255,8 @@ const t = useTranslations("LedgerPage");
 ### 测试分层
 
 - **测试只放在 `tests/` 下**：新测试只能放在 `tests/unit/` 或 `tests/integration/`；不要再把新测试放进 `src/`。
+- **新增模块归属的 unit test 一律放在 `tests/unit/modules/*`**：不要再把新的模块测试加到 `tests/unit/auth/*`、`tests/unit/ledger/*` 这类旧路径。
+- **旧路径模块测试只允许按 grandfathered allowlist 保留**：`tests/tooling/legacy-unit-test-allowlist.ts` 只能缩小，不能新增；触达旧测试时优先迁到 `tests/unit/modules/*`。
 - **`unit` 与 `integration` 必须严格分离**：`npm run test:unit` 只能跑单元测试和 governance 测试，绝对不允许通过泛化 glob 把 `tests/integration/**` 混进来。
 - **`npm run test:integration` 只跑集成测试**：集成测试保持真实边界覆盖，不要为了提速把它们偷偷降级成 mock-heavy unit test。
 - **governance 测试单独对待**：像 ESLint / 架构约束这类扫描型测试属于 `unit` 的 governance 子类，可以独立调度，但仍归 `test:unit` 管理。
