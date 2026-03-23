@@ -1,8 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getTaskQueueActionMock, useQueryMock } = vi.hoisted(() => ({
+const { getTaskQueueActionMock, useQueryMock, useSmartPollingMock } = vi.hoisted(() => ({
   useQueryMock: vi.fn(),
   getTaskQueueActionMock: vi.fn(),
+  useSmartPollingMock: vi.fn(() => "polling-fn"),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -11,6 +12,10 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@/modules/task-queue/actions", () => ({
   getTaskQueueAction: getTaskQueueActionMock,
+}));
+
+vi.mock("@/hooks/use-smart-polling", () => ({
+  useSmartPolling: useSmartPollingMock,
 }));
 
 import { useTaskQueue } from "@/modules/task-queue/ui/useTaskQueue";
@@ -51,7 +56,31 @@ describe("useTaskQueue", () => {
     expect(result.refetch).toBe(refetchMock);
   });
 
-  it("uses smart polling interval based on pending/running stats", () => {
+  it("builds task queue polling with useSmartPolling", () => {
+    useQueryMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    useTaskQueue("ledger-1");
+
+    expect(useSmartPollingMock).toHaveBeenCalledWith({
+      isPollingActive: expect.any(Function),
+      activeIntervalMs: 3000,
+      idleIntervalMs: 15000,
+    });
+
+    const options = useQueryMock.mock.calls[0]?.[0];
+    expect(options?.refetchInterval).toBe("polling-fn");
+  });
+
+  it("preserves the active and idle polling cadence", () => {
+    useSmartPollingMock.mockImplementation(
+      ({ isPollingActive, activeIntervalMs, idleIntervalMs }) =>
+        (query: { state: { data: unknown } }) =>
+          isPollingActive(query.state.data) ? activeIntervalMs : idleIntervalMs
+    );
     useQueryMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -60,7 +89,6 @@ describe("useTaskQueue", () => {
 
     useTaskQueue("ledger-1");
     const options = useQueryMock.mock.calls[0]?.[0];
-
     expect(
       options?.refetchInterval({
         state: { data: { stats: { pendingCount: 1, runningCount: 0 } } },
