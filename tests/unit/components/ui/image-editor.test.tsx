@@ -163,7 +163,9 @@ async function enterDrawMode(
 ) {
   await user.click(screen.getByRole("button", { name: "涂鸦" }));
 
-  const drawImage = container.querySelector(`img.hidden[src="${image}"]`) as HTMLImageElement | null;
+  const drawImage =
+    (screen.queryByTestId("draw-editor-image") as HTMLImageElement | null) ??
+    (container.querySelector(`img.hidden[src="${image}"]`) as HTMLImageElement | null);
   if (drawImage == null) {
     throw new Error("Draw mode image was not rendered");
   }
@@ -313,6 +315,52 @@ describe("ImageEditor", () => {
       data: "data:image/jpeg;base64,edited",
       mimeType: "image/jpeg",
     });
+  });
+
+  it("initializes a centered crop when the crop pane image loads", async () => {
+    const user = userEvent.setup();
+
+    render(<ImageEditor image="data:image/png;base64,original" onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "裁剪" }));
+
+    expect(screen.getByTestId("image-editor-crop-pane")).toBeTruthy();
+
+    const cropImage = screen.getByTestId("crop-editor-image") as HTMLImageElement;
+    setLoadedImageSize(cropImage, 1000, 800);
+    fireEvent.load(cropImage);
+
+    expect(screen.getByTestId("mock-react-crop").getAttribute("data-crop")).toBe(
+      JSON.stringify({
+        unit: "%",
+        width: 80,
+        height: 80,
+        x: 10,
+        y: 10,
+      })
+    );
+  });
+
+  it("marks draw mode as dirty after a completed pointer stroke", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ImageEditor
+        image="data:image/png;base64,original"
+        onChange={vi.fn()}
+      />
+    );
+
+    const canvas = await enterDrawMode(user, container);
+
+    expect(screen.getByTestId("image-editor-draw-pane")).toBeTruthy();
+
+    const saveButton = screen.getByRole("button", { name: "保存" }) as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(true);
+
+    drawStroke(canvas);
+
+    expect(saveButton.disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "重置" })).toBeTruthy();
   });
 
   it("shows draw controls only in draw mode and delegates reset save and cancel actions", async () => {

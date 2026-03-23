@@ -1,19 +1,18 @@
 "use client";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import ReactCrop, { areCropsEqual, type Crop, type PixelCrop } from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import { areCropsEqual, type Crop, type PixelCrop } from "react-image-crop";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { cn } from "@/lib/utils";
+import { ImageEditorCropPane } from "./image-editor-crop-pane";
 import {
   createEditorImage,
   exportCanvasAsDataUrl,
   selectCurrentToolResult,
 } from "./image-editor.core";
+import { ImageEditorDrawPane } from "./image-editor-draw-pane";
 import { ImageEditorToolbar } from "./image-editor-toolbar";
 import type { EditorImage, EditorTool, ImageEditorHandle } from "./image-editor.types";
 import {
-  createCenteredCropSelection,
   mapPointerToCanvasPosition,
   scaleCropToImagePixels,
 } from "./image-editor.utils";
@@ -216,6 +215,11 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
     setCrop(nextCrop);
   }, []);
 
+  const handleInitializeCrop = useCallback((nextCrop: Crop) => {
+    setInitialCrop(nextCrop);
+    setCrop(nextCrop);
+  }, []);
+
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activeTool !== "draw") return;
 
@@ -325,53 +329,23 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
 
         <div className="flex flex-1 items-center justify-center overflow-auto bg-muted/50 p-4">
           {activeTool === "crop" ? (
-            <ReactCrop
-              {...(crop != null ? { crop } : {})}
-              onChange={handleCropChange}
-              keepSelection
-              className="max-h-full max-w-full"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={cropImageRef}
-                src={toolBaseImage}
-                alt="Edit"
-                data-testid="crop-editor-image"
-                className="max-h-[calc(90vh-220px)] max-w-full object-contain"
-                onLoad={(e) => {
-                  const nextCrop = createCenteredCropSelection(
-                    e.currentTarget.naturalWidth,
-                    e.currentTarget.naturalHeight
-                  );
-                  setInitialCrop(nextCrop);
-                  setCrop(nextCrop);
-                }}
-              />
-            </ReactCrop>
+            <ImageEditorCropPane
+              image={toolBaseImage}
+              crop={crop}
+              imageRef={cropImageRef}
+              onCropChange={handleCropChange}
+              onInitializeCrop={handleInitializeCrop}
+            />
           ) : activeTool === "draw" ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={drawImageRef}
-                src={toolBaseImage}
-                alt="Edit"
-                className="hidden"
-                onLoad={initializeCanvas}
-              />
-              <canvas
-                ref={canvasRef}
-                data-testid="draw-editor-canvas"
-                onPointerDown={startDrawing}
-                onPointerMove={draw}
-                onPointerUp={stopDrawing}
-                onPointerLeave={stopDrawing}
-                onPointerCancel={stopDrawing}
-                className={cn(
-                  "max-h-[calc(90vh-220px)] max-w-full border shadow-sm",
-                  activeTool === "draw" && "cursor-crosshair"
-                )}
-              />
-            </div>
+            <ImageEditorDrawPane
+              image={toolBaseImage}
+              imageRef={drawImageRef}
+              canvasRef={canvasRef}
+              onInitializeCanvas={initializeCanvas}
+              onPointerDown={startDrawing}
+              onPointerMove={draw}
+              onPointerUp={stopDrawing}
+            />
           ) : (
             <div className="flex flex-col items-center gap-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
