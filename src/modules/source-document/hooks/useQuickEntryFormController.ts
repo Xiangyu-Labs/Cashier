@@ -58,13 +58,6 @@ export function useQuickEntryFormController({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: () => {
-      setSelectedCategoryId(null);
-      setAmount(0);
-      setItemName("");
-      setEntryDate(new Date());
-      onSuccess?.();
-    },
     onOptimisticUpdate: (queryClient, variables) => {
       const tempDocId = `temp-doc-${Date.now()}`;
       const tempEntryId = `temp-entry-${Date.now()}`;
@@ -181,6 +174,7 @@ export function useQuickEntryFormController({
   const handleSubmit = () => {
     if (selectedCategoryId === null || amount <= 0) return;
     const nextItemName = itemName !== "" ? itemName : undefined;
+    onSuccess?.();
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,
