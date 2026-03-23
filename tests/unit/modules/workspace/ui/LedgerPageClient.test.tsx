@@ -66,7 +66,10 @@ vi.mock("next/dynamic", () => ({
     }
 
     if (text.includes("SourceDocumentInput")) {
-      return createComponent("source-document-input", "input");
+      return createComponent("source-document-input", "input", (props) => {
+        const onSuccess = props.onSuccess as (() => void) | undefined;
+        onSuccess?.();
+      });
     }
 
     if (text.includes("QuickEntryForm")) {
@@ -277,5 +280,30 @@ describe("LedgerPageClient", () => {
 
     fireEvent.click(screen.getByTestId("open-task-queue"));
     expect(setIsPendingOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("closes the dialog when ai child invokes onSuccess", () => {
+    const setIsInputOpen = vi.fn();
+    useLedgerDialogStateMock.mockReturnValue({
+      isInputOpen: true,
+      setIsInputOpen,
+      inputMode: "ai",
+      setInputMode: vi.fn(),
+      isPendingOpen: false,
+      setIsPendingOpen: vi.fn(),
+      handleInputDialogChange: vi.fn(),
+    });
+
+    render(
+      <LedgerPageClient
+        ledgerId="ledger-1"
+        initialTab="stream"
+        initialPeriod={{ period: "thisMonth" }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("source-document-input"));
+
+    expect(setIsInputOpen).toHaveBeenCalledWith(false);
   });
 });

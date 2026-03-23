@@ -172,7 +172,7 @@ describe("useSourceDocumentInputController", () => {
     expect(result.current.entryDate.getTime()).toBe(new Date("2026-03-19T00:00:00.000Z").getTime());
   });
 
-  it("clears create input optimistically and restores it on failure", async () => {
+  it("keeps create draft intact while the request is pending", async () => {
     const deferred = createDeferred<{ sourceDocumentId: string; status: string }>();
     vi.mocked(createSourceDocumentAction).mockReturnValue(deferred.promise as never);
 
@@ -181,9 +181,6 @@ describe("useSourceDocumentInputController", () => {
         queries: { retry: false },
         mutations: { retry: false },
       },
-    });
-    queryClient.setQueryData(queryKeys.sourceDocuments("ledger-1", "pending"), {
-      items: [{ id: "pending-1" }],
     });
 
     const { result } = renderHook(
@@ -210,22 +207,11 @@ describe("useSourceDocumentInputController", () => {
       expect(createSourceDocumentAction).toHaveBeenCalledTimes(1);
     });
 
-    await waitFor(() => {
-      expect(result.current.text).toBe("");
-      expect(result.current.images).toEqual([]);
-    });
-
-    deferred.reject(new Error("Create failed"));
-    await deferred.promise.catch(() => undefined);
-
-    await waitFor(() => {
-      expect(result.current.text).toBe("Lunch");
-    });
+    expect(result.current.text).toBe("Lunch");
     expect(result.current.images).toEqual([{ data: "image-1", mimeType: "image/png" }]);
-    expect(queryClient.getQueryData(queryKeys.sourceDocuments("ledger-1", "pending"))).toEqual({
-      items: [{ id: "pending-1" }],
-    });
-    expect(toast.error).toHaveBeenCalledWith("Failed to submit");
+
+    deferred.resolve({ sourceDocumentId: "doc-1", status: "queued" });
+    await deferred.promise;
   });
 
   it("optimistically marks retry documents as processing and rolls back on failure", async () => {
