@@ -95,7 +95,7 @@ export async function retrySourceDocument({
   await db.insert(sourceDocuments).values({
     id: newDocumentId,
     ledgerId,
-    entryDate: existingDocument.entryDate,
+    entryDate: input?.entryDate ?? existingDocument.entryDate,
     text,
     imageUrls: finalImageUrls,
     status: "queued",

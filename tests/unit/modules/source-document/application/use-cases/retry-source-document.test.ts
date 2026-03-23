@@ -243,4 +243,77 @@ describe("retrySourceDocument", () => {
     );
     randomUUIDMock.mockRestore();
   });
+
+  it("uses input.entryDate when provided, ignoring existingDocument.entryDate", async () => {
+    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
+    findFirstMock.mockResolvedValueOnce({
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      entryDate: "2026-03-10",
+      text: "t",
+      status: "failed",
+      deletedAt: null,
+      imageUrls: [],
+      metadata: {},
+    });
+    processImagesMock.mockResolvedValueOnce([]);
+    rehomeLocalUploadUrlsMock.mockImplementation(
+      ({ imageUrls }: { imageUrls: string[] }) => Promise.resolve(imageUrls)
+    );
+
+    await retrySourceDocument({
+      ledgerId: "ledger-1",
+      ledger: {
+        id: "ledger-1",
+        userId: "u",
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+      sourceDocumentId: "doc-1",
+      input: { entryDate: "2026-03-22" },
+    });
+
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: "2026-03-22" })
+    );
+    randomUUIDMock.mockRestore();
+  });
+
+  it("falls back to existingDocument.entryDate when input.entryDate not provided", async () => {
+    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
+    findFirstMock.mockResolvedValueOnce({
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      entryDate: "2026-03-10",
+      text: "t",
+      status: "failed",
+      deletedAt: null,
+      imageUrls: [],
+      metadata: {},
+    });
+    processImagesMock.mockResolvedValueOnce([]);
+    rehomeLocalUploadUrlsMock.mockImplementation(
+      ({ imageUrls }: { imageUrls: string[] }) => Promise.resolve(imageUrls)
+    );
+
+    await retrySourceDocument({
+      ledgerId: "ledger-1",
+      ledger: {
+        id: "ledger-1",
+        userId: "u",
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+      sourceDocumentId: "doc-1",
+    });
+
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: "2026-03-10" })
+    );
+    randomUUIDMock.mockRestore();
+  });
 });
