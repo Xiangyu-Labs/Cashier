@@ -124,7 +124,7 @@ describe("auth.ts adapter wiring", () => {
     const { authOptions } = await loadAuthOptions();
     const signInEvent = authOptions?.events?.signIn as
       | ((params: {
-          user: { id?: string | null; email?: string | null };
+          user: { id?: string | null; email?: string | null; locale?: string | null };
           isNewUser?: boolean;
         }) => Promise<void>)
       | undefined;

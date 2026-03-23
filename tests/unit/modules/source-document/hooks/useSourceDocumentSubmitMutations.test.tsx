@@ -8,6 +8,7 @@ import {
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { useSourceDocumentSubmitMutations } from "@/modules/source-document/hooks/useSourceDocumentSubmitMutations";
+import { asQueryLike } from "tests/helpers/react-query";
 
 vi.mock("@/modules/source-document/actions", () => ({
   createSourceDocumentAction: vi.fn(),
@@ -99,12 +100,15 @@ describe("useSourceDocumentSubmitMutations", () => {
       expect(cancelQueriesSpy).toHaveBeenCalled();
     });
 
-    const cancelPredicate = cancelQueriesSpy.mock.calls[0]?.[0].predicate;
+    const cancelPredicate = cancelQueriesSpy.mock.calls[0]?.[0]?.predicate;
     expect(cancelPredicate).toBeTypeOf("function");
-    expect(cancelPredicate?.({ queryKey: queryKeys.sourceDocuments("ledger-1", "pending") })).toBe(
+    if (cancelPredicate == null) {
+      throw new Error("Expected cancel predicate");
+    }
+    expect(cancelPredicate(asQueryLike(queryKeys.sourceDocuments("ledger-1", "pending")))).toBe(
       true
     );
-    expect(cancelPredicate?.({ queryKey: queryKeys.sourceDocuments("ledger-1", "queued") })).toBe(
+    expect(cancelPredicate(asQueryLike(queryKeys.sourceDocuments("ledger-1", "queued")))).toBe(
       false
     );
 
@@ -112,15 +116,17 @@ describe("useSourceDocumentSubmitMutations", () => {
       expect(invalidateQueriesSpy).toHaveBeenCalled();
     });
 
-    const invalidationPredicates = invalidateQueriesSpy.mock.calls.map((call) => call[0].predicate);
+    const invalidationPredicates = invalidateQueriesSpy.mock.calls.flatMap((call) =>
+      call[0]?.predicate == null ? [] : [call[0].predicate]
+    );
     expect(
       invalidationPredicates.some((predicate) =>
-        predicate?.({ queryKey: queryKeys.sourceDocuments("ledger-1", "pending") })
+        predicate(asQueryLike(queryKeys.sourceDocuments("ledger-1", "pending")))
       )
     ).toBe(true);
     expect(
       invalidationPredicates.some((predicate) =>
-        predicate?.({ queryKey: queryKeys.taskQueue("ledger-1") })
+        predicate(asQueryLike(queryKeys.taskQueue("ledger-1")))
       )
     ).toBe(true);
   });

@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { DetailsTab } from "@/modules/workspace/ui/DetailsTab";
 import { StatsTab } from "@/modules/workspace/ui/StatsTab";
+import { asQueryLike } from "tests/helpers/react-query";
 
 const pullToRefreshProps: Array<{ onRefresh: () => Promise<void> }> = [];
 
@@ -203,7 +204,7 @@ const ledger: Ledger = {
 };
 
 const categories: EntryCategory[] = [];
-const periodParams: PeriodParams = { preset: "month", offset: 0 };
+const periodParams: PeriodParams = { period: "month" };
 
 function renderWithClient(ui: React.ReactNode, queryClient: QueryClient) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
@@ -238,10 +239,9 @@ describe("workspace tab pull-to-refresh regression", () => {
     await refreshHandler();
 
     const predicates = invalidateQueriesSpy.mock.calls
-      .map((call) => call[0]?.predicate)
-      .filter(Boolean);
+      .flatMap((call) => (call[0]?.predicate == null ? [] : [call[0].predicate]));
     const taskQueueMatched = predicates.some((predicate) =>
-      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+      predicate(asQueryLike(queryKeys.taskQueue("ledger-1")))
     );
 
     expect(taskQueueMatched).toBe(true);
@@ -271,10 +271,9 @@ describe("workspace tab pull-to-refresh regression", () => {
     await refreshHandler();
 
     const predicates = invalidateQueriesSpy.mock.calls
-      .map((call) => call[0]?.predicate)
-      .filter(Boolean);
+      .flatMap((call) => (call[0]?.predicate == null ? [] : [call[0].predicate]));
     const taskQueueMatched = predicates.some((predicate) =>
-      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+      predicate(asQueryLike(queryKeys.taskQueue("ledger-1")))
     );
 
     expect(taskQueueMatched).toBe(true);
@@ -293,10 +292,9 @@ describe("workspace tab pull-to-refresh regression", () => {
     await refreshHandler();
 
     const predicates = invalidateQueriesSpy.mock.calls
-      .map((call) => call[0]?.predicate)
-      .filter(Boolean);
+      .flatMap((call) => (call[0]?.predicate == null ? [] : [call[0].predicate]));
     const taskQueueMatched = predicates.some((predicate) =>
-      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+      predicate(asQueryLike(queryKeys.taskQueue("ledger-1")))
     );
 
     expect(taskQueueMatched).toBe(true);

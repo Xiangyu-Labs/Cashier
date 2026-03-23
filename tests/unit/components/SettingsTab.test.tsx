@@ -9,6 +9,7 @@ import type {
 } from "@/modules/ledger/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { asQueryLike } from "tests/helpers/react-query";
 
 // Create tracked mocks
 const mockBack = vi.fn();
@@ -254,15 +255,14 @@ describe("SettingsTab", () => {
     await refreshHandler();
 
     const predicates = invalidateQueriesSpy.mock.calls
-      .map((call) => call[0]?.predicate)
-      .filter(Boolean);
+      .flatMap((call) => (call[0]?.predicate == null ? [] : [call[0].predicate]));
     expect(predicates.length).toBeGreaterThan(0);
 
     const settingsMatched = predicates.some((predicate) =>
-      predicate({ queryKey: queryKeys.ledgerSettings("l1") })
+      predicate(asQueryLike(queryKeys.ledgerSettings("l1")))
     );
     const ledgerMatched = predicates.some((predicate) =>
-      predicate({ queryKey: queryKeys.ledger("l1") })
+      predicate(asQueryLike(queryKeys.ledger("l1")))
     );
 
     expect(settingsMatched).toBe(true);
