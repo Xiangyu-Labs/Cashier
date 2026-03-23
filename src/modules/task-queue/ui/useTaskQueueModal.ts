@@ -5,6 +5,16 @@ import { useTranslations } from "next-intl";
 import { invalidateTaskQueue } from "@/lib/query-keys";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import type { QueueItem } from "@/modules/task-queue/contracts";
+import {
+  groupTaskQueueItems,
+  isTaskQueueEmpty,
+  partitionFailedItems,
+} from "./taskQueueModal.selectors";
+import type {
+  TaskQueueDeleteConfirmState,
+  TaskQueueGroupedItems,
+  TaskQueueRetryStatus,
+} from "./taskQueueModal.types";
 import { useTaskQueue } from "./useTaskQueue";
 import { useTaskQueueMutations } from "./useTaskQueueMutations";
 
@@ -15,23 +25,11 @@ export interface UseTaskQueueModalReturn {
   isAnomalyCollapsed: boolean;
   isCompletedCollapsed: boolean;
   retrySourceDocId: string | null;
-  deleteConfirm: {
-    open: boolean;
-    type: "single" | "all" | null;
-    id: string | null;
-    title: string;
-    description: string;
-  };
+  deleteConfirm: TaskQueueDeleteConfirmState;
   items: QueueItem[];
   stats: ReturnType<typeof useTaskQueue>["stats"];
   isLoading: boolean;
-  groupedItems: {
-    pending: QueueItem[];
-    running: QueueItem[];
-    failed: QueueItem[];
-    completed: QueueItem[];
-    anomaly: QueueItem[];
-  };
+  groupedItems: TaskQueueGroupedItems;
   isEmpty: boolean;
   failedWithSourceDoc: QueueItem[];
   failedWithoutSourceDoc: QueueItem[];
@@ -63,7 +61,7 @@ export interface UseTaskQueueModalReturn {
   handleDeleteSingle: (item: QueueItem) => void;
   handleDeleteAll: () => void;
   handleDeleteAllAnomaly: () => void;
-  handleRetryAll: (status: "failed" | "anomaly") => void;
+  handleRetryAll: (status: TaskQueueRetryStatus) => void;
   handleCancel: (item: QueueItem) => void;
   handleDismiss: (item: QueueItem) => void;
   handleDismissAll: () => void;
@@ -86,13 +84,13 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     completed: true,
   });
   const [retrySourceDocId, setRetrySourceDocId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    open: boolean;
-    type: "single" | "all" | null;
-    id: string | null;
-    title: string;
-    description: string;
-  }>({ open: false, type: null, id: null, title: "", description: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState<TaskQueueDeleteConfirmState>({
+    open: false,
+    type: null,
+    id: null,
+    title: "",
+    description: "",
+  });
 
   const {
     pending: isPendingCollapsed,
@@ -112,35 +110,9 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const setIsAnomalyCollapsed = (value: boolean) => setSectionCollapsed("anomaly", value);
   const setIsCompletedCollapsed = (value: boolean) => setSectionCollapsed("completed", value);
 
-  const groupedItems = useMemo(() => {
-    const pending: QueueItem[] = [];
-    const running: QueueItem[] = [];
-    const failed: QueueItem[] = [];
-    const completed: QueueItem[] = [];
-    const anomaly: QueueItem[] = [];
-
-    for (const item of items) {
-      switch (item.status) {
-        case "pending":
-          pending.push(item);
-          break;
-        case "running":
-          running.push(item);
-          break;
-        case "failed":
-          failed.push(item);
-          break;
-        case "completed":
-          completed.push(item);
-          break;
-        case "anomaly":
-          anomaly.push(item);
-          break;
-      }
-    }
-
-    return { pending, running, failed, completed, anomaly };
-  }, [items]);
+  const groupedItems = useMemo(() => groupTaskQueueItems(items), [items]);
+  const { withSourceDoc: failedWithSourceDoc, withoutSourceDoc: failedWithoutSourceDoc } =
+    useMemo(() => partitionFailedItems(groupedItems.failed), [groupedItems.failed]);
 
   const handleDeleteConfirmAction = useCallback(() => {
     if (deleteConfirm.type == null) return;
@@ -212,7 +184,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   }, [groupedItems.anomaly, batchDelete]);
 
   const handleRetryAll = useCallback(
-    (status: "failed" | "anomaly") => {
+    (status: TaskQueueRetryStatus) => {
       const itemsToRetry = groupedItems[status].filter(
         (item) => item.sourceDocumentId != null && item.sourceDocumentId !== ""
       );
@@ -251,13 +223,7 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     [push, ledgerId]
   );
 
-  const isEmpty = stats.total === 0 && groupedItems.completed.length === 0;
-  const failedWithSourceDoc = groupedItems.failed.filter(
-    (item) => item.sourceDocumentId != null && item.sourceDocumentId !== ""
-  );
-  const failedWithoutSourceDoc = groupedItems.failed.filter(
-    (item) => item.sourceDocumentId == null || item.sourceDocumentId === ""
-  );
+  const isEmpty = isTaskQueueEmpty(stats, groupedItems);
 
   const handleDismissAll = useCallback(() => {
     const ids = failedWithoutSourceDoc.map((item) => item.id);
