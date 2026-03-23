@@ -9,6 +9,7 @@ import {
   getSourceDocumentFullQuery,
   listSourceDocumentsQuery,
 } from "@/modules/source-document/application/queries/source-document-queries";
+import { getPendingSourceDocuments } from "@/modules/source-document/queries";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -228,5 +229,32 @@ describe("source-document-queries", () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.id).toBe(secondDoc.id);
+  });
+
+  it("returns pending groups through the public query barrel", async () => {
+    const db = getTestDb();
+
+    await db.insert(sourceDocuments).values([
+      {
+        ledgerId,
+        text: "queued doc",
+        status: "queued",
+        imageUrls: [],
+        entryDate: "2026-03-23",
+      },
+      {
+        ledgerId,
+        text: "failed doc",
+        status: "failed",
+        imageUrls: [],
+        entryDate: "2026-03-22",
+      },
+    ]);
+
+    const result = await getPendingSourceDocuments(ledgerId);
+
+    expect(result.stats.total).toBeGreaterThan(0);
+    expect(result.groups.queued).toHaveLength(1);
+    expect(result.groups.failed).toHaveLength(1);
   });
 });
