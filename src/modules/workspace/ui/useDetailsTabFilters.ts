@@ -32,10 +32,7 @@ export function useDetailsTabFilters({
     [advancedFilters, periodParams]
   );
 
-  const filterKey = useMemo(
-    () => buildLedgerFilterKey(filters),
-    [filters.categoryId, filters.currency, filters.maxAmount, filters.minAmount]
-  );
+  const filterKey = useMemo(() => buildLedgerFilterKey(filters), [filters]);
 
   const handleFiltersChange = useCallback(
     (
