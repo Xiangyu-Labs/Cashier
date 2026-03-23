@@ -2,7 +2,14 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createEditorImage,
+  exportCanvasAsDataUrl,
+  getMimeTypeFromDataUrl,
+  selectCurrentToolResult,
+} from "@/components/ui/image-editor.core";
 import { ImageEditor, type ImageEditorHandle } from "@/components/ui/image-editor";
+import type { EditorImage } from "@/components/ui/image-editor.types";
 
 vi.mock("react-image-crop", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
@@ -254,5 +261,41 @@ describe("ImageEditor", () => {
       data: "data:image/jpeg;base64,edited",
       mimeType: "image/jpeg",
     });
+  });
+});
+
+describe("image-editor core", () => {
+  it("derives mime type from data url with a jpeg fallback", () => {
+    expect(getMimeTypeFromDataUrl("data:image/png;base64,abc")).toBe("image/png");
+    expect(getMimeTypeFromDataUrl("not-a-data-url")).toBe("image/jpeg");
+  });
+
+  it("creates a normalized editor image from raw data", () => {
+    expect(createEditorImage("data:image/png;base64,abc")).toEqual({
+      data: "data:image/png;base64,abc",
+      mimeType: "image/png",
+    });
+  });
+
+  it("exports canvases using the editor jpeg defaults", () => {
+    const canvas = document.createElement("canvas");
+
+    expect(exportCanvasAsDataUrl(canvas)).toBe("data:image/jpeg;base64,edited");
+    expect(canvasToDataUrl).toHaveBeenCalledWith("image/jpeg", 0.9);
+  });
+
+  it("selects the result that matches the active tool", () => {
+    const cropResult: EditorImage = {
+      data: "data:image/jpeg;base64,crop",
+      mimeType: "image/jpeg",
+    };
+    const drawResult: EditorImage = {
+      data: "data:image/jpeg;base64,draw",
+      mimeType: "image/jpeg",
+    };
+
+    expect(selectCurrentToolResult("crop", cropResult, drawResult)).toEqual(cropResult);
+    expect(selectCurrentToolResult("draw", cropResult, drawResult)).toEqual(drawResult);
+    expect(selectCurrentToolResult(null, cropResult, drawResult)).toBeNull();
   });
 });

@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import {
+  createEditorImage,
+  exportCanvasAsDataUrl,
+  selectCurrentToolResult,
+} from "./image-editor.core";
+import type { EditorImage, EditorTool, ImageEditorHandle } from "./image-editor.types";
+import {
   createCenteredCropSelection,
   mapPointerToCanvasPosition,
   scaleCropToImagePixels,
@@ -17,38 +23,7 @@ interface ImageEditorProps {
   image: string; // base64 data URL
   onChange: (editedImage: { data: string; mimeType: string }) => void;
 }
-
-export interface ImageEditorHandle {
-  hasPendingToolChanges: () => boolean;
-  commitCurrentTool: () => { data: string; mimeType: string } | null;
-  discardCurrentTool: () => void;
-  getConfirmedImage: () => { data: string; mimeType: string };
-}
-
-type EditorTool = "crop" | "draw";
-
-interface EditorImage {
-  data: string;
-  mimeType: string;
-}
-
-const EXPORT_MIME_TYPE = "image/jpeg";
-const EXPORT_QUALITY = 0.9;
-
-function getMimeTypeFromDataUrl(dataUrl: string) {
-  return dataUrl.match(/^data:([^;]+);base64,/)?.[1] ?? EXPORT_MIME_TYPE;
-}
-
-function createEditorImage(data: string): EditorImage {
-  return {
-    data,
-    mimeType: getMimeTypeFromDataUrl(data),
-  };
-}
-
-function exportCanvasAsDataUrl(canvas: HTMLCanvasElement) {
-  return canvas.toDataURL(EXPORT_MIME_TYPE, EXPORT_QUALITY);
-}
+export type { ImageEditorHandle } from "./image-editor.types";
 
 export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(function ImageEditor(
   { image, onChange },
@@ -154,8 +129,11 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
   }, [hasDrawChanges]);
 
   const applyCurrentToolResult = useCallback((): EditorImage | null => {
-    const nextImage =
-      activeTool === "crop" ? buildCropResult() : activeTool === "draw" ? buildDrawResult() : null;
+    const nextImage = selectCurrentToolResult(
+      activeTool,
+      activeTool === "crop" ? buildCropResult() : null,
+      activeTool === "draw" ? buildDrawResult() : null
+    );
     if (nextImage === null) return null;
 
     setConfirmedImage(nextImage);
