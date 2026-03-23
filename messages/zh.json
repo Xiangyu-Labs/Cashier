@@ -210,7 +210,7 @@
     "output": "输出",
     "sending_status": "发送中…",
     "unclassified": "未分类",
-    "needsCategory": "需要分类",
+    "otherCategory": "未精确分类",
     "needsCurrency": "需要货币",
     "noRecords": "暂无记录",
     "noMore": "没有更多了",

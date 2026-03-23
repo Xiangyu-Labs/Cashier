@@ -113,7 +113,7 @@ ${categoryList}
 
 ### Rules
 1. Select ONLY from the provided categories
-2. If items cannot be categorized, use "其他" (Other)
+2. Only use "其他" (Other) as a LAST RESORT — only when the item truly does not fit ANY other available category. If there is any reasonable fit, prefer that category over "其他".
 3. Multiple categories are allowed if the document contains items from different categories
 4. Explain your reasoning
 

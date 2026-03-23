@@ -74,7 +74,7 @@ When item details are partially hidden or collapsed but the total is known:
 ### Rules
 1. Extract EACH individual item as a separate entry (unless user rules specify merging)
 2. Use the pre-identified currencies - only use other currencies if clearly different
-3. Assign category_index from the pre-identified list (use 0 if no category fits)
+3. Assign category_index from the pre-identified list. If the item truly cannot fit any specific category but a "其他" (Other) category exists in the list, assign its index — do NOT use 0. Reserve category_index 0 ONLY for when the category list is completely empty. "其他"/"Other" should be used as a last resort; always prefer any reasonable specific category match over it.
 4. Amount must be positive numbers
 5. Provide reasoning for any non-obvious parsing decisions
 

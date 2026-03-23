@@ -430,7 +430,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                     onView={() => onViewLedgerEntry?.(entry)}
                     mainCurrency={mainCurrency}
                     sourceDocumentEntryDate={sourceDocument.entryDate}
-                    variant="default"
+                    variant={entry.category != null && !entry.category.isEditable ? "warning" : "default"}
                   />
                 ))}
               </div>
