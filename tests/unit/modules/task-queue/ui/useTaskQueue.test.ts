@@ -76,11 +76,6 @@ describe("useTaskQueue", () => {
   });
 
   it("preserves the active and idle polling cadence", () => {
-    useSmartPollingMock.mockImplementation(
-      ({ isPollingActive, activeIntervalMs, idleIntervalMs }) =>
-        (query: { state: { data: unknown } }) =>
-          isPollingActive(query.state.data) ? activeIntervalMs : idleIntervalMs
-    );
     useQueryMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -88,22 +83,31 @@ describe("useTaskQueue", () => {
     });
 
     useTaskQueue("ledger-1");
-    const options = useQueryMock.mock.calls[0]?.[0];
-    expect(
-      options?.refetchInterval({
-        state: { data: { stats: { pendingCount: 1, runningCount: 0 } } },
-      })
-    ).toBe(3000);
-    expect(
-      options?.refetchInterval({
-        state: { data: { stats: { pendingCount: 0, runningCount: 1 } } },
-      })
-    ).toBe(3000);
-    expect(
-      options?.refetchInterval({
-        state: { data: { stats: { pendingCount: 0, runningCount: 0 } } },
-      })
-    ).toBe(15000);
+    const firstSmartPollingCall = useSmartPollingMock.mock.calls[0] as
+      | [
+          {
+            isPollingActive: (data: unknown) => boolean;
+            activeIntervalMs: number;
+            idleIntervalMs: number;
+          },
+        ]
+      | undefined;
+    if (firstSmartPollingCall == null) {
+      throw new Error("Expected useSmartPolling to be called");
+    }
+    const [smartPollingOptions] = firstSmartPollingCall;
+
+    expect(smartPollingOptions.activeIntervalMs).toBe(3000);
+    expect(smartPollingOptions.idleIntervalMs).toBe(15000);
+    expect(smartPollingOptions.isPollingActive({ stats: { pendingCount: 1, runningCount: 0 } })).toBe(
+      true
+    );
+    expect(smartPollingOptions.isPollingActive({ stats: { pendingCount: 0, runningCount: 1 } })).toBe(
+      true
+    );
+    expect(smartPollingOptions.isPollingActive({ stats: { pendingCount: 0, runningCount: 0 } })).toBe(
+      false
+    );
   });
 
   it("does not report loading when data exists", () => {
