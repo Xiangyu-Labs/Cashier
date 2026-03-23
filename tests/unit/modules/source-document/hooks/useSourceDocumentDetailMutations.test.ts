@@ -80,9 +80,15 @@ describe("useSourceDocumentDetailMutations", () => {
 
     const queryClient = new QueryClient();
 
-    queryClient.setQueryData(queryKeys.sourceDocument(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocumentLight(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "all"), {
+    queryClient.setQueryData(
+      queryKeys.sourceDocument(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(
+      queryKeys.sourceDocumentLight(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }), {
       items: [createSourceDocument(ledgerId, targetId), createSourceDocument(ledgerId, otherId)],
       hasMore: false,
       total: 2,
@@ -96,7 +102,7 @@ describe("useSourceDocumentDetailMutations", () => {
     const listCache = queryClient.getQueryData<{
       items: Array<{ id: string }>;
       total: number;
-    }>(queryKeys.sourceDocuments(ledgerId, "all"));
+    }>(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }));
     expect(listCache).toBeDefined();
     expect(listCache?.items.map((item) => item.id)).toEqual([otherId]);
     expect(listCache?.total).toBe(1);
@@ -122,9 +128,15 @@ describe("useSourceDocumentDetailMutations", () => {
     expect(typeof updateImagesMutation?.onOptimisticUpdate).toBe("function");
 
     const queryClient = new QueryClient();
-    queryClient.setQueryData(queryKeys.sourceDocument(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocumentLight(targetId), createSourceDocument(ledgerId, targetId));
-    queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "all"), {
+    queryClient.setQueryData(
+      queryKeys.sourceDocument(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(
+      queryKeys.sourceDocumentLight(targetId),
+      createSourceDocument(ledgerId, targetId)
+    );
+    queryClient.setQueryData(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }), {
       items: [createSourceDocument(ledgerId, targetId), createSourceDocument(ledgerId, otherId)],
       hasMore: false,
       total: 2,
@@ -132,11 +144,15 @@ describe("useSourceDocumentDetailMutations", () => {
 
     updateImagesMutation?.onOptimisticUpdate?.(queryClient, { images: [] });
 
-    const detail = queryClient.getQueryData<{ imageUrls: string[] }>(queryKeys.sourceDocument(targetId));
-    const light = queryClient.getQueryData<{ hasImages: boolean }>(queryKeys.sourceDocumentLight(targetId));
+    const detail = queryClient.getQueryData<{ imageUrls: string[] }>(
+      queryKeys.sourceDocument(targetId)
+    );
+    const light = queryClient.getQueryData<{ hasImages: boolean }>(
+      queryKeys.sourceDocumentLight(targetId)
+    );
     const list = queryClient.getQueryData<{
       items: Array<{ id: string; imageUrls: unknown[]; hasImages: boolean }>;
-    }>(queryKeys.sourceDocuments(ledgerId, "all"));
+    }>(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }));
 
     expect(detail?.imageUrls).toEqual([]);
     expect(light?.hasImages).toBe(false);
@@ -176,7 +192,7 @@ describe("useSourceDocumentDetailMutations", () => {
         { id: "entry-2", itemName: "B", amount: "2.00" },
       ],
     });
-    queryClient.setQueryData(queryKeys.sourceDocuments(ledgerId, "all"), {
+    queryClient.setQueryData(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }), {
       items: [
         {
           ...createSourceDocument(ledgerId, targetId),
@@ -197,7 +213,7 @@ describe("useSourceDocumentDetailMutations", () => {
     );
     const list = queryClient.getQueryData<{
       items: Array<{ id: string; ledgerEntries?: Array<{ id: string }> }>;
-    }>(queryKeys.sourceDocuments(ledgerId, "all"));
+    }>(queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }));
 
     expect(detail?.ledgerEntries.map((entry) => entry.id)).toEqual(["entry-2"]);
     expect(list?.items[0]?.ledgerEntries?.map((entry) => entry.id)).toEqual(["entry-2"]);
@@ -205,7 +221,7 @@ describe("useSourceDocumentDetailMutations", () => {
     const invalidatePredicates = deleteEntryMutation?.invalidatePredicates ?? [];
     expect(
       invalidatePredicates.some((predicate) =>
-        predicate({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })
+        predicate({ queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }) })
       )
     ).toBe(true);
     expect(
@@ -214,9 +230,7 @@ describe("useSourceDocumentDetailMutations", () => {
       )
     ).toBe(true);
     expect(
-      invalidatePredicates.some((predicate) =>
-        predicate({ queryKey: queryKeys.summary(ledgerId) })
-      )
+      invalidatePredicates.some((predicate) => predicate({ queryKey: queryKeys.summary(ledgerId) }))
     ).toBe(true);
     expect(
       invalidatePredicates.some((predicate) =>

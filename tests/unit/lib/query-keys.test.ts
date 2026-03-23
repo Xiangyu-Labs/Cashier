@@ -87,6 +87,27 @@ describe("queryKeys", () => {
         "doc-789",
       ]);
     });
+
+    it("应该生成显式bounded collection query key", () => {
+      expect(
+        queryKeys.sourceDocumentCollection(ledgerId, {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          minAmount: 20,
+          maxAmount: 100,
+          limit: 1000,
+        })
+      ).toEqual([
+        "sourceDocuments",
+        ledgerId,
+        "collection",
+        "2026-03-01",
+        "2026-03-31",
+        20,
+        100,
+        1000,
+      ]);
+    });
   });
 
   describe("categories keys", () => {
@@ -265,7 +286,9 @@ describe("query invalidation helpers", () => {
 
   it("matches source document queries only", () => {
     expect(
-      invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId, "all") })
+      invalidateSourceDocuments(ledgerId)({
+        queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
+      })
     ).toBe(true);
     expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.taskQueue(ledgerId) })).toBe(
       false
@@ -283,15 +306,15 @@ describe("query invalidation helpers", () => {
   });
 
   it("matches settings queries only", () => {
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })).toBe(
-      true
-    );
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
+    ).toBe(true);
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
+    ).toBe(true);
+    expect(
+      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
+    ).toBe(true);
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
@@ -309,7 +332,9 @@ describe("query invalidation helpers", () => {
 
   it("matches calendar queries only", () => {
     expect(
-      invalidateCalendar(ledgerId)({ queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01") })
+      invalidateCalendar(ledgerId)({
+        queryKey: queryKeys.calendarHeatmap(ledgerId, "month", "2024-01-01"),
+      })
     ).toBe(true);
     expect(
       invalidateCalendar(ledgerId)({

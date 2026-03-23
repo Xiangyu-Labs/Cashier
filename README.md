@@ -114,10 +114,10 @@ npm run test:coverage  # With coverage
 
 ## Documentation
 
-- [CLAUDE.md](./CLAUDE.md) - Development guide and architecture overview
-- [HTTP API Guide](./docs/guides/HTTP_API.md) - Current HTTP routes, auth model, query params, and test coverage
-- [Error Handling Guide](./docs/guides/ERROR_HANDLING.md) - Standardized error patterns
-- [Task Handler Guide](./docs/guides/TASK_HANDLERS.md) - Creating background task handlers
+- [CLAUDE.md](./CLAUDE.md) - Working conventions for agents in this repository
+- [docs/architecture/PRD.md](./docs/architecture/PRD.md) - Current product scope, flows, and domain terms
+- [docs/architecture/UI.md](./docs/architecture/UI.md) - UI and interaction reference
+- [docs/architecture/coding-patterns.md](./docs/architecture/coding-patterns.md) - Durable engineering rules
 
 ## License
 

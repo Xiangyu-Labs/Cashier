@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { LedgerDto as Ledger, EntryCategoryDto as EntryCategory } from "@/modules/ledger/contracts";
+import type {
+  LedgerDto as Ledger,
+  EntryCategoryDto as EntryCategory,
+} from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
@@ -98,7 +101,7 @@ vi.mock("@/modules/ledger/hooks", () => ({
 }));
 
 vi.mock("@/modules/source-document/hooks", () => ({
-  useSourceDocuments: () => ({
+  useSourceDocumentCollection: () => ({
     groups: { completed: [], anomaly: [] },
     isLoading: false,
   }),
@@ -234,8 +237,12 @@ describe("workspace tab pull-to-refresh regression", () => {
 
     await refreshHandler();
 
-    const predicates = invalidateQueriesSpy.mock.calls.map((call) => call[0]?.predicate).filter(Boolean);
-    const taskQueueMatched = predicates.some((predicate) => predicate({ queryKey: queryKeys.taskQueue("ledger-1") }));
+    const predicates = invalidateQueriesSpy.mock.calls
+      .map((call) => call[0]?.predicate)
+      .filter(Boolean);
+    const taskQueueMatched = predicates.some((predicate) =>
+      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+    );
 
     expect(taskQueueMatched).toBe(true);
   });
@@ -251,9 +258,8 @@ describe("workspace tab pull-to-refresh regression", () => {
         ledger={ledger}
         periodParams={periodParams}
         onPeriodChange={vi.fn()}
-        _onFiltersChange={vi.fn()}
+        onFiltersChange={vi.fn()}
         advancedFilters={{}}
-        onAdvancedFiltersChange={vi.fn()}
       />,
       queryClient
     );
@@ -264,8 +270,12 @@ describe("workspace tab pull-to-refresh regression", () => {
 
     await refreshHandler();
 
-    const predicates = invalidateQueriesSpy.mock.calls.map((call) => call[0]?.predicate).filter(Boolean);
-    const taskQueueMatched = predicates.some((predicate) => predicate({ queryKey: queryKeys.taskQueue("ledger-1") }));
+    const predicates = invalidateQueriesSpy.mock.calls
+      .map((call) => call[0]?.predicate)
+      .filter(Boolean);
+    const taskQueueMatched = predicates.some((predicate) =>
+      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+    );
 
     expect(taskQueueMatched).toBe(true);
   });
@@ -282,8 +292,12 @@ describe("workspace tab pull-to-refresh regression", () => {
 
     await refreshHandler();
 
-    const predicates = invalidateQueriesSpy.mock.calls.map((call) => call[0]?.predicate).filter(Boolean);
-    const taskQueueMatched = predicates.some((predicate) => predicate({ queryKey: queryKeys.taskQueue("ledger-1") }));
+    const predicates = invalidateQueriesSpy.mock.calls
+      .map((call) => call[0]?.predicate)
+      .filter(Boolean);
+    const taskQueueMatched = predicates.some((predicate) =>
+      predicate({ queryKey: queryKeys.taskQueue("ledger-1") })
+    );
 
     expect(taskQueueMatched).toBe(true);
   });

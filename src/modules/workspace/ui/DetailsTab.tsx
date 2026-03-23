@@ -20,7 +20,6 @@ import {
   LedgerEntryDetailModal,
 } from "@/modules/ledger/ui";
 import type { EntryFilters } from "@/modules/ledger/ui";
-import type { LedgerAdvancedFilters } from "../initial-query-state";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -32,9 +31,13 @@ interface DetailsTabProps {
   ledger?: Ledger;
   periodParams: PeriodParams;
   onPeriodChange: (params: PeriodParams) => void;
-  _onFiltersChange: (filters: EntryFilters) => void;
-  advancedFilters: LedgerAdvancedFilters;
-  onAdvancedFiltersChange: (filters: LedgerAdvancedFilters) => void;
+  onFiltersChange: (filters: EntryFilters) => void;
+  advancedFilters: {
+    categoryId?: string | null;
+    currency?: string | null;
+    minAmount?: number | null;
+    maxAmount?: number | null;
+  };
 }
 
 export function DetailsTab({
@@ -43,9 +46,8 @@ export function DetailsTab({
   ledger,
   periodParams,
   onPeriodChange,
-  _onFiltersChange,
+  onFiltersChange,
   advancedFilters,
-  onAdvancedFiltersChange,
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
@@ -81,7 +83,7 @@ export function DetailsTab({
   const { groupedItems } = useDetailsTabGrouping(entries);
 
   // Filters
-  const { filters, handleFiltersChange } = useDetailsTabFilters({
+  const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,
   });
@@ -125,8 +127,6 @@ export function DetailsTab({
     ]);
   }, [queryClient, ledgerId]);
 
-  const handleLocalFiltersChange = handleFiltersChange(onPeriodChange, onAdvancedFiltersChange);
-
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
@@ -152,7 +152,7 @@ export function DetailsTab({
             )}
             <EntryFilterPanel
               filters={filters}
-              onFiltersChange={handleLocalFiltersChange}
+              onFiltersChange={onFiltersChange}
               periodParams={periodParams}
               onPeriodChange={onPeriodChange}
               categories={categories}

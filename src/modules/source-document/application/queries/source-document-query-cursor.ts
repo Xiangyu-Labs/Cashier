@@ -11,72 +11,34 @@ export function buildSourceDocumentCursorCondition(
 ): SQL<unknown> | null {
   if (cursor == null || cursor === "") return null;
 
-  const parts = cursor.split("|");
-
-  if (parts.length === 3) {
-    const cursorDate = parts[0];
-    const cursorCreatedRaw = parts[1];
-    const cursorId = parts[2];
-
-    if (
-      cursorDate == null ||
-      cursorDate === "" ||
-      cursorCreatedRaw == null ||
-      cursorCreatedRaw === "" ||
-      cursorId == null ||
-      cursorId === ""
-    ) {
-      return null;
-    }
-
-    const cursorCreated = new Date(cursorCreatedRaw);
-    if (Number.isNaN(cursorCreated.getTime())) {
-      return null;
-    }
-
-    return (
-      or(
-        lt(sourceDocuments.entryDate, cursorDate),
-        and(
-          eq(sourceDocuments.entryDate, cursorDate),
-          lt(sourceDocuments.createdAt, cursorCreated)
-        ),
-        and(
-          eq(sourceDocuments.entryDate, cursorDate),
-          eq(sourceDocuments.createdAt, cursorCreated),
-          lt(sourceDocuments.id, cursorId)
-        )
-      ) ?? null
-    );
+  const [cursorDate, cursorCreatedRaw, cursorId] = cursor.split("|");
+  if (
+    cursorDate == null ||
+    cursorDate === "" ||
+    cursorCreatedRaw == null ||
+    cursorCreatedRaw === "" ||
+    cursorId == null ||
+    cursorId === ""
+  ) {
+    return null;
   }
 
-  if (parts.length === 2) {
-    const cursorCreatedRaw = parts[0];
-    const cursorId = parts[1];
-
-    if (
-      cursorCreatedRaw == null ||
-      cursorCreatedRaw === "" ||
-      cursorId == null ||
-      cursorId === ""
-    ) {
-      return null;
-    }
-
-    const cursorCreated = new Date(cursorCreatedRaw);
-    if (Number.isNaN(cursorCreated.getTime())) {
-      return null;
-    }
-
-    return (
-      or(
-        lt(sourceDocuments.createdAt, cursorCreated),
-        and(eq(sourceDocuments.createdAt, cursorCreated), lt(sourceDocuments.id, cursorId))
-      ) ?? null
-    );
+  const cursorCreated = new Date(cursorCreatedRaw);
+  if (Number.isNaN(cursorCreated.getTime())) {
+    return null;
   }
 
-  return null;
+  return (
+    or(
+      lt(sourceDocuments.entryDate, cursorDate),
+      and(eq(sourceDocuments.entryDate, cursorDate), lt(sourceDocuments.createdAt, cursorCreated)),
+      and(
+        eq(sourceDocuments.entryDate, cursorDate),
+        eq(sourceDocuments.createdAt, cursorCreated),
+        lt(sourceDocuments.id, cursorId)
+      )
+    ) ?? null
+  );
 }
 
 export function generateSourceDocumentNextCursor(lastItem: SourceDocumentCursorRow): string {

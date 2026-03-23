@@ -7,7 +7,7 @@ import {
   invalidateLedgerStats,
   invalidateSourceDocuments,
   invalidateTaskQueue,
-  matchPaginatedSourceDocuments,
+  matchSourceDocumentCollection,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
@@ -50,11 +50,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     ],
     onOptimisticUpdate: (queryClient, id) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old) => removeSourceDocumentsFromPaginatedLists(old, [id])
       );
 
@@ -81,11 +81,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old) => {
           if (old === undefined || old.items === undefined) return old;
           return {
@@ -118,11 +118,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old) => removeSourceDocumentsFromPaginatedLists(old, ids)
       );
 
@@ -144,11 +144,11 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     onOptimisticUpdate: (queryClient, ids) => {
       const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchPaginatedSourceDocuments(ledgerId),
+        predicate: matchSourceDocumentCollection(ledgerId),
       });
 
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchPaginatedSourceDocuments(ledgerId) },
+        { predicate: matchSourceDocumentCollection(ledgerId) },
         (old) => {
           if (old === undefined || old.items === undefined) return old;
           return {

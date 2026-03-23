@@ -22,23 +22,27 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
-  sourceDocumentsAll: (
+  sourceDocumentCollectionPrefix: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "collection"] as const,
+  sourceDocumentCollection: (
     ledgerId: string,
     params?: {
       startDate?: string | null | undefined;
       endDate?: string | null | undefined;
       minAmount?: number | null | undefined;
       maxAmount?: number | null | undefined;
+      limit?: number | null | undefined;
     }
   ) =>
     [
       "sourceDocuments",
       ledgerId,
-      "all",
+      "collection",
       params?.startDate ?? null,
       params?.endDate ?? null,
       params?.minAmount ?? null,
       params?.maxAmount ?? null,
+      params?.limit ?? null,
     ] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
@@ -194,10 +198,10 @@ export function invalidateTaskQueue(ledgerId: string): QueryPredicate {
 }
 
 /**
- * Helper to match paginated source document queries with the `all` filter.
+ * Helper to match bounded source document collection queries.
  */
-export function matchPaginatedSourceDocuments(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(queryKeys.sourceDocuments(ledgerId, "all"));
+export function matchSourceDocumentCollection(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocumentCollectionPrefix(ledgerId));
 }
 
 /**

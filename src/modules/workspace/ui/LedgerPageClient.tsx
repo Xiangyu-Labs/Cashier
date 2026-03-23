@@ -150,7 +150,6 @@ export function LedgerPageClient({
     periodParams,
     filterParams,
     handlePeriodChange,
-    handleAdvancedFiltersChange,
     handleFiltersChange,
   } = usePeriodFilter({
     pathname,
@@ -231,9 +230,8 @@ export function LedgerPageClient({
                 ledger={ledger}
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
-                _onFiltersChange={handleFiltersChange}
+                onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
-                onAdvancedFiltersChange={handleAdvancedFiltersChange}
               />
             </Suspense>
           </TabsContent>

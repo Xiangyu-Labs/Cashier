@@ -6,7 +6,7 @@ import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
 const replaceLedgerUrlMock = vi.hoisted(() => vi.fn());
 const useLedgerTabsMock = vi.hoisted(() => vi.fn());
 const usePeriodFilterMock = vi.hoisted(() => vi.fn());
-const handleAdvancedFiltersChangeMock = vi.hoisted(() => vi.fn());
+const handleFiltersChangeMock = vi.hoisted(() => vi.fn());
 const useDrilldownNavigationMock = vi.hoisted(() => vi.fn());
 const useLedgerDialogStateMock = vi.hoisted(() => vi.fn());
 const useLedgerPagePrefetchingMock = vi.hoisted(() => vi.fn());
@@ -51,10 +51,10 @@ vi.mock("next/dynamic", () => ({
 
     if (text.includes("DetailsTab")) {
       return createComponent("details-tab-trigger-filters", "details-tab", (props) => {
-        const onAdvancedFiltersChange = props.onAdvancedFiltersChange as
+        const onFiltersChange = props.onFiltersChange as
           | ((value: unknown) => void)
           | undefined;
-        onAdvancedFiltersChange?.({ categoryId: "cat-1" });
+        onFiltersChange?.({ categoryId: "cat-1" });
       });
     }
 
@@ -191,8 +191,8 @@ describe("LedgerPageClient", () => {
       periodParams: { period: "thisMonth" },
       filterParams: {},
       handlePeriodChange: vi.fn(),
-      handleAdvancedFiltersChange: handleAdvancedFiltersChangeMock,
-      handleFiltersChange: vi.fn(),
+      handleAdvancedFiltersChange: vi.fn(),
+      handleFiltersChange: handleFiltersChangeMock,
     });
     useDrilldownNavigationMock.mockReturnValue({
       handleCategoryDrilldown: vi.fn(),
@@ -245,7 +245,7 @@ describe("LedgerPageClient", () => {
     expect(screen.getByText("notFound")).toBeTruthy();
   });
 
-  it("wires prefetching and delegates advanced filter writes to usePeriodFilter", () => {
+  it("wires prefetching and delegates filter writes to usePeriodFilter", () => {
     render(
       <LedgerPageClient
         ledgerId="ledger-1"
@@ -257,7 +257,7 @@ describe("LedgerPageClient", () => {
     expect(useLedgerPagePrefetchingMock).toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("details-tab-trigger-filters"));
-    expect(handleAdvancedFiltersChangeMock).toHaveBeenCalledWith({ categoryId: "cat-1" });
+    expect(handleFiltersChangeMock).toHaveBeenCalledWith({ categoryId: "cat-1" });
     expect(replaceLedgerUrlMock).not.toHaveBeenCalled();
   });
 

@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 import {
-  getAllSourceDocuments,
+  getSourceDocumentCollection,
   getSourceDocumentFullQuery,
+  listSourceDocuments,
   listSourceDocumentsQuery,
 } from "@/modules/source-document/application/queries/source-document-queries";
 import { getPendingSourceDocuments } from "@/modules/source-document/queries";
@@ -79,6 +80,14 @@ describe("source-document-queries", () => {
     expect(page1.nextCursor).not.toBeNull();
 
     expect(inserted).toHaveLength(3);
+  });
+
+  it("rejects legacy two-segment cursors", async () => {
+    await expect(
+      listSourceDocuments(ledgerId, {
+        cursor: "2026-03-23T10:00:00.000Z|doc-id",
+      } as never)
+    ).rejects.toThrow(ValidationError);
   });
 
   it("includes ledger entries when requested", async () => {
@@ -174,7 +183,9 @@ describe("source-document-queries", () => {
     expect(storedDeletedDoc?.status).toBe("deleted");
     expect(storedDeletedDoc?.deletedAt).toBeNull();
 
-    await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(NotFoundError);
+    await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(
+      NotFoundError
+    );
   });
 
   it("filters source documents by aggregated converted amount", async () => {
@@ -223,8 +234,9 @@ describe("source-document-queries", () => {
       },
     ]);
 
-    const result = await getAllSourceDocuments(ledgerId, {
+    const result = await getSourceDocumentCollection(ledgerId, {
       minAmount: 100,
+      limit: 1000,
     });
 
     expect(result.items).toHaveLength(1);

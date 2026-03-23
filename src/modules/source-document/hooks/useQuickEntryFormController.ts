@@ -131,12 +131,13 @@ export function useQuickEntryFormController({
         ],
       };
 
+      const collectionQueryKey = queryKeys.sourceDocumentCollectionPrefix(ledgerId);
       const docSnapshots = createListSnapshots<SourceDocumentCollectionDto>(
         queryClient,
-        queryKeys.sourceDocuments(ledgerId, "all")
+        collectionQueryKey
       );
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { queryKey: queryKeys.sourceDocuments(ledgerId, "all") },
+        { queryKey: collectionQueryKey },
         (old) => {
           if (!old) return old;
           return {
