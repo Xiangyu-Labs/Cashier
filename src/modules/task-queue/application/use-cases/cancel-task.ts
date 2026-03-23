@@ -6,7 +6,7 @@ import {
   deletedSourceDocumentPatch,
   whereSourceDocumentNotDeleted,
   whereSourceDocumentNotDeletedId,
-} from "@/modules/source-document/queries";
+} from "@/modules/source-document/application/source-document-state";
 import { sourceDocuments, taskRuns } from "@/persistence";
 
 async function softDeleteQueuedOrProcessingSourceDocument(

@@ -10,7 +10,7 @@ import {
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
-import { whereSourceDocumentNotDeleted } from "@/modules/source-document/queries";
+import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
 
 function calculateStats(amounts: number[]): CalendarHeatmapStats {
   if (amounts.length === 0) {

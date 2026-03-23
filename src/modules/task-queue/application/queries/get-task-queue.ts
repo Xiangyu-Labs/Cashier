@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
 import { sourceDocuments, taskRuns } from "@/persistence";
-import { whereSourceDocumentNotDeleted } from "@/modules/source-document/queries";
 import {
   anomalyDocToQueueItem,
   getSourceDocumentId,
