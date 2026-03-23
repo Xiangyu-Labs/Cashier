@@ -3,8 +3,6 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { useTranslations } from "next-intl";
 import ReactCrop, { areCropsEqual, type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { Crop as CropIcon, Pencil, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import {
@@ -12,6 +10,7 @@ import {
   exportCanvasAsDataUrl,
   selectCurrentToolResult,
 } from "./image-editor.core";
+import { ImageEditorToolbar } from "./image-editor-toolbar";
 import type { EditorImage, EditorTool, ImageEditorHandle } from "./image-editor.types";
 import {
   createCenteredCropSelection,
@@ -306,61 +305,23 @@ export const ImageEditor = forwardRef<ImageEditorHandle, ImageEditorProps>(funct
   return (
     <>
       <div className="flex h-full flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant={activeTool === "crop" ? "default" : "outline"}
-              onClick={() => handleToolClick("crop")}
-            >
-              <CropIcon className="mr-1 h-4 w-4" />
-              {t("crop")}
-            </Button>
-            <Button
-              size="sm"
-              variant={activeTool === "draw" ? "default" : "outline"}
-              onClick={() => handleToolClick("draw")}
-            >
-              <Pencil className="mr-1 h-4 w-4" />
-              {t("draw")}
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {activeTool === "draw" && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{t("brushSize")}:</span>
-                <input
-                  type="range"
-                  min="5"
-                  max="50"
-                  value={brushSize}
-                  onChange={(e) => setBrushSize(Number(e.target.value))}
-                  className="w-24"
-                />
-                <span className="w-6 text-sm">{brushSize}</span>
-              </div>
-            )}
-
-            {hasPendingToolChanges && (
-              <Button variant="outline" size="sm" onClick={resetCurrentTool}>
-                <RotateCcw className="mr-1 h-4 w-4" />
-                {t("reset")}
-              </Button>
-            )}
-
-            {activeTool !== null && (
-              <>
-                <Button variant="outline" size="sm" onClick={handleCancelCurrentTool}>
-                  {t("cancel")}
-                </Button>
-                <Button size="sm" onClick={handleSaveCurrentTool} disabled={!canSaveCurrentTool}>
-                  {t("save")}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+        <ImageEditorToolbar
+          activeTool={activeTool}
+          brushSize={brushSize}
+          hasPendingToolChanges={hasPendingToolChanges}
+          canSaveCurrentTool={canSaveCurrentTool}
+          cropLabel={t("crop")}
+          drawLabel={t("draw")}
+          brushSizeLabel={t("brushSize")}
+          resetLabel={t("reset")}
+          cancelLabel={t("cancel")}
+          saveLabel={t("save")}
+          onSelectTool={handleToolClick}
+          onBrushSizeChange={setBrushSize}
+          onReset={resetCurrentTool}
+          onCancel={handleCancelCurrentTool}
+          onSave={handleSaveCurrentTool}
+        />
 
         <div className="flex flex-1 items-center justify-center overflow-auto bg-muted/50 p-4">
           {activeTool === "crop" ? (

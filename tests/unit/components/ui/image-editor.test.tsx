@@ -156,6 +156,58 @@ async function enterCropModeAndChangeSelection(user: ReturnType<typeof userEvent
   await user.click(screen.getByTestId("mock-react-crop-change"));
 }
 
+async function enterDrawMode(
+  user: ReturnType<typeof userEvent.setup>,
+  container: HTMLElement,
+  image = "data:image/png;base64,original"
+) {
+  await user.click(screen.getByRole("button", { name: "涂鸦" }));
+
+  const drawImage = container.querySelector(`img.hidden[src="${image}"]`) as HTMLImageElement | null;
+  if (drawImage == null) {
+    throw new Error("Draw mode image was not rendered");
+  }
+
+  setLoadedImageSize(drawImage);
+  fireEvent.load(drawImage);
+
+  const canvas = screen.getByTestId("draw-editor-canvas") as HTMLCanvasElement;
+  Object.defineProperty(canvas, "getBoundingClientRect", {
+    configurable: true,
+    value: () => ({
+      bottom: 300,
+      height: 300,
+      left: 0,
+      right: 400,
+      toJSON: () => "",
+      top: 0,
+      width: 400,
+      x: 0,
+      y: 0,
+    }),
+  });
+
+  return canvas;
+}
+
+function drawStroke(canvas: HTMLCanvasElement) {
+  fireEvent.pointerDown(canvas, {
+    clientX: 40,
+    clientY: 50,
+    pointerId: 1,
+  });
+  fireEvent.pointerMove(canvas, {
+    clientX: 120,
+    clientY: 140,
+    pointerId: 1,
+  });
+  fireEvent.pointerUp(canvas, {
+    clientX: 120,
+    clientY: 140,
+    pointerId: 1,
+  });
+}
+
 describe("ImageEditor", () => {
   beforeEach(() => {
     Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
@@ -261,6 +313,51 @@ describe("ImageEditor", () => {
       data: "data:image/jpeg;base64,edited",
       mimeType: "image/jpeg",
     });
+  });
+
+  it("shows draw controls only in draw mode and delegates reset save and cancel actions", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+      <ImageEditor
+        image="data:image/png;base64,original"
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.queryByLabelText("画笔大小")).toBeNull();
+
+    const canvas = await enterDrawMode(user, container);
+    const brushSizeSlider = screen.getByLabelText("画笔大小") as HTMLInputElement;
+    const saveButton = screen.getByRole("button", { name: "保存" }) as HTMLButtonElement;
+
+    expect(brushSizeSlider.value).toBe("10");
+    fireEvent.change(brushSizeSlider, { target: { value: "24" } });
+    expect(screen.getByText("24")).toBeTruthy();
+
+    expect(saveButton.disabled).toBe(true);
+    drawStroke(canvas);
+    expect(saveButton.disabled).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "重置" }));
+    expect(saveButton.disabled).toBe(true);
+
+    drawStroke(canvas);
+    await user.click(saveButton);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith({
+      data: "data:image/jpeg;base64,edited",
+      mimeType: "image/jpeg",
+    });
+    expect(screen.queryByLabelText("画笔大小")).toBeNull();
+
+    const secondCanvas = await enterDrawMode(user, container, "data:image/jpeg;base64,edited");
+    drawStroke(secondCanvas);
+    await user.click(screen.getByRole("button", { name: "取消" }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByLabelText("画笔大小")).toBeNull();
   });
 });
 
