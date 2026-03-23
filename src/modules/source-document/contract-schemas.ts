@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
+import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -113,9 +114,33 @@ export const processingTasksQuerySchema = strictObjectSchema({
 
 export const sourceDocumentIdsSchema = z.array(uuidSchema);
 
+function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new ValidationError("Validation failed", { issues: result.error.issues });
+  }
+
+  return result.data;
+}
+
+export function parseCreateSourceDocumentInput(input: unknown): CreateSourceDocumentInputContract {
+  const result = createSourceDocumentInputSchema.safeParse(input);
+  if (!result.success) {
+    throw new ValidationError(result.error.issues[0]?.message ?? "Invalid source document input", {
+      issues: result.error.issues,
+    });
+  }
+
+  return result.data;
+}
+
+export const parseListSourceDocumentsInput = (input: unknown) =>
+  parseSourceDocumentContract(listSourceDocumentsInputSchema, input);
+
 export type CreateSourceDocumentInputContract = z.infer<typeof createSourceDocumentInputSchema>;
 export type RetrySourceDocumentInputContract = z.infer<typeof retrySourceDocumentInputSchema>;
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
+export type ListSourceDocumentsValidatedInput = z.infer<typeof listSourceDocumentsInputSchema>;
 export type ListSourceDocumentCollectionInput = z.input<typeof sourceDocumentCollectionInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;

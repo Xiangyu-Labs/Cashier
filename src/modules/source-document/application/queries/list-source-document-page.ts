@@ -1,6 +1,5 @@
 import { and, desc, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ValidationError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import {
   mapSourceDocumentListItemDto,
@@ -8,11 +7,11 @@ import {
 } from "@/modules/source-document/mappers";
 import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
 import {
-  listSourceDocumentsInputSchema,
   type ListSourceDocumentsInput,
+  type ListSourceDocumentsValidatedInput,
+  parseListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { sourceDocuments } from "@/persistence";
-import type { z } from "zod";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -26,7 +25,6 @@ import { buildSourceDocumentDateConditions } from "./source-document-query-date"
 import { buildSourceDocumentStatusCondition } from "./source-document-query-status";
 
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
-type ParsedListSourceDocumentsInput = z.output<typeof listSourceDocumentsInputSchema>;
 
 export interface ListSourceDocumentsParams {
   status?: string | null;
@@ -120,17 +118,13 @@ export async function listSourceDocuments(
   ledgerId: string,
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
-  const parsed = listSourceDocumentsInputSchema.safeParse(params);
-  if (!parsed.success) {
-    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
-  }
-
-  return listSourceDocumentsFromValidatedInput(ledgerId, parsed.data);
+  const validated = parseListSourceDocumentsInput(params);
+  return listSourceDocumentsFromValidatedInput(ledgerId, validated);
 }
 
 export async function listSourceDocumentsFromValidatedInput(
   ledgerId: string,
-  validated: ParsedListSourceDocumentsInput
+  validated: ListSourceDocumentsValidatedInput
 ): Promise<SourceDocumentPageDto> {
   return listSourceDocumentsQuery(ledgerId, {
     status: validated.status ?? null,

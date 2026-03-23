@@ -16,14 +16,14 @@ describe("listLedgerEntries", () => {
     });
 
     const result = await listLedgerEntries("ledger-1", {
-      limit: 20,
+      limit: "20" as never,
       cursor: undefined,
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       categoryId: "11111111-1111-4111-8111-111111111111",
       currency: "USD",
-      minAmount: 10,
-      maxAmount: 50,
+      minAmount: "10" as never,
+      maxAmount: "50" as never,
     });
 
     expect(listLedgerEntryPageMock).toHaveBeenCalledWith({
@@ -50,6 +50,6 @@ describe("listLedgerEntries", () => {
       listLedgerEntries("ledger-1", {
         limit: 0,
       })
-    ).rejects.toThrow("Too small");
+    ).rejects.toThrow("Validation failed");
   });
 });

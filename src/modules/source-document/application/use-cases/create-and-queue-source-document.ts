@@ -5,7 +5,7 @@ import { ValidationError } from "@/lib/errors";
 import { omitUndefinedProperties } from "@/lib/validation";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
+import { parseCreateSourceDocumentInput } from "@/modules/source-document/contract-schemas";
 import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
@@ -33,22 +33,17 @@ function resolveEntryDate(entryDate?: string, timezone?: string): string {
 export async function createAndQueueSourceDocument(
   input: CreateAndQueueSourceDocumentInput
 ): Promise<CreateSourceDocumentResponseDto> {
-  const { ledgerId, ledger, text, images, originalImages, entryDate, timezone } = input;
+  const { ledgerId, ledger } = input;
 
   const parsePayload = omitUndefinedProperties({
-    text,
-    images,
-    originalImages,
-    entryDate,
-    timezone,
+    text: input.text,
+    images: input.images,
+    originalImages: input.originalImages,
+    entryDate: input.entryDate,
+    timezone: input.timezone,
   });
-  const parseResult = createSourceDocumentInputSchema.safeParse(parsePayload);
-
-  if (!parseResult.success) {
-    throw new ValidationError(
-      parseResult.error.issues[0]?.message ?? "Invalid source document input"
-    );
-  }
+  const validated = parseCreateSourceDocumentInput(parsePayload);
+  const { text, images, originalImages, entryDate, timezone } = validated;
 
   const q = forLedger(sourceDocuments, ledgerId);
   const [savedDoc] = await db

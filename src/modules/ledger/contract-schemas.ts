@@ -131,6 +131,8 @@ export const parseCreateServiceCredentialInput = (input: unknown) =>
   parseLedgerContract(createServiceCredentialInputSchema, input);
 export const parseServiceCredentialId = (input: unknown) =>
   parseLedgerContract(serviceCredentialIdSchema, input);
+export const parseListLedgerEntriesInput = (input: unknown) =>
+  parseLedgerContract(listLedgerEntriesInputSchema, input);
 
 export type CreateLedgerInput = z.infer<typeof createLedgerInputSchema>;
 export type UpdateLedgerInput = z.infer<typeof updateLedgerInputSchema>;
@@ -141,4 +143,5 @@ export type UpdateLedgerEntryInput = z.infer<typeof updateLedgerEntryInputSchema
 export type BatchUpdateLedgerEntriesInput = z.infer<typeof batchUpdateLedgerEntriesInputSchema>;
 export type CreateServiceCredentialInput = z.infer<typeof createServiceCredentialInputSchema>;
 export type ListLedgerEntriesInput = z.input<typeof listLedgerEntriesInputSchema>;
+export type ListLedgerEntriesValidatedInput = z.infer<typeof listLedgerEntriesInputSchema>;
 export type LedgerStatsQueryInput = z.infer<typeof ledgerStatsQuerySchema>;
