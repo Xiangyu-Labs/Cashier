@@ -246,6 +246,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
   return (
     <div
+      data-testid="source-document-card-root"
       className={cn(
         "bg-surface rounded-xl shadow-sm border overflow-hidden mb-6 transition-all",
         isSelected ? "border-primary ring-1 ring-primary/20" : "border-border",
@@ -354,6 +355,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
                   variant="ghost"
                   size="icon-sm"
                   className="h-7 w-7 text-muted-foreground hover:text-text"
+                  aria-label="source-document-card-actions"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -383,6 +385,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       <AnimatePresence initial={false}>
         {isItemsExpanded && (
           <motion.div
+            data-testid="source-document-card-body"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
