@@ -36,16 +36,5 @@ export default async function HomePage(): Promise<ReactNode> {
   if (result.kind === "redirect-existing" || result.kind === "redirect-created") {
     redirect({ href: `/ledger/${result.ledgerId}`, locale });
   }
-
-  if (result.kind !== "error") {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-bg">
-      <div className="text-center">
-        <p className="mt-4 text-muted">{result.message}</p>
-      </div>
-    </div>
-  );
+  return null;
 }
