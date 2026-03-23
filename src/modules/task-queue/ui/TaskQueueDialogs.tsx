@@ -1,29 +1,24 @@
 "use client";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
+import type { TaskQueueDeleteConfirmState } from "./taskQueueModal.types";
 
 interface TaskQueueDialogsProps {
   ledgerId: string;
   retrySourceDocId: string | null;
-  deleteConfirm: {
-    open: boolean;
-    type: "single" | "all" | null;
-    id: string | null;
-    title: string;
-    description: string;
-  };
-  onRetrySourceDocIdChange: (id: string | null) => void;
-  onDeleteConfirmChange: (open: boolean) => void;
+  deleteConfirm: TaskQueueDeleteConfirmState;
+  onCloseRetryDialog: () => void;
+  onCloseDeleteConfirm: () => void;
   onDeleteConfirm: () => void;
-  onRetrySuccess: () => void;
+  onRetrySuccess: () => void | Promise<void>;
 }
 
 export function TaskQueueDialogs({
   ledgerId,
   retrySourceDocId,
   deleteConfirm,
-  onRetrySourceDocIdChange,
-  onDeleteConfirmChange,
+  onCloseRetryDialog,
+  onCloseDeleteConfirm,
   onDeleteConfirm,
   onRetrySuccess,
 }: TaskQueueDialogsProps) {
@@ -31,7 +26,7 @@ export function TaskQueueDialogs({
     <>
       <ConfirmDialog
         open={deleteConfirm.open}
-        onOpenChange={onDeleteConfirmChange}
+        onOpenChange={(open) => !open && onCloseDeleteConfirm()}
         title={deleteConfirm.title}
         description={deleteConfirm.description}
         onConfirm={onDeleteConfirm}
@@ -43,7 +38,7 @@ export function TaskQueueDialogs({
           ledgerId={ledgerId}
           sourceDocument={{ id: retrySourceDocId }}
           open={retrySourceDocId != null && retrySourceDocId !== ""}
-          onOpenChange={(open) => !open && onRetrySourceDocIdChange(null)}
+          onOpenChange={(open) => !open && onCloseRetryDialog()}
           onSuccess={onRetrySuccess}
         />
       )}

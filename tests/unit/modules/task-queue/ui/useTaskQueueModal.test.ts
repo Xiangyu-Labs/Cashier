@@ -268,4 +268,15 @@ describe("useTaskQueueModal", () => {
       predicate: expect.any(Function),
     });
   });
+
+  it("does not expose raw mutation objects or raw dialog setters", () => {
+    const { result } = renderHook(() => useTaskQueueModal("ledger-1"));
+
+    expect("batchDelete" in result.current).toBe(false);
+    expect("batchRetry" in result.current).toBe(false);
+    expect("cancelTask" in result.current).toBe(false);
+    expect("dismissTask" in result.current).toBe(false);
+    expect("setRetrySourceDocId" in result.current).toBe(false);
+    expect("setDeleteConfirm" in result.current).toBe(false);
+  });
 });

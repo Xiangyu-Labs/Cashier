@@ -5,18 +5,13 @@ import { Button } from "@/components/ui/button";
 import type { QueueItem } from "@/modules/task-queue/contracts";
 import { TaskGroupSection } from "./TaskGroupSection";
 import { QueueItemCard } from "./QueueItemCard";
+import type { TaskQueueGroupedItems, TaskQueueRetryStatus } from "./taskQueueModal.types";
 
 interface TaskQueueContentProps {
   ledgerId: string;
   isLoading: boolean;
   isEmpty: boolean;
-  groupedItems: {
-    pending: QueueItem[];
-    running: QueueItem[];
-    failed: QueueItem[];
-    completed: QueueItem[];
-    anomaly: QueueItem[];
-  };
+  groupedItems: TaskQueueGroupedItems;
   collapsedState: {
     isPendingCollapsed: boolean;
     isRunningCollapsed: boolean;
@@ -36,12 +31,12 @@ interface TaskQueueContentProps {
   onRetry: (item: QueueItem) => void;
   onDeleteSingle: (item: QueueItem) => void;
   onDeleteAll: () => void;
-  onRetryAll: (status: "failed" | "anomaly") => void;
+  onRetryAll: (status: TaskQueueRetryStatus) => void;
   onCancel: (item: QueueItem) => void;
   onDismiss: (item: QueueItem) => void;
   onDismissAll: () => void;
   onViewDetails: (item: QueueItem) => void;
-  onDeleteAllAnomaly?: (ids: string[]) => void;
+  onDeleteAllAnomaly?: () => void;
 }
 
 export function TaskQueueContent({
@@ -217,12 +212,7 @@ export function TaskQueueContent({
                   variant="outline"
                   size="sm"
                   className="h-6 border-amber-100 bg-amber-50/50 px-2 text-xs text-amber-600 hover:border-amber-200 hover:bg-amber-50"
-                  onClick={() => {
-                    const ids = groupedItems.anomaly
-                      .map((item) => item.sourceDocumentId)
-                      .filter((id): id is string => id != null && id !== "");
-                    onDeleteAllAnomaly(ids);
-                  }}
+                  onClick={onDeleteAllAnomaly}
                 >
                   {t("deleteAll")}
                 </Button>

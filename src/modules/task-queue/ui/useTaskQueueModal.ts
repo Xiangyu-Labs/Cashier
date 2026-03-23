@@ -35,12 +35,6 @@ export interface UseTaskQueueModalReturn {
   isEmpty: boolean;
   failedWithSourceDoc: QueueItem[];
   failedWithoutSourceDoc: QueueItem[];
-  deleteSourceDocument: ReturnType<typeof useTaskQueueMutations>["deleteSourceDocument"];
-  batchDelete: ReturnType<typeof useTaskQueueMutations>["batchDelete"];
-  batchRetry: ReturnType<typeof useTaskQueueMutations>["batchRetry"];
-  cancelTask: ReturnType<typeof useTaskQueueMutations>["cancelTask"];
-  dismissTask: ReturnType<typeof useTaskQueueMutations>["dismissTask"];
-  batchDismiss: ReturnType<typeof useTaskQueueMutations>["batchDismiss"];
   setIsPendingCollapsed: (value: boolean) => void;
   setIsRunningCollapsed: (value: boolean) => void;
   setIsFailedCollapsed: (value: boolean) => void;
@@ -48,16 +42,6 @@ export interface UseTaskQueueModalReturn {
   setIsCompletedCollapsed: (value: boolean) => void;
   closeRetryDialog: () => void;
   closeDeleteConfirm: () => void;
-  setRetrySourceDocId: (id: string | null) => void;
-  setDeleteConfirm: React.Dispatch<
-    React.SetStateAction<{
-      open: boolean;
-      type: "single" | "all" | null;
-      id: string | null;
-      title: string;
-      description: string;
-    }>
-  >;
   handleDeleteConfirmAction: () => void;
   handleRetry: (item: QueueItem) => void;
   handleDeleteSingle: (item: QueueItem) => void;
@@ -76,8 +60,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
   const queryClient = useQueryClient();
   const { items, stats, isLoading } = useTaskQueue(ledgerId);
   const mutations = useTaskQueueMutations(ledgerId);
-  const { deleteSourceDocument, batchDelete, batchRetry, cancelTask, dismissTask, batchDismiss } =
-    mutations;
   const sectionState = useTaskQueueSectionState();
   const dialogState = useTaskQueueDialogState();
   const {
@@ -96,7 +78,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     retrySourceDocId,
     deleteConfirm,
     setRetrySourceDocId,
-    setDeleteConfirm,
     openSingleDeleteConfirm,
     openDeleteAllConfirm,
     closeDeleteConfirm,
@@ -138,12 +119,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     isEmpty,
     failedWithSourceDoc,
     failedWithoutSourceDoc,
-    deleteSourceDocument,
-    batchDelete,
-    batchRetry,
-    cancelTask,
-    dismissTask,
-    batchDismiss,
     setIsPendingCollapsed,
     setIsRunningCollapsed,
     setIsFailedCollapsed,
@@ -151,8 +126,6 @@ export function useTaskQueueModal(ledgerId: string): UseTaskQueueModalReturn {
     setIsCompletedCollapsed,
     closeRetryDialog,
     closeDeleteConfirm,
-    setRetrySourceDocId,
-    setDeleteConfirm,
     ...actions,
   };
 }

@@ -47,18 +47,18 @@ export function TaskQueueModal({ ledgerId, open, onOpenChange }: TaskQueueModalP
     isEmpty,
     failedWithSourceDoc,
     failedWithoutSourceDoc,
-    batchDelete,
     setIsPendingCollapsed,
     setIsRunningCollapsed,
     setIsFailedCollapsed,
     setIsAnomalyCollapsed,
     setIsCompletedCollapsed,
-    setRetrySourceDocId,
-    setDeleteConfirm,
+    closeRetryDialog,
+    closeDeleteConfirm,
     handleDeleteConfirmAction,
     handleRetry,
     handleDeleteSingle,
     handleDeleteAll,
+    handleDeleteAllAnomaly,
     handleRetryAll,
     handleCancel,
     handleDismiss,
@@ -116,7 +116,7 @@ export function TaskQueueModal({ ledgerId, open, onOpenChange }: TaskQueueModalP
               onDismiss={handleDismiss}
               onDismissAll={handleDismissAll}
               onViewDetails={handleViewDetails}
-              onDeleteAllAnomaly={(ids) => batchDelete.mutate(ids)}
+              onDeleteAllAnomaly={handleDeleteAllAnomaly}
             />
           </div>
 
@@ -138,10 +138,8 @@ export function TaskQueueModal({ ledgerId, open, onOpenChange }: TaskQueueModalP
         ledgerId={ledgerId}
         retrySourceDocId={retrySourceDocId}
         deleteConfirm={deleteConfirm}
-        onRetrySourceDocIdChange={setRetrySourceDocId}
-        onDeleteConfirmChange={(openValue) =>
-          setDeleteConfirm((previous) => ({ ...previous, open: openValue }))
-        }
+        onCloseRetryDialog={closeRetryDialog}
+        onCloseDeleteConfirm={closeDeleteConfirm}
         onDeleteConfirm={handleDeleteConfirmAction}
         onRetrySuccess={handleRetrySuccess}
       />
