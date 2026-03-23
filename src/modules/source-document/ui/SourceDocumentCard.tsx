@@ -1,114 +1,18 @@
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, memo } from "react";
-import { Trash2, ChevronDown, RefreshCw, MoreVertical, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { parseDateString } from "@/lib/date-utils";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
-import { ProcessingStatus } from "./processing-status";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { LedgerEntryItem } from "./LedgerEntryItem";
 import {
-  buildSourceDocumentCardTotals,
   getSafeImageSrc,
   getSourceDocumentPreview,
   sortSourceDocumentEntries,
 } from "./source-document-card.utils";
-
-const SourceDocumentTotal = memo(function SourceDocumentTotal({
-  entries,
-  mainCurrency,
-}: {
-  entries: LedgerEntry[];
-  mainCurrency: string;
-}) {
-  const t = useTranslations("SourceDocumentCard");
-
-  const { subtotalsByCurrency, totalInMainCurrency, breakdownData } = useMemo(() => {
-    return buildSourceDocumentCardTotals(entries, mainCurrency);
-  }, [entries, mainCurrency]);
-
-  const uniqueCurrencies = Object.keys(subtotalsByCurrency);
-  const hasMultipleCurrencies = uniqueCurrencies.length > 1;
-
-  const formattedTotal = totalInMainCurrency.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  if (!hasMultipleCurrencies) {
-    return (
-      <span className="text-sm font-bold text-text">
-        <span className="text-xs text-muted-foreground mr-1">{mainCurrency}</span>
-        {formattedTotal}
-      </span>
-    );
-  }
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          className="inline-flex items-center gap-1 text-sm font-bold text-text hover:text-primary transition-colors group"
-          type="button"
-        >
-          <span className="text-xs text-muted-foreground mr-0.5">{mainCurrency}</span>
-          {formattedTotal}
-          <Coins className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-3" align="end">
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <Coins className="h-3 w-3" />
-            {t("currencyBreakdown")}
-          </div>
-          <div className="space-y-1.5">
-            {breakdownData.map(({ currency, amount, convertedAmount }) => (
-              <div key={currency} className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">{currency}</span>
-                <div className="text-right">
-                  <span className="font-medium">
-                    {amount.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                  {currency !== mainCurrency && convertedAmount !== undefined && (
-                    <span className="text-xs text-muted-foreground ml-1.5">
-                      ≈ {mainCurrency}{" "}
-                      {convertedAmount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="border-t pt-2 mt-2 flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">{t("convertedTotal")}</span>
-            <span className="text-sm font-bold text-primary">
-              {mainCurrency} {formattedTotal}
-            </span>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-});
+import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -158,8 +62,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   onToggleSelect,
 }: SourceDocumentCardProps) {
   const t = useTranslations("SourceDocumentCard");
-  const tCommon = useTranslations("Common");
-  const locale = useLocale();
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
 
@@ -189,133 +91,22 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       )}
       onClick={selectionMode ? onToggleSelect : undefined}
     >
-      <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
-        {selectionMode && (
-          <div className="mr-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Checkbox
-              checked={isSelected}
-              className="h-5 w-5"
-              {...(onToggleSelect !== undefined ? { onCheckedChange: onToggleSelect } : {})}
-            />
-          </div>
-        )}
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsItemsExpanded(!isItemsExpanded);
-          }}
-          className="p-1.5 -ml-1.5 hover:bg-accent/10 rounded shrink-0 transition-colors"
-          aria-label={isItemsExpanded ? t("collapse") : t("expand")}
-        >
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 transition-transform text-muted-foreground hover:text-text",
-              isItemsExpanded && "rotate-180"
-            )}
-          />
-        </button>
-
-        <div
-          onClick={!selectionMode ? _onViewDetails : undefined}
-          className={cn(
-            "flex items-center gap-2 overflow-hidden flex-1 px-2 py-1 -my-1 rounded",
-            _onViewDetails &&
-              !selectionMode &&
-              "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
-          )}
-        >
-          <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-            {(sourceDocument.entryDate != null && sourceDocument.entryDate !== ""
-              ? parseDateString(sourceDocument.entryDate)
-              : new Date(sourceDocument.createdAt)
-            ).toLocaleDateString(locale, {
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
-          {status !== "processing" &&
-            status !== "queued" &&
-            status !== "failed" &&
-            sourceDocument.title != null &&
-            sourceDocument.title !== "" && (
-              <>
-                <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
-                <span className="text-sm font-semibold text-text truncate">
-                  {sourceDocument.title}
-                </span>
-              </>
-            )}
-          {sourceDocument.type === "manual" && (
-            <span className="text-xs text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
-              {t("quickEntry")}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {(() => {
-            const processingStatus =
-              status === "anomaly" || status === "failed"
-                ? "error"
-                : status === "queued" || status === "processing" || status === "completed"
-                  ? status
-                  : null;
-
-            if (
-              processingStatus == null ||
-              (ledgerEntries.length !== 0 && status !== "anomaly" && status !== "failed")
-            ) {
-              return null;
-            }
-
-            return (
-              <ProcessingStatus
-                status={processingStatus}
-                {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
-                  ? { label: anomalyReason }
-                  : {})}
-              />
-            );
-          })()}
-
-          {!["queued", "processing", "anomaly", "failed"].includes(status) && (
-            <SourceDocumentTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
-          )}
-
-          <div className="flex items-center gap-1.5 ml-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-7 w-7 text-muted-foreground hover:text-text"
-                  aria-label="source-document-card-actions"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                {onRetry != null && sourceDocument.type !== "manual" && (
-                  <DropdownMenuItem onClick={handleRetry} disabled={isRetrying}>
-                    <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                    {status === "queued" || status === "processing" || status === "failed"
-                      ? tCommon("retry")
-                      : t("editRetry")}
-                  </DropdownMenuItem>
-                )}
-
-                {onDelete != null && (
-                  <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {tCommon("delete")}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
+      <SourceDocumentCardHeader
+        sourceDocument={sourceDocument}
+        status={status}
+        anomalyReason={anomalyReason}
+        ledgerEntries={ledgerEntries}
+        mainCurrency={mainCurrency}
+        isExpanded={isItemsExpanded}
+        isRetrying={isRetrying}
+        selectionMode={selectionMode}
+        isSelected={isSelected}
+        onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
+        onViewDetails={_onViewDetails}
+        onToggleSelect={onToggleSelect}
+        onRetry={handleRetry}
+        onDelete={onDelete}
+      />
 
       <AnimatePresence initial={false}>
         {isItemsExpanded && (

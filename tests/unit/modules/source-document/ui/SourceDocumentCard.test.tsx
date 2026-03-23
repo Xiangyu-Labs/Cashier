@@ -1,5 +1,5 @@
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -234,5 +234,84 @@ describe("SourceDocumentCard", () => {
     await user.click(screen.getByRole("button", { name: "collapse" }));
     expect(screen.queryByTestId("source-document-card-body")).toBeNull();
     expect(onViewDetails).not.toHaveBeenCalled();
+  });
+
+  it("shows retry loading state and delete action from the menu", async () => {
+    const user = userEvent.setup();
+    let resolveRetry: (() => void) | null = null;
+
+    const onRetry = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve;
+        })
+    );
+    const onDelete = vi.fn();
+
+    renderCard({
+      sourceDocument: createSourceDocument({ type: "image" }),
+      ledgerEntries: [],
+      status: "failed",
+      onRetry,
+      onDelete,
+      defaultExpanded: true,
+    });
+
+    await user.click(screen.getByLabelText("source-document-card-actions"));
+    expect(screen.getByText("retry")).toBeTruthy();
+    expect(screen.getByText("delete")).toBeTruthy();
+
+    await user.click(screen.getByText("retry"));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByLabelText("source-document-card-actions"));
+    expect(screen.getByText("retry").closest("[data-disabled]")).not.toBeNull();
+
+    resolveRetry?.();
+    await waitFor(() => expect(onRetry).toHaveBeenCalledTimes(1));
+  });
+
+  it.each([
+    { status: "processing" as const, anomalyReason: null, expectedLabel: "statusRunning" },
+    { status: "failed" as const, anomalyReason: null, expectedLabel: "error" },
+    { status: "anomaly" as const, anomalyReason: "duplicate detected", expectedLabel: "duplicate detected" },
+  ])("shows processing status instead of totals for $status cards", ({ status, anomalyReason, expectedLabel }) => {
+    renderCard({
+      ledgerEntries: [],
+      status,
+      anomalyReason,
+    });
+
+    expect(screen.getByTestId("status-label").textContent).toBe(expectedLabel);
+    expect(screen.queryByText("12.00")).toBeNull();
+  });
+
+  it("shows a multi-currency total trigger and popover copy for completed cards", async () => {
+    const user = userEvent.setup();
+
+    renderCard({
+      ledgerEntries: [
+        createEntry({
+          id: "usd-entry",
+          amount: "10.00",
+          currency: "USD",
+          convertedAmount: "70.00",
+          itemName: "美元条目",
+        }),
+        createEntry({
+          id: "cny-entry",
+          amount: "20.00",
+          currency: "CNY",
+          convertedAmount: null,
+          itemName: "人民币条目",
+        }),
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: /CNY\s*90.00/i }));
+
+    expect(screen.getByText("currencyBreakdown")).toBeTruthy();
+    expect(screen.getByText("convertedTotal")).toBeTruthy();
+    expect(screen.getByText(/USD/)).toBeTruthy();
   });
 });
