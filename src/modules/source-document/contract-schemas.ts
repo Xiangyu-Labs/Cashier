@@ -15,10 +15,13 @@ const optionalQueryNumberSchema = z.preprocess(
   z.union([z.number(), z.string().min(1)]).pipe(z.coerce.number()).optional()
 );
 const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
+const sourceDocumentCursorSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}\|.+\|.+$/, "Invalid source document cursor");
 const imagePayloadSchema = strictObjectSchema({
-    data: z.string(),
-    mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
-  })
+  data: z.string(),
+  mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
+});
 
 const imagesSchema = z
   .array(imagePayloadSchema)
@@ -71,7 +74,7 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
-  cursor: z.string().optional(),
+  cursor: sourceDocumentCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   includeEntries: z.coerce.boolean().default(false),
 });

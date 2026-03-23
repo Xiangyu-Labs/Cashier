@@ -126,72 +126,23 @@ function buildAmountConditions(
 function buildCursorCondition(cursor: string | null | undefined): SQL<unknown> | null {
   if (cursor == null || cursor === "") return null;
 
-  const parts = cursor.split("|");
+  const [cursorDate, cursorCreatedRaw, cursorId] = cursor.split("|");
+  if (!cursorDate || !cursorCreatedRaw || !cursorId) return null;
 
-  if (parts.length === 3) {
-    const cursorDate = parts[0];
-    const cursorCreatedRaw = parts[1];
-    const cursorId = parts[2];
+  const cursorCreated = new Date(cursorCreatedRaw);
+  if (Number.isNaN(cursorCreated.getTime())) return null;
 
-    if (
-      cursorDate == null ||
-      cursorDate === "" ||
-      cursorCreatedRaw == null ||
-      cursorCreatedRaw === "" ||
-      cursorId == null ||
-      cursorId === ""
-    ) {
-      return null;
-    }
-
-    const cursorCreated = new Date(cursorCreatedRaw);
-    if (Number.isNaN(cursorCreated.getTime())) {
-      return null;
-    }
-
-    return (
-      or(
-        lt(sourceDocuments.entryDate, cursorDate),
-        and(
-          eq(sourceDocuments.entryDate, cursorDate),
-          lt(sourceDocuments.createdAt, cursorCreated)
-        ),
-        and(
-          eq(sourceDocuments.entryDate, cursorDate),
-          eq(sourceDocuments.createdAt, cursorCreated),
-          lt(sourceDocuments.id, cursorId)
-        )
-      ) ?? null
-    );
-  }
-
-  if (parts.length === 2) {
-    const cursorCreatedRaw = parts[0];
-    const cursorId = parts[1];
-
-    if (
-      cursorCreatedRaw == null ||
-      cursorCreatedRaw === "" ||
-      cursorId == null ||
-      cursorId === ""
-    ) {
-      return null;
-    }
-
-    const cursorCreated = new Date(cursorCreatedRaw);
-    if (Number.isNaN(cursorCreated.getTime())) {
-      return null;
-    }
-
-    return (
-      or(
-        lt(sourceDocuments.createdAt, cursorCreated),
-        and(eq(sourceDocuments.createdAt, cursorCreated), lt(sourceDocuments.id, cursorId))
-      ) ?? null
-    );
-  }
-
-  return null;
+  return (
+    or(
+      lt(sourceDocuments.entryDate, cursorDate),
+      and(eq(sourceDocuments.entryDate, cursorDate), lt(sourceDocuments.createdAt, cursorCreated)),
+      and(
+        eq(sourceDocuments.entryDate, cursorDate),
+        eq(sourceDocuments.createdAt, cursorCreated),
+        lt(sourceDocuments.id, cursorId)
+      )
+    ) ?? null
+  );
 }
 
 function generateNextCursor(lastItem: SourceDocumentRow): string {
