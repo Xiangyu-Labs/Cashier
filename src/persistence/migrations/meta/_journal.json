@@ -211,6 +211,13 @@
       "when": 1774364777955,
       "tag": "0029_soft_delete_entries_under_deleted_source_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1774370799474,
+      "tag": "0030_premium_sharon_carter",
+      "breakpoints": true
     }
   ]
 }
