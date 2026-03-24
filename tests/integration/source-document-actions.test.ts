@@ -122,7 +122,7 @@ describe("getSourceDocumentLightAction", () => {
     expect(typeof result!.createdAt).toBe("string");
   });
 
-  it("should exclude imageUrls from response", async () => {
+  it("should include imageUrls in the normalized light response", async () => {
     const db = getTestDb();
     const ledgerData = createLedgerData({ userId: testUserId });
     await db.insert(ledgers).values(ledgerData);
@@ -136,7 +136,9 @@ describe("getSourceDocumentLightAction", () => {
 
     expect(result).not.toBeNull();
     expect(result!.hasImages).toBe(true);
-    expect((result as unknown as { imageUrls?: string[] }).imageUrls).toBeUndefined();
+    expect((result as unknown as { imageUrls?: string[] }).imageUrls).toEqual([
+      "data:image/jpeg;base64,/9j/4AAQ...",
+    ]);
   });
 
   it("should hasImages should be false when no images", async () => {

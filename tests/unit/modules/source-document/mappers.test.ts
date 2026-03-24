@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { serializeSourceDocumentLight } from "@/modules/source-document/mappers";
 
 describe("serializeSourceDocumentLight", () => {
-  it("keeps light-detail semantics explicit without carrying image arrays", () => {
+  it("keeps light-detail semantics explicit while carrying retry-friendly image arrays", () => {
     const dto = serializeSourceDocumentLight({
       id: "doc-1",
       ledgerId: "ledger-1",
@@ -24,11 +24,11 @@ describe("serializeSourceDocumentLight", () => {
       ledgerId: "ledger-1",
       title: "Receipt",
       text: "full text",
+      imageUrls: ["https://example.com/1.png"],
       status: "completed",
       type: "ai_parsed",
       metadata: { vendor: "Cafe" },
       hasImages: true,
     });
-    expect("imageUrls" in dto).toBe(false);
   });
 });

@@ -297,15 +297,14 @@ describe("SourceDocument Retry Action", () => {
     });
     expect(oldDoc?.deletedAt).not.toBeNull();
 
-    // Old entries remain but are now hidden because their source doc is deleted
+    // Old entries are soft deleted along with the old source document lifecycle
     const entriesAfterRetry = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.sourceDocumentId, docId),
     });
-    // Entries are not soft-deleted, just linked to deleted source doc
     expect(entriesAfterRetry.length).toBe(1);
     const oldEntryAfterRetry = firstItem(entriesAfterRetry, "Expected one old entry after retry");
     expect(oldEntryAfterRetry.itemName).toBe("午餐");
-    expect(oldEntryAfterRetry.deletedAt).toBeNull(); // Entry itself is not deleted
+    expect(oldEntryAfterRetry.deletedAt).not.toBeNull();
 
     // New document should have new active entries
     const newEntries = await db.query.ledgerEntries.findMany({

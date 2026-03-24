@@ -2,33 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   sourceDocumentsFindManyMock,
-  taskRunsFindManyMock,
   insertValuesMock,
   insertMock,
-  updateSourceDocumentsWhereMock,
-  updateSourceDocumentsSetMock,
-  updateTaskRunsWhereMock,
-  updateTaskRunsSetMock,
-  updateMock,
-  cancelFlowTaskMock,
   getSourceDocumentTaskContextMock,
   prepareSourceDocumentTaskMock,
   rehomeLocalUploadUrlsMock,
+  listRelatedSourceDocumentTaskRunsMock,
+  cancelActiveSourceDocumentTaskRunsMock,
+  softDeleteSourceDocumentsAndTaskRunsMock,
+  transactionMock,
   loggerMock,
 } = vi.hoisted(() => {
   const sourceDocumentsFindManyMock = vi.fn();
-  const taskRunsFindManyMock = vi.fn();
   const insertValuesMock = vi.fn();
   const insertMock = vi.fn(() => ({ values: insertValuesMock }));
-  const updateSourceDocumentsWhereMock = vi.fn();
-  const updateSourceDocumentsSetMock = vi.fn(() => ({ where: updateSourceDocumentsWhereMock }));
-  const updateTaskRunsWhereMock = vi.fn();
-  const updateTaskRunsSetMock = vi.fn(() => ({ where: updateTaskRunsWhereMock }));
-  const updateMock = vi.fn();
-  const cancelFlowTaskMock = vi.fn();
   const getSourceDocumentTaskContextMock = vi.fn();
   const prepareSourceDocumentTaskMock = vi.fn();
   const rehomeLocalUploadUrlsMock = vi.fn();
+  const listRelatedSourceDocumentTaskRunsMock = vi.fn();
+  const cancelActiveSourceDocumentTaskRunsMock = vi.fn();
+  const softDeleteSourceDocumentsAndTaskRunsMock = vi.fn();
+  const transactionMock = vi.fn((callback: (tx: object) => void) => callback({}));
   const loggerMock = {
     debug: vi.fn(),
     warn: vi.fn(),
@@ -36,18 +30,15 @@ const {
 
   return {
     sourceDocumentsFindManyMock,
-    taskRunsFindManyMock,
     insertValuesMock,
     insertMock,
-    updateSourceDocumentsWhereMock,
-    updateSourceDocumentsSetMock,
-    updateTaskRunsWhereMock,
-    updateTaskRunsSetMock,
-    updateMock,
-    cancelFlowTaskMock,
     getSourceDocumentTaskContextMock,
     prepareSourceDocumentTaskMock,
     rehomeLocalUploadUrlsMock,
+    listRelatedSourceDocumentTaskRunsMock,
+    cancelActiveSourceDocumentTaskRunsMock,
+    softDeleteSourceDocumentsAndTaskRunsMock,
+    transactionMock,
     loggerMock,
   };
 });
@@ -58,12 +49,9 @@ vi.mock("@/lib/db", () => ({
       sourceDocuments: {
         findMany: sourceDocumentsFindManyMock,
       },
-      taskRuns: {
-        findMany: taskRunsFindManyMock,
-      },
     },
     insert: insertMock,
-    update: updateMock,
+    transaction: transactionMock,
   },
 }));
 
@@ -72,28 +60,9 @@ vi.mock("@/persistence", () => ({
     id: "sourceDocuments.id",
     ledgerId: "sourceDocuments.ledgerId",
   },
-  taskRuns: {
-    id: "taskRuns.id",
-    deletedAt: "taskRuns.deletedAt",
-    scopeId: "taskRuns.scopeId",
-    entityType: "taskRuns.entityType",
-    entityId: "taskRuns.entityId",
-    status: "taskRuns.status",
-  },
-}));
-
-vi.mock("@/lib/db/scoped-query", () => ({
-  forLedger: vi.fn(() => ({
-    whereActive: "whereActive",
-  })),
 }));
 
 vi.mock("@/modules/source-document/application/source-document-state", () => ({
-  deletedSourceDocumentPatch: vi.fn((now = new Date("2026-03-20T00:00:00.000Z")) => ({
-    status: "deleted",
-    deletedAt: now,
-    updatedAt: now,
-  })),
   whereSourceDocumentNotDeleted: vi.fn((ledgerId: string) => ({
     whereSourceDocumentNotDeleted: [ledgerId],
   })),
@@ -101,13 +70,13 @@ vi.mock("@/modules/source-document/application/source-document-state", () => ({
 
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...parts: unknown[]) => ({ and: parts })),
-  eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
   inArray: vi.fn((column: unknown, values: unknown[]) => ({ inArray: [column, values] })),
-  isNull: vi.fn((column: unknown) => ({ isNull: column })),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  cancelFlowTask: cancelFlowTaskMock,
+vi.mock("@/modules/source-document/application/services/source-document-lifecycle", () => ({
+  listRelatedSourceDocumentTaskRuns: listRelatedSourceDocumentTaskRunsMock,
+  cancelActiveSourceDocumentTaskRuns: cancelActiveSourceDocumentTaskRunsMock,
+  softDeleteSourceDocumentsAndTaskRuns: softDeleteSourceDocumentsAndTaskRunsMock,
 }));
 
 vi.mock("@/modules/source-document/application/services/processing", () => ({
@@ -133,14 +102,9 @@ describe("batchRetrySourceDocuments", () => {
     vi.clearAllMocks();
 
     insertMock.mockReturnValue({ values: insertValuesMock });
-    updateMock
-      .mockImplementationOnce(() => ({ set: updateSourceDocumentsSetMock }))
-      .mockImplementationOnce(() => ({ set: updateTaskRunsSetMock }));
-
     insertValuesMock.mockResolvedValue(undefined);
-    updateSourceDocumentsWhereMock.mockResolvedValue(undefined);
-    updateTaskRunsWhereMock.mockResolvedValue(undefined);
-    cancelFlowTaskMock.mockResolvedValue(undefined);
+    listRelatedSourceDocumentTaskRunsMock.mockResolvedValue([]);
+    cancelActiveSourceDocumentTaskRunsMock.mockResolvedValue(undefined);
     getSourceDocumentTaskContextMock.mockResolvedValue({
       categories: [{ id: "cat-1", name: "Food", description: "Meals" }],
       settings: {
@@ -168,7 +132,7 @@ describe("batchRetrySourceDocuments", () => {
       failedCount: 0,
     });
     expect(sourceDocumentsFindManyMock).not.toHaveBeenCalled();
-    expect(taskRunsFindManyMock).not.toHaveBeenCalled();
+    expect(listRelatedSourceDocumentTaskRunsMock).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
   });
 
@@ -191,7 +155,7 @@ describe("batchRetrySourceDocuments", () => {
         imageUrls: ["/img/2.jpg"],
       },
     ]);
-    taskRunsFindManyMock.mockResolvedValue([
+    listRelatedSourceDocumentTaskRunsMock.mockResolvedValueOnce([
       { id: "task-1", status: "pending" },
       { id: "task-2", status: "completed" },
     ]);
@@ -205,8 +169,18 @@ describe("batchRetrySourceDocuments", () => {
       sourceDocumentIds: ["old-1", "old-2"],
     });
 
-    expect(cancelFlowTaskMock).toHaveBeenCalledTimes(1);
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith("task-1");
+    expect(listRelatedSourceDocumentTaskRunsMock).toHaveBeenCalledWith("ledger-1", [
+      "old-1",
+      "old-2",
+    ]);
+    expect(cancelActiveSourceDocumentTaskRunsMock).toHaveBeenCalledWith(["task-1", "task-2"]);
+    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
+      {},
+      "ledger-1",
+      ["old-1", "old-2"],
+      ["task-1", "task-2"]
+    );
     expect(sourceDocumentsFindManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -244,7 +218,6 @@ describe("batchRetrySourceDocuments", () => {
         metadata: { originalImageUrls: ["/api/uploads/ledger-1/old-1/original.webp"] },
       },
     ]);
-    taskRunsFindManyMock.mockResolvedValue([]);
     rehomeLocalUploadUrlsMock
       .mockResolvedValueOnce(["/api/uploads/ledger-1/new-1/local.webp"])
       .mockResolvedValueOnce(["/api/uploads/ledger-1/new-1/original.webp"]);
@@ -271,6 +244,12 @@ describe("batchRetrySourceDocuments", () => {
           and: expect.arrayContaining([{ whereSourceDocumentNotDeleted: ["ledger-1"] }]),
         }),
       })
+    );
+    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
+      {},
+      "ledger-1",
+      ["old-1"],
+      []
     );
   });
 });
