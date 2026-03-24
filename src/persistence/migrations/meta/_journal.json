@@ -204,6 +204,13 @@
       "when": 1774237415755,
       "tag": "0028_source_document_deleted_status",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1774364777955,
+      "tag": "0029_soft_delete_entries_under_deleted_source_documents",
+      "breakpoints": true
     }
   ]
 }

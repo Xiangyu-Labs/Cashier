@@ -91,15 +91,21 @@ export async function handleParseResult({
 
   // Atomically update entries and document status in a transaction
   db.transaction((tx) => {
-    replaceSourceDocumentLedgerEntries(tx, ledgerId, sourceDocumentId, entriesToInsert);
-
-    tx.update(sourceDocuments)
+    // Guard against delete/parse races: only rewrite entries if the document is still active.
+    const completedResult = tx
+      .update(sourceDocuments)
       .set({
         status: "completed",
         ...(title != null && title !== "" ? { title } : {}),
       })
       .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
       .run();
+
+    if (completedResult.changes === 0) {
+      return;
+    }
+
+    replaceSourceDocumentLedgerEntries(tx, ledgerId, sourceDocumentId, entriesToInsert);
   });
 }
 

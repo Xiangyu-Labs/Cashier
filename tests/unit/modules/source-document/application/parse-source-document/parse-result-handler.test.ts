@@ -47,6 +47,16 @@ async function listActiveEntries(sourceDocumentId: string) {
     .where(and(eq(ledgerEntries.sourceDocumentId, sourceDocumentId), isNull(ledgerEntries.deletedAt)));
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("handleParseResult", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -233,5 +243,59 @@ describe("handleParseResult", () => {
       ])
     );
     expect(deletedExisting).toHaveLength(1);
+  });
+
+  it("does not leave active ledger entries when the source document is deleted during parse", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const doc = await createSourceDocument(ledgerId);
+    const conversionDeferred = createDeferred<{ convertedAmount: string; exchangeRate: string }>();
+
+    convertEntryAmountMock.mockImplementationOnce(() => conversionDeferred.promise);
+
+    const parsePromise = handleParseResult({
+      ledgerId,
+      sourceDocumentId: doc.id,
+      parsedEntries: [
+        {
+          amount: 10,
+          currency: "USD",
+          categoryIndex: 0,
+          entryDate: null,
+          itemName: "Lunch",
+          notes: null,
+        },
+      ],
+      verificationStatus: "passed",
+      categories: [],
+    });
+
+    await vi.waitFor(() => {
+      expect(convertEntryAmountMock).toHaveBeenCalledTimes(1);
+    });
+
+    await db
+      .update(sourceDocuments)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(sourceDocuments.id, doc.id));
+
+    conversionDeferred.resolve({
+      convertedAmount: "72.00",
+      exchangeRate: "7.2000",
+    });
+    await parsePromise;
+
+    const refreshed = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+
+    expect(refreshed).toMatchObject({
+      status: "deleted",
+    });
+    expect(await listActiveEntries(doc.id)).toEqual([]);
   });
 });

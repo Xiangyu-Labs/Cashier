@@ -102,4 +102,38 @@ describe("getLedgerEntriesAction", () => {
     expect(firstItem).toBeDefined();
     expect(firstItem?.itemName).toBe("餐饮交易");
   });
+
+  it("should exclude entries linked to deleted source documents", async () => {
+    const db = getTestDb();
+    const activeSourceDocId = await createTestSourceDocument(db, testLedgerId, {
+      status: "completed",
+    });
+    const deletedSourceDocId = await createTestSourceDocument(db, testLedgerId, {
+      status: "deleted",
+    });
+
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId: testLedgerId,
+        categoryId: testCategoryId,
+        sourceDocumentId: activeSourceDocId,
+        amount: "30",
+        itemName: "可见分录",
+      },
+      {
+        ledgerId: testLedgerId,
+        categoryId: testCategoryId,
+        sourceDocumentId: deletedSourceDocId,
+        amount: "40",
+        itemName: "应被隐藏分录",
+      },
+    ]);
+
+    const data = await getLedgerEntriesAction(testLedgerId, {});
+
+    expect(data.items).toHaveLength(1);
+    const firstItem = data.items[0];
+    expect(firstItem).toBeDefined();
+    expect(firstItem?.itemName).toBe("可见分录");
+  });
 });

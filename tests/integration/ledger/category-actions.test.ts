@@ -362,4 +362,73 @@ describe("getEntryCategoriesAction", () => {
     expect(firstCategory).toBeDefined();
     expect(firstCategory?.entryCount).toBe(2);
   });
+
+  it("excludes entries linked to deleted source documents from category counts", async () => {
+    const db = getTestDb();
+    const catId = uuidv4();
+    await db.insert(entryCategories).values({
+      id: catId,
+      ledgerId,
+      name: "交通",
+      sortOrder: 2,
+    });
+
+    const [activeDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        text: "active",
+        status: "completed",
+        type: "ai_parsed",
+        imageUrls: [],
+      })
+      .returning();
+    expect(activeDoc).toBeDefined();
+    if (activeDoc === undefined) {
+      throw new Error("Expected active source document insert to return a row");
+    }
+
+    const [deletedDoc] = await db
+      .insert(sourceDocuments)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        text: "deleted",
+        status: "deleted",
+        type: "ai_parsed",
+        imageUrls: [],
+      })
+      .returning();
+    expect(deletedDoc).toBeDefined();
+    if (deletedDoc === undefined) {
+      throw new Error("Expected deleted source document insert to return a row");
+    }
+
+    await db.insert(ledgerEntries).values([
+      {
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: activeDoc.id,
+        itemName: "Active doc entry",
+        amount: "10.00",
+        currency: "CNY",
+        categoryId: catId,
+      },
+      {
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: deletedDoc.id,
+        itemName: "Deleted doc entry",
+        amount: "20.00",
+        currency: "CNY",
+        categoryId: catId,
+      },
+    ]);
+
+    const result = await getEntryCategoriesAction(ledgerId);
+    const category = result.find((item) => item.id === catId);
+    expect(category).toBeDefined();
+    expect(category?.entryCount).toBe(1);
+  });
 });

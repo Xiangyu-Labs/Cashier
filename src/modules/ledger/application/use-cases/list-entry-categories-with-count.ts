@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { entryCategories, ledgerEntries } from "@/persistence";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { buildLedgerEntryVisibilityCondition } from "@/modules/ledger/application/queries/ledger-entry-visibility";
 
 export async function listEntryCategoriesWithCount(ledgerId: string) {
   const q = forLedger(entryCategories, ledgerId);
@@ -17,7 +18,13 @@ export async function listEntryCategoriesWithCount(ledgerId: string) {
       count: sql<number>`count(*)`.as("count"),
     })
     .from(ledgerEntries)
-    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        isNull(ledgerEntries.deletedAt),
+        buildLedgerEntryVisibilityCondition(ledgerId)
+      )
+    )
     .groupBy(ledgerEntries.categoryId);
 
   const countMap = new Map(

@@ -1,8 +1,10 @@
 import { and, eq, lt, or, sql, type SQL } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
-
-const DELETED_SOURCE_DOCUMENT_STATUS = "deleted";
+import {
+  buildLedgerEntrySourceDocumentDateCondition,
+  buildLedgerEntryVisibilityCondition,
+} from "./ledger-entry-visibility";
 
 export interface LedgerEntryFilterParams {
   startDate?: string | null;
@@ -23,22 +25,14 @@ export function buildLedgerEntryFilterConditions(
     conditions.push(q.whereActive);
   }
 
-  if (filters.startDate != null && filters.startDate !== "") {
-    conditions.push(
-      sql`${ledgerEntries.sourceDocumentId} IN (
-                SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND status != ${DELETED_SOURCE_DOCUMENT_STATUS} AND entry_date >= ${filters.startDate}
-            )`
-    );
-  }
+  conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
 
-  if (filters.endDate != null && filters.endDate !== "") {
-    conditions.push(
-      sql`${ledgerEntries.sourceDocumentId} IN (
-                SELECT id FROM source_documents
-                WHERE ledger_id = ${ledgerId} AND status != ${DELETED_SOURCE_DOCUMENT_STATUS} AND entry_date <= ${filters.endDate}
-            )`
-    );
+  const sourceDocumentDateCondition = buildLedgerEntrySourceDocumentDateCondition(ledgerId, {
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+  });
+  if (sourceDocumentDateCondition != null) {
+    conditions.push(sourceDocumentDateCondition);
   }
 
   if (filters.categoryId != null && filters.categoryId !== "") {
