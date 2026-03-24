@@ -183,6 +183,8 @@
   "QuickEntryForm": {
     "selectCategory": "选择分类",
     "selectDate": "选择日期",
+    "currency": "货币",
+    "selectCurrency": "选择货币",
     "amount": "金额",
     "itemName": "名称（可选）",
     "itemNamePlaceholder": "默认使用分类名称：",

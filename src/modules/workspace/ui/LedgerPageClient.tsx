@@ -146,6 +146,7 @@ export function LedgerPageClient({
   });
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
   const { periodParams, filterParams, handlePeriodChange, handleFiltersChange } = usePeriodFilter({
     pathname,
     searchParams,
@@ -297,6 +298,7 @@ export function LedgerPageClient({
               ledgerId={ledgerId}
               categories={categories}
               mainCurrency={mainCurrency}
+              preferredCurrencies={preferredCurrencies}
               onSuccess={() => setIsInputOpen(false)}
             />
           )}

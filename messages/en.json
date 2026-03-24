@@ -183,6 +183,8 @@
   "QuickEntryForm": {
     "selectCategory": "Select a category",
     "selectDate": "Date",
+    "currency": "Currency",
+    "selectCurrency": "Select currency",
     "amount": "Amount",
     "itemName": "Item name (optional)",
     "itemNamePlaceholder": "Defaults to category name: ",

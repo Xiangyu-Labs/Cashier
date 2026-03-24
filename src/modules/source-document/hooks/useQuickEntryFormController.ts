@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
@@ -29,6 +29,7 @@ interface UseQuickEntryFormControllerParams {
 interface CreateQuickEntryPayload {
   categoryId: string;
   amount: number;
+  currency: string;
   itemName?: string;
   entryDate: string;
 }
@@ -42,8 +43,13 @@ export function useQuickEntryFormController({
   const t = useTranslations("QuickEntryForm");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState(0);
+  const [currency, setCurrency] = useState(mainCurrency);
   const [itemName, setItemName] = useState("");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    setCurrency(mainCurrency);
+  }, [mainCurrency]);
 
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
@@ -63,6 +69,9 @@ export function useQuickEntryFormController({
       const tempEntryId = `temp-entry-${Date.now()}`;
       const now = new Date().toISOString();
       const entryDateStr = variables.entryDate;
+      const optimisticConvertedAmount =
+        variables.currency === mainCurrency ? variables.amount.toFixed(2) : null;
+      const optimisticExchangeRate = variables.currency === mainCurrency ? "1" : null;
 
       const tempEntry: LedgerEntry = {
         id: tempEntryId,
@@ -70,11 +79,11 @@ export function useQuickEntryFormController({
         sourceDocumentId: tempDocId,
         categoryId: variables.categoryId,
         amount: variables.amount.toFixed(2),
-        currency: mainCurrency,
+        currency: variables.currency,
         itemName: variables.itemName ?? selectedCategory?.name ?? "",
         description: null,
-        convertedAmount: variables.amount.toFixed(2),
-        exchangeRate: "1",
+        convertedAmount: optimisticConvertedAmount,
+        exchangeRate: optimisticExchangeRate,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -108,10 +117,10 @@ export function useQuickEntryFormController({
             categoryId: variables.categoryId,
             sourceDocumentId: tempDocId,
             amount: variables.amount.toFixed(2),
-            currency: mainCurrency,
+            currency: variables.currency,
             itemName: variables.itemName ?? selectedCategory?.name ?? "",
-            convertedAmount: variables.amount.toFixed(2),
-            exchangeRate: "1",
+            convertedAmount: optimisticConvertedAmount,
+            exchangeRate: optimisticExchangeRate,
             category:
               selectedCategory !== undefined
                 ? {
@@ -179,6 +188,7 @@ export function useQuickEntryFormController({
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,
+      currency,
       entryDate: formatDateTimeForApi(entryDate),
       ...(nextItemName !== undefined ? { itemName: nextItemName } : {}),
     });
@@ -190,6 +200,8 @@ export function useQuickEntryFormController({
     selectedCategory,
     amount,
     setAmount,
+    currency,
+    setCurrency,
     itemName,
     setItemName,
     entryDate,

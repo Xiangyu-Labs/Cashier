@@ -3,7 +3,15 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalculatorInput } from "@/components/ui/calculator-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
 import { Send } from "lucide-react";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -14,6 +22,7 @@ interface QuickEntryFormProps {
   ledgerId: string;
   categories: EntryCategory[];
   mainCurrency?: string;
+  preferredCurrencies?: string[];
   onSuccess?: () => void;
 }
 
@@ -21,6 +30,7 @@ export function QuickEntryForm({
   ledgerId,
   categories,
   mainCurrency = "CNY",
+  preferredCurrencies = [],
   onSuccess,
 }: QuickEntryFormProps) {
   const tCommon = useTranslations("Common");
@@ -31,6 +41,8 @@ export function QuickEntryForm({
     selectedCategory,
     amount,
     setAmount,
+    currency,
+    setCurrency,
     itemName,
     setItemName,
     entryDate,
@@ -43,6 +55,18 @@ export function QuickEntryForm({
     mainCurrency,
     ...(onSuccess !== undefined ? { onSuccess } : {}),
   });
+
+  const preferredCurrencyOptions = Array.from(
+    new Set(preferredCurrencies.filter((curr) => curr !== "unknown" && curr !== mainCurrency))
+  );
+  const currencyOptions = [
+    mainCurrency,
+    ...preferredCurrencyOptions,
+    ...SUPPORTED_CURRENCIES.filter(
+      (curr) =>
+        curr !== mainCurrency && curr !== "unknown" && !preferredCurrencyOptions.includes(curr)
+    ),
+  ];
 
   return (
     <div className="space-y-4">
@@ -91,6 +115,22 @@ export function QuickEntryForm({
           size="sm"
           className="w-full"
         />
+      </div>
+
+      <div>
+        <p className="text-sm text-muted-foreground mb-2">{t("currency")}</p>
+        <Select value={currency} onValueChange={setCurrency}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={t("selectCurrency")} />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4}>
+            {currencyOptions.map((curr) => (
+              <SelectItem key={curr} value={curr}>
+                {curr}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Amount */}
