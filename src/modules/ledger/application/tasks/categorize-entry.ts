@@ -5,12 +5,14 @@
  * Uses index-based category matching for disambiguation.
  */
 
-import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
+import type { FlowTaskDefinition, FlowTaskHandler, FlowContext, AIModelTier } from "@/lib/flow";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
 import { logger } from "@/lib/logger";
 import { AppError, ValidationError } from "@/lib/errors";
+import { isLocalUploadUrl } from "@/lib/storage";
+import { loadImageForAI } from "@/lib/storage/utils";
 import { z } from "zod";
 
 export const TASK_TYPE_CATEGORIZE_ENTRY = "categorize_entry";
@@ -88,6 +90,52 @@ ${categoriesJson}
 }`;
 }
 
+async function buildCategorizationMessage(input: CategorizeEntryInput): Promise<{
+  content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
+  model: AIModelTier;
+}> {
+  const content: Array<
+    { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+  > = [];
+
+  const sourceDocumentText = input.sourceDocumentText;
+  const hasSourceText = sourceDocumentText !== undefined && sourceDocumentText !== "";
+  if (hasSourceText) {
+    content.push({ type: "text", text: `Source Document:\n${sourceDocumentText}` });
+  }
+
+  const sourceDocumentImageUrls =
+    input.sourceDocumentImageUrls?.filter((url) => url.trim() !== "") ?? [];
+  const hasImageUrls = sourceDocumentImageUrls.length > 0;
+  if (hasImageUrls) {
+    const loadedImageUrls = await Promise.all(
+      sourceDocumentImageUrls.map(async (url) => {
+        if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+          return url;
+        }
+
+        if (isLocalUploadUrl(url)) {
+          return loadImageForAI(url);
+        }
+
+        throw new ValidationError(`Unsupported image URL format: ${url}`);
+      })
+    );
+    for (const url of loadedImageUrls) {
+      content.push({ type: "image_url", image_url: { url } });
+    }
+  }
+
+  if (content.length === 0) {
+    content.push({ type: "text", text: "No additional context available." });
+  }
+
+  return {
+    content,
+    model: hasImageUrls ? "vision" : "text",
+  };
+}
+
 export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, CategorizeEntryOutput> =
   {
     async execute(
@@ -104,36 +152,13 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       }
 
       const prompt = buildCategorizationPrompt(input);
-
-      // Build message content - include source document if available
-      const content: Array<
-        { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-      > = [];
-
-      const sourceDocumentText = input.sourceDocumentText;
-      const hasSourceText = sourceDocumentText !== undefined && sourceDocumentText !== "";
-      if (hasSourceText) {
-        content.push({ type: "text", text: `Source Document:\n${sourceDocumentText}` });
-      }
-
-      const sourceDocumentImageUrls = input.sourceDocumentImageUrls;
-      const hasImageUrls =
-        sourceDocumentImageUrls !== undefined && sourceDocumentImageUrls.length > 0;
-      if (hasImageUrls) {
-        for (const url of sourceDocumentImageUrls) {
-          content.push({ type: "image_url", image_url: { url } });
-        }
-      }
-
-      if (content.length === 0) {
-        content.push({ type: "text", text: "No additional context available." });
-      }
+      const { content, model } = await buildCategorizationMessage(input);
 
       const response = await ai.generate({
         prompt,
         messages: [{ role: "user", content }],
         requireJson: true,
-        model: "text",
+        model,
       });
 
       // Parse response

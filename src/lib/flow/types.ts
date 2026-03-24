@@ -219,8 +219,8 @@ export interface FlowTaskMetadata {
 
 /**
  * AI model tier - business code selects tier, flow engine resolves to concrete model
- * - text: text-only, used for all business logic (parsing, arbitration, categorization)
- * - vision: multimodal (vision+text), used only for Stage 0 image description
+ * - text: text-only, used for business logic when inputs are text-only
+ * - vision: multimodal (vision+text), used whenever a task sends image input
  */
 export type AIModelTier = "text" | "vision";
 

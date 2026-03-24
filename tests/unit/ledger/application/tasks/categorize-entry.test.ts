@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+const loadImageForAIMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/storage/utils", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/storage/utils")>("@/lib/storage/utils");
+  return {
+    ...actual,
+    loadImageForAI: loadImageForAIMock,
+  };
+});
+
 import {
   categorizeEntryHandler,
   type CategorizeEntryInput,
@@ -65,6 +75,10 @@ function requireDefined<T>(value: T | null | undefined, message: string): T {
   return value;
 }
 
+beforeEach(() => {
+  loadImageForAIMock.mockReset();
+});
+
 describe("categorizeEntryHandler.execute", () => {
   it("returns correct categoryIndex when AI matches a category", async () => {
     const ai = createMockAI(1);
@@ -127,9 +141,39 @@ describe("categorizeEntryHandler.execute", () => {
     const content = firstMessage.content as Array<{ type: string; text?: string }>;
     const textParts = content.filter((c) => c.type === "text");
     expect(textParts.some((p) => p.text?.includes("Receipt from restaurant"))).toBe(true);
+    expect(callArgs.model).toBe("text");
+    expect(loadImageForAIMock).not.toHaveBeenCalled();
   });
 
   it("includes imageUrls in message content when provided", async () => {
+    const ai = createMockAI(1);
+    const ctx = createMockContext(ai);
+    loadImageForAIMock.mockResolvedValue("data:image/jpeg;base64,encoded-receipt");
+
+    const input: CategorizeEntryInput = {
+      ...baseInput,
+      sourceDocumentImageUrls: ["/api/uploads/receipt.jpg"],
+    };
+
+    await categorizeEntryHandler.execute(input, ctx);
+
+    const firstCall = requireDefined(
+      vi.mocked(ai.generate).mock.calls[0],
+      "Expected AI generate to be called once"
+    );
+    const callArgs = requireDefined(firstCall[0], "Expected AI generate call args");
+    const messages = callArgs.messages as Array<{ role: string; content: unknown[] }>;
+    const firstMessage = requireDefined(messages[0], "Expected first message");
+    const content = firstMessage.content as Array<{ type: string; image_url?: { url: string } }>;
+    const imageParts = content.filter((c) => c.type === "image_url");
+    expect(imageParts).toHaveLength(1);
+    const firstImage = requireDefined(imageParts[0], "Expected first image part");
+    expect(firstImage.image_url?.url).toBe("data:image/jpeg;base64,encoded-receipt");
+    expect(callArgs.model).toBe("vision");
+    expect(loadImageForAIMock).toHaveBeenCalledWith("/api/uploads/receipt.jpg");
+  });
+
+  it("passes through public image URLs without loading them from local storage", async () => {
     const ai = createMockAI(1);
     const ctx = createMockContext(ai);
 
@@ -152,6 +196,8 @@ describe("categorizeEntryHandler.execute", () => {
     expect(imageParts).toHaveLength(1);
     const firstImage = requireDefined(imageParts[0], "Expected first image part");
     expect(firstImage.image_url?.url).toBe("https://example.com/receipt.jpg");
+    expect(callArgs.model).toBe("vision");
+    expect(loadImageForAIMock).not.toHaveBeenCalled();
   });
 
   it("falls back to 'No additional context' when no source doc provided", async () => {
