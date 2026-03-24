@@ -25,6 +25,12 @@ describe("AdminUsersList", () => {
   });
 
   it("renders rows and keeps null names visually empty", () => {
+    const expectedCreatedAt = new Intl.DateTimeFormat("en", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    }).format(new Date("2026-03-21T10:00:00.000Z"));
+
     const { container } = render(
       <AdminUsersList
         locale="en"
@@ -52,6 +58,7 @@ describe("AdminUsersList", () => {
     expect(screen.getByText("Owner")).toBeTruthy();
     expect(screen.getByText("Super Admin")).toBeTruthy();
     expect(screen.getByText("User")).toBeTruthy();
+    expect(screen.getByText(expectedCreatedAt)).toBeTruthy();
     expect(container.querySelectorAll("tbody td")[5]?.textContent).toBe("");
   });
 });

@@ -33,6 +33,7 @@ export default async function AdminLayout(props: { children: ReactNode }) {
 
   return (
     <AdminShell
+      kicker={t("kicker")}
       title={t("title")}
       description={t("description")}
       navItems={[

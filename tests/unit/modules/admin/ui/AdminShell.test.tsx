@@ -22,6 +22,7 @@ describe("AdminShell", () => {
   it("renders the admin header, navigation, and content", () => {
     render(
       <AdminShell
+        kicker="Internal"
         title="Admin"
         description="Back office"
         navItems={[
@@ -33,6 +34,7 @@ describe("AdminShell", () => {
       </AdminShell>
     );
 
+    expect(screen.getByText("Internal")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Admin" })).toBeTruthy();
     expect(screen.getByText("Back office")).toBeTruthy();
     expect(screen.getByText("Admin content")).toBeTruthy();

@@ -44,6 +44,7 @@ export function AdminUsersList(props: {
   const dateFormatter = new Intl.DateTimeFormat(props.locale, {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "UTC",
   });
 
   return (

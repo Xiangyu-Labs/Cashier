@@ -5,6 +5,7 @@ import { Link, usePathname } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 
 export function AdminShell(props: {
+  kicker: string;
   title: string;
   description: string;
   navItems: Array<{ href: string; label: string }>;
@@ -16,7 +17,7 @@ export function AdminShell(props: {
     <div className="min-h-screen bg-bg">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
         <header className="rounded-2xl border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-primary">Admin</p>
+          <p className="text-sm font-medium text-primary">{props.kicker}</p>
           <h1 className="mt-2 text-2xl font-semibold text-text">{props.title}</h1>
           <p className="mt-2 text-sm text-muted">{props.description}</p>
         </header>
