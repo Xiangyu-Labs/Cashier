@@ -72,7 +72,23 @@ vi.mock("next/dynamic", () => ({
     }
 
     if (text.includes("QuickEntryForm")) {
-      return createComponent("quick-entry-form", "quick");
+      const Component = ({
+        mainCurrency,
+        preferredCurrencies,
+      }: {
+        mainCurrency?: string;
+        preferredCurrencies?: string[];
+      }) => (
+        <div
+          data-testid="quick-entry-form"
+          data-main-currency={mainCurrency ?? ""}
+          data-preferred-currencies={(preferredCurrencies ?? []).join(",")}
+        >
+          quick
+        </div>
+      );
+      Component.displayName = "MockQuickEntryForm";
+      return Component;
     }
 
     if (text.includes("LedgerEntriesTab")) {
@@ -306,5 +322,51 @@ describe("LedgerPageClient", () => {
     fireEvent.click(screen.getByTestId("source-document-input"));
 
     expect(setIsInputOpen).toHaveBeenCalledWith(false);
+  });
+
+  it("passes mainCurrency and preferredCurrencies into QuickEntryForm", () => {
+    useLedgerDialogStateMock.mockReturnValue({
+      isInputOpen: true,
+      setIsInputOpen: vi.fn(),
+      inputMode: "quick",
+      setInputMode: vi.fn(),
+      isPendingOpen: false,
+      setIsPendingOpen: vi.fn(),
+      handleInputDialogChange: vi.fn(),
+    });
+
+    useQueryMock.mockImplementation(({ queryKey }: { queryKey: readonly unknown[] }) => {
+      if (queryKey[0] === "ledger") {
+        return {
+          data: {
+            id: "ledger-1",
+            userId: "user-1",
+            metadata: {
+              settings: {
+                mainCurrency: "MYR",
+                currencies: ["USD", "CNY"],
+                collapseEntriesDefault: false,
+              },
+            },
+          },
+        };
+      }
+      if (queryKey[0] === "entryCategories" || queryKey[0] === "ledgers") {
+        return { data: [] };
+      }
+      return { data: undefined };
+    });
+
+    render(
+      <LedgerPageClient
+        ledgerId="ledger-1"
+        initialTab="stream"
+        initialPeriod={{ period: "thisMonth" }}
+      />
+    );
+
+    const quickEntryForm = screen.getByTestId("quick-entry-form");
+    expect(quickEntryForm.getAttribute("data-main-currency")).toBe("MYR");
+    expect(quickEntryForm.getAttribute("data-preferred-currencies")).toBe("USD,CNY");
   });
 });
