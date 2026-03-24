@@ -653,6 +653,36 @@
     "tipTitle": "Tip: ",
     "tipDesc": "Category descriptions help AI more accurately identify and classify spending. For example, the description for \"Dining\" could be \"Delivery, Dine-in, Groceries\"."
   },
+  "Admin": {
+    "title": "Admin Backend",
+    "description": "Internal tools and visibility for operating Cashier.",
+    "overview": "Overview",
+    "users": "Users",
+    "homeTitle": "Admin overview",
+    "homeDescription": "Start here for internal operations. This first release focuses on a clean admin foundation and a read-only user list."
+  },
+  "AdminUsers": {
+    "title": "Users",
+    "description": "Read-only visibility into who exists in the system.",
+    "email": "Email",
+    "name": "Name",
+    "role": "Role",
+    "createdAt": "Created",
+    "emptyTitle": "No users yet",
+    "emptyDescription": "Users will appear here after someone signs up.",
+    "roleUser": "User",
+    "roleSuperAdmin": "Super Admin"
+  },
+  "AdminUnauthorized": {
+    "title": "Access denied",
+    "description": "Only super admins can access this area.",
+    "backHome": "Back to Home"
+  },
+  "AdminError": {
+    "title": "Error Loading Admin Backend",
+    "description": "An error occurred while loading the admin backend.",
+    "backHome": "Back to Home"
+  },
   "AuthEmail": {
     "otpSubject": "Your verification code is {otp}",
     "otpPreview": "Your verification code is ready",

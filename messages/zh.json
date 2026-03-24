@@ -653,6 +653,36 @@
     "tipTitle": "提示：",
     "tipDesc": "分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。"
   },
+  "Admin": {
+    "title": "管理后台",
+    "description": "用于运营 Cashier 的内部后台能力。",
+    "overview": "概览",
+    "users": "用户",
+    "homeTitle": "后台概览",
+    "homeDescription": "这里是内部管理入口。第一版先聚焦于稳定的后台骨架和只读用户列表。"
+  },
+  "AdminUsers": {
+    "title": "用户",
+    "description": "只读查看系统当前有哪些用户。",
+    "email": "邮箱",
+    "name": "名称",
+    "role": "角色",
+    "createdAt": "注册时间",
+    "emptyTitle": "还没有用户",
+    "emptyDescription": "有用户注册后，这里会显示出来。",
+    "roleUser": "普通用户",
+    "roleSuperAdmin": "超级管理员"
+  },
+  "AdminUnauthorized": {
+    "title": "无权访问",
+    "description": "只有超级管理员可以访问这里。",
+    "backHome": "返回首页"
+  },
+  "AdminError": {
+    "title": "加载管理后台出错",
+    "description": "加载管理后台时发生错误。",
+    "backHome": "返回首页"
+  },
   "AuthEmail": {
     "otpSubject": "您的验证码是 {otp}",
     "otpPreview": "您的验证码已生成",
