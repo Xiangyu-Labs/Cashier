@@ -5,15 +5,35 @@ import { users } from "@/persistence/schema/auth";
 import { listAdminUsers } from "@/modules/admin/queries";
 import { UserRole } from "@/modules/admin/types";
 
+const { requireSuperAdminMock } = vi.hoisted(() => ({
+  requireSuperAdminMock: vi.fn(),
+}));
+
 vi.mock("@/lib/db", () => ({
   get db() {
     return getTestDb();
   },
 }));
 
+vi.mock("@/modules/admin/access", () => ({
+  requireSuperAdmin: requireSuperAdminMock,
+}));
+
 describe("listAdminUsers", () => {
+  it("requires super-admin access before listing users", async () => {
+    requireSuperAdminMock.mockRejectedValueOnce(new Error("forbidden"));
+
+    await expect(listAdminUsers()).rejects.toThrow("forbidden");
+  });
+
   it("returns newest users first while preserving null names", async () => {
     const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValueOnce({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
 
     await db.run(sql`DELETE FROM users`);
 

@@ -64,7 +64,10 @@ describe("admin route composition", () => {
     const result = await Layout({ children: <div>secret</div> });
 
     expect(result).toBeNull();
-    expect(redirectMock).toHaveBeenCalledWith({ href: "/login", locale: "en" });
+    expect(redirectMock).toHaveBeenCalledWith({
+      href: "/api/auth/signout?callbackUrl=%2Fen%2Flogin",
+      locale: "en",
+    });
   });
 
   it("wires the users page to the admin query and list component", async () => {

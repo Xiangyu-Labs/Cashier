@@ -14,7 +14,10 @@ export default async function AdminLayout(props: { children: ReactNode }) {
     await requireSuperAdmin();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      redirect({ href: "/login", locale });
+      redirect({
+        href: `/api/auth/signout?callbackUrl=${encodeURIComponent(`/${locale}/login`)}`,
+        locale,
+      });
       return null;
     }
 
