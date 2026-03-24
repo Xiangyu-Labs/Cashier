@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Delete, Check, Equal, Calculator } from "lucide-react";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
@@ -23,6 +22,24 @@ interface CalculatorState {
   hasResult: boolean;
 }
 
+function amountToMinorUnitDigits(value: number): string {
+  return Math.max(0, Math.round(value * 100)).toString();
+}
+
+function digitsToMinorUnitDisplay(digits: string): string {
+  const normalized = digits.replace(/\D/g, "");
+  const padded = normalized.padStart(3, "0");
+  const units = padded.slice(0, -2).replace(/^0+(?=\d)/, "") || "0";
+  const cents = padded.slice(-2);
+  return `${units}.${cents}`;
+}
+
+function digitsToAmount(digits: string): number {
+  const normalized = digits.replace(/\D/g, "");
+  if (normalized === "") return 0;
+  return Number.parseFloat((Number.parseInt(normalized, 10) / 100).toFixed(2));
+}
+
 export function CalculatorInput({
   value,
   onChange,
@@ -30,7 +47,7 @@ export function CalculatorInput({
   disabled = false,
 }: CalculatorInputProps) {
   const [mode, setMode] = React.useState<EditMode>("display");
-  const [inputValue, setInputValue] = React.useState<string>("");
+  const [inputDigits, setInputDigits] = React.useState<string>("");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -52,7 +69,7 @@ export function CalculatorInput({
   // Initialize input value when entering input mode
   React.useEffect(() => {
     if (mode === "input") {
-      setInputValue(value === 0 ? "" : value.toFixed(2));
+      setInputDigits(value === 0 ? "" : amountToMinorUnitDigits(value));
     }
   }, [mode, value]);
 
@@ -83,10 +100,7 @@ export function CalculatorInput({
   }, [mode]);
 
   const confirmInputValue = () => {
-    const numValue = parseFloat(inputValue);
-    if (!isNaN(numValue) && inputValue.trim() !== "") {
-      onChange(parseFloat(numValue.toFixed(2)));
-    }
+    onChange(digitsToAmount(inputDigits));
     setMode("display");
   };
 
@@ -99,11 +113,11 @@ export function CalculatorInput({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    // Only allow valid number input
-    if (newValue === "" || /^\d*\.?\d{0,2}$/.test(newValue)) {
-      setInputValue(newValue);
+    const nextDigits = e.target.value.replace(/\D/g, "");
+    if (nextDigits === "" && e.target.value !== "") {
+      return;
     }
+    setInputDigits(nextDigits);
   };
 
   // Calculator functions
@@ -282,15 +296,15 @@ export function CalculatorInput({
   if (mode === "input") {
     return (
       <div ref={containerRef} className="flex items-center gap-2">
-        <Input
+        <input
           ref={inputRef}
           type="text"
-          inputMode="decimal"
-          value={inputValue}
+          inputMode="numeric"
+          value={digitsToMinorUnitDisplay(inputDigits)}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
           className={cn(
-            "w-32 text-right font-mono border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto !text-base",
+            "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none outline-none focus-visible:ring-0",
             displayClassName
           )}
         />
