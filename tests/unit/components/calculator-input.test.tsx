@@ -36,7 +36,7 @@ describe("CalculatorInput", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
-    render(<CalculatorInput value={0} onChange={onChange} />);
+    render(<CalculatorInput value={0} onChange={onChange} inlineInputMode="minor-unit" />);
 
     fireEvent.click(screen.getByRole("button", { name: "0.00" }));
     const input = screen.getByRole("textbox");
@@ -49,7 +49,7 @@ describe("CalculatorInput", () => {
   it("keeps minor-unit semantics when deleting digits", async () => {
     const user = userEvent.setup();
 
-    render(<CalculatorInput value={0} onChange={() => {}} />);
+    render(<CalculatorInput value={0} onChange={() => {}} inlineInputMode="minor-unit" />);
 
     fireEvent.click(screen.getByRole("button", { name: "0.00" }));
     const input = screen.getByRole("textbox") as HTMLInputElement;
@@ -59,6 +59,20 @@ describe("CalculatorInput", () => {
 
     await user.type(input, "{Backspace}");
     expect(input.value).toBe("1.45");
+  });
+
+  it("keeps decimal inline typing in the default mode", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<CalculatorInput value={0} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "0.00" }));
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "200.50{Enter}");
+
+    expect(onChange).toHaveBeenCalledWith(200.5);
   });
 
   it("should call onChange when confirming input", () => {

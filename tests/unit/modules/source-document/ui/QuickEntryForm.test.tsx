@@ -23,7 +23,17 @@ vi.mock("@/components/ui/date-filter", () => ({
 }));
 
 vi.mock("@/components/ui/calculator-input", () => ({
-  CalculatorInput: ({ value }: { value: number }) => <div data-testid="calculator-input">{value}</div>,
+  CalculatorInput: ({
+    value,
+    inlineInputMode,
+  }: {
+    value: number;
+    inlineInputMode?: string;
+  }) => (
+    <div data-testid="calculator-input" data-inline-input-mode={inlineInputMode ?? ""}>
+      {value}
+    </div>
+  ),
 }));
 
 vi.mock("@/components/ui/select", () => ({
@@ -91,6 +101,9 @@ describe("QuickEntryForm", () => {
     );
 
     expect(screen.getByText("货币")).toBeTruthy();
+    expect(screen.getByTestId("calculator-input").getAttribute("data-inline-input-mode")).toBe(
+      "minor-unit"
+    );
 
     const options = screen.getAllByTestId("currency-option").map((node) => node.textContent);
     expect(options.slice(0, 3)).toEqual(["MYR", "USD", "CNY"]);

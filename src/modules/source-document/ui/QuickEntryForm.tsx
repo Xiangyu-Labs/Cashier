@@ -138,6 +138,7 @@ export function QuickEntryForm({
         <CalculatorInput
           value={amount}
           onChange={setAmount}
+          inlineInputMode="minor-unit"
           displayClassName="text-3xl font-bold font-mono text-center"
         />
       </div>

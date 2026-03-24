@@ -10,6 +10,7 @@ interface CalculatorInputProps {
   onChange: (value: number) => void;
   displayClassName?: string;
   disabled?: boolean;
+  inlineInputMode?: "decimal" | "minor-unit";
 }
 
 type EditMode = "display" | "input" | "calculator";
@@ -45,9 +46,10 @@ export function CalculatorInput({
   onChange,
   displayClassName,
   disabled = false,
+  inlineInputMode = "decimal",
 }: CalculatorInputProps) {
   const [mode, setMode] = React.useState<EditMode>("display");
-  const [inputDigits, setInputDigits] = React.useState<string>("");
+  const [inputValue, setInputValue] = React.useState<string>("");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -69,9 +71,13 @@ export function CalculatorInput({
   // Initialize input value when entering input mode
   React.useEffect(() => {
     if (mode === "input") {
-      setInputDigits(value === 0 ? "" : amountToMinorUnitDigits(value));
+      if (inlineInputMode === "minor-unit") {
+        setInputValue(value === 0 ? "" : amountToMinorUnitDigits(value));
+      } else {
+        setInputValue(value === 0 ? "" : value.toFixed(2));
+      }
     }
-  }, [mode, value]);
+  }, [inlineInputMode, mode, value]);
 
   // Reset calculator state when opening calculator
   React.useEffect(() => {
@@ -100,7 +106,16 @@ export function CalculatorInput({
   }, [mode]);
 
   const confirmInputValue = () => {
-    onChange(digitsToAmount(inputDigits));
+    if (inlineInputMode === "minor-unit") {
+      onChange(digitsToAmount(inputValue));
+      setMode("display");
+      return;
+    }
+
+    const numValue = parseFloat(inputValue);
+    if (!isNaN(numValue) && inputValue.trim() !== "") {
+      onChange(parseFloat(numValue.toFixed(2)));
+    }
     setMode("display");
   };
 
@@ -113,11 +128,19 @@ export function CalculatorInput({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextDigits = e.target.value.replace(/\D/g, "");
-    if (nextDigits === "" && e.target.value !== "") {
+    if (inlineInputMode === "minor-unit") {
+      const nextDigits = e.target.value.replace(/\D/g, "");
+      if (nextDigits === "" && e.target.value !== "") {
+        return;
+      }
+      setInputValue(nextDigits);
       return;
     }
-    setInputDigits(nextDigits);
+
+    const newValue = e.target.value;
+    if (newValue === "" || /^\d*\.?\d{0,2}$/.test(newValue)) {
+      setInputValue(newValue);
+    }
   };
 
   // Calculator functions
@@ -299,8 +322,10 @@ export function CalculatorInput({
         <input
           ref={inputRef}
           type="text"
-          inputMode="numeric"
-          value={digitsToMinorUnitDisplay(inputDigits)}
+          inputMode={inlineInputMode === "minor-unit" ? "numeric" : "decimal"}
+          value={
+            inlineInputMode === "minor-unit" ? digitsToMinorUnitDisplay(inputValue) : inputValue
+          }
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
           className={cn(
