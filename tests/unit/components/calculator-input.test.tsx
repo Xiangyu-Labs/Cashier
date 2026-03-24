@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CalculatorInput } from "@/components/ui/calculator-input";
 
 describe("CalculatorInput", () => {
@@ -12,6 +13,52 @@ describe("CalculatorInput", () => {
     render(<CalculatorInput value={100} onChange={() => {}} />);
     fireEvent.click(screen.getByText("100.00"));
     expect(screen.getByRole("textbox") !== null).toBe(true);
+  });
+
+  it("keeps the same typography when switching into inline edit mode", () => {
+    render(
+      <CalculatorInput
+        value={0}
+        onChange={() => {}}
+        displayClassName="text-3xl font-bold font-mono text-center"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "0.00" }));
+    const input = screen.getByRole("textbox");
+
+    expect(input.className).toContain("font-mono");
+    expect(input.className).toContain("text-3xl");
+    expect(input.className).not.toContain("!text-base");
+  });
+
+  it("treats inline digit typing as minor units", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<CalculatorInput value={0} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "0.00" }));
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "1300{Enter}");
+
+    expect(onChange).toHaveBeenCalledWith(13);
+  });
+
+  it("keeps minor-unit semantics when deleting digits", async () => {
+    const user = userEvent.setup();
+
+    render(<CalculatorInput value={0} onChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "0.00" }));
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+
+    await user.type(input, "1454");
+    expect(input.value).toBe("14.54");
+
+    await user.type(input, "{Backspace}");
+    expect(input.value).toBe("1.45");
   });
 
   it("should call onChange when confirming input", () => {
