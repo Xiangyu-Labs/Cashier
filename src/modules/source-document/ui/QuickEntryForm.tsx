@@ -82,6 +82,18 @@ export function QuickEntryForm({
         className="text-sm"
       />
 
+      {/* Date Selector */}
+      <div>
+        <p className="text-sm text-muted-foreground mb-2">{t("selectDate")}</p>
+        <DateFilter
+          value={entryDate}
+          onChange={(date) => setEntryDate(date ?? new Date())}
+          placeholder={t("selectDate")}
+          size="sm"
+          className="w-full"
+        />
+      </div>
+
       {/* Category Grid */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">{t("selectCategory")}</p>
@@ -103,18 +115,6 @@ export function QuickEntryForm({
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Date Selector */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">{t("selectDate")}</p>
-        <DateFilter
-          value={entryDate}
-          onChange={(date) => setEntryDate(date ?? new Date())}
-          placeholder={t("selectDate")}
-          size="sm"
-          className="w-full"
-        />
       </div>
 
       <div>

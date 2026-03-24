@@ -91,7 +91,7 @@ describe("QuickEntryForm", () => {
   });
 
   it("renders currency selector with main currency first", () => {
-    render(
+    const { container } = render(
       <QuickEntryForm
         ledgerId="ledger-1"
         categories={[createCategory()]}
@@ -107,5 +107,33 @@ describe("QuickEntryForm", () => {
 
     const options = screen.getAllByTestId("currency-option").map((node) => node.textContent);
     expect(options.slice(0, 3)).toEqual(["MYR", "USD", "CNY"]);
+
+    const itemNameInput = container.querySelector("input[placeholder='名称（可选）']");
+    const labels = Array.from(container.querySelectorAll("p")).map((node) => ({
+      text: node.textContent,
+      node,
+    }));
+    const dateLabel = labels.find((label) => label.text === "选择日期")?.node ?? null;
+    const categoryLabel = labels.find((label) => label.text === "选择分类")?.node ?? null;
+    const currencyLabel = labels.find((label) => label.text === "货币")?.node ?? null;
+    const amountInput = screen.getByTestId("calculator-input");
+
+    expect(itemNameInput).not.toBeNull();
+    expect(dateLabel).not.toBeNull();
+    expect(categoryLabel).not.toBeNull();
+    expect(currencyLabel).not.toBeNull();
+    if (itemNameInput == null) {
+      throw new Error("Expected item name input");
+    }
+    if (dateLabel == null || categoryLabel == null || currencyLabel == null) {
+      throw new Error("Expected ordered quick entry labels");
+    }
+
+    expect(itemNameInput.compareDocumentPosition(dateLabel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(dateLabel.compareDocumentPosition(categoryLabel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(categoryLabel.compareDocumentPosition(currencyLabel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(currencyLabel.compareDocumentPosition(amountInput)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
