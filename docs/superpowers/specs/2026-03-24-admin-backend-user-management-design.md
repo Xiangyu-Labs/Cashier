@@ -182,6 +182,8 @@ The admin backend should feel like a distinct internal area while still followin
 - current navigation
 - content region for child pages
 
+When visual or interaction details are uncertain, implementation should align the admin backend with the existing frontend UI style and use [`docs/architecture/UI.md`](/home/dev/workspace/Cashier/docs/architecture/UI.md) as the design reference. The admin area should look like part of the same product, not like a separate visual system.
+
 ### Empty states
 
 If there are no users to display, the user list page should render a clear empty state rather than an empty table shell.
@@ -233,6 +235,7 @@ The first release does not require mutation tests because there are no admin mut
 - Only `super_admin` can access admin routes
 - Logged-in non-admin users see an unauthorized experience
 - The `users` table stores a role value with `user` as the default
+- The admin UI follows the existing product UI style, using [`docs/architecture/UI.md`](/home/dev/workspace/Cashier/docs/architecture/UI.md) as the reference when design choices are uncertain
 - The admin UI does not include role editing, disabling, AI controls, tier controls, or quota controls
 
 ## Future Evolution
