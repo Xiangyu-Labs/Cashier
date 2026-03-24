@@ -111,6 +111,8 @@ The `/admin/users` table shows only fields that are currently meaningful and sta
 - role
 - createdAt
 
+The list is intentionally unpaginated in v1 because the expected user count is very small. Results should be displayed newest first by `createdAt desc`.
+
 ### Field Behavior
 
 - `email`: primary identifier in the list
@@ -125,6 +127,8 @@ The `super_admin` account appears in the list. This is useful because the admin 
 ### Permission rule
 
 Only `super_admin` may access `/admin` and its child routes.
+
+Admin routes still require normal authentication first. If an unauthenticated visitor hits `/admin` or `/admin/users`, the app should follow the repository's existing protected-page behavior and redirect the visitor into the login flow before any admin role gate is applied.
 
 ### Unauthorized behavior
 
@@ -203,6 +207,7 @@ Tests should focus on:
 
 ### 1. Admin gating
 
+- unauthenticated visitors are redirected into the login flow before admin role checks
 - `super_admin` can access `/admin`
 - `super_admin` can access `/admin/users`
 - logged-in non-admin users receive the unauthorized result
