@@ -221,6 +221,18 @@ describe("boundary lint", { timeout: 30000 }, () => {
     expect(messages).toHaveLength(0);
   });
 
+  it("allows admin public entrypoints from app files without crashing", async () => {
+    const messages = await lintRestrictedImports(
+      `
+        import { requireSuperAdmin } from "@/modules/admin/access";
+        export const value = requireSuperAdmin;
+      `,
+      "src/app/[locale]/(protected)/admin/layout.tsx"
+    );
+
+    expect(messages).toHaveLength(0);
+  });
+
   it("rejects source-document query imports from module root in cross-module callers", async () => {
     const messages = await lintRestrictedImports(
       `

@@ -1,13 +1,14 @@
 import { asc, desc, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/persistence/schema/auth";
+import type { UserRoleValue } from "@/modules/admin/types";
 
 export async function listAdminUsers(): Promise<
   Array<{
     id: string;
     email: string;
     name: string | null;
-    role: string;
+    role: UserRoleValue;
     createdAt: Date;
   }>
 > {

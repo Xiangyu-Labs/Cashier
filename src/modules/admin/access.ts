@@ -7,7 +7,7 @@ import { UserRole } from "./types";
 
 export async function requireSuperAdmin(): Promise<{
   id: string;
-  email: string | null;
+  email: string;
   name: string | null;
   role: typeof UserRole.SuperAdmin;
 }> {
@@ -38,6 +38,7 @@ export async function requireSuperAdmin(): Promise<{
 
   return {
     ...user,
+    email: user.email,
     role: UserRole.SuperAdmin,
   };
 }
