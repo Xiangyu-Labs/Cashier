@@ -24,7 +24,7 @@ export function getSourceDocumentPreview(
 ): SourceDocumentCardPreviewData {
   return {
     text: sourceDocument.text ?? "",
-    images: "imageUrls" in sourceDocument ? (sourceDocument.imageUrls ?? []) : [],
+    images: sourceDocument.imageUrls ?? [],
   };
 }
 

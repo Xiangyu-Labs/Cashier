@@ -30,9 +30,8 @@ export function SourceDocumentDetailWrapper({
   const tCommon = useTranslations("Common");
   const {
     sourceDocument,
-    safeSourceDocument,
     currentLedgerEntries,
-    safeLedgerId,
+    ledgerId: detailLedgerId,
     isLoading,
     isLoadingImages,
     error,
@@ -72,8 +71,8 @@ export function SourceDocumentDetailWrapper({
 
   return (
     <SourceDocumentDetailModal
-      ledgerId={safeLedgerId}
-      sourceDocument={safeSourceDocument}
+      ledgerId={detailLedgerId}
+      sourceDocument={sourceDocument}
       isLoading={isLoading}
       isLoadingImages={isLoadingImages}
       ledgerEntries={currentLedgerEntries}

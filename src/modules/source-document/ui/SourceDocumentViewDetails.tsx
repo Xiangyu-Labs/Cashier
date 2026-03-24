@@ -24,12 +24,16 @@ import { parseAmount } from "@/lib/formatters";
 import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
 import type { EntryEditData } from "@/modules/source-document/types";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
+import {
+  buildSourceDocumentDetailViewModel,
+  type SourceDocumentDetailDisplayEntry,
+} from "./source-document-detail-view-model";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
   amount: number;
   mainCurrency: string;
-  entries: LedgerEntry[];
+  entries: SourceDocumentDetailDisplayEntry[];
 }
 
 function CurrencyBreakdownItem({
@@ -38,21 +42,9 @@ function CurrencyBreakdownItem({
   mainCurrency,
   entries,
 }: CurrencyBreakdownItemProps) {
-  const { converted, rate: _rate } = useMemo(() => {
+  const converted = useMemo(() => {
     const currencyEntries = entries.filter((e) => (e.currency ?? mainCurrency) === currency);
-
-    let totalConverted = 0;
-    currencyEntries.forEach((entry) => {
-      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
-        totalConverted += parseAmount(entry.convertedAmount);
-      } else if ((entry.currency ?? mainCurrency) === mainCurrency) {
-        totalConverted += parseAmount(entry.amount);
-      }
-    });
-
-    const avgRate = amount > 0 ? totalConverted / amount : 1;
-
-    return { converted: totalConverted, rate: avgRate };
+    return currencyEntries.reduce((total, entry) => total + (entry.convertedAmount ?? 0), 0);
   }, [entries, currency, mainCurrency, amount]);
 
   return (
@@ -127,44 +119,37 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
 
-  const { subtotalsByCurrency, totalInMainCurrency } = useMemo(() => {
-    const groups: Record<string, number> = {};
-    let mainCurrencyTotal = 0;
-
-    ledgerEntries.forEach((entry) => {
-      const pendingCurrency = pendingChanges.entries[entry.id]?.currency;
-      const pendingAmount = pendingChanges.entries[entry.id]?.amount;
-      const curr = pendingCurrency ?? entry.currency ?? mainCurrency;
-      const amt = pendingAmount ?? entry.amount;
-      groups[curr] = (groups[curr] ?? 0) + parseAmount(amt);
-
-      if (entry.convertedAmount != null && entry.convertedAmount !== "") {
-        mainCurrencyTotal += parseAmount(entry.convertedAmount);
-      } else if (curr === mainCurrency) {
-        mainCurrencyTotal += parseAmount(amt);
-      }
-    });
-
-    return {
-      subtotalsByCurrency: groups,
-      totalInMainCurrency: mainCurrencyTotal,
-    };
-  }, [ledgerEntries, mainCurrency, pendingChanges.entries]);
+  const { displayEntries, subtotalsByCurrency, totalInMainCurrency } = useMemo(
+    () =>
+      buildSourceDocumentDetailViewModel({
+        ledgerEntries,
+        pendingChanges,
+        mainCurrency,
+      }),
+    [ledgerEntries, mainCurrency, pendingChanges]
+  );
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
+  const displayEntriesById = useMemo(
+    () => new Map(displayEntries.map((entry) => [entry.id, entry])),
+    [displayEntries]
+  );
 
   const sortedEntries = useMemo(() => {
     return [...ledgerEntries].sort((a, b) => {
       const aOrder = a.category?.sortOrder ?? 999999;
       const bOrder = b.category?.sortOrder ?? 999999;
       if (aOrder !== bOrder) return aOrder - bOrder;
-      return parseAmount(b.amount) - parseAmount(a.amount);
+      return (
+        (displayEntriesById.get(b.id)?.amount ?? parseAmount(b.amount)) -
+        (displayEntriesById.get(a.id)?.amount ?? parseAmount(a.amount))
+      );
     });
-  }, [ledgerEntries]);
+  }, [displayEntriesById, ledgerEntries]);
 
   const isAnomaly = sourceDocument.status === "anomaly";
-  const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
-  const hasImages = (imageUrls?.length ?? 0) > 0;
+  const imageUrls = sourceDocument.imageUrls;
+  const hasImages = imageUrls.length > 0;
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
 
   return (
@@ -225,7 +210,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                   currency={curr}
                   amount={subtotalsByCurrency[curr] ?? 0}
                   mainCurrency={mainCurrency}
-                  entries={ledgerEntries}
+                  entries={displayEntries}
                 />
               ))}
             </div>
@@ -342,7 +327,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         ))}
                       </>
                     ) : (
-                      (imageUrls || []).map((url, idx) => (
+                      imageUrls.map((url, idx) => (
                         <div
                           key={idx}
                           className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"

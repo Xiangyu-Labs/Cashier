@@ -60,7 +60,32 @@ describe("getSourceDocumentLight", () => {
     listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(new Map());
   });
 
-  it("returns a light payload without imageUrls and sensitive metadata fields", async () => {
+  it("returns a normalized light payload with imageUrls, entries, and sanitized metadata", async () => {
+    listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(
+      new Map([
+        [
+          "doc-1",
+          [
+            {
+              id: "entry-1",
+              ledgerId: "ledger-1",
+              categoryId: null,
+              sourceDocumentId: "doc-1",
+              amount: "12.00",
+              currency: "USD",
+              itemName: "Lunch",
+              description: null,
+              convertedAmount: "86.40",
+              exchangeRate: "7.2",
+              createdAt: new Date("2026-03-20T10:00:00.000Z"),
+              updatedAt: new Date("2026-03-20T11:00:00.000Z"),
+              deletedAt: null,
+            },
+          ],
+        ],
+      ])
+    );
+
     sourceDocumentsFindFirstMock
       .mockResolvedValueOnce({
         ledgerId: "ledger-1",
@@ -90,7 +115,15 @@ describe("getSourceDocumentLight", () => {
 
     expect(result).not.toBeNull();
     expect(result?.hasImages).toBe(true);
-    expect((result as { imageUrls?: string[] } | null)?.imageUrls).toBeUndefined();
+    expect((result as { imageUrls?: string[] } | null)?.imageUrls).toEqual([
+      "https://example.com/receipt.jpg",
+    ]);
+    expect(result?.ledgerEntries).toEqual([
+      expect.objectContaining({
+        id: "entry-1",
+        itemName: "Lunch",
+      }),
+    ]);
     expect(result?.metadata).toEqual({ note: "keep" });
   });
 

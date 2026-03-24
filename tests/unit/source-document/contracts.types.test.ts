@@ -20,11 +20,11 @@ describe("source-document contract types", () => {
     >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 
-  it("keeps light DTOs free of imageUrls", () => {
+  it("exposes imageUrls on light DTOs", () => {
     type LightHasImageUrls = "imageUrls" extends keyof SourceDocumentLightDto ? true : false;
-    const lightHasImageUrls: LightHasImageUrls = false;
+    const lightHasImageUrls: LightHasImageUrls = true;
 
-    expectTypeOf(lightHasImageUrls).toEqualTypeOf<false>();
+    expectTypeOf(lightHasImageUrls).toEqualTypeOf<true>();
   });
 
   it("treats list item text as stripped", () => {

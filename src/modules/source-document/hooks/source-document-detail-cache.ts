@@ -16,6 +16,44 @@ export type BatchEntryUpdateData = Partial<Omit<LedgerEntry, "amount">> & {
   amount?: number;
 };
 
+function updateDetailDocumentEntries(
+  queryClient: QueryClient,
+  documentId: string,
+  updater: (
+    entries: NonNullable<SourceDocumentQueryData["ledgerEntries"]>
+  ) => NonNullable<SourceDocumentQueryData["ledgerEntries"]>
+) {
+  queryClient.setQueriesData(
+    { queryKey: queryKeys.sourceDocument(documentId) },
+    (old: SourceDocumentQueryData | undefined) => {
+      if (!old?.ledgerEntries) return old;
+      return {
+        ...old,
+        ledgerEntries: updater(old.ledgerEntries),
+      };
+    }
+  );
+}
+
+function updateLightDocumentEntries(
+  queryClient: QueryClient,
+  documentId: string,
+  updater: (
+    entries: SourceDocumentLightQueryData["ledgerEntries"]
+  ) => SourceDocumentLightQueryData["ledgerEntries"]
+) {
+  queryClient.setQueriesData(
+    { queryKey: queryKeys.sourceDocumentLight(documentId) },
+    (old: SourceDocumentLightQueryData | undefined) => {
+      if (!old?.ledgerEntries) return old;
+      return {
+        ...old,
+        ledgerEntries: updater(old.ledgerEntries),
+      };
+    }
+  );
+}
+
 export function updateSourceDocumentCollectionLists(
   queryClient: QueryClient,
   ledgerId: string,
@@ -80,17 +118,11 @@ export function updateSingleEntryInCaches(
   entryId: string,
   data: Record<string, unknown>
 ) {
-  queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocument(documentId) },
-    (old: SourceDocumentQueryData | undefined) => {
-      if (!old?.ledgerEntries) return old;
-      return {
-        ...old,
-        ledgerEntries: old.ledgerEntries.map((entry) =>
-          entry.id === entryId ? { ...entry, ...data } : entry
-        ),
-      };
-    }
+  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+    entries.map((entry) => (entry.id === entryId ? { ...entry, ...data } : entry))
+  );
+  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+    entries.map((entry) => (entry.id === entryId ? { ...entry, ...data } : entry))
   );
 
   if (ledgerId != null && ledgerId !== "") {
@@ -114,17 +146,11 @@ export function updateBatchEntriesInCaches(
   ids: string[],
   data: BatchEntryUpdateData
 ) {
-  queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocument(documentId) },
-    (old: SourceDocumentQueryData | undefined) => {
-      if (!old?.ledgerEntries) return old;
-      return {
-        ...old,
-        ledgerEntries: old.ledgerEntries.map((entry) =>
-          ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry
-        ),
-      };
-    }
+  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+    entries.map((entry) => (ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry))
+  );
+  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+    entries.map((entry) => (ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry))
   );
 
   if (ledgerId != null && ledgerId !== "") {
@@ -147,15 +173,11 @@ export function removeSingleEntryFromCaches(
   ledgerId: string | undefined,
   entryId: string
 ) {
-  queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocument(documentId) },
-    (old: SourceDocumentQueryData | undefined) => {
-      if (!old?.ledgerEntries) return old;
-      return {
-        ...old,
-        ledgerEntries: old.ledgerEntries.filter((entry) => entry.id !== entryId),
-      };
-    }
+  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+    entries.filter((entry) => entry.id !== entryId)
+  );
+  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+    entries.filter((entry) => entry.id !== entryId)
   );
 
   if (ledgerId != null && ledgerId !== "") {
@@ -175,15 +197,11 @@ export function removeBatchEntriesFromCaches(
   ledgerId: string | undefined,
   ids: string[]
 ) {
-  queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocument(documentId) },
-    (old: SourceDocumentQueryData | undefined) => {
-      if (!old?.ledgerEntries) return old;
-      return {
-        ...old,
-        ledgerEntries: old.ledgerEntries.filter((entry) => !ids.includes(entry.id)),
-      };
-    }
+  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+    entries.filter((entry) => !ids.includes(entry.id))
+  );
+  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+    entries.filter((entry) => !ids.includes(entry.id))
   );
 
   if (ledgerId != null && ledgerId !== "") {

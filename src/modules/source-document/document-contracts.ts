@@ -71,6 +71,7 @@ export interface SourceDocumentLightDto {
   ledgerId: string;
   title: string | null;
   text: string | null;
+  imageUrls: string[];
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
   anomalyReason: string | null;

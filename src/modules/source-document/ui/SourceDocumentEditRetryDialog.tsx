@@ -1,17 +1,19 @@
 "use client";
-import type { SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "./SourceDocumentInput";
-import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
+import {
+  buildSourceDocumentRetrySeed,
+  type RetrySeedSourceDocument,
+} from "./source-document-retry-seed";
 
 interface SourceDocumentEditRetryDialogProps {
   ledgerId: string;
-  sourceDocument: SourceDocument | SourceDocumentLight | { id: string };
+  sourceDocument: RetrySeedSourceDocument;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -26,21 +28,11 @@ export function SourceDocumentEditRetryDialog({
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
 
-  // Check if we need to fetch full data (imageUrls may be stripped for completed documents)
-  // Also fetch if the sourceDocument is minimal (e.g., from task queue anomaly records that only have id/title)
-  const hasImageUrls =
-    "imageUrls" in sourceDocument &&
-    Array.isArray(sourceDocument.imageUrls) &&
-    sourceDocument.imageUrls.length > 0;
-  const hasText =
-    "text" in sourceDocument && sourceDocument.text != null && sourceDocument.text !== "";
-  const hasImages = "hasImages" in sourceDocument && sourceDocument.hasImages;
-  // needsFetch is true when:
-  // 1. No imageUrls but hasImages flag is true (stripped for performance)
-  // 2. No imageUrls AND no text (minimal object, likely from TaskQueueModal)
-  const needsFetch = (!hasImageUrls && hasImages) || (!hasImageUrls && !hasText);
+  const hasImageUrls = (sourceDocument.imageUrls?.length ?? 0) > 0;
+  const hasText = sourceDocument.text != null && sourceDocument.text !== "";
+  const needsFetch =
+    (!hasImageUrls && sourceDocument.hasImages === true) || (!hasImageUrls && !hasText);
 
-  // Use TanStack Query to fetch full data - simpler than manual useEffect
   const { data: fullData, isLoading } = useQuery({
     queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocument.id),
     queryFn: async () => {
@@ -55,36 +47,10 @@ export function SourceDocumentEditRetryDialog({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const initialData = useMemo(() => {
-    const sourceDocEntryDate =
-      "entryDate" in sourceDocument ? (sourceDocument.entryDate ?? undefined) : undefined;
-
-    // If we fetched full data, use it
-    if (fullData != null) {
-      return {
-        images:
-          fullData.imageUrls?.map((url) => ({
-            data: url,
-            mimeType: "image/jpeg",
-          })) ?? [],
-        ...(fullData.text != null ? { text: fullData.text } : {}),
-        ...(sourceDocEntryDate != null ? { entryDate: sourceDocEntryDate } : {}),
-      };
-    }
-
-    // Otherwise use existing sourceDocument data
-    const imageUrls = "imageUrls" in sourceDocument ? sourceDocument.imageUrls : undefined;
-    const text = "text" in sourceDocument ? sourceDocument.text : undefined;
-    return {
-      images:
-        imageUrls?.map((url) => ({
-          data: url,
-          mimeType: "image/jpeg",
-        })) ?? [],
-      ...(text != null ? { text } : {}),
-      ...(sourceDocEntryDate != null ? { entryDate: sourceDocEntryDate } : {}),
-    };
-  }, [sourceDocument, fullData]);
+  const initialData = useMemo(
+    () => buildSourceDocumentRetrySeed(sourceDocument, fullData ?? undefined),
+    [sourceDocument, fullData]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

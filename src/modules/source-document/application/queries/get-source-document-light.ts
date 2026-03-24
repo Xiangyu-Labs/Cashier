@@ -46,16 +46,13 @@ export async function getSourceDocumentLight(
 
   const serializedDocument = serializeSourceDocument(document, {
     stripMetadataFields: ["visionDescription", "originalImageUrls"],
-    imageUrlsOverride: [],
     includeHasImages: true,
     ledgerEntries: entriesByDocId.get(document.id) ?? [],
   });
 
-  const { imageUrls: _imageUrls, ...lightDocument } = serializedDocument;
-
   return {
-    ...lightDocument,
-    ledgerEntries: lightDocument.ledgerEntries ?? [],
+    ...serializedDocument,
+    ledgerEntries: serializedDocument.ledgerEntries ?? [],
     hasImages: accessContext.hasImages,
   };
 }

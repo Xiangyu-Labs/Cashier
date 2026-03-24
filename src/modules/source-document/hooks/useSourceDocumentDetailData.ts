@@ -1,5 +1,4 @@
 "use client";
-import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -37,23 +36,16 @@ export function useSourceDocumentDetailData({
 
   const sourceDocument = fullData ?? lightData ?? null;
   const isLoading = isLoadingLight && lightData == null;
-  const isLoadingImages = fullData?.imageUrls == null;
   const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
-  const safeLedgerId = sourceDocument?.ledgerId ?? ledgerId ?? "";
-  const safeSourceDocument: (SourceDocument | SourceDocumentLight) | null = sourceDocument
-    ? {
-        ...sourceDocument,
-        status: sourceDocument.status ?? "queued",
-        type: sourceDocument.type ?? "",
-      }
-    : null;
+  const isLoadingImages =
+    sourceDocument != null &&
+    sourceDocument.hasImages === true &&
+    (sourceDocument.imageUrls?.length ?? 0) === 0;
 
   return {
     sourceDocument,
-    safeSourceDocument,
     currentLedgerEntries,
-    ledgerId: sourceDocument?.ledgerId,
-    safeLedgerId,
+    ledgerId: sourceDocument?.ledgerId ?? ledgerId,
     isLoading,
     isLoadingImages,
     error,

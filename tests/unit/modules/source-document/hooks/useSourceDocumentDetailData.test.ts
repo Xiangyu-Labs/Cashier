@@ -21,29 +21,21 @@ describe("useSourceDocumentDetailData", () => {
     vi.clearAllMocks();
   });
 
-  it("prefers full data over light data and builds safe document fields", () => {
+  it("keeps light detail data directly usable without safe fallback objects", () => {
     useQueryMock
       .mockReturnValueOnce({
         data: {
           id: "doc-1",
           ledgerId: "ledger-1",
-          status: "processing",
+          imageUrls: ["/api/uploads/ledger-1/doc-1/a.jpg"],
+          hasImages: true,
+          ledgerEntries: [{ id: "entry-1" }],
+          status: "completed",
           type: "ai_parsed",
-          ledgerEntries: [{ id: "entry-light" }],
         },
         isLoading: false,
       })
-      .mockReturnValueOnce({
-        data: {
-          id: "doc-1",
-          ledgerId: "ledger-1",
-          imageUrls: ["/api/uploads/a.jpg"],
-          ledgerEntries: [{ id: "entry-full" }],
-          status: undefined,
-          type: undefined,
-        },
-        error: null,
-      });
+      .mockReturnValueOnce({ data: null, error: null });
 
     const { result } = renderHook(() =>
       useSourceDocumentDetailData({
@@ -53,20 +45,17 @@ describe("useSourceDocumentDetailData", () => {
       })
     );
 
-    expect(result.current.sourceDocument).toMatchObject({
-      id: "doc-1",
-      ledgerId: "ledger-1",
-    });
-    expect(result.current.currentLedgerEntries).toEqual([{ id: "entry-full" }]);
-    expect(result.current.safeLedgerId).toBe("ledger-1");
-    expect(result.current.safeSourceDocument).toMatchObject({
-      status: "queued",
-      type: "",
-    });
+    expect((result.current.sourceDocument as { imageUrls?: string[] } | null)?.imageUrls).toEqual([
+      "/api/uploads/ledger-1/doc-1/a.jpg",
+    ]);
+    expect(result.current.currentLedgerEntries).toEqual([{ id: "entry-1" }]);
+    expect(result.current.ledgerId).toBe("ledger-1");
     expect(result.current.isLoadingImages).toBe(false);
+    expect(result.current).not.toHaveProperty("safeSourceDocument");
+    expect(result.current).not.toHaveProperty("safeLedgerId");
   });
 
-  it("uses light loading state and initialLedgerEntries fallback when detail is absent", () => {
+  it("falls back to initial ledger entries only when no document data exists", () => {
     useQueryMock
       .mockReturnValueOnce({
         data: null,
@@ -101,9 +90,11 @@ describe("useSourceDocumentDetailData", () => {
     );
     expect(result.current.sourceDocument).toBeNull();
     expect(result.current.currentLedgerEntries).toEqual([{ id: "entry-1" }]);
-    expect(result.current.safeLedgerId).toBe("");
+    expect(result.current.ledgerId).toBe("");
     expect(result.current.isLoading).toBe(true);
-    expect(result.current.isLoadingImages).toBe(true);
+    expect(result.current.isLoadingImages).toBe(false);
     expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current).not.toHaveProperty("safeSourceDocument");
+    expect(result.current).not.toHaveProperty("safeLedgerId");
   });
 });

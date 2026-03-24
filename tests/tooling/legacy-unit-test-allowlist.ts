@@ -63,7 +63,6 @@ export const legacyUnitTestAllowlist = [
   "tests/unit/source-document/contracts.types.test.ts",
   "tests/unit/source-document/hooks/usePendingChanges.test.ts",
   "tests/unit/source-document/hooks/useSelection.test.ts",
-  "tests/unit/source-document/hooks/useSourceDocumentDetailData.test.ts",
   "tests/unit/source-document/hooks/useSourceDocumentEntryMutations.test.ts",
   "tests/unit/source-document/hooks/useSourceDocumentRecordMutations.test.ts",
   "tests/unit/source-document/rehome-local-upload-urls.test.ts",

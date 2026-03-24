@@ -107,7 +107,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     }
   }, [hasPendingChanges, onClose]);
 
-  const handleSaveAll = useCallback(async () => {
+  const handleSaveAll = useCallback(async (): Promise<boolean> => {
     setIsSaving(true);
     try {
       if (Object.keys(pendingChanges.sourceDoc).length > 0) {
@@ -122,16 +122,20 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
       discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pendingChangesCount }));
+      return true;
     } catch (error) {
       console.error("Failed to save changes:", error);
       toast.error(t("saveAllError"));
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry, pendingChangesCount, t, discardAllChanges]);
 
   const handleSaveAllAndClose = useCallback(async () => {
-    await handleSaveAll();
+    const saved = await handleSaveAll();
+    if (!saved) return;
+
     setShowUnsavedConfirm(false);
     onClose();
   }, [handleSaveAll, onClose]);

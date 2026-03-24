@@ -5,8 +5,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import type { SourceDocumentLedgerActionContext } from "./access";
 
 /**
- * Fetch a source document with light payload (excluding imageUrls).
- * Used for prefetching in list views where images are loaded on demand.
+ * Fetch a source document with the normalized light payload used by detail/retry surfaces.
  */
 export const getSourceDocumentLightAction = withSourceDocumentLedgerAccess(
   async (

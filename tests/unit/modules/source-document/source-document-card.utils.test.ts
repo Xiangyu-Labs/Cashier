@@ -50,6 +50,7 @@ function createSourceDocumentLight(
     ledgerId: "ledger-1",
     title: "轻量单据",
     text: "轻量文本",
+    imageUrls: [],
     status: "processing",
     type: "manual",
     anomalyReason: null,

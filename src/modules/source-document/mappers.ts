@@ -59,6 +59,7 @@ export function serializeSourceDocumentLight(doc: SourceDocument): SourceDocumen
     ledgerId: doc.ledgerId,
     title: doc.title,
     text: doc.text,
+    imageUrls: doc.imageUrls ?? [],
     status: doc.status,
     type: doc.type,
     anomalyReason: doc.anomalyReason,
