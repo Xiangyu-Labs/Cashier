@@ -181,6 +181,8 @@ describe("listAdminTasks", () => {
     const firstPage = await listAdminTasks({ limit: 2 });
 
     expect(firstPage.items.map((item) => item.id)).toEqual(["task-c", "task-b"]);
+    expect(firstPage.items[0]).not.toHaveProperty("input");
+    expect(firstPage.items[0]).not.toHaveProperty("tokenUsage");
     expect(firstPage.nextCursor).toBe("2026-03-25T11:00:00.000Z|task-b");
     expect(firstPage.hasAnyTasks).toBe(true);
 

@@ -24,6 +24,27 @@ export interface AdminTaskListItem {
   completedAt: Date | null;
 }
 
+export interface AdminTaskDetail {
+  id: string;
+  status: AdminTaskStatus;
+  type: string;
+  title: string;
+  input: unknown;
+  deduplicationKey: string | null;
+  scopeId: string | null;
+  scopeUserEmail: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  error: string | null;
+  progress: string | null;
+  tokenUsage: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  deletedAt: Date | null;
+}
+
 export interface ListAdminTasksResult {
   items: AdminTaskListItem[];
   nextCursor: string | null;
