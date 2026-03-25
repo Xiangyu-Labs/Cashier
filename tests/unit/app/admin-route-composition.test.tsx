@@ -37,8 +37,11 @@ vi.mock("@/i18n/routing", () => ({
       {children}
     </a>
   ),
-  redirect: redirectMock,
   usePathname: () => "/en/admin/users",
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
 }));
 
 describe("admin route composition", () => {
@@ -64,10 +67,7 @@ describe("admin route composition", () => {
     const result = await Layout({ children: <div>secret</div> });
 
     expect(result).toBeNull();
-    expect(redirectMock).toHaveBeenCalledWith({
-      href: "/api/auth/signout?callbackUrl=%2Fen%2Flogin",
-      locale: "en",
-    });
+    expect(redirectMock).toHaveBeenCalledWith("/api/auth/signout?callbackUrl=%2Fen%2Flogin");
   });
 
   it("wires the users page to the admin query and list component", async () => {

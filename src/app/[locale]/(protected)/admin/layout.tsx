@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
-import { redirect } from "@/i18n/routing";
+import { redirect } from "next/navigation";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { requireSuperAdmin } from "@/modules/admin/access";
 import { AdminShell, AdminUnauthorizedState } from "@/modules/admin/ui";
@@ -14,10 +14,7 @@ export default async function AdminLayout(props: { children: ReactNode }) {
     await requireSuperAdmin();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      redirect({
-        href: `/api/auth/signout?callbackUrl=${encodeURIComponent(`/${locale}/login`)}`,
-        locale,
-      });
+      redirect(`/api/auth/signout?callbackUrl=${encodeURIComponent(`/${locale}/login`)}`);
       return null;
     }
 
