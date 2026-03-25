@@ -19,6 +19,7 @@
     "docker:build": "docker compose build",
     "docker:prod": "docker compose up -d --build",
     "docker:down": "docker compose down",
+    "admin:grant-super-admin": "node scripts/grant-super-admin.mjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

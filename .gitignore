@@ -77,3 +77,5 @@ chant.sh
 # local docs artifacts
 /docs/*
 !/docs/architecture/
+!/docs/operations/
+!/docs/operations/runbook.md
