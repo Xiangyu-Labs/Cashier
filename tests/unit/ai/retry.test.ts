@@ -80,6 +80,23 @@ describe("OpenAIClient Retry Logic", () => {
     expect(Object.hasOwn(constructorArgs ?? {}, "baseURL")).toBe(false);
   });
 
+  it("passes baseURL through when a custom provider URL is configured", () => {
+    process.env.OPENAI_BASE_URL = "https://openai-proxy.example/v1";
+    mockOpenAI.mockClear();
+
+    new OpenAIClient();
+
+    const firstConstructorCall = mockOpenAI.mock.calls[0] as unknown[] | undefined;
+    expect(firstConstructorCall).toBeDefined();
+    if (firstConstructorCall == null) {
+      throw new Error("Expected OpenAI constructor to be called");
+    }
+
+    const constructorArgs = firstConstructorCall[0] as Record<string, unknown> | undefined;
+    expect(constructorArgs).toBeDefined();
+    expect(constructorArgs?.baseURL).toBe("https://openai-proxy.example/v1");
+  });
+
   it("omits usage when OpenAI does not return token usage", async () => {
     mockCreate.mockResolvedValueOnce({
       choices: [{ message: { content: "Success" } }],

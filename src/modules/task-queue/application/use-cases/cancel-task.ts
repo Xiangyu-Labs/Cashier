@@ -1,13 +1,29 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { cancelFlowTask } from "@/lib/flow";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
-import {
-  deletedSourceDocumentPatch,
-  whereSourceDocumentNotDeleted,
-  whereSourceDocumentNotDeletedId,
-} from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/contracts";
 import { sourceDocuments, taskRuns } from "@/persistence";
+
+function deletedSourceDocumentPatch(now = new Date()) {
+  return {
+    status: SourceDocumentStatus.Deleted,
+    deletedAt: now,
+    updatedAt: now,
+  } as const;
+}
+
+function whereTaskQueueSourceDocumentActive(ledgerId: string) {
+  return and(
+    eq(sourceDocuments.ledgerId, ledgerId),
+    ne(sourceDocuments.status, SourceDocumentStatus.Deleted),
+    isNull(sourceDocuments.deletedAt)
+  )!;
+}
+
+function whereTaskQueueSourceDocumentActiveId(ledgerId: string, sourceDocumentId: string) {
+  return and(eq(sourceDocuments.id, sourceDocumentId), whereTaskQueueSourceDocumentActive(ledgerId))!;
+}
 
 async function softDeleteQueuedOrProcessingSourceDocument(
   ledgerId: string,
@@ -22,7 +38,7 @@ async function softDeleteQueuedOrProcessingSourceDocument(
     .set(deletedSourceDocumentPatch())
     .where(
       and(
-        whereSourceDocumentNotDeletedId(ledgerId, entityId),
+        whereTaskQueueSourceDocumentActiveId(ledgerId, entityId),
         inArray(sourceDocuments.status, ["processing", "queued"])
       )
     );
@@ -95,7 +111,7 @@ export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[
     .where(
       and(
         inArray(sourceDocuments.id, entityIds),
-        whereSourceDocumentNotDeleted(ledgerId),
+        whereTaskQueueSourceDocumentActive(ledgerId),
         inArray(sourceDocuments.status, ["processing", "queued"])
       )
     );

@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/contracts";
 import { sourceDocuments, taskRuns } from "@/persistence";
 import {
   anomalyDocToQueueItem,
@@ -8,6 +8,14 @@ import {
   taskRunToQueueItem,
 } from "@/modules/task-queue/application/mappers";
 import type { QueueItem, TaskQueueResult, TaskQueueStats } from "@/modules/task-queue/contracts";
+
+function whereTaskQueueSourceDocumentActive(ledgerId: string) {
+  return and(
+    eq(sourceDocuments.ledgerId, ledgerId),
+    ne(sourceDocuments.status, SourceDocumentStatus.Deleted),
+    isNull(sourceDocuments.deletedAt)
+  )!;
+}
 
 export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResult> {
   const activeTasks = await db.query.taskRuns.findMany({
@@ -30,7 +38,7 @@ export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResu
   });
 
   const anomalyDocs = await db.query.sourceDocuments.findMany({
-    where: and(whereSourceDocumentNotDeleted(ledgerId), eq(sourceDocuments.status, "anomaly")),
+    where: and(whereTaskQueueSourceDocumentActive(ledgerId), eq(sourceDocuments.status, "anomaly")),
     orderBy: [desc(sourceDocuments.createdAt)],
   });
 
@@ -49,7 +57,7 @@ export async function getTaskQueueQuery(ledgerId: string): Promise<TaskQueueResu
     const docs = await db.query.sourceDocuments.findMany({
       where: and(
         inArray(sourceDocuments.id, completedSourceDocIds),
-        whereSourceDocumentNotDeleted(ledgerId)
+        whereTaskQueueSourceDocumentActive(ledgerId)
       ),
       columns: { id: true, title: true, status: true },
     });

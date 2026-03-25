@@ -63,8 +63,7 @@ export function QuickEntryForm({
     mainCurrency,
     ...preferredCurrencyOptions,
     ...SUPPORTED_CURRENCIES.filter(
-      (curr) =>
-        curr !== mainCurrency && curr !== "unknown" && !preferredCurrencyOptions.includes(curr)
+      (curr) => curr !== mainCurrency && !preferredCurrencyOptions.includes(curr)
     ),
   ];
 

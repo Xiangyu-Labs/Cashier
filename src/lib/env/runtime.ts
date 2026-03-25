@@ -4,6 +4,7 @@ export interface RuntimeEnv {
   readonly databaseUrl: string;
   readonly openaiApiKey: string;
   readonly openaiBaseUrl: string;
+  readonly hasOpenaiBaseUrl: boolean;
   readonly authUrl: string | undefined;
   readonly authResendKey: string | undefined;
   readonly authEmailFrom: string;
@@ -54,6 +55,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get openaiBaseUrl() {
     return readStartupEnv().OPENAI_BASE_URL;
+  },
+  get hasOpenaiBaseUrl() {
+    return hasExplicitValue("OPENAI_BASE_URL");
   },
   get authUrl() {
     return hasExplicitValue("AUTH_URL") ? readStartupEnv().AUTH_URL : undefined;

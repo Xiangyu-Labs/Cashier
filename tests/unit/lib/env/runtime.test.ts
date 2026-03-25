@@ -59,6 +59,7 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.databaseUrl).toBe("file:./data/sqlite.db");
     expect(runtimeEnv.openaiApiKey).toBe("sk-test");
     expect(runtimeEnv.openaiBaseUrl).toBe("https://openai-proxy.example/v1");
+    expect(runtimeEnv.hasOpenaiBaseUrl).toBe(true);
     expect(runtimeEnv.authUrl).toBe("http://localhost:3000");
     expect(runtimeEnv.authResendKey).toBe("re_test");
     expect(runtimeEnv.authEmailFrom).toBe("Cashier <security@example.com>");
@@ -100,6 +101,19 @@ describe("runtimeEnv", () => {
     const { runtimeEnv } = await import("@/lib/env/runtime");
 
     expect(() => runtimeEnv.openaiApiKey).toThrow(/OPENAI_API_KEY/);
+  });
+
+  it("tracks whether OPENAI_BASE_URL was explicitly configured", async () => {
+    process.env = {
+      ...originalEnv,
+      ...baseEnv,
+      OPENAI_BASE_URL: "",
+    };
+
+    const { runtimeEnv } = await import("@/lib/env/runtime");
+
+    expect(runtimeEnv.openaiBaseUrl).toBe("https://api.openai.com/v1");
+    expect(runtimeEnv.hasOpenaiBaseUrl).toBe(false);
   });
 });
 

@@ -30,7 +30,8 @@ function amountToMinorUnitDigits(value: number): string {
 function digitsToMinorUnitDisplay(digits: string): string {
   const normalized = digits.replace(/\D/g, "");
   const padded = normalized.padStart(3, "0");
-  const units = padded.slice(0, -2).replace(/^0+(?=\d)/, "") || "0";
+  const rawUnits = padded.slice(0, -2).replace(/^0+(?=\d)/, "");
+  const units = rawUnits === "" ? "0" : rawUnits;
   const cents = padded.slice(-2);
   return `${units}.${cents}`;
 }

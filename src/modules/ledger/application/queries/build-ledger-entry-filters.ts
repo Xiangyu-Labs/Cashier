@@ -27,10 +27,18 @@ export function buildLedgerEntryFilterConditions(
 
   conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
 
-  const sourceDocumentDateCondition = buildLedgerEntrySourceDocumentDateCondition(ledgerId, {
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-  });
+  const sourceDocumentDateRange: { startDate?: string | null; endDate?: string | null } = {};
+  if (filters.startDate !== undefined) {
+    sourceDocumentDateRange.startDate = filters.startDate;
+  }
+  if (filters.endDate !== undefined) {
+    sourceDocumentDateRange.endDate = filters.endDate;
+  }
+
+  const sourceDocumentDateCondition = buildLedgerEntrySourceDocumentDateCondition(
+    ledgerId,
+    sourceDocumentDateRange
+  );
   if (sourceDocumentDateCondition != null) {
     conditions.push(sourceDocumentDateCondition);
   }

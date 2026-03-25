@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { NotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";

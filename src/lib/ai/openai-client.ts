@@ -9,7 +9,7 @@ export class OpenAIClient {
 
   constructor() {
     const apiKey = runtimeEnv.openaiApiKey;
-    const baseURL = runtimeEnv.openaiBaseUrl;
+    const baseURL = runtimeEnv.hasOpenaiBaseUrl ? runtimeEnv.openaiBaseUrl : undefined;
 
     if (apiKey == null || apiKey === "") {
       throw new AppError("OPENAI_API_KEY is not set", "OPENAI_API_KEY_MISSING");

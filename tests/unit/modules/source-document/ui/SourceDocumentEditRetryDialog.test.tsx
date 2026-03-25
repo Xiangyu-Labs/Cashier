@@ -45,7 +45,7 @@ describe("SourceDocumentEditRetryDialog", () => {
     useQueryMock.mockImplementation(
       ({ enabled, queryFn }: { enabled?: boolean; queryFn?: () => Promise<unknown> }) => {
         if (enabled === true && queryFn != null) {
-          void queryFn();
+          queryFn().catch(() => undefined);
         }
 
         return {

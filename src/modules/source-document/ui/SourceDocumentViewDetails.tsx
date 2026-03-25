@@ -38,14 +38,13 @@ interface CurrencyBreakdownItemProps {
 
 function CurrencyBreakdownItem({
   currency,
-  amount,
   mainCurrency,
   entries,
 }: CurrencyBreakdownItemProps) {
   const converted = useMemo(() => {
     const currencyEntries = entries.filter((e) => (e.currency ?? mainCurrency) === currency);
     return currencyEntries.reduce((total, entry) => total + (entry.convertedAmount ?? 0), 0);
-  }, [entries, currency, mainCurrency, amount]);
+  }, [entries, currency, mainCurrency]);
 
   return (
     <span className="text-xs text-muted-foreground/80">
@@ -367,7 +366,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       )}
 
       <SourceDocumentImageModal
-        images={(imageUrls || []).map((url) => ({ data: url, mimeType: "image/jpeg" }))}
+        images={imageUrls.map((url) => ({ data: url, mimeType: "image/jpeg" }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}
         editable

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as StorageUtils from "@/lib/storage/utils";
 const loadImageForAIMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/storage/utils", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/storage/utils")>("@/lib/storage/utils");
+  const actual = await vi.importActual<StorageUtils>("@/lib/storage/utils");
   return {
     ...actual,
     loadImageForAI: loadImageForAIMock,
