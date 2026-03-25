@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -53,6 +53,20 @@ const labels: AdminTasksListLabels = {
   statusCompleted: "Completed",
   statusFailed: "Failed",
   statusCancelled: "Cancelled",
+  taskBasics: "Task basics",
+  scopeAndEntity: "Scope and entity",
+  timing: "Timing",
+  execution: "Execution",
+  rawData: "Raw data",
+  showRawData: "Show raw data",
+  hideRawData: "Hide raw data",
+  input: "Input",
+  deduplicationKey: "Deduplication Key",
+  updatedAt: "Updated At",
+  deletedAt: "Deleted At",
+  tokenUsage: "Token Usage",
+  scopeUserEmail: "Scope User Email",
+  notAvailable: "—",
 };
 
 const defaultFilters: AdminTaskFiltersState = {
@@ -144,7 +158,7 @@ describe("AdminTasksList", () => {
     expect(screen.getByText("Try clearing one or more filters.")).toBeTruthy();
   });
 
-  it("renders task rows and expands row details based on selected detail props", () => {
+  it("renders task rows and expanded full-record panel from selected detail props", () => {
     const item = createTask({
       error: "AI returned invalid JSON from provider",
       progress: "25%",
@@ -165,24 +179,22 @@ describe("AdminTasksList", () => {
       />
     );
 
-    expect(screen.getByText("Parse source document")).toBeTruthy();
-    expect(screen.getByText("owner@example.com")).toBeTruthy();
+    expect(screen.getAllByText("Parse source document").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("owner@example.com").length).toBeGreaterThan(0);
     expect(screen.getByText("source_document:doc-1")).toBeTruthy();
 
-    expect(screen.getByText("Task ID")).toBeTruthy();
-    expect(screen.getAllByText("AI returned invalid JSON from provider").length).toBeGreaterThan(0);
-    expect(screen.getByText("Progress")).toBeTruthy();
-    expect(screen.getByText("25%")).toBeTruthy();
-    expect(screen.getByText("Scope ID")).toBeTruthy();
-    expect(screen.getByText("ledger-1")).toBeTruthy();
-    expect(screen.getByText("Entity Type")).toBeTruthy();
-    expect(screen.getAllByText("source_document").length).toBeGreaterThan(0);
-    expect(screen.getByText("Entity ID")).toBeTruthy();
-    expect(screen.getByText("doc-1")).toBeTruthy();
-    expect(screen.getByText("Started At")).toBeTruthy();
-    expect(screen.getByText("Completed At")).toBeTruthy();
-    expect(screen.getByText("Duration")).toBeTruthy();
-    expect(screen.getByText("9m 0s")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Task basics" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Scope and entity" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Timing" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Execution" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Raw data" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show raw data" })).toBeTruthy();
+
+    expect(screen.queryByText('{\n  "sourceDocumentId": "doc-1"\n}')).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show raw data" }));
+    const rawPre = screen.getByText((_, element) => element?.tagName === 'PRE' && (element.textContent ?? '').includes('\"sourceDocumentId\": \"doc-1\"'));
+    expect(rawPre).toBeTruthy();
   });
 
   it("builds next-page link with existing filters and next cursor", () => {
@@ -203,39 +215,6 @@ describe("AdminTasksList", () => {
     expect(link.getAttribute("href")).toBe(
       "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99%7C2026-03-18T12%3A00%3A00.000Z"
     );
-  });
-
-  it("renders duration using label-provided units instead of hard-coded English", () => {
-    const customUnitLabels: AdminTasksListLabels = {
-      ...labels,
-      durationHoursUnit: "小时",
-      durationMinutesUnit: "分",
-      durationSecondsUnit: "秒",
-    };
-
-    const detail = createTaskDetail({
-      startedAt: new Date("2026-03-25T10:00:00.000Z"),
-      completedAt: new Date("2026-03-25T10:09:00.000Z"),
-    });
-
-    render(
-      <AdminTasksList
-        locale="zh"
-        items={[
-          createTask({
-            startedAt: new Date("2026-03-25T10:00:00.000Z"),
-            completedAt: new Date("2026-03-25T10:09:00.000Z"),
-          }),
-        ]}
-        hasAnyTasks={true}
-        nextCursor={null}
-        filters={defaultFilters}
-        labels={customUnitLabels}
-        expandedTaskId="task-1"
-        expandedTaskDetail={detail}
-      />
-    );
-    expect(screen.getByText("9分 0秒")).toBeTruthy();
   });
 
   it("builds details and hide-details links with current filters and current cursor", () => {

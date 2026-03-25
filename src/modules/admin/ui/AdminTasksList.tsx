@@ -8,6 +8,7 @@ import type {
   AdminTaskRange,
   AdminTaskStatus,
 } from "@/modules/admin/contracts";
+import { AdminTaskDetailPanel } from "./AdminTaskDetailPanel";
 import { AdminTaskStatusBadge } from "./AdminTaskStatusBadge";
 
 export interface AdminTaskFiltersState {
@@ -50,6 +51,20 @@ export interface AdminTasksListLabels {
   statusCompleted: string;
   statusFailed: string;
   statusCancelled: string;
+  input?: string;
+  deduplicationKey?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+  tokenUsage?: string;
+  taskBasics?: string;
+  scopeAndEntity?: string;
+  timing?: string;
+  execution?: string;
+  rawData?: string;
+  showRawData?: string;
+  hideRawData?: string;
+  scopeUserEmail?: string;
+  notAvailable?: string;
 }
 
 function toStatusLabel(status: AdminTaskStatus, labels: AdminTasksListLabels): string {
@@ -150,32 +165,6 @@ function formatOptionalDate(
   return value == null ? emptySymbol : formatter.format(value);
 }
 
-function formatDuration(
-  startedAt: Date | null,
-  completedAt: Date | null,
-  labels: Pick<AdminTasksListLabels, "durationHoursUnit" | "durationMinutesUnit" | "durationSecondsUnit">
-): string {
-  if (startedAt == null || completedAt == null) {
-    return "—";
-  }
-
-  const milliseconds = completedAt.getTime() - startedAt.getTime();
-  if (milliseconds < 0) {
-    return "—";
-  }
-
-  const totalSeconds = Math.floor(milliseconds / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}${labels.durationHoursUnit} ${minutes}${labels.durationMinutesUnit} ${seconds}${labels.durationSecondsUnit}`;
-  }
-
-  return `${minutes}${labels.durationMinutesUnit} ${seconds}${labels.durationSecondsUnit}`;
-}
-
 export function AdminTasksList(props: {
   locale: string;
   items: AdminTaskListItem[];
@@ -248,7 +237,6 @@ export function AdminTasksList(props: {
             {props.items.map((item) => {
               const statusLabel = toStatusLabel(item.status, props.labels);
               const isExpanded = props.expandedTaskId === item.id && props.expandedTaskDetail != null;
-              const detail = isExpanded ? props.expandedTaskDetail : null;
 
               return (
                 <Fragment key={item.id}>
@@ -284,58 +272,47 @@ export function AdminTasksList(props: {
                   {isExpanded ? (
                     <tr className="border-b border-border last:border-b-0">
                       <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
-                        <dl className="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.taskId}</dt>
-                            <dd className="break-all text-sm text-text">{detail?.id ?? "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.progress}</dt>
-                            <dd className="text-sm text-text">{detail?.progress ?? "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.scopeId}</dt>
-                            <dd className="break-all text-sm text-text">{detail?.scopeId ?? "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.entityType}</dt>
-                            <dd className="text-sm text-text">{detail?.entityType ?? "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.entityId}</dt>
-                            <dd className="break-all text-sm text-text">{detail?.entityId ?? "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.createdAt}</dt>
-                            <dd className="text-sm text-text">
-                              {formatOptionalDate(detail?.createdAt ?? null, dateFormatter)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.startedAt}</dt>
-                            <dd className="text-sm text-text">
-                              {formatOptionalDate(detail?.startedAt ?? null, dateFormatter)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.completedAt}</dt>
-                            <dd className="text-sm text-text">
-                              {formatOptionalDate(detail?.completedAt ?? null, dateFormatter)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.duration}</dt>
-                            <dd className="text-sm text-text">
-                              {formatDuration(detail?.startedAt ?? null, detail?.completedAt ?? null, props.labels)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted">{props.labels.error}</dt>
-                            <dd className="whitespace-pre-wrap break-words text-sm text-text">
-                              {detail?.error ?? "—"}
-                            </dd>
-                          </div>
-                        </dl>
+                        <AdminTaskDetailPanel
+                          locale={props.locale}
+                          detail={props.expandedTaskDetail}
+                          labels={{
+                            taskBasics: props.labels.taskBasics ?? "Task basics",
+                            scopeAndEntity: props.labels.scopeAndEntity ?? "Scope and entity",
+                            timing: props.labels.timing ?? "Timing",
+                            execution: props.labels.execution ?? "Execution",
+                            rawData: props.labels.rawData ?? "Raw data",
+                            showRawData: props.labels.showRawData ?? "Show raw data",
+                            hideRawData: props.labels.hideRawData ?? "Hide raw data",
+                            taskId: props.labels.taskId,
+                            status: props.labels.status,
+                            type: props.labels.type,
+                            task: props.labels.task,
+                            scopeId: props.labels.scopeId,
+                            entityType: props.labels.entityType,
+                            entityId: props.labels.entityId,
+                            deduplicationKey: props.labels.deduplicationKey ?? "Deduplication Key",
+                            scopeUserEmail: props.labels.scopeUserEmail ?? "Scope User Email",
+                            createdAt: props.labels.createdAt,
+                            updatedAt: props.labels.updatedAt ?? "Updated At",
+                            startedAt: props.labels.startedAt,
+                            completedAt: props.labels.completedAt,
+                            deletedAt: props.labels.deletedAt ?? "Deleted At",
+                            duration: props.labels.duration,
+                            progress: props.labels.progress,
+                            error: props.labels.error,
+                            input: props.labels.input ?? "Input",
+                            tokenUsage: props.labels.tokenUsage ?? "Token Usage",
+                            notAvailable: props.labels.notAvailable ?? "—",
+                            durationHoursUnit: props.labels.durationHoursUnit,
+                            durationMinutesUnit: props.labels.durationMinutesUnit,
+                            durationSecondsUnit: props.labels.durationSecondsUnit,
+                            statusPending: props.labels.statusPending,
+                            statusRunning: props.labels.statusRunning,
+                            statusCompleted: props.labels.statusCompleted,
+                            statusFailed: props.labels.statusFailed,
+                            statusCancelled: props.labels.statusCancelled,
+                          }}
+                        />
                       </td>
                     </tr>
                   ) : null}
