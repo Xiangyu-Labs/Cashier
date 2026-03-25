@@ -54,6 +54,14 @@ That earlier design established:
 
 This follow-up does not replace that structure. It strengthens the details portion so the page can serve as a complete `task_runs` viewer.
 
+### Existing page states remain unchanged
+
+This follow-up inherits the existing `/admin/tasks` page-state behavior established by the prior design. The following behaviors are unchanged and must not regress:
+
+- the no-data empty state
+- the filtered no-results state
+- the standard admin error presentation when the page fails to load
+
 ## Core Decisions
 
 ### 1. “All fields” means literal `task_runs` field coverage
@@ -80,7 +88,12 @@ The intended raw-field set is:
 - `completedAt`
 - `deletedAt`
 
-If the database schema later adds more fields to `task_runs`, the admin task detail design should remain biased toward visibility rather than selective omission.
+If the database schema changes before this follow-up ships, any newly added `task_runs` column must either:
+
+- be surfaced in the detail viewer in the same batch, or
+- be explicitly deferred by updating this spec in that same batch
+
+No current or newly introduced `task_runs` column may be silently omitted.
 
 ### 2. The list remains concise; the full record lives in details
 
@@ -145,9 +158,11 @@ It should not become:
 
 ### Query contract expansion
 
-The existing admin task query contract should be extended so the UI receives the full raw field set required for the detail panel.
+The existing `/admin/tasks` list contract should remain payload-bounded and scan-oriented. This follow-up does **not** require the initial 50-row list response to preload full raw payloads for every visible task.
 
-That includes fields currently omitted from the admin task DTO, especially:
+Instead, implementation should preserve the current summary-oriented list contract for the table and add a detail-specific data contract for the expanded record view, or an equivalent lazy/bounded mechanism with the same effect.
+
+Whatever mechanism is chosen, opening task details must provide the full raw field set required for the detail panel, including the fields currently omitted from the admin task DTO:
 
 - `input`
 - `deduplicationKey`
@@ -155,7 +170,7 @@ That includes fields currently omitted from the admin task DTO, especially:
 - `updatedAt`
 - `deletedAt`
 
-The query should continue to enforce admin access first and keep the current cursor, filter, and enrichment behavior intact.
+The list path must continue to enforce admin access first and preserve the current cursor, filter, and enrichment behavior. The detail path must remain read-only.
 
 ### JSON-like field handling
 
@@ -242,7 +257,11 @@ For ordinary scalar fields:
 For raw JSON-like fields:
 
 - a literal `null` value should render as `null`
-- an absent field should still be represented clearly rather than silently omitted
+- an absent field should render as `—` rather than disappearing
+- an empty string should render as `""`
+- an empty object should render as `{}`
+- an empty array should render as `[]`
+- if a field contains a non-JSON raw string, it should render exactly as stored rather than being reformatted into a fake object
 
 ### Raw data rendering
 
@@ -286,9 +305,11 @@ The raw-data group may use a code/preformatted treatment, but it should remain c
 
 That means:
 
+- raw data appears only inside the expanded detail area, not as new summary-table columns
 - no new visual theme just for JSON
 - no bright terminal-like styling
 - no excessive shadow or color-heavy panels
+- raw blocks stay contained within the existing bordered detail region with safe overflow handling
 
 ### Interaction limits
 
@@ -328,15 +349,17 @@ UI tests should confirm that:
 - raw-data fields render in dedicated formatted blocks
 - raw-data groups can be collapsed by default while remaining accessible
 - scalar null/empty states follow the agreed display rules
-- derived helper fields are still visible without being confused for raw database columns
+- raw JSON-like empty states follow the explicit rules for `null`, absent, empty string, empty object, and empty array
+- derived helper fields remain visible under labels that are distinct from raw database column names
 
 ### 3. Route composition coverage
 
-Page-composition tests should confirm that `/admin/tasks` still wires the full enriched task payload into the list/detail UI without regressing filters or pagination.
+Page-composition tests should confirm that `/admin/tasks` still wires the required task payloads into the list/detail UI without regressing filters, pagination, or the existing no-data / filtered-empty / error-state behavior.
 
 ## Acceptance Criteria
 
 - `/admin/tasks` still behaves as the task index page
+- the summary table remains the primary index surface; no new task-detail route, modal, or drawer is introduced in this batch
 - opening task details exposes the full `task_runs` record
 - the following raw fields are viewable in the details UI:
   - `id`
@@ -356,11 +379,13 @@ Page-composition tests should confirm that `/admin/tasks` still wires the full e
   - `startedAt`
   - `completedAt`
   - `deletedAt`
-- raw JSON-like fields render in readable blocks rather than flat inline strings
-- the list remains concise and scan-friendly
-- the raw-data section is available without dominating the page by default
+- raw JSON-like fields render in contained read-only blocks rather than flat inline strings
+- the raw-data section is available but collapsed by default
+- the list summary columns from the existing `/admin/tasks` design remain unchanged by this follow-up
+- the no-data empty state, filtered-empty state, and standard admin load-error handling remain intact
 - the page remains read-only
-- the UI still matches the existing admin/backend design language
+- the expanded detail region continues to use the existing bordered surface hierarchy rather than a new dashboard or terminal-style visual system
+- if the `task_runs` schema changes before implementation ships, the same batch must either surface the new column(s) or explicitly update this spec to defer them
 
 ## Future Evolution
 
