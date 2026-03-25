@@ -38,6 +38,7 @@ interface CurrencyBreakdownItemProps {
 
 function CurrencyBreakdownItem({
   currency,
+  amount,
   mainCurrency,
   entries,
 }: CurrencyBreakdownItemProps) {
