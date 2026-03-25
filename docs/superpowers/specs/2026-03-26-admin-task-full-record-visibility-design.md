@@ -324,9 +324,9 @@ In particular, do not add:
 
 ## Testing Strategy
 
-### 1. Query contract coverage
+### 1. Data-contract coverage
 
-Tests should confirm that the admin task query returns the newly required raw fields, including:
+Tests should confirm that the detail data path for an opened task returns the newly required raw fields, including:
 
 - `input`
 - `deduplicationKey`
