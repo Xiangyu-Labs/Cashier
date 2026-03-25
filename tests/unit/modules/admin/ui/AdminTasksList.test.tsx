@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -6,7 +6,7 @@ import {
   type AdminTaskFiltersState,
   type AdminTasksListLabels,
 } from "@/modules/admin/ui/AdminTasksList";
-import type { AdminTaskListItem } from "@/modules/admin/contracts";
+import type { AdminTaskDetail, AdminTaskListItem } from "@/modules/admin/contracts";
 
 vi.mock("@/i18n/routing", () => ({
   Link: ({
@@ -81,6 +81,30 @@ function createTask(overrides: Partial<AdminTaskListItem> = {}): AdminTaskListIt
   };
 }
 
+function createTaskDetail(overrides: Partial<AdminTaskDetail> = {}): AdminTaskDetail {
+  return {
+    id: "task-1",
+    status: "failed",
+    type: "parse_source_document",
+    title: "Parse source document",
+    input: { sourceDocumentId: "doc-1" },
+    deduplicationKey: "parse:doc-1",
+    scopeId: "ledger-1",
+    scopeUserEmail: "owner@example.com",
+    entityType: "source_document",
+    entityId: "doc-1",
+    error: "AI returned invalid JSON from provider",
+    progress: "25%",
+    tokenUsage: { total: { input: 10, output: 20 } },
+    createdAt: new Date("2026-03-25T10:00:00.000Z"),
+    updatedAt: new Date("2026-03-25T10:02:00.000Z"),
+    startedAt: new Date("2026-03-25T10:01:00.000Z"),
+    completedAt: new Date("2026-03-25T10:10:00.000Z"),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
 describe("AdminTasksList", () => {
   it("renders no-tasks empty state when there are no tasks at all", () => {
     render(
@@ -91,6 +115,8 @@ describe("AdminTasksList", () => {
         nextCursor={null}
         filters={defaultFilters}
         labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
       />
     );
 
@@ -109,6 +135,8 @@ describe("AdminTasksList", () => {
         nextCursor={null}
         filters={defaultFilters}
         labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
       />
     );
 
@@ -116,12 +144,13 @@ describe("AdminTasksList", () => {
     expect(screen.getByText("Try clearing one or more filters.")).toBeTruthy();
   });
 
-  it("renders task rows and lets users expand row details", () => {
+  it("renders task rows and expands row details based on selected detail props", () => {
     const item = createTask({
       error: "AI returned invalid JSON from provider",
       progress: "25%",
       completedAt: new Date("2026-03-25T10:10:00.000Z"),
     });
+    const detail = createTaskDetail();
 
     render(
       <AdminTasksList
@@ -131,14 +160,14 @@ describe("AdminTasksList", () => {
         nextCursor={null}
         filters={defaultFilters}
         labels={labels}
+        expandedTaskId={item.id}
+        expandedTaskDetail={detail}
       />
     );
 
     expect(screen.getByText("Parse source document")).toBeTruthy();
     expect(screen.getByText("owner@example.com")).toBeTruthy();
     expect(screen.getByText("source_document:doc-1")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Details" }));
 
     expect(screen.getByText("Task ID")).toBeTruthy();
     expect(screen.getAllByText("AI returned invalid JSON from provider").length).toBeGreaterThan(0);
@@ -165,6 +194,8 @@ describe("AdminTasksList", () => {
         nextCursor="2026-03-20T00:00:00.000Z|task-99|2026-03-18T12:00:00.000Z"
         filters={defaultFilters}
         labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
       />
     );
 
@@ -182,6 +213,11 @@ describe("AdminTasksList", () => {
       durationSecondsUnit: "秒",
     };
 
+    const detail = createTaskDetail({
+      startedAt: new Date("2026-03-25T10:00:00.000Z"),
+      completedAt: new Date("2026-03-25T10:09:00.000Z"),
+    });
+
     render(
       <AdminTasksList
         locale="zh"
@@ -195,10 +231,51 @@ describe("AdminTasksList", () => {
         nextCursor={null}
         filters={defaultFilters}
         labels={customUnitLabels}
+        expandedTaskId="task-1"
+        expandedTaskDetail={detail}
+      />
+    );
+    expect(screen.getByText("9分 0秒")).toBeTruthy();
+  });
+
+  it("builds details and hide-details links with current filters and current cursor", () => {
+    render(
+      <AdminTasksList
+        locale="en"
+        items={[createTask({ id: "11111111-1111-4111-8111-111111111111" })]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={defaultFilters}
+        currentCursor="2026-03-20T00:00:00.000Z|task-99"
+        labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: customUnitLabels.details }));
-    expect(screen.getByText("9分 0秒")).toBeTruthy();
+    const detailsLink = screen.getByRole("link", { name: "Details" });
+    expect(detailsLink.getAttribute("href")).toBe(
+      "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99&detail=11111111-1111-4111-8111-111111111111"
+    );
+
+    const expandedDetail = createTaskDetail({ id: "11111111-1111-4111-8111-111111111111" });
+    render(
+      <AdminTasksList
+        locale="en"
+        items={[createTask({ id: "11111111-1111-4111-8111-111111111111" })]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={defaultFilters}
+        currentCursor="2026-03-20T00:00:00.000Z|task-99"
+        labels={labels}
+        expandedTaskId="11111111-1111-4111-8111-111111111111"
+        expandedTaskDetail={expandedDetail}
+      />
+    );
+
+    const hideDetailsLink = screen.getByRole("link", { name: "Hide details" });
+    expect(hideDetailsLink.getAttribute("href")).toBe(
+      "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99"
+    );
   });
 });

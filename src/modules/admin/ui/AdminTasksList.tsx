@@ -1,8 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 import { Link } from "@/i18n/routing";
-import type { AdminTaskRange, AdminTaskStatus, AdminTaskListItem } from "@/modules/admin/contracts";
+import type {
+  AdminTaskDetail,
+  AdminTaskListItem,
+  AdminTaskRange,
+  AdminTaskStatus,
+} from "@/modules/admin/contracts";
 import { AdminTaskStatusBadge } from "./AdminTaskStatusBadge";
 
 export interface AdminTaskFiltersState {
@@ -103,6 +108,40 @@ function buildNextPageHref(filters: AdminTaskFiltersState, nextCursor: string): 
   return `/admin/tasks?${params.toString()}`;
 }
 
+function buildTaskDetailHref(
+  filters: AdminTaskFiltersState,
+  taskId: string | null,
+  currentCursor?: string | null
+): string {
+  const params = new URLSearchParams();
+
+  if (filters.status != null) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.type != null && filters.type !== "") {
+    params.set("type", filters.type);
+  }
+
+  if (filters.range !== "all") {
+    params.set("range", filters.range);
+  }
+
+  if (filters.limit != null && filters.limit !== "") {
+    params.set("limit", filters.limit);
+  }
+
+  if (currentCursor != null && currentCursor !== "") {
+    params.set("cursor", currentCursor);
+  }
+
+  if (taskId != null) {
+    params.set("detail", taskId);
+  }
+
+  return `/admin/tasks?${params.toString()}`;
+}
+
 function formatOptionalDate(
   value: Date | null,
   formatter: Intl.DateTimeFormat,
@@ -142,11 +181,12 @@ export function AdminTasksList(props: {
   items: AdminTaskListItem[];
   hasAnyTasks: boolean;
   nextCursor: string | null;
+  currentCursor?: string | null;
+  expandedTaskId?: string | null;
+  expandedTaskDetail?: AdminTaskDetail | null;
   filters: AdminTaskFiltersState;
   labels: AdminTasksListLabels;
 }) {
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(props.locale, {
@@ -207,7 +247,8 @@ export function AdminTasksList(props: {
           <tbody>
             {props.items.map((item) => {
               const statusLabel = toStatusLabel(item.status, props.labels);
-              const isExpanded = expandedTaskId === item.id;
+              const isExpanded = props.expandedTaskId === item.id && props.expandedTaskDetail != null;
+              const detail = isExpanded ? props.expandedTaskDetail : null;
 
               return (
                 <Fragment key={item.id}>
@@ -225,13 +266,16 @@ export function AdminTasksList(props: {
                         {item.status === "failed" && item.error != null && item.error !== "" ? (
                           <p className="max-w-md truncate text-xs text-danger">{item.error}</p>
                         ) : null}
-                        <button
-                          type="button"
+                        <Link
+                          href={buildTaskDetailHref(
+                            props.filters,
+                            isExpanded ? null : item.id,
+                            props.currentCursor
+                          )}
                           className="text-xs font-medium text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
-                          onClick={() => setExpandedTaskId((prev) => (prev === item.id ? null : item.id))}
                         >
                           {isExpanded ? props.labels.hideDetails : props.labels.details}
-                        </button>
+                        </Link>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-text">{item.scopeUserEmail ?? item.scopeId ?? "—"}</td>
@@ -243,50 +287,52 @@ export function AdminTasksList(props: {
                         <dl className="grid gap-3 sm:grid-cols-2">
                           <div>
                             <dt className="text-xs text-muted">{props.labels.taskId}</dt>
-                            <dd className="break-all text-sm text-text">{item.id}</dd>
+                            <dd className="break-all text-sm text-text">{detail?.id ?? "—"}</dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.progress}</dt>
-                            <dd className="text-sm text-text">{item.progress ?? "—"}</dd>
+                            <dd className="text-sm text-text">{detail?.progress ?? "—"}</dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.scopeId}</dt>
-                            <dd className="break-all text-sm text-text">{item.scopeId ?? "—"}</dd>
+                            <dd className="break-all text-sm text-text">{detail?.scopeId ?? "—"}</dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.entityType}</dt>
-                            <dd className="text-sm text-text">{item.entityType ?? "—"}</dd>
+                            <dd className="text-sm text-text">{detail?.entityType ?? "—"}</dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.entityId}</dt>
-                            <dd className="break-all text-sm text-text">{item.entityId ?? "—"}</dd>
+                            <dd className="break-all text-sm text-text">{detail?.entityId ?? "—"}</dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.createdAt}</dt>
-                            <dd className="text-sm text-text">{formatOptionalDate(item.createdAt, dateFormatter)}</dd>
+                            <dd className="text-sm text-text">
+                              {formatOptionalDate(detail?.createdAt ?? null, dateFormatter)}
+                            </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.startedAt}</dt>
                             <dd className="text-sm text-text">
-                              {formatOptionalDate(item.startedAt, dateFormatter)}
+                              {formatOptionalDate(detail?.startedAt ?? null, dateFormatter)}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.completedAt}</dt>
                             <dd className="text-sm text-text">
-                              {formatOptionalDate(item.completedAt, dateFormatter)}
+                              {formatOptionalDate(detail?.completedAt ?? null, dateFormatter)}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.duration}</dt>
                             <dd className="text-sm text-text">
-                              {formatDuration(item.startedAt, item.completedAt, props.labels)}
+                              {formatDuration(detail?.startedAt ?? null, detail?.completedAt ?? null, props.labels)}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted">{props.labels.error}</dt>
                             <dd className="whitespace-pre-wrap break-words text-sm text-text">
-                              {item.error ?? "—"}
+                              {detail?.error ?? "—"}
                             </dd>
                           </div>
                         </dl>

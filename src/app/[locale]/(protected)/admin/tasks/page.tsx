@@ -1,5 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import { listAdminTasks } from "@/modules/admin/queries";
+import { getAdminTaskDetail, listAdminTasks } from "@/modules/admin/queries";
 import { AdminTaskFilters, AdminTasksList, type AdminTaskFiltersState } from "@/modules/admin/ui";
 
 interface AdminTasksPageProps {
@@ -25,9 +25,13 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
     range: getSingleSearchParam(resolvedSearchParams.range),
     cursor: getSingleSearchParam(resolvedSearchParams.cursor),
     limit: getSingleSearchParam(resolvedSearchParams.limit),
+    detail: getSingleSearchParam(resolvedSearchParams.detail),
   };
 
   const tasks = await listAdminTasks(normalizedSearchParams);
+  const selectedTaskId = normalizedSearchParams.detail;
+  const expandedTaskDetail =
+    selectedTaskId != null ? await getAdminTaskDetail(selectedTaskId) : null;
 
   const filters: AdminTaskFiltersState = {
     ...(normalizedSearchParams.status != null
@@ -67,7 +71,10 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
         items={tasks.items}
         hasAnyTasks={tasks.hasAnyTasks}
         nextCursor={tasks.nextCursor}
+        currentCursor={normalizedSearchParams.cursor}
         filters={filters}
+        expandedTaskId={selectedTaskId}
+        expandedTaskDetail={expandedTaskDetail}
         labels={{
           title: t("title"),
           description: t("description"),
