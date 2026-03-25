@@ -190,6 +190,110 @@ describe("listAdminTasks", () => {
     expect(secondPage.nextCursor).toBeNull();
   });
 
+  it("keeps range pagination stable when time advances between pages", async () => {
+    const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValue({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-03-25T12:00:00.000Z"));
+
+      await db.insert(taskRuns).values([
+        {
+          id: "task-new",
+          type: "parse_source_document",
+          title: "Newest",
+          status: "pending",
+          createdAt: new Date("2026-03-25T11:59:00.000Z"),
+        },
+        {
+          id: "task-boundary",
+          type: "parse_source_document",
+          title: "Near boundary",
+          status: "pending",
+          createdAt: new Date("2026-03-24T12:00:05.000Z"),
+        },
+      ]);
+
+      const firstPage = await listAdminTasks({ range: "24h", limit: 1 });
+      expect(firstPage.items.map((item) => item.id)).toEqual(["task-new"]);
+      expect(firstPage.nextCursor).toBeTruthy();
+
+      vi.setSystemTime(new Date("2026-03-25T12:00:10.000Z"));
+
+      const secondPage = await listAdminTasks({
+        range: "24h",
+        limit: 1,
+        cursor: firstPage.nextCursor ?? undefined,
+      });
+
+      expect(secondPage.items.map((item) => item.id)).toEqual(["task-boundary"]);
+      expect(secondPage.nextCursor).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses id tie-breaker for same createdAt rows and keeps the range anchor in cursor", async () => {
+    const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValue({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-03-25T12:00:00.000Z"));
+
+      await db.insert(taskRuns).values([
+        {
+          id: "task-c",
+          type: "parse_source_document",
+          title: "Same time C",
+          status: "pending",
+          createdAt: new Date("2026-03-25T11:00:00.000Z"),
+        },
+        {
+          id: "task-b",
+          type: "parse_source_document",
+          title: "Same time B",
+          status: "pending",
+          createdAt: new Date("2026-03-25T11:00:00.000Z"),
+        },
+        {
+          id: "task-a",
+          type: "parse_source_document",
+          title: "Same time A",
+          status: "pending",
+          createdAt: new Date("2026-03-25T11:00:00.000Z"),
+        },
+      ]);
+
+      const firstPage = await listAdminTasks({ range: "7d", limit: 2 });
+
+      expect(firstPage.items.map((item) => item.id)).toEqual(["task-c", "task-b"]);
+      expect(firstPage.nextCursor).toBe("2026-03-25T11:00:00.000Z|task-b|2026-03-18T12:00:00.000Z");
+
+      const secondPage = await listAdminTasks({
+        range: "7d",
+        limit: 2,
+        cursor: firstPage.nextCursor ?? undefined,
+      });
+
+      expect(secondPage.items.map((item) => item.id)).toEqual(["task-a"]);
+      expect(secondPage.nextCursor).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("validates input and throws ValidationError for an invalid cursor", async () => {
     requireSuperAdminMock.mockResolvedValueOnce({
       id: "admin-user",

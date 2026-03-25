@@ -10,8 +10,8 @@ import type {
 } from "@/modules/admin/contracts";
 import { ledgers, taskRuns, users } from "@/persistence";
 
-function parseTaskCursor(cursor: string): { createdAt: Date; id: string } {
-  const [createdAtRaw, id, ...rest] = cursor.split("|");
+function parseTaskCursor(cursor: string): { createdAt: Date; id: string; rangeStart: Date | null } {
+  const [createdAtRaw, id, rangeStartRaw, ...rest] = cursor.split("|");
   if (rest.length > 0 || createdAtRaw == null || createdAtRaw === "" || id == null || id === "") {
     throw new ValidationError("Validation failed", {
       issues: [{ message: "Invalid admin task cursor", path: ["cursor"] }],
@@ -25,7 +25,17 @@ function parseTaskCursor(cursor: string): { createdAt: Date; id: string } {
     });
   }
 
-  return { createdAt, id };
+  let rangeStart: Date | null = null;
+  if (rangeStartRaw != null && rangeStartRaw !== "") {
+    rangeStart = new Date(rangeStartRaw);
+    if (Number.isNaN(rangeStart.getTime())) {
+      throw new ValidationError("Validation failed", {
+        issues: [{ message: "Invalid admin task cursor", path: ["cursor"] }],
+      });
+    }
+  }
+
+  return { createdAt, id, rangeStart };
 }
 
 function resolveRangeStart(range: "24h" | "7d" | "30d" | "all"): Date | null {
@@ -43,11 +53,23 @@ function resolveRangeStart(range: "24h" | "7d" | "30d" | "all"): Date | null {
   }
 }
 
+function formatTaskCursor(
+  row: { createdAt: Date; id: string },
+  rangeStart: Date | null
+): string {
+  if (rangeStart == null) {
+    return `${row.createdAt.toISOString()}|${row.id}`;
+  }
+
+  return `${row.createdAt.toISOString()}|${row.id}|${rangeStart.toISOString()}`;
+}
+
 export async function listAdminTasks(input: ListAdminTasksInput = {}): Promise<ListAdminTasksResult> {
   await requireSuperAdmin();
 
   const validated = parseListAdminTasksInput(input);
   const conditions = [isNull(taskRuns.deletedAt)];
+  const parsedCursor = validated.cursor != null ? parseTaskCursor(validated.cursor) : null;
 
   if (validated.status != null) {
     conditions.push(eq(taskRuns.status, validated.status));
@@ -57,13 +79,13 @@ export async function listAdminTasks(input: ListAdminTasksInput = {}): Promise<L
     conditions.push(eq(taskRuns.type, validated.type));
   }
 
-  const rangeStart = resolveRangeStart(validated.range);
+  const rangeStart =
+    validated.range === "all" ? null : parsedCursor?.rangeStart ?? resolveRangeStart(validated.range);
   if (rangeStart != null) {
     conditions.push(gte(taskRuns.createdAt, rangeStart));
   }
 
-  if (validated.cursor != null) {
-    const parsedCursor = parseTaskCursor(validated.cursor);
+  if (parsedCursor != null) {
     const cursorCondition = or(
       lt(taskRuns.createdAt, parsedCursor.createdAt),
       and(eq(taskRuns.createdAt, parsedCursor.createdAt), lt(taskRuns.id, parsedCursor.id))
@@ -103,7 +125,7 @@ export async function listAdminTasks(input: ListAdminTasksInput = {}): Promise<L
     pageRows = rows.slice(0, validated.limit);
     const lastItem = pageRows[pageRows.length - 1];
     if (lastItem != null) {
-      nextCursor = `${lastItem.createdAt.toISOString()}|${lastItem.id}`;
+      nextCursor = formatTaskCursor(lastItem, rangeStart);
     }
   }
 

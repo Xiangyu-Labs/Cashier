@@ -38,6 +38,9 @@ const labels: AdminTasksListLabels = {
   startedAt: "Started At",
   completedAt: "Completed At",
   duration: "Duration",
+  durationHoursUnit: "h",
+  durationMinutesUnit: "m",
+  durationSecondsUnit: "s",
   progress: "Progress",
   error: "Error",
   emptyTitle: "No tasks yet",
@@ -159,7 +162,7 @@ describe("AdminTasksList", () => {
         locale="en"
         items={[createTask()]}
         hasAnyTasks={true}
-        nextCursor="2026-03-20T00:00:00.000Z|task-99"
+        nextCursor="2026-03-20T00:00:00.000Z|task-99|2026-03-18T12:00:00.000Z"
         filters={defaultFilters}
         labels={labels}
       />
@@ -167,7 +170,35 @@ describe("AdminTasksList", () => {
 
     const link = screen.getByRole("link", { name: "Load older tasks" });
     expect(link.getAttribute("href")).toBe(
-      "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99"
+      "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99%7C2026-03-18T12%3A00%3A00.000Z"
     );
+  });
+
+  it("renders duration using label-provided units instead of hard-coded English", () => {
+    const customUnitLabels: AdminTasksListLabels = {
+      ...labels,
+      durationHoursUnit: "小时",
+      durationMinutesUnit: "分",
+      durationSecondsUnit: "秒",
+    };
+
+    render(
+      <AdminTasksList
+        locale="zh"
+        items={[
+          createTask({
+            startedAt: new Date("2026-03-25T10:00:00.000Z"),
+            completedAt: new Date("2026-03-25T10:09:00.000Z"),
+          }),
+        ]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={defaultFilters}
+        labels={customUnitLabels}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: customUnitLabels.details }));
+    expect(screen.getByText("9分 0秒")).toBeTruthy();
   });
 });

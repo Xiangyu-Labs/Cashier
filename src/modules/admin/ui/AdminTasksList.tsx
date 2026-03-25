@@ -30,6 +30,9 @@ export interface AdminTasksListLabels {
   startedAt: string;
   completedAt: string;
   duration: string;
+  durationHoursUnit: string;
+  durationMinutesUnit: string;
+  durationSecondsUnit: string;
   progress: string;
   error: string;
   emptyTitle: string;
@@ -108,7 +111,11 @@ function formatOptionalDate(
   return value == null ? emptySymbol : formatter.format(value);
 }
 
-function formatDuration(startedAt: Date | null, completedAt: Date | null): string {
+function formatDuration(
+  startedAt: Date | null,
+  completedAt: Date | null,
+  labels: Pick<AdminTasksListLabels, "durationHoursUnit" | "durationMinutesUnit" | "durationSecondsUnit">
+): string {
   if (startedAt == null || completedAt == null) {
     return "—";
   }
@@ -124,10 +131,10 @@ function formatDuration(startedAt: Date | null, completedAt: Date | null): strin
   const seconds = totalSeconds % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
+    return `${hours}${labels.durationHoursUnit} ${minutes}${labels.durationMinutesUnit} ${seconds}${labels.durationSecondsUnit}`;
   }
 
-  return `${minutes}m ${seconds}s`;
+  return `${minutes}${labels.durationMinutesUnit} ${seconds}${labels.durationSecondsUnit}`;
 }
 
 export function AdminTasksList(props: {
@@ -273,7 +280,7 @@ export function AdminTasksList(props: {
                           <div>
                             <dt className="text-xs text-muted">{props.labels.duration}</dt>
                             <dd className="text-sm text-text">
-                              {formatDuration(item.startedAt, item.completedAt)}
+                              {formatDuration(item.startedAt, item.completedAt, props.labels)}
                             </dd>
                           </div>
                           <div>
