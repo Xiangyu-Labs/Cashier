@@ -70,10 +70,10 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
         items={tasks.items}
         hasAnyTasks={tasks.hasAnyTasks}
         nextCursor={tasks.nextCursor}
-        currentCursor={listSearchParams.cursor}
         filters={filters}
-        expandedTaskId={selectedTaskId}
-        expandedTaskDetail={expandedTaskDetail}
+        {...(listSearchParams.cursor != null ? { currentCursor: listSearchParams.cursor } : {})}
+        {...(selectedTaskId != null ? { expandedTaskId: selectedTaskId } : {})}
+        {...(expandedTaskDetail != null ? { expandedTaskDetail } : {})}
         labels={{
           title: t("title"),
           description: t("description"),

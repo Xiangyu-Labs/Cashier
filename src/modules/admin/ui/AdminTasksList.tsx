@@ -236,7 +236,11 @@ export function AdminTasksList(props: {
           <tbody>
             {props.items.map((item) => {
               const statusLabel = toStatusLabel(item.status, props.labels);
-              const isExpanded = props.expandedTaskId === item.id && props.expandedTaskDetail != null;
+              const detail =
+                props.expandedTaskId === item.id && props.expandedTaskDetail != null
+                  ? props.expandedTaskDetail
+                  : null;
+              const isExpanded = detail != null;
 
               return (
                 <Fragment key={item.id}>
@@ -274,7 +278,7 @@ export function AdminTasksList(props: {
                       <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
                         <AdminTaskDetailPanel
                           locale={props.locale}
-                          detail={props.expandedTaskDetail}
+                          detail={detail}
                           labels={{
                             taskBasics: props.labels.taskBasics ?? "Task basics",
                             scopeAndEntity: props.labels.scopeAndEntity ?? "Scope and entity",
