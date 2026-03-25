@@ -154,7 +154,8 @@ function buildTaskDetailHref(
     params.set("detail", taskId);
   }
 
-  return `/admin/tasks?${params.toString()}`;
+  const query = params.toString();
+  return query === "" ? "/admin/tasks" : `/admin/tasks?${query}`;
 }
 
 function formatOptionalDate(
@@ -264,6 +265,8 @@ export function AdminTasksList(props: {
                             isExpanded ? null : item.id,
                             props.currentCursor
                           )}
+                          prefetch={false}
+                          scroll={false}
                           className="text-xs font-medium text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
                         >
                           {isExpanded ? props.labels.hideDetails : props.labels.details}

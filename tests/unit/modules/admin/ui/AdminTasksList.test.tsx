@@ -259,4 +259,43 @@ describe("AdminTasksList", () => {
       "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99"
     );
   });
+
+  it("uses the canonical /admin/tasks path when no filters, cursor, or detail remain", () => {
+    const noFilterState: AdminTaskFiltersState = { range: "all" };
+
+    render(
+      <AdminTasksList
+        locale="en"
+        items={[createTask({ id: "11111111-1111-4111-8111-111111111111" })]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={noFilterState}
+        labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
+      />
+    );
+
+    const detailsLink = screen.getByRole("link", { name: "Details" });
+    expect(detailsLink.getAttribute("href")).toBe(
+      "/admin/tasks?detail=11111111-1111-4111-8111-111111111111"
+    );
+
+    const expandedDetail = createTaskDetail({ id: "11111111-1111-4111-8111-111111111111" });
+    render(
+      <AdminTasksList
+        locale="en"
+        items={[createTask({ id: "11111111-1111-4111-8111-111111111111" })]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={noFilterState}
+        labels={labels}
+        expandedTaskId="11111111-1111-4111-8111-111111111111"
+        expandedTaskDetail={expandedDetail}
+      />
+    );
+
+    const hideDetailsLink = screen.getByRole("link", { name: "Hide details" });
+    expect(hideDetailsLink.getAttribute("href")).toBe("/admin/tasks");
+  });
 });
