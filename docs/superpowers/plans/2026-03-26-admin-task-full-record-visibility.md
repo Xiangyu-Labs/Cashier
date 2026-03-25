@@ -18,8 +18,6 @@ This plan covers one bounded follow-up to the existing admin tasks page: complet
 
 - `src/modules/admin/contracts.ts`
   - Expand admin task contracts with a new detail-specific type for full `task_runs` record visibility while keeping the existing summary list item type bounded.
-- `src/modules/admin/contract-schemas.ts`
-  - Add validation for the task-detail query path (`detail` task id) without weakening the existing list filter parser.
 - `src/modules/admin/application/queries/get-admin-task-detail.ts`
   - New admin-only query that loads one full `task_runs` row, includes read-only user enrichment, and returns the raw fields needed by the detail viewer.
 - `src/modules/admin/application/queries/list-admin-tasks.ts`
@@ -49,7 +47,9 @@ This plan covers one bounded follow-up to the existing admin tasks page: complet
 - `tests/unit/modules/admin/ui/AdminTasksList.test.tsx`
   - Update list tests so expansion is driven by page-provided detail props, not local hidden summary-only state.
 - `tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx`
-  - New focused tests for full field grouping, raw-vs-derived labeling, and JSON empty-state behavior.
+  - New focused tests for full field grouping, scalar empty-state behavior, and raw-vs-derived labeling.
+- `tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx`
+  - New focused tests for JSON empty-state rendering, containment classes, overflow handling, and formatted block behavior.
 
 ## Non-Goals
 
@@ -63,13 +63,13 @@ This plan covers one bounded follow-up to the existing admin tasks page: complet
 
 **Files:**
 - Modify: `src/modules/admin/contracts.ts`
-- Modify: `src/modules/admin/contract-schemas.ts`
 - Create: `src/modules/admin/application/queries/get-admin-task-detail.ts`
 - Modify: `src/modules/admin/queries.ts`
 - Create: `tests/unit/modules/admin/get-admin-task-detail.test.ts`
 - Modify: `tests/unit/modules/admin/list-admin-tasks.test.ts`
 - Reference: `src/modules/admin/application/queries/list-admin-tasks.ts`
 - Reference: `src/persistence/schema/task-queue.ts`
+- Reference: `src/modules/task-queue/contract-schemas.ts`
 
 - [ ] **Step 1: Write the failing detail-query tests first**
 
@@ -79,10 +79,10 @@ Write tests that lock these behaviors:
 
 ```ts
 it("returns the full stored task_runs record for a visible task", async () => {
-  const result = await getAdminTaskDetail("task-1");
+  const result = await getAdminTaskDetail("11111111-1111-4111-8111-111111111111");
 
   expect(result).toMatchObject({
-    id: "task-1",
+    id: "11111111-1111-4111-8111-111111111111",
     type: "parse_source_document",
     title: "Parse source document",
     input: { sourceDocumentId: "doc-1" },
@@ -94,18 +94,21 @@ it("returns the full stored task_runs record for a visible task", async () => {
     error: "AI returned invalid JSON",
     progress: "50%",
     tokenUsage: { total: { input: 10, output: 20 } },
+    createdAt: new Date("2026-03-26T10:00:00.000Z"),
     updatedAt: new Date("2026-03-26T10:01:00.000Z"),
+    startedAt: new Date("2026-03-26T10:00:10.000Z"),
+    completedAt: new Date("2026-03-26T10:00:40.000Z"),
     deletedAt: null,
     scopeUserEmail: "owner@example.com",
   });
 });
 
 it("requires super-admin access before reading detail", async () => {
-  await expect(getAdminTaskDetail("task-1")).rejects.toThrow("forbidden");
+  await expect(getAdminTaskDetail("11111111-1111-4111-8111-111111111111")).rejects.toThrow("forbidden");
 });
 
-it("throws for a missing or soft-deleted task", async () => {
-  await expect(getAdminTaskDetail("missing-task")).rejects.toThrow();
+it("throws NotFoundError for a missing or soft-deleted task", async () => {
+  await expect(getAdminTaskDetail("22222222-2222-4222-8222-222222222222")).rejects.toBeInstanceOf(NotFoundError);
 });
 ```
 
@@ -126,7 +129,7 @@ npm run test:unit -- tests/unit/modules/admin/get-admin-task-detail.test.ts test
 
 Expected: FAIL because `getAdminTaskDetail` and the new detail contract do not exist yet.
 
-- [ ] **Step 3: Add the detail contract and parser surface**
+- [ ] **Step 3: Add the detail contract and reuse the existing task-id parser**
 
 Update `src/modules/admin/contracts.ts` so the current bounded list item stays intact and a separate full-detail type is introduced.
 
@@ -155,15 +158,15 @@ export interface AdminTaskDetail {
 }
 ```
 
-Add a focused parser in `src/modules/admin/contract-schemas.ts` for the detail query path:
+Do **not** create a second admin-only task-id parser. Reuse the existing UUID validation helper from `src/modules/task-queue/contract-schemas.ts`:
 
 ```ts
-export const adminTaskIdSchema = z.string().uuid("Invalid admin task id");
-export const parseAdminTaskId = (input: unknown) =>
-  parseAdminContract(adminTaskIdSchema, input);
+import { parseTaskId } from "@/modules/task-queue/contract-schemas";
+
+const taskId = parseTaskId(input);
 ```
 
-Do **not** weaken the existing list filter parser while adding this.
+That keeps task-id validation consistent across task-related code paths.
 
 - [ ] **Step 4: Implement `getAdminTaskDetail` with read-only enrichment and full raw fields**
 
@@ -225,7 +228,6 @@ Expected: PASS
 
 ```bash
 git add src/modules/admin/contracts.ts \
-  src/modules/admin/contract-schemas.ts \
   src/modules/admin/application/queries/get-admin-task-detail.ts \
   src/modules/admin/queries.ts \
   tests/unit/modules/admin/get-admin-task-detail.test.ts \
@@ -238,6 +240,7 @@ git commit -m "feat: add admin task detail query"
 **Files:**
 - Modify: `src/app/[locale]/(protected)/admin/tasks/page.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
+- Modify: `src/modules/admin/contracts.ts`
 - Modify: `tests/unit/app/admin-route-composition.test.tsx`
 - Modify: `tests/unit/modules/admin/ui/AdminTasksList.test.tsx`
 - Reference: `src/components/LanguageSwitcher.tsx`
@@ -245,7 +248,12 @@ git commit -m "feat: add admin task detail query"
 
 - [ ] **Step 1: Write the failing route-composition and list-state tests for `detail=<task-id>` wiring**
 
-Extend `tests/unit/app/admin-route-composition.test.tsx` so the tasks page now expects `getAdminTaskDetail` to be called when `searchParams.detail` is present.
+Extend `tests/unit/app/admin-route-composition.test.tsx` so the tasks page covers both sides of the lazy detail contract:
+
+- when `detail` is present, `getAdminTaskDetail` is called
+- when `detail` is absent, `getAdminTaskDetail` is not called
+- no-data and filtered-empty results still render through the page wiring
+- task-query failures still bubble so the existing admin error boundary can handle them
 
 Add a test like:
 
@@ -280,11 +288,15 @@ render(
 expect(screen.getByText("Task ID")).toBeTruthy();
 ```
 
-Also add a check that the Details link preserves current filters and writes `detail=task-1`:
+Also add checks that the Details/Hide details links preserve the current page cursor as well as the current filters. Use an explicit `currentCursor` prop from the page layer rather than reusing `nextCursor`:
 
 ```ts
 expect(detailsLink.getAttribute("href")).toBe(
-  "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&detail=task-1"
+  "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99&detail=11111111-1111-4111-8111-111111111111"
+);
+
+expect(hideDetailsLink.getAttribute("href")).toBe(
+  "/admin/tasks?status=failed&type=parse_source_document&range=7d&limit=50&cursor=2026-03-20T00%3A00%3A00.000Z%7Ctask-99"
 );
 ```
 
@@ -307,7 +319,7 @@ Requirements:
 - normalize `detail` from `searchParams`
 - keep the existing summary query untouched for list behavior
 - call `getAdminTaskDetail(detail)` only when `detail` is present
-- pass `expandedTaskId` and `expandedTaskDetail` separately into the UI
+- pass `expandedTaskId`, `expandedTaskDetail`, and the current page cursor separately into the UI
 
 The page flow should look like:
 
@@ -324,18 +336,27 @@ Stop using local `useState` for the primary expand/collapse decision.
 
 Instead:
 
+- add `currentCursor?: string | null` to the list-page UI contract (either inside `AdminTaskFiltersState` or as a separate prop)
 - accept `expandedTaskId?: string`
 - accept `expandedTaskDetail?: AdminTaskDetail | null`
-- build `Details` / `Hide details` links that preserve `status`, `type`, `range`, `limit`, and `cursor` while adding or removing `detail`
+- build `Details` / `Hide details` links that preserve `status`, `type`, `range`, `limit`, and the current page `cursor` while adding or removing `detail`
 - keep the inline expanded row behavior exactly on the current page, just driven by props
 
-A small helper can generate the detail href:
+A small helper should generate the detail href from current page state, not from `nextCursor`:
 
 ```ts
-function buildTaskDetailHref(filters: AdminTaskFiltersState, taskId: string, nextCursor?: string | null) {
+function buildTaskDetailHref(
+  filters: AdminTaskFiltersState,
+  taskId: string | null,
+  currentCursor?: string | null
+) {
   const params = new URLSearchParams();
-  // preserve current filters
-  params.set("detail", taskId);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.range !== "all") params.set("range", filters.range);
+  if (filters.limit) params.set("limit", filters.limit);
+  if (currentCursor) params.set("cursor", currentCursor);
+  if (taskId) params.set("detail", taskId);
   return `/admin/tasks?${params.toString()}`;
 }
 ```
@@ -368,10 +389,12 @@ git commit -m "feat: drive admin task details through search params"
 - Create: `src/modules/admin/ui/AdminTaskDetailPanel.tsx`
 - Create: `src/modules/admin/ui/AdminTaskJsonBlock.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
+- Modify: `src/modules/admin/contracts.ts`
 - Modify: `src/modules/admin/ui/index.ts`
 - Modify: `messages/en.json`
 - Modify: `messages/zh.json`
 - Create: `tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx`
+- Create: `tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx`
 - Modify: `tests/unit/modules/admin/ui/AdminTasksList.test.tsx`
 - Reference: `src/modules/admin/ui/AdminUsersList.tsx`
 - Reference: `src/components/ui/button.tsx`
@@ -392,6 +415,7 @@ Cover at least:
   - empty string => `""`
   - empty object => `{}`
   - empty array => `[]`
+- ordinary scalar empty/null states still render `—`
 - derived helper fields (`scopeUserEmail`, `duration`) render under distinct labels
 
 Example test sketch:
@@ -411,12 +435,12 @@ it("renders all raw task_runs fields and keeps raw payloads collapsed by default
 });
 ```
 
-- [ ] **Step 2: Run the new detail-panel tests to verify they fail**
+- [ ] **Step 2: Run the new detail-panel and JSON-block tests to verify they fail**
 
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx tests/unit/modules/admin/ui/AdminTasksList.test.tsx
+npm run test:unit -- tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx tests/unit/modules/admin/ui/AdminTasksList.test.tsx
 ```
 
 Expected: FAIL because the dedicated detail panel and JSON block do not exist yet.
@@ -459,6 +483,8 @@ Implementation rules:
 - if value is `{}` => render `{}`
 - if value is JSON-serializable structured data => pretty-print with `JSON.stringify(value, null, 2)`
 - if value is a non-JSON raw string => render the string literally in a preformatted block
+- the raw block wrapper must include explicit safe-overflow treatment (for example `overflow-x-auto`, `max-h-*`, and a bordered `surface2` container)
+- the preformatted content must preserve readability (`whitespace-pre-wrap` or equivalent) while remaining selectable
 
 - [ ] **Step 5: Implement `AdminTaskDetailPanel` and plug it into the expanded row**
 
@@ -485,7 +511,7 @@ Do not leave the full field rendering inline inside `AdminTasksList.tsx`; move i
 Run:
 
 ```bash
-npm run test:unit -- tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx tests/unit/modules/admin/ui/AdminTasksList.test.tsx
+npm run test:unit -- tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx tests/unit/modules/admin/ui/AdminTasksList.test.tsx
 ```
 
 Expected: PASS
@@ -500,6 +526,7 @@ git add src/modules/admin/ui/AdminTaskDetailPanel.tsx \
   messages/en.json \
   messages/zh.json \
   tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx \
+  tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx \
   tests/unit/modules/admin/ui/AdminTasksList.test.tsx
 git commit -m "feat: add full admin task record detail panel"
 ```
@@ -511,6 +538,7 @@ git commit -m "feat: add full admin task record detail panel"
 - Modify: `src/modules/admin/application/queries/get-admin-task-detail.ts`
 - Modify: `src/modules/admin/ui/AdminTaskDetailPanel.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
+- Modify: `src/modules/admin/contracts.ts`
 - Modify: `messages/en.json`
 - Modify: `messages/zh.json`
 - Test: `tests/unit/modules/admin/get-admin-task-detail.test.ts`
