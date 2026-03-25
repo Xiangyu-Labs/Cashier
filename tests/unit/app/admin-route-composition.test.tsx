@@ -3,10 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { UserRole } from "@/modules/admin/types";
+import type { AdminTaskListItem } from "@/modules/admin/contracts";
 
-const { requireSuperAdminMock, listAdminUsersMock, redirectMock } = vi.hoisted(() => ({
+const { requireSuperAdminMock, listAdminUsersMock, listAdminTasksMock, redirectMock } = vi.hoisted(() => ({
   requireSuperAdminMock: vi.fn(),
   listAdminUsersMock: vi.fn(),
+  listAdminTasksMock: vi.fn(),
   redirectMock: vi.fn(),
 }));
 
@@ -16,6 +18,7 @@ vi.mock("@/modules/admin/access", () => ({
 
 vi.mock("@/modules/admin/queries", () => ({
   listAdminUsers: listAdminUsersMock,
+  listAdminTasks: listAdminTasksMock,
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -38,9 +41,11 @@ vi.mock("@/i18n/routing", () => ({
     </a>
   ),
   usePathname: () => "/en/admin/users",
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
   redirect: redirectMock,
 }));
 
@@ -85,5 +90,55 @@ describe("admin route composition", () => {
     render(await UsersPage());
 
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+  });
+
+  it("wires the tasks page to the admin query with normalized search params", async () => {
+    const items: AdminTaskListItem[] = [
+      {
+        id: "task-1",
+        status: "failed",
+        type: "parse_source_document",
+        title: "Parse source document",
+        progress: null,
+        error: "AI returned invalid JSON",
+        scopeId: "ledger-1",
+        scopeUserEmail: "owner@example.com",
+        entityType: "source_document",
+        entityId: "doc-1",
+        createdAt: new Date("2026-03-22T10:00:00.000Z"),
+        startedAt: new Date("2026-03-22T10:01:00.000Z"),
+        completedAt: null,
+      },
+    ];
+
+    listAdminTasksMock.mockResolvedValueOnce({
+      items,
+      nextCursor: null,
+      availableTypes: ["parse_source_document"],
+      hasAnyTasks: true,
+    });
+
+    const TasksPage = (await import("@/app/[locale]/(protected)/admin/tasks/page")).default;
+    render(
+      await TasksPage({
+        searchParams: Promise.resolve({
+          status: ["failed"],
+          type: "parse_source_document",
+          range: ["7d"],
+          cursor: "2026-03-20T00:00:00.000Z|task-9",
+          limit: ["25"],
+        }),
+      })
+    );
+
+    expect(listAdminTasksMock).toHaveBeenCalledWith({
+      status: "failed",
+      type: "parse_source_document",
+      range: "7d",
+      cursor: "2026-03-20T00:00:00.000Z|task-9",
+      limit: "25",
+    });
+    expect(screen.getByText("Parse source document")).toBeTruthy();
+    expect(screen.getByText("owner@example.com")).toBeTruthy();
   });
 });

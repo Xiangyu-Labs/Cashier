@@ -28,6 +28,7 @@ describe("AdminShell", () => {
         navItems={[
           { href: "/admin", label: "Overview" },
           { href: "/admin/users", label: "Users" },
+          { href: "/admin/tasks", label: "Tasks" },
         ]}
       >
         <div>Admin content</div>
@@ -40,5 +41,6 @@ describe("AdminShell", () => {
     expect(screen.getByText("Admin content")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Overview" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Users" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Tasks" })).toBeTruthy();
   });
 });

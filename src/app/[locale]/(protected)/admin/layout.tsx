@@ -39,6 +39,7 @@ export default async function AdminLayout(props: { children: ReactNode }) {
       navItems={[
         { href: "/admin", label: t("overview") },
         { href: "/admin/users", label: t("users") },
+        { href: "/admin/tasks", label: t("tasks") },
       ]}
     >
       {props.children}
