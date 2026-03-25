@@ -188,6 +188,8 @@ describe("AdminTasksList", () => {
     expect(screen.getByRole("heading", { name: "Timing" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Execution" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Raw data" })).toBeTruthy();
+    expect(screen.getByText("Updated At")).toBeTruthy();
+    expect(screen.getByText("Deleted At")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Show raw data" })).toBeTruthy();
 
     expect(screen.queryByText('{\n  "sourceDocumentId": "doc-1"\n}')).toBeNull();

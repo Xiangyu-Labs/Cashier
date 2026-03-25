@@ -104,11 +104,15 @@ function toStatusLabel(status: AdminTaskDetail["status"], labels: AdminTaskDetai
   }
 }
 
-function Field(props: { label: string; value: string; breakAll?: boolean }) {
+function Field(props: { label: string; value: string; breakAll?: boolean; preserveWhitespace?: boolean }) {
   return (
     <div>
       <dt className="text-xs text-muted">{props.label}</dt>
-      <dd className={`mt-1 text-sm text-text ${props.breakAll ? "break-all" : ""}`.trim()}>{props.value}</dd>
+      <dd
+        className={`${props.preserveWhitespace ? "whitespace-pre-wrap break-words" : ""} mt-1 text-sm text-text ${props.breakAll ? "break-all" : ""}`.trim()}
+      >
+        {props.value}
+      </dd>
     </div>
   );
 }
@@ -172,7 +176,11 @@ export function AdminTaskDetailPanel(props: {
         <h3 className="text-sm font-semibold text-text">{props.labels.execution}</h3>
         <dl className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label={props.labels.progress} value={formatScalar(props.detail.progress, props.labels.notAvailable)} />
-          <Field label={props.labels.error} value={formatScalar(props.detail.error, props.labels.notAvailable)} />
+          <Field
+            label={props.labels.error}
+            value={formatScalar(props.detail.error, props.labels.notAvailable)}
+            preserveWhitespace
+          />
         </dl>
       </section>
 

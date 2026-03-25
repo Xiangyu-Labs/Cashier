@@ -210,6 +210,8 @@ describe("admin route composition", () => {
     });
     expect(getAdminTaskDetailMock).toHaveBeenCalledWith("task-1");
     expect(screen.getByText("AdminTasks.taskId")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "AdminTasks.rawData" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "AdminTasks.showRawData" })).toBeTruthy();
 
     vi.clearAllMocks();
     listAdminTasksMock.mockResolvedValue({

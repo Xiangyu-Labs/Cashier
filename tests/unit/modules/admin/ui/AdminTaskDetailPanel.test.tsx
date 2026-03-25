@@ -84,6 +84,8 @@ describe("AdminTaskDetailPanel", () => {
     expect(screen.getByText("owner@example.com")).toBeTruthy();
     expect(screen.getByText("Duration")).toBeTruthy();
     expect(screen.getByText("9m 0s")).toBeTruthy();
+    expect(screen.getByText("Updated At")).toBeTruthy();
+    expect(screen.getByText("Deleted At")).toBeTruthy();
   });
 
   it("keeps raw data collapsed by default and reveals blocks on toggle", () => {
@@ -119,6 +121,21 @@ describe("AdminTaskDetailPanel", () => {
 
     expect(screen.getByText("Deduplication Key")).toBeTruthy();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("preserves multiline formatting for execution error text", () => {
+    render(
+      <AdminTaskDetailPanel
+        locale="en"
+        detail={createDetail({ error: "first line\nsecond line" })}
+        labels={labels}
+      />
+    );
+
+    const errorValue = screen.getByText((_, element) =>
+      element?.textContent === "first line\nsecond line"
+    );
+    expect(errorValue.className).toContain("whitespace-pre-wrap");
   });
 
   it("renders raw empty states according to JSON rules", () => {
