@@ -183,6 +183,9 @@ describe("listAdminTasks", () => {
     expect(firstPage.items.map((item) => item.id)).toEqual(["task-c", "task-b"]);
     expect(firstPage.items[0]).not.toHaveProperty("input");
     expect(firstPage.items[0]).not.toHaveProperty("tokenUsage");
+    expect(firstPage.items[0]).not.toHaveProperty("deduplicationKey");
+    expect(firstPage.items[0]).not.toHaveProperty("updatedAt");
+    expect(firstPage.items[0]).not.toHaveProperty("deletedAt");
     expect(firstPage.nextCursor).toBe("2026-03-25T11:00:00.000Z|task-b");
     expect(firstPage.hasAnyTasks).toBe(true);
 

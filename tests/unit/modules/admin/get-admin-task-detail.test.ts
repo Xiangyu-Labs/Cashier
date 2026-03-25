@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { sql } from "drizzle-orm";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import { ledgers, taskRuns, users } from "@/persistence";
 import { getAdminTaskDetail } from "@/modules/admin/queries";
@@ -123,5 +123,20 @@ describe("getAdminTaskDetail", () => {
     await expect(
       getAdminTaskDetail("22222222-2222-4222-8222-222222222222")
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("runs auth before validation and then rejects invalid id with ValidationError", async () => {
+    requireSuperAdminMock.mockRejectedValueOnce(new Error("forbidden"));
+
+    await expect(getAdminTaskDetail("not-a-uuid")).rejects.toThrow("forbidden");
+
+    requireSuperAdminMock.mockResolvedValueOnce({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    await expect(getAdminTaskDetail("not-a-uuid")).rejects.toBeInstanceOf(ValidationError);
   });
 });
