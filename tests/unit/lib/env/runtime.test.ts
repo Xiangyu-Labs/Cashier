@@ -115,6 +115,20 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.openaiBaseUrl).toBe("https://api.openai.com/v1");
     expect(runtimeEnv.hasOpenaiBaseUrl).toBe(false);
   });
+
+  it("allows reading databaseUrl without unrelated required secrets", async () => {
+    process.env = {
+      ...originalEnv,
+      DATABASE_URL: "file:./data/sqlite.db",
+      OPENAI_API_KEY: "",
+      AUTH_SECRET: "",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    };
+
+    const { runtimeEnv } = await import("@/lib/env/runtime");
+
+    expect(runtimeEnv.databaseUrl).toBe("file:./data/sqlite.db");
+  });
 });
 
 describe("publicEnv", () => {

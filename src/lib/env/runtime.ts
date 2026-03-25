@@ -1,4 +1,4 @@
-import { validateStartupEnv, type StartupEnv } from "./startup";
+import { getStartupEnvValue, validateStartupEnv, type StartupEnv } from "./startup";
 
 export interface RuntimeEnv {
   readonly databaseUrl: string;
@@ -36,10 +36,6 @@ export interface RuntimeEnv {
   readonly logLevel: string;
 }
 
-function readStartupEnv(): StartupEnv {
-  return validateStartupEnv();
-}
-
 function hasExplicitValue(name: string): boolean {
   const value = process.env[name];
   return value != null && value.trim() !== "";
@@ -48,102 +44,102 @@ function hasExplicitValue(name: string): boolean {
 // Use getters so tests can override process.env without reloading every consumer.
 export const runtimeEnv: RuntimeEnv = {
   get databaseUrl() {
-    return readStartupEnv().DATABASE_URL;
+    return getStartupEnvValue("DATABASE_URL");
   },
   get openaiApiKey() {
-    return readStartupEnv().OPENAI_API_KEY;
+    return getStartupEnvValue("OPENAI_API_KEY");
   },
   get openaiBaseUrl() {
-    return readStartupEnv().OPENAI_BASE_URL;
+    return getStartupEnvValue("OPENAI_BASE_URL");
   },
   get hasOpenaiBaseUrl() {
     return hasExplicitValue("OPENAI_BASE_URL");
   },
   get authUrl() {
-    return hasExplicitValue("AUTH_URL") ? readStartupEnv().AUTH_URL : undefined;
+    return hasExplicitValue("AUTH_URL") ? getStartupEnvValue("AUTH_URL") : undefined;
   },
   get authResendKey() {
-    return readStartupEnv().AUTH_RESEND_KEY;
+    return getStartupEnvValue("AUTH_RESEND_KEY");
   },
   get authEmailFrom() {
-    return readStartupEnv().AUTH_EMAIL_FROM;
+    return getStartupEnvValue("AUTH_EMAIL_FROM");
   },
   get oidcIssuer() {
-    return readStartupEnv().OIDC_ISSUER;
+    return getStartupEnvValue("OIDC_ISSUER");
   },
   get oidcClientId() {
-    return readStartupEnv().OIDC_CLIENT_ID;
+    return getStartupEnvValue("OIDC_CLIENT_ID");
   },
   get oidcClientSecret() {
-    return readStartupEnv().OIDC_CLIENT_SECRET;
+    return getStartupEnvValue("OIDC_CLIENT_SECRET");
   },
   get localStoragePath() {
-    return readStartupEnv().LOCAL_STORAGE_PATH;
+    return getStartupEnvValue("LOCAL_STORAGE_PATH");
   },
   get trustedProxy() {
-    return readStartupEnv().TRUSTED_PROXY;
+    return getStartupEnvValue("TRUSTED_PROXY");
   },
   get timeZone() {
-    return readStartupEnv().TZ;
+    return getStartupEnvValue("TZ");
   },
   get aiMaxRetries() {
-    return readStartupEnv().AI_MAX_RETRIES;
+    return getStartupEnvValue("AI_MAX_RETRIES");
   },
   get aiRetryDelayMs() {
-    return readStartupEnv().AI_RETRY_DELAY_MS;
+    return getStartupEnvValue("AI_RETRY_DELAY_MS");
   },
   get aiTemperature() {
-    return readStartupEnv().AI_TEMPERATURE;
+    return getStartupEnvValue("AI_TEMPERATURE");
   },
   get sourceDocStaleTimeMs() {
-    return readStartupEnv().SOURCE_DOC_STALE_TIME_MS;
+    return getStartupEnvValue("SOURCE_DOC_STALE_TIME_MS");
   },
   get currencyStaleTimeMs() {
-    return readStartupEnv().CURRENCY_STALE_TIME_MS;
+    return getStartupEnvValue("CURRENCY_STALE_TIME_MS");
   },
   get otpExpiresSeconds() {
-    return readStartupEnv().OTP_EXPIRES_SECONDS;
+    return getStartupEnvValue("OTP_EXPIRES_SECONDS");
   },
   get otpLockoutMinutes() {
-    return readStartupEnv().OTP_LOCKOUT_MINUTES;
+    return getStartupEnvValue("OTP_LOCKOUT_MINUTES");
   },
   get otpMaxAttempts() {
-    return readStartupEnv().OTP_MAX_ATTEMPTS;
+    return getStartupEnvValue("OTP_MAX_ATTEMPTS");
   },
   get otpResendCooldownSeconds() {
-    return readStartupEnv().OTP_RESEND_COOLDOWN_SECONDS;
+    return getStartupEnvValue("OTP_RESEND_COOLDOWN_SECONDS");
   },
   get authRateLimitMax() {
-    return readStartupEnv().AUTH_RATE_LIMIT_MAX;
+    return getStartupEnvValue("AUTH_RATE_LIMIT_MAX");
   },
   get authRateLimitWindow() {
-    return readStartupEnv().AUTH_RATE_LIMIT_WINDOW;
+    return getStartupEnvValue("AUTH_RATE_LIMIT_WINDOW");
   },
   get otpIpMaxAttemptsPerHour() {
-    return readStartupEnv().OTP_IP_MAX_ATTEMPTS_PER_HOUR;
+    return getStartupEnvValue("OTP_IP_MAX_ATTEMPTS_PER_HOUR");
   },
   get otpVerifyMaxAttemptsPerMinute() {
-    return readStartupEnv().OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE;
+    return getStartupEnvValue("OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE");
   },
   get apiRateLimitPerMinute() {
-    return readStartupEnv().API_RATE_LIMIT_PER_MINUTE;
+    return getStartupEnvValue("API_RATE_LIMIT_PER_MINUTE");
   },
   get sessionMaxAgeDays() {
-    return readStartupEnv().SESSION_MAX_AGE_DAYS;
+    return getStartupEnvValue("SESSION_MAX_AGE_DAYS");
   },
   get disableRegistration() {
-    return readStartupEnv().DISABLE_REGISTRATION === "true";
+    return getStartupEnvValue("DISABLE_REGISTRATION") === "true";
   },
   get exportMaxEntries() {
-    return readStartupEnv().EXPORT_MAX_ENTRIES;
+    return getStartupEnvValue("EXPORT_MAX_ENTRIES");
   },
   get maxInputPixels() {
-    return readStartupEnv().MAX_INPUT_PIXELS;
+    return getStartupEnvValue("MAX_INPUT_PIXELS");
   },
   get maxImageQuality() {
-    return readStartupEnv().MAX_IMAGE_QUALITY;
+    return getStartupEnvValue("MAX_IMAGE_QUALITY");
   },
   get logLevel() {
-    return readStartupEnv().LOG_LEVEL;
+    return getStartupEnvValue("LOG_LEVEL");
   },
 };
