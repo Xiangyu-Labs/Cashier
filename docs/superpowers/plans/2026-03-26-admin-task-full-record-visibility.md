@@ -240,7 +240,6 @@ git commit -m "feat: add admin task detail query"
 **Files:**
 - Modify: `src/app/[locale]/(protected)/admin/tasks/page.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
-- Modify: `src/modules/admin/contracts.ts`
 - Modify: `tests/unit/app/admin-route-composition.test.tsx`
 - Modify: `tests/unit/modules/admin/ui/AdminTasksList.test.tsx`
 - Reference: `src/components/LanguageSwitcher.tsx`
@@ -389,7 +388,6 @@ git commit -m "feat: drive admin task details through search params"
 - Create: `src/modules/admin/ui/AdminTaskDetailPanel.tsx`
 - Create: `src/modules/admin/ui/AdminTaskJsonBlock.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
-- Modify: `src/modules/admin/contracts.ts`
 - Modify: `src/modules/admin/ui/index.ts`
 - Modify: `messages/en.json`
 - Modify: `messages/zh.json`
@@ -538,7 +536,6 @@ git commit -m "feat: add full admin task record detail panel"
 - Modify: `src/modules/admin/application/queries/get-admin-task-detail.ts`
 - Modify: `src/modules/admin/ui/AdminTaskDetailPanel.tsx`
 - Modify: `src/modules/admin/ui/AdminTasksList.tsx`
-- Modify: `src/modules/admin/contracts.ts`
 - Modify: `messages/en.json`
 - Modify: `messages/zh.json`
 - Test: `tests/unit/modules/admin/get-admin-task-detail.test.ts`
@@ -566,6 +563,7 @@ npm run test:unit -- \
   tests/unit/modules/admin/get-admin-task-detail.test.ts \
   tests/unit/modules/admin/list-admin-tasks.test.ts \
   tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx \
+  tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx \
   tests/unit/modules/admin/ui/AdminTasksList.test.tsx \
   tests/unit/app/admin-route-composition.test.tsx
 ```
@@ -615,6 +613,7 @@ git add 'src/app/[locale]/(protected)/admin/tasks/page.tsx' \
   tests/unit/modules/admin/get-admin-task-detail.test.ts \
   tests/unit/modules/admin/list-admin-tasks.test.ts \
   tests/unit/modules/admin/ui/AdminTaskDetailPanel.test.tsx \
+  tests/unit/modules/admin/ui/AdminTaskJsonBlock.test.tsx \
   tests/unit/modules/admin/ui/AdminTasksList.test.tsx \
   tests/unit/app/admin-route-composition.test.tsx
 git commit -m "feat: expose full admin task record details"
