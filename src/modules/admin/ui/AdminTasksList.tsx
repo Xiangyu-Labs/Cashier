@@ -24,8 +24,12 @@ export interface AdminTasksListLabels {
   details: string;
   hideDetails: string;
   taskId: string;
+  scopeId: string;
+  entityType: string;
+  entityId: string;
   startedAt: string;
   completedAt: string;
+  duration: string;
   progress: string;
   error: string;
   emptyTitle: string;
@@ -102,6 +106,28 @@ function formatOptionalDate(
   emptySymbol = "—"
 ): string {
   return value == null ? emptySymbol : formatter.format(value);
+}
+
+function formatDuration(startedAt: Date | null, completedAt: Date | null): string {
+  if (startedAt == null || completedAt == null) {
+    return "—";
+  }
+
+  const milliseconds = completedAt.getTime() - startedAt.getTime();
+  if (milliseconds < 0) {
+    return "—";
+  }
+
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
 }
 
 export function AdminTasksList(props: {
@@ -217,6 +243,18 @@ export function AdminTasksList(props: {
                             <dd className="text-sm text-text">{item.progress ?? "—"}</dd>
                           </div>
                           <div>
+                            <dt className="text-xs text-muted">{props.labels.scopeId}</dt>
+                            <dd className="break-all text-sm text-text">{item.scopeId ?? "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">{props.labels.entityType}</dt>
+                            <dd className="text-sm text-text">{item.entityType ?? "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">{props.labels.entityId}</dt>
+                            <dd className="break-all text-sm text-text">{item.entityId ?? "—"}</dd>
+                          </div>
+                          <div>
                             <dt className="text-xs text-muted">{props.labels.createdAt}</dt>
                             <dd className="text-sm text-text">{formatOptionalDate(item.createdAt, dateFormatter)}</dd>
                           </div>
@@ -230,6 +268,12 @@ export function AdminTasksList(props: {
                             <dt className="text-xs text-muted">{props.labels.completedAt}</dt>
                             <dd className="text-sm text-text">
                               {formatOptionalDate(item.completedAt, dateFormatter)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">{props.labels.duration}</dt>
+                            <dd className="text-sm text-text">
+                              {formatDuration(item.startedAt, item.completedAt)}
                             </dd>
                           </div>
                           <div>

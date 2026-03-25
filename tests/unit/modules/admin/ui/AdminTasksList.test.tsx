@@ -32,8 +32,12 @@ const labels: AdminTasksListLabels = {
   details: "Details",
   hideDetails: "Hide details",
   taskId: "Task ID",
+  scopeId: "Scope ID",
+  entityType: "Entity Type",
+  entityId: "Entity ID",
   startedAt: "Started At",
   completedAt: "Completed At",
+  duration: "Duration",
   progress: "Progress",
   error: "Error",
   emptyTitle: "No tasks yet",
@@ -137,8 +141,16 @@ describe("AdminTasksList", () => {
     expect(screen.getAllByText("AI returned invalid JSON from provider").length).toBeGreaterThan(0);
     expect(screen.getByText("Progress")).toBeTruthy();
     expect(screen.getByText("25%")).toBeTruthy();
+    expect(screen.getByText("Scope ID")).toBeTruthy();
+    expect(screen.getByText("ledger-1")).toBeTruthy();
+    expect(screen.getByText("Entity Type")).toBeTruthy();
+    expect(screen.getAllByText("source_document").length).toBeGreaterThan(0);
+    expect(screen.getByText("Entity ID")).toBeTruthy();
+    expect(screen.getByText("doc-1")).toBeTruthy();
     expect(screen.getByText("Started At")).toBeTruthy();
     expect(screen.getByText("Completed At")).toBeTruthy();
+    expect(screen.getByText("Duration")).toBeTruthy();
+    expect(screen.getByText("9m 0s")).toBeTruthy();
   });
 
   it("builds next-page link with existing filters and next cursor", () => {
