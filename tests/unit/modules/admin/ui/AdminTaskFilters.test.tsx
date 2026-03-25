@@ -130,4 +130,41 @@ describe("AdminTaskFilters", () => {
 
     expect(routerReplaceMock).toHaveBeenCalledWith("/admin/tasks?limit=20", { scroll: false });
   });
+
+  it("clears stale detail selection when changing filters or resetting", () => {
+    useSearchParamsMock.mockReturnValue(
+      new URLSearchParams("status=failed&detail=task-1&cursor=abc&limit=20")
+    );
+
+    const { rerender } = render(
+      <AdminTaskFilters
+        availableTypes={["parse_source_document"]}
+        filters={{ status: "failed", range: "all" }}
+        labels={labels}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Running"));
+
+    expect(routerReplaceMock).toHaveBeenCalledWith("/admin/tasks?status=running&limit=20", {
+      scroll: false,
+    });
+
+    vi.clearAllMocks();
+    useSearchParamsMock.mockReturnValue(
+      new URLSearchParams("status=running&type=parse_source_document&range=7d&detail=task-1&limit=20")
+    );
+
+    rerender(
+      <AdminTaskFilters
+        availableTypes={["parse_source_document"]}
+        filters={{ status: "running", type: "parse_source_document", range: "7d" }}
+        labels={labels}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+
+    expect(routerReplaceMock).toHaveBeenCalledWith("/admin/tasks?limit=20", { scroll: false });
+  });
 });

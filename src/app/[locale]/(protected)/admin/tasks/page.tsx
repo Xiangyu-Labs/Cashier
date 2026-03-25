@@ -19,27 +19,26 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
   const t = await getTranslations("AdminTasks");
   const resolvedSearchParams = await searchParams;
 
-  const normalizedSearchParams = {
+  const listSearchParams = {
     status: getSingleSearchParam(resolvedSearchParams.status),
     type: getSingleSearchParam(resolvedSearchParams.type),
     range: getSingleSearchParam(resolvedSearchParams.range),
     cursor: getSingleSearchParam(resolvedSearchParams.cursor),
     limit: getSingleSearchParam(resolvedSearchParams.limit),
-    detail: getSingleSearchParam(resolvedSearchParams.detail),
   };
 
-  const tasks = await listAdminTasks(normalizedSearchParams);
-  const selectedTaskId = normalizedSearchParams.detail;
+  const selectedTaskId = getSingleSearchParam(resolvedSearchParams.detail);
+  const tasks = await listAdminTasks(listSearchParams);
   const expandedTaskDetail =
     selectedTaskId != null ? await getAdminTaskDetail(selectedTaskId) : null;
 
   const filters: AdminTaskFiltersState = {
-    ...(normalizedSearchParams.status != null
-      ? { status: normalizedSearchParams.status as NonNullable<AdminTaskFiltersState["status"]> }
+    ...(listSearchParams.status != null
+      ? { status: listSearchParams.status as NonNullable<AdminTaskFiltersState["status"]> }
       : {}),
-    ...(normalizedSearchParams.type != null ? { type: normalizedSearchParams.type } : {}),
-    range: (normalizedSearchParams.range as AdminTaskFiltersState["range"] | undefined) ?? "all",
-    ...(normalizedSearchParams.limit != null ? { limit: normalizedSearchParams.limit } : {}),
+    ...(listSearchParams.type != null ? { type: listSearchParams.type } : {}),
+    range: (listSearchParams.range as AdminTaskFiltersState["range"] | undefined) ?? "all",
+    ...(listSearchParams.limit != null ? { limit: listSearchParams.limit } : {}),
   };
 
   return (
@@ -71,7 +70,7 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
         items={tasks.items}
         hasAnyTasks={tasks.hasAnyTasks}
         nextCursor={tasks.nextCursor}
-        currentCursor={normalizedSearchParams.cursor}
+        currentCursor={listSearchParams.cursor}
         filters={filters}
         expandedTaskId={selectedTaskId}
         expandedTaskDetail={expandedTaskDetail}

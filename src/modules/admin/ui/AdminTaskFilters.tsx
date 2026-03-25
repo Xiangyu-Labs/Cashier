@@ -73,6 +73,7 @@ export function AdminTaskFilters(props: {
     }
 
     params.delete("cursor");
+    params.delete("detail");
 
     const query = params.toString();
     router.replace(query === "" ? pathname : `${pathname}?${query}`, { scroll: false });

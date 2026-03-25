@@ -201,6 +201,13 @@ describe("admin route composition", () => {
       })
     );
 
+    expect(listAdminTasksMock).toHaveBeenCalledWith({
+      status: "failed",
+      type: undefined,
+      range: undefined,
+      cursor: undefined,
+      limit: undefined,
+    });
     expect(getAdminTaskDetailMock).toHaveBeenCalledWith("task-1");
     expect(screen.getByText("AdminTasks.taskId")).toBeTruthy();
 
@@ -255,5 +262,37 @@ describe("admin route composition", () => {
     const TasksPage = (await import("@/app/[locale]/(protected)/admin/tasks/page")).default;
 
     await expect(TasksPage({ searchParams: Promise.resolve({}) })).rejects.toThrow(expectedError);
+  });
+
+  it("bubbles detail query errors for admin error boundary handling", async () => {
+    listAdminTasksMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: "task-1",
+          status: "failed",
+          type: "parse_source_document",
+          title: "Parse source document",
+          progress: null,
+          error: "AI returned invalid JSON",
+          scopeId: "ledger-1",
+          scopeUserEmail: "owner@example.com",
+          entityType: "source_document",
+          entityId: "doc-1",
+          createdAt: new Date("2026-03-22T10:00:00.000Z"),
+          startedAt: new Date("2026-03-22T10:01:00.000Z"),
+          completedAt: null,
+        },
+      ],
+      nextCursor: null,
+      availableTypes: ["parse_source_document"],
+      hasAnyTasks: true,
+    });
+    getAdminTaskDetailMock.mockRejectedValueOnce(new Error("detail exploded"));
+
+    const TasksPage = (await import("@/app/[locale]/(protected)/admin/tasks/page")).default;
+
+    await expect(
+      TasksPage({ searchParams: Promise.resolve({ status: "failed", detail: "task-1" }) })
+    ).rejects.toThrow("detail exploded");
   });
 });
