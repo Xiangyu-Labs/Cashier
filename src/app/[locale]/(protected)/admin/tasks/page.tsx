@@ -1,7 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import type { AdminTaskRange, AdminTaskStatus } from "@/modules/admin/contracts";
 import { listAdminTasks } from "@/modules/admin/queries";
-import { AdminTaskFilters, AdminTasksList } from "@/modules/admin/ui";
+import { AdminTaskFilters, AdminTasksList, type AdminTaskFiltersState } from "@/modules/admin/ui";
 
 interface AdminTasksPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,11 +29,13 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
 
   const tasks = await listAdminTasks(normalizedSearchParams);
 
-  const filters = {
-    status: normalizedSearchParams.status as AdminTaskStatus | undefined,
-    type: normalizedSearchParams.type,
-    range: (normalizedSearchParams.range as AdminTaskRange | undefined) ?? "all",
-    limit: normalizedSearchParams.limit,
+  const filters: AdminTaskFiltersState = {
+    ...(normalizedSearchParams.status != null
+      ? { status: normalizedSearchParams.status as NonNullable<AdminTaskFiltersState["status"]> }
+      : {}),
+    ...(normalizedSearchParams.type != null ? { type: normalizedSearchParams.type } : {}),
+    range: (normalizedSearchParams.range as AdminTaskFiltersState["range"] | undefined) ?? "all",
+    ...(normalizedSearchParams.limit != null ? { limit: normalizedSearchParams.limit } : {}),
   };
 
   return (

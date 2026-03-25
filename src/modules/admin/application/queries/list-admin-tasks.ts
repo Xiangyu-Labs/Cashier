@@ -64,12 +64,14 @@ export async function listAdminTasks(input: ListAdminTasksInput = {}): Promise<L
 
   if (validated.cursor != null) {
     const parsedCursor = parseTaskCursor(validated.cursor);
-    conditions.push(
-      or(
-        lt(taskRuns.createdAt, parsedCursor.createdAt),
-        and(eq(taskRuns.createdAt, parsedCursor.createdAt), lt(taskRuns.id, parsedCursor.id))
-      )
+    const cursorCondition = or(
+      lt(taskRuns.createdAt, parsedCursor.createdAt),
+      and(eq(taskRuns.createdAt, parsedCursor.createdAt), lt(taskRuns.id, parsedCursor.id))
     );
+
+    if (cursorCondition != null) {
+      conditions.push(cursorCondition);
+    }
   }
 
   const rows = await db

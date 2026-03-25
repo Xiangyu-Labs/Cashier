@@ -28,7 +28,11 @@ vi.mock("@/components/ui/select", () => {
     }: {
       children: React.ReactNode;
       onValueChange?: (value: string) => void;
-    }) => <SelectContext.Provider value={{ onValueChange }}>{children}</SelectContext.Provider>,
+    }) => (
+      <SelectContext.Provider value={onValueChange == null ? {} : { onValueChange }}>
+        {children}
+      </SelectContext.Provider>
+    ),
     SelectTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
     SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? ""}</span>,
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -79,7 +83,7 @@ describe("AdminTaskFilters", () => {
     render(
       <AdminTaskFilters
         availableTypes={["parse_source_document"]}
-        filters={{ status: undefined, type: undefined, range: "all" }}
+        filters={{ range: "all" }}
         labels={labels}
       />
     );
@@ -97,7 +101,7 @@ describe("AdminTaskFilters", () => {
     render(
       <AdminTaskFilters
         availableTypes={["parse_source_document"]}
-        filters={{ status: "running", type: undefined, range: "all" }}
+        filters={{ status: "running", range: "all" }}
         labels={labels}
       />
     );
