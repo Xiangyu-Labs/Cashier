@@ -35,7 +35,7 @@ interface SourceDocumentDetailModalProps {
   onBatchUpdate: (
     ids: string[],
     data: {
-      categoryId?: string;
+      categoryId?: string | null;
       currency?: string;
       entryDate?: string;
       description?: string;
@@ -146,7 +146,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     onClose();
   }, [onClose, discardAllChanges]);
 
-  const handleBatchCategory = async (categoryId: string) => {
+  const handleBatchCategory = async (categoryId: string | null) => {
     if (selectedIds.length === 0) return;
     setIsSaving(true);
     try {
@@ -275,7 +275,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           isAllSelected={isAllSelected}
           onSelectAll={() => handleSelectAllEntries(true)}
           onClearSelection={() => handleSelectAllEntries(false)}
-          onChangeCategory={(categoryId) => handleBatchCategory(categoryId ?? "")}
+          onChangeCategory={handleBatchCategory}
           onChangeCurrency={handleBatchCurrency}
           categories={categories}
           preferredCurrencies={preferredCurrencies}

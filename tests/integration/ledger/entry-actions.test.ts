@@ -396,6 +396,49 @@ describe("batchUpdateLedgerEntriesAction", () => {
       expect(entry?.categoryId).toBe(catId);
     }
   });
+
+  it("removes categories from entries when given categoryId null", async () => {
+    const db = getTestDb();
+    const catId = uuidv4();
+    await db.insert(entryCategories).values({
+      id: catId,
+      ledgerId,
+      name: "餐饮",
+      sortOrder: 1,
+    });
+
+    const doc = await seedDoc(db, ledgerId);
+    const ids: string[] = [];
+
+    for (let i = 0; i < 2; i++) {
+      const [e] = await db
+        .insert(ledgerEntries)
+        .values({
+          id: uuidv4(),
+          ledgerId,
+          sourceDocumentId: doc.id,
+          itemName: `Item ${i}`,
+          amount: "10.00",
+          currency: "CNY",
+          categoryId: catId,
+        })
+        .returning();
+      expect(e).toBeDefined();
+      if (e === undefined) {
+        throw new Error("Expected ledger entry insert to return a row");
+      }
+      ids.push(e.id);
+    }
+
+    await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId: null });
+
+    for (const id of ids) {
+      const entry = await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.id, id),
+      });
+      expect(entry?.categoryId).toBeNull();
+    }
+  });
 });
 
 describe("getLedgerEntriesAction", () => {
