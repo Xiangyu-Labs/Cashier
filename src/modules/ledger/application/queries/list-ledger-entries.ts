@@ -6,7 +6,7 @@ import {
 } from "@/modules/ledger/contract-schemas";
 import type { LedgerEntryPageDto } from "@/modules/ledger/contracts";
 
-const UNCATEGORIZED_SENTINEL = "__uncategorized__";
+export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
 
 export async function listLedgerEntries(
   ledgerId: string,

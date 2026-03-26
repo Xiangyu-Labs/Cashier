@@ -33,6 +33,7 @@ import {
   batchUpdateLedgerEntriesAction,
   getLedgerEntriesAction,
 } from "@/modules/ledger/actions";
+import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -515,7 +516,7 @@ describe("getLedgerEntriesAction", () => {
     }
 
     const result = await getLedgerEntriesAction(ledgerId, {
-      categoryId: "__uncategorized__",
+      categoryId: UNCATEGORIZED_SENTINEL,
     });
 
     expect(result.items).toHaveLength(1);
