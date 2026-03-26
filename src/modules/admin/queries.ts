@@ -5,3 +5,4 @@ export { listAdminSourceDocuments } from "./application/queries/list-admin-sourc
 export { getAdminSourceDocumentDetail } from "./application/queries/get-admin-source-document-detail";
 export { listAdminEntries } from "./application/queries/list-admin-entries";
 export { getAdminEntryDetail } from "./application/queries/get-admin-entry-detail";
+export { listAdminSystemConfig } from "./application/queries/list-admin-system-config";

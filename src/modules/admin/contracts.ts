@@ -74,7 +74,6 @@ export interface AdminUserListItem {
   updatedAt: Date;
   deletedAt: Date | null;
 }
-
 export interface AdminSourceDocumentListItem {
   id: string;
   ledgerId: string;
@@ -143,6 +142,19 @@ export interface AdminEntryDetail {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+}
+
+export type AdminSystemConfigTier = "system" | "runtime";
+
+export type AdminSystemConfigSource = "environment" | "default" | "missing";
+
+export interface AdminSystemConfigItem {
+  name: string;
+  tier: AdminSystemConfigTier;
+  required: boolean;
+  description: string;
+  value: string | null;
+  source: AdminSystemConfigSource;
 }
 
 export interface ListAdminTasksResult {
