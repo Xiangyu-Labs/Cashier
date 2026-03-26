@@ -2,10 +2,7 @@ export { listAdminUsers } from "./application/queries/list-admin-users";
 export { listAdminTasks } from "./application/queries/list-admin-tasks";
 export { getAdminTaskDetail } from "./application/queries/get-admin-task-detail";
 export { listAdminSourceDocuments } from "./application/queries/list-admin-source-documents";
-
-export async function getAdminSourceDocumentDetail(_input: unknown) {
-  throw new Error("getAdminSourceDocumentDetail is not implemented yet");
-}
+export { getAdminSourceDocumentDetail } from "./application/queries/get-admin-source-document-detail";
 
 export async function listAdminEntries(_input: unknown) {
   throw new Error("listAdminEntries is not implemented yet");
