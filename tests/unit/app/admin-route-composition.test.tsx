@@ -326,6 +326,8 @@ describe("admin route composition", () => {
       cursor: "2026-03-20T00:00:00.000Z|doc-9",
       limit: "25",
     });
+    expect(screen.getAllByText("AdminSourceDocuments.status").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "AdminSourceDocuments.title" })).toBeTruthy();
     expect(screen.getAllByText("March lunch receipt").length).toBeGreaterThan(0);
     expect(screen.getByText("owner@example.com")).toBeTruthy();
   });

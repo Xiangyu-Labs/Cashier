@@ -16,4 +16,6 @@ export {
   AdminSourceDocumentDetailPanel,
   type AdminSourceDocumentDetailPanelLabels,
 } from "./AdminSourceDocumentDetailPanel";
+export { AdminSourceDocumentStatusBadge } from "./AdminSourceDocumentStatusBadge";
+export { AdminSourceDocumentsList, type AdminSourceDocumentsListLabels } from "./AdminSourceDocumentsList";
 export { AdminUnauthorizedState } from "./AdminUnauthorizedState";
