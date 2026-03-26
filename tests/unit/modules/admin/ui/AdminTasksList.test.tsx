@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AdminTasksList,
@@ -293,5 +293,38 @@ describe("AdminTasksList", () => {
 
     const hideDetailsLink = screen.getByRole("link", { name: "Hide details" });
     expect(hideDetailsLink.getAttribute("href")).toBe("/admin/tasks");
+  });
+
+  it("uses a compact fixed table layout without a task summary column so details stays visible", () => {
+    const longItem = createTask({
+      title: "Categorize: Claude Code 包月订阅",
+      scopeUserEmail: "xiangyu.moe.ac@gmail.com",
+      entityType: "entry",
+      entityId: "6a4ab260-fa47-4fbd-af8b-4c7e470c57d7",
+    });
+
+    render(
+      <AdminTasksList
+        locale="en"
+        items={[longItem]}
+        hasAnyTasks={true}
+        nextCursor={null}
+        filters={defaultFilters}
+        labels={labels}
+        expandedTaskId={null}
+        expandedTaskDetail={null}
+      />
+    );
+
+    const table = screen.getByRole("table");
+    expect(table.className).toContain("w-full");
+    expect(table.className).toContain("table-fixed");
+    expect(within(table).queryByRole("columnheader", { name: "Task" })).toBeNull();
+
+    const scopeCell = screen.getByText("xiangyu.moe.ac@gmail.com").closest("td");
+    expect(scopeCell?.className).toContain("break-all");
+
+    const entityCell = screen.getByText("entry:6a4ab260-fa47-4fbd-af8b-4c7e470c57d7").closest("td");
+    expect(entityCell?.className).toContain("break-all");
   });
 });

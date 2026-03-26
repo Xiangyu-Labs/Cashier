@@ -212,7 +212,15 @@ export function AdminTasksList(props: {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse">
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[14%]" />
+            <col className="w-[8%]" />
+            <col className="w-[18%]" />
+            <col className="w-[22%]" />
+            <col className="w-[30%]" />
+            <col className="w-[8%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border bg-surface2/70 text-left">
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
@@ -223,9 +231,6 @@ export function AdminTasksList(props: {
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.type}
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.task}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.scope}
@@ -256,17 +261,11 @@ export function AdminTasksList(props: {
                     <td className="px-6 py-4 text-sm text-text">
                       <AdminTaskStatusBadge status={item.status} label={statusLabel} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-text">{item.type}</td>
-                    <td className="px-6 py-4 text-sm text-text">
-                      <div className="space-y-1">
-                        <p className="font-medium text-text">{item.title}</p>
-                        {item.status === "failed" && item.error != null && item.error !== "" ? (
-                          <p className="max-w-md truncate text-xs text-danger">{item.error}</p>
-                        ) : null}
-                      </div>
+                    <td className="break-all px-6 py-4 text-sm text-text">{item.type}</td>
+                    <td className="break-all px-6 py-4 text-sm text-text">
+                      {item.scopeUserEmail ?? item.scopeId ?? "—"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-text">{item.scopeUserEmail ?? item.scopeId ?? "—"}</td>
-                    <td className="px-6 py-4 text-sm text-text">{formatEntity(item)}</td>
+                    <td className="break-all px-6 py-4 text-sm text-text">{formatEntity(item)}</td>
                     <td className="px-6 py-4 text-sm text-text">
                       <Link
                         href={buildTaskDetailHref(
@@ -284,7 +283,7 @@ export function AdminTasksList(props: {
                   </tr>
                   {isExpanded ? (
                     <tr className="border-b border-border last:border-b-0">
-                      <td colSpan={7} className="border-t border-border bg-surface2 px-6 py-4">
+                      <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
                         <AdminTaskDetailPanel
                           locale={props.locale}
                           detail={detail}

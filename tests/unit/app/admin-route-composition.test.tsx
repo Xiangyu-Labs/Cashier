@@ -137,7 +137,7 @@ describe("admin route composition", () => {
       cursor: "2026-03-20T00:00:00.000Z|task-9",
       limit: "25",
     });
-    expect(screen.getByText("Parse source document")).toBeTruthy();
+    expect(screen.getAllByText("parse_source_document").length).toBeGreaterThan(0);
     expect(screen.getByText("owner@example.com")).toBeTruthy();
   });
 
