@@ -104,6 +104,24 @@ describe("admin route composition", () => {
     expect(redirectMock).toHaveBeenCalledWith("/api/auth/signout?callbackUrl=%2Fen%2Flogin");
   });
 
+  it("exports source-document and entry list-input parsers with stable defaults", async () => {
+    const {
+      parseListAdminSourceDocumentsInput,
+      parseListAdminEntriesInput,
+    } = await import("@/modules/admin/contract-schemas");
+
+    expect(parseListAdminSourceDocumentsInput({})).toEqual({
+      range: "all",
+      result: "all",
+      limit: 50,
+    });
+    expect(parseListAdminEntriesInput({})).toEqual({
+      range: "all",
+      sourceLink: "all",
+      limit: 50,
+    });
+  });
+
   it("wires the users page to the admin query and list component", async () => {
     const users: AdminUserListItem[] = [
       {
