@@ -678,6 +678,7 @@
     "sourceDocuments": "Source Documents",
     "entries": "Entries",
     "tasks": "Tasks",
+    "systemConfig": "System Config",
     "homeTitle": "Admin overview",
     "homeDescription": "Start here for internal operations. This first release focuses on a clean admin foundation and a read-only user list."
   },
@@ -865,6 +866,27 @@
     "updatedAt": "Updated At",
     "deletedAt": "Deleted At",
     "notAvailable": "—"
+  },
+  "AdminSystemConfig": {
+    "title": "System Config",
+    "description": "Read-only visibility into the effective configuration values used by the system.",
+    "readOnlyNotice": "This page is read-only for now. Editing will come later.",
+    "name": "Name",
+    "tier": "Tier",
+    "source": "Source",
+    "required": "Required",
+    "value": "Value",
+    "descriptionColumn": "Description",
+    "emptyTitle": "No config rows",
+    "emptyDescription": "No application config rows are currently available.",
+    "tierSystem": "System",
+    "tierRuntime": "Runtime",
+    "sourceEnvironment": "Environment",
+    "sourceDefault": "Default",
+    "sourceMissing": "Missing",
+    "requiredYes": "Yes",
+    "requiredNo": "No",
+    "notSet": "Not set"
   },
   "AdminUnauthorized": {
     "title": "Access denied",

@@ -3,7 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ForbiddenError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { UserRole } from "@/modules/admin/types";
-import type { AdminTaskDetail, AdminTaskListItem, AdminUserListItem } from "@/modules/admin/contracts";
+import type {
+  AdminSystemConfigItem,
+  AdminTaskDetail,
+  AdminTaskListItem,
+  AdminUserListItem,
+} from "@/modules/admin/contracts";
 
 const {
   requireSuperAdminMock,
@@ -14,6 +19,7 @@ const {
   getAdminSourceDocumentDetailMock,
   listAdminEntriesMock,
   getAdminEntryDetailMock,
+  listAdminSystemConfigMock,
   redirectMock,
 } = vi.hoisted(() => ({
   requireSuperAdminMock: vi.fn(),
@@ -25,6 +31,7 @@ const {
   listAdminEntriesMock: vi.fn(),
   getAdminEntryDetailMock: vi.fn(),
   redirectMock: vi.fn(),
+  listAdminSystemConfigMock: vi.fn(),
 }));
 
 vi.mock("@/modules/admin/access", () => ({
@@ -39,6 +46,7 @@ vi.mock("@/modules/admin/queries", () => ({
   getAdminSourceDocumentDetail: getAdminSourceDocumentDetailMock,
   listAdminEntries: listAdminEntriesMock,
   getAdminEntryDetail: getAdminEntryDetailMock,
+  listAdminSystemConfig: listAdminSystemConfigMock,
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -90,6 +98,7 @@ describe("admin route composition", () => {
     expect(screen.getByRole("link", { name: "Admin.sourceDocuments" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Admin.entries" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Admin.tasks" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Admin.systemConfig" })).toBeTruthy();
   });
 
   it("redirects to login when the session user no longer resolves in the database", async () => {
@@ -148,6 +157,27 @@ describe("admin route composition", () => {
     render(await UsersPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+  });
+
+  it("wires the system-config page to the admin query and list component", async () => {
+    const items: AdminSystemConfigItem[] = [
+      {
+        name: "DATABASE_URL",
+        tier: "system",
+        required: false,
+        description: "SQLite database connection string.",
+        value: "file:./data/sqlite.db",
+        source: "default",
+      },
+    ];
+    listAdminSystemConfigMock.mockResolvedValueOnce(items);
+
+    const Page = (await import("@/app/[locale]/(protected)/admin/system-config/page")).default;
+    render(await Page());
+
+    expect(listAdminSystemConfigMock).toHaveBeenCalledWith();
+    expect(screen.getByText("DATABASE_URL")).toBeTruthy();
+    expect(screen.getByText("AdminSystemConfig.readOnlyNotice")).toBeTruthy();
   });
 
   it("wires the tasks page to the admin query with normalized search params", async () => {

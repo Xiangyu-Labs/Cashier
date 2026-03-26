@@ -42,6 +42,7 @@ export default async function AdminLayout(props: { children: ReactNode }) {
         { href: "/admin/source-documents", label: t("sourceDocuments") },
         { href: "/admin/entries", label: t("entries") },
         { href: "/admin/tasks", label: t("tasks") },
+        { href: "/admin/system-config", label: t("systemConfig") },
       ]}
     >
       {props.children}

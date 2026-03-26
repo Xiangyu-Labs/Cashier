@@ -678,6 +678,7 @@
     "sourceDocuments": "源单据",
     "entries": "分录",
     "tasks": "任务",
+    "systemConfig": "系统配置",
     "homeTitle": "后台概览",
     "homeDescription": "这里是内部管理入口。第一版先聚焦于稳定的后台骨架和只读用户列表。"
   },
@@ -865,6 +866,27 @@
     "updatedAt": "更新时间",
     "deletedAt": "删除时间",
     "notAvailable": "—"
+  },
+  "AdminSystemConfig": {
+    "title": "系统配置",
+    "description": "只读查看系统当前生效的配置值。",
+    "readOnlyNotice": "当前页面仅支持只读查看，后续才会支持编辑。",
+    "name": "名称",
+    "tier": "层级",
+    "source": "来源",
+    "required": "必填",
+    "value": "值",
+    "descriptionColumn": "说明",
+    "emptyTitle": "没有配置项",
+    "emptyDescription": "当前没有可显示的应用配置项。",
+    "tierSystem": "系统",
+    "tierRuntime": "运行时",
+    "sourceEnvironment": "环境变量",
+    "sourceDefault": "默认值",
+    "sourceMissing": "缺失",
+    "requiredYes": "是",
+    "requiredNo": "否",
+    "notSet": "未设置"
   },
   "AdminUnauthorized": {
     "title": "无权访问",
