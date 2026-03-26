@@ -689,7 +689,18 @@
     "emptyTitle": "No users yet",
     "emptyDescription": "Users will appear here after someone signs up.",
     "roleUser": "User",
-    "roleSuperAdmin": "Super Admin"
+    "roleSuperAdmin": "Super Admin",
+    "details": "View details",
+    "detailsColumn": "Details",
+    "hideDetails": "Hide details",
+    "userId": "User ID",
+    "emailVerified": "Email Verified",
+    "image": "Image",
+    "updatedAt": "Updated At",
+    "deletedAt": "Deleted At",
+    "notAvailable": "—",
+    "profile": "Profile",
+    "timestamps": "Timestamps"
   },
   "AdminTasks": {
     "title": "Tasks",
@@ -745,7 +756,8 @@
     "showRawData": "Show raw data",
     "hideRawData": "Hide raw data",
     "scopeUserEmail": "Scope User Email",
-    "notAvailable": "—"
+    "notAvailable": "—",
+    "detailsColumn": "Details"
   },
   "AdminUnauthorized": {
     "title": "Access denied",

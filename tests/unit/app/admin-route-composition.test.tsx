@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { UserRole } from "@/modules/admin/types";
-import type { AdminTaskDetail, AdminTaskListItem } from "@/modules/admin/contracts";
+import type { AdminTaskDetail, AdminTaskListItem, AdminUserListItem } from "@/modules/admin/contracts";
 
 const { requireSuperAdminMock, listAdminUsersMock, listAdminTasksMock, getAdminTaskDetailMock, redirectMock } =
   vi.hoisted(() => ({
@@ -26,23 +26,14 @@ vi.mock("@/modules/admin/queries", () => ({
 
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespaceArg: { namespace: string } | string) => {
-    const keyspace =
-      typeof namespaceArg === "string" ? namespaceArg : namespaceArg.namespace;
+    const keyspace = typeof namespaceArg === "string" ? namespaceArg : namespaceArg.namespace;
     return (key: string) => `${keyspace}.${key}`;
   },
   getLocale: async () => "en",
 }));
 
 vi.mock("@/i18n/routing", () => ({
-  Link: ({
-    children,
-    href,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
   usePathname: () => "/en/admin/users",
   useRouter: () => ({ replace: vi.fn() }),
 }));
@@ -79,18 +70,23 @@ describe("admin route composition", () => {
   });
 
   it("wires the users page to the admin query and list component", async () => {
-    listAdminUsersMock.mockResolvedValueOnce([
+    const users: AdminUserListItem[] = [
       {
         id: "admin-user",
         email: "admin@example.com",
         name: "Owner",
+        emailVerified: new Date("2026-03-22T10:00:00.000Z"),
+        image: "https://example.com/avatar.png",
         role: UserRole.SuperAdmin,
         createdAt: new Date("2026-03-21T10:00:00.000Z"),
+        updatedAt: new Date("2026-03-23T10:00:00.000Z"),
+        deletedAt: null,
       },
-    ]);
+    ];
+    listAdminUsersMock.mockResolvedValueOnce(users);
 
     const UsersPage = (await import("@/app/[locale]/(protected)/admin/users/page")).default;
-    render(await UsersPage());
+    render(await UsersPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText("admin@example.com")).toBeTruthy();
   });

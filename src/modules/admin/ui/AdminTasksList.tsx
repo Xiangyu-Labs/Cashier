@@ -28,6 +28,7 @@ export interface AdminTasksListLabels {
   scope: string;
   entity: string;
   details: string;
+  detailsColumn: string;
   hideDetails: string;
   taskId: string;
   scopeId: string;
@@ -232,6 +233,9 @@ export function AdminTasksList(props: {
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.entity}
               </th>
+              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
+                {props.labels.detailsColumn}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -259,26 +263,28 @@ export function AdminTasksList(props: {
                         {item.status === "failed" && item.error != null && item.error !== "" ? (
                           <p className="max-w-md truncate text-xs text-danger">{item.error}</p>
                         ) : null}
-                        <Link
-                          href={buildTaskDetailHref(
-                            props.filters,
-                            isExpanded ? null : item.id,
-                            props.currentCursor
-                          )}
-                          prefetch={false}
-                          scroll={false}
-                          className="text-xs font-medium text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
-                        >
-                          {isExpanded ? props.labels.hideDetails : props.labels.details}
-                        </Link>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-text">{item.scopeUserEmail ?? item.scopeId ?? "—"}</td>
                     <td className="px-6 py-4 text-sm text-text">{formatEntity(item)}</td>
+                    <td className="px-6 py-4 text-sm text-text">
+                      <Link
+                        href={buildTaskDetailHref(
+                          props.filters,
+                          isExpanded ? null : item.id,
+                          props.currentCursor
+                        )}
+                        prefetch={false}
+                        scroll={false}
+                        className="text-xs font-medium text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
+                      >
+                        {isExpanded ? props.labels.hideDetails : props.labels.details}
+                      </Link>
+                    </td>
                   </tr>
                   {isExpanded ? (
                     <tr className="border-b border-border last:border-b-0">
-                      <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
+                      <td colSpan={7} className="border-t border-border bg-surface2 px-6 py-4">
                         <AdminTaskDetailPanel
                           locale={props.locale}
                           detail={detail}

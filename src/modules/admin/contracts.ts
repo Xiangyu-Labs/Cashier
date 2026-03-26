@@ -3,6 +3,7 @@ import type {
   listAdminTasksInputSchema,
   listAdminTasksValidatedInputSchema,
 } from "./contract-schemas";
+import type { UserRoleValue } from "./types";
 
 export type AdminTaskStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
@@ -42,6 +43,18 @@ export interface AdminTaskDetail {
   updatedAt: Date;
   startedAt: Date | null;
   completedAt: Date | null;
+  deletedAt: Date | null;
+}
+
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  name: string | null;
+  emailVerified: Date | null;
+  image: string | null;
+  role: UserRoleValue;
+  createdAt: Date;
+  updatedAt: Date;
   deletedAt: Date | null;
 }
 

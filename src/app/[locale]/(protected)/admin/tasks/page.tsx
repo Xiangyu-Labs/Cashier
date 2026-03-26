@@ -84,6 +84,7 @@ export default async function AdminTasksPage({ searchParams }: AdminTasksPagePro
           scope: t("scope"),
           entity: t("entity"),
           details: t("details"),
+          detailsColumn: t("detailsColumn"),
           hideDetails: t("hideDetails"),
           taskId: t("taskId"),
           scopeId: t("scopeId"),

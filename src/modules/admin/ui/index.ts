@@ -1,6 +1,7 @@
 export { AdminShell } from "./AdminShell";
 export { AdminHome } from "./AdminHome";
-export { AdminUsersList, type AdminUserListItem, type AdminUsersListLabels } from "./AdminUsersList";
+export { AdminUsersList, type AdminUsersListLabels } from "./AdminUsersList";
+export { AdminUserDetailPanel, type AdminUserDetailPanelLabels } from "./AdminUserDetailPanel";
 export { AdminTaskStatusBadge } from "./AdminTaskStatusBadge";
 export { AdminTaskFilters, type AdminTaskFiltersLabels, type AdminTaskFiltersState } from "./AdminTaskFilters";
 export { AdminTaskDetailPanel, type AdminTaskDetailPanelLabels } from "./AdminTaskDetailPanel";

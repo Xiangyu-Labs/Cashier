@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AdminTasksList,
@@ -9,15 +8,7 @@ import {
 import type { AdminTaskDetail, AdminTaskListItem } from "@/modules/admin/contracts";
 
 vi.mock("@/i18n/routing", () => ({
-  Link: ({
-    children,
-    href,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
 const labels: AdminTasksListLabels = {
@@ -30,6 +21,7 @@ const labels: AdminTasksListLabels = {
   scope: "Scope",
   entity: "Entity",
   details: "Details",
+  detailsColumn: "Details",
   hideDetails: "Hide details",
   taskId: "Task ID",
   scopeId: "Scope ID",
@@ -195,7 +187,11 @@ describe("AdminTasksList", () => {
     expect(screen.queryByText('{\n  "sourceDocumentId": "doc-1"\n}')).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Show raw data" }));
-    const rawPre = screen.getByText((_, element) => element?.tagName === 'PRE' && (element.textContent ?? '').includes('\"sourceDocumentId\": \"doc-1\"'));
+    const rawPre = screen.getByText(
+      (_, element) =>
+        element?.tagName === "PRE" &&
+        (element.textContent ?? "").includes('"sourceDocumentId": "doc-1"')
+    );
     expect(rawPre).toBeTruthy();
   });
 

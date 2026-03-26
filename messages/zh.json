@@ -689,7 +689,18 @@
     "emptyTitle": "还没有用户",
     "emptyDescription": "有用户注册后，这里会显示出来。",
     "roleUser": "普通用户",
-    "roleSuperAdmin": "超级管理员"
+    "roleSuperAdmin": "超级管理员",
+    "details": "查看详情",
+    "detailsColumn": "详情",
+    "hideDetails": "收起详情",
+    "userId": "用户 ID",
+    "emailVerified": "邮箱验证时间",
+    "image": "头像",
+    "updatedAt": "更新时间",
+    "deletedAt": "删除时间",
+    "notAvailable": "—",
+    "profile": "用户信息",
+    "timestamps": "时间信息"
   },
   "AdminTasks": {
     "title": "任务",
@@ -745,7 +756,8 @@
     "showRawData": "展开原始数据",
     "hideRawData": "收起原始数据",
     "scopeUserEmail": "范围用户邮箱",
-    "notAvailable": "—"
+    "notAvailable": "—",
+    "detailsColumn": "详情"
   },
   "AdminUnauthorized": {
     "title": "无权访问",
