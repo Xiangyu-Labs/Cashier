@@ -44,7 +44,7 @@ vi.mock("@/modules/admin/access", () => ({
 }));
 
 vi.mock("@/lib/env/catalog", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/env/catalog")>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
 
   return {
     ...actual,
@@ -91,7 +91,7 @@ describe("listAdminSystemConfig", () => {
     const result = await listAdminSystemConfig({
       DATABASE_URL: "file:./data/prod.db",
       AI_MODEL_TEXT: "",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toEqual([
       expect.objectContaining({
@@ -121,7 +121,7 @@ describe("listAdminSystemConfig", () => {
 
     const result = await listAdminSystemConfig({
       DATABASE_URL: "   ",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toEqual(
       expect.arrayContaining([

@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminTaskFilters, type AdminTaskFiltersLabels } from "@/modules/admin/ui/AdminTaskFilters";
@@ -15,8 +15,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => useSearchParamsMock(),
 }));
 
-vi.mock("@/components/ui/select", () => {
-  const SelectContext = React.createContext<{ onValueChange?: (value: string) => void } | null>(
+vi.mock("@/components/ui/select", async () => {
+  const ReactModule = await import("react");
+  const SelectContext = ReactModule.createContext<{
+    onValueChange?: (value: string) => void;
+  } | null>(
     null
   );
 
@@ -42,7 +45,7 @@ vi.mock("@/components/ui/select", () => {
       children: React.ReactNode;
       value: string;
     }) => {
-      const ctx = React.useContext(SelectContext);
+      const ctx = ReactModule.useContext(SelectContext);
       return (
         <button type="button" onClick={() => ctx?.onValueChange?.(value)}>
           {children}
