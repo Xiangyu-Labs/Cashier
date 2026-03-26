@@ -1,4 +1,4 @@
-import { and, eq, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
 import {
@@ -10,6 +10,7 @@ export interface LedgerEntryFilterParams {
   startDate?: string | null;
   endDate?: string | null;
   categoryId?: string | null;
+  uncategorizedOnly?: boolean;
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
@@ -43,7 +44,9 @@ export function buildLedgerEntryFilterConditions(
     conditions.push(sourceDocumentDateCondition);
   }
 
-  if (filters.categoryId != null && filters.categoryId !== "") {
+  if (filters.uncategorizedOnly) {
+    conditions.push(isNull(ledgerEntries.categoryId));
+  } else if (filters.categoryId != null && filters.categoryId !== "") {
     conditions.push(eq(ledgerEntries.categoryId, filters.categoryId));
   }
 

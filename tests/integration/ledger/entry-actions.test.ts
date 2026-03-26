@@ -469,6 +469,59 @@ describe("getLedgerEntriesAction", () => {
     expect(categorizedEntry?.itemName).toBe("Categorized");
   });
 
+  it("filters uncategorized entries when using the __uncategorized__ sentinel", async () => {
+    const db = getTestDb();
+    const catId = uuidv4();
+    await db.insert(entryCategories).values({
+      id: catId,
+      ledgerId,
+      name: "餐饮",
+      sortOrder: 1,
+    });
+
+    const doc = await seedDoc(db, ledgerId);
+
+    const [categorizedEntry] = await db
+      .insert(ledgerEntries)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Categorized",
+        amount: "10.00",
+        currency: "CNY",
+        categoryId: catId,
+      })
+      .returning();
+    expect(categorizedEntry).toBeDefined();
+    if (categorizedEntry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
+
+    const [uncategorizedEntry] = await db
+      .insert(ledgerEntries)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Uncategorized",
+        amount: "20.00",
+        currency: "CNY",
+      })
+      .returning();
+    expect(uncategorizedEntry).toBeDefined();
+    if (uncategorizedEntry === undefined) {
+      throw new Error("Expected ledger entry insert to return a row");
+    }
+
+    const result = await getLedgerEntriesAction(ledgerId, {
+      categoryId: "__uncategorized__",
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.id).toBe(uncategorizedEntry.id);
+  });
+
   it("filters by currency", async () => {
     const db = getTestDb();
     const doc = await seedDoc(db, ledgerId);

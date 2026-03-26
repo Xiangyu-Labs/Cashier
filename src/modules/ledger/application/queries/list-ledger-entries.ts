@@ -6,17 +6,27 @@ import {
 } from "@/modules/ledger/contract-schemas";
 import type { LedgerEntryPageDto } from "@/modules/ledger/contracts";
 
+const UNCATEGORIZED_SENTINEL = "__uncategorized__";
+
 export async function listLedgerEntries(
   ledgerId: string,
   params: ListLedgerEntriesInput
 ): Promise<LedgerEntryPageDto> {
-  const validated = parseListLedgerEntriesInput(params);
-  return listLedgerEntriesFromValidatedInput(ledgerId, validated);
+  const isUncategorizedFilter = params.categoryId === UNCATEGORIZED_SENTINEL;
+  const sanitizedParams = isUncategorizedFilter
+    ? { ...params, categoryId: undefined }
+    : params;
+
+  const validated = parseListLedgerEntriesInput(sanitizedParams);
+  return listLedgerEntriesFromValidatedInput(ledgerId, validated, {
+    uncategorizedOnly: isUncategorizedFilter,
+  });
 }
 
 export async function listLedgerEntriesFromValidatedInput(
   ledgerId: string,
-  validated: ListLedgerEntriesValidatedInput
+  validated: ListLedgerEntriesValidatedInput,
+  options?: { uncategorizedOnly?: boolean }
 ): Promise<LedgerEntryPageDto> {
   const filters: Parameters<typeof listLedgerEntryPage>[0]["filters"] = {};
   if (validated.startDate !== undefined) filters.startDate = validated.startDate;
@@ -25,6 +35,9 @@ export async function listLedgerEntriesFromValidatedInput(
   if (validated.currency !== undefined) filters.currency = validated.currency;
   if (validated.minAmount !== undefined) filters.minAmount = validated.minAmount;
   if (validated.maxAmount !== undefined) filters.maxAmount = validated.maxAmount;
+  if (options?.uncategorizedOnly) {
+    filters.uncategorizedOnly = true;
+  }
 
   const result = await listLedgerEntryPage({
     ledgerId,
