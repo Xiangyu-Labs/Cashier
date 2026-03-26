@@ -67,8 +67,6 @@ function toStatusLabel(
       return labels.statusAnomaly;
     case "failed":
       return labels.statusFailed;
-    case "deleted":
-      return labels.statusDeleted;
     default:
       return status;
   }

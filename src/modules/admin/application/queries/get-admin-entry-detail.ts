@@ -1,10 +1,10 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/modules/admin/access";
 import type { AdminEntryDetail } from "@/modules/admin/contracts";
-import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/types";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 const adminEntryIdSchema = z.string().trim().min(1);
@@ -16,6 +16,10 @@ function parseAdminEntryId(input: unknown): string {
   }
 
   return result.data;
+}
+
+function visibleSourceDocumentCondition() {
+  return and(ne(sourceDocuments.status, SourceDocumentStatus.Deleted), isNull(sourceDocuments.deletedAt))!;
 }
 
 export async function getAdminEntryDetail(input: unknown): Promise<AdminEntryDetail> {
@@ -52,7 +56,7 @@ export async function getAdminEntryDetail(input: unknown): Promise<AdminEntryDet
     )
     .leftJoin(
       sourceDocuments,
-      and(eq(ledgerEntries.sourceDocumentId, sourceDocuments.id), sourceDocumentNotDeletedCondition())
+      and(eq(ledgerEntries.sourceDocumentId, sourceDocuments.id), visibleSourceDocumentCondition())
     )
     .where(and(eq(ledgerEntries.id, entryId), isNull(ledgerEntries.deletedAt)))
     .limit(1);
@@ -62,5 +66,9 @@ export async function getAdminEntryDetail(input: unknown): Promise<AdminEntryDet
     throw new NotFoundError("Entry");
   }
 
-  return row;
+  return {
+    ...row,
+    sourceDocumentStatus:
+      row.sourceDocumentStatus as Exclude<AdminEntryDetail["sourceDocumentStatus"], undefined>,
+  };
 }

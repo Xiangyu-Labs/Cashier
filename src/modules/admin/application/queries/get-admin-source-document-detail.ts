@@ -1,10 +1,10 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/modules/admin/access";
 import type { AdminSourceDocumentDetail } from "@/modules/admin/contracts";
-import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/types";
 import { ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 const adminSourceDocumentIdSchema = z.string().trim().min(1);
@@ -16,6 +16,10 @@ function parseAdminSourceDocumentId(input: unknown): string {
   }
 
   return result.data;
+}
+
+function visibleSourceDocumentCondition() {
+  return and(ne(sourceDocuments.status, SourceDocumentStatus.Deleted), isNull(sourceDocuments.deletedAt))!;
 }
 
 export async function getAdminSourceDocumentDetail(
@@ -60,7 +64,7 @@ export async function getAdminSourceDocumentDetail(
       entryCountSubquery,
       eq(sourceDocuments.id, entryCountSubquery.sourceDocumentId)
     )
-    .where(and(eq(sourceDocuments.id, sourceDocumentId), sourceDocumentNotDeletedCondition()))
+    .where(and(eq(sourceDocuments.id, sourceDocumentId), visibleSourceDocumentCondition()))
     .limit(1);
 
   const row = rows[0];
@@ -70,6 +74,7 @@ export async function getAdminSourceDocumentDetail(
 
   return {
     ...row,
+    status: row.status as AdminSourceDocumentDetail["status"],
     imageUrls: row.imageUrls ?? [],
     metadata: row.metadata ?? {},
   };

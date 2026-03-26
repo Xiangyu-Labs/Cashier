@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/modules/admin/access";
@@ -8,7 +8,7 @@ import type {
   ListAdminSourceDocumentsInput,
   ListAdminSourceDocumentsResult,
 } from "@/modules/admin/contracts";
-import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
+import { SourceDocumentStatus } from "@/modules/source-document/types";
 import { ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 function parseSourceDocumentCursor(cursor: string): {
@@ -69,6 +69,10 @@ function formatSourceDocumentCursor(
   return `${row.createdAt.toISOString()}|${row.id}|${rangeStart.toISOString()}`;
 }
 
+function visibleSourceDocumentCondition() {
+  return and(ne(sourceDocuments.status, SourceDocumentStatus.Deleted), isNull(sourceDocuments.deletedAt))!;
+}
+
 export async function listAdminSourceDocuments(
   input: ListAdminSourceDocumentsInput = {}
 ): Promise<ListAdminSourceDocumentsResult> {
@@ -87,7 +91,7 @@ export async function listAdminSourceDocuments(
     .groupBy(ledgerEntries.sourceDocumentId)
     .as("entry_count_by_source_document");
 
-  const conditions = [sourceDocumentNotDeletedCondition()];
+  const conditions = [visibleSourceDocumentCondition()];
 
   if (validated.status != null) {
     conditions.push(eq(sourceDocuments.status, validated.status));
@@ -158,20 +162,20 @@ export async function listAdminSourceDocuments(
   const availableTypeRows = await db
     .selectDistinct({ type: sourceDocuments.type })
     .from(sourceDocuments)
-    .where(sourceDocumentNotDeletedCondition())
+    .where(visibleSourceDocumentCondition())
     .orderBy(asc(sourceDocuments.type));
 
   const anySourceDocumentRows = await db
     .select({ count: sql<number>`count(*)` })
     .from(sourceDocuments)
-    .where(sourceDocumentNotDeletedCondition());
+    .where(visibleSourceDocumentCondition());
 
   const items: AdminSourceDocumentListItem[] = pageRows.map((row) => ({
     id: row.id,
     ledgerId: row.ledgerId,
     userEmail: row.userEmail,
     title: row.title,
-    status: row.status,
+    status: row.status as AdminSourceDocumentListItem["status"],
     type: row.type,
     entryDate: row.entryDate,
     entryCount: row.entryCount,

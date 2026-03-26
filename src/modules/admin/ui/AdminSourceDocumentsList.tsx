@@ -68,8 +68,6 @@ function toStatusLabel(status: AdminSourceDocumentStatus, labels: AdminSourceDoc
       return labels.statusAnomaly;
     case "failed":
       return labels.statusFailed;
-    case "deleted":
-      return labels.statusDeleted;
     default:
       return status;
   }

@@ -10,7 +10,6 @@ const variantByStatus: Record<
   completed: "success",
   anomaly: "outline",
   failed: "error",
-  deleted: "outline",
 };
 
 export function AdminSourceDocumentStatusBadge(props: {
