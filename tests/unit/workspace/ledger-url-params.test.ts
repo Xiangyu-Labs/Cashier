@@ -35,7 +35,7 @@ describe("ledger-url-params", () => {
     expect(params.get("endDate")).toBeNull();
   });
 
-  it("removes uncategorized and empty filter params from URL", () => {
+  it("treats __uncategorized__ as a real category filter while clearing empty params", () => {
     const params = updateLedgerSearchParams(
       new URLSearchParams("categoryId=old&currency=USD&minAmount=5&maxAmount=10"),
       {
@@ -46,10 +46,35 @@ describe("ledger-url-params", () => {
       }
     );
 
-    expect(params.get("categoryId")).toBeNull();
+    expect(params.get("categoryId")).toBe("__uncategorized__");
     expect(params.get("currency")).toBeNull();
     expect(params.get("minAmount")).toBeNull();
     expect(params.get("maxAmount")).toBeNull();
+  });
+
+  it("preserves __uncategorized__ when writing category filters", () => {
+    const params = updateLedgerSearchParams(new URLSearchParams("categoryId=old"), {
+      categoryId: "__uncategorized__",
+    });
+
+    expect(params.toString()).toContain("categoryId=__uncategorized__");
+  });
+
+  it("reads __uncategorized__ back from the URL", () => {
+    const filters = readLedgerFilterParams(
+      new URLSearchParams("categoryId=__uncategorized__&currency=USD")
+    );
+
+    expect(filters.categoryId).toBe("__uncategorized__");
+  });
+
+  it("doesn't drop uncategorized when unrelated params change", () => {
+    const params = updateLedgerSearchParams(
+      new URLSearchParams("categoryId=__uncategorized__"),
+      { currency: "EUR" }
+    );
+
+    expect(params.toString()).toContain("categoryId=__uncategorized__");
   });
 
   it("reads normalized filter params from URLSearchParams", () => {

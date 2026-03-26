@@ -26,9 +26,13 @@ function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchPar
 function setOrDeleteStringParam(
   params: URLSearchParams,
   key: keyof LedgerUrlUpdate,
-  value: string | null | undefined
+  value: string | null | undefined,
+  options?: { preserveUncategorized?: boolean }
 ) {
-  if (value == null || value === "" || value === "__uncategorized__") {
+  const isEmpty = value == null || value === "";
+  const isUncategorized = value === "__uncategorized__";
+
+  if (isEmpty || (!options?.preserveUncategorized && isUncategorized)) {
     params.delete(key);
     return;
   }
@@ -90,7 +94,10 @@ export function updateLedgerSearchParams(
     if ("endDate" in updates) setOrDeleteStringParam(params, "endDate", updates.endDate);
   }
 
-  if ("categoryId" in updates) setOrDeleteStringParam(params, "categoryId", updates.categoryId);
+  if ("categoryId" in updates)
+    setOrDeleteStringParam(params, "categoryId", updates.categoryId, {
+      preserveUncategorized: true,
+    });
   if ("currency" in updates) setOrDeleteStringParam(params, "currency", updates.currency);
   if ("minAmount" in updates) setOrDeleteNumberParam(params, "minAmount", updates.minAmount);
   if ("maxAmount" in updates) setOrDeleteNumberParam(params, "maxAmount", updates.maxAmount);
