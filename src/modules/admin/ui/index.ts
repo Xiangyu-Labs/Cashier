@@ -20,4 +20,5 @@ export { AdminSourceDocumentStatusBadge } from "./AdminSourceDocumentStatusBadge
 export { AdminSourceDocumentsList, type AdminSourceDocumentsListLabels } from "./AdminSourceDocumentsList";
 export { AdminEntryFilters, type AdminEntryFiltersLabels, type AdminEntryFiltersState } from "./AdminEntryFilters";
 export { AdminEntryDetailPanel, type AdminEntryDetailPanelLabels } from "./AdminEntryDetailPanel";
+export { AdminEntriesList, type AdminEntriesListLabels } from "./AdminEntriesList";
 export { AdminUnauthorizedState } from "./AdminUnauthorizedState";

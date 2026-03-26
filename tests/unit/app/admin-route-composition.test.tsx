@@ -446,6 +446,8 @@ describe("admin route composition", () => {
       cursor: "2026-03-20T00:00:00.000Z|entry-9",
       limit: "25",
     });
+    expect(screen.getAllByText("AdminEntries.range").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "AdminEntries.title" })).toBeTruthy();
     expect(screen.getAllByText("Lunch").length).toBeGreaterThan(0);
     expect(screen.getByText("owner@example.com")).toBeTruthy();
   });
