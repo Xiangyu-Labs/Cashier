@@ -82,7 +82,7 @@ function buildNextPageHref(filters: AdminSourceDocumentFiltersState, nextCursor:
     params.set("status", filters.status);
   }
 
-  if (filters.type != null && filters.type !== "") {
+  if (filters.type != null) {
     params.set("type", filters.type);
   }
 
@@ -113,7 +113,7 @@ function buildSourceDocumentDetailHref(
     params.set("status", filters.status);
   }
 
-  if (filters.type != null && filters.type !== "") {
+  if (filters.type != null) {
     params.set("type", filters.type);
   }
 

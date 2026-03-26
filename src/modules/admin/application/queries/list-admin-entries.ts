@@ -98,9 +98,21 @@ export async function listAdminEntries(
   }
 
   if (validated.sourceLink === "linked") {
-    conditions.push(and(isNotNull(ledgerEntries.sourceDocumentId), ne(ledgerEntries.sourceDocumentId, "")));
+    const linkedCondition = and(
+      isNotNull(ledgerEntries.sourceDocumentId),
+      ne(ledgerEntries.sourceDocumentId, "")
+    );
+    if (linkedCondition != null) {
+      conditions.push(linkedCondition);
+    }
   } else if (validated.sourceLink === "unlinked") {
-    conditions.push(or(isNull(ledgerEntries.sourceDocumentId), eq(ledgerEntries.sourceDocumentId, "")));
+    const unlinkedCondition = or(
+      isNull(ledgerEntries.sourceDocumentId),
+      eq(ledgerEntries.sourceDocumentId, "")
+    );
+    if (unlinkedCondition != null) {
+      conditions.push(unlinkedCondition);
+    }
   }
 
   if (parsedCursor != null) {

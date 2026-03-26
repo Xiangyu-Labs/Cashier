@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminEntryFilters, type AdminEntryFiltersLabels } from "@/modules/admin/ui/AdminEntryFilters";
@@ -16,7 +16,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/ui/select", () => {
-  const React = require("react") as typeof import("react");
   const SelectContext = React.createContext<{ onValueChange?: (value: string) => void } | null>(
     null
   );

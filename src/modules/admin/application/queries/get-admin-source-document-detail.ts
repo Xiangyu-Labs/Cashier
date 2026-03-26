@@ -67,5 +67,9 @@ export async function getAdminSourceDocumentDetail(
     throw new NotFoundError("Source document");
   }
 
-  return row;
+  return {
+    ...row,
+    imageUrls: row.imageUrls ?? [],
+    metadata: row.metadata ?? {},
+  };
 }

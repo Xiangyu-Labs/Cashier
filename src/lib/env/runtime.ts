@@ -1,4 +1,4 @@
-import { getStartupEnvValue, validateStartupEnv, type StartupEnv } from "./startup";
+import { getStartupEnvValue } from "./startup";
 
 export interface RuntimeEnv {
   readonly databaseUrl: string;
