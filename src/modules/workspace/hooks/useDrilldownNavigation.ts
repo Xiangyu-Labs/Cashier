@@ -39,12 +39,15 @@ export function useDrilldownNavigation({
 
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
+      const existingCategoryId = searchParams.get("categoryId");
+      const nextCategoryId = filters?.categoryId !== undefined ? filters.categoryId : existingCategoryId ?? null;
+
       const params = updateLedgerSearchParams(searchParams, {
         tab: "details",
         period: "custom",
         startDate: date,
         endDate: date,
-        categoryId: filters?.categoryId ?? null,
+        categoryId: nextCategoryId,
         currency: filters?.currency ?? null,
       });
       replaceAndNavigateLedgerUrl(pathname, params, router);

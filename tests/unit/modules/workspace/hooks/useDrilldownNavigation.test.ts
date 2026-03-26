@@ -123,6 +123,7 @@ describe("useDrilldownNavigation", () => {
 
     const callUrl = getFirstReplaceCallUrl();
     expect(callUrl).not.toContain("categoryId=cat_123");
+    expect(callUrl).not.toContain("categoryId=");
     expect(callUrl).toContain("startDate=2024-03-15");
     expect(callUrl).toContain("endDate=2024-03-15");
   });
