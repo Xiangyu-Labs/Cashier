@@ -34,6 +34,24 @@ describe("calculateLedgerStats", () => {
     });
   });
 
+  it("normalizes the uncategorized sentinel to an uncategorized only filter", async () => {
+    calculateLedgerEntryStatsMock.mockResolvedValueOnce({ total: "sentinel" });
+
+    const result = await calculateLedgerStats("ledger-3", undefined, undefined, undefined, {
+      categoryId: "__uncategorized__",
+      currency: "USD",
+    });
+
+    expect(result).toEqual({ total: "sentinel" });
+    expect(calculateLedgerEntryStatsMock).toHaveBeenCalledWith({
+      ledgerId: "ledger-3",
+      filters: {
+        currency: "USD",
+        uncategorizedOnly: true,
+      },
+    });
+  });
+
   it("keeps an empty filters object when no optional values are provided", async () => {
     calculateLedgerEntryStatsMock.mockResolvedValueOnce({ total: "base" });
 

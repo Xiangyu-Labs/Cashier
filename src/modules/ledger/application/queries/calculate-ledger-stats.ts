@@ -1,4 +1,5 @@
 import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/calculate-ledger-entry-stats";
+import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
 import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
 
 export async function calculateLedgerStats(
@@ -20,7 +21,13 @@ export async function calculateLedgerStats(
   if (mainCurrency !== undefined) payload.mainCurrency = mainCurrency;
   if (startDate !== undefined) payload.filters.startDate = startDate;
   if (endDate !== undefined) payload.filters.endDate = endDate;
-  if (filters?.categoryId !== undefined) payload.filters.categoryId = filters.categoryId;
+  const categoryIdCandidate = filters?.categoryId;
+  const isUncategorizedFilter = categoryIdCandidate === UNCATEGORIZED_SENTINEL;
+  if (isUncategorizedFilter) {
+    payload.filters.uncategorizedOnly = true;
+  } else if (categoryIdCandidate !== undefined) {
+    payload.filters.categoryId = categoryIdCandidate;
+  }
   if (filters?.currency !== undefined) payload.filters.currency = filters.currency;
   if (filters?.minAmount !== undefined) payload.filters.minAmount = filters.minAmount;
   if (filters?.maxAmount !== undefined) payload.filters.maxAmount = filters.maxAmount;
