@@ -12,10 +12,17 @@ export async function listLedgerEntries(
   ledgerId: string,
   params: ListLedgerEntriesInput
 ): Promise<LedgerEntryPageDto> {
-  const isUncategorizedFilter = params.categoryId === UNCATEGORIZED_SENTINEL;
-  const sanitizedParams = isUncategorizedFilter
-    ? { ...params, categoryId: undefined }
-    : params;
+  const paramsRecord =
+    typeof params === "object" && params !== null ? (params as Record<string, unknown>) : null;
+  const categoryIdCandidate = paramsRecord?.categoryId;
+  const isUncategorizedFilter = categoryIdCandidate === UNCATEGORIZED_SENTINEL;
+  const sanitizedParams =
+    isUncategorizedFilter && paramsRecord
+      ? ({
+          ...paramsRecord,
+          categoryId: undefined,
+        } as ListLedgerEntriesInput)
+      : params;
 
   const validated = parseListLedgerEntriesInput(sanitizedParams);
   return listLedgerEntriesFromValidatedInput(ledgerId, validated, {
