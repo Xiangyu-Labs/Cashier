@@ -4,6 +4,7 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/modules/admin/access";
 import type { AdminEntryDetail } from "@/modules/admin/contracts";
+import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 const adminEntryIdSchema = z.string().trim().min(1);
@@ -51,7 +52,7 @@ export async function getAdminEntryDetail(input: unknown): Promise<AdminEntryDet
     )
     .leftJoin(
       sourceDocuments,
-      and(eq(ledgerEntries.sourceDocumentId, sourceDocuments.id), isNull(sourceDocuments.deletedAt))
+      and(eq(ledgerEntries.sourceDocumentId, sourceDocuments.id), sourceDocumentNotDeletedCondition())
     )
     .where(and(eq(ledgerEntries.id, entryId), isNull(ledgerEntries.deletedAt)))
     .limit(1);

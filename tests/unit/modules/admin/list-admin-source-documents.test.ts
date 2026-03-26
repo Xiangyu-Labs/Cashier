@@ -350,4 +350,49 @@ describe("listAdminSourceDocuments", () => {
     expect(empty.hasAnySourceDocuments).toBe(false);
     expect(empty.availableTypes).toEqual([]);
   });
+
+  it("never surfaces source documents already marked deleted even when deletedAt was not backfilled", async () => {
+    const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValue({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    await db.insert(users).values({
+      id: "user-5",
+      email: "visibility-owner@example.com",
+      emailVerified: new Date(),
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+    await db.insert(ledgers).values({ id: "ledger-5", userId: "user-5", metadata: {} });
+    await db.insert(sourceDocuments).values([
+      {
+        id: "doc-visible",
+        ledgerId: "ledger-5",
+        title: "Visible document",
+        status: "completed",
+        type: "manual",
+        createdAt: new Date("2026-03-26T09:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T09:01:00.000Z"),
+      },
+      {
+        id: "doc-deleted-status-only",
+        ledgerId: "ledger-5",
+        title: "Should stay hidden",
+        status: "deleted",
+        type: "ai_parsed",
+        createdAt: new Date("2026-03-26T10:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T10:01:00.000Z"),
+        deletedAt: null,
+      },
+    ]);
+
+    const result = await listAdminSourceDocuments({ limit: 50 });
+
+    expect(result.items.map((item) => item.id)).toEqual(["doc-visible"]);
+    expect(result.availableTypes).toEqual(["manual"]);
+  });
 });

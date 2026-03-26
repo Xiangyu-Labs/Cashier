@@ -189,4 +189,16 @@ describe("AdminSourceDocumentFilters", () => {
       scroll: false,
     });
   });
+
+  it("does not offer deleted source-document status as a selectable filter", () => {
+    render(
+      <AdminSourceDocumentFilters
+        availableTypes={["ai_parsed"]}
+        filters={{ range: "all", result: "all" }}
+        labels={labels}
+      />
+    );
+
+    expect(screen.queryByText("Deleted")).toBeNull();
+  });
 });

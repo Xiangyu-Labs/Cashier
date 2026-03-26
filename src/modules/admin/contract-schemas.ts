@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields } from "@/lib/validation";
-import { SOURCE_DOCUMENT_STATUSES, SOURCE_DOCUMENT_TYPES } from "@/modules/source-document/types";
+import {
+  ACTIVE_SOURCE_DOCUMENT_STATUSES,
+  SOURCE_DOCUMENT_TYPES,
+} from "@/modules/source-document/types";
 
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
@@ -9,7 +12,7 @@ const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
 const adminTaskStatusSchema = z.enum(["pending", "running", "completed", "failed", "cancelled"]);
 const adminTaskRangeSchema = z.enum(["24h", "7d", "30d", "all"]);
 const adminTaskCursorSchema = z.string().regex(/^.+\|.+$/, "Invalid admin task cursor");
-const adminSourceDocumentStatusSchema = z.enum(SOURCE_DOCUMENT_STATUSES);
+const adminSourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
 const adminSourceDocumentTypeSchema = z.enum(SOURCE_DOCUMENT_TYPES);
 const adminSourceDocumentResultSchema = z.enum(["all", "withEntries", "withoutEntries"]);
 const adminEntrySourceLinkSchema = z.enum(["all", "linked", "unlinked"]);

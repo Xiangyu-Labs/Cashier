@@ -8,6 +8,7 @@ import type {
   ListAdminSourceDocumentsInput,
   ListAdminSourceDocumentsResult,
 } from "@/modules/admin/contracts";
+import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
 import { ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 function parseSourceDocumentCursor(cursor: string): {
@@ -86,7 +87,7 @@ export async function listAdminSourceDocuments(
     .groupBy(ledgerEntries.sourceDocumentId)
     .as("entry_count_by_source_document");
 
-  const conditions = [isNull(sourceDocuments.deletedAt)];
+  const conditions = [sourceDocumentNotDeletedCondition()];
 
   if (validated.status != null) {
     conditions.push(eq(sourceDocuments.status, validated.status));
@@ -157,13 +158,13 @@ export async function listAdminSourceDocuments(
   const availableTypeRows = await db
     .selectDistinct({ type: sourceDocuments.type })
     .from(sourceDocuments)
-    .where(isNull(sourceDocuments.deletedAt))
+    .where(sourceDocumentNotDeletedCondition())
     .orderBy(asc(sourceDocuments.type));
 
   const anySourceDocumentRows = await db
     .select({ count: sql<number>`count(*)` })
     .from(sourceDocuments)
-    .where(isNull(sourceDocuments.deletedAt));
+    .where(sourceDocumentNotDeletedCondition());
 
   const items: AdminSourceDocumentListItem[] = pageRows.map((row) => ({
     id: row.id,

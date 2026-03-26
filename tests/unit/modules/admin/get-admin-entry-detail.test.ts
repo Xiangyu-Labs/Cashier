@@ -179,4 +179,51 @@ describe("getAdminEntryDetail", () => {
     await expect(getAdminEntryDetail("missing-entry")).rejects.toBeInstanceOf(NotFoundError);
     await expect(getAdminEntryDetail("entry-deleted")).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it("keeps source-document helper fields hidden when the linked document is already marked deleted", async () => {
+    const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValue({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    await db.insert(users).values({
+      id: "user-4",
+      email: "owner-4@example.com",
+      emailVerified: new Date(),
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+    await db.insert(ledgers).values({ id: "ledger-4", userId: "user-4", metadata: {} });
+    await db.insert(sourceDocuments).values({
+      id: "doc-deleted-status-only",
+      ledgerId: "ledger-4",
+      title: "Deleted source document",
+      text: "Hidden",
+      status: "deleted",
+      type: "ai_parsed",
+      createdAt: new Date("2026-03-25T09:00:00.000Z"),
+      updatedAt: new Date("2026-03-25T09:01:00.000Z"),
+      deletedAt: null,
+    });
+    await db.insert(ledgerEntries).values({
+      id: "entry-4",
+      ledgerId: "ledger-4",
+      sourceDocumentId: "doc-deleted-status-only",
+      amount: "15.00",
+      currency: "USD",
+      itemName: "Lunch",
+      createdAt: new Date("2026-03-25T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-25T10:02:00.000Z"),
+      deletedAt: null,
+    });
+
+    const result = await getAdminEntryDetail("entry-4");
+
+    expect(result.sourceDocumentId).toBe("doc-deleted-status-only");
+    expect(result.sourceDocumentTitle ?? null).toBeNull();
+    expect(result.sourceDocumentStatus ?? null).toBeNull();
+  });
 });

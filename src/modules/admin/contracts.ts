@@ -9,8 +9,8 @@ import type {
 } from "./contract-schemas";
 import type { UserRoleValue } from "./types";
 import type {
+  ActiveSourceDocumentStatusType,
   SourceDocMetadata,
-  SourceDocumentStatusType,
   SourceDocumentTypeValue,
 } from "@/modules/source-document/types";
 
@@ -18,7 +18,7 @@ export type AdminTaskStatus = "pending" | "running" | "completed" | "failed" | "
 
 export type AdminTaskRange = "24h" | "7d" | "30d" | "all";
 
-export type AdminSourceDocumentStatus = SourceDocumentStatusType;
+export type AdminSourceDocumentStatus = ActiveSourceDocumentStatusType;
 export type AdminSourceDocumentType = SourceDocumentTypeValue;
 export type AdminSourceDocumentRange = AdminTaskRange;
 export type AdminSourceDocumentResult = "all" | "withEntries" | "withoutEntries";

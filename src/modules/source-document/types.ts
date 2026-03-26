@@ -25,6 +25,7 @@ export const SourceDocumentStatus = {
 } as const;
 
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];
+export type ActiveSourceDocumentStatusType = (typeof ACTIVE_SOURCE_DOCUMENT_STATUSES)[number];
 
 export const SOURCE_DOCUMENT_TYPES = ["ai_parsed", "manual"] as const;
 

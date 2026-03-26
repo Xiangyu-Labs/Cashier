@@ -4,6 +4,7 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/modules/admin/access";
 import type { AdminSourceDocumentDetail } from "@/modules/admin/contracts";
+import { sourceDocumentNotDeletedCondition } from "@/modules/source-document/application/source-document-state";
 import { ledgerEntries, ledgers, sourceDocuments, users } from "@/persistence";
 
 const adminSourceDocumentIdSchema = z.string().trim().min(1);
@@ -59,7 +60,7 @@ export async function getAdminSourceDocumentDetail(
       entryCountSubquery,
       eq(sourceDocuments.id, entryCountSubquery.sourceDocumentId)
     )
-    .where(and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)))
+    .where(and(eq(sourceDocuments.id, sourceDocumentId), sourceDocumentNotDeletedCondition()))
     .limit(1);
 
   const row = rows[0];

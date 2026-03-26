@@ -57,7 +57,6 @@ const statusOptions: Array<{
   { value: "completed", key: "statusCompleted" },
   { value: "anomaly", key: "statusAnomaly" },
   { value: "failed", key: "statusFailed" },
-  { value: "deleted", key: "statusDeleted" },
 ];
 
 const rangeOptions: Array<{ value: AdminSourceDocumentRange; key: keyof AdminSourceDocumentFiltersLabels }> = [

@@ -1,7 +1,7 @@
 import type React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
+import { ForbiddenError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { UserRole } from "@/modules/admin/types";
 import type { AdminTaskDetail, AdminTaskListItem, AdminUserListItem } from "@/modules/admin/contracts";
 
@@ -120,6 +120,12 @@ describe("admin route composition", () => {
       sourceLink: "all",
       limit: 50,
     });
+  });
+
+  it("rejects deleted source-document status filters because deleted documents are not admin-visible", async () => {
+    const { parseListAdminSourceDocumentsInput } = await import("@/modules/admin/contract-schemas");
+
+    expect(() => parseListAdminSourceDocumentsInput({ status: "deleted" })).toThrow(ValidationError);
   });
 
   it("wires the users page to the admin query and list component", async () => {

@@ -182,4 +182,39 @@ describe("getAdminSourceDocumentDetail", () => {
     await expect(getAdminSourceDocumentDetail("missing-doc")).rejects.toBeInstanceOf(NotFoundError);
     await expect(getAdminSourceDocumentDetail("doc-deleted")).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it("throws NotFoundError when a document is already marked deleted even without deletedAt", async () => {
+    const db = getTestDb();
+    requireSuperAdminMock.mockResolvedValue({
+      id: "admin-user",
+      email: "admin@example.com",
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+
+    await db.insert(users).values({
+      id: "user-4",
+      email: "owner-4@example.com",
+      emailVerified: new Date(),
+      name: "Owner",
+      role: UserRole.SuperAdmin,
+    });
+    await db.insert(ledgers).values({ id: "ledger-4", userId: "user-4", metadata: {} });
+    await db.insert(sourceDocuments).values({
+      id: "doc-deleted-status-only",
+      ledgerId: "ledger-4",
+      title: "Deleted status only",
+      text: "Hidden",
+      imageUrls: [],
+      status: "deleted",
+      type: "manual",
+      createdAt: new Date("2026-03-25T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-25T10:01:00.000Z"),
+      deletedAt: null,
+    });
+
+    await expect(getAdminSourceDocumentDetail("doc-deleted-status-only")).rejects.toBeInstanceOf(
+      NotFoundError
+    );
+  });
 });
