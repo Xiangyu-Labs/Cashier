@@ -54,7 +54,7 @@ describe("useDrilldownNavigation", () => {
     );
   });
 
-  it("should not include uncategorized categoryId in URL", () => {
+  it("should encode uncategorized categoryId in URL", () => {
     const { result } = renderHook(() =>
       useDrilldownNavigation({
         pathname: mockPathname,
@@ -67,7 +67,64 @@ describe("useDrilldownNavigation", () => {
     });
 
     const callUrl = getFirstReplaceCallUrl();
-    expect(callUrl).not.toContain("categoryId");
+    expect(callUrl).toContain("categoryId=__uncategorized__");
+  });
+
+  it("should keep uncategorized categoryId when date drilldown uses existing filter", () => {
+    const paramsWithUncategorized = new URLSearchParams("categoryId=__uncategorized__");
+    const { result } = renderHook(() =>
+      useDrilldownNavigation({
+        pathname: mockPathname,
+        searchParams: paramsWithUncategorized,
+      })
+    );
+
+    act(() => {
+      result.current.handleDateDrilldown("2024-03-15");
+    });
+
+    const callUrl = getFirstReplaceCallUrl();
+    expect(callUrl).toContain("categoryId=__uncategorized__");
+    expect(callUrl).toContain("startDate=2024-03-15");
+    expect(callUrl).toContain("endDate=2024-03-15");
+  });
+
+  it("should keep normal categoryId when date drilldown uses existing filter", () => {
+    const paramsWithCategory = new URLSearchParams("categoryId=cat_123");
+    const { result } = renderHook(() =>
+      useDrilldownNavigation({
+        pathname: mockPathname,
+        searchParams: paramsWithCategory,
+      })
+    );
+
+    act(() => {
+      result.current.handleDateDrilldown("2024-03-15");
+    });
+
+    const callUrl = getFirstReplaceCallUrl();
+    expect(callUrl).toContain("categoryId=cat_123");
+    expect(callUrl).toContain("startDate=2024-03-15");
+    expect(callUrl).toContain("endDate=2024-03-15");
+  });
+
+  it("should remove categoryId when filters explicitly clear it", () => {
+    const paramsWithCategory = new URLSearchParams("categoryId=cat_123");
+    const { result } = renderHook(() =>
+      useDrilldownNavigation({
+        pathname: mockPathname,
+        searchParams: paramsWithCategory,
+      })
+    );
+
+    act(() => {
+      result.current.handleDateDrilldown("2024-03-15", { categoryId: null });
+    });
+
+    const callUrl = getFirstReplaceCallUrl();
+    expect(callUrl).not.toContain("categoryId=cat_123");
+    expect(callUrl).toContain("startDate=2024-03-15");
+    expect(callUrl).toContain("endDate=2024-03-15");
   });
 
   it("should update browser URL before router navigation", () => {
