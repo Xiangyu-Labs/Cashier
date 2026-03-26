@@ -92,13 +92,7 @@ export function updateLedgerSearchParams(
     if ("endDate" in updates) setOrDeleteStringParam(params, "endDate", updates.endDate);
   }
 
-  if ("categoryId" in updates) {
-    if (updates.categoryId === "__uncategorized__") {
-      params.set("categoryId", "__uncategorized__");
-    } else {
-      setOrDeleteStringParam(params, "categoryId", updates.categoryId);
-    }
-  }
+  if ("categoryId" in updates) setOrDeleteStringParam(params, "categoryId", updates.categoryId);
   if ("currency" in updates) setOrDeleteStringParam(params, "currency", updates.currency);
   if ("minAmount" in updates) setOrDeleteNumberParam(params, "minAmount", updates.minAmount);
   if ("maxAmount" in updates) setOrDeleteNumberParam(params, "maxAmount", updates.maxAmount);
