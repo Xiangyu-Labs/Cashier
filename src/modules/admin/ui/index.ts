@@ -21,4 +21,8 @@ export { AdminSourceDocumentsList, type AdminSourceDocumentsListLabels } from ".
 export { AdminEntryFilters, type AdminEntryFiltersLabels, type AdminEntryFiltersState } from "./AdminEntryFilters";
 export { AdminEntryDetailPanel, type AdminEntryDetailPanelLabels } from "./AdminEntryDetailPanel";
 export { AdminEntriesList, type AdminEntriesListLabels } from "./AdminEntriesList";
+export {
+  AdminSystemConfigList,
+  type AdminSystemConfigListLabels,
+} from "./AdminSystemConfigList";
 export { AdminUnauthorizedState } from "./AdminUnauthorizedState";
