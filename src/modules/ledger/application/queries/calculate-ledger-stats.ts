@@ -21,6 +21,8 @@ export async function calculateLedgerStats(
   if (mainCurrency !== undefined) payload.mainCurrency = mainCurrency;
   if (startDate !== undefined) payload.filters.startDate = startDate;
   if (endDate !== undefined) payload.filters.endDate = endDate;
+  // "__uncategorized__" is only a UI/query sentinel; stats must translate it
+  // to the same `categoryId = null` semantics used by entry listing.
   const categoryIdCandidate = filters?.categoryId;
   const isUncategorizedFilter = categoryIdCandidate === UNCATEGORIZED_SENTINEL;
   if (isUncategorizedFilter) {

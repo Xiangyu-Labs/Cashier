@@ -6,6 +6,8 @@ import {
 } from "@/modules/ledger/contract-schemas";
 import type { LedgerEntryPageDto } from "@/modules/ledger/contracts";
 
+// "__uncategorized__" is a UI/query sentinel for `categoryId = null`.
+// It must be normalized at query boundaries and must never be persisted as a real category id.
 export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
 
 export async function listLedgerEntries(
