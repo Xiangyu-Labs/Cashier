@@ -1,18 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { buildCategoryRecognitionPrompt } from "@/modules/source-document/application/parse-source-document/stage1-prompts";
 import { buildDetailedParsePrompt } from "@/modules/source-document/application/parse-source-document/stage2-prompts";
-
-describe("buildCategoryRecognitionPrompt", () => {
-  it("should instruct AI to use Other only as last resort", () => {
-    const prompt = buildCategoryRecognitionPrompt("zh-CN", [
-      { name: "餐饮", description: null },
-      { name: "其他", description: null },
-    ]);
-
-    expect(prompt).toMatch(/last.?resort|最后手段|万不得已|only if.*no.*categor/i);
-  });
-});
 
 describe("buildDetailedParsePrompt", () => {
   it("should instruct AI to assign 'Other' category index only as last resort", () => {
