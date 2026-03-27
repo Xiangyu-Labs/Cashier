@@ -7,7 +7,6 @@ const entrySchema = z.object({
   amount: z.number(),
   currency: z.string(),
   category_index: z.number().int().min(0),
-  entry_date: z.string().optional(),
   notes: z.string().nullable(),
 });
 
@@ -46,7 +45,6 @@ export function normalizeStage2ParseResult(
       currency: entry.currency,
       category_index: entry.category_index,
       notes: entry.notes,
-      ...(entry.entry_date !== undefined ? { entry_date: entry.entry_date } : {}),
     })),
     reasoning: output.reasoning,
   };

@@ -40,7 +40,6 @@ const successResponse = JSON.stringify({
       amount: 45,
       currency: "CNY",
       category_index: 1,
-      entry_date: "2026-02-05",
       notes: null,
     },
   ],

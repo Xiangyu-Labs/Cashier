@@ -93,7 +93,6 @@ ${userRulesSection}
       "amount": 45.00,
       "currency": "CNY",
       "category_index": 1,
-      "entry_date": "YYYY-MM-DD or omit",
       "notes": "Optional note or null"
     }
   ],

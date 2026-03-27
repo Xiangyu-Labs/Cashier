@@ -14,7 +14,6 @@ describe("convertToParsedEntries", () => {
         amount: 10,
         currency: "USD",
         category_index: 1,
-        entry_date: "2024-01-01",
         notes: "team meal",
       },
     ]);

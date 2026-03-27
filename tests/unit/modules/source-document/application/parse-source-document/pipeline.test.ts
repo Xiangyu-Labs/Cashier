@@ -35,7 +35,6 @@ function createPipelineMockAI(options: {
     amount: number;
     currency: string;
     category_index: number;
-    entry_date: string;
     notes: string | null;
   }>;
 }): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
@@ -53,7 +52,6 @@ function createPipelineMockAI(options: {
         amount: 10,
         currency: "USD",
         category_index: 1,
-        entry_date: "2024-01-01",
         notes: null,
       },
     ],
@@ -208,7 +206,7 @@ describe("runParsePipeline - new 3-stage flow", () => {
   it("Stage 0 structured payload preserves primary vs secondary evidence labels", async () => {
     const { ai, generate } = createPipelineMockAI({
       currencies: ["CNY"],
-      entries: [{ item_name: "Coffee", amount: 30, currency: "CNY", category_index: 1, entry_date: "2024-01-01", notes: null }],
+      entries: [{ item_name: "Coffee", amount: 30, currency: "CNY", category_index: 1, notes: null }],
     });
     const ctx = buildCtx(ai);
 
@@ -262,7 +260,7 @@ describe("runParsePipeline - new 3-stage flow", () => {
   it("[GATE] Stage 2 successful parse → ParsePipelineResult.kind = success with ledgerEntries", async () => {
     const { ai } = createPipelineMockAI({
       entries: [
-        { item_name: "Dinner", amount: 50, currency: "USD", category_index: 1, entry_date: "2024-01-02", notes: null },
+        { item_name: "Dinner", amount: 50, currency: "USD", category_index: 1, notes: null },
       ],
     });
     const ctx = buildCtx(ai);
