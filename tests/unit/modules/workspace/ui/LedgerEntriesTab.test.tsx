@@ -53,6 +53,9 @@ const mockBatchRetryMutate = vi.fn();
 const mockBatchUpdateDatesMutate = vi.fn();
 const mockDeleteEntryMutate = vi.fn();
 const mockPushModal = vi.fn();
+const mockSelectionToggleMode = vi.fn();
+const mockSelectionSetMode = vi.fn();
+const mockSelectionClear = vi.fn();
 
 vi.mock("@tanstack/react-query", async () => {
   const actual = await vi.importActual("@tanstack/react-query");
@@ -111,11 +114,12 @@ vi.mock("@/modules/ledger/hooks", () => ({
 vi.mock("@/hooks/use-selection", () => ({
   useSelection: () => ({
     isSelectionMode: true,
-    setSelectionMode: vi.fn(),
+    toggleSelectionMode: mockSelectionToggleMode,
+    setSelectionMode: mockSelectionSetMode,
     selectedIds: ["doc-1"],
     toggleSelection: vi.fn(),
     selectAll: vi.fn(),
-    clearSelection: vi.fn(),
+    clearSelection: mockSelectionClear,
     isAllSelected: false,
   }),
 }));
@@ -184,17 +188,6 @@ vi.mock("@/modules/source-document/ui", () => ({
       </button>
     </div>
   ),
-  SourceDocumentBatchActionToolbar: ({
-    selectedCount,
-    totalCount,
-  }: {
-    selectedCount: number;
-    totalCount: number;
-  }) => (
-    <div data-testid="batch-toolbar">
-      selected:{selectedCount}-total:{totalCount}
-    </div>
-  ),
   SourceDocumentEditRetryDialog: () => null,
 }));
 
@@ -224,6 +217,25 @@ describe("LedgerEntriesTab orchestration", () => {
       groups: { completed: [], anomaly: [] },
       isLoading: false,
     });
+  });
+
+  it("uses the selection hook toggle when leaving multi-select mode", () => {
+    render(
+      <LedgerEntriesTab
+        ledgerId="ledger-1"
+        categories={categories}
+        ledger={ledger}
+        periodParams={{ period: "thisMonth" }}
+        onPeriodChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole("button")[1]!);
+
+    expect(mockSelectionToggleMode).toHaveBeenCalledTimes(1);
+    expect(mockSelectionClear).not.toHaveBeenCalled();
+    expect(mockSelectionSetMode).not.toHaveBeenCalled();
   });
 
   it("keeps summary and source-document queries aligned to the same period range", async () => {
@@ -292,6 +304,8 @@ describe("LedgerEntriesTab orchestration", () => {
     expect(mockDeleteSourceDocumentMutate).toHaveBeenCalledWith("doc-1");
     expect(mockBatchDeleteMutate).not.toHaveBeenCalled();
     expect(mockDeleteEntryMutate).not.toHaveBeenCalled();
-    expect(screen.getByTestId("batch-toolbar").textContent).toContain("selected:1-total:2");
+    expect(screen.queryByTestId("batch-toolbar")).toBeNull();
+    expect(screen.getByRole("button", { name: /setDate/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /retry/ })).toBeTruthy();
   });
 });

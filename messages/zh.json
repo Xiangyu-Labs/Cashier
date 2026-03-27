@@ -28,6 +28,8 @@
     "noExpenses": "该时间段暂无支出",
     "select": "选择",
     "cancelSelect": "取消",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
     "deleteConfirmTitle": "确认删除",
     "deleteConfirmDesc": "确定要删除这条记录吗？此操作无法撤销。",
     "noMore": "没有更多了"
@@ -145,6 +147,10 @@
   "LedgerEntriesTab": {
     "processing": "处理中",
     "abnormal": "异常记录",
+    "select": "选择",
+    "cancelSelect": "取消",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
     "confirmDeleteSelected": "确定要删除选中的 {count} 项吗？",
     "batchDeleteSuccessCount": "已成功删除 {count} 项明细",
     "deleteAll": "全部删除",

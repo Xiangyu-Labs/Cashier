@@ -98,7 +98,7 @@ export function LedgerEntriesTab({
   });
   const {
     isSelectionMode,
-    setSelectionMode,
+    toggleSelectionMode,
     selectedIds,
     toggleSelection,
     selectAll,
@@ -115,9 +115,8 @@ export function LedgerEntriesTab({
     ]);
   }, [queryClient, ledgerId]);
   const handleToggleSelectionMode = useCallback(() => {
-    if (isSelectionMode) clearSelection();
-    else setSelectionMode(true);
-  }, [isSelectionMode, clearSelection, setSelectionMode]);
+    toggleSelectionMode();
+  }, [toggleSelectionMode]);
   const handleViewSourceDetail = useCallback(
     (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
       pushModal({
@@ -172,7 +171,17 @@ export function LedgerEntriesTab({
         <div className="space-y-4" {...containerProps}>
           <LedgerEntriesToolbar
             isSelectionMode={isSelectionMode}
+            isAllSelected={isAllSelected}
+            selectedCount={selectedIds.length}
             onToggleSelectionMode={handleToggleSelectionMode}
+            onSelectAll={selectAll}
+            onClearSelection={clearSelection}
+            onUpdateDates={handleBatchUpdateDates}
+            onRetry={handleBatchRetry}
+            onDelete={handleBatchDelete}
+            isUpdatingDates={batchUpdateDates.isPending}
+            isRetrying={batchRetry.isPending}
+            isDeleting={batchDelete.isPending}
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}
@@ -206,17 +215,6 @@ export function LedgerEntriesTab({
           onDeleteConfirmOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
           onDeleteConfirm={handleDeleteConfirmAction}
           deleteLabel={tCommon("delete")}
-          selectedCount={selectedIds.length}
-          totalCount={allSourceDocumentIds.length}
-          isAllSelected={isAllSelected}
-          onSelectAll={selectAll}
-          onClearSelection={clearSelection}
-          onUpdateDates={handleBatchUpdateDates}
-          onRetry={handleBatchRetry}
-          onDelete={handleBatchDelete}
-          isUpdatingDates={batchUpdateDates.isPending}
-          isRetrying={batchRetry.isPending}
-          isDeleting={batchDelete.isPending}
           retrySourceDocument={retrySourceDocument}
           onRetryDialogOpenChange={(open) => !open && closeRetrySourceDocument()}
           ledgerId={ledgerId}

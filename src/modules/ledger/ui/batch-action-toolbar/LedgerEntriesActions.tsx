@@ -1,4 +1,4 @@
-import { ChevronDown, DollarSign, Loader2, Sparkles, Tag } from "lucide-react";
+import { ChevronDown, DollarSign, Loader2, Tag, Tags } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ export function LedgerEntriesActions({
           {isAiCategorizing ? (
             <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
           ) : (
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+            <Tags className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
           )}
           <span className="hidden sm:inline">{t("aiCategorize")}</span>
           <span className="sm:hidden">{t("aiCategorizeShort")}</span>
