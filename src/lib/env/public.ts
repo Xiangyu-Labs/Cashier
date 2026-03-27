@@ -1,23 +1,21 @@
-import { getEnvValue } from "./catalog";
-
 export interface PublicEnv {
   readonly appUrl: string;
   readonly oidcEnabled: boolean;
   readonly oidcButtonName: string;
 }
 
-function readPublicValue(name: string): string {
-  return getEnvValue(process.env, name) ?? "";
+function resolvePublicValue(value: string | undefined, fallback: string): string {
+  return value != null && value.trim() !== "" ? value : fallback;
 }
 
 export const publicEnv: PublicEnv = {
   get appUrl() {
-    return readPublicValue("NEXT_PUBLIC_APP_URL");
+    return resolvePublicValue(process.env.NEXT_PUBLIC_APP_URL, "http://localhost:3000");
   },
   get oidcEnabled() {
-    return readPublicValue("NEXT_PUBLIC_OIDC_ENABLED") === "true";
+    return resolvePublicValue(process.env.NEXT_PUBLIC_OIDC_ENABLED, "false") === "true";
   },
   get oidcButtonName() {
-    return readPublicValue("NEXT_PUBLIC_OIDC_BUTTON_NAME");
+    return resolvePublicValue(process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME, "SSO");
   },
 };
