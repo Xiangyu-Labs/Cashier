@@ -9,12 +9,10 @@ export type ParsePipelineResult =
     }
   | {
       kind: "invalid";
-      title?: string;
     }
   | {
       kind: "anomaly";
       anomalyReason: string;
-      title?: string;
     }
   | {
       kind: "cancelled";

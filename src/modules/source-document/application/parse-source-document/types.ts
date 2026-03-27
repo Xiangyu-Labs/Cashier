@@ -1,3 +1,21 @@
+// ===== Stage 0 Types =====
+
+export interface DocumentPrimaryEvidence {
+  merchant: string | null;
+  totals: string[];
+  currencies: string[];
+  dates: string[];
+  lineItems: string[];
+}
+
+export interface DocumentUnderstanding {
+  documentType: string | null;
+  primaryEvidence: DocumentPrimaryEvidence;
+  secondaryEvidence: string[];
+  ambiguities: string[];
+  salienceHints: string;
+}
+
 // ===== Stage 1 Types =====
 
 export interface ValidityCheckInput {

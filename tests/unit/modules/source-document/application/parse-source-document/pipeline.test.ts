@@ -59,6 +59,7 @@ function createPipelineMockAI(options: {
     ],
   } = options;
 
+  let stage2CallCount = 0;
   const generate = vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
     const prompt = opts.prompt ?? "";
 
@@ -108,6 +109,8 @@ function createPipelineMockAI(options: {
 
     // Stage 2: detailed parse prompt
     if (prompt.includes("detailed financial document parser")) {
+      const callIndex = stage2CallCount++;
+
       if (stage2Outcome === "anomaly") {
         return {
           content: JSON.stringify({
@@ -121,13 +124,19 @@ function createPipelineMockAI(options: {
         };
       }
 
+      // When testing arbitration failure, vary amounts so the two calls disagree
+      // and the arbitration path is actually triggered.
+      const adjustedEntries = stage2ArbitrationFails
+        ? entries.map((e) => ({ ...e, amount: e.amount + callIndex * 100 }))
+        : entries;
+
       return {
         content: JSON.stringify({
           outcome: "success",
           title,
           currencies: currencies.map((c) => ({ code: c, hint: "detected" })),
           categories: categories.map((c) => ({ name: c, hint: "matched" })),
-          ledger_entries: entries,
+          ledger_entries: adjustedEntries,
           reasoning: "Parse successful",
         }),
       };
@@ -146,7 +155,7 @@ function createInput(
   return {
     sourceDocumentId: "source-doc-1",
     ledgerId: "ledger-1",
-    text: undefined,
+    ...(overrides.text !== undefined ? { text: overrides.text } : {}),
     imageUrls: ["/api/uploads/test-receipt.jpg"],
     aiLanguage: "zh-CN",
     preferredCurrencies: ["USD"],
@@ -288,29 +297,23 @@ describe("runParsePipeline - new 3-stage flow", () => {
 });
 
 describe("buildStage1Input", () => {
-  it("normalizes categories and forwards optional fields", () => {
+  it("forwards text, imageUrls, aiLanguage and documentUnderstanding only", () => {
     const input = createInput({
       text: "user text",
-      imageUrls: ["/api/uploads/doc.jpg"],
+      imageUrls: ["https://example.com/doc.png"],
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       settings: { aiCustomPrompt: "Prefer food-related detail" },
       categories: [{ id: "cat-1", name: "Food", description: null }],
     });
 
-    // After refactor buildStage1Input accepts DocumentUnderstanding (structured Stage 0 output)
-    // instead of a plain visionDescription string.
-    // Passing undefined for now — full structured type update happens in Task 2.
     const stage1Input = buildStage1Input(input, undefined);
 
-    expect(stage1Input).toMatchObject({
+    // Stage 1 is validity-only — categories, preferredCurrencies, aiCustomPrompt not forwarded
+    expect(stage1Input).toEqual({
       text: "user text",
-      imageUrls: ["/api/uploads/doc.jpg"],
+      imageUrls: ["https://example.com/doc.png"],
       aiLanguage: "en-US",
-      preferredCurrencies: ["USD"],
-      aiCustomPrompt: "Prefer food-related detail",
-      categories: [{ name: "Food", description: null }],
     });
   });
 });
-

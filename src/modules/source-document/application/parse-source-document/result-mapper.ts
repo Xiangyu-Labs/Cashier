@@ -29,14 +29,12 @@ export function toParseSourceDocumentOutput(
       return {
         ledgerEntries: [],
         verificationStatus: "invalid",
-        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "anomaly":
       return {
         ledgerEntries: [],
         anomalyReason: result.anomalyReason,
         verificationStatus: "anomaly",
-        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "cancelled":
       throw new TaskCancelledError();

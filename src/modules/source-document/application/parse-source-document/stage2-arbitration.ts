@@ -2,21 +2,16 @@ import { z } from "zod";
 import { parseJsonResponse } from "@/lib/ai/response-parser";
 import type { AIContext } from "@/lib/flow/types";
 import type { MessageContentPart } from "./message-content";
-import type { ParsedEntry } from "./types";
+import type { NormalizedStage2ParseResult } from "./stage2-result-policy";
 
 const arbitrationSchema = z.object({
   choice: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   reason: z.string().optional(),
 });
 
-export type Stage2ArbitrationCandidate = {
-  ledger_entries: ParsedEntry[];
-  reasoning: string;
-};
-
 export function buildStage2ArbitrationPrompt(
-  result1: Stage2ArbitrationCandidate,
-  result2: Stage2ArbitrationCandidate
+  result1: NormalizedStage2ParseResult,
+  result2: NormalizedStage2ParseResult
 ): string {
   return `You are an arbitration AI for financial document parsing.
 
@@ -39,6 +34,7 @@ Look for:
 - Correct amounts matching the document
 - Proper categorization
 - Reasonable date handling
+- outcome: "success" results preferred over outcome: "anomaly"
 
 ### Output (raw JSON only)
 {"choice": 1 | 2 | 0, "reason": "..."}`;
@@ -47,13 +43,12 @@ Look for:
 export async function arbitrateStage2Results(
   ai: AIContext,
   messageContent: MessageContentPart[],
-  result1: Stage2ArbitrationCandidate,
-  result2: Stage2ArbitrationCandidate
-):
-  Promise<
-    | { kind: "chosen"; result: Stage2ArbitrationCandidate }
-    | { kind: "anomaly"; reason: string }
-  > {
+  result1: NormalizedStage2ParseResult,
+  result2: NormalizedStage2ParseResult
+): Promise<
+  | { kind: "chosen"; result: NormalizedStage2ParseResult }
+  | { kind: "anomaly"; reason: string }
+> {
   const response = await ai.generate({
     prompt: buildStage2ArbitrationPrompt(result1, result2),
     messages: [{ role: "user", content: messageContent }],

@@ -50,12 +50,10 @@ describe("toParseSourceDocumentOutput", () => {
   it("maps invalid results to invalid output", () => {
     const result: ParsePipelineResult = {
       kind: "invalid",
-      title: "Not a receipt",
     };
 
     expect(toParseSourceDocumentOutput(result)).toEqual({
       ledgerEntries: [],
-      title: "Not a receipt",
       verificationStatus: "invalid",
     });
   });

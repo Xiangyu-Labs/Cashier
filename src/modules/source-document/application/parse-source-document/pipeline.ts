@@ -2,35 +2,30 @@ import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { and, eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { ArbitrationFailedError } from "@/lib/ai/dual-gpt-runner";
 import { TaskCancelledError, throwIfCancelled } from "@/lib/flow/cancellation";
 import type { ParseSourceDocumentInput } from "../tasks/parse-source-document";
 import type { StageContext } from "./context";
-import type { ParsePipelineResult, Stage1ExecutionResult, Stage1ValidationResult } from "./contracts";
+import type { ParsePipelineResult } from "./contracts";
 import { executeStage0 } from "./stage0-vision";
 import { executeStage1 } from "./stage1-executor";
-import { executeStage1_5Validation } from "./stage1-5-validator";
 import { executeStage2 } from "./stage2-executor";
-import type { Stage1Results, ValidationSummary } from "./types";
+import type { DocumentUnderstanding } from "./types";
 import {
   sourceDocumentNotDeletedCondition,
-  whereSourceDocumentNotDeletedId,
 } from "../source-document-state";
 import {
-  resolveStage1ExecutionResult,
-  resolveStage1ValidationResult,
+  resolveStage1Result,
   resolveStage2ExecutionResult,
 } from "./pipeline-stage-decisions";
 import {
   buildStage1Input,
-  buildStage1ValidationInput,
   buildStage2Input,
 } from "./pipeline-stage-inputs";
 
 async function runStage0(
   input: ParseSourceDocumentInput,
   ctx: StageContext
-): Promise<string | undefined> {
+): Promise<DocumentUnderstanding | undefined> {
   if (input.imageUrls == null || input.imageUrls.length === 0) {
     return undefined;
   }
@@ -48,115 +43,61 @@ async function runStage0(
 
   throwIfCancelled(ctx.signal);
 
-  if (stage0Result.description != null && stage0Result.description !== "") {
-    const doc = await db.query.sourceDocuments.findFirst({
-      where: and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()),
-    });
-    if (doc != null) {
-      await db
-        .update(sourceDocuments)
-        .set({ metadata: { ...doc.metadata, visionDescription: stage0Result.description } })
-        .where(whereSourceDocumentNotDeletedId(ctx.ledgerId, ctx.docId));
-    }
-    return stage0Result.description;
+  // Persist structured understanding to metadata
+  const doc = await db.query.sourceDocuments.findFirst({
+    where: and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()),
+  });
+  if (doc != null) {
+    const existingMeta = (doc.metadata as Record<string, unknown>) ?? {};
+    await db
+      .update(sourceDocuments)
+      .set({
+        metadata: {
+          ...existingMeta,
+          visionUnderstanding: stage0Result as unknown as Record<string, unknown>,
+        },
+      })
+      .where(and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()));
   }
 
-  return undefined;
+  return stage0Result;
 }
 
 async function runStage1(
   input: ParseSourceDocumentInput,
-  visionDescription: string | undefined,
+  documentUnderstanding: DocumentUnderstanding | undefined,
   ctx: StageContext
-): Promise<Stage1ExecutionResult> {
+): Promise<ParsePipelineResult | { kind: "continue" }> {
   throwIfCancelled(ctx.signal);
   await ctx.setProgress("正在分析单据信息...");
 
-  const stage1Input = buildStage1Input(input, visionDescription);
-
-  let stage1Result;
-  try {
-    stage1Result = await executeStage1(stage1Input, ctx.ai, ctx.signal);
-  } catch (error) {
-    if (error instanceof ArbitrationFailedError) {
-      logger.info({ docId: ctx.docId, error: error.message }, "Stage 1: Arbitration failed");
-      return {
-        kind: "anomaly",
-        anomalyReason: "Pre-analysis results diverged",
-      };
-    }
-    throw error;
-  }
-
-  const stage1Decision = resolveStage1ExecutionResult(stage1Result);
-  if (stage1Decision.kind !== "continue") {
-    logger.info({ docId: ctx.docId, kind: stage1Decision.kind }, "Stage 1 finished early");
-    return stage1Decision;
-  }
-
-  logger.info(
-    {
-      docId: ctx.docId,
-      currencies: stage1Decision.results.currency.currencies,
-      categories: stage1Decision.results.category.categories,
-    },
-    "Stage 1: Pre-analysis completed"
-  );
-
-  return {
-    kind: "continue",
-    results: stage1Decision.results,
-  };
-}
-
-async function runStage1_5(
-  input: ParseSourceDocumentInput,
-  visionDescription: string | undefined,
-  stage1Results: Stage1Results,
-  ctx: StageContext
-): Promise<Stage1ValidationResult> {
   throwIfCancelled(ctx.signal);
-  await ctx.setProgress("正在核对分析结果...");
 
-  const validationResult = await executeStage1_5Validation(
-    buildStage1ValidationInput(input, visionDescription, stage1Results),
-    ctx.ai
-  );
+  const stage1Input = buildStage1Input(input, documentUnderstanding);
+  const stage1Result = await executeStage1(stage1Input, ctx.ai);
 
-  const validationDecision = resolveStage1ValidationResult(validationResult);
-  if (validationDecision.kind !== "continue") {
-    logger.info(
-      {
-        docId: ctx.docId,
-        reason: validationResult.rejection_reason,
-      },
-      "Stage 1.5: Validation rejected"
-    );
-    return validationDecision;
+  const decision = resolveStage1Result(stage1Result);
+  if (decision.kind !== "continue") {
+    logger.info({ docId: ctx.docId, reasoning: stage1Result.reasoning }, "Stage 1: Document invalid");
+    return decision;
   }
 
-  return {
-    kind: "continue",
-    validationResult: validationDecision.validationResult,
-  };
+  return { kind: "continue" };
 }
 
 async function runStage2(
   input: ParseSourceDocumentInput,
-  visionDescription: string | undefined,
-  validationResult: ValidationSummary,
+  documentUnderstanding: DocumentUnderstanding | undefined,
   ctx: StageContext
-): Promise<Extract<ParsePipelineResult, { kind: "success" | "anomaly" }>> {
+): Promise<ParsePipelineResult> {
   throwIfCancelled(ctx.signal);
-  await ctx.setProgress("正在生成账单条目...");
+  await ctx.setProgress("正在解析账目数据...");
 
-  const stage2Result = await executeStage2(
-    buildStage2Input(input, visionDescription, validationResult),
-    ctx.ai
-  );
+  const stage2Input = buildStage2Input(input, documentUnderstanding);
+  const stage2Result = await executeStage2(stage2Input, ctx.ai);
 
   if (stage2Result.kind === "anomaly") {
-    logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed");
+    logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed or anomaly");
     return resolveStage2ExecutionResult(stage2Result);
   }
 
@@ -164,6 +105,7 @@ async function runStage2(
   if (stage2Decision.kind !== "success") {
     return stage2Decision;
   }
+
   logger.info(
     {
       docId: ctx.docId,
@@ -181,19 +123,14 @@ export async function runParsePipeline(
   ctx: StageContext
 ): Promise<ParsePipelineResult> {
   try {
-    const visionDescription = await runStage0(input, ctx);
-    const stage1Result = await runStage1(input, visionDescription, ctx);
+    const documentUnderstanding = await runStage0(input, ctx);
+    const stage1Result = await runStage1(input, documentUnderstanding, ctx);
 
     if (stage1Result.kind !== "continue") {
       return stage1Result;
     }
 
-    const validationResult = await runStage1_5(input, visionDescription, stage1Result.results, ctx);
-    if (validationResult.kind !== "continue") {
-      return validationResult;
-    }
-
-    return await runStage2(input, visionDescription, validationResult.validationResult, ctx);
+    return await runStage2(input, documentUnderstanding, ctx);
   } catch (error) {
     if (error instanceof TaskCancelledError) {
       return { kind: "cancelled" };

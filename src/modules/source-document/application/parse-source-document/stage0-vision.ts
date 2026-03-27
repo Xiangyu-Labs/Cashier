@@ -1,15 +1,20 @@
 /**
- * Stage 0: Vision Description
+ * Stage 0: Structured Document Understanding
  *
- * Decouples "seeing" from "thinking" by producing a detailed text description
- * of the financial document images. All subsequent stages receive this text
- * instead of raw images, allowing them to use cheaper text-only models.
+ * Produces a compact, structured "document understanding" payload that separates
+ * primary evidence (amounts, line items, merchant, dates) from secondary evidence
+ * (footer text, promotional copy) and encodes salience, ambiguity, and confidence.
+ *
+ * Downstream stages receive this structured payload instead of raw images or verbose
+ * freeform narration, allowing cheaper text-only models while preserving the
+ * primary-vs-secondary distinction needed for conflict resolution.
  */
 
 import type { AIContext } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
+import type { DocumentUnderstanding } from "./types";
 
 export interface Stage0Input {
   imageUrls: string[];
@@ -17,9 +22,22 @@ export interface Stage0Input {
   aiLanguage?: string;
 }
 
-export interface Stage0Output {
-  description: string;
-}
+export type Stage0Output = DocumentUnderstanding;
+
+/** Returned when there are no images to process */
+const EMPTY_UNDERSTANDING: DocumentUnderstanding = {
+  documentType: null,
+  primaryEvidence: {
+    merchant: null,
+    totals: [],
+    currencies: [],
+    dates: [],
+    lineItems: [],
+  },
+  secondaryEvidence: [],
+  ambiguities: [],
+  salienceHints: "",
+};
 
 function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]): string {
   const focusSection =
@@ -27,65 +45,50 @@ function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]):
       ? `\n### Focus Areas\nPay special attention to:\n${(focusHints ?? []).map((h) => `- ${h}`).join("\n")}\n`
       : "";
 
-  return `You are a financial document transcription AI. Your job is to produce a complete, detailed text description of the document image(s) so that another AI can parse it WITHOUT seeing the original image.
+  return `You are a financial document understanding AI. Your job is to extract structured evidence from the document image(s) and classify it by salience — separating essential financial data from decorative or secondary text.
 
-### Task
-Describe EVERYTHING visible in this financial document. Be exhaustive — the downstream parser will rely entirely on your description.
+Respond in the user's preferred language when naming things (language: ${aiLanguage}), but keep field names and JSON keys in English.
 
-### Required Sections
+### Output Format
 
-**1. Document Type & Layout**
-- What kind of document is this? (receipt, invoice, bank statement, screenshot, handwritten note, etc.)
-- Overall layout description
+Return a single JSON object with this exact shape:
 
-**2. Merchant / Source Information**
-- Store name, brand, or merchant (if visible)
-- Address, phone number, or other identifiers
+\`\`\`json
+{
+  "documentType": "receipt | invoice | bank_statement | screenshot | handwritten | unknown",
+  "primaryEvidence": {
+    "merchant": "<store/brand name, or null if absent>",
+    "totals": ["<each total/grand-total amount exactly as printed, e.g. ¥45.00>"],
+    "currencies": ["<ISO code or symbol, e.g. CNY, USD, ¥, $>"],
+    "dates": ["<transaction or document dates>"],
+    "lineItems": ["<item name: amount — list each individually, max 30 items>"]
+  },
+  "secondaryEvidence": [
+    "<non-financial text: addresses, phone numbers, promo text, footer copy, thank-you notes — max 10 items>"
+  ],
+  "ambiguities": [
+    "<anything blurry, partially cut off, or where you are uncertain — describe what you can see>"
+  ],
+  "salienceHints": "<one sentence: where are the most important values located on the document?>"
+}
+\`\`\`
 
-**3. Date & Time**
-- Transaction date and time (if visible)
-- Any other dates (print date, due date, etc.)
-
-**4. Currency & Amounts**
-- ALL currency symbols or codes visible (¥, $, €, RM, etc.)
-- List EVERY line item with its exact amount
-- Subtotals, taxes, tips, discounts, totals
-- Transcribe amounts exactly as printed (e.g., "¥45.00", "$12.50")
-
-**5. Line Items (CRITICAL - be exhaustive)**
-For each item, transcribe:
-- Item name / description (exactly as printed)
-- Quantity (if shown)
-- Unit price (if shown)
-- Line total
-- Any notes or modifiers
-
-**6. Payment Information**
-- Payment method (cash, card, WeChat, Alipay, etc.)
-- Card last 4 digits (if shown)
-- Change given (if shown)
-
-**7. Additional Text**
-- Any other text: order numbers, receipt numbers, barcodes, QR codes, promotional text
-- Handwritten annotations if any
-
-**8. Visual Quality Notes**
-- Note any parts that are blurry, cut off, or hard to read
-- Note if any text is partially obscured
-${focusSection}
 ### Rules
-1. Transcribe amounts and item names EXACTLY as they appear — do not interpret or convert
-2. If something is unclear, say so explicitly (e.g., "amount partially obscured, appears to be ¥4X.00")
-3. Use the original language of the document for item names; add a brief translation if not in ${aiLanguage}
-4. Preserve the order of items as they appear in the document
-5. Do NOT summarize — be verbose and complete
 
-Respond with plain text following the sections above. Do not use JSON or markdown code blocks.`;
+- primaryEvidence = financial data that drives ledger entries (amounts, items, merchant, dates)
+- secondaryEvidence = everything else visible but not directly relevant to the ledger
+- Do NOT merge primary and secondary into one flat list
+- Keep lists compact — prefer concise item descriptions over verbose transcription
+- If a field has no data, use null (for strings) or [] (for arrays)
+- Do NOT add explanatory prose outside the JSON${focusSection}`;
 }
 
-export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<Stage0Output> {
-  if (input.imageUrls == null || input.imageUrls.length === 0) {
-    return { description: "" };
+export async function executeStage0(
+  input: Stage0Input,
+  ai: AIContext
+): Promise<Stage0Output> {
+  if (input.imageUrls.length === 0) {
+    return EMPTY_UNDERSTANDING;
   }
 
   const prompt = buildVisionPrompt(input.aiLanguage, input.focusHints);
@@ -97,7 +100,7 @@ export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<
   if (input.imageUrls.length > 1) {
     content.push({
       type: "text",
-      text: `This document consists of ${input.imageUrls.length} images. Describe all of them as a single document.`,
+      text: `This document consists of ${input.imageUrls.length} images. Analyze all of them as a single document.`,
     });
   }
 
@@ -122,12 +125,20 @@ export async function executeStage0(input: Stage0Input, ai: AIContext): Promise<
     prompt,
     messages: [{ role: "user", content }],
     model: "vision",
+    requireJson: true,
   });
 
+  const parsed = JSON.parse(response.content) as DocumentUnderstanding;
+
   logger.info(
-    { descriptionLength: response.content.length },
-    "Stage 0: Vision description completed"
+    {
+      documentType: parsed.documentType,
+      primaryLineItems: parsed.primaryEvidence?.lineItems?.length ?? 0,
+      secondaryItems: parsed.secondaryEvidence?.length ?? 0,
+      ambiguities: parsed.ambiguities?.length ?? 0,
+    },
+    "Stage 0: Document understanding completed"
   );
 
-  return { description: response.content };
+  return parsed;
 }

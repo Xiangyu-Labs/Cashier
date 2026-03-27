@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 
 import { buildCategoryRecognitionPrompt } from "@/modules/source-document/application/parse-source-document/stage1-prompts";
 import { buildDetailedParsePrompt } from "@/modules/source-document/application/parse-source-document/stage2-prompts";
-import type { ValidationSummary } from "@/modules/source-document/application/parse-source-document/types";
 
 describe("buildCategoryRecognitionPrompt", () => {
   it("should instruct AI to use Other only as last resort", () => {
@@ -17,22 +16,35 @@ describe("buildCategoryRecognitionPrompt", () => {
 
 describe("buildDetailedParsePrompt", () => {
   it("should instruct AI to assign 'Other' category index only as last resort", () => {
-    const summary: ValidationSummary = {
-      is_reasonable: true,
-      summary: {
-        title: "Test",
-        currencies: [],
-        categories: [],
-        rules: [],
-      },
-    };
     const categories = [
       { name: "餐饮", description: null },
       { name: "其他", description: null },
     ];
 
-    const prompt = buildDetailedParsePrompt(summary, categories);
+    const prompt = buildDetailedParsePrompt({ categories });
 
     expect(prompt).toMatch(/last.?resort|最后手段|万不得已|only if.*no.*categor/i);
+  });
+
+  it("should include category names in prompt", () => {
+    const categories = [
+      { name: "餐饮", description: "日常餐饮" },
+      { name: "交通", description: null },
+    ];
+
+    const prompt = buildDetailedParsePrompt({ categories });
+
+    expect(prompt).toContain("餐饮");
+    expect(prompt).toContain("交通");
+  });
+
+  it("should include user custom prompt when provided", () => {
+    const categories = [{ name: "餐饮", description: null }];
+    const prompt = buildDetailedParsePrompt({
+      categories,
+      aiCustomPrompt: "合并相同类别的条目",
+    });
+
+    expect(prompt).toContain("合并相同类别的条目");
   });
 });

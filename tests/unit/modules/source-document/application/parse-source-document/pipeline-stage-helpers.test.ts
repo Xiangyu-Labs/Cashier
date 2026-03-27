@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
-import type {
-  Stage1Results,
-  ValidationSummary,
-} from "@/modules/source-document/application/parse-source-document/types";
 import {
   buildStage1Input,
-  buildStage1ValidationInput,
   buildStage2Input,
 } from "@/modules/source-document/application/parse-source-document/pipeline-stage-inputs";
 import {
-  resolveStage1ExecutionResult,
-  resolveStage1ValidationResult,
+  resolveStage1Result,
   resolveStage2ExecutionResult,
 } from "@/modules/source-document/application/parse-source-document/pipeline-stage-decisions";
+import type { DocumentUnderstanding } from "@/modules/source-document/application/parse-source-document/types";
 
 const baseInput: ParseSourceDocumentInput = {
   ledgerId: "ledger-1",
@@ -26,84 +21,92 @@ const baseInput: ParseSourceDocumentInput = {
   preferredCurrencies: ["USD"],
 };
 
-const baseStage1Results: Stage1Results = {
-  validity: { is_valid: true, reasoning: "valid" },
-  currency: { currencies: ["USD"], reasoning: "symbol" },
-  category: { categories: ["Food"], reasoning: "meal" },
-  title: { title: "Lunch" },
-};
-
-const baseValidationSummary: ValidationSummary = {
-  is_reasonable: true,
-  summary: {
-    title: "Lunch",
-    currencies: [{ code: "USD", hint: "$" }],
-    categories: [{ name: "Food", hint: "meal" }],
+const baseDocumentUnderstanding: DocumentUnderstanding = {
+  documentType: "receipt",
+  primaryEvidence: {
+    merchant: "Cafe",
+    totals: ["10 USD"],
+    currencies: ["USD"],
+    dates: ["2026-03-27"],
+    lineItems: ["Lunch x1 10.00"],
   },
+  secondaryEvidence: ["logo visible"],
+  ambiguities: [],
+  salienceHints: "Single-item receipt",
 };
 
 describe("pipeline-stage helpers", () => {
-  it("builds stage 1.5 and stage 2 inputs without duplicating mapping logic", () => {
-    expect(buildStage1Input(baseInput, "vision summary")).toEqual({
+  it("builds stage 1 input from pipeline input without documentUnderstanding", () => {
+    const result = buildStage1Input(baseInput, undefined);
+    expect(result).toEqual({
       text: "Lunch 10 USD",
       imageUrls: ["https://example.com/doc.png"],
-      visionDescription: "vision summary",
+      aiLanguage: "en-US",
+    });
+  });
+
+  it("builds stage 1 input with documentUnderstanding", () => {
+    const result = buildStage1Input(baseInput, baseDocumentUnderstanding);
+    expect(result).toEqual({
+      text: "Lunch 10 USD",
+      imageUrls: ["https://example.com/doc.png"],
+      documentUnderstanding: baseDocumentUnderstanding,
+      aiLanguage: "en-US",
+    });
+  });
+
+  it("builds stage 2 input with all fields", () => {
+    const result = buildStage2Input(baseInput, baseDocumentUnderstanding);
+    expect(result).toEqual({
+      text: "Lunch 10 USD",
+      imageUrls: ["https://example.com/doc.png"],
+      documentUnderstanding: baseDocumentUnderstanding,
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       aiCustomPrompt: "merge meals",
-      categories: [{ name: "Food", description: "Meals" }],
-    });
-
-    expect(buildStage1ValidationInput(baseInput, "vision summary", baseStage1Results)).toEqual({
-      text: "Lunch 10 USD",
-      imageUrls: ["https://example.com/doc.png"],
-      visionDescription: "vision summary",
-      aiLanguage: "en-US",
-      stage1Results: baseStage1Results,
-    });
-
-    expect(buildStage2Input(baseInput, "vision summary", baseValidationSummary)).toEqual({
-      text: "Lunch 10 USD",
-      imageUrls: ["https://example.com/doc.png"],
-      visionDescription: "vision summary",
-      aiLanguage: "en-US",
-      validationSummary: baseValidationSummary,
       originalCategories: [{ name: "Food", description: "Meals" }],
     });
   });
 
-  it("turns unknown currencies into an anomaly before stage 1.5", () => {
-    const result = resolveStage1ExecutionResult({
-      isValid: true,
-      isIncomplete: false,
-      results: {
-        ...baseStage1Results,
-        currency: { currencies: ["unknown"], reasoning: "unclear" },
-      },
-    });
-
-    expect(result).toEqual({
-      kind: "anomaly",
-      anomalyReason: "Unable to recognize currency type",
-    });
+  it("resolveStage1Result returns invalid when isValid is false", () => {
+    const result = resolveStage1Result({ isValid: false, reasoning: "no amount found" });
+    expect(result).toEqual({ kind: "invalid" });
   });
 
-  it("uses the validation rejection reason when stage 1.5 vetoes the result", () => {
-    expect(
-      resolveStage1ValidationResult({
-        is_reasonable: false,
-        rejection_reason: "Currency mismatch",
-      })
-    ).toEqual({
-      kind: "anomaly",
-      anomalyReason: "Currency mismatch",
-    });
+  it("resolveStage1Result returns continue when isValid is true", () => {
+    const result = resolveStage1Result({ isValid: true, reasoning: "valid receipt" });
+    expect(result).toEqual({ kind: "continue" });
   });
 
   it("maps a stage 2 anomaly into the pipeline anomaly branch", () => {
     expect(resolveStage2ExecutionResult({ kind: "anomaly", reason: "Both wrong" })).toEqual({
       kind: "anomaly",
-      anomalyReason: "Parsing results diverged",
+      anomalyReason: "Both wrong",
     });
+  });
+
+  it("maps a stage 2 success into the pipeline success branch", () => {
+    const result = resolveStage2ExecutionResult({
+      kind: "success",
+      output: {
+        title: "Lunch",
+        entries: [
+          {
+            item_name: "Lunch",
+            amount: 10,
+            currency: "USD",
+            category_index: 1,
+            notes: null,
+          },
+        ],
+        reasoning: "Single item",
+        wasArbitrated: false,
+      },
+    });
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.title).toBe("Lunch");
+      expect(result.ledgerEntries).toHaveLength(1);
+    }
   });
 });

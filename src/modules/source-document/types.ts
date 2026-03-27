@@ -38,6 +38,7 @@ export type SourceDocumentTypeValue = (typeof SOURCE_DOCUMENT_TYPES)[number];
 
 export interface SourceDocumentMetadata {
   visionDescription?: string;
+  visionUnderstanding?: Record<string, unknown>;
   originalImageUrls?: Array<string | null>;
   [key: string]: unknown;
 }

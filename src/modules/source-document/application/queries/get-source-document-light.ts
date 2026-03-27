@@ -45,7 +45,7 @@ export async function getSourceDocumentLight(
   });
 
   const serializedDocument = serializeSourceDocument(document, {
-    stripMetadataFields: ["visionDescription", "originalImageUrls"],
+    stripMetadataFields: ["visionDescription", "visionUnderstanding", "originalImageUrls"],
     includeHasImages: true,
     ledgerEntries: entriesByDocId.get(document.id) ?? [],
   });

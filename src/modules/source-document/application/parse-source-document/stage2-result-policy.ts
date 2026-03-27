@@ -12,11 +12,23 @@ const entrySchema = z.object({
 });
 
 export const stage2ParseOutputSchema = z.object({
+  outcome: z.enum(["success", "anomaly"]).default("success"),
+  anomaly_reason: z.string().optional(),
+  title: z.string().optional(),
+  currencies: z
+    .array(z.object({ code: z.string(), hint: z.string() }))
+    .optional(),
+  categories: z
+    .array(z.object({ name: z.string(), hint: z.string() }))
+    .optional(),
   ledger_entries: z.array(entrySchema),
   reasoning: z.string(),
 });
 
 export type NormalizedStage2ParseResult = {
+  outcome: "success" | "anomaly";
+  anomaly_reason?: string;
+  title?: string;
   ledger_entries: ParsedEntry[];
   reasoning: string;
 };
@@ -25,6 +37,9 @@ export function normalizeStage2ParseResult(
   output: z.infer<typeof stage2ParseOutputSchema>
 ): NormalizedStage2ParseResult {
   return {
+    outcome: output.outcome,
+    ...(output.anomaly_reason !== undefined ? { anomaly_reason: output.anomaly_reason } : {}),
+    ...(output.title !== undefined ? { title: output.title } : {}),
     ledger_entries: output.ledger_entries.map((entry) => ({
       item_name: entry.item_name,
       amount: entry.amount,
@@ -38,6 +53,11 @@ export function normalizeStage2ParseResult(
 }
 
 export function compareParsedEntries(left: ParsedEntry[], right: ParsedEntry[]): boolean {
+  // If both are anomalies, treat as matching
+  if (left.length === 0 && right.length === 0) {
+    return true;
+  }
+
   if (left.length !== right.length) {
     return false;
   }

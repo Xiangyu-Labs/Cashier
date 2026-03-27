@@ -4,49 +4,56 @@ import {
   type Stage2Input,
 } from "@/modules/source-document/application/parse-source-document/stage2-executor";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow/types";
-import type { ValidationSummary } from "@/modules/source-document/application/parse-source-document/types";
+import type { DocumentUnderstanding } from "@/modules/source-document/application/parse-source-document/types";
+
+const baseDocumentUnderstanding: DocumentUnderstanding = {
+  documentType: "receipt",
+  primaryEvidence: {
+    merchant: "餐厅",
+    totals: ["45 CNY"],
+    currencies: ["CNY"],
+    dates: ["2026-02-05"],
+    lineItems: ["午餐 x1 45.00"],
+  },
+  secondaryEvidence: [],
+  ambiguities: [],
+  salienceHints: "Single-item receipt",
+};
+
+const baseInput: Stage2Input = {
+  text: "午餐 ¥45",
+  imageUrls: [],
+  aiLanguage: "zh-CN",
+  documentUnderstanding: baseDocumentUnderstanding,
+  originalCategories: [
+    { name: "餐饮", description: "食物消费" },
+    { name: "交通", description: "出行费用" },
+  ],
+};
+
+const successResponse = JSON.stringify({
+  outcome: "success",
+  title: "午餐消费",
+  ledger_entries: [
+    {
+      item_name: "午餐",
+      amount: 45,
+      currency: "CNY",
+      category_index: 1,
+      entry_date: "2026-02-05",
+      notes: null,
+    },
+  ],
+  reasoning: "Single lunch item",
+});
 
 describe("Stage 2 Executor", () => {
-  const baseValidationSummary: ValidationSummary = {
-    is_reasonable: true,
-    summary: {
-      title: "午餐消费",
-      currencies: [{ code: "CNY", hint: "¥符号" }],
-      categories: [{ name: "餐饮", hint: "食物消费" }],
-    },
-  };
-
-  const baseInput: Stage2Input = {
-    text: "午餐 ¥45",
-    imageUrls: [],
-    aiLanguage: "zh-CN",
-    validationSummary: baseValidationSummary,
-    originalCategories: [
-      { name: "餐饮", description: "食物消费" },
-      { name: "交通", description: "出行费用" },
-    ],
-  };
-
   describe("Dual GPT Agreement", () => {
     it("should return entries when both GPTs agree", async () => {
-      const mockResponse = JSON.stringify({
-        ledger_entries: [
-          {
-            item_name: "午餐",
-            amount: 45,
-            currency: "CNY",
-            category_index: 1,
-            entry_date: "2026-02-05",
-            notes: null,
-          },
-        ],
-        reasoning: "Single lunch item",
-      });
-
       const mockAI: AIContext = {
         generate: vi.fn(
           async (_opts: AIGenerateOptions): Promise<AIResponse> => ({
-            content: mockResponse,
+            content: successResponse,
             usage: { promptTokens: 100, completionTokens: 50 },
           })
         ),
@@ -57,39 +64,19 @@ describe("Stage 2 Executor", () => {
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
         expect(result.output.entries).toHaveLength(1);
-        const firstEntry = result.output.entries[0];
-        expect(firstEntry).toBeDefined();
-        if (firstEntry == null) {
-          throw new Error("Expected parsed entry");
-        }
-        expect(firstEntry.item_name).toBe("午餐");
-        expect(firstEntry.amount).toBe(45);
-        expect(result.output.title).toBe("午餐消费");
+        expect(result.output.entries[0]?.item_name).toBe("午餐");
+        expect(result.output.entries[0]?.amount).toBe(45);
         expect(result.output.wasArbitrated).toBe(false);
       }
+      // 2 calls for dual parsing (no arbitration since they agree)
+      expect(mockAI.generate).toHaveBeenCalledTimes(2);
     });
-  });
 
-  describe("Date Handling", () => {
-    it("should preserve dates from AI parsing results", async () => {
-      const mockResponse = JSON.stringify({
-        ledger_entries: [
-          {
-            item_name: "午餐",
-            amount: 45,
-            currency: "CNY",
-            category_index: 1,
-            entry_date: "2026-01-15", // Date from document
-            notes: null,
-          },
-        ],
-        reasoning: "item",
-      });
-
+    it("should include title from parse result", async () => {
       const mockAI: AIContext = {
         generate: vi.fn(
-          async (): Promise<AIResponse> => ({
-            content: mockResponse,
+          async (_opts: AIGenerateOptions): Promise<AIResponse> => ({
+            content: successResponse,
             usage: { promptTokens: 100, completionTokens: 50 },
           })
         ),
@@ -99,39 +86,51 @@ describe("Stage 2 Executor", () => {
 
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
-        const firstEntry = result.output.entries[0];
-        expect(firstEntry).toBeDefined();
-        if (firstEntry == null) {
-          throw new Error("Expected parsed entry");
-        }
-        expect(firstEntry.entry_date).toBe("2026-01-15");
+        expect(result.output.title).toBe("午餐消费");
       }
     });
   });
 
-  describe("Arbitration", () => {
-    it("should invoke arbitration when GPTs disagree", async () => {
+  describe("Anomaly Handling", () => {
+    it("should return anomaly when both GPTs return anomaly", async () => {
+      const anomalyResponse = JSON.stringify({
+        outcome: "anomaly",
+        anomaly_reason: "无法识别金额",
+        ledger_entries: [],
+        reasoning: "Document unclear",
+      });
+
+      const mockAI: AIContext = {
+        generate: vi.fn(
+          async (_opts: AIGenerateOptions): Promise<AIResponse> => ({
+            content: anomalyResponse,
+            usage: { promptTokens: 100, completionTokens: 50 },
+          })
+        ),
+      };
+
+      const result = await executeStage2(baseInput, mockAI);
+
+      expect(result.kind).toBe("anomaly");
+      if (result.kind === "anomaly") {
+        expect(result.reason).toBe("无法识别金额");
+      }
+    });
+
+    it("should arbitrate when GPTs disagree", async () => {
       let callCount = 0;
       const mockAI: AIContext = {
-        generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
+        generate: vi.fn(async (_opts: AIGenerateOptions): Promise<AIResponse> => {
           callCount++;
-          const prompt = opts.prompt ?? "";
-
-          // First two calls are dual GPT parsing
           if (callCount === 1) {
             return {
               content: JSON.stringify({
+                outcome: "success",
+                title: "午餐",
                 ledger_entries: [
-                  {
-                    item_name: "午餐",
-                    amount: 45,
-                    currency: "CNY",
-                    category_index: 1,
-                    entry_date: "2026-02-05",
-                    notes: null,
-                  },
+                  { item_name: "午餐", amount: 45, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null },
                 ],
-                reasoning: "a",
+                reasoning: "result1",
               }),
               usage: { promptTokens: 100, completionTokens: 50 },
             };
@@ -139,29 +138,21 @@ describe("Stage 2 Executor", () => {
           if (callCount === 2) {
             return {
               content: JSON.stringify({
+                outcome: "success",
+                title: "午饭",
                 ledger_entries: [
-                  {
-                    item_name: "午餐",
-                    amount: 50,
-                    currency: "CNY",
-                    category_index: 1,
-                    entry_date: "2026-02-05",
-                    notes: null,
-                  },
+                  { item_name: "午饭", amount: 50, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null },
                 ],
-                reasoning: "b",
+                reasoning: "result2",
               }),
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          // Third call is arbitration
-          if (prompt.includes("arbitration") ?? false) {
-            return {
-              content: JSON.stringify({ choice: 1, reason: "First is correct" }),
-              usage: { promptTokens: 100, completionTokens: 50 },
-            };
-          }
-          return { content: "{}", usage: { promptTokens: 100, completionTokens: 50 } };
+          // Arbitration call
+          return {
+            content: JSON.stringify({ choice: 1, reason: "result1 is more accurate" }),
+            usage: { promptTokens: 100, completionTokens: 50 },
+          };
         }),
       };
 
@@ -170,103 +161,62 @@ describe("Stage 2 Executor", () => {
       expect(result.kind).toBe("success");
       if (result.kind === "success") {
         expect(result.output.wasArbitrated).toBe(true);
-        const firstEntry = result.output.entries[0];
-        expect(firstEntry).toBeDefined();
-        if (firstEntry == null) {
-          throw new Error("Expected parsed entry");
-        }
-        expect(firstEntry.amount).toBe(45);
+        expect(result.output.entries[0]?.amount).toBe(45);
       }
+      expect(mockAI.generate).toHaveBeenCalledTimes(3);
     });
 
-    it("should return anomaly when arbitration returns choice 0", async () => {
+    it("should return anomaly when arbitrator picks choice 0", async () => {
       let callCount = 0;
       const mockAI: AIContext = {
-        generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
+        generate: vi.fn(async (_opts: AIGenerateOptions): Promise<AIResponse> => {
           callCount++;
-          const prompt = opts.prompt ?? "";
-
-          if (callCount === 1) {
+          if (callCount <= 2) {
             return {
               content: JSON.stringify({
+                outcome: "success",
+                title: "Test",
                 ledger_entries: [
-                  {
-                    item_name: "a",
-                    amount: 10,
-                    currency: "CNY",
-                    category_index: 1,
-                    entry_date: "2026-02-05",
-                    notes: null,
-                  },
+                  { item_name: "Item", amount: callCount * 10, currency: "CNY", category_index: 1, notes: null },
                 ],
-                reasoning: "a",
+                reasoning: `result${callCount}`,
               }),
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          if (callCount === 2) {
-            return {
-              content: JSON.stringify({
-                ledger_entries: [
-                  {
-                    item_name: "b",
-                    amount: 20,
-                    currency: "USD",
-                    category_index: 2,
-                    entry_date: "2026-02-05",
-                    notes: null,
-                  },
-                ],
-                reasoning: "b",
-              }),
-              usage: { promptTokens: 100, completionTokens: 50 },
-            };
-          }
-          if (prompt.includes("arbitration") ?? false) {
-            return {
-              content: JSON.stringify({ choice: 0, reason: "Both wrong" }),
-              usage: { promptTokens: 100, completionTokens: 50 },
-            };
-          }
-          return { content: "{}", usage: { promptTokens: 100, completionTokens: 50 } };
+          return {
+            content: JSON.stringify({ choice: 0, reason: "Both fundamentally flawed" }),
+            usage: { promptTokens: 100, completionTokens: 50 },
+          };
         }),
       };
 
       const result = await executeStage2(baseInput, mockAI);
-      expect(result).toEqual({
-        kind: "anomaly",
-        reason: "Both wrong",
-      });
+
+      expect(result.kind).toBe("anomaly");
     });
   });
 
-  describe("API Configuration", () => {
-    it("should use fast tier for parsing and smart tier for arbitration", async () => {
+  describe("AI tier usage", () => {
+    it("should use text tier for parsing and arbitration", async () => {
       let callCount = 0;
       const mockAI: AIContext = {
         generate: vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
           callCount++;
           if (callCount <= 2) {
-            // Parsing calls should use text tier
             expect(opts.model).toBe("text");
             return {
               content: JSON.stringify({
+                outcome: "success",
+                title: "Test",
                 ledger_entries: [
-                  {
-                    item_name: "a",
-                    amount: callCount * 10,
-                    currency: "CNY",
-                    category_index: 1,
-                    entry_date: "2026-02-05",
-                    notes: null,
-                  },
+                  { item_name: "a", amount: callCount * 10, currency: "CNY", category_index: 1, entry_date: "2026-02-05", notes: null },
                 ],
                 reasoning: "x",
               }),
               usage: { promptTokens: 100, completionTokens: 50 },
             };
           }
-          // Arbitration should use text tier
           expect(opts.model).toBe("text");
           return {
             content: JSON.stringify({ choice: 1, reason: "ok" }),

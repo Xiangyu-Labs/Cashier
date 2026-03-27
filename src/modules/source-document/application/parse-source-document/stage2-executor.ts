@@ -1,6 +1,6 @@
 import { parseJsonResponse } from "@/lib/ai/response-parser";
 import type { AIContext } from "@/lib/flow/types";
-import type { ParsedEntry, ValidationSummary } from "./types";
+import type { DocumentUnderstanding, ParsedEntry } from "./types";
 import { buildDetailedParsePrompt } from "./stage2-prompts";
 import { buildMessageContent } from "./message-content";
 import { arbitrateStage2Results } from "./stage2-arbitration";
@@ -16,10 +16,11 @@ import {
 export interface Stage2Input {
   text?: string;
   imageUrls?: string[];
-  visionDescription?: string;
+  documentUnderstanding?: DocumentUnderstanding;
   aiLanguage?: string;
-  validationSummary: ValidationSummary;
+  preferredCurrencies?: string[];
   originalCategories: { name: string; description: string | null }[];
+  aiCustomPrompt?: string;
 }
 
 export interface Stage2Output {
@@ -39,7 +40,11 @@ export type Stage2ExecutionResult =
       reason: string;
     };
 
-async function runDualParsingCalls(ai: AIContext, prompt: string, messageContent: ReturnType<typeof buildMessageContent>) {
+async function runDualParsingCalls(
+  ai: AIContext,
+  prompt: string,
+  messageContent: ReturnType<typeof buildMessageContent>
+) {
   const [response1, response2] = await Promise.all([
     ai.generate({
       prompt,
@@ -65,23 +70,46 @@ export async function executeStage2(
   input: Stage2Input,
   ai: AIContext
 ): Promise<Stage2ExecutionResult> {
-  const messageContent = buildMessageContent(input.text, input.imageUrls, input.visionDescription);
-
-  const prompt = buildDetailedParsePrompt(
-    input.validationSummary,
-    input.originalCategories,
-    input.aiLanguage
+  const messageContent = buildMessageContent(
+    input.text,
+    input.imageUrls,
+    undefined,
+    input.documentUnderstanding
   );
+
+  const prompt = buildDetailedParsePrompt({
+    ...(input.documentUnderstanding !== undefined ? { documentUnderstanding: input.documentUnderstanding } : {}),
+    ...(input.preferredCurrencies !== undefined ? { preferredCurrencies: input.preferredCurrencies } : {}),
+    categories: input.originalCategories,
+    ...(input.aiCustomPrompt !== undefined ? { aiCustomPrompt: input.aiCustomPrompt } : {}),
+    ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
+  });
 
   const [result1, result2] = await runDualParsingCalls(ai, prompt, messageContent);
 
-  if (compareParsedEntries(result1.ledger_entries, result2.ledger_entries)) {
+  // If both runs indicate anomaly, return anomaly immediately
+  if (result1.outcome === "anomaly" && result2.outcome === "anomaly") {
+    return {
+      kind: "anomaly",
+      reason: result1.anomaly_reason ?? "Document cannot be parsed",
+    };
+  }
+
+  // If one is anomaly and one is success, arbitrate
+  const entriesToCompare1 = result1.outcome === "success" ? result1.ledger_entries : [];
+  const entriesToCompare2 = result2.outcome === "success" ? result2.ledger_entries : [];
+
+  if (
+    result1.outcome === "success" &&
+    result2.outcome === "success" &&
+    compareParsedEntries(entriesToCompare1, entriesToCompare2)
+  ) {
     return {
       kind: "success",
       output: buildStage2SuccessOutput(
         result1.ledger_entries,
         result1.reasoning,
-        input.validationSummary.summary?.title,
+        result1.title,
         false
       ),
     };
@@ -96,12 +124,21 @@ export async function executeStage2(
     };
   }
 
+  const chosen = chosenResult.result;
+
+  if (chosen.outcome === "anomaly") {
+    return {
+      kind: "anomaly",
+      reason: chosen.anomaly_reason ?? "Arbitrated result indicates anomaly",
+    };
+  }
+
   return {
     kind: "success",
     output: buildStage2SuccessOutput(
-      chosenResult.result.ledger_entries,
-      chosenResult.result.reasoning,
-      input.validationSummary.summary?.title,
+      chosen.ledger_entries,
+      chosen.reasoning,
+      chosen.title,
       true
     ),
   };
