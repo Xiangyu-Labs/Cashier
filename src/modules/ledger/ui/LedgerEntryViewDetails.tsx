@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
+import { parseISO } from "date-fns";
 import { useConvertedAmount } from "@/modules/currency/client";
 import { AnimatePresence, motion } from "framer-motion";
 import { EditableCategorySelect } from "@/components/editable-category-select";
@@ -95,7 +96,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   ]);
 
   const formatDateTime = (dateStr: string) => {
-    return parseDateString(dateStr).toLocaleDateString(locale, {
+    const parsed = dateStr.includes("T") ? parseISO(dateStr) : parseDateString(dateStr);
+    return parsed.toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",

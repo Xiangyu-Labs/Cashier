@@ -251,6 +251,12 @@ describe("LedgerEntryViewDetails", () => {
     expect(deleteButton).toBeDefined();
   });
 
+  it("does not show invalid date for ISO createdAt values", () => {
+    renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
+
+    expect(screen.queryByText("Invalid Date")).toBeNull();
+  });
+
   it("triggers onDelete when delete button is clicked", () => {
     renderWithQuery(<LedgerEntryViewDetails {...defaultProps} />);
 
