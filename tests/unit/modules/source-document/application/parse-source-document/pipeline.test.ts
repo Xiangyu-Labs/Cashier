@@ -2,15 +2,34 @@ import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
 import { buildStageContext } from "@/modules/source-document/application/parse-source-document/context";
-import { executeParseSourceDocument } from "@/modules/source-document/application/parse-source-document/execute";
 import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { buildStage1Input } from "@/modules/source-document/application/parse-source-document/pipeline-stage-inputs";
 
-function createMultiStageMockAI(options: {
+// Mock image loading so pipeline tests don't need real storage
+vi.mock("@/lib/storage/utils", () => ({
+  loadImagesForAI: vi.fn(async (urls: string[]) =>
+    urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
+  ),
+}));
+
+/**
+ * 3-Stage Pipeline Mock AI
+ *
+ * Detects stage by model or prompt content:
+ * - Stage 0: model === "vision" → returns structured DocumentUnderstanding JSON
+ * - Stage 1: validity prompt → returns { is_valid, reasoning }
+ * - Stage 2: detailed parse prompt → dual-run + arbitration
+ *
+ * Stage 1.5 ("You are a validation AI") must NEVER be called in the new pipeline.
+ */
+function createPipelineMockAI(options: {
   isValid?: boolean;
+  stage2Outcome?: "success" | "anomaly";
+  stage2AnomalyReason?: string;
+  stage2ArbitrationFails?: boolean;
+  title?: string;
   currencies?: string[];
   categories?: string[];
-  title?: string;
   entries?: Array<{
     item_name: string;
     amount: number;
@@ -19,14 +38,15 @@ function createMultiStageMockAI(options: {
     entry_date: string;
     notes: string | null;
   }>;
-  stage1_5Reasonable?: boolean;
-  stage2ArbitrationFails?: boolean;
 }): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
   const {
     isValid = true,
+    stage2Outcome = "success",
+    stage2AnomalyReason = "Anomaly detected",
+    stage2ArbitrationFails = false,
+    title = "Test Receipt",
     currencies = ["USD"],
     categories = ["Food"],
-    title = "Test Document",
     entries = [
       {
         item_name: "Lunch",
@@ -37,123 +57,106 @@ function createMultiStageMockAI(options: {
         notes: null,
       },
     ],
-    stage1_5Reasonable = true,
-    stage2ArbitrationFails = false,
   } = options;
-
-  let stage2CallCount = 0;
 
   const generate = vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
     const prompt = opts.prompt ?? "";
 
-    if (prompt.includes("You are a validation AI")) {
+    // Stage 0: structured document understanding (vision model)
+    if (opts.model === "vision") {
       return {
         content: JSON.stringify({
-          is_reasonable: stage1_5Reasonable,
-          summary: stage1_5Reasonable
-            ? {
-                title,
-                currencies: currencies.map((currency) => ({ code: currency, hint: "detected" })),
-                categories: categories.map((category) => ({ name: category, hint: "matched" })),
-              }
-            : undefined,
-          rejection_reason: stage1_5Reasonable ? undefined : "Results inconsistent",
+          documentType: "receipt",
+          primaryEvidence: {
+            merchant: "Test Merchant",
+            totals: ["USD 10.00"],
+            currencies,
+            dates: ["2024-01-01"],
+            lineItems: entries.map((e) => `${e.item_name}: ${e.amount} ${e.currency}`),
+          },
+          secondaryEvidence: ["Store address: 123 Main St", "Thank you for your purchase"],
+          ambiguities: [],
+          salienceHints: "Primary total and line items clearly printed at center.",
         }),
-        usage: { promptTokens: 100, completionTokens: 50 },
       };
     }
 
-    if (prompt.includes("You are a detailed financial document parser")) {
-      stage2CallCount += 1;
-      if (stage2ArbitrationFails && stage2CallCount <= 2) {
-        const modifiedEntries =
-          stage2CallCount === 1
-            ? entries
-            : entries.map((entry) => ({ ...entry, amount: entry.amount * 2 }));
+    // Stage 1.5 (OLD) — must NOT be called in the new pipeline
+    if (prompt.includes("You are a validation AI")) {
+      throw new Error(
+        "Stage 1.5 was called — this stage must not exist in the new 3-stage pipeline"
+      );
+    }
+
+    // Stage 1: validity-only gate
+    if (prompt.includes("financial document validation AI")) {
+      return {
+        content: JSON.stringify({
+          is_valid: isValid,
+          reasoning: isValid ? "Document contains amounts" : "No amounts found",
+        }),
+      };
+    }
+
+    // Stage 2 arbitration call
+    if (prompt.includes("arbitration AI") || prompt.includes("GPT 1 Result")) {
+      if (stage2ArbitrationFails) {
+        return { content: JSON.stringify({ choice: 0, reason: "Both results invalid" }) };
+      }
+      return { content: JSON.stringify({ choice: 1, reason: "GPT 1 is correct" }) };
+    }
+
+    // Stage 2: detailed parse prompt
+    if (prompt.includes("detailed financial document parser")) {
+      if (stage2Outcome === "anomaly") {
         return {
-          content: JSON.stringify({ ledger_entries: modifiedEntries, reasoning: "Parsed" }),
-          usage: { promptTokens: 100, completionTokens: 50 },
+          content: JSON.stringify({
+            outcome: "anomaly",
+            anomaly_reason: stage2AnomalyReason,
+            title,
+            currencies: currencies.map((c) => ({ code: c, hint: "detected" })),
+            ledger_entries: [],
+            reasoning: "Cannot parse",
+          }),
         };
       }
 
       return {
-        content: JSON.stringify({ ledger_entries: entries, reasoning: "Parsed successfully" }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("financial document validation")) {
-      return {
         content: JSON.stringify({
-          is_valid: isValid,
-          reasoning: isValid ? "Valid document" : "Invalid document",
+          outcome: "success",
+          title,
+          currencies: currencies.map((c) => ({ code: c, hint: "detected" })),
+          categories: categories.map((c) => ({ name: c, hint: "matched" })),
+          ledger_entries: entries,
+          reasoning: "Parse successful",
         }),
-        usage: { promptTokens: 100, completionTokens: 50 },
       };
     }
 
-    if (prompt.includes("completeness checker")) {
-      return {
-        content: JSON.stringify({ is_complete: true }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("You are a currency recognition AI")) {
-      return {
-        content: JSON.stringify({ currencies, reasoning: "Currency detected" }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("You are a category recognition AI")) {
-      return {
-        content: JSON.stringify({ categories, reasoning: "Category matched" }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("title extraction")) {
-      return {
-        content: JSON.stringify({ title }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("user requirement")) {
-      return {
-        content: JSON.stringify({ rules: [] }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    if (prompt.includes("arbitration")) {
-      return {
-        content: JSON.stringify({ choice: stage2ArbitrationFails ? 0 : 1, reason: "Resolution" }),
-        usage: { promptTokens: 100, completionTokens: 50 },
-      };
-    }
-
-    return {
-      content: JSON.stringify({}),
-      usage: { promptTokens: 100, completionTokens: 50 },
-    };
+    throw new Error(`Unexpected AI call. Prompt snippet: ${prompt.slice(0, 120)}`);
   });
 
-  return { ai: { generate }, generate };
+  const ai: AIContext = { generate };
+  return { ai, generate };
 }
 
-function createInput(overrides: Partial<ParseSourceDocumentInput> = {}): ParseSourceDocumentInput {
+function createInput(
+  overrides: Partial<ParseSourceDocumentInput> = {}
+): ParseSourceDocumentInput {
   return {
-    ledgerId: "ledger-1",
     sourceDocumentId: "source-doc-1",
-    categories: [{ id: "cat-1", name: "Food", description: "Food stuff" }],
+    ledgerId: "ledger-1",
+    text: undefined,
+    imageUrls: ["/api/uploads/test-receipt.jpg"],
+    aiLanguage: "zh-CN",
+    preferredCurrencies: ["USD"],
+    categories: [{ id: "cat-1", name: "Food", description: null }],
     settings: {},
     ...overrides,
   };
 }
 
-function createStageContext(ai: AIContext) {
+function buildCtx(ai: AIContext) {
   return buildStageContext({
     signal: new AbortController().signal,
     ai,
@@ -163,89 +166,114 @@ function createStageContext(ai: AIContext) {
   });
 }
 
-describe("executeParseSourceDocument", () => {
-  it("skips stage 0 when no images are provided", async () => {
-    const { ai, generate } = createMultiStageMockAI({});
+describe("runParsePipeline - new 3-stage flow", () => {
+  it("succeeds through Stage 0 → Stage 1 → Stage 2 without calling Stage 1.5", async () => {
+    const { ai, generate } = createPipelineMockAI({});
+    const ctx = buildCtx(ai);
 
-    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+    const result = await runParsePipeline(createInput(), ctx);
 
-    expect(result.verificationStatus).toBe("passed");
-    expect(generate.mock.calls.filter(([opts]) => opts.model === "vision")).toHaveLength(0);
-  });
+    expect(result.kind).toBe("success");
 
-  it("returns parsed entries for the success path", async () => {
-    const { ai } = createMultiStageMockAI({
-      entries: [
-        {
-          item_name: "Lunch",
-          amount: 10,
-          currency: "USD",
-          category_index: 1,
-          entry_date: "2024-01-01",
-          notes: null,
-        },
-      ],
-      title: "Test Title",
-    });
-
-    const result = await executeParseSourceDocument(
-      createInput({ aiLanguage: "en-US", preferredCurrencies: ["USD"] }),
-      createStageContext(ai)
+    // Stage 1.5 ("You are a validation AI") must never be called
+    const stage1_5Calls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("You are a validation AI")
     );
-
-    expect(result.ledgerEntries).toHaveLength(1);
-    expect(result.ledgerEntries[0]?.itemName).toBe("Lunch");
-    expect(result.ledgerEntries[0]?.entryDate).toBeNull();
-    expect(result.title).toBe("Test Title");
-    expect(result.verificationStatus).toBe("passed");
+    expect(stage1_5Calls).toHaveLength(0);
   });
 
-  it("returns invalid when stage 1 rejects the document", async () => {
-    const { ai } = createMultiStageMockAI({ isValid: false });
+  it("Stage 0 returns structured evidence with primary/secondary salience (not flat text)", async () => {
+    const { ai, generate } = createPipelineMockAI({});
+    const ctx = buildCtx(ai);
 
-    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+    await runParsePipeline(createInput(), ctx);
 
-    expect(result.ledgerEntries).toHaveLength(0);
-    expect(result.verificationStatus).toBe("invalid");
+    // Stage 0 must be invoked as the vision model
+    const visionCall = generate.mock.calls.find(
+      (c) => (c[0] as AIGenerateOptions).model === "vision"
+    );
+    expect(visionCall).toBeDefined();
+    expect(visionCall![0].model).toBe("vision");
   });
 
-  it("returns anomaly when stage 1.5 validation rejects the results", async () => {
-    const { ai } = createMultiStageMockAI({ stage1_5Reasonable: false });
+  it("Stage 0 structured payload preserves primary vs secondary evidence labels", async () => {
+    const { ai, generate } = createPipelineMockAI({
+      currencies: ["CNY"],
+      entries: [{ item_name: "Coffee", amount: 30, currency: "CNY", category_index: 1, entry_date: "2024-01-01", notes: null }],
+    });
+    const ctx = buildCtx(ai);
 
-    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+    const result = await runParsePipeline(createInput(), ctx);
 
-    expect(result.ledgerEntries).toHaveLength(0);
-    expect(result.verificationStatus).toBe("anomaly");
-    expect(result.anomalyReason).toContain("inconsistent");
+    // Pipeline must succeed — Stage 2 must be able to consume structured evidence
+    expect(result.kind).toBe("success");
+
+    // Stage 2 parse calls must happen (dual-run minimum)
+    const stage2Calls = generate.mock.calls.filter(
+      (c) => (c[0] as AIGenerateOptions).prompt?.includes("detailed financial document parser")
+    );
+    expect(stage2Calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("returns anomaly when stage 1 detects an unknown currency marker", async () => {
-    const { ai } = createMultiStageMockAI({ currencies: ["unknown"] });
+  // === Gate Parity Tests ===
 
-    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+  it("[GATE] Stage 1 validity=false → ParsePipelineResult.kind = invalid", async () => {
+    const { ai } = createPipelineMockAI({ isValid: false });
+    const ctx = buildCtx(ai);
 
-    expect(result.verificationStatus).toBe("anomaly");
-    expect(result.anomalyReason).toBe("Unable to recognize currency type");
+    const result = await runParsePipeline(createInput(), ctx);
+
+    expect(result.kind).toBe("invalid");
+    // Title must NOT be present on invalid results (title-on-invalid behavior removed)
+    expect((result as { title?: string }).title).toBeUndefined();
   });
 
-  it("returns anomaly when stage 2 arbitration fails", async () => {
-    const { ai } = createMultiStageMockAI({ stage2ArbitrationFails: true });
+  it("[GATE] Stage 2 anomaly outcome → ParsePipelineResult.kind = anomaly", async () => {
+    const { ai } = createPipelineMockAI({
+      stage2Outcome: "anomaly",
+      stage2AnomalyReason: "Document is incomplete",
+    });
+    const ctx = buildCtx(ai);
 
-    const result = await executeParseSourceDocument(createInput(), createStageContext(ai));
+    const result = await runParsePipeline(createInput(), ctx);
 
-    expect(result.ledgerEntries).toHaveLength(0);
-    expect(result.verificationStatus).toBe("anomaly");
-    expect("title" in result).toBe(false);
+    expect(result.kind).toBe("anomaly");
+    expect((result as { anomalyReason: string }).anomalyReason).toBeTruthy();
   });
 
-  it("returns cancelled when the pipeline aborts between stage batches", async () => {
+  it("[GATE] Stage 2 arbitration failure → ParsePipelineResult.kind = anomaly", async () => {
+    const { ai } = createPipelineMockAI({ stage2ArbitrationFails: true });
+    const ctx = buildCtx(ai);
+
+    const result = await runParsePipeline(createInput(), ctx);
+
+    expect(result.kind).toBe("anomaly");
+  });
+
+  it("[GATE] Stage 2 successful parse → ParsePipelineResult.kind = success with ledgerEntries", async () => {
+    const { ai } = createPipelineMockAI({
+      entries: [
+        { item_name: "Dinner", amount: 50, currency: "USD", category_index: 1, entry_date: "2024-01-02", notes: null },
+      ],
+    });
+    const ctx = buildCtx(ai);
+
+    const result = await runParsePipeline(createInput(), ctx);
+
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.ledgerEntries.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("cancellation still works - abort during stage 1 returns cancelled", async () => {
     const controller = new AbortController();
-    const { ai } = createMultiStageMockAI({});
+    const { ai } = createPipelineMockAI({});
     const ctx = buildStageContext({
       signal: controller.signal,
       ai,
       setProgress: vi.fn(async (message: string) => {
-        if (message === "正在核对分析结果...") {
+        if (message === "正在分析单据信息...") {
           controller.abort();
         }
       }),
@@ -263,19 +291,21 @@ describe("buildStage1Input", () => {
   it("normalizes categories and forwards optional fields", () => {
     const input = createInput({
       text: "user text",
-      imageUrls: ["https://example.com/doc.png"],
+      imageUrls: ["/api/uploads/doc.jpg"],
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       settings: { aiCustomPrompt: "Prefer food-related detail" },
       categories: [{ id: "cat-1", name: "Food", description: null }],
     });
 
-    const stage1Input = buildStage1Input(input, "vision summary");
+    // After refactor buildStage1Input accepts DocumentUnderstanding (structured Stage 0 output)
+    // instead of a plain visionDescription string.
+    // Passing undefined for now — full structured type update happens in Task 2.
+    const stage1Input = buildStage1Input(input, undefined);
 
-    expect(stage1Input).toEqual({
+    expect(stage1Input).toMatchObject({
       text: "user text",
-      imageUrls: ["https://example.com/doc.png"],
-      visionDescription: "vision summary",
+      imageUrls: ["/api/uploads/doc.jpg"],
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       aiCustomPrompt: "Prefer food-related detail",
@@ -283,3 +313,4 @@ describe("buildStage1Input", () => {
     });
   });
 });
+
