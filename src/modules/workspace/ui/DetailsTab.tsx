@@ -4,7 +4,7 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckSquare, Loader2, Tags, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckSquare, Loader2, Tags, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -167,14 +167,14 @@ export function DetailsTab({
             {entries.length > 0 && (
               <>
                 <Button
-                  variant={isSelectionMode ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="icon"
                   onClick={toggleSelectionMode}
                   className="shrink-0 h-8 w-8"
                   title={isSelectionMode ? t("cancelSelect") : t("select")}
                 >
                   {isSelectionMode ? (
-                    <X className="w-4 h-4" />
+                    <ArrowLeft className="w-4 h-4" />
                   ) : (
                     <CheckSquare className="w-4 h-4" />
                   )}

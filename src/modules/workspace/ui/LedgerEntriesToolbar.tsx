@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Loader2, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckSquare, Loader2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,13 +68,17 @@ export function LedgerEntriesToolbar({
   return (
     <div className="px-2 mb-2 sm:mb-4 flex flex-wrap items-center gap-2">
       <Button
-        variant={isSelectionMode ? "secondary" : "ghost"}
+        variant="ghost"
         size="icon"
         onClick={onToggleSelectionMode}
         className="shrink-0 h-8 w-8"
         title={isSelectionMode ? t("cancelSelect") : t("select")}
       >
-        {isSelectionMode ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+        {isSelectionMode ? (
+          <ArrowLeft className="h-4 w-4" />
+        ) : (
+          <CheckSquare className="h-4 w-4" />
+        )}
       </Button>
 
       {isSelectionMode && (
