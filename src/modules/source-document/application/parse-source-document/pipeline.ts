@@ -7,45 +7,26 @@ import type { ParseSourceDocumentInput } from "../tasks/parse-source-document";
 import type { StageContext } from "./context";
 import type { ParsePipelineResult } from "./contracts";
 import { executeStage0 } from "./stage0-vision";
-import { executeStage1 } from "./stage1-executor";
-import { executeStage2 } from "./stage2-executor";
-import type { DocumentUnderstanding } from "./types";
+import { arbitrateStage0Results } from "./stage0-arbitration";
+import { shouldDualRun, compareResults } from "./stage0-schema";
+import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 import {
-  sourceDocumentNotDeletedCondition,
-} from "../source-document-state";
-import {
-  resolveStage1Result,
-  resolveStage2ExecutionResult,
+  resolveStage0Outcome,
+  resolveStage0Success,
 } from "./pipeline-stage-decisions";
-import {
-  buildStage1Input,
-  buildStage2Input,
-} from "./pipeline-stage-inputs";
+import { buildStage0Input } from "./pipeline-stage-inputs";
 
-async function runStage0(
-  input: ParseSourceDocumentInput,
+export { buildStage1Input } from "./pipeline-stage-inputs";
+
+async function persistStage0Result(
+  result: unknown,
   ctx: StageContext
-): Promise<DocumentUnderstanding | undefined> {
-  if (input.imageUrls == null || input.imageUrls.length === 0) {
-    return undefined;
-  }
-
-  throwIfCancelled(ctx.signal);
-  await ctx.setProgress("正在读取图片...");
-
-  const stage0Result = await executeStage0(
-    {
-      imageUrls: input.imageUrls,
-      ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
-    },
-    ctx.ai
-  );
-
-  throwIfCancelled(ctx.signal);
-
-  // Persist structured understanding to metadata
+): Promise<void> {
   const doc = await db.query.sourceDocuments.findFirst({
-    where: and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()),
+    where: and(
+      eq(sourceDocuments.id, ctx.docId),
+      sourceDocumentNotDeletedCondition()
+    ),
   });
   if (doc != null) {
     const existingMeta = (doc.metadata as Record<string, unknown>) ?? {};
@@ -54,68 +35,16 @@ async function runStage0(
       .set({
         metadata: {
           ...existingMeta,
-          visionUnderstanding: stage0Result as unknown as Record<string, unknown>,
+          stage0Result: result as Record<string, unknown>,
         },
       })
-      .where(and(eq(sourceDocuments.id, ctx.docId), sourceDocumentNotDeletedCondition()));
+      .where(
+        and(
+          eq(sourceDocuments.id, ctx.docId),
+          sourceDocumentNotDeletedCondition()
+        )
+      );
   }
-
-  return stage0Result;
-}
-
-async function runStage1(
-  input: ParseSourceDocumentInput,
-  documentUnderstanding: DocumentUnderstanding | undefined,
-  ctx: StageContext
-): Promise<ParsePipelineResult | { kind: "continue" }> {
-  throwIfCancelled(ctx.signal);
-  await ctx.setProgress("正在分析单据信息...");
-
-  throwIfCancelled(ctx.signal);
-
-  const stage1Input = buildStage1Input(input, documentUnderstanding);
-  const stage1Result = await executeStage1(stage1Input, ctx.ai);
-
-  const decision = resolveStage1Result(stage1Result);
-  if (decision.kind !== "continue") {
-    logger.info({ docId: ctx.docId, reasoning: stage1Result.reasoning }, "Stage 1: Document invalid");
-    return decision;
-  }
-
-  return { kind: "continue" };
-}
-
-async function runStage2(
-  input: ParseSourceDocumentInput,
-  documentUnderstanding: DocumentUnderstanding | undefined,
-  ctx: StageContext
-): Promise<ParsePipelineResult> {
-  throwIfCancelled(ctx.signal);
-  await ctx.setProgress("正在解析账目数据...");
-
-  const stage2Input = buildStage2Input(input, documentUnderstanding);
-  const stage2Result = await executeStage2(stage2Input, ctx.ai);
-
-  if (stage2Result.kind === "anomaly") {
-    logger.info({ docId: ctx.docId }, "Stage 2: Arbitration failed or anomaly");
-    return resolveStage2ExecutionResult(stage2Result);
-  }
-
-  const stage2Decision = resolveStage2ExecutionResult(stage2Result);
-  if (stage2Decision.kind !== "success") {
-    return stage2Decision;
-  }
-
-  logger.info(
-    {
-      docId: ctx.docId,
-      entryCount: stage2Decision.ledgerEntries.length,
-      wasArbitrated: stage2Result.output.wasArbitrated,
-    },
-    "Stage 2: Parsing completed"
-  );
-
-  return stage2Decision;
 }
 
 export async function runParsePipeline(
@@ -123,14 +52,75 @@ export async function runParsePipeline(
   ctx: StageContext
 ): Promise<ParsePipelineResult> {
   try {
-    const documentUnderstanding = await runStage0(input, ctx);
-    const stage1Result = await runStage1(input, documentUnderstanding, ctx);
+    throwIfCancelled(ctx.signal);
+    await ctx.setProgress("正在解析单据...");
 
-    if (stage1Result.kind !== "continue") {
-      return stage1Result;
+    const stage0Input = buildStage0Input(input);
+    const first = await executeStage0(stage0Input, ctx.ai);
+
+    throwIfCancelled(ctx.signal);
+
+    // Short-circuit: invalid or anomaly
+    const firstDecision = resolveStage0Outcome(first);
+    if (firstDecision.kind !== "continue") {
+      logger.info({ docId: ctx.docId, outcome: first.outcome }, "stage0: non-success outcome");
+      return firstDecision;
     }
 
-    return await runStage2(input, documentUnderstanding, ctx);
+    // Simple document: accept first-pass result immediately
+    if (!shouldDualRun(first)) {
+      logger.info(
+        { docId: ctx.docId, entries: first.ledger_entries.length },
+        "stage0: simple document, accepting first pass"
+      );
+      await persistStage0Result(first, ctx);
+      return resolveStage0Success(first, false);
+    }
+
+    // Complex document: run a second pass
+    throwIfCancelled(ctx.signal);
+    await ctx.setProgress("正在二次验证单据...");
+
+    const second = await executeStage0(stage0Input, ctx.ai);
+
+    throwIfCancelled(ctx.signal);
+
+    // If second pass is also non-success, report anomaly
+    if (second.outcome !== "success") {
+      return {
+        kind: "anomaly",
+        anomalyReason: second.anomaly_reason ?? "Second parse pass returned non-success",
+      };
+    }
+
+    // If both agree, accept the first result
+    if (compareResults(first, second)) {
+      logger.info(
+        { docId: ctx.docId, entries: first.ledger_entries.length },
+        "stage0: dual-run results agree"
+      );
+      await persistStage0Result(first, ctx);
+      return resolveStage0Success(first, false);
+    }
+
+    // Results disagree: arbitrate
+    throwIfCancelled(ctx.signal);
+    await ctx.setProgress("正在仲裁单据解析结果...");
+
+    logger.info({ docId: ctx.docId }, "stage0: dual-run disagrees, arbitrating");
+    const arbitration = await arbitrateStage0Results(
+      { input: stage0Input, result1: first, result2: second },
+      ctx.ai
+    );
+
+    throwIfCancelled(ctx.signal);
+
+    if (arbitration.kind === "anomaly") {
+      return { kind: "anomaly", anomalyReason: arbitration.reason };
+    }
+
+    await persistStage0Result(arbitration.result, ctx);
+    return resolveStage0Success(arbitration.result, true);
   } catch (error) {
     if (error instanceof TaskCancelledError) {
       return { kind: "cancelled" };
