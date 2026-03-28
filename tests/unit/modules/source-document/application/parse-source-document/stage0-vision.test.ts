@@ -9,21 +9,26 @@ vi.mock("@/lib/storage/utils", () => ({
   ),
 }));
 
-const STRUCTURED_RESPONSE = {
-  documentType: "receipt",
-  primaryEvidence: {
-    merchant: "Test Restaurant",
-    totals: ["¥45.00"],
-    currencies: ["CNY"],
-    dates: ["2024-01-15"],
-    lineItems: ["Lunch set: ¥45.00"],
-  },
-  secondaryEvidence: ["Store address: 123 Main St", "Thank you for your purchase"],
-  ambiguities: [],
-  salienceHints: "Total amount and merchant name are clearly printed at center.",
+const SIMPLE_SUCCESS_RESPONSE = {
+  outcome: "success",
+  title: "Test Restaurant",
+  receipt_count: 1,
+  receipt_totals: [{ receipt_index: 0, amount: 45.0, currency: "CNY" }],
+  ledger_entries: [
+    {
+      receipt_index: 0,
+      item_name: "Lunch set",
+      amount: 45.0,
+      currency: "CNY",
+      category_index: 1,
+      notes: null,
+    },
+  ],
+  order_adjustments: [],
+  reasoning: "Single item receipt",
 };
 
-function createMockAI(response: unknown = STRUCTURED_RESPONSE): AIContext {
+function createMockAI(response: unknown = SIMPLE_SUCCESS_RESPONSE): AIContext {
   return {
     generate: vi.fn().mockResolvedValue({
       content: JSON.stringify(response),
@@ -31,12 +36,7 @@ function createMockAI(response: unknown = STRUCTURED_RESPONSE): AIContext {
   };
 }
 
-function requireDefined<T>(value: T | undefined, message: string): T {
-  if (value === undefined) throw new Error(message);
-  return value;
-}
-
-describe("executeStage0 — structured document understanding", () => {
+describe("executeStage0 — single-pass receipt parser", () => {
   let mockAI: AIContext;
 
   beforeEach(() => {
@@ -45,124 +45,159 @@ describe("executeStage0 — structured document understanding", () => {
 
   // === Return shape ===
 
-  it("returns structured DocumentUnderstanding, not a flat description string", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    // Must NOT have a flat description field
-    expect((result as { description?: string }).description).toBeUndefined();
-
-    // Must have structured fields
-    expect(result).toHaveProperty("documentType");
-    expect(result).toHaveProperty("primaryEvidence");
-    expect(result).toHaveProperty("secondaryEvidence");
-    expect(result).toHaveProperty("ambiguities");
-    expect(result).toHaveProperty("salienceHints");
-  });
-
-  it("primaryEvidence contains merchant, totals, currencies, dates, lineItems", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    const primary = (result as unknown as { primaryEvidence: Record<string, unknown> }).primaryEvidence;
-    expect(primary).toHaveProperty("merchant");
-    expect(primary).toHaveProperty("totals");
-    expect(primary).toHaveProperty("currencies");
-    expect(primary).toHaveProperty("dates");
-    expect(primary).toHaveProperty("lineItems");
-  });
-
-  it("preserves primary vs secondary evidence as separate arrays", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    const r = result as {
-      primaryEvidence: { lineItems: string[] };
-      secondaryEvidence: string[];
-    };
-    expect(Array.isArray(r.primaryEvidence.lineItems)).toBe(true);
-    expect(Array.isArray(r.secondaryEvidence)).toBe(true);
-  });
-
-  it("returns parsed values from AI response correctly", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    const r = result as typeof STRUCTURED_RESPONSE;
-    expect(r.documentType).toBe("receipt");
-    expect(r.primaryEvidence.merchant).toBe("Test Restaurant");
-    expect(r.primaryEvidence.currencies).toContain("CNY");
-    expect(r.primaryEvidence.totals).toContain("¥45.00");
-    expect(r.secondaryEvidence).toContain("Store address: 123 Main St");
-    expect(r.salienceHints).toBeTruthy();
-  });
-
-  it("returns empty arrays for ambiguities when document is clear", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    const r = result as { ambiguities: string[] };
-    expect(Array.isArray(r.ambiguities)).toBe(true);
-  });
-
-  // === AI call contract ===
-
-  it("calls vision model with requireJson: true", async () => {
-    await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
-
-    const call = requireDefined(
-      (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as AIGenerateOptions | undefined,
-      "Expected generate call"
+  it("returns NormalizedStage0ParseOutput with outcome, title, entries, adjustments", async () => {
+    const result = await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      mockAI
     );
-    expect(call.model).toBe("vision");
-    expect(call.requireJson).toBe(true);
+
+    expect(result.outcome).toBe("success");
+    expect(result.title).toBe("Test Restaurant");
+    expect(result.receipt_count).toBe(1);
+    expect(result.receipt_totals).toHaveLength(1);
+    expect(result.ledger_entries).toHaveLength(1);
+    expect(result.order_adjustments).toEqual([]);
   });
 
-  it("does not call AI when no images provided", async () => {
-    await executeStage0({ imageUrls: [] }, mockAI);
-    expect(mockAI.generate).not.toHaveBeenCalled();
+  it("does NOT return DocumentUnderstanding shape (no primaryEvidence field)", async () => {
+    const result = await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      mockAI
+    ) as Record<string, unknown>;
+
+    expect(result["primaryEvidence"]).toBeUndefined();
+    expect(result["documentType"]).toBeUndefined();
   });
 
-  it("returns null-safe empty DocumentUnderstanding when no images provided", async () => {
-    const result = await executeStage0({ imageUrls: [] }, mockAI);
+  it("preserves receipt_index on ledger entries", async () => {
+    const result = await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      mockAI
+    );
 
-    // When no images: must still return structured shape, not { description: "" }
-    expect((result as { description?: string }).description).toBeUndefined();
-    // documentType should be present (possibly null/empty)
-    expect("documentType" in result).toBe(true);
+    expect(result.ledger_entries[0]?.receipt_index).toBe(0);
   });
 
-  // === Salience preservation ===
+  it("preserves order_adjustments with negative amounts", async () => {
+    const aiWithAdjustment = createMockAI({
+      ...SIMPLE_SUCCESS_RESPONSE,
+      order_adjustments: [
+        { receipt_index: 0, item_name: "Discount", amount: -5.0, currency: "CNY" },
+      ],
+    });
 
-  it("salienceHints is a non-empty string describing spatial/visual salience", async () => {
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, mockAI);
+    const result = await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      aiWithAdjustment
+    );
 
-    const r = result as { salienceHints: string };
-    expect(typeof r.salienceHints).toBe("string");
-    expect(r.salienceHints.length).toBeGreaterThan(0);
+    expect(result.order_adjustments).toHaveLength(1);
+    expect(result.order_adjustments[0]?.amount).toBe(-5.0);
   });
 
-  it("secondary evidence is distinct from primary line items (not flattened together)", async () => {
-    const customResponse = {
-      ...STRUCTURED_RESPONSE,
-      primaryEvidence: {
-        ...STRUCTURED_RESPONSE.primaryEvidence,
-        lineItems: ["Steak: $50.00"],
+  // === Model selection ===
+
+  it("uses vision model when imageUrls are provided", async () => {
+    await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      mockAI
+    );
+
+    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
+    expect(call[0].model).toBe("vision");
+  });
+
+  it("uses text model when only text is provided", async () => {
+    await executeStage0(
+      { text: "Taxi fare SGD 28.00", originalCategories: [] },
+      mockAI
+    );
+
+    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
+    expect(call[0].model).toBe("text");
+  });
+
+  it("uses vision model for mixed text+image input", async () => {
+    await executeStage0(
+      { text: "meal", imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      mockAI
+    );
+
+    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
+    expect(call[0].model).toBe("vision");
+  });
+
+  // === Outcome branches ===
+
+  it("returns invalid outcome when AI reports invalid", async () => {
+    const aiInvalid = createMockAI({
+      ...SIMPLE_SUCCESS_RESPONSE,
+      outcome: "invalid",
+      ledger_entries: [],
+      receipt_totals: [],
+    });
+
+    const result = await executeStage0(
+      { text: "random text", originalCategories: [] },
+      aiInvalid
+    );
+
+    expect(result.outcome).toBe("invalid");
+  });
+
+  it("returns anomaly outcome when AI reports anomaly", async () => {
+    const aiAnomaly = createMockAI({
+      ...SIMPLE_SUCCESS_RESPONSE,
+      outcome: "anomaly",
+      anomaly_reason: "Blurry image",
+      ledger_entries: [],
+      receipt_totals: [],
+    });
+
+    const result = await executeStage0(
+      { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      aiAnomaly
+    );
+
+    expect(result.outcome).toBe("anomaly");
+    expect(result.anomaly_reason).toBe("Blurry image");
+  });
+
+  // === Prompt contains required sections ===
+
+  it("injects category list into prompt when categories are provided", async () => {
+    await executeStage0(
+      {
+        text: "coffee 10 USD",
+        originalCategories: [{ name: "Food", description: "Meals and snacks" }],
       },
-      secondaryEvidence: ["Promotional offer: 10% off next visit"],
-    };
-    const ai = createMockAI(customResponse);
-    const result = await executeStage0({ imageUrls: ["data:image/jpeg;base64,abc"] }, ai);
+      mockAI
+    );
 
-    const r = result as typeof customResponse;
-    // Primary line items must not include promotional text
-    expect(r.primaryEvidence.lineItems).not.toContain("Promotional offer: 10% off next visit");
-    // Secondary evidence must contain it
-    expect(r.secondaryEvidence).toContain("Promotional offer: 10% off next visit");
+    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
+    expect(call[0].prompt).toContain("Food");
+  });
+
+  it("prompt contains receipt and invoice parser identifier", async () => {
+    await executeStage0(
+      { text: "coffee 10 USD", originalCategories: [] },
+      mockAI
+    );
+
+    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
+    expect(call[0].prompt).toContain("receipt and invoice parser");
   });
 
   // === Multi-image ===
 
   it("handles multiple images without error", async () => {
     const result = await executeStage0(
-      { imageUrls: ["data:image/jpeg;base64,abc", "data:image/jpeg;base64,def"] },
+      {
+        imageUrls: ["data:image/jpeg;base64,abc", "data:image/jpeg;base64,def"],
+        originalCategories: [],
+      },
       mockAI
     );
-    expect(result).toHaveProperty("documentType");
+    expect(result.outcome).toBe("success");
   });
 });

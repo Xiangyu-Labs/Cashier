@@ -1,144 +1,148 @@
 /**
- * Stage 0: Structured Document Understanding
+ * Stage 0: Single-pass receipt and invoice parser
  *
- * Produces a compact, structured "document understanding" payload that separates
- * primary evidence (amounts, line items, merchant, dates) from secondary evidence
- * (footer text, promotional copy) and encodes salience, ambiguity, and confidence.
+ * One AI call extracts validity, structured line items, receipt totals, and
+ * order adjustments directly from images and/or text. No separate OCR stage.
  *
- * Downstream stages receive this structured payload instead of raw images or verbose
- * freeform narration, allowing cheaper text-only models while preserving the
- * primary-vs-secondary distinction needed for conflict resolution.
+ * Uses a vision model when images are present, a text model for text-only input.
+ * Downstream can run a second pass (dual-run) for complex documents.
  */
 
 import type { AIContext } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
-import type { DocumentUnderstanding } from "./types";
+import {
+  stage0ParseOutputSchema,
+  normalizeResult,
+  type NormalizedStage0ParseOutput,
+} from "./stage0-schema";
 
 export interface Stage0Input {
-  imageUrls: string[];
-  focusHints?: string[];
+  imageUrls?: string[];
+  text?: string;
+  originalCategories: { name: string; description?: string | null }[];
   aiLanguage?: string;
+  aiCustomPrompt?: string;
+  preferredCurrencies?: string[];
+  documentUnderstanding?: unknown; // accepted but not used in single-pass path
 }
 
-export type Stage0Output = DocumentUnderstanding;
+export type Stage0Output = NormalizedStage0ParseOutput;
 
-/** Returned when there are no images to process */
-const EMPTY_UNDERSTANDING: DocumentUnderstanding = {
-  documentType: null,
-  primaryEvidence: {
-    merchant: null,
-    totals: [],
-    currencies: [],
-    dates: [],
-    lineItems: [],
-  },
-  secondaryEvidence: [],
-  ambiguities: [],
-  salienceHints: "",
-};
+function buildPrompt(
+  input: Stage0Input,
+  aiLanguage: string
+): string {
+  const categorySection =
+    input.originalCategories.length > 0
+      ? `\n### Expense Categories\nAssign each line item a category_index (0-based) from this list:\n${input.originalCategories
+          .map((c, i) => `${i}. ${c.name}${c.description ? ` — ${c.description}` : ""}`)
+          .join("\n")}\n`
+      : "\n### Expense Categories\nNo categories provided — use category_index 0 for all entries.\n";
 
-function buildVisionPrompt(aiLanguage: string = "zh-CN", focusHints?: string[]): string {
-  const focusSection =
-    (focusHints?.length ?? 0) > 0
-      ? `\n### Focus Areas\nPay special attention to:\n${(focusHints ?? []).map((h) => `- ${h}`).join("\n")}\n`
+  const currencySection =
+    (input.preferredCurrencies?.length ?? 0) > 0
+      ? `\n### Preferred Currencies\nWhen currency is ambiguous, prefer: ${input.preferredCurrencies!.join(", ")}\n`
       : "";
 
-  return `You are a financial document understanding AI. Your job is to extract structured evidence from the document image(s) and classify it by salience — separating essential financial data from decorative or secondary text.
+  const customSection = input.aiCustomPrompt
+    ? `\n### Additional Instructions\n${input.aiCustomPrompt}\n`
+    : "";
 
-Respond in the user's preferred language when naming things (language: ${aiLanguage}), but keep field names and JSON keys in English.
+  const textSection = input.text
+    ? `\n### Document Text\n${input.text}\n`
+    : "";
 
+  return `You are a receipt and invoice parser. Extract all expense line items from the provided document(s) and return structured JSON.
+
+Respond in the user's preferred language for item names (language: ${aiLanguage}), but keep all JSON keys in English.
+${categorySection}${currencySection}${customSection}${textSection}
 ### Output Format
 
-Return a single JSON object with this exact shape:
+Return a single JSON object:
 
 \`\`\`json
 {
-  "documentType": "receipt | invoice | bank_statement | screenshot | handwritten | unknown",
-  "primaryEvidence": {
-    "merchant": "<store/brand name, or null if absent>",
-    "totals": ["<each total/grand-total amount exactly as printed, e.g. ¥45.00>"],
-    "currencies": ["<ISO code or symbol, e.g. CNY, USD, ¥, $>"],
-    "dates": ["<transaction or document dates>"],
-    "lineItems": ["<item name: amount — list each individually, max 30 items>"]
-  },
-  "secondaryEvidence": [
-    "<non-financial text: addresses, phone numbers, promo text, footer copy, thank-you notes — max 10 items>"
+  "outcome": "success | invalid | anomaly",
+  "anomaly_reason": "string or null — only when outcome is anomaly",
+  "title": "merchant or document name",
+  "receipt_count": 1,
+  "receipt_totals": [
+    { "receipt_index": 0, "amount": 45.00, "currency": "CNY" }
   ],
-  "ambiguities": [
-    "<anything blurry, partially cut off, or where you are uncertain — describe what you can see>"
+  "ledger_entries": [
+    {
+      "receipt_index": 0,
+      "item_name": "Lunch set",
+      "amount": 45.00,
+      "currency": "CNY",
+      "category_index": 1,
+      "notes": null
+    }
   ],
-  "salienceHints": "<one sentence: where are the most important values located on the document?>"
+  "order_adjustments": [
+    { "receipt_index": 0, "item_name": "Discount", "amount": -5.00, "currency": "CNY" }
+  ],
+  "reasoning": "brief explanation"
 }
 \`\`\`
 
 ### Rules
-
-- primaryEvidence = financial data that drives ledger entries (amounts, items, merchant, dates)
-- secondaryEvidence = everything else visible but not directly relevant to the ledger
-- Do NOT merge primary and secondary into one flat list
-- Keep lists compact — prefer concise item descriptions over verbose transcription
-- If a field has no data, use null (for strings) or [] (for arrays)
-- Do NOT add explanatory prose outside the JSON${focusSection}`;
+- Set outcome to "invalid" if the document is not a receipt or invoice.
+- Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
+- Use negative amounts for discounts and adjustments in order_adjustments.
+- Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
+- Do not include taxes or tips in order_adjustments; include them as ledger_entries.
+- Return only the JSON block, no other text.`;
 }
 
 export async function executeStage0(
   input: Stage0Input,
   ai: AIContext
 ): Promise<Stage0Output> {
-  if (input.imageUrls.length === 0) {
-    return EMPTY_UNDERSTANDING;
+  const aiLanguage = input.aiLanguage ?? "zh-CN";
+  const hasImages = (input.imageUrls?.length ?? 0) > 0;
+  const model = hasImages ? "vision" : "text";
+
+  const prompt = buildPrompt(input, aiLanguage);
+
+  let images: { dataUrl: string }[] | undefined;
+  if (hasImages) {
+    const loaded = await loadImagesForAI(input.imageUrls!);
+    images = loaded
+      .filter((r) => r.success)
+      .map((r) => ({ dataUrl: r.dataUrl }));
   }
 
-  const prompt = buildVisionPrompt(input.aiLanguage, input.focusHints);
+  logger.debug({ model, hasImages }, "stage0: calling AI");
 
-  const content: Array<
-    { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-  > = [];
+  const response = await ai.generate({ model, prompt, images });
 
-  if (input.imageUrls.length > 1) {
-    content.push({
-      type: "text",
-      text: `This document consists of ${input.imageUrls.length} images. Analyze all of them as a single document.`,
-    });
-  }
-
-  // Load images (handles both base64 and R2 URLs)
-  const loadedResults = await loadImagesForAI(input.imageUrls);
-  const failures = loadedResults.filter((r) => !r.success);
-  if (failures.length > 0) {
-    const failureMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
+  let raw: unknown;
+  try {
+    // Strip markdown fences if present
+    const content = response.content
+      .replace(/^```json\s*/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    raw = JSON.parse(content);
+  } catch (e) {
     throw new AppError(
-      `Failed to load ${failures.length} image(s): ${failureMessages}`,
-      "IMAGE_BATCH_LOAD_FAILED"
+      `stage0: failed to parse AI response as JSON: ${String(e)}`,
+      "AI_PARSE_ERROR"
     );
   }
 
-  for (const result of loadedResults) {
-    if (result.dataUrl != null && result.dataUrl !== "") {
-      content.push({ type: "image_url", image_url: { url: result.dataUrl } });
-    }
+  const parsed = stage0ParseOutputSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new AppError(
+      `stage0: AI response failed schema validation: ${parsed.error.message}`,
+      "AI_SCHEMA_ERROR"
+    );
   }
 
-  const response = await ai.generate({
-    prompt,
-    messages: [{ role: "user", content }],
-    model: "vision",
-    requireJson: true,
-  });
-
-  const parsed = JSON.parse(response.content) as DocumentUnderstanding;
-
-  logger.info(
-    {
-      documentType: parsed.documentType,
-      primaryLineItems: parsed.primaryEvidence?.lineItems?.length ?? 0,
-      secondaryItems: parsed.secondaryEvidence?.length ?? 0,
-      ambiguities: parsed.ambiguities?.length ?? 0,
-    },
-    "Stage 0: Document understanding completed"
-  );
-
-  return parsed;
+  const result = normalizeResult(parsed.data);
+  logger.debug({ outcome: result.outcome, entries: result.ledger_entries.length }, "stage0: complete");
+  return result;
 }
