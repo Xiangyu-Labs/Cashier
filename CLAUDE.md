@@ -24,6 +24,11 @@ npx vitest run tests/unit/lib/date-utils.test.ts
 # Run tests matching a pattern:
 npx vitest run -t "should parse receipt"
 
+# Smoke tests (call real AI, require API keys)
+# Prerequisite: OPENAI_API_KEY (and optionally AI_MODEL_TEXT/AI_MODEL_VISION) in .env.local
+SMOKE_TESTS=1 npx vitest run --project smoke
+# Smoke tests are skipped by default (SMOKE_TESTS !== "1") in all other test runs
+
 # Database (Drizzle ORM)
 npm run db:push          # Push schema changes
 npm run db:generate      # Generate migrations
