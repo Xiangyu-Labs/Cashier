@@ -4,29 +4,17 @@ import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
- * Check if a URL is a base64 data URL
- */
-function isBase64DataUrl(url: string): boolean {
-  return url.startsWith("data:");
-}
-
-/**
  * Load image data for AI processing
- * Supports local upload URLs and base64 data URLs
+ * Supports local upload URLs only.
  *
- * @param url - Image URL (local upload URL /api/uploads/... or base64 data URL)
+ * @param url - Image URL (local upload URL /api/uploads/...)
  * @returns Base64 data URL for AI API
  */
 export async function loadImageForAI(url: string): Promise<string> {
-  // If it's already a base64 data URL, return as-is
-  if (isBase64DataUrl(url)) {
-    return url;
-  }
-
   // Must be a local upload URL
   if (!isLocalUploadUrl(url)) {
     throw new ValidationError(
-      `Invalid image URL format. Only local upload URLs (/api/uploads/...) or base64 data URLs are supported: ${url.substring(0, 50)}...`
+      `Invalid image URL format. Only local upload URLs (/api/uploads/...) are supported: ${url.substring(0, 50)}...`
     );
   }
 
@@ -65,7 +53,7 @@ export interface LoadImageResult {
  * Load multiple images for AI processing
  * Uses Promise.allSettled to handle partial failures gracefully
  *
- * @param urls - Array of image URLs (local upload URLs only)
+ * @param urls - Array of image URLs (local upload URLs)
  * @returns Array of load results (both successful and failed)
  */
 export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]> {

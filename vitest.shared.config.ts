@@ -124,6 +124,28 @@ export const unitProjects = [
   }),
 ];
 
+export const smokeProjects = [
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "smoke",
+      sequence: {
+        groupOrder: 5,
+      },
+      include: ["tests/smoke/**/*.test.ts"],
+      exclude: defaultProjectExcludes,
+      environment: "node",
+      setupFiles: ["./tests/smoke/setup.ts"],
+      fileParallelism: false,
+      maxWorkers: 1,
+      testTimeout: 90_000,
+    },
+  }),
+];
+
 export const integrationProjects = [
   defineProject({
     resolve: {

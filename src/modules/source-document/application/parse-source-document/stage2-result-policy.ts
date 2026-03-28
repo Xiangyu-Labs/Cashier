@@ -7,12 +7,12 @@ const entrySchema = z.object({
   amount: z.number(),
   currency: z.string(),
   category_index: z.number().int().min(0),
-  notes: z.string().nullable(),
+  notes: z.string().nullish(),
 });
 
 export const stage2ParseOutputSchema = z.object({
   outcome: z.enum(["success", "anomaly"]).default("success"),
-  anomaly_reason: z.string().optional(),
+  anomaly_reason: z.string().nullish(),
   title: z.string().optional(),
   currencies: z
     .array(z.object({ code: z.string(), hint: z.string() }))
@@ -37,14 +37,14 @@ export function normalizeStage2ParseResult(
 ): NormalizedStage2ParseResult {
   return {
     outcome: output.outcome,
-    ...(output.anomaly_reason !== undefined ? { anomaly_reason: output.anomaly_reason } : {}),
+    ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
     ...(output.title !== undefined ? { title: output.title } : {}),
     ledger_entries: output.ledger_entries.map((entry) => ({
       item_name: entry.item_name,
       amount: entry.amount,
       currency: entry.currency,
       category_index: entry.category_index,
-      notes: entry.notes,
+      notes: entry.notes ?? null,
     })),
     reasoning: output.reasoning,
   };

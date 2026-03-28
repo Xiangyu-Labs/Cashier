@@ -3,6 +3,7 @@ import {
   coverageConfig,
   integrationProjects,
   resolveAliases,
+  smokeProjects,
   unitProjects,
 } from "./vitest.shared.config";
 
@@ -12,6 +13,6 @@ export default defineConfig({
   },
   test: {
     coverage: coverageConfig,
-    projects: [...unitProjects, ...integrationProjects],
+    projects: [...unitProjects, ...integrationProjects, ...smokeProjects],
   },
 });

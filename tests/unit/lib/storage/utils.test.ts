@@ -62,12 +62,6 @@ describe("storage/utils", () => {
       );
     });
 
-    it("should return base64 data URLs as-is", async () => {
-      const dataUrl = "data:image/jpeg;base64,/9j/4AAQ...";
-      const result = await loadImageForAI(dataUrl);
-      expect(result).toBe(dataUrl);
-    });
-
     it("should use correct MIME type based on file extension for local uploads", async () => {
       mockStorage.download.mockResolvedValue(Buffer.from("fake"));
 
@@ -96,23 +90,6 @@ describe("storage/utils", () => {
       const firstResult = requireDefined(results[0], "Expected first load result");
       const secondResult = requireDefined(results[1], "Expected second load result");
       expect(firstResult.success).toBe(true);
-      expect(secondResult.success).toBe(true);
-    });
-
-    it("should handle mixed base64 and local URLs", async () => {
-      mockStorage.extractKeyFromUrl.mockReturnValue("key.jpg");
-      mockStorage.download.mockResolvedValue(Buffer.from("fake-image"));
-
-      const results = await loadImagesForAI([
-        "data:image/jpeg;base64,abc123",
-        "/api/uploads/key.jpg",
-      ]);
-
-      expect(results).toHaveLength(2);
-      const firstResult = requireDefined(results[0], "Expected first load result");
-      const secondResult = requireDefined(results[1], "Expected second load result");
-      expect(firstResult.success).toBe(true);
-      expect(firstResult.dataUrl).toBe("data:image/jpeg;base64,abc123");
       expect(secondResult.success).toBe(true);
     });
 
@@ -150,22 +127,6 @@ describe("storage/utils", () => {
       const firstResult = requireDefined(results[0], "Expected first data URL result");
       const secondResult = requireDefined(results[1], "Expected second data URL result");
       expect(firstResult).toMatch(/^data:image\/jpeg;/);
-      expect(secondResult).toMatch(/^data:image\/jpeg;/);
-    });
-
-    it("should handle mixed base64 and local URLs", async () => {
-      mockStorage.extractKeyFromUrl.mockReturnValue("key.jpg");
-      mockStorage.download.mockResolvedValue(Buffer.from("fake-image"));
-
-      const results = await loadImagesForAIOrThrow([
-        "data:image/jpeg;base64,abc123",
-        "/api/uploads/key.jpg",
-      ]);
-
-      expect(results).toHaveLength(2);
-      const firstResult = requireDefined(results[0], "Expected first data URL result");
-      const secondResult = requireDefined(results[1], "Expected second data URL result");
-      expect(firstResult).toBe("data:image/jpeg;base64,abc123");
       expect(secondResult).toMatch(/^data:image\/jpeg;/);
     });
 
