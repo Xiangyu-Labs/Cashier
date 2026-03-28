@@ -37,7 +37,7 @@ function buildPrompt(
   const categorySection =
     input.originalCategories.length > 0
       ? `\n### Expense Categories\nAssign each line item a category_index (0-based) from this list:\n${input.originalCategories
-          .map((c, i) => `${i}. ${c.name}${c.description ? ` — ${c.description}` : ""}`)
+          .map((c, i) => `${i}. ${c.name}${c.description != null && c.description !== "" ? ` — ${c.description}` : ""}`)
           .join("\n")}\n`
       : "\n### Expense Categories\nNo categories provided — use category_index 0 for all entries.\n";
 
@@ -46,11 +46,11 @@ function buildPrompt(
       ? `\n### Preferred Currencies\nWhen currency is ambiguous, prefer: ${input.preferredCurrencies!.join(", ")}\n`
       : "";
 
-  const customSection = input.aiCustomPrompt
+  const customSection = input.aiCustomPrompt != null && input.aiCustomPrompt !== ""
     ? `\n### Additional Instructions\n${input.aiCustomPrompt}\n`
     : "";
 
-  const textSection = input.text
+  const textSection = input.text != null && input.text !== ""
     ? `\n### Document Text\n${input.text}\n`
     : "";
 

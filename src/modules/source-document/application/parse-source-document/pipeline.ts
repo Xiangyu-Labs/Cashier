@@ -16,8 +16,6 @@ import {
 } from "./pipeline-stage-decisions";
 import { buildStage0Input } from "./pipeline-stage-inputs";
 
-export { buildStage1Input } from "./pipeline-stage-inputs";
-
 async function persistStage0Result(
   result: unknown,
   ctx: StageContext

@@ -91,7 +91,7 @@ function createMockAI(options: {
     // Stage 0 single-pass
     if (prompt.includes("receipt and invoice parser")) {
       stage0CallCount++;
-      const base = stage0Outcome
+      const base = stage0Outcome != null
         ? { ...stage0Result, outcome: stage0Outcome }
         : stage0Result;
       if (stage0SecondResult && stage0CallCount >= 2) {

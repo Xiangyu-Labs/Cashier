@@ -44,7 +44,7 @@ function buildArbitrationResultPrompt(
   result1: NormalizedStage0ParseOutput,
   result2: NormalizedStage0ParseOutput
 ): string {
-  const textSection = input.text ? `\nDocument Text:\n${input.text}\n` : "";
+  const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced conflicting results. Produce the correct final parse result by reviewing the original document and both attempts.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
