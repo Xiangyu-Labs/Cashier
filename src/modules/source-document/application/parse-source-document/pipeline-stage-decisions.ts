@@ -10,25 +10,10 @@ export function resolveStage0Success(
   return {
     kind: "success",
     title: result.title,
-    ledgerEntries: [
-      ...convertToParsedEntries(
-        result.ledger_entries.map((e) => ({
-          item_name: e.item_name,
-          amount: e.amount,
-          currency: e.currency,
-          category_index: e.category_index,
-          notes: e.notes,
-        }))
-      ),
-      ...result.order_adjustments.map((a) => ({
-        itemName: a.item_name,
-        amount: a.amount,
-        currency: a.currency,
-        categoryIndex: 0,
-        entryDate: null,
-        notes: null,
-      })),
-    ],
+    ledgerEntries: convertToParsedEntries({
+      ledgerEntries: result.ledger_entries,
+      orderAdjustments: result.order_adjustments,
+    }),
     wasArbitrated,
   };
 }
@@ -68,6 +53,9 @@ export function resolveStage2ExecutionResult(
   return {
     kind: "success",
     title: stage2Result.output.title,
-    ledgerEntries: convertToParsedEntries(stage2Result.output.entries),
+    ledgerEntries: convertToParsedEntries({
+      ledgerEntries: stage2Result.output.entries.map((e) => ({ ...e, receipt_index: 0 })),
+      orderAdjustments: [],
+    }),
   };
 }

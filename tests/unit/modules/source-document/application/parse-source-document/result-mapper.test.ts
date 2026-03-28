@@ -7,16 +7,20 @@ import {
 } from "@/modules/source-document/application/parse-source-document/result-mapper";
 
 describe("convertToParsedEntries", () => {
-  it("keeps notes and forces entryDate to null", () => {
-    const result = convertToParsedEntries([
-      {
-        item_name: "Lunch",
-        amount: 10,
-        currency: "USD",
-        category_index: 1,
-        notes: "team meal",
-      },
-    ]);
+  it("keeps notes, forces entryDate to null, sets receiptIndex and isAdjustment false", () => {
+    const result = convertToParsedEntries({
+      ledgerEntries: [
+        {
+          receipt_index: 2,
+          item_name: "Lunch",
+          amount: 10,
+          currency: "USD",
+          category_index: 1,
+          notes: "team meal",
+        },
+      ],
+      orderAdjustments: [],
+    });
 
     expect(result).toEqual([
       {
@@ -26,7 +30,25 @@ describe("convertToParsedEntries", () => {
         categoryIndex: 1,
         entryDate: null,
         notes: "team meal",
+        receiptIndex: 2,
+        isAdjustment: false,
       },
+    ]);
+  });
+
+  it("maps receipt index and adjustment flag into ParsedLedgerEntry", () => {
+    const result = convertToParsedEntries({
+      ledgerEntries: [
+        { receipt_index: 1, item_name: "Meal", amount: 10, currency: "USD", category_index: 1, notes: null },
+      ],
+      orderAdjustments: [
+        { receipt_index: 1, item_name: "Discount", amount: -2, currency: "USD" },
+      ],
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({ itemName: "Meal", receiptIndex: 1, isAdjustment: false }),
+      expect.objectContaining({ itemName: "Discount", receiptIndex: 1, isAdjustment: true, amount: -2 }),
     ]);
   });
 });

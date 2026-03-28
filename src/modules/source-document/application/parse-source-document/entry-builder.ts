@@ -102,13 +102,14 @@ export interface ValidationResult {
  * Validate entries before saving
  */
 export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult {
-  const validEntries = entries.filter((entry) => entry.amount > 0);
+  // Adjustments (discounts, fees) may have negative amounts — keep them
+  const positiveEntries = entries.filter((entry) => entry.amount > 0 || entry.isAdjustment === true);
 
-  if (validEntries.length === 0) {
+  if (positiveEntries.length === 0) {
     return { isValid: false, reason: "No entries with valid amount" };
   }
 
-  const unknownCurrencyEntries = validEntries.filter(
+  const unknownCurrencyEntries = positiveEntries.filter(
     (entry) =>
       entry.currency == null || entry.currency === "" || entry.currency.toLowerCase() === "unknown"
   );

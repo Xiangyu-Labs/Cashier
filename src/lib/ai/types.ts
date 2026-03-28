@@ -15,6 +15,8 @@ export interface ParsedLedgerEntry {
   categoryIndex: number; // 0 = no category, 1+ = index into categories array
   entryDate: string | null; // YYYY-MM-DD 格式
   notes?: string | null; // Consolidated notes
+  receiptIndex?: number; // index of receipt within multi-receipt document
+  isAdjustment?: boolean; // true for order_adjustments rows (discounts, fees, etc.)
 }
 
 export interface ProcessingResult {

@@ -72,6 +72,22 @@ describe("entry-builder", () => {
     expect(loggerWarnMock).toHaveBeenCalledTimes(1);
   });
 
+  it("allows negative adjustment rows through validation", () => {
+    expect(
+      validateEntries([
+        {
+          amount: -2,
+          currency: "USD",
+          categoryIndex: 0,
+          entryDate: null,
+          itemName: "Discount",
+          notes: null,
+          isAdjustment: true,
+        },
+      ])
+    ).toEqual({ isValid: true });
+  });
+
   it("rejects entries with no positive amounts or unknown currencies", () => {
     expect(
       validateEntries([

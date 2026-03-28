@@ -71,7 +71,8 @@ export async function handleParseResult({
     return;
   }
 
-  const validEntries = parsedEntries.filter((entry) => entry.amount > 0);
+  // Keep adjustment rows (discounts, fees) even when negative
+  const validEntries = parsedEntries.filter((entry) => entry.amount > 0 || entry.isAdjustment === true);
 
   // Get ledger's main currency for conversion
   const mainCurrency = await getLedgerMainCurrency(ledgerId);
