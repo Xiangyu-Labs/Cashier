@@ -111,9 +111,9 @@ Return a single JSON object:
 ### Rules
 - Set outcome to "invalid" if the document is not a receipt or invoice.
 - Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
-- Use negative amounts for discounts and adjustments in order_adjustments.
+- ledger_entries: individual goods or services purchased — items with independent value that the customer chose to buy.
+- order_adjustments: anything that adjusts the bill total at the order level and is not tied to a specific item — taxes, tips, service charges, discounts, coupons, rounding, surcharges, and any other order-level addition or reduction. Use negative amounts for reductions.
 - Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
-- Do not include taxes or tips in order_adjustments; include them as ledger_entries.
 - Return only the JSON block, no other text.`;
 }
 
