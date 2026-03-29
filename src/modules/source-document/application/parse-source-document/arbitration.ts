@@ -1,9 +1,9 @@
 /**
- * Stage 0 Arbitration
+ * Arbitration
  *
  * When two independent parse runs disagree, an arbitration call picks the
  * better result. The arbitrator receives both normalized outputs and the
- * original input, then returns the chosen result as a NormalizedStage0ParseOutput.
+ * original input, then returns the chosen result as a NormalizedParseOutput.
  */
 
 import type { AIContext, AIMessageContentPart } from "@/lib/flow/types";
@@ -11,9 +11,9 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
 import { z } from "zod";
-import type { NormalizedStage0ParseOutput } from "./stage0-schema";
-import { stage0ParseOutputSchema, normalizeResult } from "./stage0-schema";
-import type { Stage0Input } from "./stage0-vision";
+import type { NormalizedParseOutput } from "./parser-schema";
+import { parserOutputSchema, normalizeResult } from "./parser-schema";
+import type { ParserInput } from "./parser";
 
 const arbitrationChoiceSchema = z.object({
   choice: z.number().int().min(1).max(2),
@@ -21,9 +21,9 @@ const arbitrationChoiceSchema = z.object({
 });
 
 function buildArbitrationPrompt(
-  input: Stage0Input,
-  result1: NormalizedStage0ParseOutput,
-  result2: NormalizedStage0ParseOutput
+  input: ParserInput,
+  result1: NormalizedParseOutput,
+  result2: NormalizedParseOutput
 ): string {
   const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced different results for the same document. Choose the more accurate result.${textSection}
@@ -42,9 +42,9 @@ Set "choice" to 1 or 2. Do not choose 0 or any other value.`;
 }
 
 function buildArbitrationResultPrompt(
-  input: Stage0Input,
-  result1: NormalizedStage0ParseOutput,
-  result2: NormalizedStage0ParseOutput
+  input: ParserInput,
+  result1: NormalizedParseOutput,
+  result2: NormalizedParseOutput
 ): string {
   const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced conflicting results. Produce the correct final parse result by reviewing the original document and both attempts.${textSection}
@@ -54,74 +54,87 @@ ${JSON.stringify(result1, null, 2)}
 Result 2:
 ${JSON.stringify(result2, null, 2)}
 
-Return a final corrected JSON parse result using exactly the same schema as the inputs (outcome, title, receipt_count, receipt_totals, ledger_entries, order_adjustments, reasoning). JSON only, no other text.`;
+Return the corrected final result as a JSON block matching the parser output format. Return only the JSON block, no other text.`;
 }
 
-export type ArbitrationOutcome =
-  | { kind: "chosen"; result: NormalizedStage0ParseOutput; wasArbitrated: true }
+async function buildArbitrationMessageContent(
+  imageUrls: string[] | undefined
+): Promise<AIMessageContentPart[]> {
+  const content: AIMessageContentPart[] = [
+    { type: "text", text: "Please arbitrate these parse results." },
+  ];
+
+  if ((imageUrls?.length ?? 0) > 0) {
+    const loaded = await loadImagesForAI(imageUrls!);
+    const images = loaded.filter((r) => r.success).map((r) => ({ dataUrl: r.dataUrl }));
+    content.push(
+      ...images.map((image) => ({
+        type: "image_url" as const,
+        image_url: { url: image.dataUrl },
+      }))
+    );
+  }
+
+  return content;
+}
+
+export type ArbitrationResult =
+  | { kind: "chosen"; result: NormalizedParseOutput; wasArbitrated: boolean }
   | { kind: "anomaly"; reason: string };
 
-export async function arbitrateStage0Results(
-  params: {
-    input: Stage0Input;
-    result1: NormalizedStage0ParseOutput;
-    result2: NormalizedStage0ParseOutput;
+export async function arbitrateResults(
+  {
+    input,
+    result1,
+    result2,
+  }: {
+    input: ParserInput;
+    result1: NormalizedParseOutput;
+    result2: NormalizedParseOutput;
   },
   ai: AIContext
-): Promise<ArbitrationOutcome> {
-  const { input, result1, result2 } = params;
+): Promise<ArbitrationResult> {
   const hasImages = (input.imageUrls?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
+  const messageContent = await buildArbitrationMessageContent(input.imageUrls);
 
-  logger.debug("stage0-arbitration: starting arbitration");
-
-  // Load images once and reuse for both calls
-  let imageContent: AIMessageContentPart[] = [];
-  if (hasImages) {
-    const loaded = await loadImagesForAI(input.imageUrls!);
-    imageContent = loaded
-      .filter((r) => r.success)
-      .map((r) => ({ type: "image_url" as const, image_url: { url: r.dataUrl } }));
-  }
-  const userMessages = [{ role: "user" as const, content: imageContent }];
-
-  // First: ask which result is better
+  // Step 1: choose which result is better
+  const choicePrompt = buildArbitrationPrompt(input, result1, result2);
   const choiceResponse = await ai.generate({
     model,
-    prompt: buildArbitrationPrompt(input, result1, result2),
-    messages: userMessages,
+    prompt: choicePrompt,
+    messages: [{ role: "user", content: messageContent }],
   });
 
-  let choice: number;
+  let choiceRaw: unknown;
   try {
     const content = choiceResponse.content
       .replace(/^```json\s*/m, "")
       .replace(/```\s*$/m, "")
       .trim();
-    const parsed = arbitrationChoiceSchema.parse(JSON.parse(content));
-    choice = parsed.choice;
-  } catch {
-    // If choice parsing fails, do a full re-parse arbitration
-    choice = 0;
+    choiceRaw = JSON.parse(content);
+  } catch (e) {
+    throw new AppError(
+      `arbitration: failed to parse choice response: ${String(e)}`,
+      "AI_PARSE_ERROR"
+    );
   }
 
-  if (choice === 1) {
-    logger.debug("stage0-arbitration: chose result 1");
-    return { kind: "chosen", result: result1, wasArbitrated: true };
+  const parsedChoice = arbitrationChoiceSchema.safeParse(choiceRaw);
+  if (!parsedChoice.success) {
+    logger.warn({ error: parsedChoice.error.message }, "arbitration: invalid choice schema, falling back to result correction");
+  } else {
+    const chosen = parsedChoice.data.choice === 1 ? result1 : result2;
+    logger.info({ choice: parsedChoice.data.choice, reason: parsedChoice.data.reason }, "arbitration: chose result");
+    return { kind: "chosen", result: chosen, wasArbitrated: true };
   }
 
-  if (choice === 2) {
-    logger.debug("stage0-arbitration: chose result 2");
-    return { kind: "chosen", result: result2, wasArbitrated: true };
-  }
-
-  // choice === 0: arbitration failed to pick — ask for a corrected result
-  logger.debug("stage0-arbitration: no clear choice, requesting corrected result");
-
+  // Step 2: fallback — ask AI to produce corrected result
+  const correctionPrompt = buildArbitrationResultPrompt(input, result1, result2);
   const correctedResponse = await ai.generate({
     model,
-    prompt: buildArbitrationResultPrompt(input, result1, result2),
-    messages: userMessages,
+    prompt: correctionPrompt,
+    messages: [{ role: "user", content: messageContent }],
   });
 
   let raw: unknown;
@@ -133,12 +146,12 @@ export async function arbitrateStage0Results(
     raw = JSON.parse(content);
   } catch (e) {
     throw new AppError(
-      `stage0-arbitration: failed to parse corrected result: ${String(e)}`,
+      `arbitration: failed to parse corrected result: ${String(e)}`,
       "AI_PARSE_ERROR"
     );
   }
 
-  const parsedCorrected = stage0ParseOutputSchema.safeParse(raw);
+  const parsedCorrected = parserOutputSchema.safeParse(raw);
   if (!parsedCorrected.success) {
     return {
       kind: "anomaly",

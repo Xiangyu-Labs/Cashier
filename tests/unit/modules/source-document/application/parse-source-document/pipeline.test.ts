@@ -1,9 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
-import { buildStageContext } from "@/modules/source-document/application/parse-source-document/context";
-import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline";
-import { buildStage0Input } from "@/modules/source-document/application/parse-source-document/pipeline-stage-inputs";
+import { buildStageContext, runParsePipeline, buildParserInput } from "@/modules/source-document/application/parse-source-document/pipeline";
 
 // Mock DB so pipeline unit tests don't need a real database
 vi.mock("@/lib/db", () => ({
@@ -275,7 +273,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   });
 });
 
-describe("buildStage0Input", () => {
+describe("buildParserInput", () => {
   it("includes categories, text, imageUrls, aiLanguage, preferredCurrencies, aiCustomPrompt", () => {
     const input = createInput({
       text: "user text",
@@ -286,7 +284,7 @@ describe("buildStage0Input", () => {
       categories: [{ id: "cat-1", name: "Food", description: null }],
     });
 
-    const stage0Input = buildStage0Input(input);
+    const stage0Input = buildParserInput(input);
 
     expect(stage0Input.text).toBe("user text");
     expect(stage0Input.imageUrls).toEqual(["data:image/jpeg;base64,FAKE"]);

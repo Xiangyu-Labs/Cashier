@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-const { executeParseSourceDocumentMock } = vi.hoisted(() => ({
-  executeParseSourceDocumentMock: vi.fn(),
+const { runParsePipelineMock } = vi.hoisted(() => ({
+  runParsePipelineMock: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/application/parse-source-document/execute", () => ({
-  executeParseSourceDocument: executeParseSourceDocumentMock,
-}));
+vi.mock("@/modules/source-document/application/parse-source-document/pipeline", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/source-document/application/parse-source-document/pipeline")>();
+  return {
+    ...actual,
+    runParsePipeline: runParsePipelineMock,
+  };
+});
 
 import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   type ParseSourceDocumentOutput,
 } from "@/modules/source-document/application/tasks/parse-source-document";
+import type { ParsePipelineResult } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
@@ -24,7 +29,7 @@ describe("parseSourceDocumentHandler.execute", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    executeParseSourceDocumentMock.mockReset();
+    runParsePipelineMock.mockReset();
 
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger");
@@ -53,12 +58,12 @@ describe("parseSourceDocumentHandler.execute", () => {
       categories: [],
       settings: {},
     };
-    const delegatedResult: ParseSourceDocumentOutput = {
+    const pipelineResult: ParsePipelineResult = {
+      kind: "success",
       ledgerEntries: [],
       title: "Delegated",
-      verificationStatus: "passed",
     };
-    executeParseSourceDocumentMock.mockResolvedValue(delegatedResult);
+    runParsePipelineMock.mockResolvedValue(pipelineResult);
 
     const context = {
       updateProgress: vi.fn(),
@@ -69,9 +74,14 @@ describe("parseSourceDocumentHandler.execute", () => {
 
     const result = await parseSourceDocumentHandler.execute(input, context);
 
-    expect(result).toEqual(delegatedResult);
-    expect(executeParseSourceDocumentMock).toHaveBeenCalledTimes(1);
-    expect(executeParseSourceDocumentMock).toHaveBeenCalledWith(
+    const expectedOutput: ParseSourceDocumentOutput = {
+      ledgerEntries: [],
+      title: "Delegated",
+      verificationStatus: "passed",
+    };
+    expect(result).toEqual(expectedOutput);
+    expect(runParsePipelineMock).toHaveBeenCalledTimes(1);
+    expect(runParsePipelineMock).toHaveBeenCalledWith(
       input,
       expect.objectContaining({
         docId: sourceDocId,
@@ -105,7 +115,7 @@ describe("parseSourceDocumentHandler.execute", () => {
     await expect(parseSourceDocumentHandler.execute(input, context)).rejects.toThrow(
       "Missing ledgerId in task input"
     );
-    expect(executeParseSourceDocumentMock).not.toHaveBeenCalled();
+    expect(runParsePipelineMock).not.toHaveBeenCalled();
   });
 
   it("should throw when source document does not exist", async () => {
@@ -125,7 +135,7 @@ describe("parseSourceDocumentHandler.execute", () => {
     await expect(parseSourceDocumentHandler.execute(input, context)).rejects.toThrow(
       "Source document not found"
     );
-    expect(executeParseSourceDocumentMock).not.toHaveBeenCalled();
+    expect(runParsePipelineMock).not.toHaveBeenCalled();
   });
 });
 

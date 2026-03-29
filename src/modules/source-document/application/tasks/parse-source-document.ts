@@ -4,8 +4,8 @@ import { sourceDocuments } from "@/persistence";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { buildStageContext } from "../parse-source-document/context";
-import { executeParseSourceDocument } from "../parse-source-document/execute";
+import { buildStageContext, runParsePipeline } from "../parse-source-document/pipeline";
+import { toParseSourceDocumentOutput } from "../parse-source-document/result-mapper";
 import {
   handleParseResult,
   handleParseError,
@@ -72,7 +72,8 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
       .set({ status: "processing" })
       .where(whereSourceDocumentNotDeletedId(ledgerId, input.sourceDocumentId));
 
-    return executeParseSourceDocument(input, stageContext);
+    const pipelineResult = await runParsePipeline(input, stageContext);
+    return toParseSourceDocumentOutput(pipelineResult);
   },
 
   async onComplete(

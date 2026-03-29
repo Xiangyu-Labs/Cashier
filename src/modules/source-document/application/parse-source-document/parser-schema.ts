@@ -24,7 +24,7 @@ const orderAdjustmentSchema = z.object({
   currency: z.string(),
 });
 
-export const stage0ParseOutputSchema = z.object({
+export const parserOutputSchema = z.object({
   outcome: z.enum(["success", "invalid", "anomaly"]).default("success"),
   anomaly_reason: z.string().nullish(),
   title: z.string().optional(),
@@ -59,7 +59,7 @@ export interface NormalizedOrderAdjustment {
   currency: string;
 }
 
-export interface NormalizedStage0ParseOutput {
+export interface NormalizedParseOutput {
   outcome: "success" | "invalid" | "anomaly";
   anomaly_reason?: string;
   title: string;
@@ -73,8 +73,8 @@ export interface NormalizedStage0ParseOutput {
 // ===== Normalization =====
 
 export function normalizeResult(
-  output: z.infer<typeof stage0ParseOutputSchema>
-): NormalizedStage0ParseOutput {
+  output: z.infer<typeof parserOutputSchema>
+): NormalizedParseOutput {
   // Validate: ledger_entry amounts must be positive (> 0)
   const invalidEntry = output.ledger_entries.find((e) => e.amount <= 0);
   if (invalidEntry != null) {
@@ -115,7 +115,7 @@ export function normalizeResult(
  * Returns true when the document is complex enough to warrant a second parse pass.
  * Only applies to successful outcomes; invalid/anomaly short-circuit without dual-run.
  */
-export function shouldDualRun(result: NormalizedStage0ParseOutput): boolean {
+export function shouldDualRun(result: NormalizedParseOutput): boolean {
   if (result.outcome !== "success") return false;
 
   // More than 3 entries is complex
@@ -157,8 +157,8 @@ function mapsMatch(a: Record<string, number>, b: Record<string, number>): boolea
  * Compares receipt totals, entry grouped sums, and adjustment grouped sums.
  */
 export function compareResults(
-  left: NormalizedStage0ParseOutput,
-  right: NormalizedStage0ParseOutput
+  left: NormalizedParseOutput,
+  right: NormalizedParseOutput
 ): boolean {
   if (left.outcome !== right.outcome) return false;
   if (left.ledger_entries.length !== right.ledger_entries.length) return false;

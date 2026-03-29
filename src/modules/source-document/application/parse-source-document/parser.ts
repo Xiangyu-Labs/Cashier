@@ -1,5 +1,5 @@
 /**
- * Stage 0: Single-pass receipt and invoice parser
+ * Receipt and invoice parser
  *
  * One AI call extracts validity, structured line items, receipt totals, and
  * order adjustments directly from images and/or text. No separate OCR stage.
@@ -14,22 +14,19 @@ import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
 import type { AIMessageContentPart } from "@/lib/flow/types";
 import {
-  stage0ParseOutputSchema,
+  parserOutputSchema,
   normalizeResult,
-  type NormalizedStage0ParseOutput,
-} from "./stage0-schema";
+  type NormalizedParseOutput,
+} from "./parser-schema";
 
-export interface Stage0Input {
+export interface ParserInput {
   imageUrls?: string[];
   text?: string;
   originalCategories: { name: string; description?: string | null }[];
   aiLanguage?: string;
   aiCustomPrompt?: string;
   preferredCurrencies?: string[];
-  documentUnderstanding?: unknown; // accepted but not used in single-pass path
 }
-
-export type Stage0Output = NormalizedStage0ParseOutput;
 
 function buildMessageContent(
   images: { dataUrl: string }[] | undefined
@@ -51,7 +48,7 @@ function buildMessageContent(
 }
 
 function buildPrompt(
-  input: Stage0Input,
+  input: ParserInput,
   aiLanguage: string
 ): string {
   const categorySection =
@@ -118,10 +115,10 @@ Return a single JSON object:
 - Return only the JSON block, no other text.`;
 }
 
-export async function executeStage0(
-  input: Stage0Input,
+export async function executeParser(
+  input: ParserInput,
   ai: AIContext
-): Promise<Stage0Output> {
+): Promise<NormalizedParseOutput> {
   const aiLanguage = input.aiLanguage ?? "zh-CN";
   const hasImages = (input.imageUrls?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
@@ -136,7 +133,7 @@ export async function executeStage0(
       .map((r) => ({ dataUrl: r.dataUrl }));
   }
 
-  logger.debug({ model, hasImages }, "stage0: calling AI");
+  logger.debug({ model, hasImages }, "parser: calling AI");
 
   const response = await ai.generate({
     model,
@@ -146,7 +143,6 @@ export async function executeStage0(
 
   let raw: unknown;
   try {
-    // Strip markdown fences if present
     const content = response.content
       .replace(/^```json\s*/m, "")
       .replace(/```\s*$/m, "")
@@ -154,20 +150,20 @@ export async function executeStage0(
     raw = JSON.parse(content);
   } catch (e) {
     throw new AppError(
-      `stage0: failed to parse AI response as JSON: ${String(e)}`,
+      `parser: failed to parse AI response as JSON: ${String(e)}`,
       "AI_PARSE_ERROR"
     );
   }
 
-  const parsed = stage0ParseOutputSchema.safeParse(raw);
+  const parsed = parserOutputSchema.safeParse(raw);
   if (!parsed.success) {
     throw new AppError(
-      `stage0: AI response failed schema validation: ${parsed.error.message}`,
+      `parser: AI response failed schema validation: ${parsed.error.message}`,
       "AI_SCHEMA_ERROR"
     );
   }
 
   const result = normalizeResult(parsed.data);
-  logger.debug({ outcome: result.outcome, entries: result.ledger_entries.length }, "stage0: complete");
+  logger.debug({ outcome: result.outcome, entries: result.ledger_entries.length }, "parser: complete");
   return result;
 }

@@ -17,7 +17,7 @@ import { createAIContext } from "@/lib/flow/ai-context"
 import { getOpenAIClient } from "@/lib/ai/openai-client"
 import { loadFlowRuntimeEnvConfig } from "@/lib/flow/config"
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document"
-import type { StageContext } from "@/modules/source-document/application/parse-source-document/context"
+import type { StageContext } from "@/modules/source-document/application/parse-source-document/pipeline"
 
 const FIXTURES = path.resolve("tests/fixtures/images")
 const SKIP = process.env.SMOKE_TESTS !== "1"

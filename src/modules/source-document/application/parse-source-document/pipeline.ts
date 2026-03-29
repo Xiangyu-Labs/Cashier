@@ -3,20 +3,98 @@ import { sourceDocuments } from "@/persistence";
 import { and, eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { TaskCancelledError, throwIfCancelled } from "@/lib/flow/cancellation";
+import type { AIContext } from "@/lib/flow/types";
+import type { ParsedLedgerEntry } from "@/lib/ai/types";
 import type { ParseSourceDocumentInput } from "../tasks/parse-source-document";
-import type { StageContext } from "./context";
-import type { ParsePipelineResult } from "./contracts";
-import { executeStage0 } from "./stage0-vision";
-import { arbitrateStage0Results } from "./stage0-arbitration";
-import { shouldDualRun, compareResults } from "./stage0-schema";
+import { executeParser } from "./parser";
+import type { ParserInput } from "./parser";
+import { arbitrateResults } from "./arbitration";
+import { shouldDualRun, compareResults } from "./parser-schema";
 import { sourceDocumentNotDeletedCondition } from "../source-document-state";
-import {
-  resolveStage0Outcome,
-  resolveStage0Success,
-} from "./pipeline-stage-decisions";
-import { buildStage0Input } from "./pipeline-stage-inputs";
+import { convertToParsedEntries } from "./result-mapper";
+import type { NormalizedParseOutput } from "./parser-schema";
 
-async function persistStage0Result(
+// ===== Context =====
+
+export interface StageContext {
+  signal: AbortSignal;
+  ai: AIContext;
+  setProgress: (message: string) => Promise<void>;
+  docId: string;
+  ledgerId: string;
+}
+
+export function buildStageContext(params: {
+  signal: AbortSignal;
+  ai: AIContext;
+  setProgress: (message: string) => Promise<void>;
+  docId: string;
+  ledgerId: string;
+}): StageContext {
+  return { ...params };
+}
+
+// ===== Result contract =====
+
+export type ParsePipelineResult =
+  | { kind: "success"; title?: string; ledgerEntries: ParsedLedgerEntry[] }
+  | { kind: "invalid" }
+  | { kind: "anomaly"; anomalyReason: string }
+  | { kind: "cancelled" };
+
+// ===== Input mapping =====
+
+export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
+  return {
+    originalCategories: input.categories.map((c) => ({
+      name: c.name,
+      description: c.description ?? null,
+    })),
+    ...(input.text !== undefined ? { text: input.text } : {}),
+    ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
+    ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
+    ...(input.preferredCurrencies !== undefined
+      ? { preferredCurrencies: input.preferredCurrencies }
+      : {}),
+    ...(input.settings.aiCustomPrompt !== undefined
+      ? { aiCustomPrompt: input.settings.aiCustomPrompt }
+      : {}),
+  };
+}
+
+// ===== Outcome helpers =====
+
+function resolveSuccess(
+  result: NormalizedParseOutput,
+  wasArbitrated: boolean
+): Extract<ParsePipelineResult, { kind: "success" }> {
+  return {
+    kind: "success",
+    title: result.title,
+    ledgerEntries: convertToParsedEntries({
+      ledgerEntries: result.ledger_entries,
+      orderAdjustments: result.order_adjustments,
+    }),
+    wasArbitrated,
+  };
+}
+
+function resolveOutcome(
+  result: NormalizedParseOutput
+): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
+  if (result.outcome === "invalid") return { kind: "invalid" };
+  if (result.outcome === "anomaly") {
+    return {
+      kind: "anomaly",
+      anomalyReason: result.anomaly_reason ?? "Document cannot be parsed",
+    };
+  }
+  return { kind: "continue", result };
+}
+
+// ===== Persistence =====
+
+async function persistParseResult(
   result: unknown,
   ctx: StageContext
 ): Promise<void> {
@@ -33,7 +111,7 @@ async function persistStage0Result(
       .set({
         metadata: {
           ...existingMeta,
-          stage0Result: result as Record<string, unknown>,
+          parseResult: result as Record<string, unknown>,
         },
       })
       .where(
@@ -45,6 +123,8 @@ async function persistStage0Result(
   }
 }
 
+// ===== Pipeline =====
+
 export async function runParsePipeline(
   input: ParseSourceDocumentInput,
   ctx: StageContext
@@ -53,61 +133,45 @@ export async function runParsePipeline(
     throwIfCancelled(ctx.signal);
     await ctx.setProgress("正在解析单据...");
 
-    const stage0Input = buildStage0Input(input);
-    const first = await executeStage0(stage0Input, ctx.ai);
+    const parserInput = buildParserInput(input);
+    const first = await executeParser(parserInput, ctx.ai);
 
     throwIfCancelled(ctx.signal);
 
     // Short-circuit: invalid or anomaly
-    const firstDecision = resolveStage0Outcome(first);
-    if (firstDecision.kind !== "continue") {
-      logger.info({ docId: ctx.docId, outcome: first.outcome }, "stage0: non-success outcome");
-      return firstDecision;
-    }
+    const firstDecision = resolveOutcome(first);
+    if (firstDecision.kind !== "continue") return firstDecision;
 
-    // Simple document: accept first-pass result immediately
+    // Simple document: single pass is sufficient
     if (!shouldDualRun(first)) {
-      logger.info(
-        { docId: ctx.docId, entries: first.ledger_entries.length },
-        "stage0: simple document, accepting first pass"
-      );
-      await persistStage0Result(first, ctx);
-      return resolveStage0Success(first, false);
+      await persistParseResult(first, ctx);
+      return resolveSuccess(first, false);
     }
 
     // Complex document: run a second pass
-    throwIfCancelled(ctx.signal);
-    await ctx.setProgress("正在二次验证单据...");
-
-    const second = await executeStage0(stage0Input, ctx.ai);
-
+    await ctx.setProgress("正在进行二次解析...");
     throwIfCancelled(ctx.signal);
 
-    // If second pass is also non-success, report anomaly
-    if (second.outcome !== "success") {
-      return {
-        kind: "anomaly",
-        anomalyReason: second.anomaly_reason ?? "Second parse pass returned non-success",
-      };
-    }
+    const second = await executeParser(parserInput, ctx.ai);
+    throwIfCancelled(ctx.signal);
 
-    // If both agree, accept the first result
+    // Both passes agree: use first result
     if (compareResults(first, second)) {
       logger.info(
         { docId: ctx.docId, entries: first.ledger_entries.length },
-        "stage0: dual-run results agree"
+        "parser: dual-run results agree"
       );
-      await persistStage0Result(first, ctx);
-      return resolveStage0Success(first, false);
+      await persistParseResult(first, ctx);
+      return resolveSuccess(first, false);
     }
 
     // Results disagree: arbitrate
     throwIfCancelled(ctx.signal);
     await ctx.setProgress("正在仲裁单据解析结果...");
 
-    logger.info({ docId: ctx.docId }, "stage0: dual-run disagrees, arbitrating");
-    const arbitration = await arbitrateStage0Results(
-      { input: stage0Input, result1: first, result2: second },
+    logger.info({ docId: ctx.docId }, "parser: dual-run disagrees, arbitrating");
+    const arbitration = await arbitrateResults(
+      { input: parserInput, result1: first, result2: second },
       ctx.ai
     );
 
@@ -117,8 +181,8 @@ export async function runParsePipeline(
       return { kind: "anomaly", anomalyReason: arbitration.reason };
     }
 
-    await persistStage0Result(arbitration.result, ctx);
-    return resolveStage0Success(arbitration.result, true);
+    await persistParseResult(arbitration.result, ctx);
+    return resolveSuccess(arbitration.result, true);
   } catch (error) {
     if (error instanceof TaskCancelledError) {
       return { kind: "cancelled" };

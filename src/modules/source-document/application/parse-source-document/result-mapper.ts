@@ -1,8 +1,8 @@
 import { TaskCancelledError } from "@/lib/flow/cancellation";
 import type { ParsedLedgerEntry } from "@/lib/ai/types";
 import type { ParseSourceDocumentOutput } from "../tasks/parse-source-document";
-import type { ParsePipelineResult } from "./contracts";
-import type { NormalizedLedgerEntry, NormalizedOrderAdjustment } from "./stage0-schema";
+import type { ParsePipelineResult } from "./pipeline";
+import type { NormalizedLedgerEntry, NormalizedOrderAdjustment } from "./parser-schema";
 
 /**
  * Distribute order adjustments proportionally into ledger entries by receipt_index.
