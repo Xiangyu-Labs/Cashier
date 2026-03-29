@@ -106,6 +106,19 @@ describe("stage0-schema", () => {
     expect(compareResults(left, right)).toBe(false);
   });
 
+
+  it("treats different receipt totals as non-matching even when item and adjustment groupings match", () => {
+    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const right = normalizeResult(
+      stage0ParseOutputSchema.parse({
+        ...simpleSuccess,
+        receipt_totals: [{ receipt_index: 0, amount: 99.99, currency: "USD" }],
+      })
+    );
+
+    expect(compareResults(left, right)).toBe(false);
+  });
+
   it("treats identical results as matching", () => {
     const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));

@@ -145,6 +145,17 @@ function groupAdjustments(adjustments: { currency: string; amount: number }[]): 
   }, {});
 }
 
+
+function groupReceiptTotals(
+  totals: { receipt_index: number; currency: string; amount: number }[]
+): Record<string, number> {
+  return totals.reduce<Record<string, number>>((acc, total) => {
+    const key = `${total.receipt_index}:${total.currency}`;
+    acc[key] = (acc[key] ?? 0) + total.amount;
+    return acc;
+  }, {});
+}
+
 function mapsMatch(a: Record<string, number>, b: Record<string, number>): boolean {
   const aKeys = Object.keys(a).sort();
   const bKeys = Object.keys(b).sort();
@@ -163,6 +174,11 @@ export function compareResults(
   if (left.outcome !== right.outcome) return false;
   if (left.ledger_entries.length !== right.ledger_entries.length) return false;
   if (left.order_adjustments.length !== right.order_adjustments.length) return false;
+
+  // Compare receipt totals
+  if (!mapsMatch(groupReceiptTotals(left.receipt_totals), groupReceiptTotals(right.receipt_totals))) {
+    return false;
+  }
 
   // Compare entry grouped sums
   if (!mapsMatch(groupTotals(left.ledger_entries), groupTotals(right.ledger_entries))) return false;
