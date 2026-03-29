@@ -239,7 +239,7 @@ export function SettingsTab({
                 onBlur={(e) => {
                   const newValue = e.target.value;
                   const currentValue = settingsLedger.metadata?.settings?.aiCustomPrompt ?? "";
-                  if (newValue !== currentValue && newValue.trim() !== "") {
+                  if (newValue !== currentValue) {
                     updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
                   }
                 }}

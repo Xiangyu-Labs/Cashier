@@ -225,6 +225,37 @@ describe("SettingsTab", () => {
     );
   });
 
+  it("saves empty AI prompt when user clears the field on blur", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsTab ledger={mockLedger} initialCategories={mockCategories} ledgerId="l1" />
+      </QueryClientProvider>
+    );
+
+    // Expand the AI Assistant section first
+    const aiAssistantButton = screen.getByText("aiAssistant");
+    await user.click(aiAssistantButton);
+
+    const textarea = screen.getByPlaceholderText("aiPromptPlaceholder");
+    // Clear the existing value and blur
+    await user.clear(textarea);
+    await user.tab();
+    await waitFor(
+      () => {
+        expect(mockUpdateLedgerAction).toHaveBeenCalledWith(
+          "l1",
+          expect.objectContaining({
+            settings: expect.objectContaining({
+              aiCustomPrompt: "",
+            }),
+          })
+        );
+      },
+      { timeout: 3000 }
+    );
+  });
+
   it("renders sign out button and handles click", async () => {
     const user = userEvent.setup();
     render(
