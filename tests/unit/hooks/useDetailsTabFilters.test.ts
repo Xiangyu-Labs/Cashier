@@ -24,8 +24,14 @@ describe("useDetailsTabFilters", () => {
     expect(result.current.filters.currency).toBe("USD");
     expect(result.current.filters.minAmount).toBe(20);
     expect(result.current.filters.maxAmount).toBe(100);
-    expect(result.current.filters.startDate?.toISOString()).toBe("2024-01-01T00:00:00.000Z");
-    expect(result.current.filters.endDate?.toISOString()).toBe("2024-01-31T00:00:00.000Z");
+    const startDate = result.current.filters.startDate;
+    const endDate = result.current.filters.endDate;
+    expect(startDate?.getFullYear()).toBe(2024);
+    expect(startDate?.getMonth()).toBe(0);
+    expect(startDate?.getDate()).toBe(1);
+    expect(endDate?.getFullYear()).toBe(2024);
+    expect(endDate?.getMonth()).toBe(0);
+    expect(endDate?.getDate()).toBe(31);
   });
 
   it("builds a stable filter key from advanced filters only", () => {

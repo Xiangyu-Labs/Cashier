@@ -3,8 +3,8 @@ import {
   compareResults,
   normalizeResult,
   shouldDualRun,
-  stage0ParseOutputSchema,
-} from "@/modules/source-document/application/parse-source-document/stage0-schema";
+  parserOutputSchema as stage0ParseOutputSchema,
+} from "@/modules/source-document/application/parse-source-document/parser-schema";
 
 const simpleSuccess = {
   outcome: "success",

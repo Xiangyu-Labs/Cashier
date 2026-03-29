@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { executeStage0 } from "@/modules/source-document/application/parse-source-document/stage0-vision";
+import { executeParser as executeStage0 } from "@/modules/source-document/application/parse-source-document/parser";
 import type { AIContext, AIGenerateOptions } from "@/lib/flow/types";
 
 // Mock image loading so tests don't need real storage

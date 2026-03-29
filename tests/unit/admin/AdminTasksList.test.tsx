@@ -99,7 +99,7 @@ describe("AdminTasksList", () => {
 
     expect(screen.getByRole("columnheader", { name: "Details" })).toBeTruthy();
 
-    const taskTitle = screen.getByText("Parse document");
+    const taskTitle = screen.getByText("parse_source_document");
     const taskCell = taskTitle.closest("td");
     expect(taskCell?.textContent).not.toContain("Details");
 

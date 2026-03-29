@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { AIContext, AIGenerateOptions } from "@/lib/flow";
-import { arbitrateStage0Results } from "@/modules/source-document/application/parse-source-document/stage0-arbitration";
-import type { NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/stage0-schema";
-import type { Stage0Input } from "@/modules/source-document/application/parse-source-document/stage0-vision";
+import { arbitrateResults as arbitrateStage0Results } from "@/modules/source-document/application/parse-source-document/arbitration";
+import type { NormalizedParseOutput as NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
+import type { ParserInput as Stage0Input } from "@/modules/source-document/application/parse-source-document/parser";
 
 vi.mock("@/lib/storage/utils", () => ({
   loadImagesForAI: vi.fn(async (urls: string[]) =>

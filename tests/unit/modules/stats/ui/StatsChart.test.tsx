@@ -63,8 +63,8 @@ describe("StatsChart", () => {
       <StatsChart
         data={[{ date: "2024-03-01", total: 10 }]}
         rangeType="month"
-        startDate={new Date("2024-03-01")}
-        endDate={new Date("2024-03-31")}
+        startDate={new Date(2024, 2, 1)}
+        endDate={new Date(2024, 2, 31)}
       />
     );
 
