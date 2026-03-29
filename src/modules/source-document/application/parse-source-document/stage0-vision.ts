@@ -12,6 +12,7 @@ import type { AIContext } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { loadImagesForAI } from "@/lib/storage/utils";
+import type { AIMessageContentPart } from "@/lib/flow/types";
 import {
   stage0ParseOutputSchema,
   normalizeResult,
@@ -30,14 +31,33 @@ export interface Stage0Input {
 
 export type Stage0Output = NormalizedStage0ParseOutput;
 
+function buildMessageContent(
+  images: { dataUrl: string }[] | undefined
+): AIMessageContentPart[] {
+  const content: AIMessageContentPart[] = [
+    { type: "text", text: "Please parse this source document." },
+  ];
+
+  if (images != null) {
+    content.push(
+      ...images.map((image) => ({
+        type: "image_url" as const,
+        image_url: { url: image.dataUrl },
+      }))
+    );
+  }
+
+  return content;
+}
+
 function buildPrompt(
   input: Stage0Input,
   aiLanguage: string
 ): string {
   const categorySection =
     input.originalCategories.length > 0
-      ? `\n### Expense Categories\nAssign each line item a category_index (0-based) from this list:\n${input.originalCategories
-          .map((c, i) => `${i}. ${c.name}${c.description != null && c.description !== "" ? ` — ${c.description}` : ""}`)
+      ? `\n### Expense Categories\nAssign each line item a category_index from this list. Use 0 if no category fits:\n${input.originalCategories
+          .map((c, i) => `${i + 1}. ${c.name}${c.description != null && c.description !== "" ? ` — ${c.description}` : ""}`)
           .join("\n")}\n`
       : "\n### Expense Categories\nNo categories provided — use category_index 0 for all entries.\n";
 
@@ -117,7 +137,11 @@ export async function executeStage0(
 
   logger.debug({ model, hasImages }, "stage0: calling AI");
 
-  const response = await ai.generate({ model, prompt, images });
+  const response = await ai.generate({
+    model,
+    prompt,
+    messages: [{ role: "user", content: buildMessageContent(images) }],
+  });
 
   let raw: unknown;
   try {

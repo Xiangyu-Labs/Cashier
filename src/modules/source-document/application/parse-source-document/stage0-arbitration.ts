@@ -6,9 +6,10 @@
  * original input, then returns the chosen result as a NormalizedStage0ParseOutput.
  */
 
-import type { AIContext } from "@/lib/flow/types";
+import type { AIContext, AIMessageContentPart } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { loadImagesForAI } from "@/lib/storage/utils";
 import { z } from "zod";
 import type { NormalizedStage0ParseOutput } from "./stage0-schema";
 import { stage0ParseOutputSchema, normalizeResult } from "./stage0-schema";
@@ -20,11 +21,12 @@ const arbitrationChoiceSchema = z.object({
 });
 
 function buildArbitrationPrompt(
+  input: Stage0Input,
   result1: NormalizedStage0ParseOutput,
   result2: NormalizedStage0ParseOutput
 ): string {
-  return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced different results for the same document. Choose the more accurate result.
-
+  const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
+  return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced different results for the same document. Choose the more accurate result.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
 
@@ -73,10 +75,21 @@ export async function arbitrateStage0Results(
 
   logger.debug("stage0-arbitration: starting arbitration");
 
+  // Load images once and reuse for both calls
+  let imageContent: AIMessageContentPart[] = [];
+  if (hasImages) {
+    const loaded = await loadImagesForAI(input.imageUrls!);
+    imageContent = loaded
+      .filter((r) => r.success)
+      .map((r) => ({ type: "image_url" as const, image_url: { url: r.dataUrl } }));
+  }
+  const userMessages = [{ role: "user" as const, content: imageContent }];
+
   // First: ask which result is better
   const choiceResponse = await ai.generate({
     model,
-    prompt: buildArbitrationPrompt(result1, result2),
+    prompt: buildArbitrationPrompt(input, result1, result2),
+    messages: userMessages,
   });
 
   let choice: number;
@@ -108,6 +121,7 @@ export async function arbitrateStage0Results(
   const correctedResponse = await ai.generate({
     model,
     prompt: buildArbitrationResultPrompt(input, result1, result2),
+    messages: userMessages,
   });
 
   let raw: unknown;

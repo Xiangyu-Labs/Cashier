@@ -41,7 +41,7 @@ export async function buildEntriesForInsert({
 }: BuildEntriesParams): Promise<EntryToInsert[]> {
   return Promise.all(
     validEntries.map(async (entry) => {
-      // categoryIndex is 1-based, so index 1 = categories[0]
+      // categoryIndex is 1-based: 0 = no category, 1 = categories[0], 2 = categories[1], ...
       const categoryId =
         entry.categoryIndex > 0 && entry.categoryIndex <= categories.length
           ? (categories[entry.categoryIndex - 1]?.id ?? null)

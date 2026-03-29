@@ -72,6 +72,71 @@ describe("entry-builder", () => {
     expect(loggerWarnMock).toHaveBeenCalledTimes(1);
   });
 
+  it("category_index 0 means no category — categoryId is null", async () => {
+    convertEntryAmountMock.mockResolvedValueOnce({ convertedAmount: "10.00", exchangeRate: "10.00" });
+
+    const result = await buildEntriesForInsert({
+      validEntries: [
+        {
+          amount: 10,
+          currency: "CNY",
+          categoryIndex: 0,
+          entryDate: null,
+          itemName: "Unknown item",
+          notes: null,
+        },
+      ],
+      categories: [
+        { id: "cat-0", name: "Food", description: null },
+        { id: "cat-1", name: "Transport", description: null },
+      ],
+      sourceDocumentId: "doc-1",
+      ledgerId: "ledger-1",
+      mainCurrency: "CNY",
+      fallbackDate: "2026-03-20",
+    });
+
+    expect(result[0].categoryId).toBeNull();
+  });
+
+  it("category_index 1 maps to first category, category_index 2 maps to second (1-based)", async () => {
+    convertEntryAmountMock
+      .mockResolvedValueOnce({ convertedAmount: "10.00", exchangeRate: "1" })
+      .mockResolvedValueOnce({ convertedAmount: "20.00", exchangeRate: "1" });
+
+    const result = await buildEntriesForInsert({
+      validEntries: [
+        {
+          amount: 10,
+          currency: "CNY",
+          categoryIndex: 1,
+          entryDate: null,
+          itemName: "Groceries",
+          notes: null,
+        },
+        {
+          amount: 20,
+          currency: "CNY",
+          categoryIndex: 2,
+          entryDate: null,
+          itemName: "Bus ticket",
+          notes: null,
+        },
+      ],
+      categories: [
+        { id: "cat-0", name: "Food", description: null },
+        { id: "cat-1", name: "Transport", description: null },
+      ],
+      sourceDocumentId: "doc-1",
+      ledgerId: "ledger-1",
+      mainCurrency: "CNY",
+      fallbackDate: "2026-03-20",
+    });
+
+    expect(result[0].categoryId).toBe("cat-0");
+    expect(result[1].categoryId).toBe("cat-1");
+  });
+
   it("allows negative adjustment rows through validation", () => {
     expect(
       validateEntries([

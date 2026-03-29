@@ -107,6 +107,37 @@ describe("executeStage0 — single-pass receipt parser", () => {
     expect(call[0].model).toBe("vision");
   });
 
+  it("passes user content through messages instead of legacy images field", async () => {
+    const generate = vi.fn(async (options: AIGenerateOptions) => {
+      const firstMessage = options.messages[0];
+      expect(firstMessage).toBeDefined();
+      expect(firstMessage?.role).toBe("user");
+      expect(Array.isArray(firstMessage?.content)).toBe(true);
+
+      const content = firstMessage?.content;
+      if (!Array.isArray(content)) {
+        throw new Error("Expected multimodal user content array");
+      }
+
+      expect(content[0]).toEqual({ type: "text", text: "Please parse this source document." });
+      expect(content[1]).toEqual({
+        type: "image_url",
+        image_url: { url: "data:image/jpeg;base64,FAKE" },
+      });
+
+      return {
+        content: JSON.stringify(SIMPLE_SUCCESS_RESPONSE),
+      };
+    });
+
+    await executeStage0(
+      { imageUrls: ["/api/uploads/ledger/doc/image.webp"], originalCategories: [] },
+      { generate }
+    );
+
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
   it("uses text model when only text is provided", async () => {
     await executeStage0(
       { text: "Taxi fare SGD 28.00", originalCategories: [] },
