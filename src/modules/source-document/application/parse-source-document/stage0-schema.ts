@@ -75,6 +75,21 @@ export interface NormalizedStage0ParseOutput {
 export function normalizeResult(
   output: z.infer<typeof stage0ParseOutputSchema>
 ): NormalizedStage0ParseOutput {
+  // Validate: ledger_entry amounts must be positive (> 0)
+  const invalidEntry = output.ledger_entries.find((e) => e.amount <= 0);
+  if (invalidEntry != null) {
+    return {
+      outcome: "anomaly",
+      anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
+      title: output.title ?? "",
+      receipt_count: output.receipt_count,
+      receipt_totals: output.receipt_totals,
+      ledger_entries: [],
+      order_adjustments: output.order_adjustments,
+      reasoning: output.reasoning,
+    };
+  }
+
   return {
     outcome: output.outcome,
     ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),

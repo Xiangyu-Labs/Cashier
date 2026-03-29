@@ -126,6 +126,28 @@ describe("stage0-schema", () => {
     expect(compareResults(left, right)).toBe(false);
   });
 
+  it("normalizeResult returns anomaly when a ledger_entry has a non-positive amount", () => {
+    const withZeroEntry = stage0ParseOutputSchema.parse({
+      ...simpleSuccess,
+      ledger_entries: [
+        { ...simpleSuccess.ledger_entries[0]!, amount: 0 },
+      ],
+    });
+    const result = normalizeResult(withZeroEntry);
+    expect(result.outcome).toBe("anomaly");
+  });
+
+  it("normalizeResult returns anomaly when a ledger_entry has a negative amount", () => {
+    const withNegativeEntry = stage0ParseOutputSchema.parse({
+      ...simpleSuccess,
+      ledger_entries: [
+        { ...simpleSuccess.ledger_entries[0]!, amount: -5 },
+      ],
+    });
+    const result = normalizeResult(withNegativeEntry);
+    expect(result.outcome).toBe("anomaly");
+  });
+
   it("accepts results within 0.01 tolerance as matching", () => {
     const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(

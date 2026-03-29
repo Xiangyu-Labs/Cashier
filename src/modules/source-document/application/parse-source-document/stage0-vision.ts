@@ -111,7 +111,7 @@ Return a single JSON object:
 ### Rules
 - Set outcome to "invalid" if the document is not a receipt or invoice.
 - Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
-- ledger_entries: items the customer actively chose to purchase (products or services received). Always record the final net price — if an item has an individual discount, fold it into the amount. ledger_entry amounts must always be positive.
+- ledger_entries: items the customer actively chose to purchase (products or services received). Always record the final net price — if an item has an individual discount, fold it into the amount. ledger_entry amounts must always be strictly positive (> 0); zero and negative values are invalid.
 - order_adjustments: everything else that modifies the bill total — any fee, charge, tax, deduction, or rounding applied by the merchant or system, regardless of what it is called. Use negative amounts for reductions.
 - This system only handles expenses. If the document is a refund or credit note, set outcome to "anomaly".
 - Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
