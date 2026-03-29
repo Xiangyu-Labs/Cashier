@@ -108,10 +108,28 @@ Return a single JSON object:
 ### Rules
 - Set outcome to "invalid" if the document is not a receipt or invoice.
 - Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
-- ledger_entries: items the customer actively chose to purchase (products or services received). Always record the final net price — if an item has an individual discount, fold it into the amount. ledger_entry amounts must always be strictly positive (> 0); zero and negative values are invalid.
-- order_adjustments: everything else that modifies the bill total — any fee, charge, tax, deduction, or rounding applied by the merchant or system, regardless of what it is called. Use negative amounts for reductions.
+- Core accounting rule:
+  - The receipt total should satisfy: sum(ledger_entries.amount) + sum(order_adjustments.amount) = receipt total.
+  - Every monetary effect must appear exactly once.
+  - Never represent the same discount, fee, tax, shipping charge, packaging fee, service fee, subsidy, or rounding adjustment in both ledger_entries and order_adjustments.
+- ledger_entries:
+  - ledger_entries are only the products or services the customer actually purchased.
+  - The amount of each ledger_entry must be the final net amount for that specific item only.
+  - If a discount or surcharge clearly applies to one specific item, fold it into that item's amount.
+  - ledger_entry amounts must always be strictly positive (> 0); zero and negative values are invalid.
+- order_adjustments:
+  - order_adjustments are bill-level adjustments that modify the overall receipt total rather than one specific item.
+  - Put bill-level discounts, coupons, spend-threshold promotions, shipping fees, packaging fees, service fees, taxes, tips, platform-wide subsidies, and rounding adjustments here.
+  - If an adjustment cannot be confidently attributed to exactly one item, put it in order_adjustments instead of guessing how to distribute it across items.
+- Important special case:
+  - Even if there is only one purchased item on the receipt, bill-level adjustments must still stay in order_adjustments.
+  - Do not fold a bill-level discount or fee into the single item's amount just because there is only one item.
 - This system only handles expenses. If the document is a refund or credit note, set outcome to "anomaly".
 - Each receipt in a multi-receipt image gets its own receipt_index starting from 0.
+- Examples:
+  - Two items + order-level coupon: keep the item prices in ledger_entries, put the coupon in order_adjustments.
+  - Two items + each item has its own discount: return the already-discounted item prices in ledger_entries, with no order_adjustments for those item-specific discounts.
+  - One item + shipping fee + order-level coupon: keep only the item's own final price in ledger_entries, and put shipping fee / order-level coupon in order_adjustments.
 - Return only the JSON block, no other text.`;
 }
 
