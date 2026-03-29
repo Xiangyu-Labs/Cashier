@@ -12,6 +12,7 @@ import { arbitrateResults } from "./arbitration";
 import { shouldDualRun, compareResults } from "./parser-schema";
 import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 import { convertToParsedEntries } from "./result-mapper";
+import { reconcileParseOutput } from "./reconciliation";
 import type { NormalizedParseOutput } from "./parser-schema";
 
 // ===== Context =====
@@ -79,6 +80,26 @@ function resolveSuccess(
   };
 }
 
+async function persistAndResolveSuccess({
+  aiLanguage,
+  result,
+  wasArbitrated,
+  ctx,
+}: {
+  aiLanguage?: string;
+  result: NormalizedParseOutput;
+  wasArbitrated: boolean;
+  ctx: StageContext;
+}): Promise<ParsePipelineResult> {
+  const reconciled = reconcileParseOutput({ aiLanguage, result });
+  if (reconciled.kind === "anomaly") {
+    return { kind: "anomaly", anomalyReason: reconciled.reason };
+  }
+
+  await persistParseResult(reconciled.result, ctx);
+  return resolveSuccess(reconciled.result, wasArbitrated);
+}
+
 function resolveOutcome(
   result: NormalizedParseOutput
 ): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
@@ -144,8 +165,12 @@ export async function runParsePipeline(
 
     // Simple document: single pass is sufficient
     if (!shouldDualRun(first)) {
-      await persistParseResult(first, ctx);
-      return resolveSuccess(first, false);
+      return persistAndResolveSuccess({
+        aiLanguage: input.aiLanguage,
+        result: first,
+        wasArbitrated: false,
+        ctx,
+      });
     }
 
     // Complex document: run a second pass
@@ -161,8 +186,12 @@ export async function runParsePipeline(
         { docId: ctx.docId, entries: first.ledger_entries.length },
         "parser: dual-run results agree"
       );
-      await persistParseResult(first, ctx);
-      return resolveSuccess(first, false);
+      return persistAndResolveSuccess({
+        aiLanguage: input.aiLanguage,
+        result: first,
+        wasArbitrated: false,
+        ctx,
+      });
     }
 
     // Results disagree: arbitrate
@@ -181,8 +210,12 @@ export async function runParsePipeline(
       return { kind: "anomaly", anomalyReason: arbitration.reason };
     }
 
-    await persistParseResult(arbitration.result, ctx);
-    return resolveSuccess(arbitration.result, true);
+    return persistAndResolveSuccess({
+      aiLanguage: input.aiLanguage,
+      result: arbitration.result,
+      wasArbitrated: true,
+      ctx,
+    });
   } catch (error) {
     if (error instanceof TaskCancelledError) {
       return { kind: "cancelled" };

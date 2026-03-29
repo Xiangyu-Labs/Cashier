@@ -253,12 +253,55 @@ describe("runParsePipeline — new single-pass flow", () => {
     }
   });
 
-  it("order_adjustments are folded proportionally into ledgerEntries", async () => {
-    // SIMPLE_ENTRY: { receipt_index: 0, amount: 10, currency: "USD", item_name: "Lunch" }
-    // adjustment: -2 USD on receipt 0 → single matching entry absorbs all → 10 + (-2) = 8
+
+  it("returns a reconciled synthetic ledger entry when parser output is below the receipt total", async () => {
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
+        receipt_totals: [{ receipt_index: 0, amount: 15, currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        order_adjustments: [],
+      },
+    });
+
+    const result = await runParsePipeline(createInput(), buildCtx(ai));
+
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.ledgerEntries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ amount: 5, itemName: expect.any(String), isAdjustment: false }),
+        ])
+      );
+    }
+  });
+
+  it("reconciles an over-stated parse by adding a synthetic bill adjustment before mapping to parsed entries", async () => {
+    const { ai } = createMockAI({
+      stage0Result: {
+        ...SIMPLE_STAGE0_RESULT,
+        receipt_totals: [{ receipt_index: 0, amount: 8, currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        order_adjustments: [],
+      },
+    });
+
+    const result = await runParsePipeline(createInput(), buildCtx(ai));
+
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.ledgerEntries).toHaveLength(1);
+      expect(result.ledgerEntries[0]).toMatchObject({ amount: 8, itemName: "Lunch" });
+    }
+  });
+
+  it("order_adjustments are folded proportionally into ledgerEntries", async () => {
+    // SIMPLE_ENTRY: { receipt_index: 0, amount: 10, currency: "USD", item_name: "Lunch" }
+    // receipt total is 8 after a -2 bill-level discount, so reconciliation should not add residuals.
+    const { ai } = createMockAI({
+      stage0Result: {
+        ...SIMPLE_STAGE0_RESULT,
+        receipt_totals: [{ receipt_index: 0, amount: 8, currency: "USD" }],
         order_adjustments: [
           { receipt_index: 0, item_name: "Discount", amount: -2, currency: "USD" },
         ],
