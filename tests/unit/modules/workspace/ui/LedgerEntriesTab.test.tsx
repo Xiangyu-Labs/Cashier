@@ -175,6 +175,22 @@ vi.mock("@/modules/ledger/ui", () => ({
 
 vi.mock("@/modules/source-document/ui", () => ({
   __esModule: true,
+  SourceDocumentActions: ({
+    showUpdateDates,
+    showRetry,
+    onUpdateDates,
+    onRetry,
+  }: {
+    showUpdateDates: boolean;
+    showRetry: boolean;
+    onUpdateDates: () => void;
+    onRetry: () => void;
+  }) => (
+    <div data-testid="source-document-actions">
+      {showUpdateDates ? <button onClick={onUpdateDates}>setDate</button> : null}
+      {showRetry ? <button onClick={onRetry}>retry</button> : null}
+    </div>
+  ),
   SourceDocumentCard: ({
     sourceDocument,
     onDelete,

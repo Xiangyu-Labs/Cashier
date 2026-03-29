@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
 import type { PeriodParams } from "@/lib/period-utils";
-import { SourceDocumentActions } from "@/modules/source-document/ui/batch-action-toolbar/SourceDocumentActions";
+import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 
@@ -87,7 +87,7 @@ export function LedgerEntriesToolbar({
             <Checkbox
               checked={masterChecked}
               onCheckedChange={(checked) => {
-                if (checked) onSelectAll();
+                if (checked === true) onSelectAll();
                 else onClearSelection();
               }}
               aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}

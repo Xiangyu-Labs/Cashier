@@ -4,6 +4,7 @@ import type { AIContext, AIGenerateOptions } from "@/lib/flow/types";
 
 // Mock image loading so tests don't need real storage
 vi.mock("@/lib/storage/utils", () => ({
+  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
   ),
@@ -36,6 +37,14 @@ function createMockAI(response: unknown = SIMPLE_SUCCESS_RESPONSE): AIContext {
   };
 }
 
+function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOptions {
+  const firstCall = generate.mock.calls[0]?.[0];
+  if (firstCall == null) {
+    throw new Error("Expected AI generate to be called");
+  }
+  return firstCall as AIGenerateOptions;
+}
+
 describe("executeStage0 — single-pass receipt parser", () => {
   let mockAI: AIContext;
 
@@ -63,10 +72,10 @@ describe("executeStage0 — single-pass receipt parser", () => {
     const result = await executeStage0(
       { imageUrls: ["data:image/jpeg;base64,abc"], originalCategories: [] },
       mockAI
-    ) as Record<string, unknown>;
+    );
 
-    expect(result["primaryEvidence"]).toBeUndefined();
-    expect(result["documentType"]).toBeUndefined();
+    expect("primaryEvidence" in result).toBe(false);
+    expect("documentType" in result).toBe(false);
   });
 
   it("preserves receipt_index on ledger entries", async () => {
@@ -103,8 +112,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
-    expect(call[0].model).toBe("vision");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("vision");
   });
 
   it("passes user content through messages instead of legacy images field", async () => {
@@ -144,8 +152,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
-    expect(call[0].model).toBe("text");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("text");
   });
 
   it("uses vision model for mixed text+image input", async () => {
@@ -154,8 +161,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
-    expect(call[0].model).toBe("vision");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("vision");
   });
 
   // === Outcome branches ===
@@ -205,8 +211,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
-    expect(call[0].prompt).toContain("Food");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain("Food");
   });
 
   it("prompt contains receipt and invoice parser identifier", async () => {
@@ -215,8 +220,9 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    const call = (mockAI.generate as ReturnType<typeof vi.fn>).mock.calls[0] as [AIGenerateOptions];
-    expect(call[0].prompt).toContain("receipt and invoice parser");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain(
+      "receipt and invoice parser"
+    );
   });
 
   // === Multi-image ===

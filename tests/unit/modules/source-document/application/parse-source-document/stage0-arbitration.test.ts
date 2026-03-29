@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions } from "@/lib/flow";
 import { arbitrateResults as arbitrateStage0Results } from "@/modules/source-document/application/parse-source-document/arbitration";
 import type { NormalizedParseOutput as NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
 import type { ParserInput as Stage0Input } from "@/modules/source-document/application/parse-source-document/parser";
 
 vi.mock("@/lib/storage/utils", () => ({
+  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKEIMG`, success: true }))
   ),
@@ -27,6 +28,14 @@ const INPUT: Stage0Input = {
   originalCategories: [],
   text: "Lunch 10 USD",
 };
+
+function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOptions {
+  const firstCall = generate.mock.calls[0]?.[0];
+  if (firstCall == null) {
+    throw new Error("Expected AI generate to be called");
+  }
+  return firstCall as AIGenerateOptions;
+}
 
 function createArbitrationAI(choice: number, correctedResult?: object): AIContext {
   let callCount = 0;
@@ -130,8 +139,7 @@ describe("arbitrateStage0Results", () => {
 
     await arbitrateStage0Results({ input: { originalCategories: [], text: "text only" }, result1, result2 }, ai);
 
-    const firstCall = generate.mock.calls[0] as [AIGenerateOptions];
-    expect(firstCall[0].model).toBe("text");
+    expect(getFirstGenerateCall(generate).model).toBe("text");
   });
 
   it("uses vision model when imageUrls are present", async () => {
@@ -146,8 +154,7 @@ describe("arbitrateStage0Results", () => {
       result2,
     }, ai);
 
-    const firstCall = generate.mock.calls[0] as [AIGenerateOptions];
-    expect(firstCall[0].model).toBe("vision");
+    expect(getFirstGenerateCall(generate).model).toBe("vision");
   });
 
   it("includes input.text in the choice-selection prompt (first call)", async () => {

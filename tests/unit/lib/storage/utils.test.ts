@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  isFailedLoadImageResult,
   loadImageForAI,
   loadImagesForAI,
   loadImagesForAIOrThrow,
   inferImageMimeType,
 } from "@/lib/storage/utils";
+import type { LoadImageResult } from "@/lib/storage/utils";
 import * as localModule from "@/lib/storage/local";
 
 // Mock the local storage module
@@ -107,7 +109,22 @@ describe("storage/utils", () => {
       const secondResult = requireDefined(results[1], "Expected second load result");
       expect(firstResult.success).toBe(true);
       expect(secondResult.success).toBe(false);
+      expect(isFailedLoadImageResult(secondResult)).toBe(true);
+      if (!isFailedLoadImageResult(secondResult)) {
+        throw new Error("Expected second result to be a failed image load");
+      }
       expect(secondResult.error).toBeDefined();
+    });
+
+    it("narrows successful results to records with a required dataUrl", () => {
+      type SuccessfulImageLoad = Extract<LoadImageResult, { success: true }>;
+
+      const successfulResults: SuccessfulImageLoad[] = ([] as LoadImageResult[]).filter(
+        (result) => result.success
+      );
+      const dataUrls: string[] = successfulResults.map((result) => result.dataUrl);
+
+      expect(dataUrls).toEqual([]);
     });
   });
 

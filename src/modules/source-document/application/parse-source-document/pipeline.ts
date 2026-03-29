@@ -37,7 +37,7 @@ export function buildStageContext(params: {
 // ===== Result contract =====
 
 export type ParsePipelineResult =
-  | { kind: "success"; title?: string; ledgerEntries: ParsedLedgerEntry[] }
+  | { kind: "success"; title?: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
   | { kind: "invalid" }
   | { kind: "anomaly"; anomalyReason: string }
   | { kind: "cancelled" };

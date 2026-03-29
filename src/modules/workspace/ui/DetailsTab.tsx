@@ -182,14 +182,14 @@ export function DetailsTab({
                 {isSelectionMode && (
                   <>
                     <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5">
-                      <Checkbox
-                        checked={masterChecked}
-                        onCheckedChange={(checked) => {
-                          if (checked) selectAll();
-                          else clearSelection();
-                        }}
-                        aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}
-                        className="h-4 w-4"
+                        <Checkbox
+                          checked={masterChecked}
+                          onCheckedChange={(checked) => {
+                            if (checked === true) selectAll();
+                            else clearSelection();
+                          }}
+                          aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}
+                          className="h-4 w-4"
                       />
                       <span className="text-xs font-medium text-text">
                         {tBatch("selected", { count: selectedIds.length })}

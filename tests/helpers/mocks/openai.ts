@@ -85,7 +85,6 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
           // Stage 0: Single-pass receipt and invoice parser
           const isStage0Parser = prompt.includes("receipt and invoice parser");
           if (isStage0Parser && !prompt.includes("arbitration")) {
-            const currentDate = getCurrentDateIso();
             const entries = opts.entries.map((e, index) => ({
               receipt_index: 0,
               item_name: e.item_name,

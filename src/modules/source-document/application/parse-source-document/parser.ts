@@ -11,7 +11,7 @@
 import type { AIContext } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { loadImagesForAI } from "@/lib/storage/utils";
+import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";
 import type { AIMessageContentPart } from "@/lib/flow/types";
 import {
   parserOutputSchema,
@@ -129,7 +129,7 @@ export async function executeParser(
   if (hasImages) {
     const loaded = await loadImagesForAI(input.imageUrls!);
     images = loaded
-      .filter((r) => r.success)
+      .filter(isSuccessfulLoadImageResult)
       .map((r) => ({ dataUrl: r.dataUrl }));
   }
 

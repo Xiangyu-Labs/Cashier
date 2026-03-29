@@ -9,7 +9,7 @@
 import type { AIContext, AIMessageContentPart } from "@/lib/flow/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { loadImagesForAI } from "@/lib/storage/utils";
+import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";
 import { z } from "zod";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";
@@ -66,7 +66,9 @@ async function buildArbitrationMessageContent(
 
   if ((imageUrls?.length ?? 0) > 0) {
     const loaded = await loadImagesForAI(imageUrls!);
-    const images = loaded.filter((r) => r.success).map((r) => ({ dataUrl: r.dataUrl }));
+    const images = loaded
+      .filter(isSuccessfulLoadImageResult)
+      .map((r) => ({ dataUrl: r.dataUrl }));
     content.push(
       ...images.map((image) => ({
         type: "image_url" as const,

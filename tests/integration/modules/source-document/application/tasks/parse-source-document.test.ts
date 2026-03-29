@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as ParsePipelineModule from "@/modules/source-document/application/parse-source-document/pipeline";
 const { runParsePipelineMock } = vi.hoisted(() => ({
   runParsePipelineMock: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/application/parse-source-document/pipeline", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/source-document/application/parse-source-document/pipeline")>();
+  const actual = await importOriginal() as typeof ParsePipelineModule;
   return {
     ...actual,
     runParsePipeline: runParsePipelineMock,
@@ -62,6 +63,7 @@ describe("parseSourceDocumentHandler.execute", () => {
       kind: "success",
       ledgerEntries: [],
       title: "Delegated",
+      wasArbitrated: false,
     };
     runParsePipelineMock.mockResolvedValue(pipelineResult);
 

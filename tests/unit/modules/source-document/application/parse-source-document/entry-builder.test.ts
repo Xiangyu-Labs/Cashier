@@ -96,7 +96,13 @@ describe("entry-builder", () => {
       fallbackDate: "2026-03-20",
     });
 
-    expect(result[0].categoryId).toBeNull();
+    const firstEntry = result[0];
+    expect(firstEntry).toBeDefined();
+    if (firstEntry == null) {
+      throw new Error("Expected first built entry");
+    }
+
+    expect(firstEntry.categoryId).toBeNull();
   });
 
   it("category_index 1 maps to first category, category_index 2 maps to second (1-based)", async () => {
@@ -133,8 +139,16 @@ describe("entry-builder", () => {
       fallbackDate: "2026-03-20",
     });
 
-    expect(result[0].categoryId).toBe("cat-0");
-    expect(result[1].categoryId).toBe("cat-1");
+    const firstEntry = result[0];
+    const secondEntry = result[1];
+    expect(firstEntry).toBeDefined();
+    expect(secondEntry).toBeDefined();
+    if (firstEntry == null || secondEntry == null) {
+      throw new Error("Expected two built entries");
+    }
+
+    expect(firstEntry.categoryId).toBe("cat-0");
+    expect(secondEntry.categoryId).toBe("cat-1");
   });
 
   it("allows negative adjustment rows through validation", () => {

@@ -21,6 +21,7 @@ vi.mock("@/lib/db", () => ({
 
 // Mock image loading so pipeline tests don't need real storage
 vi.mock("@/lib/storage/utils", () => ({
+  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
   ),
@@ -104,17 +105,36 @@ function createMockAI(options: {
   return { ai: { generate }, generate };
 }
 
-function createInput(overrides: Partial<ParseSourceDocumentInput> = {}): ParseSourceDocumentInput {
+type ParseSourceDocumentInputOverrides = {
+  [K in keyof ParseSourceDocumentInput]?: ParseSourceDocumentInput[K] | undefined;
+};
+
+function createInput(overrides: ParseSourceDocumentInputOverrides = {}): ParseSourceDocumentInput {
   return {
-    ledgerId: "ledger-1",
-    sourceDocumentId: "doc-1",
-    categories: [{ id: "cat-1", name: "Food", description: null }],
-    settings: {},
-    text: "Lunch 10 USD",
-    imageUrls: ["data:image/jpeg;base64,FAKE"],
-    aiLanguage: "zh-CN",
-    preferredCurrencies: ["USD"],
-    ...overrides,
+    ledgerId: overrides.ledgerId ?? "ledger-1",
+    sourceDocumentId: overrides.sourceDocumentId ?? "doc-1",
+    categories: overrides.categories ?? [{ id: "cat-1", name: "Food", description: null }],
+    settings: overrides.settings ?? {},
+    ...("text" in overrides
+      ? overrides.text !== undefined
+        ? { text: overrides.text }
+        : {}
+      : { text: "Lunch 10 USD" }),
+    ...("imageUrls" in overrides
+      ? overrides.imageUrls !== undefined
+        ? { imageUrls: overrides.imageUrls }
+        : {}
+      : { imageUrls: ["data:image/jpeg;base64,FAKE"] }),
+    ...("aiLanguage" in overrides
+      ? overrides.aiLanguage !== undefined
+        ? { aiLanguage: overrides.aiLanguage }
+        : {}
+      : { aiLanguage: "zh-CN" }),
+    ...("preferredCurrencies" in overrides
+      ? overrides.preferredCurrencies !== undefined
+        ? { preferredCurrencies: overrides.preferredCurrencies }
+        : {}
+      : { preferredCurrencies: ["USD"] }),
   };
 }
 

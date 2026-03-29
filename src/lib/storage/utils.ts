@@ -40,13 +40,33 @@ export async function loadImageForAI(url: string): Promise<string> {
 }
 
 /**
- * Result of loading an image for AI processing
+ * Result of loading an image for AI processing.
+ * `success` is the discriminant so downstream filters can narrow correctly.
  */
-export interface LoadImageResult {
+export interface SuccessfulLoadImageResult {
   url: string;
-  dataUrl?: string;
-  error?: Error;
-  success: boolean;
+  dataUrl: string;
+  success: true;
+}
+
+export interface FailedLoadImageResult {
+  url: string;
+  error: Error;
+  success: false;
+}
+
+export type LoadImageResult = SuccessfulLoadImageResult | FailedLoadImageResult;
+
+export function isSuccessfulLoadImageResult(
+  result: LoadImageResult
+): result is SuccessfulLoadImageResult {
+  return result.success;
+}
+
+export function isFailedLoadImageResult(
+  result: LoadImageResult
+): result is FailedLoadImageResult {
+  return !result.success;
 }
 
 /**
@@ -97,7 +117,7 @@ export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]
  */
 export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> {
   const results = await loadImagesForAI(urls);
-  const failures = results.filter((r) => !r.success);
+  const failures = results.filter(isFailedLoadImageResult);
 
   if (failures.length > 0) {
     const errorMessages = failures.map((f) => `${f.url}: ${f.error?.message}`).join("; ");
@@ -107,7 +127,7 @@ export async function loadImagesForAIOrThrow(urls: string[]): Promise<string[]> 
     );
   }
 
-  return results.map((r) => r.dataUrl!);
+  return results.filter(isSuccessfulLoadImageResult).map((r) => r.dataUrl);
 }
 
 /**

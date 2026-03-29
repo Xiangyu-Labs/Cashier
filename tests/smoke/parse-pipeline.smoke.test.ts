@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 
 vi.mock("@/lib/storage/utils", () => ({
+  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(),
   loadImagesForAIOrThrow: vi.fn(),
   loadImageForAI: vi.fn(),
@@ -241,7 +242,6 @@ describe.skipIf(SKIP)("parse pipeline smoke tests", () => {
     })
   })
 })
-
 
 
 
