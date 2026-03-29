@@ -235,7 +235,9 @@ describe("runParsePipeline — new single-pass flow", () => {
     }
   });
 
-  it("order_adjustments are included in ledgerEntries", async () => {
+  it("order_adjustments are folded proportionally into ledgerEntries", async () => {
+    // SIMPLE_ENTRY: { receipt_index: 0, amount: 10, currency: "USD", item_name: "Lunch" }
+    // adjustment: -2 USD on receipt 0 → single matching entry absorbs all → 10 + (-2) = 8
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
@@ -248,8 +250,10 @@ describe("runParsePipeline — new single-pass flow", () => {
 
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
-      const adjustment = result.ledgerEntries.find((e) => e.amount === -2);
-      expect(adjustment).toBeDefined();
+      // No separate adjustment row — discount is folded into the entry
+      expect(result.ledgerEntries.every((e) => !e.isAdjustment)).toBe(true);
+      const entry = result.ledgerEntries.find((e) => e.itemName === "Lunch");
+      expect(entry?.amount).toBe(8);
     }
   });
 

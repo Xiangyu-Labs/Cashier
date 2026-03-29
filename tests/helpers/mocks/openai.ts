@@ -82,6 +82,43 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
         ) => {
           const prompt = _prompt.toLowerCase();
 
+          // Stage 0: Single-pass receipt and invoice parser
+          const isStage0Parser = prompt.includes("receipt and invoice parser");
+          if (isStage0Parser && !prompt.includes("arbitration")) {
+            const currentDate = getCurrentDateIso();
+            const entries = opts.entries.map((e, index) => ({
+              receipt_index: 0,
+              item_name: e.item_name,
+              amount: e.amount,
+              currency: e.currency ?? opts.currencies[0] ?? "CNY",
+              category_index: e.category_index ?? index + 1,
+              notes: e.notes ?? null,
+            }));
+            const totalAmount = entries.reduce((s, e) => s + e.amount, 0);
+            const currency = opts.currencies[0] ?? "CNY";
+            return Promise.resolve({
+              content: JSON.stringify({
+                outcome: "success",
+                title: opts.title,
+                receipt_count: 1,
+                receipt_totals: [{ receipt_index: 0, amount: totalAmount, currency }],
+                ledger_entries: entries,
+                order_adjustments: [],
+                reasoning: "Parsed expense entries from document",
+              }),
+              usage: { promptTokens: 200, completionTokens: 100 },
+            });
+          }
+
+          // Stage 0: Arbitration
+          const isStage0Arbitration = prompt.includes("arbitration ai");
+          if (isStage0Arbitration) {
+            return Promise.resolve({
+              content: JSON.stringify({ choice: 1, reason: "result 1 is more accurate" }),
+              usage: { promptTokens: 100, completionTokens: 50 },
+            });
+          }
+
           // Stage 1.5: Validation (reviews Stage 1 results)
           // MUST check FIRST - prompt contains "validation ai that reviews"
           const isValidationReview = prompt.includes("validation") && prompt.includes("reviews");
