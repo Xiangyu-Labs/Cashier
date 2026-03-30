@@ -86,12 +86,15 @@ async function persistAndResolveSuccess({
   wasArbitrated,
   ctx,
 }: {
-  aiLanguage?: string;
+  aiLanguage: string | undefined;
   result: NormalizedParseOutput;
   wasArbitrated: boolean;
   ctx: StageContext;
 }): Promise<ParsePipelineResult> {
-  const reconciled = reconcileParseOutput({ aiLanguage, result });
+  const reconciled =
+    aiLanguage === undefined
+      ? reconcileParseOutput({ result })
+      : reconcileParseOutput({ aiLanguage, result });
   if (reconciled.kind === "anomaly") {
     return { kind: "anomaly", anomalyReason: reconciled.reason };
   }

@@ -253,6 +253,28 @@ describe("runParsePipeline — new single-pass flow", () => {
     }
   });
 
+  it("supports successful reconciliation when aiLanguage is omitted", async () => {
+    const { ai } = createMockAI({
+      stage0Result: {
+        ...SIMPLE_STAGE0_RESULT,
+        receipt_totals: [{ receipt_index: 0, amount: 12, currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        order_adjustments: [],
+      },
+    });
+
+    const result = await runParsePipeline(createInput({ aiLanguage: undefined }), buildCtx(ai));
+
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.ledgerEntries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ amount: 2, itemName: expect.any(String) }),
+        ])
+      );
+    }
+  });
+
 
   it("returns a reconciled synthetic ledger entry when parser output is below the receipt total", async () => {
     const { ai } = createMockAI({
