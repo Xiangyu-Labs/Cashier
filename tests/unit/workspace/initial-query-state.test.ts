@@ -45,4 +45,14 @@ describe("initial ledger query state helpers", () => {
     expect(state.prevDateStartStr).toBe("2026-02-01");
     expect(state.prevDateEndStr).toBe("2026-02-28");
   });
+
+  it("derives the previous month correctly for month-end stats dates", () => {
+    const state = getStatsInitialQueryState(new Date(2026, 2, 31), DEFAULT_STATS_RANGE_TYPE);
+
+    expect(state.rangeType).toBe("month");
+    expect(state.startDateStr).toBe("2026-03-01");
+    expect(state.endDateStr).toBe("2026-03-31");
+    expect(state.prevDateStartStr).toBe("2026-02-01");
+    expect(state.prevDateEndStr).toBe("2026-02-28");
+  });
 });

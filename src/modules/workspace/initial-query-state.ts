@@ -1,4 +1,4 @@
-import { type DateRangeType, formatDateTimeForApi, getDateRange } from "@/lib/date-utils";
+import { addPeriod, type DateRangeType, formatDateTimeForApi, getDateRange } from "@/lib/date-utils";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 
 export const DEFAULT_STATS_RANGE_TYPE: DateRangeType = "month";
@@ -62,11 +62,7 @@ export function getStatsInitialQueryState(
   rangeType: DateRangeType = DEFAULT_STATS_RANGE_TYPE
 ): StatsInitialQueryState {
   const { startDate, endDate } = getDateRange(currentDate, rangeType);
-  const prevAnchor = new Date(currentDate);
-
-  if (rangeType === "week") prevAnchor.setDate(prevAnchor.getDate() - 7);
-  if (rangeType === "month") prevAnchor.setMonth(prevAnchor.getMonth() - 1);
-  if (rangeType === "year") prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
+  const prevAnchor = addPeriod(currentDate, rangeType, -1);
 
   const { startDate: prevDateStart, endDate: prevDateEnd } = getDateRange(prevAnchor, rangeType);
 
