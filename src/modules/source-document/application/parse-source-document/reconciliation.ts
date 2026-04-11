@@ -1,6 +1,5 @@
 import type {
   NormalizedLedgerEntry,
-  NormalizedOrderAdjustment,
   NormalizedParseOutput,
   NormalizedReceiptTotal,
 } from "./parser-schema";
@@ -118,44 +117,44 @@ export function reconcileParseOutput({
   const reconciledEntries = [...result.ledger_entries.map((entry) => ({ ...entry }))];
   const reconciledAdjustments = [...result.order_adjustments.map((adjustment) => ({ ...adjustment }))];
 
-  for (const receiptIndex of [...receiptIndices].sort((a, b) => a - b)) {
-    const totalResult = determineTargetTotal(receiptIndex, result.receipt_totals);
-    if (totalResult.kind === "anomaly") {
-      return totalResult;
+  for (const receiptIndex of receiptIndices) {
+    const target = determineTargetTotal(receiptIndex, result.receipt_totals);
+    if (target.kind === "anomaly") {
+      return target;
     }
 
-    const entries = reconciledEntries.filter((entry) => entry.receipt_index === receiptIndex);
-    const adjustments = reconciledAdjustments.filter(
+    const entriesForReceipt = reconciledEntries.filter((entry) => entry.receipt_index === receiptIndex);
+    const adjustmentsForReceipt = reconciledAdjustments.filter(
       (adjustment) => adjustment.receipt_index === receiptIndex
     );
 
-    const current = roundToCents(
-      entries.reduce((sum, entry) => sum + entry.amount, 0) +
-        adjustments.reduce((sum, adjustment) => sum + adjustment.amount, 0)
-    );
-    const diff = roundToCents(totalResult.total.amount - current);
+    const entriesTotal = entriesForReceipt.reduce((sum, entry) => sum + entry.amount, 0);
+    const adjustmentsTotal = adjustmentsForReceipt.reduce((sum, adjustment) => sum + adjustment.amount, 0);
+    const currentTotal = roundToCents(entriesTotal + adjustmentsTotal);
+    const delta = roundToCents(target.total.amount - currentTotal);
 
-    if (Math.abs(diff) <= 0.01) {
+    if (Math.abs(delta) <= 0.01) {
       continue;
     }
 
-    if (diff > 0) {
+    if (delta > 0) {
       reconciledEntries.push({
         receipt_index: receiptIndex,
         item_name: genericItemName(aiLanguage),
-        amount: diff,
-        currency: totalResult.total.currency,
-        category_index: dominantCategoryIndex(entries),
+        amount: delta,
+        currency: target.total.currency,
+        category_index: dominantCategoryIndex(entriesForReceipt),
         notes: reconciliationNotes(aiLanguage),
       });
       continue;
     }
 
+    const syntheticAdjustmentAmount = delta;
     reconciledAdjustments.push({
       receipt_index: receiptIndex,
       item_name: genericAdjustmentName(aiLanguage),
-      amount: diff,
-      currency: totalResult.total.currency,
+      amount: syntheticAdjustmentAmount,
+      currency: target.total.currency,
     });
   }
 

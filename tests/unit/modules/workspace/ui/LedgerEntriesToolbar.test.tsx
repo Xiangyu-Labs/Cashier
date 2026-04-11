@@ -30,7 +30,7 @@ vi.mock("@/components/ui/checkbox", () => ({
     <button
       type="button"
       data-testid="toolbar-master-checkbox"
-      aria-checked={checked === "indeterminate" ? "mixed" : checked ? "true" : "false"}
+      data-state={checked === "indeterminate" ? "indeterminate" : checked ? "checked" : "unchecked"}
       onClick={() => onCheckedChange?.(!(checked === true))}
     />
   ),

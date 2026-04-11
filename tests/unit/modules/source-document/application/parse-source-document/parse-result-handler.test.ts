@@ -96,6 +96,59 @@ describe("handleParseResult", () => {
     expect(await listActiveEntries(doc.id)).toEqual([]);
   });
 
+  it("stores title for invalid documents while keeping Invalid content as anomalyReason", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const doc = await createSourceDocument(ledgerId);
+
+    await handleParseResult({
+      ledgerId,
+      sourceDocumentId: doc.id,
+      parsedEntries: [],
+      title: "Chat screenshot",
+      verificationStatus: "invalid",
+      categories: [],
+    });
+
+    const refreshed = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+
+    expect(refreshed).toMatchObject({
+      status: "anomaly",
+      title: "Chat screenshot",
+      anomalyReason: "Invalid content",
+    });
+    expect(await listActiveEntries(doc.id)).toEqual([]);
+  });
+
+  it("stores title and anomalyReason for anomaly documents", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const doc = await createSourceDocument(ledgerId);
+
+    await handleParseResult({
+      ledgerId,
+      sourceDocumentId: doc.id,
+      parsedEntries: [],
+      title: "Blurred receipt",
+      anomalyReason: "Image too blurry",
+      verificationStatus: "anomaly",
+      categories: [],
+    });
+
+    const refreshed = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+
+    expect(refreshed).toMatchObject({
+      status: "anomaly",
+      title: "Blurred receipt",
+      anomalyReason: "Image too blurry",
+    });
+    expect(await listActiveEntries(doc.id)).toEqual([]);
+  });
+
   it("marks validation failures as anomaly and keeps entries empty", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);

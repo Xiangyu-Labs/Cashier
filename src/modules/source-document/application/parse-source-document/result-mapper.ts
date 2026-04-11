@@ -83,17 +83,19 @@ export function toParseSourceDocumentOutput(
     case "success":
       return {
         ledgerEntries: result.ledgerEntries,
+        title: result.title,
         verificationStatus: "passed",
-        ...(result.title !== undefined ? { title: result.title } : {}),
       };
     case "invalid":
       return {
         ledgerEntries: [],
+        title: result.title,
         verificationStatus: "invalid",
       };
     case "anomaly":
       return {
         ledgerEntries: [],
+        title: result.title,
         anomalyReason: result.anomalyReason,
         verificationStatus: "anomaly",
       };

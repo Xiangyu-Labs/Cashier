@@ -210,6 +210,48 @@ describe("runParsePipeline — new single-pass flow", () => {
     expect(stage0Calls).toHaveLength(1);
   });
 
+  it("returns invalid with a fallback title when AI sends title null", async () => {
+    const { ai } = createMockAI({
+      stage0Result: {
+        ...SIMPLE_STAGE0_RESULT,
+        outcome: "invalid",
+        title: null,
+        ledger_entries: [],
+        receipt_totals: [],
+      },
+    });
+
+    const result = await runParsePipeline(createInput({ text: "今天天气很好出去散步了" }), buildCtx(ai));
+
+    expect(result).toMatchObject({
+      kind: "invalid",
+      title: expect.any(String),
+    });
+    if (result.kind === "invalid") {
+      expect(result.title.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("returns invalid with a fallback title when AI omits title", async () => {
+    const { ai } = createMockAI({
+      stage0Result: {
+        outcome: "invalid",
+        receipt_count: 1,
+        receipt_totals: [],
+        ledger_entries: [],
+        order_adjustments: [],
+        reasoning: "Not a receipt",
+      },
+    });
+
+    const result = await runParsePipeline(createInput({ text: "今天天气很好出去散步了" }), buildCtx(ai));
+
+    expect(result).toMatchObject({
+      kind: "invalid",
+      title: expect.any(String),
+    });
+  });
+
   it("anomaly outcome returns anomaly result", async () => {
     const { ai } = createMockAI({
       stage0Result: {
@@ -226,6 +268,27 @@ describe("runParsePipeline — new single-pass flow", () => {
     if (result.kind === "anomaly") {
       expect(result.anomalyReason).toBe("Image too blurry");
     }
+  });
+
+  it("returns anomaly with a fallback title when AI sends blank title", async () => {
+    const { ai } = createMockAI({
+      stage0Result: {
+        ...SIMPLE_STAGE0_RESULT,
+        outcome: "anomaly",
+        title: "   ",
+        anomaly_reason: "Image too blurry",
+        ledger_entries: [],
+        receipt_totals: [],
+      },
+    });
+
+    const result = await runParsePipeline(createInput(), buildCtx(ai));
+
+    expect(result).toMatchObject({
+      kind: "anomaly",
+      anomalyReason: "Image too blurry",
+      title: expect.any(String),
+    });
   });
 
   it("text-only input uses text model (no vision call)", async () => {

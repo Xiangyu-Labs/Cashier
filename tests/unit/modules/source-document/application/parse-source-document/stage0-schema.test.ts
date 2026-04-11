@@ -37,11 +37,38 @@ describe("stage0-schema", () => {
     expect(parsed.ledger_entries[0]?.notes).toBeNull();
   });
 
-  it("normalizes missing title to empty string", () => {
+  it("normalizes missing title to a non-empty fallback string", () => {
     const noTitle = { ...simpleSuccess };
     const { title: _t, ...withoutTitle } = noTitle;
     const parsed = normalizeResult(stage0ParseOutputSchema.parse(withoutTitle));
-    expect(parsed.title).toBe("");
+    expect(parsed.title).toBe("Untitled document");
+  });
+
+  it("uses invalid-content fallback title for invalid results missing title", () => {
+    const parsed = normalizeResult(
+      stage0ParseOutputSchema.parse({
+        ...simpleSuccess,
+        outcome: "invalid",
+        title: null,
+        ledger_entries: [],
+        receipt_totals: [],
+      })
+    );
+    expect(parsed.title).toBe("Invalid content");
+  });
+
+  it("uses anomaly fallback title for anomaly results with blank title", () => {
+    const parsed = normalizeResult(
+      stage0ParseOutputSchema.parse({
+        ...simpleSuccess,
+        outcome: "anomaly",
+        title: "   ",
+        anomaly_reason: "Image too blurry",
+        ledger_entries: [],
+        receipt_totals: [],
+      })
+    );
+    expect(parsed.title).toBe("Unparseable document");
   });
 
   it("treats <=3 entries with one currency and no adjustments as simple", () => {

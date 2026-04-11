@@ -38,9 +38,9 @@ export function buildStageContext(params: {
 // ===== Result contract =====
 
 export type ParsePipelineResult =
-  | { kind: "success"; title?: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
-  | { kind: "invalid" }
-  | { kind: "anomaly"; anomalyReason: string }
+  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
+  | { kind: "invalid"; title: string }
+  | { kind: "anomaly"; title: string; anomalyReason: string }
   | { kind: "cancelled" };
 
 // ===== Input mapping =====
@@ -96,7 +96,11 @@ async function persistAndResolveSuccess({
       ? reconcileParseOutput({ result })
       : reconcileParseOutput({ aiLanguage, result });
   if (reconciled.kind === "anomaly") {
-    return { kind: "anomaly", anomalyReason: reconciled.reason };
+    return {
+      kind: "anomaly",
+      title: result.title,
+      anomalyReason: reconciled.reason,
+    };
   }
 
   await persistParseResult(reconciled.result, ctx);
@@ -106,10 +110,11 @@ async function persistAndResolveSuccess({
 function resolveOutcome(
   result: NormalizedParseOutput
 ): ParsePipelineResult | { kind: "continue"; result: NormalizedParseOutput } {
-  if (result.outcome === "invalid") return { kind: "invalid" };
+  if (result.outcome === "invalid") return { kind: "invalid", title: result.title };
   if (result.outcome === "anomaly") {
     return {
       kind: "anomaly",
+      title: result.title,
       anomalyReason: result.anomaly_reason ?? "Document cannot be parsed",
     };
   }
@@ -210,7 +215,11 @@ export async function runParsePipeline(
     throwIfCancelled(ctx.signal);
 
     if (arbitration.kind === "anomaly") {
-      return { kind: "anomaly", anomalyReason: arbitration.reason };
+      return {
+        kind: "anomaly",
+        title: first.title,
+        anomalyReason: arbitration.reason,
+      };
     }
 
     return persistAndResolveSuccess({

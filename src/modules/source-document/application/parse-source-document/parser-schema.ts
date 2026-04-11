@@ -27,7 +27,7 @@ const orderAdjustmentSchema = z.object({
 export const parserOutputSchema = z.object({
   outcome: z.enum(["success", "invalid", "anomaly"]).default("success"),
   anomaly_reason: z.string().nullish(),
-  title: z.string().optional(),
+  title: z.string().nullish(),
   receipt_count: z.number().int().min(0).default(1),
   receipt_totals: z.array(receiptTotalSchema).default([]),
   ledger_entries: z.array(ledgerEntrySchema).default([]),
@@ -70,6 +70,22 @@ export interface NormalizedParseOutput {
   reasoning: string;
 }
 
+function fallbackTitleForOutcome(output: z.infer<typeof parserOutputSchema>): string {
+  switch (output.outcome) {
+    case "invalid":
+      return "Invalid content";
+    case "anomaly":
+      return "Unparseable document";
+    default:
+      return "Untitled document";
+  }
+}
+
+function normalizeTitle(output: z.infer<typeof parserOutputSchema>): string {
+  const title = output.title?.trim();
+  return title != null && title !== "" ? title : fallbackTitleForOutcome(output);
+}
+
 // ===== Normalization =====
 
 export function normalizeResult(
@@ -81,7 +97,7 @@ export function normalizeResult(
     return {
       outcome: "anomaly",
       anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
-      title: output.title ?? "",
+      title: normalizeTitle(output),
       receipt_count: output.receipt_count,
       receipt_totals: output.receipt_totals,
       ledger_entries: [],
@@ -93,7 +109,7 @@ export function normalizeResult(
   return {
     outcome: output.outcome,
     ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
-    title: output.title ?? "",
+    title: normalizeTitle(output),
     receipt_count: output.receipt_count,
     receipt_totals: output.receipt_totals,
     ledger_entries: output.ledger_entries.map((e) => ({

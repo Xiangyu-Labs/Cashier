@@ -74,7 +74,7 @@ vi.mock("@/components/ui/checkbox", () => ({
     <button
       type="button"
       data-testid="details-master-checkbox"
-      aria-checked={checked === "indeterminate" ? "mixed" : checked ? "true" : "false"}
+      data-state={checked === "indeterminate" ? "indeterminate" : checked ? "checked" : "unchecked"}
       onClick={() => onCheckedChange?.(!(checked === true))}
     />
   ),
@@ -221,8 +221,9 @@ describe("DetailsTab selection toggle", () => {
     expect(screen.getByText("selected:1")).toBeTruthy();
   });
 
-  it("clears all loaded selection from the master checkbox when all loaded items are selected", () => {
+  it("uses the selection hook clear action when all items are selected", () => {
     mockSelectionState.isAllSelected = true;
+    mockSelectionState.selectedIds = ["entry-1"];
 
     render(
       <DetailsTab
@@ -239,5 +240,6 @@ describe("DetailsTab selection toggle", () => {
     fireEvent.click(screen.getByTestId("details-master-checkbox"));
 
     expect(mockSelectionClear).toHaveBeenCalledTimes(1);
+    expect(mockSelectionSelectAll).not.toHaveBeenCalled();
   });
 });
