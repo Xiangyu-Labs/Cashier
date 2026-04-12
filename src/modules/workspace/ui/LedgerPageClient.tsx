@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,50 +23,15 @@ import {
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
 import { useTaskQueue } from "@/modules/task-queue/ui";
+import {
+  SourceDocumentInput,
+  QuickEntryForm,
+} from "@/modules/source-document/ui";
 import { Header } from "./Header";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
-
-// 预加载函数 - 在弹窗打开时同时加载两个组件
-function preloadInputComponents() {
-  // 手动触发两个组件的导入，实现并行预加载
-  // 预加载不需要等待结果，忽略错误
-  import("@/modules/source-document/ui").catch(() => {
-    // 预加载失败不影响功能，组件会在需要时再次加载
-  });
-}
-
-// 统一的加载占位符
-function InputFormSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-[120px] rounded-md bg-muted" />
-      <div className="h-10 rounded-md bg-muted" />
-      <div className="flex gap-2">
-        <div className="h-9 flex-1 rounded-md bg-muted" />
-        <div className="h-9 flex-1 rounded-md bg-muted" />
-      </div>
-    </div>
-  );
-}
-
-const SourceDocumentInput = dynamic(
-  () =>
-    import("@/modules/source-document/ui").then((module) => ({
-      default: module.SourceDocumentInput,
-    })),
-  { ssr: false, loading: InputFormSkeleton }
-);
-
-const QuickEntryForm = dynamic(
-  () =>
-    import("@/modules/source-document/ui").then((module) => ({
-      default: module.QuickEntryForm,
-    })),
-  { ssr: false, loading: InputFormSkeleton }
-);
 
 const TaskQueueModal = dynamic(
   () =>
@@ -201,13 +166,6 @@ export function LedgerPageClient({
     queryClient,
   });
 
-  // 弹窗打开时预加载两个记账表单组件，实现一体加载
-  useEffect(() => {
-    if (isInputOpen) {
-      preloadInputComponents();
-    }
-  }, [isInputOpen]);
-
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -321,6 +279,7 @@ export function LedgerPageClient({
             </button>
           </div>
 
+          {/* 静态导入的组件，代码已加载，切换时无延迟，无需骨架屏 */}
           {inputMode === "ai" ? (
             <SourceDocumentInput ledgerId={ledgerId} onSuccess={() => setIsInputOpen(false)} />
           ) : (

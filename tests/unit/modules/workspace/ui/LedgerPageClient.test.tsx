@@ -25,6 +25,33 @@ vi.mock("@/i18n/routing", () => ({
   usePathname: () => "/ledger/ledger-1",
 }));
 
+// Mock static imported components from source-document/ui
+vi.mock("@/modules/source-document/ui", () => ({
+  SourceDocumentInput: (props: { onSuccess?: () => void }) => (
+    <div
+      data-testid="source-document-input"
+      onClick={() => props.onSuccess?.()}
+    >
+      input
+    </div>
+  ),
+  QuickEntryForm: ({
+    mainCurrency,
+    preferredCurrencies,
+  }: {
+    mainCurrency?: string;
+    preferredCurrencies?: string[];
+  }) => (
+    <div
+      data-testid="quick-entry-form"
+      data-main-currency={mainCurrency ?? ""}
+      data-preferred-currencies={(preferredCurrencies ?? []).join(",")}
+    >
+      quick
+    </div>
+  ),
+}));
+
 vi.mock("next/dynamic", () => ({
   default: (loader: () => Promise<unknown>) => {
     const text = String(loader);
@@ -61,33 +88,6 @@ vi.mock("next/dynamic", () => ({
         <div data-testid="task-queue-modal">{open ? "open" : "closed"}</div>
       );
       Component.displayName = "MockTaskQueueModal";
-      return Component;
-    }
-
-    if (text.includes("SourceDocumentInput")) {
-      return createComponent("source-document-input", "input", (props) => {
-        const onSuccess = props.onSuccess as (() => void) | undefined;
-        onSuccess?.();
-      });
-    }
-
-    if (text.includes("QuickEntryForm")) {
-      const Component = ({
-        mainCurrency,
-        preferredCurrencies,
-      }: {
-        mainCurrency?: string;
-        preferredCurrencies?: string[];
-      }) => (
-        <div
-          data-testid="quick-entry-form"
-          data-main-currency={mainCurrency ?? ""}
-          data-preferred-currencies={(preferredCurrencies ?? []).join(",")}
-        >
-          quick
-        </div>
-      );
-      Component.displayName = "MockQuickEntryForm";
       return Component;
     }
 
