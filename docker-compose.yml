@@ -14,7 +14,7 @@ services:
       - ./data:/app/data
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: cashier-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
