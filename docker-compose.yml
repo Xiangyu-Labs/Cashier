@@ -1,18 +1,25 @@
 # Production Docker Compose
-# Usage: docker compose up -d --build
+# Usage: docker compose up -d
 
 services:
   app:
-    build:
-      context: .
-      args:
-        - NEXT_PUBLIC_OIDC_ENABLED=${NEXT_PUBLIC_OIDC_ENABLED:-false}
-        - NEXT_PUBLIC_OIDC_BUTTON_NAME=${NEXT_PUBLIC_OIDC_BUTTON_NAME:-SSO}
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+    image: ghcr.io/xiangyumou/cashier:latest
+    container_name: cashier
     restart: always
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     volumes:
       - ./data:/app/data
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: cashier-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+    command: cashier
+    restart: unless-stopped
