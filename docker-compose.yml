@@ -22,19 +22,6 @@ services:
     networks:
       - server-internal-net
 
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: cashier-watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_POLL_INTERVAL=300
-      - WATCHTOWER_CLEANUP=true
-    command: cashier
-    networks:
-      - server-internal-net
-    restart: unless-stopped
-
 networks:
   server-internal-net:
     external: true
