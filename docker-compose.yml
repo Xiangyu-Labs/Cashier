@@ -8,10 +8,19 @@ services:
     restart: always
     expose:
       - "3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cashier.rule=Host(`cashier.xiangyu.pro`)"
+      - "traefik.http.routers.cashier.entrypoints=websecure"
+      - "traefik.http.routers.cashier.tls=true"
+      - "traefik.http.routers.cashier.tls.certresolver=myresolver"
+      - "traefik.http.services.cashier.loadbalancer.server.port=3000"
     env_file:
       - .env
     volumes:
       - ./data:/app/data
+    networks:
+      - server-internal-net
 
   watchtower:
     image: containrrr/watchtower
@@ -22,4 +31,10 @@ services:
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_CLEANUP=true
     command: cashier
+    networks:
+      - server-internal-net
     restart: unless-stopped
+
+networks:
+  server-internal-net:
+    external: true
