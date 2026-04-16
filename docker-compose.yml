@@ -9,20 +9,8 @@ services:
     expose:
       - "3000"
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.cashier.rule=Host(`cashier.xiangyu.pro`)"
-      - "traefik.http.routers.cashier.entrypoints=websecure"
-      - "traefik.http.routers.cashier.tls=true"
-      - "traefik.http.routers.cashier.tls.certresolver=myresolver"
-      - "traefik.http.services.cashier.loadbalancer.server.port=3000"
       - "com.centurylinklabs.watchtower.enable=true"
     env_file:
       - .env
     volumes:
       - ./data:/app/data
-    networks:
-      - server-internal-net
-
-networks:
-  server-internal-net:
-    external: true
