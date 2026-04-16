@@ -15,6 +15,7 @@ services:
       - "traefik.http.routers.cashier.tls=true"
       - "traefik.http.routers.cashier.tls.certresolver=myresolver"
       - "traefik.http.services.cashier.loadbalancer.server.port=3000"
+      - "com.centurylinklabs.watchtower.enable=true"
     env_file:
       - .env
     volumes:
