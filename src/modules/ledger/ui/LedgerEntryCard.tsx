@@ -104,11 +104,6 @@ export function LedgerEntryCard({
                   {ledgerEntry.category && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-1">
                       <span className="shrink-0">{ledgerEntry.category.name}</span>
-                      {!ledgerEntry.category.isEditable && (
-                        <Badge variant="warning" className="text-[10px] px-1 h-5">
-                          {t("otherCategory")}
-                        </Badge>
-                      )}
                       {ledgerEntry.description != null && ledgerEntry.description !== "" && (
                         <span className="hidden sm:contents">
                           <span className="text-muted-foreground/30 ml-0.5 shrink-0">·</span>
