@@ -26,7 +26,7 @@ export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries
             onViewLedgerEntry?.(entry);
           }}
           mainCurrency={mainCurrency}
-          variant={entry.category != null && !entry.category.isEditable ? "warning" : "default"}
+          variant="default"
           {...(sourceDocumentEntryDate !== undefined
             ? { sourceDocumentEntryDate }
             : {})}

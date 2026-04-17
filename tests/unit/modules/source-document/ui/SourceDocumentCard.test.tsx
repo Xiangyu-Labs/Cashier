@@ -313,26 +313,4 @@ describe("SourceDocumentCard", () => {
     expect(screen.getByText(/USD/)).toBeTruthy();
   });
 
-  it("keeps warning entry variants for completed cards with non-editable categories", () => {
-    const lockedCategory: EntryCategory = {
-      ...defaultCategory,
-      id: "cat-other",
-      name: "其他",
-      isEditable: false,
-    };
-
-    const { container } = renderCard({
-      ledgerEntries: [
-        createEntry({
-          id: "locked-entry",
-          itemName: "锁定条目",
-          categoryId: lockedCategory.id,
-          category: lockedCategory,
-        }),
-      ],
-      defaultExpanded: true,
-    });
-
-    expect(container.querySelector(".border-warning\\/20")).not.toBeNull();
-  });
 });
