@@ -19,6 +19,8 @@ interface DateFilterProps {
   size?: "sm" | "default";
   /** Show clear button when date is selected */
   showClear?: boolean;
+  /** Whether to truncate overflow text with ellipsis */
+  truncate?: boolean;
 }
 
 export function DateFilter({
@@ -28,6 +30,7 @@ export function DateFilter({
   placeholder,
   size = "default",
   showClear = true,
+  truncate = true,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
   const format = useFormatter();
@@ -70,7 +73,7 @@ export function DateFilter({
           )}
         >
           <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
-          <span className="truncate flex-1">
+          <span className={cn(truncate ? "truncate" : "whitespace-nowrap", "flex-1")}>
             {dateValue != null
               ? format.dateTime(dateValue, { year: "numeric", month: "short", day: "numeric" })
               : (placeholder ?? t("selectDate"))}

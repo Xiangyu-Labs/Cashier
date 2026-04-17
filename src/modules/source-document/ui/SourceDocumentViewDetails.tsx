@@ -166,7 +166,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 }
               }}
               size="sm"
-              className="h-8 w-[160px] shrink-0"
+              className="h-8 min-w-fit shrink-0"
+              truncate={false}
             />
             {isAnomaly && (
               <Badge
