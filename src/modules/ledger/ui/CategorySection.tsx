@@ -42,7 +42,6 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
     category.icon === "" ||
     category.description == null ||
     category.description === "";
-  const isEditable = category.isEditable === undefined || category.isEditable === true;
 
   return (
     <div
@@ -61,7 +60,6 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
           <IconPicker
             value={category.icon}
             onChange={(icon) => onUpdateCategory(category.id, { icon })}
-            disabled={!isEditable}
           />
         )}
       </div>
@@ -71,7 +69,6 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
           <EditableField
             value={category.name}
             onChange={(name) => onUpdateCategory(category.id, { name })}
-            disabled={!isEditable}
             displayClassName="text-sm font-medium"
             inputClassName="text-sm"
           />
@@ -91,15 +88,13 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
             value={category.description ?? ""}
             onChange={(description) => onUpdateCategory(category.id, { description })}
             placeholder={t("categoryDescription")}
-            disabled={!isEditable}
             displayClassName="text-xs text-[var(--muted)]"
             inputClassName="text-xs"
           />
         )}
       </div>
 
-      {isEditable && (
-        <div className="opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="opacity-0 transition-opacity group-hover:opacity-100">
           <button
             onClick={onDelete}
             className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
@@ -107,7 +102,6 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
             <Trash2 size={15} />
           </button>
         </div>
-      )}
     </div>
   );
 }
