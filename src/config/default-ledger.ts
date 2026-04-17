@@ -73,7 +73,7 @@ const zhLedger = {
       description: "用于核算除上述预设类别以外，难以明确分类或具有特殊性质的临时性支出",
       icon: "Package",
       sortOrder: 9,
-      isEditable: false,
+      isEditable: true,
     },
   ],
 };
@@ -157,7 +157,7 @@ const enLedger = {
         "Miscellaneous expenses that don't fit into the predefined categories or have special/temporary nature",
       icon: "Package",
       sortOrder: 9,
-      isEditable: false,
+      isEditable: true,
     },
   ],
 };
