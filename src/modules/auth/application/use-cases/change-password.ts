@@ -24,7 +24,7 @@ export async function changePassword(params: {
     throw new NotFoundError("User");
   }
 
-  if (!user.passwordHash) {
+  if (user.passwordHash == null) {
     throw new AppError("Current password is incorrect", AUTH_ERROR_CODES.CURRENT_PASSWORD_WRONG, 400);
   }
 

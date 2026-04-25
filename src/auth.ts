@@ -198,6 +198,7 @@ export const authOptions = {
             email: dbUser.email,
             name: dbUser.name,
             image: dbUser.image,
+            hasPassword: dbUser.passwordHash != null && dbUser.passwordHash !== "",
           },
         };
       }
@@ -216,6 +217,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      hasPassword?: boolean;
     };
   }
 

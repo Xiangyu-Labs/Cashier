@@ -8,10 +8,11 @@ export async function getSessionUser(userId: string): Promise<{
   email: string | null;
   name: string | null;
   image: string | null;
+  passwordHash: string | null;
 }> {
   const dbUser = await db.query.users.findFirst({
     where: and(eq(users.id, userId), isNull(users.deletedAt)),
-    columns: { id: true, email: true, name: true, image: true },
+    columns: { id: true, email: true, name: true, image: true, passwordHash: true },
   });
 
   if (dbUser == null) {

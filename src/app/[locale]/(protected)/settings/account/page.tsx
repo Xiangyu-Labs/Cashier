@@ -30,8 +30,7 @@ export default function AccountPage() {
   }
 
   const currentEmail = session.user.email ?? "";
-  // TODO: Replace with session.user.hasPassword in Task 13
-  const hasPassword = false;
+  const hasPassword = session.user.hasPassword ?? false;
 
   return (
     <div className="space-y-8">

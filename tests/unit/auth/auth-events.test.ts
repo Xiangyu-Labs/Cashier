@@ -190,6 +190,7 @@ describe("auth.ts adapter wiring", () => {
         email: "db@example.com",
         name: "DB User",
         image: "db-image",
+        hasPassword: false,
       },
     });
   });
