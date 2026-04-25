@@ -35,3 +35,4 @@ export {
   type AdminCurrencyRatesListLabels,
 } from "./AdminCurrencyRatesList";
 export { AdminOTPTokensList, type AdminOTPTokensListLabels } from "./AdminOTPTokensList";
+export { AdminOverviewStatCard } from "./AdminOverviewStatCard";

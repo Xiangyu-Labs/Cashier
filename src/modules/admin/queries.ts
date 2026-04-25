@@ -12,3 +12,4 @@ export { listAdminAccounts } from "./application/queries/list-admin-accounts";
 export { listAdminServiceCredentials } from "./application/queries/list-admin-service-credentials";
 export { listAdminCurrencyRates } from "./application/queries/list-admin-currency-rates";
 export { listAdminOTPTokens } from "./application/queries/list-admin-otp-tokens";
+export { getAdminOverviewStats } from "./application/queries/get-admin-overview-stats";
