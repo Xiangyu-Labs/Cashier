@@ -9,3 +9,4 @@ export { listAdminSystemConfig } from "./application/queries/list-admin-system-c
 export { listAdminLedgers } from "./application/queries/list-admin-ledgers";
 export { listAdminCategories } from "./application/queries/list-admin-categories";
 export { listAdminAccounts } from "./application/queries/list-admin-accounts";
+export { listAdminServiceCredentials } from "./application/queries/list-admin-service-credentials";

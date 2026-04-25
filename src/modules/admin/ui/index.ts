@@ -29,3 +29,4 @@ export { AdminUnauthorizedState } from "./AdminUnauthorizedState";
 export { AdminLedgersList, type AdminLedgersListLabels } from "./AdminLedgersList";
 export { AdminCategoriesList, type AdminCategoriesListLabels } from "./AdminCategoriesList";
 export { AdminAccountsList, type AdminAccountsListLabels } from "./AdminAccountsList";
+export { AdminServiceCredentialsList, type AdminServiceCredentialsListLabels } from "./AdminServiceCredentialsList";
