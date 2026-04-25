@@ -2,18 +2,15 @@
 
 import { Fragment, useMemo } from "react";
 import { Link } from "@/i18n/routing";
-import type { AdminServiceCredentialListItem } from "@/modules/admin/contracts";
+import type { AdminCurrencyRateListItem } from "@/modules/admin/contracts";
 
-export interface AdminServiceCredentialsListLabels {
+export interface AdminCurrencyRatesListLabels {
   title: string;
   description: string;
-  id: string;
-  key: string;
-  name: string;
-  ledgerId: string;
-  user: string;
-  createdAt: string;
-  lastUsedAt: string;
+  date: string;
+  base: string;
+  rateCount: string;
+  updatedAt: string;
   details: string;
   detailsColumn: string;
   hideDetails: string;
@@ -22,6 +19,9 @@ export interface AdminServiceCredentialsListLabels {
   filteredEmptyTitle: string;
   filteredEmptyDescription: string;
   nextPage: string;
+  rates: string;
+  showRawData: string;
+  hideRawData: string;
   notAvailable: string;
 }
 
@@ -33,22 +33,19 @@ function formatOptionalDate(
   return value == null ? emptySymbol : formatter.format(value);
 }
 
-function truncate(value: string, maxLength = 30): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-}
-
 function buildNextPageHref(nextCursor: string): string {
-  return `/admin/service-credentials?cursor=${encodeURIComponent(nextCursor)}`;
+  return `/admin/currency-rates?cursor=${encodeURIComponent(nextCursor)}`;
 }
 
-export function AdminServiceCredentialsList(props: {
+export function AdminCurrencyRatesList(props: {
   locale: string;
-  items: AdminServiceCredentialListItem[];
-  hasAnyServiceCredentials: boolean;
+  items: AdminCurrencyRateListItem[];
+  hasAnyCurrencyRates: boolean;
   nextCursor: string | null;
   currentCursor?: string | null;
-  expandedCredentialId?: string | null;
-  labels: AdminServiceCredentialsListLabels;
+  expandedDate?: string | null;
+  expandedRates?: Record<string, number> | null;
+  labels: AdminCurrencyRatesListLabels;
 }) {
   const dateFormatter = useMemo(
     () =>
@@ -61,10 +58,10 @@ export function AdminServiceCredentialsList(props: {
   );
 
   if (props.items.length === 0) {
-    const title = props.hasAnyServiceCredentials
+    const title = props.hasAnyCurrencyRates
       ? props.labels.filteredEmptyTitle
       : props.labels.emptyTitle;
-    const description = props.hasAnyServiceCredentials
+    const description = props.hasAnyCurrencyRates
       ? props.labels.filteredEmptyDescription
       : props.labels.emptyDescription;
     return (
@@ -86,29 +83,25 @@ export function AdminServiceCredentialsList(props: {
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[18%]" />
+            <col className="w-[20%]" />
             <col className="w-[15%]" />
-            <col className="w-[18%]" />
-            <col className="w-[18%]" />
-            <col className="w-[16%]" />
+            <col className="w-[15%]" />
+            <col className="w-[35%]" />
             <col className="w-[15%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-surface2/70 text-left">
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.name}
+                {props.labels.date}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.key}
+                {props.labels.base}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.ledgerId}
+                {props.labels.rateCount}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.user}
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.createdAt}
+                {props.labels.updatedAt}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.detailsColumn}
@@ -117,25 +110,23 @@ export function AdminServiceCredentialsList(props: {
           </thead>
           <tbody>
             {props.items.map((item) => {
-              const isExpanded = props.expandedCredentialId === item.id;
+              const isExpanded = props.expandedDate === item.date;
+              const rates = isExpanded ? props.expandedRates : null;
               return (
-                <Fragment key={item.id}>
+                <Fragment key={item.date}>
                   <tr className="border-b border-border align-top">
-                    <td className="break-all px-6 py-4 text-sm text-text">{item.name}</td>
-                    <td className="break-all px-6 py-4 text-sm text-muted">{truncate(item.key)}</td>
-                    <td className="break-all px-6 py-4 text-sm text-text">{item.ledgerId}</td>
-                    <td className="break-all px-6 py-4 text-sm text-text">
-                      {item.userEmail ?? item.ledgerId}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-text">{item.date}</td>
+                    <td className="px-6 py-4 text-sm text-text">{item.base}</td>
+                    <td className="px-6 py-4 text-sm text-text">{item.rateCount}</td>
                     <td className="px-6 py-4 text-sm text-muted">
-                      {formatOptionalDate(item.createdAt, dateFormatter)}
+                      {formatOptionalDate(item.updatedAt, dateFormatter)}
                     </td>
                     <td className="px-6 py-4 text-sm text-text">
                       <Link
                         href={
                           isExpanded
-                            ? "/admin/service-credentials"
-                            : `/admin/service-credentials?detail=${encodeURIComponent(item.id)}${
+                            ? "/admin/currency-rates"
+                            : `/admin/currency-rates?detail=${encodeURIComponent(item.date)}${
                                 props.currentCursor
                                   ? `&cursor=${encodeURIComponent(props.currentCursor)}`
                                   : ""
@@ -149,27 +140,23 @@ export function AdminServiceCredentialsList(props: {
                       </Link>
                     </td>
                   </tr>
-                  {isExpanded ? (
+                  {isExpanded && rates != null ? (
                     <tr className="border-b border-border last:border-b-0">
-                      <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
+                      <td colSpan={5} className="border-t border-border bg-surface2 px-6 py-4">
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-sm font-semibold text-text">{props.labels.id}</h3>
-                            <p className="mt-1 text-sm text-muted">{item.id}</p>
+                            <h3 className="text-sm font-semibold text-text">{props.labels.date}</h3>
+                            <p className="mt-1 text-sm text-muted">{item.date}</p>
                           </div>
                           <div>
-                            <h3 className="text-sm font-semibold text-text">{props.labels.key}</h3>
-                            <p className="mt-1 text-sm text-muted">{item.key}</p>
+                            <h3 className="text-sm font-semibold text-text">{props.labels.base}</h3>
+                            <p className="mt-1 text-sm text-muted">{item.base}</p>
                           </div>
                           <div>
-                            <h3 className="text-sm font-semibold text-text">{props.labels.name}</h3>
-                            <p className="mt-1 text-sm text-muted">{item.name}</p>
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-semibold text-text">
-                              {props.labels.ledgerId}
-                            </h3>
-                            <p className="mt-1 text-sm text-muted">{item.ledgerId}</p>
+                            <h3 className="text-sm font-semibold text-text">{props.labels.rates}</h3>
+                            <pre className="mt-1 overflow-x-auto rounded-md bg-surface p-3 text-xs text-muted">
+                              {JSON.stringify(rates, null, 2)}
+                            </pre>
                           </div>
                         </div>
                       </td>

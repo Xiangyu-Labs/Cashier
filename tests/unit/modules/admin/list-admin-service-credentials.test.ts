@@ -74,13 +74,42 @@ describe("listAdminServiceCredentials", () => {
   });
 
   it("returns nextCursor and supports pagination", async () => {
-    getTestDb();
+    const db = getTestDb();
     requireSuperAdminMock.mockResolvedValue({
       id: "admin-user",
       email: "admin@example.com",
       name: "Owner",
       role: UserRole.SuperAdmin,
     });
+
+    await db.run(sql`DELETE FROM service_credentials`);
+    await db.run(sql`DELETE FROM ledgers`);
+    await db.run(sql`DELETE FROM users`);
+
+    await db.insert(users).values({
+      id: "user-pg",
+      email: "pg@example.com",
+      emailVerified: new Date(),
+      name: "PG",
+      role: UserRole.SuperAdmin,
+    });
+    await db.insert(ledgers).values({ id: "ledger-pg", userId: "user-pg", metadata: {} });
+    await db.insert(serviceCredentials).values([
+      {
+        id: "cred-new",
+        key: "key-new",
+        name: "New Credential",
+        ledgerId: "ledger-pg",
+        createdAt: new Date("2026-03-25T10:00:00.000Z"),
+      },
+      {
+        id: "cred-old",
+        key: "key-old",
+        name: "Old Credential",
+        ledgerId: "ledger-pg",
+        createdAt: new Date("2026-03-24T10:00:00.000Z"),
+      },
+    ]);
 
     const firstPage = await listAdminServiceCredentials({ limit: 1 });
     expect(firstPage.items.map((item) => item.id)).toEqual(["cred-new"]);

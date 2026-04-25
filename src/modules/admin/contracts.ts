@@ -1,12 +1,18 @@
 import type { z } from "zod";
 import type {
+  listAdminAccountsInputSchema,
   listAdminAccountsValidatedInputSchema,
+  listAdminCategoriesInputSchema,
   listAdminCategoriesValidatedInputSchema,
+  listAdminCurrencyRatesInputSchema,
   listAdminCurrencyRatesValidatedInputSchema,
   listAdminEntriesInputSchema,
   listAdminEntriesValidatedInputSchema,
+  listAdminLedgersInputSchema,
   listAdminLedgersValidatedInputSchema,
+  listAdminOTPTokensInputSchema,
   listAdminOTPTokensValidatedInputSchema,
+  listAdminServiceCredentialsInputSchema,
   listAdminServiceCredentialsValidatedInputSchema,
   listAdminSourceDocumentsInputSchema,
   listAdminSourceDocumentsValidatedInputSchema,
@@ -212,6 +218,14 @@ export interface AdminLedgerDetail {
   deletedAt: Date | null;
 }
 
+export type AdminLedgerRange = "24h" | "7d" | "30d" | "all";
+
+export interface ListAdminLedgersResult {
+  items: AdminLedgerListItem[];
+  nextCursor: string | null;
+  hasAnyLedgers: boolean;
+}
+
 export interface AdminCategoryListItem {
   id: string;
   ledgerId: string;
@@ -327,14 +341,6 @@ export interface AdminOverviewStats {
   totalAccounts: number;
   totalCurrencyRates: number;
   totalOTPTokens: number;
-}
-
-export type AdminLedgerRange = "24h" | "7d" | "30d" | "all";
-
-export interface ListAdminLedgersResult {
-  items: AdminLedgerListItem[];
-  nextCursor: string | null;
-  hasAnyLedgers: boolean;
 }
 
 export interface ListAdminCategoriesResult {

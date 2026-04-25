@@ -2,27 +2,29 @@
 
 import { Fragment, useMemo } from "react";
 import { Link } from "@/i18n/routing";
-import type { AdminServiceCredentialListItem } from "@/modules/admin/contracts";
+import type { AdminCategoryListItem } from "@/modules/admin/contracts";
 
-export interface AdminServiceCredentialsListLabels {
+export interface AdminCategoriesListLabels {
   title: string;
   description: string;
   id: string;
-  key: string;
-  name: string;
   ledgerId: string;
-  user: string;
-  createdAt: string;
-  lastUsedAt: string;
+  name: string;
+  descriptionColumn: string;
+  sortOrder: string;
+  isEditable: string;
   details: string;
   detailsColumn: string;
   hideDetails: string;
   emptyTitle: string;
   emptyDescription: string;
-  filteredEmptyTitle: string;
-  filteredEmptyDescription: string;
-  nextPage: string;
+  icon: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string;
   notAvailable: string;
+  yes: string;
+  no: string;
 }
 
 function formatOptionalDate(
@@ -33,22 +35,12 @@ function formatOptionalDate(
   return value == null ? emptySymbol : formatter.format(value);
 }
 
-function truncate(value: string, maxLength = 30): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
-}
-
-function buildNextPageHref(nextCursor: string): string {
-  return `/admin/service-credentials?cursor=${encodeURIComponent(nextCursor)}`;
-}
-
-export function AdminServiceCredentialsList(props: {
+export function AdminCategoriesList(props: {
   locale: string;
-  items: AdminServiceCredentialListItem[];
-  hasAnyServiceCredentials: boolean;
-  nextCursor: string | null;
-  currentCursor?: string | null;
-  expandedCredentialId?: string | null;
-  labels: AdminServiceCredentialsListLabels;
+  items: AdminCategoryListItem[];
+  hasAnyCategories: boolean;
+  expandedCategoryId?: string | null;
+  labels: AdminCategoriesListLabels;
 }) {
   const dateFormatter = useMemo(
     () =>
@@ -61,17 +53,11 @@ export function AdminServiceCredentialsList(props: {
   );
 
   if (props.items.length === 0) {
-    const title = props.hasAnyServiceCredentials
-      ? props.labels.filteredEmptyTitle
-      : props.labels.emptyTitle;
-    const description = props.hasAnyServiceCredentials
-      ? props.labels.filteredEmptyDescription
-      : props.labels.emptyDescription;
     return (
       <section className="rounded-2xl border border-border bg-surface p-6">
         <div className="space-y-2 text-center">
-          <h2 className="text-lg font-semibold text-text">{title}</h2>
-          <p className="text-sm text-muted">{description}</p>
+          <h2 className="text-lg font-semibold text-text">{props.labels.emptyTitle}</h2>
+          <p className="text-sm text-muted">{props.labels.emptyDescription}</p>
         </div>
       </section>
     );
@@ -87,25 +73,29 @@ export function AdminServiceCredentialsList(props: {
         <table className="w-full table-fixed border-collapse">
           <colgroup>
             <col className="w-[18%]" />
-            <col className="w-[15%]" />
             <col className="w-[18%]" />
-            <col className="w-[18%]" />
-            <col className="w-[16%]" />
-            <col className="w-[15%]" />
+            <col className="w-[22%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border bg-surface2/70 text-left">
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.name}
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.key}
+                {props.labels.id}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.ledgerId}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
-                {props.labels.user}
+                {props.labels.name}
+              </th>
+              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
+                {props.labels.sortOrder}
+              </th>
+              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
+                {props.labels.isEditable}
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-muted">
                 {props.labels.createdAt}
@@ -117,15 +107,16 @@ export function AdminServiceCredentialsList(props: {
           </thead>
           <tbody>
             {props.items.map((item) => {
-              const isExpanded = props.expandedCredentialId === item.id;
+              const isExpanded = props.expandedCategoryId === item.id;
               return (
                 <Fragment key={item.id}>
                   <tr className="border-b border-border align-top">
-                    <td className="break-all px-6 py-4 text-sm text-text">{item.name}</td>
-                    <td className="break-all px-6 py-4 text-sm text-muted">{truncate(item.key)}</td>
+                    <td className="break-all px-6 py-4 text-sm text-text">{item.id}</td>
                     <td className="break-all px-6 py-4 text-sm text-text">{item.ledgerId}</td>
-                    <td className="break-all px-6 py-4 text-sm text-text">
-                      {item.userEmail ?? item.ledgerId}
+                    <td className="break-all px-6 py-4 text-sm text-text">{item.name}</td>
+                    <td className="px-6 py-4 text-sm text-text">{item.sortOrder}</td>
+                    <td className="px-6 py-4 text-sm text-text">
+                      {item.isEditable ? props.labels.yes : props.labels.no}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted">
                       {formatOptionalDate(item.createdAt, dateFormatter)}
@@ -134,12 +125,8 @@ export function AdminServiceCredentialsList(props: {
                       <Link
                         href={
                           isExpanded
-                            ? "/admin/service-credentials"
-                            : `/admin/service-credentials?detail=${encodeURIComponent(item.id)}${
-                                props.currentCursor
-                                  ? `&cursor=${encodeURIComponent(props.currentCursor)}`
-                                  : ""
-                              }`
+                            ? "/admin/categories"
+                            : `/admin/categories?detail=${encodeURIComponent(item.id)}`
                         }
                         prefetch={false}
                         scroll={false}
@@ -151,25 +138,25 @@ export function AdminServiceCredentialsList(props: {
                   </tr>
                   {isExpanded ? (
                     <tr className="border-b border-border last:border-b-0">
-                      <td colSpan={6} className="border-t border-border bg-surface2 px-6 py-4">
+                      <td colSpan={7} className="border-t border-border bg-surface2 px-6 py-4">
                         <div className="space-y-4">
-                          <div>
-                            <h3 className="text-sm font-semibold text-text">{props.labels.id}</h3>
-                            <p className="mt-1 text-sm text-muted">{item.id}</p>
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-semibold text-text">{props.labels.key}</h3>
-                            <p className="mt-1 text-sm text-muted">{item.key}</p>
-                          </div>
                           <div>
                             <h3 className="text-sm font-semibold text-text">{props.labels.name}</h3>
                             <p className="mt-1 text-sm text-muted">{item.name}</p>
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-text">
-                              {props.labels.ledgerId}
+                              {props.labels.descriptionColumn}
                             </h3>
-                            <p className="mt-1 text-sm text-muted">{item.ledgerId}</p>
+                            <p className="mt-1 text-sm text-muted">
+                              {item.description ?? props.labels.notAvailable}
+                            </p>
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-text">{props.labels.icon}</h3>
+                            <p className="mt-1 text-sm text-muted">
+                              {(item as unknown as { icon?: string | null }).icon ?? props.labels.notAvailable}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -181,18 +168,6 @@ export function AdminServiceCredentialsList(props: {
           </tbody>
         </table>
       </div>
-      {props.nextCursor != null ? (
-        <div className="border-t border-border px-6 py-4">
-          <Link
-            href={buildNextPageHref(props.nextCursor)}
-            prefetch={false}
-            scroll={false}
-            className="text-sm font-medium text-muted underline-offset-2 transition-colors hover:text-text hover:underline"
-          >
-            {props.labels.nextPage}
-          </Link>
-        </div>
-      ) : null}
     </section>
   );
 }

@@ -135,7 +135,7 @@ export function AdminLedgersList(props: {
                           isExpanded
                             ? "/admin/ledgers"
                             : `/admin/ledgers?detail=${encodeURIComponent(item.id)}${
-                                props.currentCursor != null ? `&cursor=${encodeURIComponent(props.currentCursor)}` : ""
+                                props.currentCursor ? `&cursor=${encodeURIComponent(props.currentCursor)}` : ""
                               }`
                         }
                         prefetch={false}

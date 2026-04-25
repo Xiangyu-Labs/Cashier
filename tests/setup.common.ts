@@ -86,3 +86,15 @@ vi.mock("next/cache", () => ({
   updateTag: vi.fn(),
   unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
+
+vi.mock("@/i18n/routing", () => ({
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) => React.createElement("a", { href, ...rest }, children),
+}));

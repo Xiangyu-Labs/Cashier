@@ -90,20 +90,32 @@ describe("listAdminLedgers", () => {
     vi.setSystemTime(new Date("2026-03-25T12:00:00.000Z"));
 
     await db.insert(users).values([
-      { id: "user-range-1", email: "r1@example.com", emailVerified: new Date(), name: "R1", role: UserRole.User },
-      { id: "user-range-2", email: "r2@example.com", emailVerified: new Date(), name: "R2", role: UserRole.User },
+      {
+        id: "user-in-range",
+        email: "inrange@example.com",
+        emailVerified: new Date(),
+        name: "In Range",
+        role: UserRole.User,
+      },
+      {
+        id: "user-out-of-range",
+        email: "outofrange@example.com",
+        emailVerified: new Date(),
+        name: "Out of Range",
+        role: UserRole.User,
+      },
     ]);
 
     await db.insert(ledgers).values([
       {
         id: "ledger-in-range",
-        userId: "user-range-1",
+        userId: "user-in-range",
         metadata: {},
         createdAt: new Date("2026-03-25T11:00:00.000Z"),
       },
       {
         id: "ledger-out-of-range",
-        userId: "user-range-2",
+        userId: "user-out-of-range",
         metadata: {},
         createdAt: new Date("2026-03-17T11:00:00.000Z"),
       },
@@ -125,27 +137,45 @@ describe("listAdminLedgers", () => {
     });
 
     await db.insert(users).values([
-      { id: "user-pg-1", email: "p1@example.com", emailVerified: new Date(), name: "P1", role: UserRole.User },
-      { id: "user-pg-2", email: "p2@example.com", emailVerified: new Date(), name: "P2", role: UserRole.User },
-      { id: "user-pg-3", email: "p3@example.com", emailVerified: new Date(), name: "P3", role: UserRole.User },
+      {
+        id: "user-c",
+        email: "c@example.com",
+        emailVerified: new Date(),
+        name: "C",
+        role: UserRole.User,
+      },
+      {
+        id: "user-b",
+        email: "b@example.com",
+        emailVerified: new Date(),
+        name: "B",
+        role: UserRole.User,
+      },
+      {
+        id: "user-a",
+        email: "a@example.com",
+        emailVerified: new Date(),
+        name: "A",
+        role: UserRole.User,
+      },
     ]);
 
     await db.insert(ledgers).values([
       {
         id: "ledger-c",
-        userId: "user-pg-1",
+        userId: "user-c",
         metadata: {},
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
       },
       {
         id: "ledger-b",
-        userId: "user-pg-2",
+        userId: "user-b",
         metadata: {},
         createdAt: new Date("2026-03-25T11:00:00.000Z"),
       },
       {
         id: "ledger-a",
-        userId: "user-pg-3",
+        userId: "user-a",
         metadata: {},
         createdAt: new Date("2026-03-25T10:00:00.000Z"),
       },
