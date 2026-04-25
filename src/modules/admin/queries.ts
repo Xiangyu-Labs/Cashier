@@ -6,3 +6,5 @@ export { getAdminSourceDocumentDetail } from "./application/queries/get-admin-so
 export { listAdminEntries } from "./application/queries/list-admin-entries";
 export { getAdminEntryDetail } from "./application/queries/get-admin-entry-detail";
 export { listAdminSystemConfig } from "./application/queries/list-admin-system-config";
+export { listAdminLedgers } from "./application/queries/list-admin-ledgers";
+export { listAdminCategories } from "./application/queries/list-admin-categories";
