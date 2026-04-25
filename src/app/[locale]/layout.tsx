@@ -1,6 +1,7 @@
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/components/providers";
+import { PWAInstallBanner } from "@/components/pwa-install-banner";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
@@ -73,6 +74,7 @@ export default async function LocaleLayout({
             <main className="max-w-screen-2xl mx-auto min-h-screen pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
               {children}
             </main>
+            <PWAInstallBanner />
           </Providers>
         </NextIntlClientProvider>
       </body>

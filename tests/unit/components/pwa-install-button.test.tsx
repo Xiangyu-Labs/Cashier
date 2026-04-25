@@ -52,9 +52,10 @@ describe("PWAInstallButton", () => {
     });
 
     render(<PWAInstallButton />);
-    expect(screen.getByText("installApp") !== null).toBe(true);
+    expect(screen.getByRole("heading", { name: "安装应用" }) !== null).toBe(true);
+    expect(screen.getByRole("button", { name: "安装应用" }) !== null).toBe(true);
 
-    fireEvent.click(screen.getByText("installApp"));
+    fireEvent.click(screen.getByRole("button", { name: "安装应用" }));
     expect(promptMock).toHaveBeenCalledTimes(1);
   });
 
@@ -68,7 +69,7 @@ describe("PWAInstallButton", () => {
     });
 
     render(<PWAInstallButton />);
-    expect(screen.getByText("iosInstallGuide") !== null).toBe(true);
+    expect(screen.getByText('在 Safari 中点击分享按钮，然后选择"添加到主屏幕"') !== null).toBe(true);
     expect(screen.queryByRole("button")).toBeNull();
   });
 

@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { PWAInstallButton } from "@/components/pwa-install-button";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -52,6 +53,11 @@ export default function SettingsPage() {
           </div>
           <LanguageSwitcher />
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">{t("installTitle") !== "" ? t("installTitle") : "App"}</h2>
+        <PWAInstallButton />
       </div>
 
       <div className="space-y-4">

@@ -67,8 +67,8 @@ describe("PWAInstallBanner", () => {
     });
 
     render(<PWAInstallBanner />);
-    expect(screen.getByText("installPrompt") !== null).toBe(true);
-    expect(screen.getByText("install") !== null).toBe(true);
+    expect(screen.getByText("安装 Cashier 以获得更好体验") !== null).toBe(true);
+    expect(screen.getByText("安装") !== null).toBe(true);
   });
 
   it("shows iOS text guide without install button", () => {
@@ -81,8 +81,8 @@ describe("PWAInstallBanner", () => {
     });
 
     render(<PWAInstallBanner />);
-    expect(screen.getByText("iosInstallGuide") !== null).toBe(true);
-    expect(screen.queryByText("install")).toBeNull();
+    expect(screen.getByText('在 Safari 中点击分享按钮，然后选择"添加到主屏幕"') !== null).toBe(true);
+    expect(screen.queryByText("安装")).toBeNull();
   });
 
   it("clicking dismiss hides banner and writes to localStorage", () => {
@@ -95,10 +95,10 @@ describe("PWAInstallBanner", () => {
     });
 
     render(<PWAInstallBanner />);
-    const closeButton = screen.getByLabelText("忽略");
+    const closeButton = screen.getByLabelText("关闭");
     fireEvent.click(closeButton);
 
-    expect(screen.queryByText("installPrompt")).toBeNull();
+    expect(screen.queryByText("安装 Cashier 以获得更好体验")).toBeNull();
     expect(localStorage.getItem("cashier:pwa-dismissed")).not.toBeNull();
   });
 
@@ -113,7 +113,7 @@ describe("PWAInstallBanner", () => {
     });
 
     render(<PWAInstallBanner />);
-    const installButton = screen.getByText("install");
+    const installButton = screen.getByText("安装");
     fireEvent.click(installButton);
 
     expect(promptMock).toHaveBeenCalledTimes(1);
