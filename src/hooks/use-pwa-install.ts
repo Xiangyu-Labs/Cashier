@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isStandalone, isIOS } from "@/lib/pwa-utils";
 
-export interface UsePwaInstallReturn {
+interface UsePwaInstallReturn {
   isInstallable: boolean;
   isStandalone: boolean;
   isIOS: boolean;
