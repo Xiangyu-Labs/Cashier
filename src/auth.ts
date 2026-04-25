@@ -7,6 +7,7 @@ import { users, accounts } from "@/persistence/schema/auth";
 import { authConfig } from "./auth.config";
 import {
   authenticateWithOTP,
+  authenticateWithPassword,
   handleAuthUserCreated,
   handleAuthUserSignedIn,
   isAuthSignInAllowed,
@@ -123,6 +124,33 @@ export const authOptions = {
           otp,
           locale,
           requestHeaders: request.headers,
+        });
+      },
+    }),
+    Credentials({
+      id: "password",
+      name: "Password",
+      credentials: {
+        email: { type: "email" },
+        password: { type: "password" },
+      },
+      async authorize(credentials) {
+        if (
+          credentials?.email == null ||
+          credentials?.email === "" ||
+          credentials?.password == null ||
+          credentials?.password === ""
+        ) {
+          return null;
+        }
+
+        if (typeof credentials.email !== "string" || typeof credentials.password !== "string") {
+          return null;
+        }
+
+        return authenticateWithPassword({
+          email: credentials.email,
+          password: credentials.password,
         });
       },
     }),
