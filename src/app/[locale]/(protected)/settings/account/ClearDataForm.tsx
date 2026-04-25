@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { deleteAccount, sendOTPAction } from "@/modules/auth/actions";
+import { useRouter } from "next/navigation";
+import { clearUserData, sendOTPAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,13 +19,14 @@ import { Label } from "@/components/ui/label";
 import { ResendCountdown } from "@/modules/auth/ui";
 import { Loader2 } from "lucide-react";
 
-interface DeleteAccountFormProps {
+interface ClearDataFormProps {
   currentEmail: string;
 }
 
-export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
+export function ClearDataForm({ currentEmail }: ClearDataFormProps) {
   const t = useTranslations("Settings.Account");
   const locale = useLocale();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [otp, setOtp] = useState("");
@@ -48,14 +50,16 @@ export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
     }
   };
 
-  const handleDelete = async () => {
-    if (confirmText !== "DELETE" || otp === "") return;
+  const handleSubmit = async () => {
+    if (confirmText !== "CLEAR" || otp === "") return;
     setIsLoading(true);
     setError(null);
     try {
-      await deleteAccount(currentEmail, otp);
+      await clearUserData();
+      setOpen(false);
+      router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("deleteError"));
+      setError(err instanceof Error ? err.message : t("clearDataError"));
       setIsLoading(false);
     }
   };
@@ -63,31 +67,21 @@ export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">
-          {t("deleteButton") !== "" ? t("deleteButton") : "Delete Account"}
-        </Button>
+        <Button variant="outline">{t("clearDataButton")}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {t("confirmTitle") !== ""
-              ? t("confirmTitle")
-              : "Are you absolutely sure?"}
-          </DialogTitle>
-          <DialogDescription>
-            {t("confirmDesc") !== ""
-              ? t("confirmDesc")
-              : "This action cannot be undone. This will permanently delete your account and remove your data from our servers. Type DELETE to confirm."}
-          </DialogDescription>
+          <DialogTitle>{t("clearDataTitle")}</DialogTitle>
+          <DialogDescription>{t("clearDataDesc")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="confirm">{t("confirmLabel")}</Label>
+            <Label htmlFor="clear-confirm">{t("clearConfirmLabel")}</Label>
             <Input
-              id="confirm"
+              id="clear-confirm"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="DELETE"
+              placeholder="CLEAR"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -96,9 +90,7 @@ export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
               onClick={handleSendOTP}
               disabled={isSendingOTP}
             >
-              {isSendingOTP && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isSendingOTP && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("sendVerificationCode")}
             </Button>
             <ResendCountdown
@@ -107,22 +99,18 @@ export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="delete-otp">{t("verificationCode")}</Label>
+            <Label htmlFor="clear-otp">{t("verificationCode")}</Label>
             <Input
-              id="delete-otp"
+              id="clear-otp"
               type="text"
               inputMode="numeric"
               maxLength={6}
               value={otp}
-              onChange={(e) =>
-                setOtp(e.target.value.replace(/\D/g, ""))
-              }
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
               placeholder={t("verificationCodePlaceholder")}
             />
           </div>
-          {error != null && error !== "" && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error != null && error !== "" && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
           <Button
@@ -130,21 +118,15 @@ export function DeleteAccountForm({ currentEmail }: DeleteAccountFormProps) {
             onClick={() => setOpen(false)}
             disabled={isLoading}
           >
-            {t("cancel") !== "" ? t("cancel") : "Cancel"}
+            {t("cancel")}
           </Button>
           <Button
             variant="destructive"
-            onClick={handleDelete}
-            disabled={
-              confirmText !== "DELETE" || otp.length !== 6 || isLoading
-            }
+            onClick={handleSubmit}
+            disabled={confirmText !== "CLEAR" || otp.length !== 6 || isLoading}
           >
-            {isLoading && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {t("deleteButton") !== ""
-              ? t("deleteButton")
-              : "Delete Account"}
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t("clearDataButton")}
           </Button>
         </DialogFooter>
       </DialogContent>

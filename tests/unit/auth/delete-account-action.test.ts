@@ -27,9 +27,13 @@ describe("deleteAccount action", () => {
   });
 
   it("deletes the current account and signs out", async () => {
-    await deleteAccount();
+    await deleteAccount("test@example.com", "123456");
 
-    expect(deleteAccountUseCaseMock).toHaveBeenCalledWith("user-delete");
+    expect(deleteAccountUseCaseMock).toHaveBeenCalledWith({
+      userId: "user-delete",
+      email: "test@example.com",
+      otp: "123456",
+    });
     expect(signOutMock).toHaveBeenCalledWith({ redirectTo: "/" });
   });
 
@@ -37,7 +41,7 @@ describe("deleteAccount action", () => {
     const error = new Error("delete failed");
     deleteAccountUseCaseMock.mockRejectedValueOnce(error);
 
-    await expect(deleteAccount()).rejects.toThrow(error);
+    await expect(deleteAccount("test@example.com", "123456")).rejects.toThrow(error);
     expect(signOutMock).not.toHaveBeenCalled();
   });
 });
