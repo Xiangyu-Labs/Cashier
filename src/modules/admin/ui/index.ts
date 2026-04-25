@@ -30,3 +30,7 @@ export { AdminLedgersList, type AdminLedgersListLabels } from "./AdminLedgersLis
 export { AdminCategoriesList, type AdminCategoriesListLabels } from "./AdminCategoriesList";
 export { AdminAccountsList, type AdminAccountsListLabels } from "./AdminAccountsList";
 export { AdminServiceCredentialsList, type AdminServiceCredentialsListLabels } from "./AdminServiceCredentialsList";
+export {
+  AdminCurrencyRatesList,
+  type AdminCurrencyRatesListLabels,
+} from "./AdminCurrencyRatesList";
