@@ -218,6 +218,13 @@
       "when": 1774370799474,
       "tag": "0030_premium_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1777108217194,
+      "tag": "0031_ordinary_slapstick",
+      "breakpoints": true
     }
   ]
 }
