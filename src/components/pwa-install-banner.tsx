@@ -38,7 +38,7 @@ export function PWAInstallBanner() {
           <div className="bg-primary/10 p-2 rounded-lg shrink-0">
             <Download className="h-5 w-5 text-primary" />
           </div>
-          <p className="text-sm text-foreground truncate">
+          <p className="text-sm text-foreground leading-relaxed">
             {isIOS ? t("iosInstallGuide") : t("installPrompt")}
           </p>
         </div>
