@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { Link } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { PWAInstallButton } from "@/components/pwa-install-button";
+import { ChevronRight, Shield } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -62,6 +64,23 @@ export default function SettingsPage() {
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">{t("account") !== "" ? t("account") : "Account"}</h2>
+        <Link
+          href="/settings/account"
+          className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Shield className="h-5 w-5 text-muted-foreground" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">
+                {t("accountAndSecurity") !== "" ? t("accountAndSecurity") : "Account & Security"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {t("accountAndSecurityDesc") !== "" ? t("accountAndSecurityDesc") : "Manage your email, password, and account security"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </Link>
       </div>
 
       <div className="pt-8 border-t">

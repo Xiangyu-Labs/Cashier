@@ -74,7 +74,7 @@ describe("listAdminServiceCredentials", () => {
   });
 
   it("returns nextCursor and supports pagination", async () => {
-    const db = getTestDb();
+    getTestDb();
     requireSuperAdminMock.mockResolvedValue({
       id: "admin-user",
       email: "admin@example.com",
