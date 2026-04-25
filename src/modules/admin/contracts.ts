@@ -1,7 +1,19 @@
 import type { z } from "zod";
 import type {
+  listAdminAccountsInputSchema,
+  listAdminAccountsValidatedInputSchema,
+  listAdminCategoriesInputSchema,
+  listAdminCategoriesValidatedInputSchema,
+  listAdminCurrencyRatesInputSchema,
+  listAdminCurrencyRatesValidatedInputSchema,
   listAdminEntriesInputSchema,
   listAdminEntriesValidatedInputSchema,
+  listAdminLedgersInputSchema,
+  listAdminLedgersValidatedInputSchema,
+  listAdminOTPTokensInputSchema,
+  listAdminOTPTokensValidatedInputSchema,
+  listAdminServiceCredentialsInputSchema,
+  listAdminServiceCredentialsValidatedInputSchema,
   listAdminSourceDocumentsInputSchema,
   listAdminSourceDocumentsValidatedInputSchema,
   listAdminTasksInputSchema,
@@ -187,3 +199,188 @@ export type ListAdminSourceDocumentsValidatedInput = z.infer<
 >;
 export type ListAdminEntriesInput = z.input<typeof listAdminEntriesInputSchema>;
 export type ListAdminEntriesValidatedInput = z.infer<typeof listAdminEntriesValidatedInputSchema>;
+
+export interface AdminLedgerListItem {
+  id: string;
+  userId: string;
+  userEmail: string | null;
+  mainCurrency: string | null;
+  createdAt: Date;
+}
+
+export interface AdminLedgerDetail {
+  id: string;
+  userId: string;
+  userEmail: string | null;
+  metadata: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface AdminCategoryListItem {
+  id: string;
+  ledgerId: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isEditable: boolean;
+  createdAt: Date;
+}
+
+export interface AdminCategoryDetail {
+  id: string;
+  ledgerId: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  isEditable: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface AdminAccountListItem {
+  userId: string;
+  userEmail: string | null;
+  provider: string;
+  providerAccountId: string;
+  type: string;
+}
+
+export interface AdminAccountDetail {
+  userId: string;
+  userEmail: string | null;
+  provider: string;
+  providerAccountId: string;
+  type: string;
+  refreshToken: string | null;
+  accessToken: string | null;
+  expiresAt: number | null;
+  tokenType: string | null;
+  scope: string | null;
+  idToken: string | null;
+  sessionState: string | null;
+}
+
+export interface AdminServiceCredentialListItem {
+  id: string;
+  key: string;
+  name: string;
+  ledgerId: string;
+  userEmail: string | null;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+}
+
+export interface AdminServiceCredentialDetail {
+  id: string;
+  key: string;
+  name: string;
+  ledgerId: string;
+  userEmail: string | null;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+  deletedAt: Date | null;
+}
+
+export interface AdminCurrencyRateListItem {
+  date: string;
+  base: string;
+  rateCount: number;
+  updatedAt: Date;
+}
+
+export interface AdminCurrencyRateDetail {
+  date: string;
+  base: string;
+  rates: Record<string, number>;
+  updatedAt: Date;
+}
+
+export interface AdminOTPTokenListItem {
+  id: string;
+  email: string;
+  expires: Date;
+  attempts: number;
+  isVerified: boolean;
+  ipAddress: string | null;
+  createdAt: Date;
+}
+
+export interface AdminOTPTokenDetail {
+  id: string;
+  email: string;
+  tokenHash: string;
+  expires: Date;
+  attempts: number;
+  lockedUntil: Date | null;
+  ipAddress: string | null;
+  createdAt: Date;
+  lastAttemptAt: Date | null;
+  verifiedAt: Date | null;
+}
+
+export interface AdminOverviewStats {
+  totalUsers: number;
+  totalLedgers: number;
+  totalEntries: number;
+  totalSourceDocuments: number;
+  totalTasks: number;
+  totalCategories: number;
+  totalServiceCredentials: number;
+  totalAccounts: number;
+  totalCurrencyRates: number;
+  totalOTPTokens: number;
+}
+
+export type AdminLedgerRange = "24h" | "7d" | "30d" | "all";
+
+export interface ListAdminLedgersResult {
+  items: AdminLedgerListItem[];
+  nextCursor: string | null;
+  hasAnyLedgers: boolean;
+}
+
+export interface ListAdminCategoriesResult {
+  items: AdminCategoryListItem[];
+  hasAnyCategories: boolean;
+}
+
+export interface ListAdminAccountsResult {
+  items: AdminAccountListItem[];
+  availableProviders: string[];
+  hasAnyAccounts: boolean;
+}
+
+export interface ListAdminServiceCredentialsResult {
+  items: AdminServiceCredentialListItem[];
+  nextCursor: string | null;
+  hasAnyServiceCredentials: boolean;
+}
+
+export interface ListAdminCurrencyRatesResult {
+  items: AdminCurrencyRateListItem[];
+  nextCursor: string | null;
+  hasAnyCurrencyRates: boolean;
+}
+
+export interface ListAdminOTPTokensResult {
+  items: AdminOTPTokenListItem[];
+  nextCursor: string | null;
+  hasAnyOTPTokens: boolean;
+}
+
+export type ListAdminLedgersInput = z.input<typeof listAdminLedgersValidatedInputSchema>;
+export type ListAdminLedgersValidatedInput = z.infer<typeof listAdminLedgersValidatedInputSchema>;
+export type ListAdminCategoriesInput = z.input<typeof listAdminCategoriesValidatedInputSchema>;
+export type ListAdminCategoriesValidatedInput = z.infer<typeof listAdminCategoriesValidatedInputSchema>;
+export type ListAdminAccountsInput = z.input<typeof listAdminAccountsValidatedInputSchema>;
+export type ListAdminAccountsValidatedInput = z.infer<typeof listAdminAccountsValidatedInputSchema>;
+export type ListAdminServiceCredentialsInput = z.input<typeof listAdminServiceCredentialsValidatedInputSchema>;
+export type ListAdminServiceCredentialsValidatedInput = z.infer<typeof listAdminServiceCredentialsValidatedInputSchema>;
+export type ListAdminCurrencyRatesInput = z.input<typeof listAdminCurrencyRatesValidatedInputSchema>;
+export type ListAdminCurrencyRatesValidatedInput = z.infer<typeof listAdminCurrencyRatesValidatedInputSchema>;
+export type ListAdminOTPTokensInput = z.input<typeof listAdminOTPTokensValidatedInputSchema>;
+export type ListAdminOTPTokensValidatedInput = z.infer<typeof listAdminOTPTokensValidatedInputSchema>;
