@@ -15,3 +15,4 @@ export { sendOTP } from "./application/use-cases/send-otp";
 export { setPassword } from "./application/use-cases/set-password";
 export { changePassword } from "./application/use-cases/change-password";
 export { changeEmail } from "./application/use-cases/change-email";
+export { clearUserData } from "./application/use-cases/clear-user-data";
