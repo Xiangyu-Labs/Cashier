@@ -5,6 +5,7 @@ export {
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
 } from "./application/use-cases/authenticate-with-otp";
+export { authenticateWithPassword, InvalidCredentialsSignInError } from "./application/use-cases/authenticate-with-password";
 export { deleteAccount } from "./application/use-cases/delete-account";
 export { handleAuthUserCreated } from "./application/use-cases/handle-auth-user-created";
 export { handleAuthUserSignedIn } from "./application/use-cases/handle-auth-user-signed-in";
