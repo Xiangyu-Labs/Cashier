@@ -74,10 +74,10 @@ export function AuthLoginPage() {
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isOtpMode
                   ? "bg-surface text-text shadow-sm"
-                  : "text-muted-foreground hover:text-text"
+                  : "text-transparent hover:text-muted-foreground"
               }`}
             >
-              <Mail className="w-4 h-4" />
+              <Mail className={`w-4 h-4 ${isOtpMode ? "" : "text-muted-foreground"}`} />
               {t("otp")}
             </button>
             <button
@@ -86,10 +86,10 @@ export function AuthLoginPage() {
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 !isOtpMode
                   ? "bg-surface text-text shadow-sm"
-                  : "text-muted-foreground hover:text-text"
+                  : "text-transparent hover:text-muted-foreground"
               }`}
             >
-              <Lock className="w-4 h-4" />
+              <Lock className={`w-4 h-4 ${!isOtpMode ? "" : "text-muted-foreground"}`} />
               {t("password")}
             </button>
           </div>

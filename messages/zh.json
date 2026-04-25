@@ -666,7 +666,7 @@
     "signingIn": "登录中...",
     "invalidCredentials": "邮箱或密码错误",
     "passwordLoginDesc": "输入您的邮箱和密码进行登录。",
-    "otp": "验证码"
+    "otp": "邮箱登录"
   },
   "Devices": {
     "title": "设备管理",

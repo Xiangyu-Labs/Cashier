@@ -666,7 +666,7 @@
     "signingIn": "Signing in...",
     "invalidCredentials": "Invalid email or password",
     "passwordLoginDesc": "Enter your email and password to sign in.",
-    "otp": "OTP"
+    "otp": "Email"
   },
   "Devices": {
     "title": "Device Management",
