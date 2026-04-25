@@ -12,6 +12,7 @@ export const users = sqliteTable(
     email: text("email").notNull().unique(),
     emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
     image: text("image"),
+    passwordHash: text("password_hash"),
     role: text("role")
       .notNull()
       .default(UserRole.User)
