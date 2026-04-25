@@ -5,7 +5,7 @@ import { Download, Smartphone } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function PWAInstallButton() {
-  const { isInstallable, isStandalone, isIOS, promptInstall } = usePwaInstall();
+  const { isInstallable, isStandalone, isIOS, promptInstall, isPrompting } = usePwaInstall();
   const t = useTranslations("PWA");
 
   if (isStandalone || !isInstallable) {
@@ -27,7 +27,8 @@ export function PWAInstallButton() {
       ) : (
         <button
           onClick={promptInstall}
-          className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          disabled={isPrompting}
+          className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="h-4 w-4" />
           {t("installApp")}

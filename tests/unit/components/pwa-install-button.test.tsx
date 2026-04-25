@@ -69,6 +69,20 @@ describe("PWAInstallButton", () => {
 
     render(<PWAInstallButton />);
     expect(screen.getByText("iosInstallGuide") !== null).toBe(true);
-    expect(screen.queryByRole("button", { name: /install/i })).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("disables install button when isPrompting=true", () => {
+    mockedUsePwaInstall.mockReturnValue({
+      isInstallable: true,
+      isStandalone: false,
+      isIOS: false,
+      promptInstall: vi.fn(),
+      isPrompting: true,
+    });
+
+    render(<PWAInstallButton />);
+    const button = screen.getByRole("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
   });
 });
