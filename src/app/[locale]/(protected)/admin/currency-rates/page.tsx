@@ -33,8 +33,8 @@ export default async function AdminCurrencyRatesPage({ searchParams }: AdminCurr
       items={rates.items}
       hasAnyCurrencyRates={rates.hasAnyCurrencyRates}
       nextCursor={rates.nextCursor}
-      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor)}
-      expandedDate={expandedDate}
+      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor) ?? null}
+      expandedDate={expandedDate ?? null}
       labels={{
         title: t("title"),
         description: t("description"),

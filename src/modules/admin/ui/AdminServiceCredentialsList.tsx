@@ -136,7 +136,7 @@ export function AdminServiceCredentialsList(props: {
                           isExpanded
                             ? "/admin/service-credentials"
                             : `/admin/service-credentials?detail=${encodeURIComponent(item.id)}${
-                                props.currentCursor
+                                props.currentCursor != null
                                   ? `&cursor=${encodeURIComponent(props.currentCursor)}`
                                   : ""
                               }`

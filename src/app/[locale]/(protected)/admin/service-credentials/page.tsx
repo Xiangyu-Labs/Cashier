@@ -34,8 +34,8 @@ export default async function AdminServiceCredentialsPage({
       items={credentials.items}
       hasAnyServiceCredentials={credentials.hasAnyServiceCredentials}
       nextCursor={credentials.nextCursor}
-      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor)}
-      expandedCredentialId={expandedCredentialId}
+      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor) ?? null}
+      expandedCredentialId={expandedCredentialId ?? null}
       labels={{
         title: t("title"),
         description: t("description"),

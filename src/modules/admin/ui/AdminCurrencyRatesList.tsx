@@ -127,7 +127,7 @@ export function AdminCurrencyRatesList(props: {
                           isExpanded
                             ? "/admin/currency-rates"
                             : `/admin/currency-rates?detail=${encodeURIComponent(item.date)}${
-                                props.currentCursor
+                                props.currentCursor != null
                                   ? `&cursor=${encodeURIComponent(props.currentCursor)}`
                                   : ""
                               }`

@@ -33,8 +33,8 @@ export default async function AdminLedgersPage({ searchParams }: AdminLedgersPag
       items={ledgers.items}
       hasAnyLedgers={ledgers.hasAnyLedgers}
       nextCursor={ledgers.nextCursor}
-      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor)}
-      expandedLedgerId={expandedLedgerId}
+      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor) ?? null}
+      expandedLedgerId={expandedLedgerId ?? null}
       labels={{
         title: t("title"),
         description: t("description"),

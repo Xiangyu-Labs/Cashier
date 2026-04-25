@@ -34,8 +34,8 @@ export default async function AdminOTPTokensPage({ searchParams }: AdminOTPToken
       items={tokens.items}
       hasAnyOTPTokens={tokens.hasAnyOTPTokens}
       nextCursor={tokens.nextCursor}
-      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor)}
-      expandedTokenId={expandedTokenId}
+      currentCursor={getSingleSearchParam(resolvedSearchParams.cursor) ?? null}
+      expandedTokenId={expandedTokenId ?? null}
       labels={{
         title: t("title"),
         description: t("description"),

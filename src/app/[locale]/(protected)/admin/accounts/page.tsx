@@ -28,7 +28,7 @@ export default async function AdminAccountsPage({ searchParams }: AdminAccountsP
     <AdminAccountsList
       items={accounts.items}
       hasAnyAccounts={accounts.hasAnyAccounts}
-      expandedAccountKey={expandedAccountKey}
+      expandedAccountKey={expandedAccountKey ?? null}
       labels={{
         title: t("title"),
         description: t("description"),

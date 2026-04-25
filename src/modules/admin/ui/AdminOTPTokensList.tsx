@@ -150,7 +150,7 @@ export function AdminOTPTokensList(props: {
                           isExpanded
                             ? "/admin/otp-tokens"
                             : `/admin/otp-tokens?detail=${encodeURIComponent(item.id)}${
-                                props.currentCursor
+                                props.currentCursor != null
                                   ? `&cursor=${encodeURIComponent(props.currentCursor)}`
                                   : ""
                               }`

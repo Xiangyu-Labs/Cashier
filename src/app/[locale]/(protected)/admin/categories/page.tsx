@@ -26,7 +26,7 @@ export default async function AdminCategoriesPage({ searchParams }: AdminCategor
       locale={locale}
       items={categories.items}
       hasAnyCategories={categories.hasAnyCategories}
-      expandedCategoryId={expandedCategoryId}
+      expandedCategoryId={expandedCategoryId ?? null}
       labels={{
         title: t("title"),
         description: t("description"),
