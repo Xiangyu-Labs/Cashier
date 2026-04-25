@@ -8,3 +8,4 @@ export { getAdminEntryDetail } from "./application/queries/get-admin-entry-detai
 export { listAdminSystemConfig } from "./application/queries/list-admin-system-config";
 export { listAdminLedgers } from "./application/queries/list-admin-ledgers";
 export { listAdminCategories } from "./application/queries/list-admin-categories";
+export { listAdminAccounts } from "./application/queries/list-admin-accounts";
