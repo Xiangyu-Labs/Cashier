@@ -609,7 +609,13 @@
     "errorAccessDenied": "Access Denied",
     "errorAccessDeniedDesc": "You don't have permission to sign in. Registration may be disabled.",
     "errorConfiguration": "Configuration Error",
-    "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support."
+    "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support.",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signingIn": "Signing in...",
+    "invalidCredentials": "Invalid email or password",
+    "passwordLoginDesc": "Enter your email and password to sign in.",
+    "otp": "OTP"
   },
   "Devices": {
     "title": "Device Management",
