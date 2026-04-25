@@ -1,0 +1,75 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-16-replace-r2-with-local-storage.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Create LocalStorageProvider",
+      "status": "completed",
+      "blockedBy": [],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Create API Route for Serving Images",
+      "status": "completed",
+      "blockedBy": [1],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Update processImages to Use Local Storage",
+      "status": "completed",
+      "blockedBy": [1],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Update Delete Logic",
+      "status": "completed",
+      "blockedBy": [1],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Update loadImageForAI for Local Storage",
+      "status": "completed",
+      "blockedBy": [1],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Update Environment Variables",
+      "status": "completed",
+      "blockedBy": [],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Update Docker Configuration",
+      "status": "completed",
+      "blockedBy": [],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Update Image Components",
+      "status": "completed",
+      "blockedBy": [2],
+      "completedAt": "2026-03-16T00:00:00Z"
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Create Migration Script (Optional)",
+      "status": "pending",
+      "blockedBy": [3]
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Remove R2 Code (After Migration)",
+      "status": "completed",
+      "blockedBy": [3, 4, 5, 6, 7, 8],
+      "completedAt": "2026-03-16T00:00:00Z"
+    }
+  ],
+  "lastUpdated": "2026-03-16T00:00:00Z"
+}

@@ -1,0 +1,8 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-21-stats-server-actions-layer.md",
+  "tasks": [
+    {"id": 0, "subject": "Task 1: 创建 server-actions/get-enhanced-stats.ts", "status": "pending"},
+    {"id": 1, "subject": "Task 2: 将 actions.ts 清理为纯 barrel", "status": "pending", "blockedBy": [0]}
+  ],
+  "lastUpdated": "2026-03-21T00:00:00Z"
+}

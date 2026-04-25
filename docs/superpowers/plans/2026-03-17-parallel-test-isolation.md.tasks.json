@@ -1,0 +1,24 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-17-parallel-test-isolation.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Create Per-File Database Isolation in setup.ts",
+      "status": "pending",
+      "blockedBy": []
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Re-enable Parallel Test Execution in vitest.config.ts",
+      "status": "pending",
+      "blockedBy": [1]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Verify No Regressions",
+      "status": "pending",
+      "blockedBy": [2]
+    }
+  ],
+  "lastUpdated": "2026-03-17T03:10:00Z"
+}

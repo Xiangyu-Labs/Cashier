@@ -1,0 +1,10 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-17-additional-lint-rules.md",
+  "tasks": [
+    {"id": 1, "subject": "Task 1: 安装并配置 Prettier", "status": "pending"},
+    {"id": 2, "subject": "Task 2: 启用 strict-boolean-expressions 规则", "status": "pending", "blockedBy": [1]},
+    {"id": 3, "subject": "Task 3: 启用 no-floating-promises 规则", "status": "pending", "blockedBy": [2]},
+    {"id": 4, "subject": "Task 4: 完整验证和文档更新", "status": "pending", "blockedBy": [3]}
+  ],
+  "lastUpdated": "2026-03-17"
+}

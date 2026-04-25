@@ -1,0 +1,30 @@
+{
+  "planPath": "docs/superpowers/plans/2026-03-17-image-editing-retry-dialog.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: 交换编辑和删除按钮位置",
+      "status": "pending",
+      "description": "在 SourceDocumentInput.tsx 中将编辑按钮移到左上角，删除按钮移到右上角"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: 扩展 ImageEditor 添加马赛克/模糊功能",
+      "status": "pending",
+      "description": "在 ImageEditor 组件中添加马赛克功能 tab，包括状态、方法、UI 控件"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: 添加新功能的翻译",
+      "status": "pending",
+      "description": "在 messages/en.json 和 messages/zh.json 中添加 ImageEditor 的翻译"
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: 功能测试验证",
+      "status": "pending",
+      "description": "测试按钮位置、图片查看器、图片编辑器、马赛克功能、删除功能"
+    }
+  ],
+  "lastUpdated": "2026-03-17T00:00:00.000Z"
+}
