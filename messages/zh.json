@@ -920,5 +920,14 @@
     "loginEmailLabel": "登录邮箱：",
     "loginSafe": "如果这是您本人操作，无需采取任何行动。",
     "loginWarn": "如果不是您本人登录，请立即保护您的账户安全。"
+  },
+  "PWA": {
+    "installPrompt": "安装 Cashier 以获得更好体验",
+    "install": "安装",
+    "installApp": "安装应用",
+    "installTitle": "安装应用",
+    "installDesc": "将 Cashier 添加到主屏幕，快速访问",
+    "iosInstallGuide": "在 Safari 中点击分享按钮，然后选择\"添加到主屏幕\"",
+    "dismiss": "关闭"
   }
 }
