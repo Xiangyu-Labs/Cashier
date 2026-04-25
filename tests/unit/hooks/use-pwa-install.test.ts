@@ -5,7 +5,6 @@ import { usePwaInstall } from "@/hooks/use-pwa-install";
 describe("usePwaInstall", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
   });
 
   it("initial state: not standalone, not installable", () => {

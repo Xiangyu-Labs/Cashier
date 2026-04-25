@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isStandalone, isIOS } from "@/lib/pwa-utils";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: string }>;
+}
+
 interface UsePwaInstallReturn {
   isInstallable: boolean;
   isStandalone: boolean;
@@ -13,10 +18,10 @@ interface UsePwaInstallReturn {
 
 export function usePwaInstall(): UsePwaInstallReturn {
   const [isInstallable, setIsInstallable] = useState(false);
-  const [isStandaloneState, setIsStandaloneState] = useState(false);
-  const [isIOSState, setIsIOSState] = useState(false);
+  const [isStandaloneState, setIsStandaloneState] = useState(() => isStandalone());
+  const [isIOSState, setIsIOSState] = useState(() => isIOS());
   const [isPrompting, setIsPrompting] = useState(false);
-  const deferredPromptRef = useRef<Event | null>(null);
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     const standalone = isStandalone();
@@ -27,7 +32,7 @@ export function usePwaInstall(): UsePwaInstallReturn {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      deferredPromptRef.current = e;
+      deferredPromptRef.current = e as BeforeInstallPromptEvent;
       setIsInstallable(true);
     };
 
@@ -50,19 +55,18 @@ export function usePwaInstall(): UsePwaInstallReturn {
     const prompt = deferredPromptRef.current;
     if (prompt == null) return;
 
+    deferredPromptRef.current = null; // prevent re-entry
+    setIsInstallable(false); // remove installable state since prompt is consumed
     setIsPrompting(true);
 
-    const promptFn = (prompt as unknown as { prompt: () => Promise<void> }).prompt;
-    const userChoiceFn = (prompt as unknown as { userChoice: Promise<{ outcome: string }> }).userChoice;
-
-    if (typeof promptFn === "function") {
-      Promise.resolve(promptFn()).catch(() => {
+    if (typeof prompt.prompt === "function") {
+      Promise.resolve(prompt.prompt()).catch(() => {
         // ignore
       });
     }
 
-    if (userChoiceFn != null) {
-      userChoiceFn
+    if (prompt.userChoice != null) {
+      prompt.userChoice
         .then(() => {
           setIsPrompting(false);
         })
