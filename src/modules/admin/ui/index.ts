@@ -26,3 +26,4 @@ export {
   type AdminSystemConfigListLabels,
 } from "./AdminSystemConfigList";
 export { AdminUnauthorizedState } from "./AdminUnauthorizedState";
+export { AdminLedgersList, type AdminLedgersListLabels } from "./AdminLedgersList";
