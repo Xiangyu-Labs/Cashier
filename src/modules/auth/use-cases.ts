@@ -12,3 +12,4 @@ export { handleAuthUserSignedIn } from "./application/use-cases/handle-auth-user
 export { isAuthSignInAllowed } from "./application/use-cases/is-auth-sign-in-allowed";
 export { RegistrationDisabledError } from "./application/use-cases/registration-policy";
 export { sendOTP } from "./application/use-cases/send-otp";
+export { setPassword } from "./application/use-cases/set-password";
