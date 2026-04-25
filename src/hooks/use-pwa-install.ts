@@ -19,16 +19,12 @@ interface UsePwaInstallReturn {
 export function usePwaInstall(): UsePwaInstallReturn {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isStandaloneState, setIsStandaloneState] = useState(() => isStandalone());
-  const [isIOSState, setIsIOSState] = useState(() => isIOS());
+  const isIOSState = isIOS();
   const [isPrompting, setIsPrompting] = useState(false);
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    const standalone = isStandalone();
-    setIsStandaloneState(standalone);
-    setIsIOSState(isIOS());
-
-    if (standalone) return;
+    if (isStandaloneState) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -49,7 +45,7 @@ export function usePwaInstall(): UsePwaInstallReturn {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
-  }, []);
+  }, [isStandaloneState]);
 
   const promptInstall = useCallback(() => {
     const prompt = deferredPromptRef.current;

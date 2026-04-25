@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { Download, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -8,20 +8,19 @@ import { useTranslations } from "next-intl";
 const DISMISS_KEY = "cashier:pwa-dismissed";
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+function getInitialDismissedState(): boolean {
+  const dismissed = localStorage.getItem(DISMISS_KEY);
+  if (dismissed != null) {
+    const time = parseInt(dismissed, 10);
+    return Date.now() - time < DISMISS_DURATION;
+  }
+  return false;
+}
+
 export function PWAInstallBanner() {
   const { isInstallable, isStandalone, isIOS, promptInstall } = usePwaInstall();
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(getInitialDismissedState);
   const t = useTranslations("PWA");
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISS_KEY);
-    if (dismissed) {
-      const time = parseInt(dismissed, 10);
-      if (Date.now() - time < DISMISS_DURATION) {
-        setIsDismissed(true);
-      }
-    }
-  }, []);
 
   if (isStandalone || !isInstallable || isDismissed) {
     return null;
