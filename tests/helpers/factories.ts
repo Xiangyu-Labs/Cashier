@@ -50,7 +50,7 @@ export function createLedgerEntryData(
   overrides: Partial<{
     id: string;
     categoryId: string | null;
-    sourceDocumentId: string;
+    sourceDocumentId: string | null;
     amount: string;
     currency: string | null;
     itemName: string;

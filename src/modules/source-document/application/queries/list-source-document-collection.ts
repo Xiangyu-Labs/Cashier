@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -40,21 +40,21 @@ export async function listSourceDocumentCollectionQuery(
 
   if (params.search != null && params.search.trim() !== "") {
     const q = `%${params.search.trim()}%`;
-    const entryMatchSubquery = db
-      .select({ one: sql`1` })
+    const entryMatchDocIds = db
+      .select({ sourceDocumentId: ledgerEntries.sourceDocumentId })
       .from(ledgerEntries)
       .where(
         and(
-          eq(ledgerEntries.sourceDocumentId, sourceDocuments.id),
           eq(ledgerEntries.ledgerId, ledgerId),
-          or(like(ledgerEntries.itemName, q), like(ledgerEntries.description, q))
+          or(like(ledgerEntries.itemName, q), like(ledgerEntries.description, q)),
+          sql`${ledgerEntries.sourceDocumentId} IS NOT NULL`
         )
       );
 
     const searchCondition = or(
       like(sourceDocuments.title, q),
       like(sourceDocuments.text, q),
-      exists(entryMatchSubquery)
+      inArray(sourceDocuments.id, entryMatchDocIds)
     );
     if (searchCondition != null) {
       conditions.push(searchCondition);

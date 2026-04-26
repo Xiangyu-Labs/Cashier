@@ -87,6 +87,7 @@ describe("ledger-url-params", () => {
       currency: "EUR",
       minAmount: 100,
       maxAmount: 250,
+      search: null,
     });
   });
 
