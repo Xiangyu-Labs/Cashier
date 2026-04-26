@@ -22,4 +22,21 @@ describe("buildLedgerEntryFilterConditions", () => {
 
     expect(explicitUndefined).toHaveLength(omitted.length);
   });
+
+  it("adds search condition when searchQuery is provided", () => {
+    const conditions = buildLedgerEntryFilterConditions("ledger-1", {
+      searchQuery: "coffee",
+    });
+    // visibility + active + search = 3 conditions (minimum)
+    expect(conditions.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("ignores empty or whitespace-only searchQuery", () => {
+    const none = buildLedgerEntryFilterConditions("ledger-1", {});
+    const empty = buildLedgerEntryFilterConditions("ledger-1", { searchQuery: "" });
+    const whitespace = buildLedgerEntryFilterConditions("ledger-1", { searchQuery: "   " });
+
+    expect(empty.length).toBe(none.length);
+    expect(whitespace.length).toBe(none.length);
+  });
 });
