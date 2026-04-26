@@ -18,12 +18,18 @@ import {
 } from "@/modules/ledger/hooks";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
-import { Monitor, Sun, Moon, LogOut, Shield, ChevronRight } from "lucide-react";
+import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
-import { Link } from "@/i18n/routing";
+import { useSession } from "next-auth/react";
+import {
+  PasswordForm,
+  ChangeEmailForm,
+  ClearDataForm,
+  DeleteAccountForm,
+} from "@/modules/auth/ui";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -49,6 +55,8 @@ export function SettingsTab({
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations("Settings");
+  const ta = useTranslations("Settings.Account");
+  const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
 
@@ -255,20 +263,29 @@ export function SettingsTab({
         {/* 4. Account Settings - Security and data management */}
         <CollapsibleSection title={t(SECTION_TITLES.account)} defaultOpen={false}>
           <div className="space-y-6 pt-4">
-            {/* Account & Security - Navigate to account management */}
-            <Link
-              href="/settings/account"
-              className="flex items-center justify-between p-3 bg-[var(--background)] border border-[var(--border)] rounded-lg hover:bg-[var(--surface2)] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-[var(--muted)]" />
-                <div>
-                  <h3 className="text-base font-medium">{t("accountAndSecurity")}</h3>
-                  <p className="text-sm text-[var(--muted)]">{t("accountAndSecurityDesc")}</p>
-                </div>
+            {/* Email Section */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-medium">{ta("emailSection")}</h3>
+                <p className="text-sm text-[var(--muted)]">{session?.user?.email ?? ""}</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-[var(--muted)]" />
-            </Link>
+              <ChangeEmailForm currentEmail={session?.user?.email ?? ""} />
+            </div>
+
+            <div className="h-px bg-[var(--border)]" />
+
+            {/* Password Section */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-medium">{ta("passwordSection")}</h3>
+                <p className="text-sm text-[var(--muted)]">
+                  {session?.user?.hasPassword
+                    ? ta("passwordSetDesc")
+                    : ta("passwordNotSetDesc")}
+                </p>
+              </div>
+              <PasswordForm hasPassword={session?.user?.hasPassword ?? false} />
+            </div>
 
             <div className="h-px bg-[var(--border)]" />
 
@@ -283,6 +300,32 @@ export function SettingsTab({
 
             {/* Export Data Section - Data portability */}
             <ExportSection ledgerId={ledgerId} />
+
+            <div className="h-px bg-[var(--border)]" />
+
+            {/* Danger Zone */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-destructive">{ta("dangerZone")}</h3>
+                <p className="text-sm text-[var(--muted)]">{ta("dangerZoneDesc")}</p>
+              </div>
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h4 className="font-medium text-destructive">{ta("clearDataTitle")}</h4>
+                    <p className="text-sm text-destructive/80">{ta("clearDataDesc")}</p>
+                  </div>
+                  <ClearDataForm currentEmail={session?.user?.email ?? ""} />
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h4 className="font-medium text-destructive">{ta("deleteTitle")}</h4>
+                    <p className="text-sm text-destructive/80">{ta("deleteDesc")}</p>
+                  </div>
+                  <DeleteAccountForm currentEmail={session?.user?.email ?? ""} />
+                </div>
+              </div>
+            </div>
 
             <div className="h-px bg-[var(--border)]" />
 
