@@ -60,14 +60,6 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 ## Docker Deployment
 
-### Development (with hot reload)
-
-```bash
-cp .env.example .env.local
-# Edit .env.local with your API keys
-npm run docker:dev
-```
-
 ### Production
 
 ```bash
@@ -86,7 +78,6 @@ docker compose up -d --build
 
 | Command                | Description                          |
 | ---------------------- | ------------------------------------ |
-| `npm run docker:dev`   | Start dev container with hot reload  |
 | `npm run docker:prod`  | Build and start production container |
 | `npm run docker:build` | Build production image only          |
 | `npm run docker:down`  | Stop and remove containers           |

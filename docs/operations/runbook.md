@@ -209,37 +209,7 @@ npm run db:migrate
 
 不要直接在生产上依赖 `db:push` 作为常规迁移手段。
 
-## 6. Docker 开发模式
-
-### 启动
-
-开发 Docker 使用 `docker-compose.dev.yml`，读取 `.env.local`，并在容器启动时自动执行 `npm run db:migrate`。
-
-```bash
-cp .env.example .env.local
-npm run docker:dev
-```
-
-或者：
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-### 特点
-
-- 挂载源码，支持热更新
-- 自动执行数据库迁移
-- 使用本地 `3000` 端口
-- 使用 `.env.local`
-
-### 关闭
-
-```bash
-npm run docker:down
-```
-
-## 7. Docker 生产部署
+## 6. Docker 生产部署
 
 ### 环境文件
 

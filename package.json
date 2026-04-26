@@ -15,7 +15,6 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "node scripts/run-test-coverage.mjs",
-    "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
     "docker:build": "docker compose build",
     "docker:prod": "docker compose up -d --build",
     "docker:down": "docker compose down",

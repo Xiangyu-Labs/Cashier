@@ -1048,7 +1048,7 @@ After all tasks are complete:
 - [ ] AI parsing with image - should load image correctly
 - [ ] Run full test suite: `npm run test:run`
 - [ ] Build for production: `npm run build`
-- [ ] Test with Docker: `npm run docker:dev`
+- [ ] Test with Docker: `npm run docker:prod`
 
 ---
 
