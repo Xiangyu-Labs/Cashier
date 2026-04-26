@@ -57,6 +57,12 @@ vi.mock("@/lib/flow/connection", () => ({
 }));
 
 // Mock hooks and actions
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: mockBack, refresh: mockRefresh, push: mockPush }),
+  usePathname: () => "/ledger/1/settings",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/i18n/routing", () => ({
   useRouter: () => ({ back: mockBack, refresh: mockRefresh, push: mockPush }),
   usePathname: () => "/ledger/1/settings",
@@ -71,6 +77,10 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "light", setTheme: mockSetTheme }),
 }));
 vi.mock("next-auth/react", () => ({
+  useSession: () => ({
+    data: { user: { id: "u1", email: "test@example.com", hasPassword: false } },
+    status: "authenticated",
+  }),
   signOut: (...args: unknown[]) => mockSignOut(...args),
 }));
 
