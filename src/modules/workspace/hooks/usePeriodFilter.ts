@@ -20,6 +20,7 @@ export interface FilterParams {
   currency: string | null;
   minAmount: number | null;
   maxAmount: number | null;
+  search: string | null;
 }
 
 interface UsePeriodFilterParams {
