@@ -31,6 +31,7 @@ export const queryKeys = {
       endDate?: string | null | undefined;
       minAmount?: number | null | undefined;
       maxAmount?: number | null | undefined;
+      search?: string | null | undefined;
       limit?: number | null | undefined;
     }
   ) =>
@@ -42,6 +43,7 @@ export const queryKeys = {
       params?.endDate ?? null,
       params?.minAmount ?? null,
       params?.maxAmount ?? null,
+      params?.search ?? null,
       params?.limit ?? null,
     ] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
