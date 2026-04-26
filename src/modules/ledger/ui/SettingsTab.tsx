@@ -18,11 +18,12 @@ import {
 } from "@/modules/ledger/hooks";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
-import { Monitor, Sun, Moon, LogOut } from "lucide-react";
+import { Monitor, Sun, Moon, LogOut, Shield, ChevronRight } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
+import { Link } from "@/i18n/routing";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -254,6 +255,23 @@ export function SettingsTab({
         {/* 4. Account Settings - Security and data management */}
         <CollapsibleSection title={t(SECTION_TITLES.account)} defaultOpen={false}>
           <div className="space-y-6 pt-4">
+            {/* Account & Security - Navigate to account management */}
+            <Link
+              href="/settings/account"
+              className="flex items-center justify-between p-3 bg-[var(--background)] border border-[var(--border)] rounded-lg hover:bg-[var(--surface2)] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-[var(--muted)]" />
+                <div>
+                  <h3 className="text-base font-medium">{t("accountAndSecurity")}</h3>
+                  <p className="text-sm text-[var(--muted)]">{t("accountAndSecurityDesc")}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-[var(--muted)]" />
+            </Link>
+
+            <div className="h-px bg-[var(--border)]" />
+
             {/* Service Credentials - API access management */}
             <ServiceCredentialSection
               credentials={credentials ?? []}
