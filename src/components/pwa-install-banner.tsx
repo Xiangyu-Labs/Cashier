@@ -9,6 +9,7 @@ const DISMISS_KEY = "cashier:pwa-dismissed";
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getInitialDismissedState(): boolean {
+  if (typeof window === "undefined") return true;
   const dismissed = localStorage.getItem(DISMISS_KEY);
   if (dismissed != null) {
     const time = parseInt(dismissed, 10);
