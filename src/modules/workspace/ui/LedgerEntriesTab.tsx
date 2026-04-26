@@ -23,6 +23,7 @@ import {
   useSourceDocumentCollection,
 } from "@/modules/source-document/hooks";
 import { type EntryFilters } from "@/modules/ledger/ui";
+import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesCompletedGroups } from "./LedgerEntriesCompletedGroups";
@@ -36,6 +37,7 @@ interface LedgerEntriesTabProps {
   periodParams: PeriodParams;
   onPeriodChange: (params: PeriodParams) => void;
   onFiltersChange: (filters: EntryFilters) => void;
+  advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
 }
 export function LedgerEntriesTab({
@@ -45,6 +47,7 @@ export function LedgerEntriesTab({
   periodParams,
   onPeriodChange,
   onFiltersChange,
+  advancedFilters,
   collapseEntriesDefault = false,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
@@ -55,7 +58,7 @@ export function LedgerEntriesTab({
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
-  const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams);
+  const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams, advancedFilters);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const { data: summaryData } = useQuery({
     queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, null),

@@ -201,6 +201,7 @@ export function LedgerPageClient({
                 periodParams={periodParams}
                 onPeriodChange={handlePeriodChange}
                 onFiltersChange={handleFiltersChange}
+                advancedFilters={advancedFilters}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
               />
             </Suspense>
