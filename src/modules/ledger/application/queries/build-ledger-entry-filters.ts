@@ -76,13 +76,14 @@ export function buildLedgerEntryFilterConditions(
         )
       );
 
-    conditions.push(
-      or(
-        like(ledgerEntries.itemName, q),
-        like(ledgerEntries.description, q),
-        inArray(ledgerEntries.sourceDocumentId, matchingDocIds)
-      )
+    const searchCondition = or(
+      like(ledgerEntries.itemName, q),
+      like(ledgerEntries.description, q),
+      inArray(ledgerEntries.sourceDocumentId, matchingDocIds)
     );
+    if (searchCondition != null) {
+      conditions.push(searchCondition);
+    }
   }
 
   return conditions;

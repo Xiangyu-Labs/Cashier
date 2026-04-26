@@ -51,13 +51,14 @@ export async function listSourceDocumentCollectionQuery(
         )
       );
 
-    conditions.push(
-      or(
-        like(sourceDocuments.title, q),
-        like(sourceDocuments.text, q),
-        exists(entryMatchSubquery)
-      )
+    const searchCondition = or(
+      like(sourceDocuments.title, q),
+      like(sourceDocuments.text, q),
+      exists(entryMatchSubquery)
     );
+    if (searchCondition != null) {
+      conditions.push(searchCondition);
+    }
   }
 
   const countResult = await db

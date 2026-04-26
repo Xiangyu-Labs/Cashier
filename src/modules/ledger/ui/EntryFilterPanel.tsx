@@ -25,6 +25,7 @@ export interface EntryFilters {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  search?: string | null;
 }
 
 interface EntryFilterPanelProps {
@@ -91,6 +92,7 @@ export function EntryFilterPanel({
     showCurrency && filters.currency != null && filters.currency !== "",
     filters.minAmount !== undefined && filters.minAmount !== null,
     filters.maxAmount !== undefined && filters.maxAmount !== null,
+    filters.search != null && filters.search !== "",
   ].filter((x): x is true => x === true).length;
 
   // Get active preset from periodParams if available, otherwise derive from filters
@@ -193,6 +195,7 @@ export function EntryFilterPanel({
       currency: null,
       minAmount: null,
       maxAmount: null,
+      search: null,
     };
     setTempFilters(defaultFilters);
     setTempPeriod("thisMonth");
@@ -223,6 +226,37 @@ export function EntryFilterPanel({
         </PopoverTrigger>
         <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[380px] p-0" align="start">
           <div className="p-4 space-y-4">
+            {/* Search Section */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground">
+                {t("search")}
+              </div>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder={t("searchPlaceholder")}
+                  value={tempFilters.search ?? ""}
+                  onChange={(e) =>
+                    setTempFilters((prev) => ({
+                      ...prev,
+                      search: e.target.value !== "" ? e.target.value : null,
+                    }))
+                  }
+                  className="h-8 text-sm pr-8"
+                />
+                {tempFilters.search && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-text"
+                    onClick={() =>
+                      setTempFilters((prev) => ({ ...prev, search: null }))
+                    }
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Custom Date Range Section */}
             <div className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
