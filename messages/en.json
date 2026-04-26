@@ -63,6 +63,8 @@
     "confirm": "Confirm"
   },
   "EntryFilterPanel": {
+    "search": "Search",
+    "searchPlaceholder": "Search entries or receipts...",
     "filter": "Filter",
     "dateRange": "Date Range",
     "allTime": "All Time",

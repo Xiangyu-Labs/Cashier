@@ -63,6 +63,8 @@
     "confirm": "确认"
   },
   "EntryFilterPanel": {
+    "search": "搜索",
+    "searchPlaceholder": "搜索条目或收据...",
     "filter": "筛选",
     "dateRange": "时间范围",
     "allTime": "全部",
