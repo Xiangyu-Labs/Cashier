@@ -5,7 +5,7 @@ import type { LedgerAdvancedFilters } from "./initial-query-state";
 
 type LedgerFilterKeyInput = Pick<
   EntryFilters,
-  "categoryId" | "currency" | "minAmount" | "maxAmount"
+  "categoryId" | "currency" | "minAmount" | "maxAmount" | "search"
 >;
 
 export function buildLedgerEntryFilters(
@@ -33,6 +33,9 @@ export function buildLedgerEntryFilters(
   if (advancedFilters.maxAmount !== undefined) {
     nextFilters.maxAmount = advancedFilters.maxAmount;
   }
+  if (advancedFilters.search !== undefined) {
+    nextFilters.search = advancedFilters.search;
+  }
 
   return nextFilters;
 }
@@ -51,6 +54,9 @@ export function buildLedgerFilterKey(filters: LedgerFilterKeyInput): string | nu
   }
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
     parts.push(`max:${filters.maxAmount}`);
+  }
+  if (filters.search != null && filters.search !== "") {
+    parts.push(`search:${filters.search}`);
   }
 
   return parts.length > 0 ? parts.join("|") : null;
@@ -96,6 +102,9 @@ export function splitLedgerFilterChange(args: {
   }
   if ("maxAmount" in args.nextFilters) {
     advancedFilterUpdate.maxAmount = args.nextFilters.maxAmount;
+  }
+  if ("search" in args.nextFilters) {
+    advancedFilterUpdate.search = args.nextFilters.search;
   }
 
   return {

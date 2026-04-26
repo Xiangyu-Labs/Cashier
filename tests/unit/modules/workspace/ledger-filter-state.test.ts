@@ -36,4 +36,18 @@ describe("ledger-filter-state", () => {
       currency: "USD",
     });
   });
+
+  it("includes search in filterKey", () => {
+    const filters = buildLedgerEntryFilters({ period: "thisMonth" }, { search: "coffee" });
+    expect(buildLedgerFilterKey(filters)).toBe("search:coffee");
+  });
+
+  it("splits search into advanced filter update", () => {
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "thisMonth" },
+      currentFilters: {},
+      nextFilters: { search: "grocery" },
+    });
+    expect(result.advancedFilterUpdate.search).toBe("grocery");
+  });
 });
