@@ -29,6 +29,7 @@ export interface UseSourceDocumentCollectionOptions {
   };
   minAmount?: number;
   maxAmount?: number;
+  search?: string | null;
 }
 
 function groupAndSummarize(docs: SourceDocumentListItemWithEntries[]): {
@@ -45,7 +46,7 @@ export function useSourceDocumentCollection(
   ledgerId: string,
   options: UseSourceDocumentCollectionOptions = {}
 ) {
-  const { dateRange, minAmount, maxAmount } = options;
+  const { dateRange, minAmount, maxAmount, search } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
@@ -63,6 +64,7 @@ export function useSourceDocumentCollection(
       endDate,
       ...(minAmount != null ? { minAmount } : {}),
       ...(maxAmount != null ? { maxAmount } : {}),
+      ...(search != null ? { search } : {}),
       limit: STREAM_COLLECTION_LIMIT,
     }),
     queryFn: () =>
@@ -71,6 +73,7 @@ export function useSourceDocumentCollection(
         ...(endDate !== null ? { endDate } : {}),
         ...(minAmount != null ? { minAmount } : {}),
         ...(maxAmount != null ? { maxAmount } : {}),
+        ...(search != null ? { search } : {}),
         limit: STREAM_COLLECTION_LIMIT,
       }),
     refetchInterval: processingPolling,
