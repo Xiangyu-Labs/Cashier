@@ -1,4 +1,4 @@
-import { and, desc, sql } from "drizzle-orm";
+import { and, desc, eq, exists, like, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -7,7 +7,7 @@ import {
   type ListSourceDocumentCollectionInput,
 } from "@/modules/source-document/contract-schemas";
 import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
-import { sourceDocuments } from "@/persistence";
+import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { z } from "zod";
 import type { SourceDocumentCollectionDto } from "../../contracts";
 import {
@@ -24,6 +24,7 @@ export interface SourceDocumentCollectionParams {
   endDate?: string | null;
   minAmount?: number;
   maxAmount?: number;
+  search?: string | null;
   limit: number;
 }
 
@@ -36,6 +37,28 @@ export async function listSourceDocumentCollectionQuery(
     ...buildSourceDocumentDateConditions(params.startDate, params.endDate),
     ...buildSourceDocumentAmountConditions(ledgerId, params.minAmount, params.maxAmount),
   ];
+
+  if (params.search != null && params.search.trim() !== "") {
+    const q = `%${params.search.trim()}%`;
+    const entryMatchSubquery = db
+      .select({ one: sql`1` })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocuments.id),
+          eq(ledgerEntries.ledgerId, ledgerId),
+          or(like(ledgerEntries.itemName, q), like(ledgerEntries.description, q))
+        )
+      );
+
+    conditions.push(
+      or(
+        like(sourceDocuments.title, q),
+        like(sourceDocuments.text, q),
+        exists(entryMatchSubquery)
+      )
+    );
+  }
 
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -90,6 +113,7 @@ export async function getSourceDocumentCollectionFromValidatedInput(
     endDate: validated.endDate ?? null,
     ...(validated.minAmount !== undefined ? { minAmount: validated.minAmount } : {}),
     ...(validated.maxAmount !== undefined ? { maxAmount: validated.maxAmount } : {}),
+    ...(validated.search !== undefined ? { search: validated.search } : {}),
     limit: validated.limit,
   };
 
