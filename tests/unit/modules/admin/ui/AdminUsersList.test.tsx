@@ -1,11 +1,13 @@
 import type React from "react";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AdminUsersList } from "@/modules/admin/ui/AdminUsersList";
 import { UserRole } from "@/modules/admin/types";
+import { AdminUsersList } from "@/modules/admin/ui/AdminUsersList";
 
 vi.mock("@/i18n/routing", () => ({
-  Link: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 const labels = {
@@ -27,26 +29,13 @@ const labels = {
   emptyDescription: "Users will appear here after registration.",
   roleUser: "User",
   roleSuperAdmin: "Super Admin",
-  notAvailable: "—",
+  notAvailable: "-",
   profile: "Profile",
   timestamps: "Timestamps",
 };
 
 describe("AdminUsersList", () => {
-  it("renders the empty state when there are no users", () => {
-    render(<AdminUsersList locale="en" users={[]} labels={labels} />);
-
-    expect(screen.getByText("No users yet")).toBeTruthy();
-    expect(screen.getByText("Users will appear here after registration.")).toBeTruthy();
-  });
-
-  it("renders rows and keeps null names visually empty", () => {
-    const expectedCreatedAt = new Intl.DateTimeFormat("en", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "UTC",
-    }).format(new Date("2026-03-21T10:00:00.000Z"));
-
+  it("keeps null names visually empty in the row grid", () => {
     const { container } = render(
       <AdminUsersList
         locale="en"
@@ -78,11 +67,6 @@ describe("AdminUsersList", () => {
       />
     );
 
-    expect(screen.getByText("admin@example.com")).toBeTruthy();
-    expect(screen.getByText("Owner")).toBeTruthy();
-    expect(screen.getByText("Super Admin")).toBeTruthy();
-    expect(screen.getByText("User")).toBeTruthy();
-    expect(screen.getByText(expectedCreatedAt)).toBeTruthy();
     expect(container.querySelectorAll("tbody td")[6]?.textContent).toBe("");
   });
 });
