@@ -2,7 +2,6 @@
 
 本文档面向部署、运维、联调和紧急处理场景，覆盖：
 
-- 管理员设置
 - 本地运行
 - Docker 开发 / 生产部署
 - 数据库迁移
@@ -30,63 +29,7 @@
 - 执行迁移：`npm run db:migrate`
 - 推送 schema：`npm run db:push`
 
-## 2. 设置超级管理员
-
-当前管理员角色字段在 `users.role`，普通用户值为 `user`，超级管理员值为 `super_admin`。
-
-### SQL 命令
-
-如果你在项目根目录，并且数据库使用默认路径，可以直接执行：
-
-```sql
-UPDATE users
-SET role = 'super_admin'
-WHERE email = 'xiangyu.moe.ac@gmail.com';
-```
-
-### SQLite CLI 一行命令
-
-```bash
-sqlite3 ./data/sqlite.db "UPDATE users SET role = 'super_admin' WHERE email = 'xiangyu.moe.ac@gmail.com';"
-```
-
-### 推荐方式：项目内置命令
-
-如果机器上没有安装 `sqlite3` CLI，直接用项目内置命令：
-
-```bash
-npm run admin:grant-super-admin -- xiangyu.moe.ac@gmail.com
-```
-
-这个命令会：
-
-- 自动读取 `DATABASE_URL`
-- 优先使用 `.env.local`，其次 `.env`
-- 自动打开当前项目的 SQLite 数据库
-- 将目标用户更新为 `super_admin`
-- 输出更新后的用户信息
-
-### 验证是否生效
-
-```bash
-sqlite3 ./data/sqlite.db "SELECT id, email, role FROM users WHERE email = 'xiangyu.moe.ac@gmail.com';"
-```
-
-预期结果中的 `role` 应为 `super_admin`。
-
-### 回退为普通用户
-
-```bash
-sqlite3 ./data/sqlite.db "UPDATE users SET role = 'user' WHERE email = 'xiangyu.moe.ac@gmail.com';"
-```
-
-如果你没有 `sqlite3` 命令行工具，可以暂时继续用 Node 一行命令回退：
-
-```bash
-node -e "const Database=require('better-sqlite3'); const db=new Database('./data/sqlite.db'); db.prepare(\"UPDATE users SET role='user' WHERE email=?\").run('xiangyu.moe.ac@gmail.com'); console.log(db.prepare('SELECT id,email,role FROM users WHERE email=?').get('xiangyu.moe.ac@gmail.com'));"
-```
-
-## 3. 本地运行
+## 2. 本地运行
 
 ### 首次启动
 
@@ -145,7 +88,7 @@ npm run test:unit
 npm run validate:i18n
 ```
 
-## 4. Worktree / 分支联调
+## 3. Worktree / 分支联调
 
 如果你在一个 worktree 里运行 Cashier，需要注意：
 
@@ -170,7 +113,7 @@ npm run db:migrate
 
 因为分支代码可能依赖比主库更新的 schema。
 
-## 5. 数据库迁移策略
+## 4. 数据库迁移策略
 
 ### 日常开发
 
@@ -209,7 +152,7 @@ npm run db:migrate
 
 不要直接在生产上依赖 `db:push` 作为常规迁移手段。
 
-## 6. Docker 生产部署
+## 5. Docker 生产部署
 
 ### 环境文件
 
@@ -269,7 +212,7 @@ SKIP_MIGRATIONS=true
 - 数据库和上传文件都保存在宿主机 `./data`
 - 重建容器不会丢失数据
 
-## 8. 非 Docker 生产运行
+## 6. 非 Docker 生产运行
 
 如果你不使用 Docker，可以按传统 Node 方式运行：
 
@@ -293,7 +236,7 @@ npm run db:migrate
 npm run start
 ```
 
-## 9. 数据备份与恢复
+## 7. 数据备份与恢复
 
 ### 备份 SQLite
 
@@ -322,18 +265,12 @@ cp ./data/sqlite.db-shm ./backup/sqlite.db-shm
 npm run db:migrate
 ```
 
-## 10. 常见运维动作
+## 8. 常见运维动作
 
-### 查看当前用户角色
-
-```bash
-sqlite3 ./data/sqlite.db "SELECT id, email, role, created_at, deleted_at FROM users ORDER BY created_at DESC;"
-```
-
-### 查看数据库是否已经有 `role` 列
+### 查看当前用户
 
 ```bash
-sqlite3 ./data/sqlite.db "PRAGMA table_info(users);"
+sqlite3 ./data/sqlite.db "SELECT id, email, created_at, deleted_at FROM users ORDER BY created_at DESC;"
 ```
 
 ### 查看最近迁移记录
@@ -358,40 +295,7 @@ docker compose logs -f
 docker compose logs -f app
 ```
 
-## 11. 管理后台启用检查
-
-当管理员功能已经部署后，建议按以下顺序检查：
-
-1. 用户已存在于 `users` 表
-2. `role` 已更新为 `super_admin`
-3. 当前数据库已经执行过包含 `users.role` 的迁移
-4. 登录后访问：
-
-```text
-/zh/admin
-```
-
-或：
-
-```text
-/en/admin
-```
-
-### 如果看到 “无权访问”
-
-优先检查：
-
-```bash
-sqlite3 ./data/sqlite.db "SELECT email, role FROM users WHERE email = 'xiangyu.moe.ac@gmail.com';"
-```
-
-如果角色正确但仍无权限：
-
-- 确认你访问的实例是不是当前那份数据库
-- 确认应用是否重启过
-- 确认该实例执行过 `npm run db:migrate`
-
-## 12. 推荐的最小生产操作流程
+## 9. 推荐的最小生产操作流程
 
 ### 首次上线
 
@@ -399,20 +303,6 @@ sqlite3 ./data/sqlite.db "SELECT email, role FROM users WHERE email = 'xiangyu.m
 cp .env.example .env
 # 编辑 .env
 docker compose up -d --build
-```
-
-### 设置管理员
-
-```bash
-npm run admin:grant-super-admin -- xiangyu.moe.ac@gmail.com
-sqlite3 ./data/sqlite.db "SELECT id, email, role FROM users WHERE email = 'xiangyu.moe.ac@gmail.com';"
-```
-
-或者纯 SQL：
-
-```bash
-sqlite3 ./data/sqlite.db "UPDATE users SET role = 'super_admin' WHERE email = 'xiangyu.moe.ac@gmail.com';"
-sqlite3 ./data/sqlite.db "SELECT id, email, role FROM users WHERE email = 'xiangyu.moe.ac@gmail.com';"
 ```
 
 ### 例行升级

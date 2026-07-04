@@ -4,9 +4,6 @@ import path from "node:path";
 const RULE_NAME = "cashier/architecture-boundaries";
 
 const MODULE_BOUNDARIES = {
-  admin: {
-    public: ["access", "queries", "types", "ui"],
-  },
   auth: {
     public: [
       "access",

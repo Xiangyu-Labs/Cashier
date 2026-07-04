@@ -98,7 +98,7 @@ npm run test:coverage  # With coverage
 - [docs/architecture/PRD.md](./docs/architecture/PRD.md) - Current product scope, flows, and domain terms
 - [docs/architecture/UI.md](./docs/architecture/UI.md) - UI and interaction reference
 - [docs/architecture/coding-patterns.md](./docs/architecture/coding-patterns.md) - Durable engineering rules
-- [docs/operations/runbook.md](./docs/operations/runbook.md) - Operations runbook for admin setup, local running, migrations, backup, and deployment
+- [docs/operations/runbook.md](./docs/operations/runbook.md) - Operations runbook for local running, migrations, backup, and deployment
 
 ## License
 

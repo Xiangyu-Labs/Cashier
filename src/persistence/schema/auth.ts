@@ -1,6 +1,5 @@
 import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
-import { UserRole, type UserRoleValue } from "@/modules/admin/types";
 
 export const users = sqliteTable(
   "users",
@@ -13,10 +12,6 @@ export const users = sqliteTable(
     emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
     image: text("image"),
     passwordHash: text("password_hash"),
-    role: text("role")
-      .notNull()
-      .default(UserRole.User)
-      .$type<UserRoleValue>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
