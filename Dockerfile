@@ -10,12 +10,8 @@ WORKDIR /app
 
 # Build-time args for client-side env vars
 # MUST be declared BEFORE any COPY to properly receive values from docker-compose
-ARG NEXT_PUBLIC_OIDC_ENABLED
-ARG NEXT_PUBLIC_OIDC_BUTTON_NAME
 ARG NEXT_PUBLIC_APP_URL
 
-ENV NEXT_PUBLIC_OIDC_ENABLED=${NEXT_PUBLIC_OIDC_ENABLED}
-ENV NEXT_PUBLIC_OIDC_BUTTON_NAME=${NEXT_PUBLIC_OIDC_BUTTON_NAME}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 
 COPY --from=deps /app/node_modules ./node_modules
