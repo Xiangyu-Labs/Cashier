@@ -22,6 +22,8 @@ describe("runtimeEnv", () => {
       ...originalEnv,
       ...baseEnv,
       AI_MAX_RETRIES: "5",
+      AI_MODEL_TEXT: "custom-text-model",
+      AI_MODEL_VISION: "custom-vision-model",
       AI_RETRY_DELAY_MS: "1500",
       AI_TEMPERATURE: "0.7",
       AUTH_RATE_LIMIT_MAX: "12",
@@ -32,6 +34,7 @@ describe("runtimeEnv", () => {
       LOG_LEVEL: "warn",
       MAX_IMAGE_QUALITY: "72",
       MAX_INPUT_PIXELS: "123456",
+      MAX_TASK_WORKER: "8",
       NEXT_PUBLIC_OIDC_ENABLED: "true",
       NEXT_PUBLIC_OIDC_BUTTON_NAME: "Cashier SSO",
       OIDC_ISSUER: "https://sso.cashier.test",
@@ -69,6 +72,8 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.localStoragePath).toBe("./data/test-uploads");
     expect(runtimeEnv.trustedProxy).toBe("loopback");
     expect(runtimeEnv.timeZone).toBe("UTC");
+    expect(runtimeEnv.aiModelText).toBe("custom-text-model");
+    expect(runtimeEnv.aiModelVision).toBe("custom-vision-model");
     expect(runtimeEnv.aiMaxRetries).toBe(5);
     expect(runtimeEnv.aiRetryDelayMs).toBe(1500);
     expect(runtimeEnv.aiTemperature).toBe(0.7);
@@ -85,6 +90,7 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.apiRateLimitPerMinute).toBe(75);
     expect(runtimeEnv.sessionMaxAgeDays).toBe(21);
     expect(runtimeEnv.disableRegistration).toBe(true);
+    expect(runtimeEnv.maxTaskWorker).toBe(8);
     expect(runtimeEnv.exportMaxEntries).toBe(5000);
     expect(runtimeEnv.maxInputPixels).toBe(123456);
     expect(runtimeEnv.maxImageQuality).toBe(72);

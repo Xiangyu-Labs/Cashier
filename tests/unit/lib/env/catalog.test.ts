@@ -20,6 +20,13 @@ function collectSourceFiles(dir: string): string[] {
 }
 
 describe("env catalog coverage", () => {
+  it("keeps runtime defaults out of the documentation catalog", () => {
+    const catalogSource = readFileSync(path.resolve("src/lib/env/catalog.ts"), "utf8");
+
+    expect(catalogSource).not.toContain("defaultValue");
+    expect(catalogSource).not.toContain("validateOnStartup");
+  });
+
   it("documents every application-managed env key used by source files", () => {
     const example = readFileSync(path.resolve(".env.example"), "utf8");
     const documentedKeys = new Set(APP_ENV_CATALOG.map((entry) => entry.name));

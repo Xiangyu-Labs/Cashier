@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateStartupEnv } from "@/lib/env/startup";
+import { ENV_DEFAULTS, validateStartupEnv } from "@/lib/env/startup";
 
 const baseEnv = {
   NODE_ENV: "test",
@@ -11,6 +11,14 @@ const baseEnv = {
 } satisfies NodeJS.ProcessEnv;
 
 describe("validateStartupEnv", () => {
+  it("exports the default values used by startup, runtime, and public env readers", () => {
+    expect(ENV_DEFAULTS.DATABASE_URL).toBe("file:./data/sqlite.db");
+    expect(ENV_DEFAULTS.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
+    expect(ENV_DEFAULTS.AI_MODEL_TEXT).toBe("gpt-4o-mini");
+    expect(ENV_DEFAULTS.NEXT_PUBLIC_APP_URL).toBe("http://localhost:3000");
+    expect(ENV_DEFAULTS.NEXT_PUBLIC_OIDC_BUTTON_NAME).toBe("SSO");
+  });
+
   it("reports missing required startup env vars together", () => {
     expect(() =>
       validateStartupEnv({

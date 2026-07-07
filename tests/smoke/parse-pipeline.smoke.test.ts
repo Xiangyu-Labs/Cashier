@@ -16,7 +16,7 @@ import type { LoadImageResult } from "@/lib/storage/utils"
 import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline"
 import { createAIContext } from "@/lib/flow/ai-context"
 import { getOpenAIClient } from "@/lib/ai/openai-client"
-import { loadFlowRuntimeEnvConfig } from "@/lib/flow/config"
+import { runtimeEnv } from "@/lib/env/runtime"
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document"
 import type { StageContext } from "@/modules/source-document/application/parse-source-document/pipeline"
 
@@ -55,12 +55,14 @@ function assertSuccess(
 let stageCtx: StageContext
 
 beforeAll(() => {
-  const envConfig = loadFlowRuntimeEnvConfig()
   const ai = createAIContext({
     signal: new AbortController().signal,
     reportTokens: () => {},
     getClient: getOpenAIClient,
-    modelConfig: envConfig.aiModelConfig,
+    modelConfig: {
+      text: runtimeEnv.aiModelText,
+      vision: runtimeEnv.aiModelVision,
+    },
   })
   stageCtx = {
     signal: new AbortController().signal,
@@ -242,6 +244,5 @@ describe.skipIf(SKIP)("parse pipeline smoke tests", () => {
     })
   })
 })
-
 
 

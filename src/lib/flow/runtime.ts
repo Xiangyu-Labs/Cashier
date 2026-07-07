@@ -1,8 +1,8 @@
 import { createAIContext } from "./ai-context";
-import { loadFlowRuntimeEnvConfig } from "./config";
 import { createFlowEngine } from "./engine";
 import { registerAllTasks, resetTaskRegistry } from "./task-registry";
 import { AppError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import type { FlowEngine, FlowRuntime, FlowRuntimeConfig, FlowTaskMetadata } from "./types";
 
 let runtime: FlowRuntime | null = null;
@@ -71,7 +71,6 @@ export async function initializeFlowRuntime(config: FlowRuntimeConfig): Promise<
 }
 
 export async function initializeDefaultFlowRuntime(): Promise<FlowRuntime> {
-  const envConfig = loadFlowRuntimeEnvConfig();
   const [{ createDrizzleStorage }, { getOpenAIClient }] = await Promise.all([
     import("./adapters/drizzle-storage"),
     import("@/lib/ai/openai-client"),
@@ -80,10 +79,13 @@ export async function initializeDefaultFlowRuntime(): Promise<FlowRuntime> {
 
   return initializeFlowRuntime({
     storage: createDrizzleStorage(),
-    maxConcurrentTasks: envConfig.maxConcurrentTasks,
+    maxConcurrentTasks: runtimeEnv.maxTaskWorker,
     ai: {
       getClient: () => client,
-      models: envConfig.aiModelConfig,
+      models: {
+        text: runtimeEnv.aiModelText,
+        vision: runtimeEnv.aiModelVision,
+      },
     },
   });
 }

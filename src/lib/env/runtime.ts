@@ -14,6 +14,8 @@ export interface RuntimeEnv {
   readonly localStoragePath: string;
   readonly trustedProxy: string | undefined;
   readonly timeZone: string;
+  readonly aiModelText: string;
+  readonly aiModelVision: string;
   readonly aiMaxRetries: number;
   readonly aiRetryDelayMs: number;
   readonly aiTemperature: number;
@@ -30,6 +32,7 @@ export interface RuntimeEnv {
   readonly apiRateLimitPerMinute: number;
   readonly sessionMaxAgeDays: number;
   readonly disableRegistration: boolean;
+  readonly maxTaskWorker: number;
   readonly exportMaxEntries: number;
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
@@ -82,6 +85,12 @@ export const runtimeEnv: RuntimeEnv = {
   get timeZone() {
     return getStartupEnvValue("TZ");
   },
+  get aiModelText() {
+    return getStartupEnvValue("AI_MODEL_TEXT");
+  },
+  get aiModelVision() {
+    return getStartupEnvValue("AI_MODEL_VISION");
+  },
   get aiMaxRetries() {
     return getStartupEnvValue("AI_MAX_RETRIES");
   },
@@ -129,6 +138,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get disableRegistration() {
     return getStartupEnvValue("DISABLE_REGISTRATION") === "true";
+  },
+  get maxTaskWorker() {
+    return getStartupEnvValue("MAX_TASK_WORKER");
   },
   get exportMaxEntries() {
     return getStartupEnvValue("EXPORT_MAX_ENTRIES");

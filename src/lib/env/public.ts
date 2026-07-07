@@ -1,3 +1,5 @@
+import { ENV_DEFAULTS } from "./startup";
+
 export interface PublicEnv {
   readonly appUrl: string;
   readonly oidcEnabled: boolean;
@@ -10,12 +12,20 @@ function resolvePublicValue(value: string | undefined, fallback: string): string
 
 export const publicEnv: PublicEnv = {
   get appUrl() {
-    return resolvePublicValue(process.env.NEXT_PUBLIC_APP_URL, "http://localhost:3000");
+    return resolvePublicValue(process.env.NEXT_PUBLIC_APP_URL, ENV_DEFAULTS.NEXT_PUBLIC_APP_URL);
   },
   get oidcEnabled() {
-    return resolvePublicValue(process.env.NEXT_PUBLIC_OIDC_ENABLED, "false") === "true";
+    return (
+      resolvePublicValue(
+        process.env.NEXT_PUBLIC_OIDC_ENABLED,
+        ENV_DEFAULTS.NEXT_PUBLIC_OIDC_ENABLED
+      ) === "true"
+    );
   },
   get oidcButtonName() {
-    return resolvePublicValue(process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME, "SSO");
+    return resolvePublicValue(
+      process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME,
+      ENV_DEFAULTS.NEXT_PUBLIC_OIDC_BUTTON_NAME
+    );
   },
 };

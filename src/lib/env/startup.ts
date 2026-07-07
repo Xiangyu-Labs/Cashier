@@ -1,31 +1,59 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
-import { getEnvCatalogEntry } from "./catalog";
 import { isValidAuthEmailFrom, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
+
+export const ENV_DEFAULTS = {
+  DATABASE_URL: "file:./data/sqlite.db",
+  OPENAI_BASE_URL: "https://api.openai.com/v1",
+  AUTH_URL: "http://localhost:3000",
+  LOCAL_STORAGE_PATH: "./data/uploads",
+  TZ: "Asia/Shanghai",
+  AI_MODEL_TEXT: "gpt-4o-mini",
+  AI_MODEL_VISION: "gpt-4o",
+  AI_MAX_RETRIES: "3",
+  AI_RETRY_DELAY_MS: "1000",
+  AI_TEMPERATURE: "0.3",
+  SOURCE_DOC_STALE_TIME_MS: "120000",
+  CURRENCY_STALE_TIME_MS: "14400000",
+  OTP_EXPIRES_SECONDS: "300",
+  OTP_LOCKOUT_MINUTES: "15",
+  OTP_MAX_ATTEMPTS: "5",
+  OTP_RESEND_COOLDOWN_SECONDS: "60",
+  AUTH_RATE_LIMIT_MAX: "10",
+  AUTH_RATE_LIMIT_WINDOW: "900",
+  API_RATE_LIMIT_PER_MINUTE: "60",
+  OTP_IP_MAX_ATTEMPTS_PER_HOUR: "10",
+  OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE: "5",
+  SESSION_MAX_AGE_DAYS: "14",
+  DISABLE_REGISTRATION: "false",
+  AUTH_EMAIL_FROM: DEFAULT_AUTH_EMAIL_FROM,
+  MAX_TASK_WORKER: "10",
+  EXPORT_MAX_ENTRIES: "2000",
+  MAX_INPUT_PIXELS: "25000000",
+  MAX_IMAGE_QUALITY: "85",
+  LOG_LEVEL: "info",
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+  NEXT_PUBLIC_OIDC_ENABLED: "false",
+  NEXT_PUBLIC_OIDC_BUTTON_NAME: "SSO",
+} as const;
 
 function blankToUndefined(value: unknown): unknown {
   return typeof value === "string" && value.trim() === "" ? undefined : value;
 }
 
-function getDefaultString(name: string): string {
-  const value = getEnvCatalogEntry(name)?.defaultValue;
-
-  if (value == null) {
-    throw new Error(`Missing default value for ${name}`);
-  }
-
-  return value;
+function getDefaultString(name: keyof typeof ENV_DEFAULTS): string {
+  return ENV_DEFAULTS[name];
 }
 
 function requiredString(name: string) {
   return z.preprocess(blankToUndefined, z.string().trim().min(1, `${name} is required`));
 }
 
-function stringWithDefault(name: string) {
+function stringWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(blankToUndefined, z.string().trim().default(getDefaultString(name)));
 }
 
-function urlWithDefault(name: string) {
+function urlWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(
     blankToUndefined,
     z.url({ error: `${name} must be a valid URL` }).default(getDefaultString(name))
@@ -36,7 +64,7 @@ function optionalUrl(name: string) {
   return z.preprocess(blankToUndefined, z.url({ error: `${name} must be a valid URL` }).optional());
 }
 
-function nonNegativeIntWithDefault(name: string) {
+function nonNegativeIntWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(
     blankToUndefined,
     z.coerce
@@ -47,7 +75,7 @@ function nonNegativeIntWithDefault(name: string) {
   );
 }
 
-function positiveIntWithDefault(name: string) {
+function positiveIntWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(
     blankToUndefined,
     z.coerce
@@ -58,7 +86,7 @@ function positiveIntWithDefault(name: string) {
   );
 }
 
-function booleanStringWithDefault(name: string) {
+function booleanStringWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(
     blankToUndefined,
     z.enum(["true", "false"]).default(getDefaultString(name) as "true" | "false")
@@ -81,7 +109,7 @@ const startupEnvFields = {
         isValidAuthEmailFrom,
         "AUTH_EMAIL_FROM must be a valid email address or Display Name <email> mailbox"
       )
-      .default(DEFAULT_AUTH_EMAIL_FROM)
+      .default(getDefaultString("AUTH_EMAIL_FROM"))
   ),
   OIDC_ISSUER: optionalUrl("OIDC_ISSUER"),
   OIDC_CLIENT_ID: z.preprocess(blankToUndefined, z.string().trim().optional()),
