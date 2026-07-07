@@ -2,6 +2,7 @@ import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 
 interface LegacyLedgerPageProps {
+  params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
