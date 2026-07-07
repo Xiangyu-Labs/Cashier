@@ -4,7 +4,7 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CheckSquare, Loader2, Tags, Trash2 } from "lucide-react";
+import { Loader2, Tags, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -25,6 +25,9 @@ import {
 } from "@/modules/ledger/hooks";
 import { EntryFilterPanel, LedgerEntryCard, LedgerEntryDetailModal } from "@/modules/ledger/ui";
 import type { EntryFilters } from "@/modules/ledger/ui";
+import { DetailsToolbar } from "./DetailsToolbar";
+import { EmptyState } from "./EmptyState";
+import { EntryGroupHeader } from "./EntryGroupHeader";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -158,178 +161,51 @@ export function DetailsTab({
     ]);
   }, [queryClient, ledgerId]);
 
+  const batchActions = selectedIds.length > 0
+    ? [
+        {
+          label: tBatch("aiCategorize"),
+          iconLabel: tBatch("aiCategorize"),
+          icon: <Tags className="h-4 w-4" aria-hidden="true" />,
+          onClick: () => batchCategorize.mutate(selectedIds),
+          pending: batchCategorize.isPending,
+          disabled: isBatchProcessing,
+        },
+        {
+          label: tBatch("delete"),
+          iconLabel: tBatch("delete"),
+          icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+          onClick: () => batchDelete.mutate(selectedIds),
+          pending: batchDelete.isPending,
+          disabled: isBatchProcessing,
+          variant: "danger" as const,
+        },
+      ]
+    : [];
+
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
-        {/* Filter Section */}
-        <div className="px-2 mb-2 sm:mb-4">
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            {entries.length > 0 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleSelectionMode}
-                  className="shrink-0 h-8 w-8"
-                  title={isSelectionMode ? t("cancelSelect") : t("select")}
-                >
-                  {isSelectionMode ? (
-                    <ArrowLeft className="w-4 h-4" />
-                  ) : (
-                    <CheckSquare className="w-4 h-4" />
-                  )}
-                </Button>
-                {isSelectionMode && (
-                  <>
-                    <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5">
-                        <Checkbox
-                          checked={masterChecked}
-                          onCheckedChange={(checked) => {
-                            if (checked === true) selectAll();
-                            else clearSelection();
-                          }}
-                          aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}
-                          className="h-4 w-4"
-                      />
-                      <span className="text-xs font-medium text-text">
-                        {tBatch("selected", { count: selectedIds.length })}
-                      </span>
-                    </div>
-                    {selectedIds.length > 0 && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => batchCategorize.mutate(selectedIds)}
-                          disabled={isBatchProcessing}
-                          className="shrink-0 h-8 px-3 text-xs"
-                        >
-                          {batchCategorize.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                          ) : (
-                            <Tags className="w-3.5 h-3.5 mr-1" />
-                          )}
-                          {tBatch("aiCategorize")}
-                        </Button>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={isBatchProcessing}
-                              className="shrink-0 h-8 px-3 text-xs"
-                            >
-                              {batchChangeCategory.isPending ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                              ) : (
-                                <CategoryIcon iconName="Tag" className="w-3.5 h-3.5 mr-1" />
-                              )}
-                              {tBatch("manualCategory")}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
-                            <DropdownMenuItem
-                              onClick={() => batchChangeCategory.mutate({ ids: selectedIds, categoryId: null })}
-                              className="text-muted-foreground"
-                            >
-                              <CategoryIcon iconName="CircleSlash" className="w-4 h-4 mr-2 opacity-50" />
-                              {tBatch("uncategorized")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {categories.map((category) => (
-                              <DropdownMenuItem
-                                key={category.id}
-                                onClick={() =>
-                                  batchChangeCategory.mutate({
-                                    ids: selectedIds,
-                                    categoryId: category.id,
-                                  })
-                                }
-                              >
-                                <CategoryIcon iconName={category.icon} className="w-4 h-4 mr-2" />
-                                {category.name}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={isBatchProcessing}
-                              className="shrink-0 h-8 px-3 text-xs"
-                            >
-                              {batchChangeCurrency.isPending ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                              ) : (
-                                <span className="mr-1 text-xs font-semibold">$</span>
-                              )}
-                              {tBatch("setCurrency")}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-32 max-h-64 overflow-y-auto">
-                            {currencyList.map((currency) => (
-                              <DropdownMenuItem
-                                key={currency}
-                                onClick={() =>
-                                  batchChangeCurrency.mutate({
-                                    ids: selectedIds,
-                                    currency,
-                                  })
-                                }
-                                className={cn(
-                                  (ledger?.metadata?.settings?.currencies ?? []).includes(currency) &&
-                                    "font-medium"
-                                )}
-                              >
-                                {currency}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => batchDelete.mutate(selectedIds)}
-                          disabled={isBatchProcessing}
-                          className={cn(
-                            "shrink-0 h-8 px-3 text-xs",
-                            "text-destructive hover:text-destructive hover:bg-destructive/10",
-                            "border-destructive/30"
-                          )}
-                        >
-                          {batchDelete.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-            {!isSelectionMode && (
-              <EntryFilterPanel
-                filters={filters}
-                onFiltersChange={onFiltersChange}
-                periodParams={periodParams}
-                onPeriodChange={onPeriodChange}
-                categories={categories}
-                preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
-                className="flex-1 sm:flex-none"
-              />
-            )}
-            <span className="text-xs text-muted-foreground font-mono ml-auto">
-              {tFilter("filteredTotal")} {monthStats.mainCurrency} {monthStats.mainTotal.toFixed(2)}
-            </span>
-          </div>
-        </div>
+        <DetailsToolbar
+          hasEntries={entries.length > 0}
+          isSelectionMode={isSelectionMode}
+          selectedCount={selectedIds.length}
+          selectedLabel={tBatch("selected", { count: selectedIds.length })}
+          totalLabel={`${monthStats.mainCurrency} ${monthStats.mainTotal.toFixed(2)}`}
+          onToggleSelectionMode={toggleSelectionMode}
+          onClearSelection={clearSelection}
+          batchActions={batchActions}
+        >
+          <EntryFilterPanel
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+            periodParams={periodParams}
+            onPeriodChange={onPeriodChange}
+            categories={categories}
+            preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+            className="flex-1 sm:flex-none"
+          />
+        </DetailsToolbar>
 
         {/* Entry Groups */}
         <div className="space-y-6 pt-2">
@@ -342,15 +218,10 @@ export function DetailsTab({
                 exit={{ opacity: 0 }}
                 className="space-y-2"
               >
-                <div className="py-2 px-2 flex items-center justify-between">
-                  <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                    {group.title}
-                  </h3>
-                  <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
-                    {monthStats.mainCurrency} {group.total.toFixed(2)}
-                  </span>
-                </div>
+                <EntryGroupHeader
+                  title={group.title}
+                  totalLabel={`${monthStats.mainCurrency} ${group.total.toFixed(2)}`}
+                />
                 <div className="space-y-4 px-2">
                   {group.items.map((entry) => (
                     <motion.div
@@ -395,9 +266,7 @@ export function DetailsTab({
 
           {/* Empty State */}
           {!isLoading && entries.length === 0 && (
-            <div className="text-center py-20 text-muted-foreground">
-              <p>{tCommon("noRecords")}</p>
-            </div>
+            <EmptyState title={tCommon("noRecords")} />
           )}
 
           {/* Infinite Scroll Sentinel */}
