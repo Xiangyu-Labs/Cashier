@@ -8,19 +8,18 @@ interface CategoryIconProps {
 }
 
 export function CategoryIcon({ iconName, className }: CategoryIconProps) {
+  const PackageIcon = icons.Package;
+
   if (iconName == null || iconName === "") {
-    const PackageIcon = icons.Package;
     return <PackageIcon className={className} />;
   }
 
-  // Check if it's a specific emoji we want to fallback (optional)
-  // or checks if it is a valid Lucide icon name
+  // Category icons are constrained to Lucide keys so they stay vector-based and themeable.
   const IconComponent = icons[iconName as keyof typeof icons] as LucideIcon | undefined;
 
   if (IconComponent) {
     return <IconComponent className={className} />;
   }
 
-  // Fallback to rendering as text (likely emoji)
-  return <span className={className}>{iconName}</span>;
+  return <PackageIcon className={className} />;
 }

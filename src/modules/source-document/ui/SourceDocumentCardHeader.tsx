@@ -126,7 +126,9 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           sourceDocument.title !== "" && (
             <>
               <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
-              <span className="text-sm font-semibold text-text truncate">{sourceDocument.title}</span>
+              <span className="text-sm font-semibold text-text truncate">
+                {sourceDocument.title}
+              </span>
             </>
           )}
         {sourceDocument.type === "manual" && (
@@ -156,8 +158,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="h-7 w-7 text-muted-foreground hover:text-text"
-                aria-label="source-document-card-actions"
+                className="h-11 w-11 text-muted-foreground hover:text-text sm:h-7 sm:w-7"
+                aria-label={t("moreActions")}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>

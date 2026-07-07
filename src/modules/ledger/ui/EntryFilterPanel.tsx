@@ -210,12 +210,12 @@ export function EntryFilterPanel({
             variant="outline"
             size="sm"
             className={cn(
-              "h-7 px-2.5 text-xs gap-1.5",
+              "h-11 px-3 text-xs gap-1.5 sm:h-7 sm:px-2.5",
               advancedFilterCount > 0 && "border-primary/50 text-primary"
             )}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("moreFilters")}</span>
+            <span>{t("moreFilters")}</span>
             {advancedFilterCount > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-medium">
                 {advancedFilterCount}
@@ -228,9 +228,7 @@ export function EntryFilterPanel({
           <div className="p-4 space-y-4">
             {/* Search Section */}
             <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground">
-                {t("search")}
-              </div>
+              <div className="text-xs font-medium text-muted-foreground">{t("search")}</div>
               <div className="relative">
                 <Input
                   type="text"
@@ -242,14 +240,14 @@ export function EntryFilterPanel({
                       search: e.target.value !== "" ? e.target.value : null,
                     }))
                   }
-                  className="h-8 text-sm pr-8"
+                  className="h-11 pr-11 text-sm sm:h-8 sm:pr-8"
                 />
                 {tempFilters.search != null && tempFilters.search !== "" && (
                   <button
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-text"
-                    onClick={() =>
-                      setTempFilters((prev) => ({ ...prev, search: null }))
-                    }
+                    type="button"
+                    aria-label={t("reset")}
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-text sm:right-1 sm:h-8 sm:w-8"
+                    onClick={() => setTempFilters((prev) => ({ ...prev, search: null }))}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -280,7 +278,7 @@ export function EntryFilterPanel({
                       variant="ghost"
                       size="sm"
                       className={cn(
-                        "text-xs h-7",
+                        "text-xs h-11 sm:h-7",
                         isActive && "bg-primary/10 text-primary font-medium"
                       )}
                       onClick={() => handleDatePreset(preset)}
@@ -295,7 +293,7 @@ export function EntryFilterPanel({
                   {...(tempFilters.startDate != null ? { value: tempFilters.startDate } : {})}
                   onChange={(date) => setTempFilterDate("startDate", date)}
                   size="sm"
-                  className="flex-1 h-8"
+                  className="flex-1 h-11 sm:h-8"
                   showClear={false}
                 />
                 <span className="text-muted-foreground text-sm">-</span>
@@ -303,7 +301,7 @@ export function EntryFilterPanel({
                   {...(tempFilters.endDate != null ? { value: tempFilters.endDate } : {})}
                   onChange={(date) => setTempFilterDate("endDate", date)}
                   size="sm"
-                  className="flex-1 h-8"
+                  className="flex-1 h-11 sm:h-8"
                   showClear={false}
                 />
               </div>
@@ -322,7 +320,7 @@ export function EntryFilterPanel({
                     }))
                   }
                 >
-                  <SelectTrigger className="w-full h-8 text-sm">
+                  <SelectTrigger className="w-full h-11 text-sm sm:h-8">
                     <SelectValue placeholder={t("allCategories")} />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4}>
@@ -352,7 +350,7 @@ export function EntryFilterPanel({
                     }))
                   }
                 >
-                  <SelectTrigger className="w-full h-8 text-sm">
+                  <SelectTrigger className="w-full h-11 text-sm sm:h-8">
                     <SelectValue placeholder={t("allCurrencies")} />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4}>
@@ -381,8 +379,9 @@ export function EntryFilterPanel({
                       minAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
-                  className="flex-1 h-8 text-sm"
+                  className="flex-1 h-11 text-sm sm:h-8"
                   min={0}
+                  inputMode="decimal"
                 />
                 <span className="text-muted-foreground text-sm">-</span>
                 <Input
@@ -395,19 +394,25 @@ export function EntryFilterPanel({
                       maxAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
-                  className="flex-1 h-8 text-sm"
+                  className="flex-1 h-11 text-sm sm:h-8"
                   min={0}
+                  inputMode="decimal"
                 />
               </div>
             </div>
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
-              <Button variant="ghost" size="sm" className="flex-1 h-8" onClick={handleReset}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-11 flex-1 sm:h-8"
+                onClick={handleReset}
+              >
                 <X className="h-4 w-4 mr-1" />
                 {t("reset")}
               </Button>
-              <Button size="sm" className="flex-1 h-8" onClick={handleApply}>
+              <Button size="sm" className="h-11 flex-1 sm:h-8" onClick={handleApply}>
                 {t("apply")}
               </Button>
             </div>

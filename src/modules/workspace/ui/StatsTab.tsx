@@ -139,7 +139,7 @@ export function StatsTab({
                 variant={chartView === "heatmap" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setChartView("heatmap")}
-                className="h-7 px-2"
+                className="h-11 px-3 sm:h-8 sm:px-2"
               >
                 <Grid3X3 className="h-4 w-4 mr-1" />
                 {t("heatmap")}
@@ -148,7 +148,7 @@ export function StatsTab({
                 variant={chartView === "trend" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setChartView("trend")}
-                className="h-7 px-2"
+                className="h-11 px-3 sm:h-8 sm:px-2"
               >
                 <BarChart3 className="h-4 w-4 mr-1" />
                 {t("trend")}
@@ -162,6 +162,7 @@ export function StatsTab({
               startDate={startDate}
               endDate={endDate}
               isLoading={isLoading}
+              currencySymbol={currencySymbol}
             />
           ) : (
             <CalendarHeatmapSection

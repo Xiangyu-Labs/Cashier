@@ -51,11 +51,7 @@ export function AuthLoginPage() {
             )}
           </div>
           <h1 className="text-2xl font-bold text-text">
-            {isOtpMode
-              ? step === "email"
-                ? t("welcomeBack")
-                : t("verifyCode")
-              : t("welcomeBack")}
+            {isOtpMode ? (step === "email" ? t("welcomeBack") : t("verifyCode")) : t("welcomeBack")}
           </h1>
           <p className="text-muted-foreground mt-2">
             {isOtpMode
@@ -71,10 +67,11 @@ export function AuthLoginPage() {
             <button
               type="button"
               onClick={() => setMode("otp")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
+              aria-pressed={isOtpMode}
+              className={`flex-1 flex h-11 items-center justify-center gap-2 text-sm font-medium rounded-md transition-colors ${
                 isOtpMode
                   ? "bg-surface text-text shadow-sm"
-                  : "text-transparent hover:text-muted-foreground"
+                  : "text-muted-foreground hover:text-text"
               }`}
             >
               <Mail className={`w-4 h-4 ${isOtpMode ? "" : "text-muted-foreground"}`} />
@@ -83,10 +80,11 @@ export function AuthLoginPage() {
             <button
               type="button"
               onClick={() => setMode("password")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
+              aria-pressed={!isOtpMode}
+              className={`flex-1 flex h-11 items-center justify-center gap-2 text-sm font-medium rounded-md transition-colors ${
                 !isOtpMode
                   ? "bg-surface text-text shadow-sm"
-                  : "text-transparent hover:text-muted-foreground"
+                  : "text-muted-foreground hover:text-text"
               }`}
             >
               <Lock className={`w-4 h-4 ${!isOtpMode ? "" : "text-muted-foreground"}`} />

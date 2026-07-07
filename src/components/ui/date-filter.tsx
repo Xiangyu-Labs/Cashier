@@ -67,7 +67,7 @@ export function DateFilter({
           size={isSmall ? "sm" : "default"}
           className={cn(
             "justify-start text-left font-normal",
-            isSmall ? "h-8 px-2" : "h-10 px-3",
+            isSmall ? "h-11 px-3 sm:h-8 sm:px-2" : "h-11 px-3",
             !dateValue && "text-muted-foreground",
             className
           )}

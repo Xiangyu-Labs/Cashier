@@ -22,7 +22,7 @@ export default function LedgerError({
   return (
     <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-surface border border-border rounded-2xl p-8 shadow-sm text-center space-y-6">
-        <div className="mx-auto w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500">
+        <div className="mx-auto w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center text-warning">
           <AlertCircle className="w-10 h-10" />
         </div>
 

@@ -129,7 +129,7 @@ export const QueueItemCard = memo(function QueueItemCard({
             <span
               className={cn(
                 "hidden truncate text-xs sm:inline",
-                item.status === "anomaly" ? "text-amber-600" : "text-muted-foreground"
+                item.status === "anomaly" ? "text-warning" : "text-muted-foreground"
               )}
               title={item.subtitle}
             >
@@ -215,7 +215,7 @@ export const QueueItemCard = memo(function QueueItemCard({
             <p
               className={cn(
                 "truncate text-xs",
-                item.status === "anomaly" ? "text-amber-600" : "text-muted-foreground"
+                item.status === "anomaly" ? "text-warning" : "text-muted-foreground"
               )}
             >
               {item.subtitle}

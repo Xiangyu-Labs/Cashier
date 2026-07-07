@@ -35,7 +35,7 @@ describe("UI Core Components", () => {
     it("renders success variant correctly", () => {
       render(<Badge variant="success">Success Badge</Badge>);
       const badge = screen.getByText("Success Badge");
-      expect(badge.className).toContain("bg-primary/20");
+      expect(badge.className).toContain("bg-success/20");
     });
 
     it("renders error variant correctly", () => {

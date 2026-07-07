@@ -11,7 +11,7 @@ import {
 } from "./SourceDocumentImageModal";
 
 const imageActionButtonClassName =
-  "absolute z-10 flex h-6 w-6 items-center justify-center rounded-full text-white transition-opacity opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
+  "absolute z-10 flex h-11 w-11 items-start justify-end rounded-md p-1 text-white transition-opacity opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
 
 export interface SourceDocumentInputViewMessages {
   placeholder: string;
@@ -89,9 +89,11 @@ export function SourceDocumentInputView({
                 type="button"
                 aria-label={messages.delete}
                 title={messages.delete}
-                className={`${imageActionButtonClassName} right-1 top-1 bg-danger text-xs`}
+                className={`${imageActionButtonClassName} right-0 top-0 text-xs`}
               >
-                ×
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-danger">
+                  ×
+                </span>
               </button>
             </div>
           ))}
@@ -125,7 +127,13 @@ export function SourceDocumentInputView({
           multiple
           className="hidden"
         />
-        <Button type="button" variant="outline" size="sm" onClick={onSelectImages}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onSelectImages}
+          className="h-11 sm:h-9"
+        >
           <Camera className="mr-2 h-4 w-4" />
           {messages.image}
         </Button>
@@ -134,7 +142,7 @@ export function SourceDocumentInputView({
           type="button"
           onClick={onSubmit}
           disabled={isPending || !canSubmit}
-          className="flex-1 sm:flex-initial"
+          className="h-11 flex-1 sm:h-9 sm:flex-initial"
         >
           {isPending ? (
             messages.sendingStatus

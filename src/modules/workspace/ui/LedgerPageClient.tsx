@@ -23,10 +23,7 @@ import {
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
 import { useTaskQueue } from "@/modules/task-queue/ui";
-import {
-  SourceDocumentInput,
-  QuickEntryForm,
-} from "@/modules/source-document/ui";
+import { SourceDocumentInput, QuickEntryForm } from "@/modules/source-document/ui";
 import { Header } from "./Header";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
@@ -248,7 +245,7 @@ export function LedgerPageClient({
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
         <DialogContent
-          className="mx-auto w-[calc(100%-1rem)] translate-y-0 rounded-xl top-[15%] sm:top-[20%] sm:w-full sm:max-w-md"
+          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-[20%] sm:w-full sm:max-w-md sm:rounded-xl sm:p-6"
           aria-describedby={undefined}
         >
           <DialogHeader>
@@ -258,8 +255,9 @@ export function LedgerPageClient({
           <div className="flex gap-1 rounded-lg bg-surface2 p-1">
             <button
               onClick={() => setInputMode("ai")}
+              aria-pressed={inputMode === "ai"}
               className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                "min-h-11 flex-1 rounded-md px-2 py-2 text-sm font-medium transition-colors sm:min-h-8 sm:py-1.5",
                 inputMode === "ai"
                   ? "bg-surface text-text shadow-sm"
                   : "text-muted-foreground hover:text-text"
@@ -269,8 +267,9 @@ export function LedgerPageClient({
             </button>
             <button
               onClick={() => setInputMode("quick")}
+              aria-pressed={inputMode === "quick"}
               className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                "min-h-11 flex-1 rounded-md px-2 py-2 text-sm font-medium transition-colors sm:min-h-8 sm:py-1.5",
                 inputMode === "quick"
                   ? "bg-surface text-text shadow-sm"
                   : "text-muted-foreground hover:text-text"

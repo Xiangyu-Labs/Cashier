@@ -26,9 +26,15 @@ export function DayCellSmall({ date, amount, count, level, onClick }: DayCellSma
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            type="button"
             onClick={onClick}
+            aria-label={
+              amount > 0
+                ? `${date} ${t("expense")}: ${formatCellAmount(amount)}, ${t("count", { count })}`
+                : `${date} ${t("noConsumption")}`
+            }
             className={cn(
-              "w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0",
+              "w-4 h-4 rounded-sm transition-all duration-150 flex-shrink-0 sm:h-3 sm:w-3",
               "hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary"
             )}
             style={{

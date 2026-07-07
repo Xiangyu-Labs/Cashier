@@ -152,7 +152,7 @@ export function TaskQueueContent({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-6 border-red-100 bg-red-50/50 px-2 text-xs text-red-600 hover:border-red-200 hover:bg-red-50"
+                    className="h-6 border-danger/20 bg-danger/10 px-2 text-xs text-danger hover:border-danger/30 hover:bg-danger/15"
                     onClick={onDismissAll}
                   >
                     {t("dismissAll")}
@@ -163,7 +163,7 @@ export function TaskQueueContent({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-6 border-red-100 bg-red-50/50 px-2 text-xs text-red-600 hover:border-red-200 hover:bg-red-50"
+                      className="h-6 border-danger/20 bg-danger/10 px-2 text-xs text-danger hover:border-danger/30 hover:bg-danger/15"
                       onClick={onDeleteAll}
                     >
                       {t("deleteAll")}
@@ -211,16 +211,16 @@ export function TaskQueueContent({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 border-amber-100 bg-amber-50/50 px-2 text-xs text-amber-600 hover:border-amber-200 hover:bg-amber-50"
+                  className="h-6 border-warning/20 bg-warning/10 px-2 text-xs text-warning hover:border-warning/30 hover:bg-warning/15"
                   onClick={onDeleteAllAnomaly}
                 >
                   {t("deleteAll")}
                 </Button>
               )}
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
-                className="h-6 bg-amber-500 px-2 text-xs hover:bg-amber-600"
+                className="h-6 border-warning/20 bg-warning/10 px-2 text-xs text-warning hover:border-warning/30 hover:bg-warning/15"
                 onClick={() => onRetryAll("anomaly")}
               >
                 {t("retryAll")}
