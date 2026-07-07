@@ -73,4 +73,23 @@ describe("backend simplification governance", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("initializes exchange-rate orchestration only from bootstrap code", () => {
+    const allowedFiles = new Set([
+      "src/instrumentation.ts",
+      "src/lib/orchestration/exchange-rate-ledger-recalculation.ts",
+    ]);
+    const offenders: string[] = [];
+
+    for (const file of collectSourceFiles(path.resolve(repoRoot, "src"))) {
+      const relative = path.relative(repoRoot, file);
+      if (allowedFiles.has(relative)) continue;
+      const source = readFileSync(file, "utf8");
+      if (source.includes("initializeExchangeRateLedgerRecalculationOrchestration")) {
+        offenders.push(relative);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
 });

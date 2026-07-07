@@ -7,6 +7,7 @@ const logger = {
 
 const initializeDefaultFlowRuntime = vi.fn();
 const resetFlowRuntime = vi.fn();
+const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
   DATABASE_URL: "file:./data/sqlite.db",
 }));
@@ -18,6 +19,10 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/flow/runtime", () => ({
   initializeDefaultFlowRuntime,
   resetFlowRuntime,
+}));
+
+vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
+  initializeExchangeRateLedgerRecalculationOrchestration,
 }));
 
 vi.mock("@/lib/env/startup", () => ({
@@ -42,6 +47,12 @@ describe("instrumentation.register", () => {
     expect(validateOrder).toBeDefined();
     expect(initializeOrder).toBeDefined();
     expect(validateOrder!).toBeLessThan(initializeOrder!);
+    expect(initializeExchangeRateLedgerRecalculationOrchestration).toHaveBeenCalledTimes(1);
+
+    const orchestrationOrder =
+      initializeExchangeRateLedgerRecalculationOrchestration.mock.invocationCallOrder.at(0);
+    expect(orchestrationOrder).toBeDefined();
+    expect(initializeOrder!).toBeLessThan(orchestrationOrder!);
   });
 
   it("rethrows when runtime initialization fails", async () => {
@@ -49,6 +60,7 @@ describe("instrumentation.register", () => {
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("runtime failed");
+    expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 
@@ -61,6 +73,7 @@ describe("instrumentation.register", () => {
 
     await expect(register()).rejects.toThrow("invalid env");
     expect(initializeDefaultFlowRuntime).not.toHaveBeenCalled();
+    expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 });

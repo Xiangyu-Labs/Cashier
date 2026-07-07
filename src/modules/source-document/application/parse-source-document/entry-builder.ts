@@ -1,10 +1,7 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { convertEntryAmount } from "@/modules/currency/use-cases";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
-
-initializeExchangeRateLedgerRecalculationOrchestration();
 
 export interface EntryToInsert {
   ledgerId: string;

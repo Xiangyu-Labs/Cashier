@@ -25,6 +25,11 @@ export async function register() {
     const { initializeDefaultFlowRuntime } = await import("@/lib/flow/runtime");
     await initializeDefaultFlowRuntime();
 
+    const { initializeExchangeRateLedgerRecalculationOrchestration } = await import(
+      "@/lib/orchestration/exchange-rate-ledger-recalculation"
+    );
+    initializeExchangeRateLedgerRecalculationOrchestration();
+
     logger.info("Flow runtime initialized successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");

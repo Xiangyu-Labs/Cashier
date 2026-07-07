@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { initializeExchangeRateLedgerRecalculationOrchestration } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
 import { logger } from "@/lib/logger";
 import { taskVersionManager } from "@/lib/task-version";
 import { AppError } from "@/lib/errors";
@@ -10,8 +9,6 @@ import {
   type CurrencyBatchConversionResult,
 } from "@/modules/currency/use-cases";
 import { ledgerEntries } from "@/persistence";
-
-initializeExchangeRateLedgerRecalculationOrchestration();
 
 export async function fetchEntriesForConversion(ledgerId: string) {
   return db.query.ledgerEntries.findMany({
