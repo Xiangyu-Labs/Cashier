@@ -145,6 +145,7 @@ export const integrationProjects = [
       ],
       environment: "node",
       setupFiles: ["./tests/setup.ts"],
+      pool: "forks",
       maxWorkers: "50%",
       testTimeout: 30000,
     },
