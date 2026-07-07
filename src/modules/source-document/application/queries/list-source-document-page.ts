@@ -8,7 +8,6 @@ import {
 import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
 import {
   type ListSourceDocumentsInput,
-  type ListSourceDocumentsValidatedInput,
   parseListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { sourceDocuments } from "@/persistence";
@@ -119,13 +118,6 @@ export async function listSourceDocuments(
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
   const validated = parseListSourceDocumentsInput(params);
-  return listSourceDocumentsFromValidatedInput(ledgerId, validated);
-}
-
-export async function listSourceDocumentsFromValidatedInput(
-  ledgerId: string,
-  validated: ListSourceDocumentsValidatedInput
-): Promise<SourceDocumentPageDto> {
   return listSourceDocumentsQuery(ledgerId, {
     status: validated.status ?? null,
     startDate: validated.startDate ?? null,

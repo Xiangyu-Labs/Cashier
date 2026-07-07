@@ -47,4 +47,30 @@ describe("backend simplification governance", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("does not use backend query/use-case barrels from production source", () => {
+    const forbiddenImports = [
+      "@/modules/source-document/queries",
+      "@/modules/ledger/queries",
+      "@/modules/ledger/use-cases",
+    ];
+    const allowedFiles = new Set([
+      "src/modules/source-document/actions.ts",
+      "src/modules/ledger/actions.ts",
+    ]);
+    const offenders: string[] = [];
+
+    for (const file of collectSourceFiles(path.resolve(repoRoot, "src"))) {
+      const relative = path.relative(repoRoot, file);
+      if (allowedFiles.has(relative)) continue;
+      const source = readFileSync(file, "utf8");
+      for (const forbiddenImport of forbiddenImports) {
+        if (source.includes(forbiddenImport)) {
+          offenders.push(`${relative} imports ${forbiddenImport}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
 });

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { ledgers } from "@/persistence";
-import { createDefaultLedger } from "@/modules/ledger/use-cases";
+import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
 
 export interface EnsureUserLedgerInput {
   userId: string;

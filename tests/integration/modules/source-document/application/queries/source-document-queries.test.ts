@@ -10,7 +10,7 @@ import {
   listSourceDocuments,
   listSourceDocumentsQuery,
 } from "@/modules/source-document/application/queries/source-document-queries";
-import { getPendingSourceDocuments } from "@/modules/source-document/queries";
+import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {

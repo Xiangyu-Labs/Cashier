@@ -28,25 +28,49 @@ vi.mock("@/modules/ledger/access", () => ({
   ) => handler,
 }));
 
-vi.mock("@/modules/ledger/use-cases", () => ({
+vi.mock("@/modules/ledger/application/use-cases/batch-delete-ledger-entries", () => ({
   batchDeleteLedgerEntries: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
   batchUpdateLedgerEntries: vi.fn(),
-  createEntryCategory: createEntryCategoryMock,
-  createLedger: createLedgerMock,
   createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
-  createServiceCredential: createServiceCredentialMock,
-  deleteEntryCategory: vi.fn(),
-  deleteLedgerEntry: vi.fn(),
-  deleteServiceCredential: deleteServiceCredentialMock,
-  reorderEntryCategories: vi.fn(),
-  updateEntryCategory: vi.fn(),
   updateLedgerEntryWithConversion: vi.fn(),
 }));
+vi.mock("@/modules/ledger/application/use-cases/create-entry-category", () => ({
+  createEntryCategory: createEntryCategoryMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-ledger", () => ({
+  createLedger: createLedgerMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-service-credential", () => ({
+  createServiceCredential: createServiceCredentialMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
+  deleteEntryCategory: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-ledger-entry", () => ({
+  deleteLedgerEntry: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
+  deleteServiceCredential: deleteServiceCredentialMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/reorder-entry-categories", () => ({
+  reorderEntryCategories: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/update-entry-category", () => ({
+  updateEntryCategory: vi.fn(),
+}));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/application/queries/get-uncategorized-entry-count", () => ({
   getUncategorizedEntryCount: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/queries/list-ledger-entries", () => ({
   listLedgerEntries: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/queries/list-service-credentials", () => ({
   listServiceCredentials: vi.fn(),
 }));
 

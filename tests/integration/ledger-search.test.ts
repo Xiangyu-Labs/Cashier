@@ -6,8 +6,8 @@ import {
   createLedgerEntryData,
   createSourceDocumentData,
 } from "../helpers/factories";
-import { listLedgerEntries } from "@/modules/ledger/queries";
-import { getSourceDocumentCollection } from "@/modules/source-document/queries";
+import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),

@@ -1,6 +1,6 @@
 "use server";
 import { withLedgerAccess } from "../access";
-import { getLedgerEntryDetail } from "@/modules/ledger/queries";
+import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 
 export const getLedgerEntryAction = withLedgerAccess(

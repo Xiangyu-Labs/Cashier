@@ -27,26 +27,56 @@ vi.mock("@/modules/ledger/access", () => ({
   ) => handler,
 }));
 
-vi.mock("@/modules/ledger/use-cases", () => ({
+vi.mock("@/modules/ledger/application/use-cases/batch-delete-ledger-entries", () => ({
   batchDeleteLedgerEntries: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
   batchUpdateLedgerEntries: batchUpdateLedgerEntriesMock,
-  createDefaultLedger: vi.fn(),
-  createEntryCategory: vi.fn(),
-  createLedger: createLedgerMock,
   createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
+  updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
+  createDefaultLedger: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-entry-category", () => ({
+  createEntryCategory: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-ledger", () => ({
+  createLedger: createLedgerMock,
+}));
+vi.mock("@/modules/ledger/application/use-cases/create-service-credential", () => ({
   createServiceCredential: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-entry-category", () => ({
   deleteEntryCategory: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-ledger", () => ({
   deleteLedger: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-ledger-entry", () => ({
   deleteLedgerEntry: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/export-ledger-entries", () => ({
   exportLedgerEntries: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/services/recalculate-entries-converted-amount", () => ({
   recalculateEntriesConvertedAmount: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/reorder-entry-categories", () => ({
   reorderEntryCategories: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/submit-categorize-tasks", () => ({
   submitAutoCategorize: vi.fn(),
   submitBatchCategorize: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/update-entry-category", () => ({
   updateEntryCategory: vi.fn(),
+}));
+vi.mock("@/modules/ledger/application/use-cases/update-ledger", () => ({
   updateLedger: vi.fn(),
-  updateLedgerEntryWithConversion: updateLedgerEntryWithConversionMock,
 }));
 
 vi.mock("@/modules/ledger/application/queries/calculate-ledger-entry-stats", () => ({
@@ -59,7 +89,7 @@ import {
   createLedgerAction,
   updateLedgerEntryAction,
 } from "@/modules/ledger/actions";
-import { calculateLedgerStats } from "@/modules/ledger/queries";
+import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 
 describe("ledger server action omission semantics", () => {
   beforeEach(() => {

@@ -21,7 +21,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-vi.mock("@/modules/ledger/use-cases", () => ({
+vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
   createDefaultLedger: mockCreateDefaultLedger,
 }));
 

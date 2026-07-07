@@ -17,6 +17,9 @@ vi.mock("@/app/api/v1/_shared/route-helper", () => ({
 
 vi.mock("@/modules/source-document/actions", () => ({
   createSourceDocumentFromCredentialAction: createSourceDocumentFromCredentialActionMock,
+}));
+
+vi.mock("@/modules/source-document/application/queries/list-source-document-page", () => ({
   listSourceDocuments: listSourceDocumentsMock,
 }));
 

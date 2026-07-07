@@ -1,21 +1,17 @@
 "use server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
+import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
+import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
+import { listSourceDocuments as listSourceDocumentsPage } from "@/modules/source-document/application/queries/list-source-document-page";
 import {
-  getPendingSourceDocuments,
-  getSourceDocumentCollectionFromValidatedInput,
-  getSourceDocumentFullQuery,
-  listSourceDocumentsFromValidatedInput,
-} from "@/modules/source-document/application/queries/source-document-queries";
-import type {
   PendingSourceDocumentsResponseDto,
   SourceDocumentCollectionDto,
   SourceDocumentFullDto,
   SourceDocumentPageDto,
 } from "@/modules/source-document/contracts";
 import {
-  listSourceDocumentsInputSchema,
-  sourceDocumentCollectionInputSchema,
   sourceDocumentIdSchema,
   type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
@@ -28,13 +24,7 @@ export async function listSourceDocuments(
   ledgerId: string,
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
-  const parsed = listSourceDocumentsInputSchema.safeParse(params);
-  if (!parsed.success) {
-    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
-  }
-
-  const validated = parsed.data;
-  return listSourceDocumentsFromValidatedInput(ledgerId, validated);
+  return listSourceDocumentsPage(ledgerId, params);
 }
 
 export const getSourceDocumentsAction = withLedgerAccess(
@@ -50,13 +40,7 @@ export const getSourceDocumentCollectionAction = withLedgerAccess(
     ledgerId: string,
     params: ListSourceDocumentCollectionInput
   ): Promise<SourceDocumentCollectionDto> => {
-    const parsed = sourceDocumentCollectionInputSchema.safeParse(params);
-    if (!parsed.success) {
-      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
-    }
-
-    const validated = parsed.data;
-    return getSourceDocumentCollectionFromValidatedInput(ledgerId, validated);
+    return getSourceDocumentCollection(ledgerId, params);
   }
 );
 

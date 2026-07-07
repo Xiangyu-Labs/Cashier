@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
   createSourceDocumentFromCredentialAction,
-  listSourceDocuments,
 } from "@/modules/source-document/actions";
+import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { omitNullishProperties } from "@/lib/validation";

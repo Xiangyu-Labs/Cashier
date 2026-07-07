@@ -15,15 +15,23 @@ vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: requireLedgerAccessMock,
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: listEntryCategoriesMock,
+}));
+vi.mock("@/modules/ledger/application/queries/list-ledgers", () => ({
   getLedgers: getLedgersMock,
+}));
+vi.mock("@/modules/ledger/application/queries/calculate-ledger-stats", () => ({
   calculateLedgerStats: calculateLedgerStatsMock,
+}));
+vi.mock("@/modules/ledger/application/queries/list-ledger-entries", () => ({
   listLedgerEntries: listLedgerEntriesMock,
 }));
 
-vi.mock("@/modules/source-document/queries", () => ({
+vi.mock("@/modules/source-document/application/queries/get-pending-source-documents", () => ({
   getPendingSourceDocuments: getPendingSourceDocumentsMock,
+}));
+vi.mock("@/modules/source-document/application/queries/list-source-document-collection", () => ({
   getSourceDocumentCollection: getSourceDocumentCollectionMock,
 }));
 

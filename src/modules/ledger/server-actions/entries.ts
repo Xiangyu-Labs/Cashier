@@ -5,14 +5,14 @@ import type {
   DeleteLedgerEntryResultDto,
   LedgerEntryDto,
 } from "@/modules/ledger/contracts";
+import { batchDeleteLedgerEntries } from "@/modules/ledger/application/use-cases/batch-delete-ledger-entries";
 import {
-  batchDeleteLedgerEntries,
   batchUpdateLedgerEntries,
   createLedgerEntryWithConversion,
-  deleteLedgerEntry,
   updateLedgerEntryWithConversion,
-} from "@/modules/ledger/use-cases";
-import { listLedgerEntries } from "@/modules/ledger/queries";
+} from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
+import { deleteLedgerEntry } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
+import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
   parseCreateLedgerEntryInput,

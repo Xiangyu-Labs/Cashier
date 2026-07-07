@@ -13,13 +13,12 @@ import {
   type CreateEntryCategoryInput,
   type UpdateEntryCategoryInput,
 } from "@/modules/ledger/contract-schemas";
-import { getUncategorizedEntryCount, listEntryCategories } from "@/modules/ledger/queries";
-import {
-  createEntryCategory,
-  deleteEntryCategory,
-  reorderEntryCategories,
-  updateEntryCategory,
-} from "@/modules/ledger/use-cases";
+import { getUncategorizedEntryCount } from "@/modules/ledger/application/queries/get-uncategorized-entry-count";
+import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
+import { createEntryCategory } from "@/modules/ledger/application/use-cases/create-entry-category";
+import { deleteEntryCategory } from "@/modules/ledger/application/use-cases/delete-entry-category";
+import { reorderEntryCategories } from "@/modules/ledger/application/use-cases/reorder-entry-categories";
+import { updateEntryCategory } from "@/modules/ledger/application/use-cases/update-entry-category";
 
 export const createEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateEntryCategoryInput): Promise<EntryCategoryDto> => {

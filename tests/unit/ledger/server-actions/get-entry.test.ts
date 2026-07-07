@@ -14,7 +14,7 @@ vi.mock("@/modules/ledger/access", () => ({
   requireLedgerAccess: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/application/queries/get-ledger-entry-detail", () => ({
   getLedgerEntryDetail: vi.fn().mockResolvedValue({ id: "entry-1", title: "Test" }),
 }));
 

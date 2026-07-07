@@ -20,7 +20,7 @@ vi.mock("@/app/api/v1/_shared/route-helper", () => ({
   handleApiV1Route: handleApiV1RouteMock,
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: listEntryCategoriesMock,
 }));
 

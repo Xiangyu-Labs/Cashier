@@ -3,7 +3,7 @@ import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
 import { ledgerStatsQuerySchema } from "@/modules/ledger/contract-schemas";
 import { omitNullishProperties } from "@/lib/validation";
-import { calculateLedgerStats } from "@/modules/ledger/queries";
+import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {

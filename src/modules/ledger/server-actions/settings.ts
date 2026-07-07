@@ -1,7 +1,7 @@
 "use server";
 import { withLedgerAccess } from "../access";
 import type { LedgerSettingsViewDto } from "@/modules/ledger/contracts";
-import { getLedgerSettingsView } from "@/modules/ledger/queries";
+import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
 
 /**
  * Batch fetch settings data in a single server action.

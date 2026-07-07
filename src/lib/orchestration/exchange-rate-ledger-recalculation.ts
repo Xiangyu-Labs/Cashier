@@ -26,7 +26,9 @@ export function initializeExchangeRateLedgerRecalculationOrchestration(): void {
 
 export async function onExchangeRatesStored(): Promise<void> {
   try {
-    const { recalculateEntriesConvertedAmount } = await import("@/modules/ledger/use-cases");
+    const { recalculateEntriesConvertedAmount } = await import(
+      "@/modules/ledger/application/services/recalculate-entries-converted-amount"
+    );
 
     const allLedgers = await db.query.ledgers.findMany({
       where: isNull(ledgers.deletedAt),

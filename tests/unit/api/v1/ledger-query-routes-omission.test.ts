@@ -17,8 +17,10 @@ vi.mock("@/app/api/v1/_shared/validation", () => ({
   parseApiInput: parseApiInputMock,
 }));
 
-vi.mock("@/modules/ledger/queries", () => ({
+vi.mock("@/modules/ledger/application/queries/list-ledger-entries", () => ({
   listLedgerEntries: listLedgerEntriesMock,
+}));
+vi.mock("@/modules/ledger/application/queries/calculate-ledger-stats", () => ({
   calculateLedgerStats: calculateLedgerStatsMock,
 }));
 

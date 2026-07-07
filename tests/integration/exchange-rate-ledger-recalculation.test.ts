@@ -12,7 +12,7 @@ const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
   recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/modules/ledger/use-cases", () => ({
+vi.mock("@/modules/ledger/application/services/recalculate-entries-converted-amount", () => ({
   recalculateEntriesConvertedAmount: recalculateEntriesConvertedAmountMock,
 }));
 

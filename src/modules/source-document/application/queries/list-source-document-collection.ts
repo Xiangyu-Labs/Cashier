@@ -8,7 +8,6 @@ import {
 } from "@/modules/source-document/contract-schemas";
 import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
-import type { z } from "zod";
 import type { SourceDocumentCollectionDto } from "../../contracts";
 import {
   listEntriesBySourceDocumentIds,
@@ -16,8 +15,6 @@ import {
 } from "./list-source-document-page";
 import { buildSourceDocumentAmountConditions } from "./source-document-query-amount";
 import { buildSourceDocumentDateConditions } from "./source-document-query-date";
-
-type ParsedSourceDocumentCollectionInput = z.output<typeof sourceDocumentCollectionInputSchema>;
 
 export interface SourceDocumentCollectionParams {
   startDate?: string | null;
@@ -102,20 +99,13 @@ export async function getSourceDocumentCollection(
     throw new ValidationError("Validation failed", { issues: parsed.error.issues });
   }
 
-  return getSourceDocumentCollectionFromValidatedInput(ledgerId, parsed.data);
-}
-
-export async function getSourceDocumentCollectionFromValidatedInput(
-  ledgerId: string,
-  validated: ParsedSourceDocumentCollectionInput
-): Promise<SourceDocumentCollectionDto> {
   const queryParams: SourceDocumentCollectionParams = {
-    startDate: validated.startDate ?? null,
-    endDate: validated.endDate ?? null,
-    ...(validated.minAmount !== undefined ? { minAmount: validated.minAmount } : {}),
-    ...(validated.maxAmount !== undefined ? { maxAmount: validated.maxAmount } : {}),
-    ...(validated.search !== undefined ? { search: validated.search } : {}),
-    limit: validated.limit,
+    startDate: parsed.data.startDate ?? null,
+    endDate: parsed.data.endDate ?? null,
+    ...(parsed.data.minAmount !== undefined ? { minAmount: parsed.data.minAmount } : {}),
+    ...(parsed.data.maxAmount !== undefined ? { maxAmount: parsed.data.maxAmount } : {}),
+    ...(parsed.data.search !== undefined ? { search: parsed.data.search } : {}),
+    limit: parsed.data.limit,
   };
 
   const result = await listSourceDocumentCollectionQuery(ledgerId, queryParams);

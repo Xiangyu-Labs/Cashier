@@ -1,17 +1,13 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
-import {
-  calculateLedgerStats,
-  getLedgers,
-  listEntryCategories,
-  listLedgerEntries,
-} from "@/modules/ledger/queries";
+import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
+import { getLedgers } from "@/modules/ledger/application/queries/list-ledgers";
+import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
+import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/queries";
-import {
-  getPendingSourceDocuments,
-  getSourceDocumentCollection,
-} from "@/modules/source-document/queries";
+import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,

@@ -3,7 +3,7 @@ import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { parseApiInput } from "@/app/api/v1/_shared/validation";
 import { listLedgerEntriesInputSchema } from "@/modules/ledger/contract-schemas";
 import { omitNullishProperties } from "@/lib/validation";
-import { listLedgerEntries } from "@/modules/ledger/queries";
+import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 
 export async function GET(request: NextRequest) {
   return handleApiV1Route(request, {

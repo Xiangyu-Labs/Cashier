@@ -1,6 +1,6 @@
 "use server";
 import { withAuth } from "@/lib/auth-actions";
-import { deleteLedger } from "@/modules/ledger/use-cases";
+import { deleteLedger } from "@/modules/ledger/application/use-cases/delete-ledger";
 
 /**
  * Soft delete a ledger and all its related data (entries, categories, source documents)

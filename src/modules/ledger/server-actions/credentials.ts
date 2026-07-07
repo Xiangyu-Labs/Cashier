@@ -6,8 +6,9 @@ import {
   parseServiceCredentialId,
   type CreateServiceCredentialInput,
 } from "@/modules/ledger/contract-schemas";
-import { createServiceCredential, deleteServiceCredential } from "@/modules/ledger/use-cases";
-import { listServiceCredentials } from "@/modules/ledger/queries";
+import { createServiceCredential } from "@/modules/ledger/application/use-cases/create-service-credential";
+import { deleteServiceCredential } from "@/modules/ledger/application/use-cases/delete-service-credential";
+import { listServiceCredentials } from "@/modules/ledger/application/queries/list-service-credentials";
 
 export const getServiceCredentialsAction = withLedgerAccess(
   async (ledgerId: string): Promise<ServiceCredentialDto[]> => listServiceCredentials(ledgerId)
