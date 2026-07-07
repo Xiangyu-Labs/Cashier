@@ -19,7 +19,8 @@
     "stats": "统计",
     "newRecord": "记一笔",
     "aiParse": "智能记账",
-    "quickEntry": "快速记账"
+    "quickEntry": "快速记账",
+    "singleBook": "你的个人账本"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",

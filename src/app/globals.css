@@ -41,29 +41,33 @@
 
 :root {
   color-scheme: light;
-  --primary: #10a37f;
+  --primary: #2f6f5e;
 
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface2: #f7f7f8;
+  --bg: #fbfaf7;
+  --surface: #fffefd;
+  --surface2: #f3f0ea;
+  --surface3: #ebe6dc;
 
-  --text: #343541;
-  /* Darkened from #8e8ea0 to ensure 4.5:1 contrast */
-  --muted: #71717a;
+  --text: #25231f;
+  --muted: #69645d;
 
-  --border: #e5e5e5;
-  --ring: #10a37f;
+  --border: #ded8cc;
+  --ring: #2f6f5e;
 
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --success: #16a34a;
-  --info: #3b82f6;
+  --danger: #b94a48;
+  --warning: #b67a2d;
+  --success: #2f7d5d;
+  --info: #476b8a;
+
+  --income: #2f7d5d;
+  --expense: #8f4d3f;
+  --pending: #b67a2d;
 
   --radius: 8px;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -71,7 +75,6 @@
   --space-lg: 24px;
   --space-xl: 32px;
 
-  /* Shadcn Mappings */
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--surface);
@@ -81,18 +84,24 @@
   --primary-foreground: #ffffff;
   --secondary: var(--surface2);
   --secondary-foreground: var(--text);
-  --muted-foreground: #8e8ea0;
+  --muted-foreground: var(--muted);
   --accent: var(--surface2);
   --accent-foreground: var(--text);
   --destructive: var(--danger);
   --destructive-foreground: #ffffff;
   --input: var(--surface);
 
-  --chart-1: #10a37f;
-  --chart-2: #f59e0b;
-  --chart-3: #ef4444;
-  --chart-4: #3b82f6;
-  --chart-5: #8e8ea0;
+  --chart-1: #2f6f5e;
+  --chart-2: #476b8a;
+  --chart-3: #b67a2d;
+  --chart-4: #8f4d3f;
+  --chart-5: #69645d;
+  --heatmap-0: var(--surface2);
+  --heatmap-1: color-mix(in srgb, var(--primary), transparent 86%);
+  --heatmap-2: color-mix(in srgb, var(--primary), transparent 72%);
+  --heatmap-3: color-mix(in srgb, var(--primary), transparent 56%);
+  --heatmap-4: color-mix(in srgb, var(--primary), transparent 38%);
+  --heatmap-5: var(--primary);
 
   --sidebar: var(--surface2);
   --sidebar-foreground: var(--text);
@@ -106,26 +115,35 @@
 
 .dark {
   color-scheme: dark;
-  --bg: #343541;
-  --surface: #444654;
-  --surface2: #202123;
+  --bg: #191815;
+  --surface: #211f1b;
+  --surface2: #2b2822;
+  --surface3: #363228;
 
-  --text: #ececf1;
-  --muted: #8e8ea0;
+  --text: #f1eee7;
+  --muted: #b8b0a3;
 
-  --border: #565869;
-  --danger: #f87171;
-  --warning: #fbbf24;
-  --success: #4ade80;
-  --info: #60a5fa;
+  --border: #464036;
+  --danger: #e07a75;
+  --warning: #d69b45;
+  --success: #65b68e;
+  --info: #7fa4c4;
 
-  /* Re-declare Shadcn mappings for dark mode if they need explicit override or just inherit from root vars which are already updated above? 
-     Since :root variables update based on class .dark if we scope them or just overwrite them in .dark selector.
-     The UI.md says "深色模式只通过变量切换，不重写组件样式" (Dark mode switches only via variables).
-     So we update the core variables in .dark, and the mappings in :root using var() will naturally pick them up?
-     Wait, CSS variables in :root are evaluated at :root level. If we redefine --bg in .dark, var(--bg) usage inside .dark will pick it up.
-     So we just need to update the core tokens here.
-  */
+  --income: #65b68e;
+  --expense: #d98177;
+  --pending: #d69b45;
+
+  --chart-1: #65b68e;
+  --chart-2: #7fa4c4;
+  --chart-3: #d69b45;
+  --chart-4: #d98177;
+  --chart-5: #b8b0a3;
+  --heatmap-0: var(--surface2);
+  --heatmap-1: color-mix(in srgb, var(--primary), transparent 78%);
+  --heatmap-2: color-mix(in srgb, var(--primary), transparent 64%);
+  --heatmap-3: color-mix(in srgb, var(--primary), transparent 48%);
+  --heatmap-4: color-mix(in srgb, var(--primary), transparent 30%);
+  --heatmap-5: var(--success);
 }
 
 html {

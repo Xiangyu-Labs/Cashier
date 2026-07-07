@@ -23,7 +23,8 @@ import {
 } from "@/modules/ledger/actions";
 import { useTaskQueue } from "@/modules/task-queue/ui";
 import { SourceDocumentInput, QuickEntryForm } from "@/modules/source-document/ui";
-import { Header } from "./Header";
+import { AppShell } from "./AppShell";
+import { TabNavigation } from "./TabNavigation";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
@@ -165,22 +166,15 @@ export function LedgerPageClient({
   }
 
   return (
-    <div className="min-h-screen bg-bg text-text">
-      <Header
-        ledger={ledger}
-        pendingStats={pendingStats}
-        onOpenTaskQueue={() => setIsPendingOpen(true)}
-        onOpenInput={() => setIsInputOpen(true)}
-      />
-
-      <main className="mx-auto w-full max-w-md p-4 transition-all duration-300 md:max-w-3xl lg:max-w-5xl">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="stream">{t("stream")}</TabsTrigger>
-            <TabsTrigger value="details">{t("details")}</TabsTrigger>
-            <TabsTrigger value="stats">{t("stats")}</TabsTrigger>
-            <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
-          </TabsList>
+    <AppShell
+      pendingStats={pendingStats}
+      onOpenTaskQueue={() => setIsPendingOpen(true)}
+      onOpenInput={() => setIsInputOpen(true)}
+    >
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
+        <div className="flex justify-center md:justify-start">
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
 
           <TabsContent value="stream" className="mt-0">
             <Suspense fallback={<EntriesTabSkeleton />}>
@@ -233,7 +227,6 @@ export function LedgerPageClient({
             </Suspense>
           </TabsContent>
         </Tabs>
-      </main>
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
         <DialogContent
@@ -288,6 +281,6 @@ export function LedgerPageClient({
 
       <TaskQueueModal ledgerId={ledgerId} open={isPendingOpen} onOpenChange={setIsPendingOpen} />
       <ModalStackRenderer categories={categories} />
-    </div>
+    </AppShell>
   );
 }

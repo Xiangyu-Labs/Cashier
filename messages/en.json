@@ -19,7 +19,8 @@
     "stats": "Stats",
     "newRecord": "New Record",
     "aiParse": "AI Parse",
-    "quickEntry": "Quick Entry"
+    "quickEntry": "Quick Entry",
+    "singleBook": "Your personal book"
   },
   "DetailsTab": {
     "noMore": "No more items",
