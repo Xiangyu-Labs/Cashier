@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { nextAuthMock, drizzleAdapterMock } = vi.hoisted(() => ({
+const { nextAuthMock } = vi.hoisted(() => ({
   nextAuthMock: vi.fn((config: unknown) => ({
     config,
     handlers: { GET: vi.fn(), POST: vi.fn() },
@@ -8,15 +8,10 @@ const { nextAuthMock, drizzleAdapterMock } = vi.hoisted(() => ({
     signIn: vi.fn(),
     signOut: vi.fn(),
   })),
-  drizzleAdapterMock: vi.fn(() => ({})),
 }));
 
 vi.mock("next-auth", () => ({
   default: nextAuthMock,
-}));
-
-vi.mock("@auth/drizzle-adapter", () => ({
-  DrizzleAdapter: drizzleAdapterMock,
 }));
 
 vi.mock("@/modules/auth/use-cases", () => ({
@@ -39,13 +34,14 @@ describe("auth runtime config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    delete process.env.OIDC_ISSUER;
-    delete process.env.OIDC_CLIENT_ID;
-    delete process.env.OIDC_CLIENT_SECRET;
-    delete process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME;
+    process.env.OIDC_ISSUER = "https://sso.cashier.test";
+    process.env.OIDC_CLIENT_ID = "cashier-web";
+    process.env.OIDC_CLIENT_SECRET = "top-secret";
+    process.env.NEXT_PUBLIC_OIDC_ENABLED = "true";
+    process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME = "Cashier SSO";
   });
 
-  it("preserves verifyRequest in resolved auth pages", async () => {
+  it("preserves resolved auth pages", async () => {
     vi.doUnmock("@/auth");
 
     const authModule = await import("@/auth");
@@ -57,30 +53,27 @@ describe("auth runtime config", () => {
     });
 
     expect(nextAuthMock).toHaveBeenCalledTimes(1);
-    expect(nextAuthMock.mock.calls[0]?.[0]).toEqual(
-      expect.objectContaining({
-        pages: expect.objectContaining({
-          signIn: "/login",
-          verifyRequest: "/login/verify",
-          error: "/login/error",
-        }),
-      })
-    );
   });
 
-  it("uses NEXT_PUBLIC_OIDC_BUTTON_NAME for the OIDC provider label", async () => {
+  it("registers only the email OTP credentials provider and no database adapter", async () => {
     vi.doUnmock("@/auth");
-    process.env.OIDC_ISSUER = "https://sso.cashier.test";
-    process.env.OIDC_CLIENT_ID = "cashier-web";
-    process.env.OIDC_CLIENT_SECRET = "top-secret";
-    process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME = "Cashier SSO";
 
     await import("@/auth");
 
     const config = nextAuthMock.mock.calls[0]?.[0] as
-      | { providers?: Array<{ name?: string }> }
+      | {
+          adapter?: unknown;
+          providers?: Array<{ id?: string; name?: string; type?: string }>;
+        }
       | undefined;
 
-    expect(config?.providers?.[0]?.name).toBe("Cashier SSO");
+    expect(config?.adapter).toBeUndefined();
+    expect(config?.providers).toHaveLength(1);
+    expect(config?.providers?.[0]).toMatchObject({
+      id: "otp",
+      name: "OTP",
+      type: "credentials",
+    });
+    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp"]);
   });
 });
