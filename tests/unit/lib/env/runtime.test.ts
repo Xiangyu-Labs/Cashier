@@ -35,11 +35,6 @@ describe("runtimeEnv", () => {
       MAX_IMAGE_QUALITY: "72",
       MAX_INPUT_PIXELS: "123456",
       MAX_TASK_WORKER: "8",
-      NEXT_PUBLIC_OIDC_ENABLED: "true",
-      NEXT_PUBLIC_OIDC_BUTTON_NAME: "Cashier SSO",
-      OIDC_ISSUER: "https://sso.cashier.test",
-      OIDC_CLIENT_ID: "cashier-web",
-      OIDC_CLIENT_SECRET: "top-secret",
       OTP_EXPIRES_SECONDS: "420",
       OTP_LOCKOUT_MINUTES: "20",
       OTP_MAX_ATTEMPTS: "7",
@@ -66,9 +61,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.authUrl).toBe("http://localhost:3000");
     expect(runtimeEnv.authResendKey).toBe("re_test");
     expect(runtimeEnv.authEmailFrom).toBe("Cashier <security@example.com>");
-    expect(runtimeEnv.oidcIssuer).toBe("https://sso.cashier.test");
-    expect(runtimeEnv.oidcClientId).toBe("cashier-web");
-    expect(runtimeEnv.oidcClientSecret).toBe("top-secret");
     expect(runtimeEnv.localStoragePath).toBe("./data/test-uploads");
     expect(runtimeEnv.trustedProxy).toBe("loopback");
     expect(runtimeEnv.timeZone).toBe("UTC");
@@ -95,6 +87,10 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.maxInputPixels).toBe(123456);
     expect(runtimeEnv.maxImageQuality).toBe(72);
     expect(runtimeEnv.logLevel).toBe("warn");
+
+    expect("oidcIssuer" in runtimeEnv).toBe(false);
+    expect("oidcClientId" in runtimeEnv).toBe(false);
+    expect("oidcClientSecret" in runtimeEnv).toBe(false);
   });
 
   it("surfaces startup validation failures through the accessor", async () => {
@@ -146,22 +142,20 @@ describe("publicEnv", () => {
     const { publicEnv } = await import("@/lib/env/public");
 
     expect(publicEnv.appUrl).toBe("http://localhost:3000");
-    expect(publicEnv.oidcEnabled).toBe(false);
-    expect(publicEnv.oidcButtonName).toBe("SSO");
+    expect("oidcEnabled" in publicEnv).toBe(false);
+    expect("oidcButtonName" in publicEnv).toBe(false);
   });
 
   it("reads configured NEXT_PUBLIC values", async () => {
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_APP_URL: "https://cashier.example",
-      NEXT_PUBLIC_OIDC_ENABLED: "true",
-      NEXT_PUBLIC_OIDC_BUTTON_NAME: "Cashier SSO",
     };
 
     const { publicEnv } = await import("@/lib/env/public");
 
     expect(publicEnv.appUrl).toBe("https://cashier.example");
-    expect(publicEnv.oidcEnabled).toBe(true);
-    expect(publicEnv.oidcButtonName).toBe("Cashier SSO");
+    expect("oidcEnabled" in publicEnv).toBe(false);
+    expect("oidcButtonName" in publicEnv).toBe(false);
   });
 });
