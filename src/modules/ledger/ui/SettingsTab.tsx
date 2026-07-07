@@ -24,12 +24,7 @@ import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
-import {
-  PasswordForm,
-  ChangeEmailForm,
-  ClearDataForm,
-  DeleteAccountForm,
-} from "@/modules/auth/ui";
+import { ChangeEmailForm, ClearDataForm, DeleteAccountForm } from "@/modules/auth/ui";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -270,21 +265,6 @@ export function SettingsTab({
                 <p className="text-sm text-[var(--muted)]">{session?.user?.email ?? ""}</p>
               </div>
               <ChangeEmailForm currentEmail={session?.user?.email ?? ""} />
-            </div>
-
-            <div className="h-px bg-[var(--border)]" />
-
-            {/* Password Section */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-medium">{ta("passwordSection")}</h3>
-                <p className="text-sm text-[var(--muted)]">
-                  {session?.user?.hasPassword
-                    ? ta("passwordSetDesc")
-                    : ta("passwordNotSetDesc")}
-                </p>
-              </div>
-              <PasswordForm hasPassword={session?.user?.hasPassword ?? false} />
             </div>
 
             <div className="h-px bg-[var(--border)]" />

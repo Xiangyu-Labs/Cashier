@@ -11,7 +11,6 @@ vi.mock("next-auth/react", () => ({
         email: "user@example.com",
         name: "User",
         image: null,
-        hasPassword: true,
       },
     },
   }),
@@ -68,7 +67,6 @@ vi.mock("@/modules/ledger/hooks", () => ({
 
 vi.mock("@/modules/auth/ui", () => ({
   ChangeEmailForm: () => <button type="button">Change email</button>,
-  PasswordForm: () => <button type="button">Change Password</button>,
   ClearDataForm: () => <button type="button">Clear data</button>,
   DeleteAccountForm: () => <button type="button">Delete account</button>,
 }));
