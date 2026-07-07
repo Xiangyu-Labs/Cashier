@@ -14,6 +14,13 @@ vi.mock("next-auth", () => ({
   default: nextAuthMock,
 }));
 
+vi.mock("next-auth/providers/credentials", () => ({
+  default: (config: Record<string, unknown>) => ({
+    ...config,
+    type: "credentials",
+  }),
+}));
+
 vi.mock("@/modules/auth/use-cases", () => ({
   authenticateWithOTP: vi.fn(),
   handleAuthUserCreated: vi.fn(),
