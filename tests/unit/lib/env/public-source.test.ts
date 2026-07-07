@@ -11,6 +11,8 @@ describe("public env browser compatibility", () => {
     expect(source).toContain("ENV_DEFAULTS.NEXT_PUBLIC_APP_URL");
     expect(source).toContain("ENV_DEFAULTS.NEXT_PUBLIC_OIDC_ENABLED");
     expect(source).toContain("ENV_DEFAULTS.NEXT_PUBLIC_OIDC_BUTTON_NAME");
+    expect(source).not.toContain('from "./startup"');
+    expect(source).not.toContain('from "@/lib/env/startup"');
   });
 
   it("uses direct NEXT_PUBLIC env access so Next.js can inline browser values", () => {

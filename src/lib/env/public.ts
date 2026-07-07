@@ -1,4 +1,4 @@
-import { ENV_DEFAULTS } from "./startup";
+import { ENV_DEFAULTS } from "./defaults";
 
 export interface PublicEnv {
   readonly appUrl: string;
