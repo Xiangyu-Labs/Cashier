@@ -1,6 +1,5 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { Mail, KeyRound } from "lucide-react";
 import { useLoginFlow } from "../hooks/use-login-flow";
 import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
@@ -28,25 +27,25 @@ export function AuthLoginPage() {
   } = useLoginFlow(t);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
       <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            {step === "email" ? (
-              <Mail className="w-8 h-8 text-primary" />
-            ) : (
-              <KeyRound className="w-8 h-8 text-primary" />
-            )}
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface text-lg font-semibold text-primary">
+            C
           </div>
-          <h1 className="text-2xl font-bold text-text">
-            {step === "email" ? t("welcomeBack") : t("verifyCode")}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {step === "email" ? t("welcomeBackDesc") : t("verifyCodeDesc", { email })}
-          </p>
+          <h1 className="text-2xl font-semibold text-text">Cashier</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("productTagline")}</p>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border p-6 shadow-sm">
+        <div className="rounded-lg border border-border bg-surface p-6 shadow-none">
+          <div className="mb-5">
+            <h2 className="text-base font-semibold text-text">
+              {step === "email" ? t("emailLoginTitle") : t("verifyCode")}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {step === "email" ? t("emailLoginDesc") : t("verifyCodeDesc", { email })}
+            </p>
+          </div>
           {step === "email" ? (
             <EmailStep
               callbackUrl={callbackUrl}

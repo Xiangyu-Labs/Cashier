@@ -230,14 +230,14 @@ export function LedgerPageClient({
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
         <DialogContent
-          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-[20%] sm:w-full sm:max-w-md sm:rounded-xl sm:p-6"
+          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-[20%] sm:w-full sm:max-w-md sm:rounded-lg sm:p-6"
           aria-describedby={undefined}
         >
           <DialogHeader>
             <DialogTitle>{t("newRecord")}</DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-1 rounded-lg bg-surface2 p-1">
+          <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
             <button
               onClick={() => setInputMode("ai")}
               aria-pressed={inputMode === "ai"}
