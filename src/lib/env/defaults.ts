@@ -29,6 +29,4 @@ export const ENV_DEFAULTS = {
   MAX_IMAGE_QUALITY: "85",
   LOG_LEVEL: "info",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-  NEXT_PUBLIC_OIDC_ENABLED: "false",
-  NEXT_PUBLIC_OIDC_BUTTON_NAME: "SSO",
 } as const;

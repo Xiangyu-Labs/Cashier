@@ -28,10 +28,6 @@ function urlWithDefault(name: keyof typeof ENV_DEFAULTS) {
   );
 }
 
-function optionalUrl(name: string) {
-  return z.preprocess(blankToUndefined, z.url({ error: `${name} must be a valid URL` }).optional());
-}
-
 function nonNegativeIntWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(
     blankToUndefined,
@@ -79,9 +75,6 @@ const startupEnvFields = {
       )
       .default(getDefaultString("AUTH_EMAIL_FROM"))
   ),
-  OIDC_ISSUER: optionalUrl("OIDC_ISSUER"),
-  OIDC_CLIENT_ID: z.preprocess(blankToUndefined, z.string().trim().optional()),
-  OIDC_CLIENT_SECRET: z.preprocess(blankToUndefined, z.string().trim().optional()),
   LOCAL_STORAGE_PATH: stringWithDefault("LOCAL_STORAGE_PATH"),
   TRUSTED_PROXY: z.preprocess(blankToUndefined, z.string().trim().optional()),
   TZ: stringWithDefault("TZ"),
@@ -124,35 +117,9 @@ const startupEnvFields = {
   ),
   LOG_LEVEL: stringWithDefault("LOG_LEVEL"),
   NEXT_PUBLIC_APP_URL: urlWithDefault("NEXT_PUBLIC_APP_URL"),
-  NEXT_PUBLIC_OIDC_ENABLED: booleanStringWithDefault("NEXT_PUBLIC_OIDC_ENABLED"),
-  NEXT_PUBLIC_OIDC_BUTTON_NAME: stringWithDefault("NEXT_PUBLIC_OIDC_BUTTON_NAME"),
 } satisfies z.ZodRawShape;
 
-const startupEnvSchema = z
-  .object(startupEnvFields)
-  .superRefine((env, ctx) => {
-    const oidcKeys = ["OIDC_ISSUER", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET"] as const;
-    const hasAnyOidc = oidcKeys.some((key) => {
-      const value = env[key];
-      return typeof value === "string" && value.trim() !== "";
-    });
-    const oidcEnabled = env.NEXT_PUBLIC_OIDC_ENABLED === "true";
-
-    if (!hasAnyOidc && !oidcEnabled) {
-      return;
-    }
-
-    for (const key of oidcKeys) {
-      const value = env[key];
-      if (value == null || value === "") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [key],
-          message: `${key} is required when OIDC is enabled`,
-        });
-      }
-    }
-  });
+const startupEnvSchema = z.object(startupEnvFields);
 
 export type StartupEnv = z.infer<typeof startupEnvSchema>;
 

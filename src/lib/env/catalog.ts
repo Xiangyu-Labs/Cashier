@@ -47,24 +47,6 @@ export const APP_ENV_CATALOG: EnvCatalogEntry[] = [
     description: "Resend API key for OTP and notification emails.",
   },
   {
-    name: "OIDC_ISSUER",
-    tier: "system",
-    required: false,
-    description: "OIDC issuer URL for optional SSO integration.",
-  },
-  {
-    name: "OIDC_CLIENT_ID",
-    tier: "system",
-    required: false,
-    description: "OIDC client ID for optional SSO integration.",
-  },
-  {
-    name: "OIDC_CLIENT_SECRET",
-    tier: "system",
-    required: false,
-    description: "OIDC client secret for optional SSO integration.",
-  },
-  {
     name: "LOCAL_STORAGE_PATH",
     tier: "system",
     required: false,
@@ -232,18 +214,6 @@ export const APP_ENV_CATALOG: EnvCatalogEntry[] = [
     tier: "frontend",
     required: false,
     description: "Public application URL exposed to the browser bundle.",
-  },
-  {
-    name: "NEXT_PUBLIC_OIDC_ENABLED",
-    tier: "frontend",
-    required: false,
-    description: "Controls whether the login page renders the SSO button.",
-  },
-  {
-    name: "NEXT_PUBLIC_OIDC_BUTTON_NAME",
-    tier: "frontend",
-    required: false,
-    description: "Label used for the login page and provider SSO button.",
   },
 ];
 
