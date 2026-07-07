@@ -43,6 +43,7 @@ describe("Flow Engine Deduplication", () => {
     );
 
     expect(taskId1).toBe(taskId2);
+    await waitForTask(taskId1);
 
     const tasks = await db.query.taskRuns.findMany();
     expect(tasks).toHaveLength(1);
@@ -57,6 +58,8 @@ describe("Flow Engine Deduplication", () => {
     const taskId2 = await engine.submit("test-task", { value: 2 }, { deduplicationKey: "key-2" });
 
     expect(taskId1).not.toBe(taskId2);
+    await waitForTask(taskId1);
+    await waitForTask(taskId2);
 
     const tasks = await db.query.taskRuns.findMany();
     expect(tasks).toHaveLength(2);
@@ -72,6 +75,7 @@ describe("Flow Engine Deduplication", () => {
     const taskId2 = await engine.submit("test-task", { value: 2 }, { deduplicationKey: "key-3" });
 
     expect(taskId1).not.toBe(taskId2);
+    await waitForTask(taskId2);
 
     const tasks = await db.query.taskRuns.findMany();
     expect(tasks).toHaveLength(2);

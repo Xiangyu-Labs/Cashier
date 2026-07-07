@@ -40,4 +40,34 @@ describe("logger", () => {
       })
     );
   });
+
+  it("trims configured log level and falls back for blank values", async () => {
+    process.env = {
+      NODE_ENV: "production",
+      LOG_LEVEL: " warn ",
+    };
+
+    await import("@/lib/logger");
+
+    expect(pinoMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        level: "warn",
+      })
+    );
+
+    vi.resetModules();
+    pinoMock.mockClear();
+    process.env = {
+      NODE_ENV: "production",
+      LOG_LEVEL: " ",
+    };
+
+    await import("@/lib/logger");
+
+    expect(pinoMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        level: "info",
+      })
+    );
+  });
 });

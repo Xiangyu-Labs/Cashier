@@ -34,7 +34,6 @@ export async function initializeDefaultFlowRuntime(): Promise<FlowEngine> {
 
   initializationPromise = (async () => {
     const { getOpenAIClient } = await import("@/lib/ai/openai-client");
-  const client = getOpenAIClient();
 
     const nextEngine = createFlowEngine({
       maxConcurrentTasks: runtimeEnv.maxTaskWorker,
@@ -42,7 +41,7 @@ export async function initializeDefaultFlowRuntime(): Promise<FlowEngine> {
         createAIContext({
           signal,
           reportTokens,
-          getClient: () => client,
+          getClient: getOpenAIClient,
           modelConfig: {
             text: runtimeEnv.aiModelText,
             vision: runtimeEnv.aiModelVision,

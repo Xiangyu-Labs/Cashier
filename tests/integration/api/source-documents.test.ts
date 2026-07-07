@@ -194,8 +194,8 @@ describe("SourceDocument Actions", () => {
     const result = await createSourceDocumentAction(testLedgerId, {
       images: [
         {
-          data: "data:image/jpeg;base64,/9j/4AAQSkZ...",
-          mimeType: "image/jpeg",
+          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
+          mimeType: "image/png",
         },
       ],
     });
@@ -218,8 +218,8 @@ describe("SourceDocument Actions", () => {
       text: "带原图的单据",
       originalImages: [
         {
-          data: "data:image/jpeg;base64,/9j/4AAQ",
-          mimeType: "image/jpeg",
+          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
+          mimeType: "image/png",
         },
       ],
     });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   getEntryCategoriesAction,
   createEntryCategoryAction,
@@ -9,10 +9,19 @@ import { entryCategories as categories, ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { eq } from "drizzle-orm";
 
+const { submitMock } = vi.hoisted(() => ({
+  submitMock: vi.fn().mockResolvedValue("mock-task-id"),
+}));
+
+vi.mock("@/lib/flow", () => ({
+  submitFlowTask: submitMock,
+}));
+
 describe("getEntryCategoriesAction", () => {
   let testLedgerId: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     const db = getTestDb();
     // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
@@ -45,6 +54,7 @@ describe("createEntryCategoryAction", () => {
   let testLedgerId: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     const db = getTestDb();
     // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
@@ -109,6 +119,7 @@ describe("reorderEntryCategoriesAction", () => {
   let category3Id: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     const db = getTestDb();
     // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));

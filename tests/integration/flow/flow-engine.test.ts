@@ -113,6 +113,7 @@ describe("Cashier task engine", () => {
     );
 
     expect(secondTaskId).toBe(firstTaskId);
+    await waitForTask(firstTaskId);
   });
 
   it("calls onCancel for a queued task", async () => {
@@ -131,10 +132,11 @@ describe("Cashier task engine", () => {
       onCancel,
     });
 
-    await engine.submit("occupy_slot", {});
+    const occupyTaskId = await engine.submit("occupy_slot", {});
     const queuedTaskId = await engine.submit("queued_cancel_task", { value: 3 });
     await engine.cancel(queuedTaskId);
     const task = await waitForTask(queuedTaskId);
+    await waitForTask(occupyTaskId);
 
     expect(task.status).toBe("cancelled");
     expect(onCancel).toHaveBeenCalledWith(

@@ -104,7 +104,10 @@ describe("Source Document Update Actions", () => {
       await db.insert(sourceDocuments).values(docData);
 
       await updateSourceDocumentImagesAction(ledgerData.id, docData.id, [
-        { data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" },
+        {
+          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
+          mimeType: "image/png",
+        },
       ]);
 
       const updated = await db.query.sourceDocuments.findFirst({
@@ -132,7 +135,10 @@ describe("Source Document Update Actions", () => {
       await db.insert(sourceDocuments).values(docData);
 
       await updateSourceDocumentImagesAction(ledgerData.id, docData.id, [
-        { data: "data:image/jpeg;base64,/9j/4AAQ", mimeType: "image/jpeg" },
+        {
+          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
+          mimeType: "image/png",
+        },
       ]);
 
       const updated = await db.query.sourceDocuments.findFirst({
