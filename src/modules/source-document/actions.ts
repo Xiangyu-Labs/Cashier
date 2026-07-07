@@ -1,4 +1,3 @@
-export { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 export {
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
