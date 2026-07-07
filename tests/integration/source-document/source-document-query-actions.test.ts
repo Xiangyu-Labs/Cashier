@@ -4,8 +4,8 @@ import {
   getPendingSourceDocumentsAction,
   getSourceDocumentCollectionAction,
   getSourceDocumentFullAction,
-  listSourceDocuments,
 } from "@/modules/source-document/actions";
+import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
