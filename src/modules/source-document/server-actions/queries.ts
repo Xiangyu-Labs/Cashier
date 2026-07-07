@@ -4,7 +4,7 @@ import { withLedgerAccess } from "@/modules/ledger/access";
 import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
-import { listSourceDocuments as listSourceDocumentsPage } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import {
   PendingSourceDocumentsResponseDto,
   SourceDocumentCollectionDto,
@@ -16,16 +16,6 @@ import {
   type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-
-/**
- * Get paginated source documents with cursor-based pagination
- */
-export async function listSourceDocuments(
-  ledgerId: string,
-  params: ListSourceDocumentsInput
-): Promise<SourceDocumentPageDto> {
-  return listSourceDocumentsPage(ledgerId, params);
-}
 
 export const getSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> =>

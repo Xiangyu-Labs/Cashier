@@ -25,7 +25,7 @@ export interface SourceDocumentCollectionParams {
   limit: number;
 }
 
-export async function listSourceDocumentCollectionQuery(
+export async function querySourceDocumentCollection(
   ledgerId: string,
   params: SourceDocumentCollectionParams
 ): Promise<SourceDocumentCollectionDto> {
@@ -108,7 +108,7 @@ export async function getSourceDocumentCollection(
     limit: parsed.data.limit,
   };
 
-  const result = await listSourceDocumentCollectionQuery(ledgerId, queryParams);
+  const result = await querySourceDocumentCollection(ledgerId, queryParams);
 
   if (result.hasMore) {
     logger.warn(

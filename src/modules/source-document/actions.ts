@@ -1,5 +1,5 @@
+export { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 export {
-  listSourceDocuments,
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
   getSourceDocumentCollectionAction,

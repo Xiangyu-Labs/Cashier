@@ -5,11 +5,13 @@ import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 import {
-  getSourceDocumentCollection,
   getSourceDocumentFullQuery,
+} from "@/modules/source-document/application/queries/get-source-document-full";
+import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
+import {
   listSourceDocuments,
-  listSourceDocumentsQuery,
-} from "@/modules/source-document/application/queries/source-document-queries";
+  querySourceDocumentPage,
+} from "@/modules/source-document/application/queries/list-source-document-page";
 import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 
 function requireDefined<T>(value: T | undefined, label: string): T {
@@ -68,7 +70,7 @@ describe("source-document-queries", () => {
       ])
       .returning();
 
-    const page1 = await listSourceDocumentsQuery(ledgerId, {
+    const page1 = await querySourceDocumentPage(ledgerId, {
       status: "completed",
       startDate: "2026-03-19",
       endDate: "2026-03-20",
@@ -113,7 +115,7 @@ describe("source-document-queries", () => {
       itemName: "Lunch",
     });
 
-    const result = await listSourceDocumentsQuery(ledgerId, {
+    const result = await querySourceDocumentPage(ledgerId, {
       includeLedgerEntries: true,
     });
 
@@ -174,7 +176,7 @@ describe("source-document-queries", () => {
       "deleted source document"
     );
 
-    const page = await listSourceDocumentsQuery(ledgerId, {});
+    const page = await querySourceDocumentPage(ledgerId, {});
     expect(page.items.find((item) => item.id === deletedDoc.id)).toBeUndefined();
 
     const storedDeletedDoc = await db.query.sourceDocuments.findFirst({

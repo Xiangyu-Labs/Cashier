@@ -65,7 +65,7 @@ export function serializeSourceDocumentListItem(
   return mapSourceDocumentListItemDto(document, ledgerEntries);
 }
 
-export async function listSourceDocumentsQuery(
+export async function querySourceDocumentPage(
   ledgerId: string,
   params: ListSourceDocumentsParams
 ): Promise<SourceDocumentPageDto> {
@@ -118,7 +118,7 @@ export async function listSourceDocuments(
   params: ListSourceDocumentsInput
 ): Promise<SourceDocumentPageDto> {
   const validated = parseListSourceDocumentsInput(params);
-  return listSourceDocumentsQuery(ledgerId, {
+  return querySourceDocumentPage(ledgerId, {
     status: validated.status ?? null,
     startDate: validated.startDate ?? null,
     endDate: validated.endDate ?? null,

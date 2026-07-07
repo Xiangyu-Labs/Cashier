@@ -4,12 +4,12 @@ import {
   groupPendingSourceDocuments,
 } from "@/modules/source-document/grouping";
 import type { PendingSourceDocumentsResponseDto } from "../../contracts";
-import { listSourceDocumentsQuery } from "./list-source-document-page";
+import { querySourceDocumentPage } from "./list-source-document-page";
 
 export async function getPendingSourceDocumentsQuery(
   ledgerId: string
 ): Promise<PendingSourceDocumentsResponseDto> {
-  const result = await listSourceDocumentsQuery(ledgerId, {
+  const result = await querySourceDocumentPage(ledgerId, {
     status: "queued,processing,anomaly,failed",
     includeLedgerEntries: true,
   });

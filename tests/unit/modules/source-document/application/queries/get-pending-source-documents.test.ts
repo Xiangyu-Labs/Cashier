@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { listSourceDocumentsQueryMock } = vi.hoisted(() => ({
-  listSourceDocumentsQueryMock: vi.fn(),
+const { querySourceDocumentPageMock } = vi.hoisted(() => ({
+  querySourceDocumentPageMock: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/application/queries/list-source-document-page", () => ({
-  listSourceDocumentsQuery: listSourceDocumentsQueryMock,
+  querySourceDocumentPage: querySourceDocumentPageMock,
 }));
 
 import { getPendingSourceDocumentsQuery } from "@/modules/source-document/application/queries/get-pending-source-documents";
@@ -13,7 +13,7 @@ import { getPendingSourceDocumentsQuery } from "@/modules/source-document/applic
 describe("getPendingSourceDocumentsQuery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    listSourceDocumentsQueryMock.mockResolvedValue({
+    querySourceDocumentPageMock.mockResolvedValue({
       items: [
         {
           id: "doc-queued",
@@ -43,7 +43,7 @@ describe("getPendingSourceDocumentsQuery", () => {
   it("groups queued, processing, anomaly, and failed documents", async () => {
     const result = await getPendingSourceDocumentsQuery("ledger-1");
 
-    expect(listSourceDocumentsQueryMock).toHaveBeenCalledWith("ledger-1", {
+    expect(querySourceDocumentPageMock).toHaveBeenCalledWith("ledger-1", {
       status: "queued,processing,anomaly,failed",
       includeLedgerEntries: true,
     });
