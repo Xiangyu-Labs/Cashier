@@ -30,7 +30,6 @@ interface SettingsTabProps {
   ledger: Ledger;
   initialCategories: EntryCategoryWithCount[];
   ledgerId: string;
-  allLedgers?: Ledger[];
 }
 
 const SECTION_TITLES = {
@@ -44,7 +43,6 @@ export function SettingsTab({
   ledger,
   initialCategories,
   ledgerId,
-  allLedgers: _allLedgers = [],
 }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();

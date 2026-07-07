@@ -1,20 +1,16 @@
-import { ensureUserLedger } from "./ensure-user-ledger";
+import { resolveSingleLedgerForUser } from "./ensure-user-ledger";
 
-type ResolveHomeResult =
-  | { kind: "redirect-created"; ledgerId: string }
-  | { kind: "redirect-existing"; ledgerId: string };
+export interface ResolveHomeResult {
+  ledgerId: string;
+  created: boolean;
+}
 
 export async function resolveHome(input: {
   userId: string;
   locale: string;
 }): Promise<ResolveHomeResult> {
-  const ensuredLedger = await ensureUserLedger({
+  return resolveSingleLedgerForUser({
     userId: input.userId,
     locale: input.locale,
   });
-
-  return {
-    kind: ensuredLedger.created ? "redirect-created" : "redirect-existing",
-    ledgerId: ensuredLedger.ledgerId,
-  };
 }

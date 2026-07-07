@@ -23,6 +23,12 @@ async function listActiveLedgers(userId: string) {
   });
 }
 
+export async function resolveSingleLedgerForUser(
+  input: EnsureUserLedgerInput
+): Promise<EnsureUserLedgerResult> {
+  return ensureUserLedger(input);
+}
+
 export async function ensureUserLedger(
   input: EnsureUserLedgerInput
 ): Promise<EnsureUserLedgerResult> {

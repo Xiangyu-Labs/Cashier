@@ -2,7 +2,6 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
 import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
-import { getLedgers } from "@/modules/ledger/application/queries/list-ledgers";
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
@@ -32,12 +31,10 @@ export async function getLedgerPageBootstrap(input: {
   periodParams: PeriodParams;
   advancedFilters?: LedgerAdvancedFilters;
 }): Promise<LedgerPageBootstrapResult | null> {
-  let userId: string;
   let ledgerDto: LedgerDto;
 
   try {
-    const { userId: authorizedUserId, ledger } = await requireLedgerAccess(input.ledgerId);
-    userId = authorizedUserId;
+    const { ledger } = await requireLedgerAccess(input.ledgerId);
     ledgerDto = {
       id: ledger.id,
       userId: ledger.userId,
@@ -65,11 +62,6 @@ export async function getLedgerPageBootstrap(input: {
     queryClient.prefetchQuery({
       queryKey: queryKeys.entryCategories(input.ledgerId),
       queryFn: () => listEntryCategories(input.ledgerId),
-      staleTime: LEDGER.STALE_TIME_MS,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.ledgers(),
-      queryFn: () => getLedgers(userId),
       staleTime: LEDGER.STALE_TIME_MS,
     }),
     ...(input.initialTab === "stream"

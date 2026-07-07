@@ -4,7 +4,6 @@ import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/
 
 const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
-const getLedgersMock = vi.hoisted(() => vi.fn());
 const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
 const getPendingSourceDocumentsMock = vi.hoisted(() => vi.fn());
@@ -17,9 +16,6 @@ vi.mock("@/modules/ledger/access", () => ({
 
 vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: listEntryCategoriesMock,
-}));
-vi.mock("@/modules/ledger/application/queries/list-ledgers", () => ({
-  getLedgers: getLedgersMock,
 }));
 vi.mock("@/modules/ledger/application/queries/calculate-ledger-stats", () => ({
   calculateLedgerStats: calculateLedgerStatsMock,
@@ -59,7 +55,6 @@ describe("getLedgerPageBootstrap", () => {
 
     requireLedgerAccessMock.mockResolvedValue(createAuthorizedLedger());
     listEntryCategoriesMock.mockResolvedValue([]);
-    getLedgersMock.mockResolvedValue([]);
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
     getPendingSourceDocumentsMock.mockResolvedValue([]);
@@ -222,5 +217,19 @@ describe("getLedgerPageBootstrap", () => {
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(getPendingSourceDocumentsMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
+  });
+
+  it("does not prefetch a multi-ledger list for the single-ledger workspace", async () => {
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+    });
+
+    expect(result).not.toBeNull();
+    expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
+    expect(result?.dehydratedState.queries.some((query) => query.queryKey[0] === "ledgers")).toBe(
+      false
+    );
   });
 });

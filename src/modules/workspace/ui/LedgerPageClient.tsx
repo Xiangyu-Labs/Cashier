@@ -19,7 +19,6 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import {
   getLedgerAction,
-  getLedgersAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
 import { useTaskQueue } from "@/modules/task-queue/ui";
@@ -115,12 +114,6 @@ export function LedgerPageClient({
   const { data: categories = [] } = useQuery({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
-    staleTime: STALE_TIME,
-  });
-
-  const { data: allLedgers = [] } = useQuery({
-    queryKey: queryKeys.ledgers(),
-    queryFn: () => getLedgersAction(),
     staleTime: STALE_TIME,
   });
 
@@ -236,7 +229,6 @@ export function LedgerPageClient({
                 ledgerId={ledgerId}
                 ledger={ledger}
                 initialCategories={categories}
-                allLedgers={allLedgers}
               />
             </Suspense>
           </TabsContent>
