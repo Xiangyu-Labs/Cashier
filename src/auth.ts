@@ -2,47 +2,68 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { authenticateDevUser } from "@/modules/auth/application/use-cases/authenticate-dev-user";
 import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
 import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
 import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
 import { getSessionUser } from "@/modules/auth/application/queries/get-session-user";
+import { isDevAuthBypassEnabled } from "@/modules/auth/dev-auth";
 import { TIME_SECONDS } from "@/lib/constants";
 import { runtimeEnv } from "@/lib/env/runtime";
 
-export const authOptions = {
-  ...authConfig,
-  providers: [
+const providers: NextAuthConfig["providers"] = [
+  Credentials({
+    id: "otp",
+    name: "OTP",
+    credentials: {
+      email: { type: "email" },
+      otp: { type: "text" },
+      locale: { type: "text" },
+    },
+    async authorize(credentials, request) {
+      if (
+        credentials?.email == null ||
+        credentials.email === "" ||
+        credentials?.otp == null ||
+        credentials.otp === ""
+      ) {
+        return null;
+      }
+
+      if (typeof credentials.email !== "string" || typeof credentials.otp !== "string") {
+        return null;
+      }
+
+      return authenticateWithOTP({
+        email: credentials.email,
+        otp: credentials.otp,
+        locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
+        requestHeaders: request.headers,
+      });
+    },
+  }),
+];
+
+if (isDevAuthBypassEnabled()) {
+  providers.push(
     Credentials({
-      id: "otp",
-      name: "OTP",
+      id: "dev",
+      name: "Development",
       credentials: {
-        email: { type: "email" },
-        otp: { type: "text" },
         locale: { type: "text" },
       },
-      async authorize(credentials, request) {
-        if (
-          credentials?.email == null ||
-          credentials.email === "" ||
-          credentials?.otp == null ||
-          credentials.otp === ""
-        ) {
-          return null;
-        }
-
-        if (typeof credentials.email !== "string" || typeof credentials.otp !== "string") {
-          return null;
-        }
-
-        return authenticateWithOTP({
-          email: credentials.email,
-          otp: credentials.otp,
-          locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
-          requestHeaders: request.headers,
+      async authorize(credentials) {
+        return authenticateDevUser({
+          locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
         });
       },
-    }),
-  ],
+    })
+  );
+}
+
+export const authOptions = {
+  ...authConfig,
+  providers,
   session: {
     strategy: "jwt",
     maxAge: runtimeEnv.sessionMaxAgeDays * TIME_SECONDS.DAY,

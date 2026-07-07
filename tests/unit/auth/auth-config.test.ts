@@ -72,6 +72,8 @@ describe("auth runtime config", () => {
   });
 
   it("registers only the email OTP credentials provider and no database adapter", async () => {
+    process.env.DEV_AUTH_BYPASS = "false";
+    process.env.NODE_ENV = "test";
     vi.doUnmock("@/auth");
 
     await import("@/auth");
@@ -91,5 +93,21 @@ describe("auth runtime config", () => {
       type: "credentials",
     });
     expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp"]);
+  });
+
+  it("registers the dev provider only when local dev bypass is enabled", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.DEV_AUTH_BYPASS = "true";
+    vi.doUnmock("@/auth");
+
+    await import("@/auth");
+
+    const config = nextAuthMock.mock.calls[0]?.[0] as
+      | {
+          providers?: Array<{ id?: string; name?: string; type?: string }>;
+        }
+      | undefined;
+
+    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp", "dev"]);
   });
 });

@@ -34,6 +34,7 @@ export interface RuntimeEnv {
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
   readonly logLevel: string;
+  readonly devAuthBypass: boolean;
 }
 
 function hasExplicitValue(name: string): boolean {
@@ -141,5 +142,8 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get logLevel() {
     return getStartupEnvValue("LOG_LEVEL");
+  },
+  get devAuthBypass() {
+    return getStartupEnvValue("DEV_AUTH_BYPASS") === "true";
   },
 };

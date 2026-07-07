@@ -621,7 +621,10 @@
     "errorAccessDenied": "Access Denied",
     "errorAccessDeniedDesc": "You don't have permission to sign in. Registration may be disabled.",
     "errorConfiguration": "Configuration Error",
-    "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support."
+    "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support.",
+    "devSignIn": "Continue as dev",
+    "devSignInDesc": "Local development only. Opens the single ledger without email delivery.",
+    "devSignInFailed": "Failed to start the development session"
   },
   "Devices": {
     "title": "Device Management",

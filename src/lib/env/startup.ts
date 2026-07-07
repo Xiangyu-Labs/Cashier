@@ -31,6 +31,8 @@ export const ENV_DEFAULTS = {
   MAX_INPUT_PIXELS: "25000000",
   MAX_IMAGE_QUALITY: "85",
   LOG_LEVEL: "info",
+  DEV_AUTH_BYPASS: "false",
+  NEXT_PUBLIC_DEV_AUTH_BYPASS: "false",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
 } as const;
 
@@ -145,6 +147,8 @@ const startupEnvFields = {
       .default(Number.parseInt(getDefaultString("MAX_IMAGE_QUALITY"), 10))
   ),
   LOG_LEVEL: stringWithDefault("LOG_LEVEL"),
+  DEV_AUTH_BYPASS: booleanStringWithDefault("DEV_AUTH_BYPASS"),
+  NEXT_PUBLIC_DEV_AUTH_BYPASS: booleanStringWithDefault("NEXT_PUBLIC_DEV_AUTH_BYPASS"),
   NEXT_PUBLIC_APP_URL: urlWithDefault("NEXT_PUBLIC_APP_URL"),
 } satisfies z.ZodRawShape;
 

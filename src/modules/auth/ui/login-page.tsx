@@ -16,6 +16,7 @@ export function AuthLoginPage() {
     error,
     expiresAt,
     canResendAt,
+    isDevAuthAvailable,
     setEmail,
     setOtp,
     handleSendOTP,
@@ -23,6 +24,7 @@ export function AuthLoginPage() {
     handleResendOTP,
     handleChangeEmail,
     handleOTPExpired,
+    handleDevSignIn,
   } = useLoginFlow(t);
 
   return (
@@ -69,6 +71,20 @@ export function AuthLoginPage() {
             />
           )}
         </div>
+
+        {isDevAuthAvailable && (
+          <div className="mt-4 rounded-md border border-dashed border-border bg-surface2/60 p-3 text-center">
+            <p className="text-xs text-muted-foreground">{t("devSignInDesc")}</p>
+            <button
+              type="button"
+              onClick={handleDevSignIn}
+              disabled={isLoading}
+              className="mt-2 inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-text transition-colors hover:bg-surface2 disabled:opacity-50 sm:min-h-9"
+            >
+              {t("devSignIn")}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

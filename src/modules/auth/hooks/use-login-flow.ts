@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import { OTP_LENGTH } from "@/modules/auth/constants";
+import { publicEnv } from "@/lib/env/public";
 
 type LoginStep = "email" | "otp";
 
@@ -19,6 +20,7 @@ interface UseLoginFlowReturn {
   error: string | null;
   expiresAt: number | null;
   canResendAt: number | null;
+  isDevAuthAvailable: boolean;
   setEmail: (email: string) => void;
   setOtp: (otp: string) => void;
   handleSendOTP: (e: React.FormEvent) => Promise<void>;
@@ -26,6 +28,7 @@ interface UseLoginFlowReturn {
   handleResendOTP: () => Promise<void>;
   handleChangeEmail: () => void;
   handleOTPExpired: () => void;
+  handleDevSignIn: () => Promise<void>;
 }
 
 function getSignInErrorMessage(
@@ -81,6 +84,37 @@ export function useLoginFlow(
   const [error, setError] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [canResendAt, setCanResendAt] = useState<number | null>(null);
+
+  const isDevAuthAvailable = publicEnv.devAuthBypass;
+
+  const handleDevSignIn = async () => {
+    if (!isDevAuthAvailable) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const signInResult = await signIn("dev", {
+        locale,
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (signInResult?.ok) {
+        router.push(callbackUrl);
+        router.refresh();
+        return;
+      }
+
+      setError(t("devSignInFailed"));
+      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("devSignInFailed"));
+      setIsLoading(false);
+    }
+  };
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +214,7 @@ export function useLoginFlow(
     error,
     expiresAt,
     canResendAt,
+    isDevAuthAvailable,
     setEmail,
     setOtp,
     handleSendOTP,
@@ -187,5 +222,6 @@ export function useLoginFlow(
     handleResendOTP,
     handleChangeEmail,
     handleOTPExpired,
+    handleDevSignIn,
   };
 }
