@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFlowEngine } from "@/lib/flow/engine";
+import { createTaskRuntime } from "@/lib/tasks/engine";
 
-async function waitForTerminalStatus(engine: ReturnType<typeof createFlowEngine>, taskId: string) {
+async function waitForTerminalStatus(engine: ReturnType<typeof createTaskRuntime>, taskId: string) {
   await expect
     .poll(async () => {
       const task = await engine.getStatus(taskId);
@@ -10,9 +10,9 @@ async function waitForTerminalStatus(engine: ReturnType<typeof createFlowEngine>
     .toMatch(/^(completed|failed|cancelled)$/);
 }
 
-describe("Flow Engine pending cancellation", () => {
+describe("Task Runtime pending cancellation", () => {
   it("releases the queue when a pending task is cancelled", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
 
     let releaseFirst!: () => void;
     const firstDone = new Promise<void>((resolve) => {

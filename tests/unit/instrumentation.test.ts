@@ -5,8 +5,8 @@ const logger = {
   error: vi.fn(),
 };
 
-const initializeDefaultFlowRuntime = vi.fn();
-const resetFlowRuntime = vi.fn();
+const initializeDefaultTaskRuntime = vi.fn();
+const resetTaskRuntime = vi.fn();
 const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
   DATABASE_URL: "file:./data/sqlite.db",
@@ -16,9 +16,9 @@ vi.mock("@/lib/logger", () => ({
   logger,
 }));
 
-vi.mock("@/lib/flow/runtime", () => ({
-  initializeDefaultFlowRuntime,
-  resetFlowRuntime,
+vi.mock("@/lib/tasks/runtime", () => ({
+  initializeDefaultTaskRuntime,
+  resetTaskRuntime,
 }));
 
 vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
@@ -42,7 +42,7 @@ describe("instrumentation.register", () => {
 
     expect(validateStartupEnv).toHaveBeenCalledTimes(1);
     const validateOrder = validateStartupEnv.mock.invocationCallOrder.at(0);
-    const initializeOrder = initializeDefaultFlowRuntime.mock.invocationCallOrder.at(0);
+    const initializeOrder = initializeDefaultTaskRuntime.mock.invocationCallOrder.at(0);
 
     expect(validateOrder).toBeDefined();
     expect(initializeOrder).toBeDefined();
@@ -56,7 +56,7 @@ describe("instrumentation.register", () => {
   });
 
   it("rethrows when runtime initialization fails", async () => {
-    initializeDefaultFlowRuntime.mockRejectedValueOnce(new Error("runtime failed"));
+    initializeDefaultTaskRuntime.mockRejectedValueOnce(new Error("runtime failed"));
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("runtime failed");
@@ -72,7 +72,7 @@ describe("instrumentation.register", () => {
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("invalid env");
-    expect(initializeDefaultFlowRuntime).not.toHaveBeenCalled();
+    expect(initializeDefaultTaskRuntime).not.toHaveBeenCalled();
     expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });

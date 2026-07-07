@@ -5,7 +5,7 @@
  * Uses index-based category matching for disambiguation.
  */
 
-import type { FlowTaskDefinition, FlowTaskHandler, FlowContext, AIModelTier } from "@/lib/flow";
+import type { TaskDefinition, TaskHandler, TaskContext, AIModelTier } from "@/lib/tasks";
 import { db } from "@/lib/db";
 import { ledgerEntries } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -136,11 +136,11 @@ async function buildCategorizationMessage(input: CategorizeEntryInput): Promise<
   };
 }
 
-export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, CategorizeEntryOutput> =
+export const categorizeEntryHandler: TaskHandler<CategorizeEntryInput, CategorizeEntryOutput> =
   {
     async execute(
       input: CategorizeEntryInput,
-      context: FlowContext
+      context: TaskContext
     ): Promise<CategorizeEntryOutput> {
       const { signal, ai } = context;
 
@@ -181,7 +181,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
     async onComplete(
       output: CategorizeEntryOutput,
       input: CategorizeEntryInput,
-      _context: FlowContext
+      _context: TaskContext
     ): Promise<void> {
       if (input.ledgerId === "" || input.entryId === "") return;
 
@@ -226,7 +226,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       }
     },
 
-    async onError(error: Error, input: CategorizeEntryInput, _context: FlowContext): Promise<void> {
+    async onError(error: Error, input: CategorizeEntryInput, _context: TaskContext): Promise<void> {
       logger.error(
         {
           err: error,
@@ -237,7 +237,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
       // Keep categoryId as null - no action needed
     },
 
-    async onCancel(input: CategorizeEntryInput, _context: FlowContext): Promise<void> {
+    async onCancel(input: CategorizeEntryInput, _context: TaskContext): Promise<void> {
       logger.info(
         {
           entryId: input.entryId,
@@ -248,7 +248,7 @@ export const categorizeEntryHandler: FlowTaskHandler<CategorizeEntryInput, Categ
     },
   };
 
-export const categorizeEntryTaskDefinition: FlowTaskDefinition<
+export const categorizeEntryTaskDefinition: TaskDefinition<
   CategorizeEntryInput,
   CategorizeEntryOutput
 > = {

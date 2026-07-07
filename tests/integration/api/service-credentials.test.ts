@@ -32,12 +32,12 @@ const { submitMock } = vi.hoisted(() => ({
   submitMock: vi.fn().mockResolvedValue("mock-task-id"),
 }));
 
-// Mock Flow Engine
-vi.mock("@/lib/flow", async (importOriginal) => {
+// Mock Task Runtime
+vi.mock("@/lib/tasks", async (importOriginal) => {
   const original = await importOriginal();
   return {
     ...(original as Record<string, unknown>),
-    submitFlowTask: submitMock,
+    submitTask: submitMock,
   };
 });
 

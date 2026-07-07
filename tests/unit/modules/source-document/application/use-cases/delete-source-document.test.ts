@@ -4,7 +4,7 @@ const {
   sourceDocumentsFindFirstMock,
   sourceDocumentsFindManyMock,
   taskRunsFindManyMock,
-  cancelFlowTaskMock,
+  cancelTaskMock,
   softDeleteSourceDocumentLedgerEntriesMock,
   txUpdateSetMock,
   txMock,
@@ -14,7 +14,7 @@ const {
   const sourceDocumentsFindFirstMock = vi.fn();
   const sourceDocumentsFindManyMock = vi.fn();
   const taskRunsFindManyMock = vi.fn();
-  const cancelFlowTaskMock = vi.fn();
+  const cancelTaskMock = vi.fn();
   const softDeleteSourceDocumentLedgerEntriesMock = vi.fn();
   const txUpdateWhereMock = vi.fn(() => ({ run: vi.fn() }));
   const txUpdateSetMock = vi.fn(() => ({ where: txUpdateWhereMock }));
@@ -30,7 +30,7 @@ const {
     sourceDocumentsFindFirstMock,
     sourceDocumentsFindManyMock,
     taskRunsFindManyMock,
-    cancelFlowTaskMock,
+    cancelTaskMock,
     softDeleteSourceDocumentLedgerEntriesMock,
     txUpdateSetMock,
     txMock,
@@ -101,8 +101,8 @@ vi.mock("drizzle-orm", () => ({
   ne: vi.fn((left: unknown, right: unknown) => ({ ne: [left, right] })),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  cancelFlowTask: cancelFlowTaskMock,
+vi.mock("@/lib/tasks", () => ({
+  cancelTask: cancelTaskMock,
 }));
 
 vi.mock("@/modules/source-document/application/services/source-document-ledger-entries", () => ({
@@ -121,7 +121,7 @@ import {
 describe("deleteSourceDocument", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    cancelFlowTaskMock.mockResolvedValue(undefined);
+    cancelTaskMock.mockResolvedValue(undefined);
     taskRunsFindManyMock.mockResolvedValue([]);
   });
 
@@ -142,7 +142,7 @@ describe("deleteSourceDocument", () => {
         where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
       })
     );
-    expect(cancelFlowTaskMock).not.toHaveBeenCalled();
+    expect(cancelTaskMock).not.toHaveBeenCalled();
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
@@ -168,8 +168,8 @@ describe("deleteSourceDocument", () => {
       sourceDocumentId: "doc-1",
       deleted: true,
     });
-    expect(cancelFlowTaskMock).toHaveBeenCalledTimes(1);
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith("task-1");
+    expect(cancelTaskMock).toHaveBeenCalledTimes(1);
+    expect(cancelTaskMock).toHaveBeenCalledWith("task-1");
     expect(transactionMock).toHaveBeenCalledTimes(1);
     expect(softDeleteSourceDocumentLedgerEntriesMock).toHaveBeenCalledWith(txMock, "ledger-1", [
       "doc-1",
@@ -187,7 +187,7 @@ describe("deleteSourceDocument", () => {
 describe("batchDeleteSourceDocuments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    cancelFlowTaskMock.mockResolvedValue(undefined);
+    cancelTaskMock.mockResolvedValue(undefined);
     taskRunsFindManyMock.mockResolvedValue([]);
   });
 

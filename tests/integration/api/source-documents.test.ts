@@ -26,7 +26,7 @@ vi.mock("@/lib/ai/openai-client", () => ({
 }));
 
 import { getOpenAIClient } from "@/lib/ai/openai-client";
-import { initializeDefaultFlowRuntime, resetFlowRuntime } from "@/lib/flow/runtime";
+import { initializeDefaultTaskRuntime, resetTaskRuntime } from "@/lib/tasks/runtime";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("SourceDocument Actions", () => {
@@ -51,8 +51,8 @@ describe("SourceDocument Actions", () => {
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    resetFlowRuntime();
-    await initializeDefaultFlowRuntime();
+    resetTaskRuntime();
+    await initializeDefaultTaskRuntime();
 
     const db = getTestDb();
 

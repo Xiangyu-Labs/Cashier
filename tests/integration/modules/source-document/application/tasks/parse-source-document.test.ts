@@ -21,7 +21,7 @@ import type { ParsePipelineResult } from "@/modules/source-document/application/
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { type FlowContext } from "@/lib/flow";
+import { type TaskContext } from "@/lib/tasks";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 describe("parseSourceDocumentHandler.execute", () => {
@@ -72,7 +72,7 @@ describe("parseSourceDocumentHandler.execute", () => {
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
       reportTokens: vi.fn(),
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     const result = await parseSourceDocumentHandler.execute(input, context);
 
@@ -112,7 +112,7 @@ describe("parseSourceDocumentHandler.execute", () => {
       updateProgress: vi.fn(),
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await expect(parseSourceDocumentHandler.execute(input, context)).rejects.toThrow(
       "Missing ledgerId in task input"
@@ -132,7 +132,7 @@ describe("parseSourceDocumentHandler.execute", () => {
       updateProgress: vi.fn(),
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await expect(parseSourceDocumentHandler.execute(input, context)).rejects.toThrow(
       "Source document not found"
@@ -209,7 +209,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
 
       const context = {
         ledgerId: currentLedgerId,
-      } as unknown as FlowContext;
+      } as unknown as TaskContext;
 
       await parseSourceDocumentHandler.onComplete?.(output, input, context);
 
@@ -255,7 +255,7 @@ describe("parseSourceDocumentHandler.onComplete", () => {
 
     const context = {
       ledgerId: currentLedgerId,
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await parseSourceDocumentHandler.onComplete?.(output, input, context);
 

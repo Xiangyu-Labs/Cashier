@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/flow";
+import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
 import { buildStageContext, runParsePipeline, buildParserInput } from "@/modules/source-document/application/parse-source-document/pipeline";
 

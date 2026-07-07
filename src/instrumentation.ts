@@ -22,15 +22,15 @@ export async function register() {
       "Service configuration status"
     );
 
-    const { initializeDefaultFlowRuntime } = await import("@/lib/flow/runtime");
-    await initializeDefaultFlowRuntime();
+    const { initializeDefaultTaskRuntime } = await import("@/lib/tasks/runtime");
+    await initializeDefaultTaskRuntime();
 
     const { initializeExchangeRateLedgerRecalculationOrchestration } = await import(
       "@/lib/orchestration/exchange-rate-ledger-recalculation"
     );
     initializeExchangeRateLedgerRecalculationOrchestration();
 
-    logger.info("Flow runtime initialized successfully");
+    logger.info("Task runtime initialized successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
     throw error;

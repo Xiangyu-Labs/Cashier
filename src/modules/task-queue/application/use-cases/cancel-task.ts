@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelTask } from "@/lib/tasks";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { SourceDocumentStatus } from "@/modules/source-document/contracts";
 import { sourceDocuments, taskRuns } from "@/persistence";
@@ -68,7 +68,7 @@ export async function cancelTaskUseCase(ledgerId: string, taskId: string): Promi
     throw new ValidationError(`Cannot cancel task with status '${existingTask.status}'`);
   }
 
-  await cancelFlowTask(taskId);
+  await cancelTask(taskId);
 
   if (task.entityType === "source_document") {
     await softDeleteQueuedOrProcessingSourceDocument(ledgerId, task.entityId);
@@ -93,7 +93,7 @@ export async function batchCancelTasksUseCase(ledgerId: string, taskIds: string[
     return;
   }
 
-  await Promise.all(tasks.map((task) => cancelFlowTask(task.id)));
+  await Promise.all(tasks.map((task) => cancelTask(task.id)));
 
   const sourceDocTasks = tasks.filter(
     (task) => task.entityType === "source_document" && task.entityId != null && task.entityId !== ""

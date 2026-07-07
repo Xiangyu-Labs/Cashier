@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vitest";
-import { getFlowEngine, type FlowTaskHandler, type FlowContext } from "@/lib/flow";
-import { initializeDefaultFlowRuntime } from "@/lib/flow/runtime";
+import { getTaskRuntime, type TaskHandler, type TaskContext } from "@/lib/tasks";
+import { initializeDefaultTaskRuntime } from "@/lib/tasks/runtime";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/persistence";
 import { eq } from "drizzle-orm";
@@ -18,7 +18,7 @@ interface TestOutput {
   result: number;
 }
 
-const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
+const testHandler: TaskHandler<TestInput, TestOutput> = {
   async execute(input, context) {
     await context.updateProgress("processing");
 
@@ -29,17 +29,17 @@ const testHandler: FlowTaskHandler<TestInput, TestOutput> = {
     return { result: input.value * 2 };
   },
 
-  async onComplete(_output, _input, _context: FlowContext) {
+  async onComplete(_output, _input, _context: TaskContext) {
     // Root verification
   },
 };
 
-describe("Flow System Integration", () => {
+describe("Task Runtime Integration", () => {
   let ledgerId: string;
 
   beforeAll(async () => {
-    await initializeDefaultFlowRuntime();
-    getFlowEngine().register(TEST_TASK_TYPE, testHandler);
+    await initializeDefaultTaskRuntime();
+    getTaskRuntime().register(TEST_TASK_TYPE, testHandler);
   });
 
   // Mock fetch for API calls if needed by tasks
@@ -56,7 +56,7 @@ describe("Flow System Integration", () => {
   });
 
   it("should execute a basic task successfully", async () => {
-    const taskRunId = await getFlowEngine().submit(
+    const taskRunId = await getTaskRuntime().submit(
       TEST_TASK_TYPE,
       { ledgerId, value: 21 },
       { title: "Test Task" }
@@ -89,7 +89,7 @@ describe("Flow System Integration", () => {
   });
 
   it("should handle task failure", async () => {
-    const taskRunId = await getFlowEngine().submit(
+    const taskRunId = await getTaskRuntime().submit(
       TEST_TASK_TYPE,
       { ledgerId, value: 0, shouldFail: true },
       { title: "Failing Task" }

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { submitFlowTask } from "@/lib/flow";
+import { submitTask } from "@/lib/tasks";
 import { logger } from "@/lib/logger";
 import { entryCategories } from "@/persistence";
 import { and, eq, isNull } from "drizzle-orm";
@@ -32,7 +32,7 @@ export async function submitCategoryMetadataTaskIfNeeded(
       columns: { name: true, description: true, icon: true },
     });
 
-    await submitFlowTask(
+    await submitTask(
       TASK_TYPE_GENERATE_CATEGORY_METADATA,
       {
         ledgerId: input.ledgerId,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TokenUsage, AIClient } from "@/lib/flow/types";
-import { createAIContext } from "@/lib/flow/ai-context";
+import type { TokenUsage, AIClient } from "@/lib/tasks/types";
+import { createAIContext } from "@/lib/tasks/ai-context";
 
 describe("createAIContext", () => {
   let mockSignal: AbortSignal;

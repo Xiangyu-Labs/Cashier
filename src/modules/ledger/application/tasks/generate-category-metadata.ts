@@ -1,4 +1,4 @@
-import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
+import type { TaskDefinition, TaskHandler, TaskContext } from "@/lib/tasks";
 import { db } from "@/lib/db";
 import { entryCategories } from "@/persistence";
 import { forLedger } from "@/lib/db/scoped-query";
@@ -33,14 +33,14 @@ const aiResponseSchema = z.object({
   description: z.string(),
 });
 
-export const generateCategoryMetadataHandler: FlowTaskHandler<
+export const generateCategoryMetadataHandler: TaskHandler<
   GenerateCategoryMetadataInput,
   GenerateCategoryMetadataOutput
 > = {
   // 1. Main execution (validation moved inline)
   async execute(
     input: GenerateCategoryMetadataInput,
-    context: FlowContext
+    context: TaskContext
   ): Promise<GenerateCategoryMetadataOutput> {
     if (input.ledgerId == null || input.ledgerId === "")
       throw new ValidationError("Missing ledgerId in task input");
@@ -91,7 +91,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   async onComplete(
     output: GenerateCategoryMetadataOutput,
     input: GenerateCategoryMetadataInput,
-    _context: FlowContext
+    _context: TaskContext
   ): Promise<void> {
     if (output.success !== true) return;
     if (input.ledgerId == null || input.ledgerId === "") return;
@@ -119,7 +119,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   async onError(
     error: Error,
     input: GenerateCategoryMetadataInput,
-    _context: FlowContext
+    _context: TaskContext
   ): Promise<void> {
     logger.error(
       { err: error, categoryId: input.categoryId },
@@ -148,7 +148,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   },
 
   // 4. Cancellation - set default values like onError
-  async onCancel(input: GenerateCategoryMetadataInput, _context: FlowContext): Promise<void> {
+  async onCancel(input: GenerateCategoryMetadataInput, _context: TaskContext): Promise<void> {
     logger.info({ categoryId: input.categoryId }, "Generate category metadata task cancelled");
 
     // Set default values to prevent UI from showing "generating" forever
@@ -173,7 +173,7 @@ export const generateCategoryMetadataHandler: FlowTaskHandler<
   },
 };
 
-export const generateCategoryMetadataTaskDefinition: FlowTaskDefinition<
+export const generateCategoryMetadataTaskDefinition: TaskDefinition<
   GenerateCategoryMetadataInput,
   GenerateCategoryMetadataOutput
 > = {

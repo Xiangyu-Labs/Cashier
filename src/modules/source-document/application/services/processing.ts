@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import type { CategoryInfo } from "@/lib/ai/types";
 import { ValidationError } from "@/lib/errors";
-import { submitFlowTask } from "@/lib/flow";
+import { submitTask } from "@/lib/tasks";
 import { logger } from "@/lib/logger";
 import { processImage, isSupportedImageFormat } from "@/lib/storage/image-processing";
 import { getLocalStorage } from "@/lib/storage/local";
@@ -160,7 +160,7 @@ export async function prepareSourceDocumentTask({
   categories,
   settings,
 }: PrepareSourceDocumentTaskInput): Promise<void> {
-  await submitFlowTask(
+  await submitTask(
     TASK_TYPE_PARSE_SOURCE_DOCUMENT,
     {
       ledgerId,

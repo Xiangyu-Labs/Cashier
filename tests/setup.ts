@@ -64,9 +64,9 @@ beforeAll(async () => {
 
   // Run migrations
   await createTestSchema(db);
-  const { initializeDefaultFlowRuntime, resetFlowRuntime } = await import("@/lib/flow/runtime");
-  resetFlowRuntime();
-  await initializeDefaultFlowRuntime();
+  const { initializeDefaultTaskRuntime, resetTaskRuntime } = await import("@/lib/tasks/runtime");
+  resetTaskRuntime();
+  await initializeDefaultTaskRuntime();
 });
 
 afterAll(async () => {

@@ -9,11 +9,11 @@ const { cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  cancelFlowTask: cancelMock,
+vi.mock("@/lib/tasks", () => ({
+  cancelTask: cancelMock,
 }));
 
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelTask } from "@/lib/tasks";
 import { cancelTaskAction, batchCancelTasksAction } from "@/modules/task-queue/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -72,7 +72,7 @@ describe("cancelTaskAction", () => {
     });
   });
 
-  it("cancels a running task and calls cancelFlowTask", async () => {
+  it("cancels a running task and calls cancelTask", async () => {
     const db = getTestDb();
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -84,10 +84,10 @@ describe("cancelTaskAction", () => {
     });
 
     await cancelTaskAction(ledgerId, taskId);
-    expect(cancelFlowTask).toHaveBeenCalledWith(taskId);
+    expect(cancelTask).toHaveBeenCalledWith(taskId);
   });
 
-  it("cancels a pending task and calls cancelFlowTask", async () => {
+  it("cancels a pending task and calls cancelTask", async () => {
     const db = getTestDb();
     const taskId = uuidv4();
     await db.insert(taskRuns).values({
@@ -99,7 +99,7 @@ describe("cancelTaskAction", () => {
     });
 
     await cancelTaskAction(ledgerId, taskId);
-    expect(cancelFlowTask).toHaveBeenCalledWith(taskId);
+    expect(cancelTask).toHaveBeenCalledWith(taskId);
   });
 
   it("throws 'Task not found' when task does not exist", async () => {
@@ -119,7 +119,7 @@ describe("cancelTaskAction", () => {
     });
 
     await expect(cancelTaskAction(ledgerId, taskId)).rejects.toThrow("Task not found");
-    expect(cancelFlowTask).not.toHaveBeenCalled();
+    expect(cancelTask).not.toHaveBeenCalled();
   });
 
   it("throws 'Task does not belong to this ledger' for wrong ledger", async () => {
@@ -313,7 +313,7 @@ describe("batchCancelTasksAction", () => {
 
   it("returns immediately for empty taskIds", async () => {
     await batchCancelTasksAction(ledgerId, []);
-    expect(cancelFlowTask).not.toHaveBeenCalled();
+    expect(cancelTask).not.toHaveBeenCalled();
   });
 
   it("cancels multiple valid tasks", async () => {
@@ -338,7 +338,7 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [id1, id2]);
-    expect(cancelFlowTask).toHaveBeenCalledTimes(2);
+    expect(cancelTask).toHaveBeenCalledTimes(2);
   });
 
   it("filters out tasks from other ledgers silently", async () => {
@@ -381,8 +381,8 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [ourTaskId, otherTaskId]);
-    expect(cancelFlowTask).toHaveBeenCalledTimes(1);
-    expect(cancelFlowTask).toHaveBeenCalledWith(ourTaskId);
+    expect(cancelTask).toHaveBeenCalledTimes(1);
+    expect(cancelTask).toHaveBeenCalledWith(ourTaskId);
   });
 
   it("filters out non-cancellable tasks (completed/failed) silently", async () => {
@@ -407,8 +407,8 @@ describe("batchCancelTasksAction", () => {
     ]);
 
     await batchCancelTasksAction(ledgerId, [pendingId, completedId]);
-    expect(cancelFlowTask).toHaveBeenCalledTimes(1);
-    expect(cancelFlowTask).toHaveBeenCalledWith(pendingId);
+    expect(cancelTask).toHaveBeenCalledTimes(1);
+    expect(cancelTask).toHaveBeenCalledWith(pendingId);
   });
 
   it("pushes ledger/status/deleted filtering into SQL in batch lookup", async () => {

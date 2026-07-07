@@ -9,11 +9,11 @@ const { cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", async () => {
-  const actual = await vi.importActual("@/lib/flow");
+vi.mock("@/lib/tasks", async () => {
+  const actual = await vi.importActual("@/lib/tasks");
   return {
     ...actual,
-    cancelFlowTask: cancelMock,
+    cancelTask: cancelMock,
   };
 });
 

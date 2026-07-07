@@ -14,7 +14,7 @@ vi.mock("@/lib/storage/utils", () => ({
 import { loadImagesForAI } from "@/lib/storage/utils"
 import type { LoadImageResult } from "@/lib/storage/utils"
 import { runParsePipeline } from "@/modules/source-document/application/parse-source-document/pipeline"
-import { createAIContext } from "@/lib/flow/ai-context"
+import { createAIContext } from "@/lib/tasks/ai-context"
 import { getOpenAIClient } from "@/lib/ai/openai-client"
 import { runtimeEnv } from "@/lib/env/runtime"
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document"

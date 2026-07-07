@@ -10,12 +10,12 @@ const { submitMock, cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  submitFlowTask: submitMock,
-  cancelFlowTask: cancelMock,
+vi.mock("@/lib/tasks", () => ({
+  submitTask: submitMock,
+  cancelTask: cancelMock,
 }));
 
-import { submitFlowTask } from "@/lib/flow";
+import { submitTask } from "@/lib/tasks";
 import { submitAutoCategorizeAction, submitBatchCategorizeAction } from "@/modules/ledger/actions";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -48,7 +48,7 @@ describe("submitAutoCategorizeAction", () => {
 
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result).toEqual({ submittedCount: 0, skippedCount: 0 });
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("throws 'No categories available' when ledger has no categories", async () => {
@@ -130,7 +130,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(2);
     expect(result.skippedCount).toBe(0);
-    expect(submitFlowTask).toHaveBeenCalledTimes(2);
+    expect(submitTask).toHaveBeenCalledTimes(2);
   });
 
   it("skips entries that already have a category", async () => {
@@ -184,7 +184,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     // Only uncategorized entries are fetched by the action
     expect(result.submittedCount).toBe(1);
-    expect(submitFlowTask).toHaveBeenCalledTimes(1);
+    expect(submitTask).toHaveBeenCalledTimes(1);
   });
 
   it("submits entries even with pending/running categorize tasks (engine handles dedup)", async () => {
@@ -237,9 +237,9 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(1);
     expect(result.skippedCount).toBe(0);
-    expect(submitFlowTask).toHaveBeenCalledTimes(1);
+    expect(submitTask).toHaveBeenCalledTimes(1);
     // Verify deduplicationKey is passed
-    expect(submitFlowTask).toHaveBeenCalledWith(
+    expect(submitTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.any(Object),
       expect.objectContaining({
@@ -286,7 +286,7 @@ describe("submitAutoCategorizeAction", () => {
     const result = await submitAutoCategorizeAction(ledgerId);
     expect(result.submittedCount).toBe(0);
     expect(result.skippedCount).toBe(1);
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("throws 'Unauthorized' when ledger belongs to another user", async () => {
@@ -331,7 +331,7 @@ describe("submitBatchCategorizeAction", () => {
   it("returns { submittedCount: 0, skippedCount: 0 } for empty entryIds", async () => {
     const result = await submitBatchCategorizeAction(ledgerId, []);
     expect(result).toEqual({ submittedCount: 0, skippedCount: 0 });
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("only processes specified entryIds", async () => {
@@ -384,8 +384,8 @@ describe("submitBatchCategorizeAction", () => {
     // Only submit for entry1
     const result = await submitBatchCategorizeAction(ledgerId, [entry1Id]);
     expect(result.submittedCount).toBe(1);
-    expect(submitFlowTask).toHaveBeenCalledTimes(1);
-    expect(submitFlowTask).toHaveBeenCalledWith(
+    expect(submitTask).toHaveBeenCalledTimes(1);
+    expect(submitTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.objectContaining({ entryId: entry1Id }),
       expect.any(Object)
@@ -467,9 +467,9 @@ describe("submitBatchCategorizeAction", () => {
     const result = await submitBatchCategorizeAction(ledgerId, [entryId]);
     expect(result.submittedCount).toBe(1);
     expect(result.skippedCount).toBe(0);
-    expect(submitFlowTask).toHaveBeenCalledTimes(1);
+    expect(submitTask).toHaveBeenCalledTimes(1);
     // Verify deduplicationKey is passed
-    expect(submitFlowTask).toHaveBeenCalledWith(
+    expect(submitTask).toHaveBeenCalledWith(
       "categorize_entry",
       expect.any(Object),
       expect.objectContaining({

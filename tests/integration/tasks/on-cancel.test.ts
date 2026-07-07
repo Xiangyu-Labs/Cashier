@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createFlowEngine } from "@/lib/flow/engine";
-import type { FlowTaskHandler } from "@/lib/flow/types";
+import { createTaskRuntime } from "@/lib/tasks/engine";
+import type { TaskHandler } from "@/lib/tasks/types";
 
-async function waitForTerminalStatus(engine: ReturnType<typeof createFlowEngine>, taskId: string) {
+async function waitForTerminalStatus(engine: ReturnType<typeof createTaskRuntime>, taskId: string) {
   await expect
     .poll(async () => {
       const task = await engine.getStatus(taskId);
@@ -11,7 +11,7 @@ async function waitForTerminalStatus(engine: ReturnType<typeof createFlowEngine>
     .toMatch(/^(completed|failed|cancelled)$/);
 }
 
-describe("Flow Engine onCancel Hook", () => {
+describe("Task Runtime onCancel Hook", () => {
   let onCancelCalled: boolean;
   let onCancelInput: unknown;
   let onCancelSignalAborted: boolean | null;
@@ -23,8 +23,8 @@ describe("Flow Engine onCancel Hook", () => {
   });
 
   it("calls onCancel when task is cancelled while pending", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
-    const longRunningHandler: FlowTaskHandler<unknown, unknown> = {
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
+    const longRunningHandler: TaskHandler<unknown, unknown> = {
       async execute() {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return { done: true };
@@ -33,7 +33,7 @@ describe("Flow Engine onCancel Hook", () => {
     engine.register("long-occupier", longRunningHandler);
     const longTaskId = await engine.submit("long-occupier", {});
 
-    const handler: FlowTaskHandler<{ value: number }, { result: number }> = {
+    const handler: TaskHandler<{ value: number }, { result: number }> = {
       async execute(input) {
         return { result: input.value * 2 };
       },
@@ -58,8 +58,8 @@ describe("Flow Engine onCancel Hook", () => {
   });
 
   it("calls onCancel when task is cancelled while running", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
-    const handler: FlowTaskHandler<{ value: number }, { result: number }> = {
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
+    const handler: TaskHandler<{ value: number }, { result: number }> = {
       async execute(input, context) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         if (context.signal.aborted) {
@@ -88,8 +88,8 @@ describe("Flow Engine onCancel Hook", () => {
   });
 
   it("does not break if onCancel is not defined", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
-    const handler: FlowTaskHandler<{ value: number }, { result: number }> = {
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
+    const handler: TaskHandler<{ value: number }, { result: number }> = {
       async execute(input) {
         return { result: input.value * 2 };
       },

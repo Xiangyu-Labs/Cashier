@@ -1,4 +1,4 @@
-import { TaskCancelledError } from "@/lib/flow/cancellation";
+import { TaskCancelledError } from "@/lib/tasks/cancellation";
 import type { ParsedLedgerEntry } from "@/lib/ai/types";
 import type { ParseSourceDocumentOutput } from "../tasks/parse-source-document";
 import type { ParsePipelineResult } from "./pipeline";

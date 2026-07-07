@@ -4,12 +4,12 @@ import { v4 as uuidv4 } from "uuid";
 import { getTestDb } from "tests/setup";
 import { ledgers, sourceDocuments, taskRuns } from "@/persistence";
 
-const { cancelFlowTaskMock } = vi.hoisted(() => ({
-  cancelFlowTaskMock: vi.fn(),
+const { cancelTaskMock } = vi.hoisted(() => ({
+  cancelTaskMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  cancelFlowTask: cancelFlowTaskMock,
+vi.mock("@/lib/tasks", () => ({
+  cancelTask: cancelTaskMock,
 }));
 
 import {
@@ -24,7 +24,7 @@ describe("cancel-task use cases", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    cancelFlowTaskMock.mockResolvedValue(undefined);
+    cancelTaskMock.mockResolvedValue(undefined);
 
     const db = getTestDb();
     ledgerId = uuidv4();
@@ -36,7 +36,7 @@ describe("cancel-task use cases", () => {
     });
   });
 
-  it("propagates cancelFlowTask errors from cancelTaskUseCase", async () => {
+  it("propagates cancelTask errors from cancelTaskUseCase", async () => {
     const db = getTestDb();
     const taskId = uuidv4();
 
@@ -48,7 +48,7 @@ describe("cancel-task use cases", () => {
       scopeId: ledgerId,
     });
 
-    cancelFlowTaskMock.mockRejectedValueOnce(new Error("cancel failed"));
+    cancelTaskMock.mockRejectedValueOnce(new Error("cancel failed"));
 
     await expect(cancelTaskUseCase(ledgerId, taskId)).rejects.toThrow("cancel failed");
   });
@@ -68,7 +68,7 @@ describe("cancel-task use cases", () => {
     });
 
     await expect(cancelTaskUseCase(ledgerId, taskId)).resolves.toBeUndefined();
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith(taskId);
+    expect(cancelTaskMock).toHaveBeenCalledWith(taskId);
   });
 
   it("batch-cancels valid tasks and soft-deletes only queued/processing source docs", async () => {
@@ -131,10 +131,10 @@ describe("cancel-task use cases", () => {
 
     await batchCancelTasksUseCase(ledgerId, [processingTaskId, completedTaskId, nullEntityTaskId]);
 
-    expect(cancelFlowTaskMock).toHaveBeenCalledTimes(3);
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith(processingTaskId);
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith(completedTaskId);
-    expect(cancelFlowTaskMock).toHaveBeenCalledWith(nullEntityTaskId);
+    expect(cancelTaskMock).toHaveBeenCalledTimes(3);
+    expect(cancelTaskMock).toHaveBeenCalledWith(processingTaskId);
+    expect(cancelTaskMock).toHaveBeenCalledWith(completedTaskId);
+    expect(cancelTaskMock).toHaveBeenCalledWith(nullEntityTaskId);
 
     const processingDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, processingDocId),
@@ -163,6 +163,6 @@ describe("cancel-task use cases", () => {
 
     await batchCancelTasksUseCase(ledgerId, [taskId]);
 
-    expect(cancelFlowTaskMock).not.toHaveBeenCalled();
+    expect(cancelTaskMock).not.toHaveBeenCalled();
   });
 });

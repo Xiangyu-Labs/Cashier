@@ -20,8 +20,8 @@ vi.mock("@/modules/ledger/source-document-queries", () => ({
   listEntryCategoryInfos: listEntryCategoryInfosMock,
 }));
 
-vi.mock("@/lib/flow", () => ({
-  submitFlowTask: submitMock,
+vi.mock("@/lib/tasks", () => ({
+  submitTask: submitMock,
 }));
 
 vi.mock("@/lib/storage/image-processing", () => ({

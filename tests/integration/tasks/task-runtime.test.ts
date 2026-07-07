@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { createFlowEngine, type FlowContext } from "@/lib/flow";
+import { createTaskRuntime, type TaskContext } from "@/lib/tasks";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/persistence";
 
@@ -21,7 +21,7 @@ describe("Cashier task engine", () => {
   });
 
   it("registers a handler and rejects duplicate registrations", () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     const handler = {
       async execute() {
         return { ok: true };
@@ -36,7 +36,7 @@ describe("Cashier task engine", () => {
   });
 
   it("rejects unregistered tasks before creating a record", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
 
     await expect(engine.submit("missing_task", { value: 1 })).rejects.toThrow(
       "No handler registered for task"
@@ -47,9 +47,9 @@ describe("Cashier task engine", () => {
   });
 
   it("persists submitted input, progress, completion, and token usage", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("behavior_task", {
-      async execute(_input: { value: number }, context: FlowContext) {
+      async execute(_input: { value: number }, context: TaskContext) {
         await context.updateProgress("halfway");
         context.reportTokens({ model: "test-model", input: 10, output: 5 });
         return { ok: true };
@@ -72,7 +72,7 @@ describe("Cashier task engine", () => {
 
   it("records task failures and calls onError", async () => {
     const onError = vi.fn();
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("failure_task", {
       async execute() {
         throw new Error("planned failure");
@@ -93,7 +93,7 @@ describe("Cashier task engine", () => {
   });
 
   it("deduplicates pending and running tasks by key", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("dedupe_task", {
       async execute() {
         await new Promise((resolve) => setTimeout(resolve, 80));
@@ -118,7 +118,7 @@ describe("Cashier task engine", () => {
 
   it("calls onCancel for a queued task", async () => {
     const onCancel = vi.fn();
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("occupy_slot", {
       async execute() {
         await new Promise((resolve) => setTimeout(resolve, 120));
@@ -147,7 +147,7 @@ describe("Cashier task engine", () => {
 
   it("calls onComplete after successful execution", async () => {
     const onComplete = vi.fn();
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("complete_hook_task", {
       async execute() {
         return { result: 42 };

@@ -7,7 +7,7 @@ import {
 import { getTestDb } from "tests/setup";
 import { entryCategories } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { type FlowContext } from "@/lib/flow";
+import { type TaskContext } from "@/lib/tasks";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 
 describe("generateCategoryMetadataHandler", () => {
@@ -21,7 +21,7 @@ describe("generateCategoryMetadataHandler", () => {
       ai: {
         generate: vi.fn().mockResolvedValue(generateResponse),
       },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
   }
 
   describe("execute", () => {
@@ -121,7 +121,7 @@ describe("generateCategoryMetadataHandler", () => {
         existingCategories: [],
       };
 
-      const context = {} as FlowContext;
+      const context = {} as TaskContext;
 
       if (generateCategoryMetadataHandler.onComplete) {
         await generateCategoryMetadataHandler.onComplete(output, input, context);

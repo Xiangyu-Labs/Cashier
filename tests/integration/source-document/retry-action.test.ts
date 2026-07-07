@@ -10,16 +10,16 @@ const { submitMock, cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", async () => {
-  const actual = await vi.importActual("@/lib/flow");
+vi.mock("@/lib/tasks", async () => {
+  const actual = await vi.importActual("@/lib/tasks");
   return {
     ...actual,
-    submitFlowTask: submitMock,
-    cancelFlowTask: cancelMock,
+    submitTask: submitMock,
+    cancelTask: cancelMock,
   };
 });
 
-import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
+import { cancelTask, submitTask } from "@/lib/tasks";
 
 describe("retrySourceDocumentAction", () => {
   let testLedgerId: string;
@@ -34,19 +34,19 @@ describe("retrySourceDocumentAction", () => {
     text?: string;
   } {
     if (!isRecord(value)) {
-      throw new Error("submitFlowTask payload must be an object");
+      throw new Error("submitTask payload must be an object");
     }
     const sourceDocumentId = value.sourceDocumentId;
     const ledgerId = value.ledgerId;
     const text = value.text;
     if (typeof sourceDocumentId !== "string") {
-      throw new Error("submitFlowTask payload.sourceDocumentId must be a string");
+      throw new Error("submitTask payload.sourceDocumentId must be a string");
     }
     if (typeof ledgerId !== "string") {
-      throw new Error("submitFlowTask payload.ledgerId must be a string");
+      throw new Error("submitTask payload.ledgerId must be a string");
     }
     if (text !== undefined && typeof text !== "string") {
-      throw new Error("submitFlowTask payload.text must be a string when provided");
+      throw new Error("submitTask payload.text must be a string when provided");
     }
     return text === undefined
       ? { sourceDocumentId, ledgerId }
@@ -253,14 +253,14 @@ describe("retrySourceDocumentAction", () => {
     });
 
     // Verify old task was cancelled
-    expect(cancelFlowTask).toHaveBeenCalledWith(oldTask.id);
+    expect(cancelTask).toHaveBeenCalledWith(oldTask.id);
 
     // Verify new task was submitted
-    expect(submitFlowTask).toHaveBeenCalled();
-    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
+    expect(submitTask).toHaveBeenCalled();
+    const submitCall = vi.mocked(submitTask).mock.calls[0];
     expect(submitCall).toBeDefined();
     if (submitCall == null) {
-      throw new Error("Expected submitFlowTask to be called");
+      throw new Error("Expected submitTask to be called");
     }
     const submitInput = parseSubmitInput(submitCall[1]);
     expect(submitCall[0]).toBe("parse_source_document");
@@ -405,16 +405,16 @@ describe("retrySourceDocumentAction", () => {
 
     await retrySourceDocumentAction(testLedgerId, oldDoc.id);
 
-    expect(submitFlowTask).toHaveBeenCalled();
-    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
+    expect(submitTask).toHaveBeenCalled();
+    const submitCall = vi.mocked(submitTask).mock.calls[0];
     expect(submitCall).toBeDefined();
     if (submitCall == null) {
-      throw new Error("Expected submitFlowTask to be called");
+      throw new Error("Expected submitTask to be called");
     }
     const submitInput = submitCall[1];
     expect(isRecord(submitInput)).toBe(true);
     if (!isRecord(submitInput)) {
-      throw new Error("Expected submitFlowTask payload to be an object");
+      throw new Error("Expected submitTask payload to be an object");
     }
     expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
   });

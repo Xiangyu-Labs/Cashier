@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TaskCancelledError } from "@/lib/flow/cancellation";
+import { TaskCancelledError } from "@/lib/tasks/cancellation";
 import type { ParsePipelineResult } from "@/modules/source-document/application/parse-source-document/pipeline";
 import {
   convertToParsedEntries,

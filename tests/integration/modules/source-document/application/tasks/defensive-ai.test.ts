@@ -8,7 +8,7 @@ import { getTestDb } from "tests/setup";
 import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { eq } from "drizzle-orm";
-import { type FlowContext } from "@/lib/flow";
+import { type TaskContext } from "@/lib/tasks";
 
 function requireDefined<T>(value: T | undefined, message: string): T {
   if (value === undefined) {
@@ -38,7 +38,7 @@ describe("parseSourceDocumentHandler.onError", () => {
       id: "task-error-1",
       type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
       input,
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     const error = new Error("AI response schema validation failed: ledger_entries: Required");
 
@@ -71,7 +71,7 @@ describe("parseSourceDocumentHandler.onError", () => {
       id: "task-error-2",
       type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
       input,
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     const error = new Error("Invalid JSON format: Unexpected token");
 
@@ -106,7 +106,7 @@ describe("parseSourceDocumentHandler.onCancel", () => {
       id: "task-cancel-1",
       type: TASK_TYPE_PARSE_SOURCE_DOCUMENT,
       input,
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await parseSourceDocumentHandler.onCancel!(input, context);
 

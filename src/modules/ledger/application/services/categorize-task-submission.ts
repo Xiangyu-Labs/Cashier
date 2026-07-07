@@ -1,4 +1,4 @@
-import { submitFlowTask } from "@/lib/flow";
+import { submitTask } from "@/lib/tasks";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { omitUndefinedProperties } from "@/lib/validation";
 import {
@@ -82,7 +82,7 @@ export async function submitCategorizeTasksForEntries(params: {
       params.aiLanguage
     );
 
-    await submitFlowTask(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
+    await submitTask(TASK_TYPE_CATEGORIZE_ENTRY, taskInput, {
       title: `Categorize: ${entry.itemName}`,
       scopeId: params.ledgerId,
       entityType: "entry",

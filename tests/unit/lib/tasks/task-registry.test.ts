@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { FlowEngine } from "@/lib/flow";
+import type { TaskRuntime } from "@/lib/tasks";
 
 function mockTaskRegistryDependencies() {
   vi.doMock("@/modules/source-document/tasks", () => ({
@@ -31,8 +31,8 @@ describe("registerAllTasks", () => {
     const registerMock = vi.fn();
     mockTaskRegistryDependencies();
 
-    const { registerAllTasks } = await import("@/lib/flow/task-registry");
-    const engine = { register: registerMock } as unknown as FlowEngine;
+    const { registerAllTasks } = await import("@/lib/tasks/task-registry");
+    const engine = { register: registerMock } as unknown as TaskRuntime;
 
     await Promise.all([registerAllTasks(engine), registerAllTasks(engine)]);
     await registerAllTasks(engine);
@@ -53,8 +53,8 @@ describe("registerAllTasks", () => {
     });
     mockTaskRegistryDependencies();
 
-    const { registerAllTasks } = await import("@/lib/flow/task-registry");
-    const engine = { register: registerMock } as unknown as FlowEngine;
+    const { registerAllTasks } = await import("@/lib/tasks/task-registry");
+    const engine = { register: registerMock } as unknown as TaskRuntime;
 
     await expect(registerAllTasks(engine)).resolves.toBeUndefined();
     await expect(registerAllTasks(engine)).resolves.toBeUndefined();

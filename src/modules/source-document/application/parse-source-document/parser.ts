@@ -8,11 +8,11 @@
  * Downstream can run a second pass (dual-run) for complex documents.
  */
 
-import type { AIContext } from "@/lib/flow/types";
+import type { AIContext } from "@/lib/tasks/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";
-import type { AIMessageContentPart } from "@/lib/flow/types";
+import type { AIMessageContentPart } from "@/lib/tasks/types";
 import {
   parserOutputSchema,
   normalizeResult,

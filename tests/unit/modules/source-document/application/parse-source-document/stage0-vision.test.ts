@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { executeParser as executeStage0 } from "@/modules/source-document/application/parse-source-document/parser";
-import type { AIContext, AIGenerateOptions } from "@/lib/flow/types";
+import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
 
 // Mock image loading so tests don't need real storage
 vi.mock("@/lib/storage/utils", () => ({

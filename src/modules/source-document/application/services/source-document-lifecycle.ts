@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelTask } from "@/lib/tasks";
 import { sourceDocuments, taskRuns, type TaskRun } from "@/persistence";
 import {
   deletedSourceDocumentPatch,
@@ -45,7 +45,7 @@ export async function cancelActiveSourceDocumentTaskRuns(taskIds: string[]): Pro
   });
 
   for (const task of activeTasks) {
-    await cancelFlowTask(task.id);
+    await cancelTask(task.id);
   }
 }
 

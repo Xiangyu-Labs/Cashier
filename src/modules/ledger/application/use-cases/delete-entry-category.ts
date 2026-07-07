@@ -1,4 +1,4 @@
-import { cancelFlowTask } from "@/lib/flow";
+import { cancelTask } from "@/lib/tasks";
 import { forLedger } from "@/lib/db/scoped-query";
 import { db } from "@/lib/db";
 import { entryCategories, ledgerEntries, taskRuns } from "@/persistence";
@@ -29,7 +29,7 @@ export async function deleteEntryCategory(ledgerId: string, categoryId: string):
     );
 
   for (const task of pendingTasks) {
-    await cancelFlowTask(task.id);
+    await cancelTask(task.id);
   }
 
   db.transaction((tx) => {

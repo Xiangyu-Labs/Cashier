@@ -1,12 +1,12 @@
-import type { FlowEngine, FlowTaskHandler } from "./types";
+import type { TaskRuntime, TaskHandler } from "./types";
 
-let registeredEngines = new WeakSet<FlowEngine>();
-let registrationPromises = new WeakMap<FlowEngine, Promise<void>>();
+let registeredEngines = new WeakSet<TaskRuntime>();
+let registrationPromises = new WeakMap<TaskRuntime, Promise<void>>();
 
 function registerTaskIfNeeded(
-  engine: FlowEngine,
+  engine: TaskRuntime,
   name: string,
-  handler: FlowTaskHandler<unknown, unknown>
+  handler: TaskHandler<unknown, unknown>
 ): void {
   try {
     engine.register(name, handler);
@@ -20,10 +20,10 @@ function registerTaskIfNeeded(
 }
 
 /**
- * Register all task handlers with the flow engine.
+ * Register all task handlers with the task runtime.
  * Safe to call multiple times for the same engine.
  */
-export async function registerAllTasks(engine: FlowEngine): Promise<void> {
+export async function registerAllTasks(engine: TaskRuntime): Promise<void> {
   if (registeredEngines.has(engine)) {
     return;
   }
@@ -76,6 +76,6 @@ export async function registerAllTasks(engine: FlowEngine): Promise<void> {
 }
 
 export function resetTaskRegistry(): void {
-  registeredEngines = new WeakSet<FlowEngine>();
-  registrationPromises = new WeakMap<FlowEngine, Promise<void>>();
+  registeredEngines = new WeakSet<TaskRuntime>();
+  registrationPromises = new WeakMap<TaskRuntime, Promise<void>>();
 }

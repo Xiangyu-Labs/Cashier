@@ -18,11 +18,11 @@ import { ledgerEntries, entryCategories } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { eq } from "drizzle-orm";
 import {
-  type FlowContext,
+  type TaskContext,
   type AIContext,
   type AIGenerateOptions,
   type AIResponse,
-} from "@/lib/flow";
+} from "@/lib/tasks";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { v4 as uuidv4 } from "uuid";
 
@@ -41,14 +41,14 @@ function createMockAI(categoryIndex: number, confidence = 0.9): AIContext {
   } as unknown as AIContext;
 }
 
-function createMockContext(ai: AIContext, aborted = false): FlowContext {
+function createMockContext(ai: AIContext, aborted = false): TaskContext {
   return {
     ai,
     signal: { aborted } as AbortSignal,
     updateProgress: vi.fn(),
     reportTokens: vi.fn(),
     taskId: "test-task-id",
-  } as unknown as FlowContext;
+  } as unknown as TaskContext;
 }
 
 const baseCategories = [

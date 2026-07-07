@@ -10,12 +10,12 @@ const { submitMock, cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  submitFlowTask: submitMock,
-  cancelFlowTask: cancelMock,
+vi.mock("@/lib/tasks", () => ({
+  submitTask: submitMock,
+  cancelTask: cancelMock,
 }));
 
-import { submitFlowTask } from "@/lib/flow";
+import { submitTask } from "@/lib/tasks";
 import {
   createEntryCategoryAction,
   deleteEntryCategoryAction,
@@ -58,7 +58,7 @@ describe("createEntryCategoryAction", () => {
       // no icon
     });
 
-    expect(submitFlowTask).toHaveBeenCalledWith(
+    expect(submitTask).toHaveBeenCalledWith(
       "generate_category_metadata",
       expect.objectContaining({ categoryName: "餐饮", ledgerId }),
       expect.any(Object)
@@ -72,7 +72,7 @@ describe("createEntryCategoryAction", () => {
       // no description
     });
 
-    expect(submitFlowTask).toHaveBeenCalled();
+    expect(submitTask).toHaveBeenCalled();
   });
 
   it("does not trigger AI when both icon and description are provided", async () => {
@@ -82,7 +82,7 @@ describe("createEntryCategoryAction", () => {
       icon: "🍽️",
     });
 
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("different ledgers can have same category name (tenant isolation)", async () => {

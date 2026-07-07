@@ -1,9 +1,9 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 /**
- * Flow Engine - A lightweight async task manager for AI workloads
+ * Task Runtime - A lightweight async task manager for AI workloads
  *
- * The engine only manages task lifecycle, not internal implementation details.
+ * The runtime only manages task lifecycle, not internal implementation details.
  * Tasks are responsible for their own multi-stage logic, model selection, etc.
  */
 
@@ -70,7 +70,7 @@ export interface TokenUsageRecord {
 /**
  * Engine configuration
  */
-export interface FlowEngineConfig {
+export interface TaskRuntimeConfig {
   /**
    * Maximum number of concurrent tasks.
    * If not set, defaults to 10.
@@ -85,7 +85,7 @@ export interface FlowEngineConfig {
 /**
  * Execution context passed to task handlers
  */
-export interface FlowContext {
+export interface TaskContext {
   taskId: string;
   /** @internal Cancellation signal - prefer using context.ai which handles this automatically */
   signal: AbortSignal;
@@ -112,54 +112,54 @@ export interface TokenUsage {
  * The engine doesn't care about internal implementation.
  * Tasks manage their own multi-stage logic, model selection, arbitration, etc.
  */
-export interface FlowTaskHandler<TInput, TOutput> {
+export interface TaskHandler<TInput, TOutput> {
   /**
    * Main execution logic (required)
    */
-  execute(input: TInput, context: FlowContext): Promise<TOutput>;
+  execute(input: TInput, context: TaskContext): Promise<TOutput>;
 
   /**
    * Called on completion (optional)
    * Use for side effects like updating related records
    */
-  onComplete?(output: TOutput, input: TInput, context: FlowContext): Promise<void>;
+  onComplete?(output: TOutput, input: TInput, context: TaskContext): Promise<void>;
 
   /**
    * Called on error (optional)
    * Use for cleanup and error logging
    */
-  onError?(error: Error, input: TInput, context: FlowContext): Promise<void>;
+  onError?(error: Error, input: TInput, context: TaskContext): Promise<void>;
 
   /**
    * Called on cancellation (optional)
    * Use for cleanup when task is cancelled
    */
-  onCancel?(input: TInput, context: FlowContext): Promise<void>;
+  onCancel?(input: TInput, context: TaskContext): Promise<void>;
 }
 
 /**
  * Explicit task definition used by the centralized task registry.
  * Task modules export this structure; only the registry performs registration.
  */
-export interface FlowTaskDefinition<TInput, TOutput> {
+export interface TaskDefinition<TInput, TOutput> {
   type: string;
-  handler: FlowTaskHandler<TInput, TOutput>;
+  handler: TaskHandler<TInput, TOutput>;
 }
 
 /**
- * Flow engine instance type
+ * Task runtime instance type
  */
-export interface FlowEngine {
+export interface TaskRuntime {
   /**
    * Register a task handler
    */
-  register<TInput, TOutput>(name: string, handler: FlowTaskHandler<TInput, TOutput>): void;
+  register<TInput, TOutput>(name: string, handler: TaskHandler<TInput, TOutput>): void;
 
   /**
    * Submit a task for background execution
    * Returns taskId immediately, task runs in background
    */
-  submit<TInput>(name: string, input: TInput, meta?: FlowTaskMetadata): Promise<string>;
+  submit<TInput>(name: string, input: TInput, meta?: TaskMetadata): Promise<string>;
 
   /**
    * Cancel a running task
@@ -188,7 +188,7 @@ export interface FlowEngine {
 }
 
 /**
- * Task metrics for monitoring the flow engine
+ * Task metrics for monitoring the task runtime
  */
 export interface TaskMetrics {
   executionTime: number;
@@ -196,7 +196,7 @@ export interface TaskMetrics {
   deadTasks: string[];
 }
 
-export interface FlowTaskMetadata {
+export interface TaskMetadata {
   title?: string;
   scopeId?: string;
   entityType?: string;
@@ -207,7 +207,7 @@ export interface FlowTaskMetadata {
 // ===== AI Integration Types =====
 
 /**
- * AI model tier - business code selects tier, flow engine resolves to concrete model
+ * AI model tier - business code selects tier, task runtime resolves to concrete model
  * - text: text-only, used for business logic when inputs are text-only
  * - vision: multimodal (vision+text), used whenever a task sends image input
  */

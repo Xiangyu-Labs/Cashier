@@ -13,8 +13,8 @@ const { submitMock } = vi.hoisted(() => ({
   submitMock: vi.fn().mockResolvedValue("mock-task-id"),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  submitFlowTask: submitMock,
+vi.mock("@/lib/tasks", () => ({
+  submitTask: submitMock,
 }));
 
 describe("getEntryCategoriesAction", () => {

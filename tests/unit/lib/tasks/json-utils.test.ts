@@ -5,7 +5,7 @@ import {
   cleanJsonContent,
   extractJson,
   buildRepairPrompt,
-} from "@/lib/flow/json-utils";
+} from "@/lib/tasks/json-utils";
 
 describe("isValidJson", () => {
   it("should return true for valid JSON object", () => {

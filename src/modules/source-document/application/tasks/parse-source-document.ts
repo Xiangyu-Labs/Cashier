@@ -1,4 +1,4 @@
-import type { FlowTaskDefinition, FlowTaskHandler, FlowContext } from "@/lib/flow";
+import type { TaskDefinition, TaskHandler, TaskContext } from "@/lib/tasks";
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
@@ -36,13 +36,13 @@ export interface ParseSourceDocumentOutput {
   verificationStatus: "passed" | "anomaly" | "invalid";
 }
 
-export const parseSourceDocumentHandler: FlowTaskHandler<
+export const parseSourceDocumentHandler: TaskHandler<
   ParseSourceDocumentInput,
   ParseSourceDocumentOutput
 > = {
   async execute(
     input: ParseSourceDocumentInput,
-    context: FlowContext
+    context: TaskContext
   ): Promise<ParseSourceDocumentOutput> {
     const { signal, updateProgress, ai } = context;
     const { ledgerId } = input;
@@ -79,7 +79,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
   async onComplete(
     output: ParseSourceDocumentOutput,
     input: ParseSourceDocumentInput,
-    _context: FlowContext
+    _context: TaskContext
   ): Promise<void> {
     await handleParseResult({
       ledgerId: input.ledgerId,
@@ -95,7 +95,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
   async onError(
     error: Error,
     input: ParseSourceDocumentInput,
-    _context: FlowContext
+    _context: TaskContext
   ): Promise<void> {
     logger.error(
       { error, sourceDocumentId: input.sourceDocumentId },
@@ -109,7 +109,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
     });
   },
 
-  async onCancel(input: ParseSourceDocumentInput, _context: FlowContext): Promise<void> {
+  async onCancel(input: ParseSourceDocumentInput, _context: TaskContext): Promise<void> {
     logger.info(
       { sourceDocumentId: input.sourceDocumentId },
       "Parse source document task cancelled"
@@ -122,7 +122,7 @@ export const parseSourceDocumentHandler: FlowTaskHandler<
   },
 };
 
-export const parseSourceDocumentTaskDefinition: FlowTaskDefinition<
+export const parseSourceDocumentTaskDefinition: TaskDefinition<
   ParseSourceDocumentInput,
   ParseSourceDocumentOutput
 > = {

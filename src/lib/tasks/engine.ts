@@ -7,10 +7,10 @@ import { taskRuns } from "@/persistence";
 import { recordTaskExecution, detectDeadTasks, calculateQueueDepth } from "./monitoring";
 import type {
   AIContext,
-  FlowContext,
-  FlowEngine,
-  FlowEngineConfig,
-  FlowTaskHandler,
+  TaskContext,
+  TaskRuntime,
+  TaskRuntimeConfig,
+  TaskHandler,
   TaskFilter,
   TaskInput,
   TaskRecord,
@@ -166,31 +166,31 @@ function createUnconfiguredAIContext(): AIContext {
   return {
     async generate() {
       throw new AppError(
-        "Flow engine AI context is not configured",
-        "FLOW_AI_CONTEXT_NOT_CONFIGURED"
+        "Task runtime AI context is not configured",
+        "TASK_AI_CONTEXT_NOT_CONFIGURED"
       );
     },
   };
 }
 
 /**
- * Create a Flow Engine instance
+ * Create a Task Runtime instance
  *
- * The engine is a pure task manager - it only handles:
+ * The runtime is a pure task manager - it only handles:
  * - Task submission/lifecycle
  * - State management (pending → running → completed/failed/cancelled)
  * - Cancellation signal propagation (AbortController)
  * - Token usage aggregation
  * - Error handling framework
  *
- * The engine does NOT care about:
+ * The runtime does NOT care about:
  * - How many stages a task has
  * - Which models are used
  * - Arbitration logic
  * - Specific AI call implementations
  */
-export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
-  const handlers = new Map<string, FlowTaskHandler<unknown, unknown>>();
+export function createTaskRuntime(config: TaskRuntimeConfig): TaskRuntime {
+  const handlers = new Map<string, TaskHandler<unknown, unknown>>();
   const abortControllers = new Map<string, AbortController>();
   const buildAIContext = config.aiContextFactory ?? (() => createUnconfiguredAIContext());
 
@@ -277,7 +277,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     if (!slotGranted) {
       if (handler.onCancel) {
         try {
-          const context: FlowContext = {
+          const context: TaskContext = {
             taskId,
             signal,
             reportTokens: () => {}, // No-op for cancellation
@@ -306,7 +306,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       // Call onCancel if handler exists, so domain cleanup happens
       if (handler.onCancel) {
         try {
-          const context: FlowContext = {
+          const context: TaskContext = {
             taskId,
             signal,
             reportTokens: () => {}, // No-op for cancellation
@@ -343,7 +343,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     await updateTaskRecord(taskId, { status: "running" });
 
     // Build execution context
-    const context: FlowContext = {
+    const context: TaskContext = {
       taskId,
       signal,
       reportTokens,
@@ -444,14 +444,14 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
   }
 
   return {
-    register<TInput, TOutput>(name: string, handler: FlowTaskHandler<TInput, TOutput>): void {
+    register<TInput, TOutput>(name: string, handler: TaskHandler<TInput, TOutput>): void {
       if (handlers.has(name)) {
         throw new AppError(
           `Task handler already registered: ${name}`,
           "TASK_HANDLER_ALREADY_REGISTERED"
         );
       }
-      handlers.set(name, handler as FlowTaskHandler<unknown, unknown>);
+      handlers.set(name, handler as TaskHandler<unknown, unknown>);
       logger.debug({ taskName: name }, "Task handler registered");
     },
 

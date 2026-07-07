@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { submitFlowTaskMock } = vi.hoisted(() => ({
-  submitFlowTaskMock: vi.fn(),
+const { submitTaskMock } = vi.hoisted(() => ({
+  submitTaskMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", () => ({
-  submitFlowTask: submitFlowTaskMock,
+vi.mock("@/lib/tasks", () => ({
+  submitTask: submitTaskMock,
 }));
 
 import { submitCategorizeTasksForEntries } from "@/modules/ledger/application/services/categorize-task-submission";
@@ -13,7 +13,7 @@ import { submitCategorizeTasksForEntries } from "@/modules/ledger/application/se
 describe("submitCategorizeTasksForEntries omission semantics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    submitFlowTaskMock.mockResolvedValue(undefined);
+    submitTaskMock.mockResolvedValue(undefined);
   });
 
   it("omits absent source document fields from task input", async () => {
@@ -62,10 +62,10 @@ describe("submitCategorizeTasksForEntries omission semantics", () => {
       ],
     });
 
-    const firstCall = submitFlowTaskMock.mock.calls[0];
+    const firstCall = submitTaskMock.mock.calls[0];
     expect(firstCall).toBeDefined();
     if (firstCall == null) {
-      throw new Error("Expected submitFlowTask to be called");
+      throw new Error("Expected submitTask to be called");
     }
     const taskInput = firstCall[1] as Record<string, unknown>;
 

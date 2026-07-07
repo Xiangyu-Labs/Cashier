@@ -11,16 +11,16 @@ const { submitMock, cancelMock } = vi.hoisted(() => ({
   cancelMock: vi.fn(),
 }));
 
-vi.mock("@/lib/flow", async () => {
-  const actual = await vi.importActual("@/lib/flow");
+vi.mock("@/lib/tasks", async () => {
+  const actual = await vi.importActual("@/lib/tasks");
   return {
     ...actual,
-    submitFlowTask: submitMock,
-    cancelFlowTask: cancelMock,
+    submitTask: submitMock,
+    cancelTask: cancelMock,
   };
 });
 
-import { cancelFlowTask, submitFlowTask } from "@/lib/flow";
+import { cancelTask, submitTask } from "@/lib/tasks";
 
 describe("batchRetrySourceDocumentsAction", () => {
   let testLedgerId: string;
@@ -37,19 +37,19 @@ describe("batchRetrySourceDocumentsAction", () => {
 
   function parseSubmitInput(value: unknown): SubmitInput {
     if (!isRecord(value)) {
-      throw new Error("submitFlowTask payload must be an object");
+      throw new Error("submitTask payload must be an object");
     }
     const sourceDocumentId = value.sourceDocumentId;
     const ledgerId = value.ledgerId;
     const text = value.text;
     if (typeof sourceDocumentId !== "string") {
-      throw new Error("submitFlowTask payload.sourceDocumentId must be a string");
+      throw new Error("submitTask payload.sourceDocumentId must be a string");
     }
     if (typeof ledgerId !== "string") {
-      throw new Error("submitFlowTask payload.ledgerId must be a string");
+      throw new Error("submitTask payload.ledgerId must be a string");
     }
     if (text !== undefined && typeof text !== "string") {
-      throw new Error("submitFlowTask payload.text must be a string when provided");
+      throw new Error("submitTask payload.text must be a string when provided");
     }
     return text === undefined
       ? { sourceDocumentId, ledgerId }
@@ -358,11 +358,11 @@ describe("batchRetrySourceDocumentsAction", () => {
     await batchRetrySourceDocumentsAction(testLedgerId, oldDocIds);
 
     // Verify old tasks were cancelled
-    expect(cancelFlowTask).toHaveBeenCalledWith(task1.id);
-    expect(cancelFlowTask).toHaveBeenCalledWith(task2.id);
+    expect(cancelTask).toHaveBeenCalledWith(task1.id);
+    expect(cancelTask).toHaveBeenCalledWith(task2.id);
 
     // Verify new tasks were submitted for new documents
-    expect(submitFlowTask).toHaveBeenCalledTimes(2);
+    expect(submitTask).toHaveBeenCalledTimes(2);
 
     // Get all non-deleted documents
     const activeDocs = await db.query.sourceDocuments.findMany({
@@ -370,7 +370,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     });
 
     // Verify new task IDs match new document IDs
-    const submitCalls = vi.mocked(submitFlowTask).mock.calls;
+    const submitCalls = vi.mocked(submitTask).mock.calls;
     const newDocIds = activeDocs.map((d) => d.id);
     for (const call of submitCalls) {
       const input = parseSubmitInput(call[1]);
@@ -445,7 +445,7 @@ describe("batchRetrySourceDocumentsAction", () => {
     await batchRetrySourceDocumentsAction(testLedgerId, []);
 
     // Verify no tasks were submitted
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("should handle non-existent document IDs gracefully", async () => {
@@ -462,7 +462,7 @@ describe("batchRetrySourceDocumentsAction", () => {
       where: eq(sourceDocuments.ledgerId, testLedgerId),
     });
     expect(docs.length).toBe(0);
-    expect(submitFlowTask).not.toHaveBeenCalled();
+    expect(submitTask).not.toHaveBeenCalled();
   });
 
   it("should handle partial failures in batch", async () => {
@@ -482,8 +482,8 @@ describe("batchRetrySourceDocumentsAction", () => {
       "Expected valid source document to be created"
     );
 
-    // Mock submitFlowTask to fail for one document
-    vi.mocked(submitFlowTask).mockImplementation(
+    // Mock submitTask to fail for one document
+    vi.mocked(submitTask).mockImplementation(
       async (_type: string, data: unknown): Promise<string> => {
         const input = parseSubmitInput(data);
         if (input.sourceDocumentId !== doc1.id) {
@@ -570,16 +570,16 @@ describe("batchRetrySourceDocumentsAction", () => {
 
     await batchRetrySourceDocumentsAction(testLedgerId, [oldDoc.id]);
 
-    expect(submitFlowTask).toHaveBeenCalledTimes(1);
-    const submitCall = vi.mocked(submitFlowTask).mock.calls[0];
+    expect(submitTask).toHaveBeenCalledTimes(1);
+    const submitCall = vi.mocked(submitTask).mock.calls[0];
     expect(submitCall).toBeDefined();
     if (submitCall == null) {
-      throw new Error("Expected submitFlowTask to be called");
+      throw new Error("Expected submitTask to be called");
     }
     const submitInput = submitCall[1];
     expect(isRecord(submitInput)).toBe(true);
     if (!isRecord(submitInput)) {
-      throw new Error("Expected submitFlowTask payload to be an object");
+      throw new Error("Expected submitTask payload to be an object");
     }
     expect(Object.prototype.hasOwnProperty.call(submitInput, "text")).toBe(false);
   });

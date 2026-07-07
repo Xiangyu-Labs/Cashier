@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
-import { createFlowEngine } from "@/lib/flow/engine";
-import type { FlowTaskHandler } from "@/lib/flow/types";
+import { createTaskRuntime } from "@/lib/tasks/engine";
+import type { TaskHandler } from "@/lib/tasks/types";
 import { db } from "@/lib/db";
 import { taskRuns } from "@/persistence";
 
@@ -16,7 +16,7 @@ async function waitForTask(taskId: string) {
   throw new Error(`Task ${taskId} did not reach a terminal state`);
 }
 
-const testHandler: FlowTaskHandler<{ value: number }, { result: number }> = {
+const testHandler: TaskHandler<{ value: number }, { result: number }> = {
   async execute(input, context) {
     await new Promise((resolve) => setTimeout(resolve, 50));
     if (context.signal.aborted) {
@@ -26,9 +26,9 @@ const testHandler: FlowTaskHandler<{ value: number }, { result: number }> = {
   },
 };
 
-describe("Flow Engine Deduplication", () => {
+describe("Task Runtime Deduplication", () => {
   it("returns existing taskId when duplicate deduplicationKey is submitted", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("test-task", testHandler);
 
     const taskId1 = await engine.submit(
@@ -51,7 +51,7 @@ describe("Flow Engine Deduplication", () => {
   });
 
   it("creates separate tasks for different deduplicationKeys", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("test-task", testHandler);
 
     const taskId1 = await engine.submit("test-task", { value: 1 }, { deduplicationKey: "key-1" });
@@ -66,7 +66,7 @@ describe("Flow Engine Deduplication", () => {
   });
 
   it("allows duplicate submission after task completes", async () => {
-    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const engine = createTaskRuntime({ maxConcurrentTasks: 1 });
     engine.register("test-task", testHandler);
 
     const taskId1 = await engine.submit("test-task", { value: 1 }, { deduplicationKey: "key-3" });

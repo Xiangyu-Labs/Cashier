@@ -6,7 +6,7 @@
  * original input, then returns the chosen result as a NormalizedParseOutput.
  */
 
-import type { AIContext, AIMessageContentPart } from "@/lib/flow/types";
+import type { AIContext, AIMessageContentPart } from "@/lib/tasks/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";

@@ -5,7 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getProcessingTasksAction } from "@/modules/source-document/actions";
 import { parseSourceDocumentHandler } from "@/modules/source-document/application/tasks/parse-source-document";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import type { FlowContext } from "@/lib/flow";
+import type { TaskContext } from "@/lib/tasks";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -150,7 +150,7 @@ describe("Task status query", () => {
       updateProgress: vi.fn(),
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await expect(
       parseSourceDocumentHandler.execute(
@@ -201,7 +201,7 @@ describe("Task status query", () => {
       updateProgress: vi.fn(),
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await expect(
       parseSourceDocumentHandler.execute(
@@ -221,7 +221,7 @@ describe("Task status query", () => {
       updateProgress: vi.fn(),
       signal: new AbortController().signal,
       ai: { generate: vi.fn() },
-    } as unknown as FlowContext;
+    } as unknown as TaskContext;
 
     await expect(
       parseSourceDocumentHandler.execute(
