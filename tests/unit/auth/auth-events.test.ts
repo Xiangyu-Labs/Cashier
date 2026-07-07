@@ -33,14 +33,23 @@ vi.mock("@/persistence/schema/auth", () => ({
   users: {},
 }));
 
-vi.mock("@/modules/auth/use-cases", () => ({
+vi.mock("@/modules/auth/application/use-cases/authenticate-with-otp", () => ({
   authenticateWithOTP: authenticateWithOTPMock,
+}));
+
+vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
   handleAuthUserCreated: handleAuthUserCreatedMock,
+}));
+
+vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
   handleAuthUserSignedIn: handleAuthUserSignedInMock,
+}));
+
+vi.mock("@/modules/auth/application/use-cases/is-auth-sign-in-allowed", () => ({
   isAuthSignInAllowed: isAuthSignInAllowedMock,
 }));
 
-vi.mock("@/modules/auth/queries", () => ({
+vi.mock("@/modules/auth/application/queries/get-session-user", () => ({
   getSessionUser: getSessionUserMock,
 }));
 

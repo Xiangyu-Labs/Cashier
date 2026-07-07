@@ -1,4 +1,4 @@
-import { ensureUserLedger } from "@/modules/workspace/use-cases";
+import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { sendLoginNotification } from "@/modules/auth/services/notifications";
 
 export async function handleAuthUserSignedIn(params: {

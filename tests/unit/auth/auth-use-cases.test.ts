@@ -6,7 +6,7 @@ const { ensureUserLedgerMock, findFirstMock, sendLoginNotificationMock } = vi.ho
   sendLoginNotificationMock: vi.fn(),
 }));
 
-vi.mock("@/modules/workspace/use-cases", () => ({
+vi.mock("@/modules/workspace/application/use-cases/ensure-user-ledger", () => ({
   ensureUserLedger: ensureUserLedgerMock,
 }));
 
@@ -24,11 +24,9 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import {
-  handleAuthUserCreated,
-  handleAuthUserSignedIn,
-  isAuthSignInAllowed,
-} from "@/modules/auth/use-cases";
+import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
+import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
+import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
 
 describe("auth lifecycle use cases", () => {
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;

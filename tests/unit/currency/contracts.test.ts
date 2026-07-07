@@ -3,7 +3,7 @@ import type {
   BatchConvertCurrencyResult,
   ConvertCurrencyResult,
 } from "@/modules/currency/contracts";
-import type { ConvertCurrencyResult as UseCaseConvertCurrencyResult } from "@/modules/currency/use-cases";
+import type { ConvertCurrencyResult as UseCaseConvertCurrencyResult } from "@/modules/currency/application/use-cases/convert-currency";
 import * as contracts from "@/modules/currency/contracts";
 
 describe("currency contracts exports", () => {

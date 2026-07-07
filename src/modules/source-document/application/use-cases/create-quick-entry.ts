@@ -1,6 +1,6 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { db } from "@/lib/db";
-import { convertEntryAmount } from "@/modules/currency/use-cases";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";

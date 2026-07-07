@@ -11,8 +11,10 @@ vi.mock("@/auth", () => ({
   signOut: signOutMock,
 }));
 
-vi.mock("@/modules/auth/use-cases", () => ({
+vi.mock("@/modules/auth/application/use-cases/delete-account", () => ({
   deleteAccount: deleteAccountUseCaseMock,
+}));
+vi.mock("@/modules/auth/application/use-cases/send-otp", () => ({
   sendOTP: vi.fn(),
 }));
 

@@ -1,13 +1,11 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import {
-  authenticateWithOTP,
-  handleAuthUserCreated,
-  handleAuthUserSignedIn,
-  isAuthSignInAllowed,
-} from "@/modules/auth/use-cases";
-import { getSessionUser } from "@/modules/auth/queries";
+import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
+import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
+import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
+import { getSessionUser } from "@/modules/auth/application/queries/get-session-user";
 import { TIME_SECONDS } from "@/lib/constants";
 import { runtimeEnv } from "@/lib/env/runtime";
 

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq, and, isNull } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { users, ledgers } from "@/persistence";
-import { clearUserData } from "@/modules/auth/use-cases";
-import { ensureUserLedger } from "@/modules/workspace/use-cases";
+import { clearUserData } from "@/modules/auth/application/use-cases/clear-user-data";
+import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 
 describe("clearUserData use case", () => {
   let db: ReturnType<typeof getTestDb>;

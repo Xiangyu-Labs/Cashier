@@ -20,7 +20,7 @@ vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
   initializeExchangeRateLedgerRecalculationOrchestration: vi.fn(),
 }));
 
-vi.mock("@/modules/currency/use-cases", () => ({
+vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => ({
   convertEntryAmount: convertEntryAmountMock,
 }));
 

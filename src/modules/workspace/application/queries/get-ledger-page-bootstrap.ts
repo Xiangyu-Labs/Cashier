@@ -5,7 +5,7 @@ import { calculateLedgerStats } from "@/modules/ledger/application/queries/calcu
 import { getLedgers } from "@/modules/ledger/application/queries/list-ledgers";
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
-import { getEnhancedStats } from "@/modules/stats/queries";
+import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
 import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
 import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import { requireLedgerAccess } from "@/modules/ledger/access";

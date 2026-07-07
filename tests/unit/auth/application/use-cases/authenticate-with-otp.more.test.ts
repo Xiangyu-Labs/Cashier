@@ -40,7 +40,7 @@ vi.mock("@/modules/auth/repositories/otp-repository", () => ({
   deleteOTPToken: deleteOTPTokenMock,
 }));
 
-vi.mock("@/modules/workspace/use-cases", () => ({
+vi.mock("@/modules/workspace/application/use-cases/ensure-user-ledger", () => ({
   ensureUserLedger: ensureUserLedgerMock,
 }));
 

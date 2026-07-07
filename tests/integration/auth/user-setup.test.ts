@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { eq, and, isNull } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, users } from "@/persistence";
-import { ensureUserLedger } from "@/modules/workspace/use-cases";
+import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 
 describe("ensureUserLedger", () => {
   it("creates a ledger for a new user with the requested locale defaults", async () => {

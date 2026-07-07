@@ -3,7 +3,8 @@ import { getTestDb } from "../../setup";
 import { users } from "@/persistence";
 import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { authenticateWithOTP, RegistrationDisabledError } from "@/modules/auth/use-cases";
+import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { RegistrationDisabledError } from "@/modules/auth/application/use-cases/registration-policy";
 import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
 

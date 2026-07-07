@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: cookiesMock,
 }));
 
-vi.mock("@/modules/auth/use-cases", () => ({
+vi.mock("@/modules/auth/application/use-cases/send-otp", () => ({
   sendOTP: sendOTPMock,
 }));
 

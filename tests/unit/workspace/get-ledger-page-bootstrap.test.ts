@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { getLedgerPageBootstrap } from "@/modules/workspace/queries";
+import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
 
 const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
@@ -35,7 +35,7 @@ vi.mock("@/modules/source-document/application/queries/list-source-document-coll
   getSourceDocumentCollection: getSourceDocumentCollectionMock,
 }));
 
-vi.mock("@/modules/stats/queries", () => ({
+vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
   getEnhancedStats: getEnhancedStatsMock,
 }));
 

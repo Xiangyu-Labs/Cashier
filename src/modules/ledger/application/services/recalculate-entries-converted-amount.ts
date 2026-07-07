@@ -7,7 +7,7 @@ import {
   convertAmountsBatch,
   type CurrencyBatchConversionItem,
   type CurrencyBatchConversionResult,
-} from "@/modules/currency/use-cases";
+} from "@/modules/currency/application/use-cases/convert-amounts-batch";
 import { ledgerEntries } from "@/persistence";
 
 export async function fetchEntriesForConversion(ledgerId: string) {

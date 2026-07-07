@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
 import { batchConvertCurrencyAction } from "@/modules/currency/actions";
-import { convertCurrency } from "@/modules/currency/use-cases";
+import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
 
 async function insertTestRates(date: string, rates: Record<string, number>) {
   await getTestDb().insert(currencyRates).values({

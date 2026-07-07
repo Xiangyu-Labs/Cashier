@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { users, otpTokens } from "@/persistence/schema/auth";
-import { deleteAccount } from "@/modules/auth/use-cases";
+import { deleteAccount } from "@/modules/auth/application/use-cases/delete-account";
 import { hashOTP } from "@/modules/auth/services/otp";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 

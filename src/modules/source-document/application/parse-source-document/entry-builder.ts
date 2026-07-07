@@ -1,5 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { convertEntryAmount } from "@/modules/currency/use-cases";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 

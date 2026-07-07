@@ -21,14 +21,23 @@ vi.mock("next-auth/providers/credentials", () => ({
   }),
 }));
 
-vi.mock("@/modules/auth/use-cases", () => ({
+vi.mock("@/modules/auth/application/use-cases/authenticate-with-otp", () => ({
   authenticateWithOTP: vi.fn(),
+}));
+
+vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
   handleAuthUserCreated: vi.fn(),
+}));
+
+vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
   handleAuthUserSignedIn: vi.fn(),
+}));
+
+vi.mock("@/modules/auth/application/use-cases/is-auth-sign-in-allowed", () => ({
   isAuthSignInAllowed: vi.fn(async () => true),
 }));
 
-vi.mock("@/modules/auth/queries", () => ({
+vi.mock("@/modules/auth/application/queries/get-session-user", () => ({
   getSessionUser: vi.fn(async (id: string) => ({
     id,
     email: "test@example.com",

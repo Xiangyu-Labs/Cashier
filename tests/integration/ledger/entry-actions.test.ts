@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
 // Mock currency conversion use-case to avoid external API calls
-vi.mock("@/modules/currency/use-cases", () => ({
+vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => ({
   convertEntryAmount: vi.fn(
     async (input: { amount: number; fromCurrency: string; toCurrency: string }) => {
       if (input.fromCurrency === input.toCurrency) {
@@ -24,7 +24,7 @@ vi.mock("@/modules/currency/use-cases", () => ({
   ),
 }));
 
-import { convertEntryAmount } from "@/modules/currency/use-cases";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import {
   createLedgerEntryAction,
   updateLedgerEntryAction,

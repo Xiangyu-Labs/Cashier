@@ -2,7 +2,7 @@
 import { cookies, headers } from "next/headers";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
-import { sendOTP } from "@/modules/auth/use-cases";
+import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
 import { parseSendOTPEmail } from "../contract-schemas";
 
 export async function sendOTPAction(email: string, locale?: string) {

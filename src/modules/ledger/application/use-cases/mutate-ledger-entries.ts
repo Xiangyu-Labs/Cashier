@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { logger } from "@/lib/logger";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { convertEntryAmount } from "@/modules/currency/use-cases";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { mapLedgerEntryDto } from "../mappers";
 import { getLedgerMainCurrency } from "../queries/get-ledger-main-currency";
 import { recalculateEntriesConvertedAmount } from "../services/recalculate-entries-converted-amount";

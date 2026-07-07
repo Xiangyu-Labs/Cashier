@@ -9,7 +9,7 @@ import {
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
-} from "@/modules/auth/use-cases";
+} from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
 

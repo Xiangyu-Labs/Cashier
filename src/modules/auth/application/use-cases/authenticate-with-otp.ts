@@ -12,7 +12,7 @@ import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
 import { AppError } from "@/lib/errors";
-import { ensureUserLedger } from "@/modules/workspace/use-cases";
+import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { assertRegistrationAllowed } from "./registration-policy";
 
 const MAX_EMAIL_LENGTH = 254;
