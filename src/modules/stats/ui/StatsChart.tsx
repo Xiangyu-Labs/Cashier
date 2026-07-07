@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { type DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface StatsChartProps {
   data: { date: string; total: number }[];
@@ -154,13 +155,19 @@ export function StatsChart({
     return <div className="h-48 w-full bg-surface2/30 animate-pulse rounded-lg" />;
   }
 
-  if (chartPoints.length === 0) return null;
+  if (chartPoints.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
+        {t("noData")}
+      </div>
+    );
+  }
 
   // Calculate chart dimensions (chart area height)
   const chartHeight = 130; // pixels, matches h-full minus padding
   const paddingTop = 10; // 10% top padding
   const paddingBottom = 10; // 10% bottom padding
-  const formatAmount = (value: number) => `${currencySymbol} ${value.toFixed(2)}`;
+  const formatAmount = (value: number) => formatCurrencyAmount(value, currencySymbol, locale);
 
   return (
     <div className="w-full relative pt-6 pb-6 select-none">

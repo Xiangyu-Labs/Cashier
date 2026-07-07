@@ -1,9 +1,11 @@
 "use client";
 import type { KeyboardEvent } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { EmptyState } from "@/modules/workspace/ui/EmptyState";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface CategoryStat {
   id: string | null;
@@ -28,10 +30,11 @@ interface StatsRankingProps {
 export function StatsRanking({
   data,
   isLoading,
-  currencySymbol = "¥",
+  currencySymbol = "CNY",
   onCategoryClick,
 }: StatsRankingProps) {
   const t = useTranslations("StatsTab");
+  const locale = useLocale();
 
   if (isLoading) {
     return (
@@ -64,7 +67,7 @@ export function StatsRanking({
   }
 
   if (data.length === 0) {
-    return null;
+    return <EmptyState title={t("noStats")} description={t("noStatsDesc")} />;
   }
 
   // Sort descending by converted amount
@@ -121,9 +124,8 @@ export function StatsRanking({
                 {/* Top Line: Name + Amount */}
                 <div className="flex justify-between items-center text-sm">
                   <div className="font-medium text-text">{cat.name}</div>
-                  <div className="font-mono font-medium tracking-tight">
-                    <span className="text-xs text-muted-foreground mr-0.5">{currencySymbol}</span>
-                    {cat.totalConverted.toFixed(2)}
+                  <div className="font-mono font-medium tabular-nums">
+                    {formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}
                   </div>
                 </div>
 

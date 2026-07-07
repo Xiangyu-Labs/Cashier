@@ -145,7 +145,9 @@
     "month": "月",
     "week": "周",
     "year": "年",
-    "vsPreviousPeriod": "较上期"
+    "vsPreviousPeriod": "较上期",
+    "noStats": "暂无统计",
+    "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。"
   },
   "LedgerEntriesTab": {
     "processing": "处理中",
@@ -566,7 +568,8 @@
     "date": "日期",
     "scaleAdjusted": "已调整显示比例",
     "expense": "支出",
-    "exceedsLimit": "（超出显示上限）"
+    "exceedsLimit": "（超出显示上限）",
+    "noData": "这个时间段暂无图表数据"
   },
   "Metadata": {
     "title": "Cashier - AI 记账助手",

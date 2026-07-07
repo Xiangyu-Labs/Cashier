@@ -2,36 +2,19 @@
  * Heatmap Color Utilities
  *
  * Color mapping logic for calendar heatmap visualization.
- * Uses project brand color (#10a37f) with opacity variants.
+ * Uses CSS custom properties (tokens) for theming support.
  */
 
 import type { CalendarHeatmapStats, HeatmapLevel } from "../types";
 
-// Heatmap color configuration using brand color (#10a37f)
-// Using rgba with primary color mixed with surface background for reliability
-const PRIMARY_RGB = "16, 163, 127"; // #10a37f in RGB
-const SURFACE2_LIGHT = "#f7f7f8";
-const SURFACE2_DARK = "#202123";
-
-const HEATMAP_COLORS = {
-  // Light mode colors - using rgba for reliable rendering
-  light: [
-    SURFACE2_LIGHT, // Level 0: No spending
-    `rgba(${PRIMARY_RGB}, 0.15)`, // Level 1: Very low
-    `rgba(${PRIMARY_RGB}, 0.30)`, // Level 2: Low
-    `rgba(${PRIMARY_RGB}, 0.50)`, // Level 3: Medium
-    `rgba(${PRIMARY_RGB}, 0.70)`, // Level 4: High
-    `rgb(${PRIMARY_RGB})`, // Level 5: Very high
-  ],
-  // Dark mode colors
-  dark: [
-    SURFACE2_DARK, // Level 0: No spending
-    `rgba(${PRIMARY_RGB}, 0.20)`, // Level 1: Very low
-    `rgba(${PRIMARY_RGB}, 0.35)`, // Level 2: Low
-    `rgba(${PRIMARY_RGB}, 0.55)`, // Level 3: Medium
-    `rgba(${PRIMARY_RGB}, 0.75)`, // Level 4: High
-    `rgb(${PRIMARY_RGB})`, // Level 5: Very high
-  ],
+// Heatmap color configuration using CSS custom property tokens
+const HEATMAP_TOKEN_COLORS: Record<HeatmapLevel, string> = {
+  0: "var(--heatmap-0)",
+  1: "var(--heatmap-1)",
+  2: "var(--heatmap-2)",
+  3: "var(--heatmap-3)",
+  4: "var(--heatmap-4)",
+  5: "var(--heatmap-5)",
 };
 
 const HEATMAP_LABELS: Record<HeatmapLevel, string> = {
@@ -68,9 +51,8 @@ export function getHeatmapLevel(amount: number, stats: CalendarHeatmapStats): He
 /**
  * Get color for a heatmap level
  */
-export function getHeatmapColor(level: HeatmapLevel, isDark = false): string {
-  const colors = isDark ? HEATMAP_COLORS.dark : HEATMAP_COLORS.light;
-  return colors[level] ?? (isDark ? SURFACE2_DARK : SURFACE2_LIGHT);
+export function getHeatmapColor(level: HeatmapLevel): string {
+  return HEATMAP_TOKEN_COLORS[level] ?? HEATMAP_TOKEN_COLORS[0];
 }
 
 function getHeatmapLabel(level: HeatmapLevel): string {
@@ -80,11 +62,11 @@ function getHeatmapLabel(level: HeatmapLevel): string {
 /**
  * Get all heatmap legend items
  */
-export function getHeatmapLegend(isDark = false) {
+export function getHeatmapLegend() {
   const levels: HeatmapLevel[] = [0, 1, 2, 3, 4, 5];
   return levels.map((level) => ({
     level,
-    color: getHeatmapColor(level, isDark),
+    color: getHeatmapColor(level),
     label: getHeatmapLabel(level),
   }));
 }
@@ -92,12 +74,13 @@ export function getHeatmapLegend(isDark = false) {
 /**
  * Format amount for display in cell (abbreviated)
  */
-export function formatCellAmount(amount: number): string {
-  if (amount >= 10000) {
-    return `¥${Math.round(amount / 1000)}k`;
-  }
+export function formatCellAmount(amount: number, currency = "CNY", locale = "zh-CN"): string {
   if (amount >= 1000) {
-    return `¥${(amount / 1000).toFixed(1)}k`;
+    return new Intl.NumberFormat(locale, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount).replace(/^/, `${currency} `);
   }
-  return `¥${Math.round(amount)}`;
+
+  return `${currency} ${Math.round(amount)}`;
 }

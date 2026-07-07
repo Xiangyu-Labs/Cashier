@@ -24,24 +24,22 @@ describe("heatmap-colors", () => {
   });
 
   it("returns safe fallback color for invalid level index", () => {
-    expect(getHeatmapColor(99 as unknown as 0, false)).toBe("#f7f7f8");
-    expect(getHeatmapColor(99 as unknown as 0, true)).toBe("#202123");
+    expect(getHeatmapColor(99 as unknown as 0)).toBe("var(--heatmap-0)");
   });
 
   it("returns legend entries for all six levels", () => {
-    const light = getHeatmapLegend();
-    const dark = getHeatmapLegend(true);
+    const legend = getHeatmapLegend();
 
-    expect(light).toHaveLength(6);
-    expect(dark).toHaveLength(6);
-    expect(light[0]?.level).toBe(0);
-    expect(dark[5]?.level).toBe(5);
+    expect(legend).toHaveLength(6);
+    expect(legend[0]?.level).toBe(0);
+    expect(legend[5]?.level).toBe(5);
   });
 
   it("formats amounts for cell display", () => {
-    expect(formatCellAmount(999)).toBe("¥999");
-    expect(formatCellAmount(1250)).toBe("¥1.3k");
-    expect(formatCellAmount(10000)).toBe("¥10k");
-    expect(formatCellAmount(15678)).toBe("¥16k");
+    expect(formatCellAmount(999)).toBe("CNY 999");
+    expect(formatCellAmount(1250, "USD", "en-US")).toBe("USD 1.3K");
+    expect(formatCellAmount(12500, "USD", "en-US")).toBe("USD 12.5K");
+    expect(formatCellAmount(10000, "USD", "en-US")).toBe("USD 10K");
+    expect(formatCellAmount(15678, "USD", "en-US")).toBe("USD 15.7K");
   });
 });
