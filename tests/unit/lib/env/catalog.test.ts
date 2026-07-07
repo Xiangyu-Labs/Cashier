@@ -51,6 +51,12 @@ describe("env catalog coverage", () => {
       expect(documentedKeys).toContain(key);
       expect(example).toMatch(new RegExp(`# Required:\\s+.+\\n# Default:\\s+.+\\n${key}=`, "m"));
     }
+
+    expect(documentedKeys.has("OIDC_ISSUER")).toBe(false);
+    expect(documentedKeys.has("OIDC_CLIENT_ID")).toBe(false);
+    expect(documentedKeys.has("OIDC_CLIENT_SECRET")).toBe(false);
+    expect(documentedKeys.has("NEXT_PUBLIC_OIDC_ENABLED")).toBe(false);
+    expect(documentedKeys.has("NEXT_PUBLIC_OIDC_BUTTON_NAME")).toBe(false);
   });
 
   it("only reads application env keys through src/lib/env", () => {

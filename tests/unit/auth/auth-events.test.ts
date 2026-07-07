@@ -25,17 +25,12 @@ vi.mock("next-auth/providers/credentials", () => ({
   default: vi.fn((config) => config),
 }));
 
-vi.mock("@auth/drizzle-adapter", () => ({
-  DrizzleAdapter: vi.fn(() => ({})),
-}));
-
 vi.mock("@/lib/db", () => ({
   db: {},
 }));
 
 vi.mock("@/persistence/schema/auth", () => ({
   users: {},
-  accounts: {},
 }));
 
 vi.mock("@/modules/auth/use-cases", () => ({
@@ -190,7 +185,6 @@ describe("auth.ts adapter wiring", () => {
         email: "db@example.com",
         name: "DB User",
         image: "db-image",
-        hasPassword: false,
       },
     });
   });

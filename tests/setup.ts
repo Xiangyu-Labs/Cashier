@@ -97,7 +97,6 @@ beforeEach(async () => {
     "service_credentials",
     "task_runs",
     "currency_rates",
-    "accounts",
     "otp_tokens",
     "users",
   ];

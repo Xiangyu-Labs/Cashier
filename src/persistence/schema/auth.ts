@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 
 export const users = sqliteTable(
@@ -11,7 +11,6 @@ export const users = sqliteTable(
     email: text("email").notNull().unique(),
     emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
     image: text("image"),
-    passwordHash: text("password_hash"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -24,31 +23,6 @@ export const users = sqliteTable(
 );
 
 export type User = InferSelectModel<typeof users>;
-
-export const accounts = sqliteTable(
-  "accounts",
-  {
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
-  },
-  (table) => [
-    primaryKey({ columns: [table.provider, table.providerAccountId] }),
-    index("idx_accounts_user_id").on(table.userId),
-  ]
-);
-
-export type Account = InferSelectModel<typeof accounts>;
 
 export const otpTokens = sqliteTable(
   "otp_tokens",

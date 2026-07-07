@@ -8,9 +8,6 @@ export interface RuntimeEnv {
   readonly authUrl: string | undefined;
   readonly authResendKey: string | undefined;
   readonly authEmailFrom: string;
-  readonly oidcIssuer: string | undefined;
-  readonly oidcClientId: string | undefined;
-  readonly oidcClientSecret: string | undefined;
   readonly localStoragePath: string;
   readonly trustedProxy: string | undefined;
   readonly timeZone: string;
@@ -66,15 +63,6 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get authEmailFrom() {
     return getStartupEnvValue("AUTH_EMAIL_FROM");
-  },
-  get oidcIssuer() {
-    return getStartupEnvValue("OIDC_ISSUER");
-  },
-  get oidcClientId() {
-    return getStartupEnvValue("OIDC_CLIENT_ID");
-  },
-  get oidcClientSecret() {
-    return getStartupEnvValue("OIDC_CLIENT_SECRET");
   },
   get localStoragePath() {
     return getStartupEnvValue("LOCAL_STORAGE_PATH");

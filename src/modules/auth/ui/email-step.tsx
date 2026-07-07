@@ -3,8 +3,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Loader2 } from "lucide-react";
-import { publicEnv } from "@/lib/env/public";
-import { SSOButton } from "./sso-button";
 
 interface EmailStepProps {
   callbackUrl: string;
@@ -62,31 +60,7 @@ export function EmailStep({
           )}
         </Button>
       </form>
-
-      <SSOSection callbackUrl={callbackUrl} />
     </div>
   );
 }
 
-function SSOSection({ callbackUrl }: { callbackUrl: string }) {
-  const t = useTranslations("Auth");
-
-  const isSSOEnabled = publicEnv.oidcEnabled;
-
-  if (!isSSOEnabled) {
-    return null;
-  }
-
-  return (
-    <div className="pt-2">
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase text-muted-foreground">{t("orContinueWith")}</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <div className="mt-4">
-        <SSOButton callbackUrl={callbackUrl} />
-      </div>
-    </div>
-  );
-}
