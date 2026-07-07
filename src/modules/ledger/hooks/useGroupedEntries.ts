@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import type { SourceDocumentGroup } from "@/lib/serialization";
+import type { SourceDocumentGroupDto as SourceDocumentGroup } from "@/modules/source-document/contracts";
 import { parseAmount } from "@/lib/formatters";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { useDateGrouping } from "@/hooks/use-date-grouping";
