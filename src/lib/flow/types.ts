@@ -10,16 +10,6 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 // ===== Engine Layer Interfaces =====
 
 /**
- * Storage adapter interface (injected by the consumer)
- */
-export interface StorageAdapter {
-  create(task: TaskInput): Promise<string>;
-  update(id: string, data: Partial<TaskRecord>): Promise<void>;
-  get(id: string): Promise<TaskRecord | null>;
-  list(filter?: TaskFilter): Promise<TaskRecord[]>;
-}
-
-/**
  * Input for creating a new task
  */
 export interface TaskInput {
@@ -81,7 +71,6 @@ export interface TokenUsageRecord {
  * Engine configuration
  */
 export interface FlowEngineConfig {
-  storage: StorageAdapter;
   /**
    * Maximum number of concurrent tasks.
    * If not set, defaults to 10.
@@ -299,17 +288,3 @@ export type AIContextFactory = (
   signal: AbortSignal,
   reportTokens: (usage: TokenUsage) => void
 ) => AIContext;
-
-export interface FlowRuntimeConfig {
-  storage: StorageAdapter;
-  maxConcurrentTasks?: number;
-  ai: {
-    getClient: AIClientFactory;
-    models: AIModelConfig;
-  };
-}
-
-export interface FlowRuntime {
-  engine: FlowEngine;
-  ai: FlowRuntimeConfig["ai"];
-}

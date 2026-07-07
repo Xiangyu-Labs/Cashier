@@ -3,14 +3,14 @@ import { createFlowEngine } from "./engine";
 import { registerAllTasks, resetTaskRegistry } from "./task-registry";
 import { AppError } from "@/lib/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
-import type { FlowEngine, FlowRuntime, FlowRuntimeConfig, FlowTaskMetadata } from "./types";
+import type { FlowEngine, FlowTaskMetadata } from "./types";
 
-let runtime: FlowRuntime | null = null;
-let initializationPromise: Promise<FlowRuntime> | null = null;
+let engine: FlowEngine | null = null;
+let initializationPromise: Promise<FlowEngine> | null = null;
 
-async function ensureFlowRuntime(): Promise<FlowRuntime> {
-  if (runtime != null) {
-    return runtime;
+async function ensureFlowEngine(): Promise<FlowEngine> {
+  if (engine != null) {
+    return engine;
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
@@ -23,30 +23,9 @@ async function ensureFlowRuntime(): Promise<FlowRuntime> {
   return initializeDefaultFlowRuntime();
 }
 
-export function createFlowRuntime(config: FlowRuntimeConfig): FlowRuntime {
-  const engine = createFlowEngine({
-    storage: config.storage,
-    ...(config.maxConcurrentTasks !== undefined
-      ? { maxConcurrentTasks: config.maxConcurrentTasks }
-      : {}),
-    aiContextFactory: (signal, reportTokens) =>
-      createAIContext({
-        signal,
-        reportTokens,
-        getClient: config.ai.getClient,
-        modelConfig: config.ai.models,
-      }),
-  });
-
-  return {
-    engine,
-    ai: config.ai,
-  };
-}
-
-export async function initializeFlowRuntime(config: FlowRuntimeConfig): Promise<FlowRuntime> {
-  if (runtime != null) {
-    return runtime;
+export async function initializeDefaultFlowRuntime(): Promise<FlowEngine> {
+  if (engine != null) {
+    return engine;
   }
 
   if (initializationPromise != null) {
@@ -54,10 +33,26 @@ export async function initializeFlowRuntime(config: FlowRuntimeConfig): Promise<
   }
 
   initializationPromise = (async () => {
-    const nextRuntime = createFlowRuntime(config);
-    await registerAllTasks(nextRuntime.engine);
-    runtime = nextRuntime;
-    return nextRuntime;
+    const { getOpenAIClient } = await import("@/lib/ai/openai-client");
+  const client = getOpenAIClient();
+
+    const nextEngine = createFlowEngine({
+      maxConcurrentTasks: runtimeEnv.maxTaskWorker,
+      aiContextFactory: (signal, reportTokens) =>
+        createAIContext({
+          signal,
+          reportTokens,
+          getClient: () => client,
+          modelConfig: {
+            text: runtimeEnv.aiModelText,
+            vision: runtimeEnv.aiModelVision,
+          },
+        }),
+    });
+
+    await registerAllTasks(nextEngine);
+    engine = nextEngine;
+    return nextEngine;
   })();
 
   try {
@@ -70,39 +65,15 @@ export async function initializeFlowRuntime(config: FlowRuntimeConfig): Promise<
   }
 }
 
-export async function initializeDefaultFlowRuntime(): Promise<FlowRuntime> {
-  const [{ createDrizzleStorage }, { getOpenAIClient }] = await Promise.all([
-    import("./adapters/drizzle-storage"),
-    import("@/lib/ai/openai-client"),
-  ]);
-  const client = getOpenAIClient();
-
-  return initializeFlowRuntime({
-    storage: createDrizzleStorage(),
-    maxConcurrentTasks: runtimeEnv.maxTaskWorker,
-    ai: {
-      getClient: () => client,
-      models: {
-        text: runtimeEnv.aiModelText,
-        vision: runtimeEnv.aiModelVision,
-      },
-    },
-  });
-}
-
-export function getFlowRuntime(): FlowRuntime {
-  if (runtime == null) {
+export function getFlowEngine(): FlowEngine {
+  if (engine == null) {
     throw new AppError(
       "Flow runtime has not been initialized. Call initializeDefaultFlowRuntime() during startup.",
       "FLOW_RUNTIME_NOT_INITIALIZED"
     );
   }
 
-  return runtime;
-}
-
-export function getFlowEngine(): FlowEngine {
-  return getFlowRuntime().engine;
+  return engine;
 }
 
 export async function submitFlowTask<TInput>(
@@ -110,17 +81,17 @@ export async function submitFlowTask<TInput>(
   input: TInput,
   meta?: FlowTaskMetadata
 ): Promise<string> {
-  const ensuredRuntime = await ensureFlowRuntime();
-  return ensuredRuntime.engine.submit(name, input, meta);
+  const ensuredEngine = await ensureFlowEngine();
+  return ensuredEngine.submit(name, input, meta);
 }
 
 export async function cancelFlowTask(taskId: string): Promise<void> {
-  const ensuredRuntime = await ensureFlowRuntime();
-  return ensuredRuntime.engine.cancel(taskId);
+  const ensuredEngine = await ensureFlowEngine();
+  return ensuredEngine.cancel(taskId);
 }
 
 export function resetFlowRuntime(): void {
-  runtime = null;
+  engine = null;
   initializationPromise = null;
   resetTaskRegistry();
 }

@@ -1,5 +1,9 @@
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { AppError } from "@/lib/errors";
+import { db } from "@/lib/db";
+import { taskRuns } from "@/persistence";
 import { recordTaskExecution, detectDeadTasks, calculateQueueDepth } from "./monitoring";
 import type {
   AIContext,
@@ -8,10 +12,155 @@ import type {
   FlowEngineConfig,
   FlowTaskHandler,
   TaskFilter,
+  TaskInput,
+  TaskRecord,
+  TaskStatus,
   TokenUsage,
   TokenUsageRecord,
   TaskMetrics,
 } from "./types";
+
+const TaskStatusSchema = z.enum(["pending", "running", "completed", "failed", "cancelled"]);
+const TokenUsageEntrySchema = z.object({
+  input: z.number(),
+  output: z.number(),
+});
+const TokenUsageSchema = z.record(z.string(), TokenUsageEntrySchema);
+
+type ValidatedTaskStatus = z.infer<typeof TaskStatusSchema>;
+type ValidatedTokenUsage = z.infer<typeof TokenUsageSchema>;
+
+async function createTaskRecord(task: TaskInput): Promise<string> {
+  const [created] = await db
+    .insert(taskRuns)
+    .values({
+      type: task.type,
+      title: task.title ?? task.type,
+      input: task.input ?? null,
+      deduplicationKey: task.deduplicationKey ?? null,
+      scopeId: task.scopeId ?? null,
+      entityType: task.entityType ?? null,
+      entityId: task.entityId ?? null,
+    })
+    .returning({ id: taskRuns.id });
+
+  if (created == null) {
+    throw new AppError("Failed to create task record", "TASK_CREATE_FAILED");
+  }
+
+  return created.id;
+}
+
+async function updateTaskRecord(id: string, data: Partial<TaskRecord>): Promise<void> {
+  const updateData: Partial<typeof taskRuns.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (data.status !== undefined) {
+    updateData.status = data.status;
+  }
+  if (data.progress !== undefined) {
+    updateData.progress = data.progress;
+  }
+  if (data.error !== undefined) {
+    updateData.error = data.error;
+  }
+  if (data.tokenUsage !== undefined) {
+    updateData.tokenUsage = data.tokenUsage;
+  }
+  if (data.deduplicationKey !== undefined) {
+    updateData.deduplicationKey = data.deduplicationKey;
+  }
+
+  if (data.status === "completed" || data.status === "failed" || data.status === "cancelled") {
+    updateData.completedAt = new Date();
+  }
+
+  if (data.status === "running") {
+    updateData.startedAt = new Date();
+  }
+
+  await db
+    .update(taskRuns)
+    .set(updateData)
+    .where(and(eq(taskRuns.id, id), isNull(taskRuns.deletedAt)));
+}
+
+async function getTaskRecord(id: string): Promise<TaskRecord | null> {
+  const record = await db.query.taskRuns.findFirst({
+    where: eq(taskRuns.id, id),
+  });
+
+  return record == null ? null : mapToTaskRecord(record);
+}
+
+async function listTaskRecords(filter?: TaskFilter): Promise<TaskRecord[]> {
+  const conditions: ReturnType<typeof eq>[] = [];
+
+  if (filter?.type != null) {
+    conditions.push(eq(taskRuns.type, filter.type));
+  }
+  if (filter?.status != null) {
+    conditions.push(eq(taskRuns.status, filter.status));
+  }
+
+  const query = db
+    .select()
+    .from(taskRuns)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(taskRuns.createdAt));
+
+  if (filter?.limit != null && filter.limit > 0) {
+    query.limit(filter.limit);
+  }
+  if (filter?.offset != null && filter.offset >= 0) {
+    query.offset(filter.offset);
+  }
+
+  const records = await query;
+  return records.map(mapToTaskRecord);
+}
+
+function mapToTaskRecord(record: typeof taskRuns.$inferSelect): TaskRecord {
+  const statusResult = TaskStatusSchema.safeParse(record.status);
+  const validatedStatus: ValidatedTaskStatus = statusResult.success ? statusResult.data : "failed";
+
+  if (!statusResult.success) {
+    logger.error(
+      { taskId: record.id, status: record.status },
+      "Invalid task status in database; defaulting to failed"
+    );
+  }
+
+  let validatedTokenUsage: ValidatedTokenUsage | null = null;
+  if (record.tokenUsage != null) {
+    const tokenResult = TokenUsageSchema.safeParse(record.tokenUsage);
+    if (tokenResult.success) {
+      validatedTokenUsage = tokenResult.data;
+    } else {
+      logger.error({ taskId: record.id }, "Invalid task token usage in database");
+    }
+  }
+
+  return {
+    id: record.id,
+    type: record.type,
+    title: record.title,
+    status: validatedStatus as TaskStatus,
+    progress: record.progress ?? null,
+    input: record.input,
+    deduplicationKey: record.deduplicationKey ?? null,
+    error: record.error,
+    tokenUsage: validatedTokenUsage,
+    scopeId: record.scopeId ?? null,
+    entityType: record.entityType ?? null,
+    entityId: record.entityId ?? null,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    startedAt: record.startedAt ?? null,
+    completedAt: record.completedAt ?? null,
+  };
+}
 
 function createUnconfiguredAIContext(): AIContext {
   return {
@@ -116,7 +265,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         releaseSlot();
       }
       logger.error({ taskName: name, taskId }, "No handler registered for task");
-      await config.storage.update(taskId, {
+      await updateTaskRecord(taskId, {
         status: "failed",
         error: `No handler registered for task: ${name}`,
       });
@@ -144,7 +293,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         }
       }
 
-      await config.storage.update(taskId, { status: "cancelled", progress: null });
+      await updateTaskRecord(taskId, { status: "cancelled", progress: null });
       logger.info({ taskId }, "Task cancelled while waiting in queue");
       abortControllers.delete(taskId);
       return;
@@ -173,7 +322,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
         }
       }
 
-      await config.storage.update(taskId, { status: "cancelled", progress: null });
+      await updateTaskRecord(taskId, { status: "cancelled", progress: null });
       logger.info({ taskId }, "Task cancelled while waiting in queue");
       abortControllers.delete(taskId);
       return;
@@ -191,7 +340,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     };
 
     // Update status to running
-    await config.storage.update(taskId, { status: "running" });
+    await updateTaskRecord(taskId, { status: "running" });
 
     // Build execution context
     const context: FlowContext = {
@@ -199,7 +348,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       signal,
       reportTokens,
       updateProgress: async (message: string) => {
-        await config.storage.update(taskId, { progress: message });
+        await updateTaskRecord(taskId, { progress: message });
       },
       // AI capabilities with automatic token reporting
       ai: buildAIContext(signal, reportTokens),
@@ -228,7 +377,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       };
 
       // Mark as completed
-      await config.storage.update(taskId, {
+      await updateTaskRecord(taskId, {
         status: "completed",
         tokenUsage: finalTokenUsage,
         progress: null,
@@ -253,7 +402,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
           }
         }
 
-        await config.storage.update(taskId, {
+        await updateTaskRecord(taskId, {
           status: "cancelled",
           progress: null,
         });
@@ -280,7 +429,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
             ? { ...tokenUsage, total }
             : { total: { input: 0, output: 0 } };
 
-        await config.storage.update(taskId, {
+        await updateTaskRecord(taskId, {
           status: "failed",
           error: err.message,
           tokenUsage: finalTokenUsage,
@@ -329,8 +478,8 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       if (meta?.deduplicationKey != null && meta.deduplicationKey !== "") {
         // Check both pending and running tasks to prevent duplicates
         const [pendingTasks, runningTasks] = await Promise.all([
-          config.storage.list({ type: name, status: "pending" }),
-          config.storage.list({ type: name, status: "running" }),
+          listTaskRecords({ type: name, status: "pending" }),
+          listTaskRecords({ type: name, status: "running" }),
         ]);
         const existingTasks = [...pendingTasks, ...runningTasks];
 
@@ -354,7 +503,7 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       }
 
       // Create task record
-      const taskId = await config.storage.create({
+      const taskId = await createTaskRecord({
         type: name,
         ...(meta?.title !== undefined ? { title: meta.title } : {}),
         input,
@@ -400,9 +549,9 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
       } else {
         // No AbortController found - task is orphaned (e.g., server restarted)
         // Check if the task is still marked as running/pending in DB and force-cancel it
-        const task = await config.storage.get(taskId);
+        const task = await getTaskRecord(taskId);
         if (task && (task.status === "running" || task.status === "pending")) {
-          await config.storage.update(taskId, { status: "cancelled", progress: null });
+          await updateTaskRecord(taskId, { status: "cancelled", progress: null });
           logger.info({ taskId }, "Orphaned task force-cancelled in DB");
         } else {
           logger.warn(
@@ -414,19 +563,19 @@ export function createFlowEngine(config: FlowEngineConfig): FlowEngine {
     },
 
     async getStatus(taskId: string) {
-      return config.storage.get(taskId);
+      return getTaskRecord(taskId);
     },
 
     async listTasks(filter?: TaskFilter) {
-      return config.storage.list(filter);
+      return listTaskRecords(filter);
     },
 
     async getRunningTasks() {
-      return config.storage.list({ status: "running" });
+      return listTaskRecords({ status: "running" });
     },
 
     async getMetrics(): Promise<TaskMetrics> {
-      const tasks = await config.storage.list();
+      const tasks = await listTaskRecords();
       return {
         executionTime: 0, // aggregated separately
         queueDepth: calculateQueueDepth(tasks),

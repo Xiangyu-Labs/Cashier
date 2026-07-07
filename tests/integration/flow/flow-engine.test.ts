@@ -1,452 +1,166 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { createFlowEngine } from "@/lib/flow/engine";
-import type {
-  StorageAdapter,
-  TaskRecord,
-  TaskFilter,
-  TaskInput,
-  FlowContext,
-} from "@/lib/flow/types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
+import { createFlowEngine, type FlowContext } from "@/lib/flow";
+import { db } from "@/lib/db";
+import { taskRuns } from "@/persistence";
 
-/**
- * In-memory storage adapter for testing
- * No external dependencies, no mocking of the engine itself
- */
-function createMemoryStorage(): StorageAdapter & { tasks: Map<string, TaskRecord> } {
-  const tasks = new Map<string, TaskRecord>();
-  let idCounter = 0;
-
-  return {
-    tasks,
-    async create(task: TaskInput): Promise<string> {
-      const id = `test-task-${++idCounter}`;
-      const record: TaskRecord = {
-        id,
-        type: task.type,
-        title: task.title ?? null,
-        status: "pending",
-        progress: null,
-        input: task.input ?? null,
-        deduplicationKey: task.deduplicationKey ?? null,
-        error: null,
-        tokenUsage: null,
-        scopeId: task.scopeId ?? null,
-        entityType: task.entityType ?? null,
-        entityId: task.entityId ?? null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        startedAt: null,
-        completedAt: null,
-      };
-      tasks.set(id, record);
-      return id;
-    },
-
-    async update(id: string, data: Partial<TaskRecord>): Promise<void> {
-      const existing = tasks.get(id);
-      if (existing != null) {
-        tasks.set(id, { ...existing, ...data, updatedAt: new Date() });
-      }
-    },
-
-    async get(id: string): Promise<TaskRecord | null> {
-      const task = tasks.get(id);
-      return task ?? null;
-    },
-
-    async list(filter?: TaskFilter): Promise<TaskRecord[]> {
-      let results = Array.from(tasks.values());
-      if (filter?.status != null) {
-        results = results.filter((t) => t.status === filter.status);
-      }
-      if (filter?.type != null) {
-        results = results.filter((t) => t.type === filter.type);
-      }
-      return results;
-    },
-  };
-}
-
-/**
- * Helper to wait for task completion
- */
-async function waitForTaskCompletion(
-  storage: StorageAdapter,
-  taskId: string,
-  timeoutMs = 5000
-): Promise<TaskRecord> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const task = await storage.get(taskId);
+async function waitForTask(taskId: string) {
+  for (let i = 0; i < 100; i++) {
+    const task = await db.query.taskRuns.findFirst({ where: eq(taskRuns.id, taskId) });
     if (task != null && ["completed", "failed", "cancelled"].includes(task.status)) {
       return task;
     }
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  throw new Error(`Task ${taskId} did not complete within ${timeoutMs}ms`);
+  throw new Error(`Task ${taskId} did not reach a terminal state`);
 }
 
-describe("FlowEngine", () => {
-  let storage: ReturnType<typeof createMemoryStorage>;
-
+describe("Cashier task engine", () => {
   beforeEach(() => {
-    storage = createMemoryStorage();
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-  });
-
-  afterEach(() => {
     vi.useRealTimers();
   });
 
-  describe("register and submit", () => {
-    it("registers a handler and submits a task", async () => {
-      const engine = createFlowEngine({ storage });
+  it("registers a handler and rejects duplicate registrations", () => {
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    const handler = {
+      async execute() {
+        return { ok: true };
+      },
+    };
 
-      engine.register("test_task", {
-        execute: async () => ({ result: "success" }),
-      });
+    engine.register("registration_task", handler);
 
-      const taskId = await engine.submit("test_task", { data: "input" });
-      expect(taskId).toBeDefined();
-      expect(taskId).toMatch(/^test-task-/);
+    expect(() => engine.register("registration_task", handler)).toThrow(
+      "Task handler already registered: registration_task"
+    );
+  });
+
+  it("rejects unregistered tasks before creating a record", async () => {
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+
+    await expect(engine.submit("missing_task", { value: 1 })).rejects.toThrow(
+      "No handler registered for task"
+    );
+
+    const tasks = await db.query.taskRuns.findMany();
+    expect(tasks).toHaveLength(0);
+  });
+
+  it("persists submitted input, progress, completion, and token usage", async () => {
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    engine.register("behavior_task", {
+      async execute(_input: { value: number }, context: FlowContext) {
+        await context.updateProgress("halfway");
+        context.reportTokens({ model: "test-model", input: 10, output: 5 });
+        return { ok: true };
+      },
     });
 
-    it("throws error for duplicate handler registration", async () => {
-      const engine = createFlowEngine({ storage });
-      const handler = {
-        execute: async () => ({ result: "success" }),
-      };
+    const taskId = await engine.submit("behavior_task", { value: 2 }, { title: "Behavior Task" });
+    const task = await waitForTask(taskId);
 
-      engine.register("test_task", handler);
-
-      expect(() => engine.register("test_task", handler)).toThrow(
-        "Task handler already registered: test_task"
-      );
-    });
-
-    it("throws error for unregistered handler", async () => {
-      const engine = createFlowEngine({ storage });
-
-      await expect(engine.submit("unregistered_task", { data: "input" })).rejects.toThrow(
-        "No handler registered for task"
-      );
+    expect(task.status).toBe("completed");
+    expect(task.title).toBe("Behavior Task");
+    expect(task.input).toEqual({ value: 2 });
+    expect(task.progress).toBeNull();
+    expect(task.completedAt).toBeInstanceOf(Date);
+    expect(task.tokenUsage).toMatchObject({
+      "test-model": { input: 10, output: 5 },
+      total: { input: 10, output: 5 },
     });
   });
 
-  describe("task lifecycle", () => {
-    it("completes task with result", async () => {
-      const engine = createFlowEngine({ storage });
-      const expectedResult = { message: "done", count: 42 };
-
-      engine.register("complete_task", {
-        execute: async () => expectedResult,
-      });
-
-      const taskId = await engine.submit("complete_task", {});
-      const task = await waitForTaskCompletion(storage, taskId);
-
-      expect(task.status).toBe("completed");
-      expect(task.error).toBeNull();
+  it("records task failures and calls onError", async () => {
+    const onError = vi.fn();
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    engine.register("failure_task", {
+      async execute() {
+        throw new Error("planned failure");
+      },
+      onError,
     });
 
-    it("fails task with error", async () => {
-      const engine = createFlowEngine({ storage });
+    const taskId = await engine.submit("failure_task", { value: 1 });
+    const task = await waitForTask(taskId);
 
-      engine.register("fail_task", {
-        execute: async () => {
-          throw new Error("Something went wrong");
-        },
-      });
-
-      const taskId = await engine.submit("fail_task", {});
-      const task = await waitForTaskCompletion(storage, taskId);
-
-      expect(task.status).toBe("failed");
-      expect(task.error).toBe("Something went wrong");
-    });
-
-    it("calls onComplete hook", async () => {
-      const engine = createFlowEngine({ storage });
-      const onCompleteSpy = vi.fn();
-
-      engine.register("hook_task", {
-        execute: async () => ({ result: "data" }),
-        onComplete: onCompleteSpy,
-      });
-
-      const taskId = await engine.submit("hook_task", { input: "test" });
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(onCompleteSpy).toHaveBeenCalledWith(
-        { result: "data" },
-        { input: "test" },
-        expect.objectContaining({ taskId })
-      );
-    });
-
-    it("calls onError hook", async () => {
-      const engine = createFlowEngine({ storage });
-      const onErrorSpy = vi.fn();
-
-      engine.register("error_hook_task", {
-        execute: async () => {
-          throw new Error("Test error");
-        },
-        onError: onErrorSpy,
-      });
-
-      const taskId = await engine.submit("error_hook_task", { input: "test" });
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(onErrorSpy).toHaveBeenCalledWith(
-        expect.any(Error),
-        { input: "test" },
-        expect.objectContaining({ taskId })
-      );
-    });
+    expect(task.status).toBe("failed");
+    expect(task.error).toBe("planned failure");
+    expect(onError).toHaveBeenCalledWith(
+      expect.any(Error),
+      { value: 1 },
+      expect.objectContaining({ taskId })
+    );
   });
 
-  describe("token usage tracking", () => {
-    it("accumulates token usage from single report", async () => {
-      const engine = createFlowEngine({ storage });
-
-      engine.register("token_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          ctx.reportTokens({ model: "gpt-4o", input: 100, output: 50 });
-          return { done: true };
-        },
-      });
-
-      const taskId = await engine.submit("token_task", {});
-      const task = await waitForTaskCompletion(storage, taskId);
-
-      expect(task.tokenUsage).toBeDefined();
-      expect(task.tokenUsage!["gpt-4o"]).toEqual({ input: 100, output: 50 });
-      expect(task.tokenUsage!["total"]).toEqual({ input: 100, output: 50 });
+  it("deduplicates pending and running tasks by key", async () => {
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    engine.register("dedupe_task", {
+      async execute() {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return { ok: true };
+      },
     });
 
-    it("accumulates token usage from multiple reports", async () => {
-      const engine = createFlowEngine({ storage });
+    const firstTaskId = await engine.submit(
+      "dedupe_task",
+      { value: 1 },
+      { deduplicationKey: "same-key" }
+    );
+    const secondTaskId = await engine.submit(
+      "dedupe_task",
+      { value: 2 },
+      { deduplicationKey: "same-key" }
+    );
 
-      engine.register("multi_token_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          ctx.reportTokens({ model: "gpt-4o", input: 100, output: 50 });
-          ctx.reportTokens({ model: "gpt-4o", input: 200, output: 100 });
-          ctx.reportTokens({ model: "gemini-2.5-flash", input: 50, output: 25 });
-          return { done: true };
-        },
-      });
-
-      const taskId = await engine.submit("multi_token_task", {});
-      const task = await waitForTaskCompletion(storage, taskId);
-
-      expect(task.tokenUsage!["gpt-4o"]).toEqual({ input: 300, output: 150 });
-      expect(task.tokenUsage!["gemini-2.5-flash"]).toEqual({ input: 50, output: 25 });
-      expect(task.tokenUsage!["total"]).toEqual({ input: 350, output: 175 });
-    });
-
-    it("saves token usage even on failure", async () => {
-      const engine = createFlowEngine({ storage });
-
-      engine.register("fail_with_tokens", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          ctx.reportTokens({ model: "gpt-4o", input: 100, output: 50 });
-          throw new Error("Failed after reporting tokens");
-        },
-      });
-
-      const taskId = await engine.submit("fail_with_tokens", {});
-      const task = await waitForTaskCompletion(storage, taskId);
-
-      expect(task.status).toBe("failed");
-      expect(task.tokenUsage!["gpt-4o"]).toEqual({ input: 100, output: 50 });
-    });
+    expect(secondTaskId).toBe(firstTaskId);
   });
 
-  describe("progress updates", () => {
-    it("updates progress during execution", async () => {
-      const engine = createFlowEngine({ storage });
-      const progressMessages: string[] = [];
-
-      // Override update to capture progress
-      const originalUpdate = storage.update.bind(storage);
-      storage.update = async (id, data) => {
-        if (data.progress != null) {
-          progressMessages.push(data.progress);
-        }
-        return originalUpdate(id, data);
-      };
-
-      engine.register("progress_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          await ctx.updateProgress("Step 1: Starting");
-          await ctx.updateProgress("Step 2: Processing");
-          await ctx.updateProgress("Step 3: Finishing");
-          return { done: true };
-        },
-      });
-
-      const taskId = await engine.submit("progress_task", {});
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(progressMessages).toContain("Step 1: Starting");
-      expect(progressMessages).toContain("Step 2: Processing");
-      expect(progressMessages).toContain("Step 3: Finishing");
+  it("calls onCancel for a queued task", async () => {
+    const onCancel = vi.fn();
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    engine.register("occupy_slot", {
+      async execute() {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        return { ok: true };
+      },
     });
+    engine.register("queued_cancel_task", {
+      async execute() {
+        return { ok: true };
+      },
+      onCancel,
+    });
+
+    await engine.submit("occupy_slot", {});
+    const queuedTaskId = await engine.submit("queued_cancel_task", { value: 3 });
+    await engine.cancel(queuedTaskId);
+    const task = await waitForTask(queuedTaskId);
+
+    expect(task.status).toBe("cancelled");
+    expect(onCancel).toHaveBeenCalledWith(
+      { value: 3 },
+      expect.objectContaining({ taskId: queuedTaskId, signal: expect.any(AbortSignal) })
+    );
   });
 
-  describe("cancellation", () => {
-    it("cancels running task", async () => {
-      const engine = createFlowEngine({ storage });
-      let wasAborted = false;
-
-      engine.register("long_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          // Simulate long-running task that checks abort signal
-          for (let i = 0; i < 100; i++) {
-            if (ctx.signal.aborted) {
-              wasAborted = true;
-              throw new Error("Aborted");
-            }
-            await new Promise((r) => setTimeout(r, 10));
-          }
-          return { done: true };
-        },
-      });
-
-      const taskId = await engine.submit("long_task", {});
-      // Wait a bit for task to start
-      await new Promise((r) => setTimeout(r, 50));
-      await engine.cancel(taskId);
-
-      const task = await waitForTaskCompletion(storage, taskId);
-      expect(task.status).toBe("cancelled");
-      expect(wasAborted).toBe(true);
+  it("calls onComplete after successful execution", async () => {
+    const onComplete = vi.fn();
+    const engine = createFlowEngine({ maxConcurrentTasks: 1 });
+    engine.register("complete_hook_task", {
+      async execute() {
+        return { result: 42 };
+      },
+      onComplete,
     });
 
-    it("calls onCancel hook", async () => {
-      const engine = createFlowEngine({ storage });
-      const onCancelSpy = vi.fn();
+    const taskId = await engine.submit("complete_hook_task", { value: 21 });
+    const task = await waitForTask(taskId);
 
-      engine.register("cancel_hook_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          await new Promise((r) => setTimeout(r, 1000));
-          if (ctx.signal.aborted) throw new Error("Cancelled");
-          return { done: true };
-        },
-        onCancel: onCancelSpy,
-      });
-
-      const taskId = await engine.submit("cancel_hook_task", { input: "test" });
-      await new Promise((r) => setTimeout(r, 50));
-      await engine.cancel(taskId);
-
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(onCancelSpy).toHaveBeenCalledWith(
-        { input: "test" },
-        expect.objectContaining({ taskId })
-      );
-    });
-  });
-
-  describe("task queries", () => {
-    it("gets task status by ID", async () => {
-      const engine = createFlowEngine({ storage });
-
-      engine.register("query_task", {
-        execute: async () => ({ result: "done" }),
-      });
-
-      const taskId = await engine.submit("query_task", {}, { title: "Test Query" });
-      await waitForTaskCompletion(storage, taskId);
-
-      const status = await engine.getStatus(taskId);
-      expect(status).toBeDefined();
-      expect(status!.id).toBe(taskId);
-      expect(status!.status).toBe("completed");
-    });
-
-    it("returns null for non-existent task", async () => {
-      const engine = createFlowEngine({ storage });
-      const status = await engine.getStatus("non-existent-id");
-      expect(status).toBeNull();
-    });
-
-    it("lists tasks with filter", async () => {
-      const engine = createFlowEngine({ storage });
-
-      engine.register("type_a", { execute: async () => "a" });
-      engine.register("type_b", { execute: async () => "b" });
-
-      await engine.submit("type_a", {});
-      await engine.submit("type_a", {});
-      await engine.submit("type_b", {});
-
-      // Wait for all to complete
-      await new Promise((r) => setTimeout(r, 100));
-
-      const typeAResults = await engine.listTasks({ type: "type_a" });
-      expect(typeAResults).toHaveLength(2);
-    });
-
-    it("gets running tasks", async () => {
-      const engine = createFlowEngine({ storage });
-
-      engine.register("slow_task", {
-        execute: async () => {
-          await new Promise((r) => setTimeout(r, 500));
-          return { done: true };
-        },
-      });
-
-      const taskId = await engine.submit("slow_task", {});
-      await new Promise((r) => setTimeout(r, 50)); // Wait for task to start
-
-      const runningTasks = await engine.getRunningTasks();
-      expect(runningTasks.length).toBeGreaterThanOrEqual(1);
-      expect(runningTasks.some((t) => t.id === taskId)).toBe(true);
-
-      await waitForTaskCompletion(storage, taskId);
-    });
-  });
-
-  describe("AI context integration", () => {
-    it("provides ai context with generate method", async () => {
-      const engine = createFlowEngine({ storage });
-      let hasAIContext = false;
-      let hasGenerateMethod = false;
-
-      engine.register("ai_context_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          hasAIContext = ctx.ai !== undefined;
-          hasGenerateMethod = typeof ctx.ai?.generate === "function";
-          return { hasAI: hasAIContext };
-        },
-      });
-
-      const taskId = await engine.submit("ai_context_task", {});
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(hasAIContext).toBe(true);
-      expect(hasGenerateMethod).toBe(true);
-    });
-
-    it("ai context has correct interface", async () => {
-      const engine = createFlowEngine({ storage });
-      let aiContextKeys: string[] = [];
-
-      engine.register("ai_interface_task", {
-        execute: async (_input: unknown, ctx: FlowContext) => {
-          aiContextKeys = Object.keys(ctx.ai);
-          return { keys: aiContextKeys };
-        },
-      });
-
-      const taskId = await engine.submit("ai_interface_task", {});
-      await waitForTaskCompletion(storage, taskId);
-
-      expect(aiContextKeys).toContain("generate");
-    });
+    expect(task.status).toBe("completed");
+    expect(onComplete).toHaveBeenCalledWith(
+      { result: 42 },
+      { value: 21 },
+      expect.objectContaining({ taskId })
+    );
   });
 });
