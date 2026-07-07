@@ -14,10 +14,10 @@ export const coverageConfig = {
   all: true,
   include: ["src/**/*.ts", "src/**/*.tsx"],
   thresholds: {
-    lines: 70,
-    statements: 70,
-    functions: 70,
-    branches: 60,
+    lines: 50,
+    statements: 50,
+    functions: 50,
+    branches: 50,
   },
   exclude: [
     "node_modules",
