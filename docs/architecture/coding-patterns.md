@@ -12,11 +12,9 @@
 
 ## 1. 模块边界
 
-- `application/` 是业务实现层；`server-actions/` 是登录态鉴权与输入校验边界；依赖方向只能是 `server-actions -> application`
-- UI 组件、客户端 hooks、route component 通过 `src/modules/{domain}/actions.ts` 调用 Server Actions，通过 `contracts.ts` 使用 DTO 类型
-- API v1 route handlers 必须复用 `src/app/api/v1/_shared/route-helper.ts`；它们可以直接调用具体 `application/queries/*` 或 `application/use-cases/*` 函数，因为鉴权来源是 service credential 而不是 session
-- 服务端组合模块可以直接调用具体 application 函数；不要为了满足跨模块调用而新增只转发的 `queries.ts` 或 `use-cases.ts` barrel
-- `actions.ts` 和 `contracts.ts` 是稳定公共入口；`tasks.ts` 只在集中注册任务时隐藏任务文件布局；不要新增无真实边界价值的 backend barrel
+- `src/modules/{domain}/actions.ts`、`queries.ts`、`use-cases.ts`、`tasks.ts` 只做顶层导出，不承载实现逻辑
+- `application/` 是业务实现层；`server-actions/` 是鉴权与输入校验边界；依赖方向只能是 `server-actions -> application`
+- 跨模块调用只通过模块顶层公共入口，不要 deep import `application/` 或 `server-actions/`
 - 输入 contract 归 `contract-schemas.ts` 所有；边界校验放在 schema 和 server action，不把重复校验散落到调用方
 
 ## 2. 服务端边界
