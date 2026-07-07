@@ -1,9 +1,38 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { isValidAuthEmailFrom } from "@/lib/utils/email";
-import { ENV_DEFAULTS } from "./defaults";
-
-export { ENV_DEFAULTS } from "./defaults";
+export const ENV_DEFAULTS = {
+  DATABASE_URL: "file:./data/sqlite.db",
+  OPENAI_BASE_URL: "https://api.openai.com/v1",
+  AUTH_URL: "http://localhost:3000",
+  LOCAL_STORAGE_PATH: "./data/uploads",
+  TZ: "Asia/Shanghai",
+  AI_MODEL_TEXT: "gpt-4o-mini",
+  AI_MODEL_VISION: "gpt-4o",
+  AI_MAX_RETRIES: "3",
+  AI_RETRY_DELAY_MS: "1000",
+  AI_TEMPERATURE: "0.3",
+  SOURCE_DOC_STALE_TIME_MS: "120000",
+  CURRENCY_STALE_TIME_MS: "14400000",
+  OTP_EXPIRES_SECONDS: "300",
+  OTP_LOCKOUT_MINUTES: "15",
+  OTP_MAX_ATTEMPTS: "5",
+  OTP_RESEND_COOLDOWN_SECONDS: "60",
+  AUTH_RATE_LIMIT_MAX: "10",
+  AUTH_RATE_LIMIT_WINDOW: "900",
+  API_RATE_LIMIT_PER_MINUTE: "60",
+  OTP_IP_MAX_ATTEMPTS_PER_HOUR: "10",
+  OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE: "5",
+  SESSION_MAX_AGE_DAYS: "14",
+  DISABLE_REGISTRATION: "false",
+  AUTH_EMAIL_FROM: "Cashier <noreply@example.com>",
+  MAX_TASK_WORKER: "10",
+  EXPORT_MAX_ENTRIES: "2000",
+  MAX_INPUT_PIXELS: "25000000",
+  MAX_IMAGE_QUALITY: "85",
+  LOG_LEVEL: "info",
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+} as const;
 
 function blankToUndefined(value: unknown): unknown {
   return typeof value === "string" && value.trim() === "" ? undefined : value;

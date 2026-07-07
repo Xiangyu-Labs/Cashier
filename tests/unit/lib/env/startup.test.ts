@@ -80,4 +80,39 @@ describe("validateStartupEnv", () => {
       })
     ).toThrow(/AUTH_EMAIL_FROM/);
   });
+
+  it("owns all app env defaults in the startup module", () => {
+    expect(Object.keys(ENV_DEFAULTS).sort()).toEqual([
+      "AI_MAX_RETRIES",
+      "AI_MODEL_TEXT",
+      "AI_MODEL_VISION",
+      "AI_RETRY_DELAY_MS",
+      "AI_TEMPERATURE",
+      "API_RATE_LIMIT_PER_MINUTE",
+      "AUTH_EMAIL_FROM",
+      "AUTH_RATE_LIMIT_MAX",
+      "AUTH_RATE_LIMIT_WINDOW",
+      "AUTH_URL",
+      "CURRENCY_STALE_TIME_MS",
+      "DATABASE_URL",
+      "DISABLE_REGISTRATION",
+      "EXPORT_MAX_ENTRIES",
+      "LOCAL_STORAGE_PATH",
+      "LOG_LEVEL",
+      "MAX_IMAGE_QUALITY",
+      "MAX_INPUT_PIXELS",
+      "MAX_TASK_WORKER",
+      "NEXT_PUBLIC_APP_URL",
+      "OPENAI_BASE_URL",
+      "OTP_EXPIRES_SECONDS",
+      "OTP_IP_MAX_ATTEMPTS_PER_HOUR",
+      "OTP_LOCKOUT_MINUTES",
+      "OTP_MAX_ATTEMPTS",
+      "OTP_RESEND_COOLDOWN_SECONDS",
+      "OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE",
+      "SESSION_MAX_AGE_DAYS",
+      "SOURCE_DOC_STALE_TIME_MS",
+      "TZ",
+    ]);
+  });
 });
