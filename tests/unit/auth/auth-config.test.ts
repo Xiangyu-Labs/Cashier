@@ -73,7 +73,7 @@ describe("auth runtime config", () => {
 
   it("registers only the email OTP credentials provider and no database adapter", async () => {
     process.env.DEV_AUTH_BYPASS = "false";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     vi.doUnmock("@/auth");
 
     await import("@/auth");
@@ -96,7 +96,7 @@ describe("auth runtime config", () => {
   });
 
   it("registers the dev provider only when local dev bypass is enabled", async () => {
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
     process.env.DEV_AUTH_BYPASS = "true";
     vi.doUnmock("@/auth");
 

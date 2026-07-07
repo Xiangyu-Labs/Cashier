@@ -34,7 +34,7 @@ describe("authenticateDevUser", () => {
     vi.resetModules();
 
     process.env.DEV_AUTH_BYPASS = "true";
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
 
     insertReturningMock.mockResolvedValue([
       {
@@ -60,7 +60,7 @@ describe("authenticateDevUser", () => {
   });
 
   it("rejects in production even when the flag is set", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     const { authenticateDevUser } = await import(
       "@/modules/auth/application/use-cases/authenticate-dev-user"
