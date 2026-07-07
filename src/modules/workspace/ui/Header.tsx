@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, AlertCircle, Clock, Timer, WalletCards } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Clock, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Ledger } from "@/modules/ledger/contracts";
 
@@ -17,29 +17,21 @@ interface HeaderProps {
   onOpenInput: () => void;
 }
 
-export function Header({ ledger, pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
+export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
   const t = useTranslations("LedgerPage");
   const tTaskQueue = useTranslations("TaskQueue");
-  const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
 
   return (
     <header className="sticky top-0 z-header border-b border-border bg-surface/80 backdrop-blur-md supports-[backdrop-filter]:bg-surface/60">
       <div className="mx-auto flex h-14 w-full max-w-md items-center justify-between px-4 transition-all duration-300 md:max-w-3xl lg:max-w-5xl">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface2 text-primary">
-            <WalletCards className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-sm font-semibold text-text">Cashier</div>
-            <div className="font-mono text-[11px] text-muted-foreground">{mainCurrency}</div>
-          </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onOpenTaskQueue}
             aria-label={tTaskQueue("taskQueue")}
             title={tTaskQueue("taskQueue")}
-            className="ml-1 h-9 min-w-9 gap-1.5 rounded-full px-2 text-xs font-medium hover:bg-surface2"
+            className="h-11 min-w-11 gap-1.5 rounded-full px-2 text-xs font-medium hover:bg-surface2 sm:h-9 sm:min-w-9"
           >
             {pendingStats.total > 0 ? (
               <>

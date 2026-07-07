@@ -224,7 +224,12 @@ export function EntryFilterPanel({
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[380px] p-0" align="start">
+        <PopoverContent
+          align="center"
+          collisionPadding={16}
+          sideOffset={10}
+          className="w-[min(420px,calc(100vw-2rem))] max-h-[calc(100svh-8rem)] overflow-y-auto p-0 sm:w-[420px]"
+        >
           <div className="p-4 space-y-4">
             {/* Search Section */}
             <div className="space-y-2">

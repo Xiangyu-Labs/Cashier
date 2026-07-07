@@ -20,7 +20,7 @@ function createLedger(overrides: Partial<Ledger> = {}): Ledger {
 }
 
 describe("Header", () => {
-  it("shows workspace context and accessible action names", () => {
+  it("keeps actions accessible without showing brand or currency text", () => {
     render(
       <Header
         ledger={createLedger()}
@@ -36,8 +36,8 @@ describe("Header", () => {
       />
     );
 
-    expect(screen.getByText("Cashier")).toBeTruthy();
-    expect(screen.getByText("MYR")).toBeTruthy();
+    expect(screen.queryByText("Cashier")).toBeNull();
+    expect(screen.queryByText("MYR")).toBeNull();
     expect(screen.getByRole("button", { name: "任务队列" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "记一笔" })).toBeTruthy();
   });
