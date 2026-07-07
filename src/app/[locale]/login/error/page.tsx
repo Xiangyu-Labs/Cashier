@@ -30,14 +30,8 @@ function getOwnMessage<T extends Record<string, ErrorMessage>>(
 
 // Auth.js error type mapping to translation keys
 const ERROR_MESSAGES = {
-  OAuthCallback: { title: "errorOAuthCallback", desc: "errorOAuthCallbackDesc" },
-  OAuthAccountNotLinked: {
-    title: "errorOAuthAccountNotLinked",
-    desc: "errorOAuthAccountNotLinkedDesc",
-  },
   AccessDenied: { title: "errorAccessDenied", desc: "errorAccessDeniedDesc" },
   Configuration: { title: "errorConfiguration", desc: "errorConfigurationDesc" },
-  // Default error
   Default: { title: "error", desc: "errorDesc" },
 } satisfies Record<string, ErrorMessage>;
 
