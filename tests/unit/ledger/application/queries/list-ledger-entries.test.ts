@@ -45,21 +45,6 @@ describe("listLedgerEntries", () => {
     });
   });
 
-  it("passes search param through to listLedgerEntryPage", async () => {
-    listLedgerEntryPageMock.mockResolvedValueOnce({
-      items: [{ id: "entry-1" }],
-      nextCursor: undefined,
-    });
-
-    await listLedgerEntries("ledger-1", { search: "coffee" });
-
-    expect(listLedgerEntryPageMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        filters: expect.objectContaining({ searchQuery: "coffee" }),
-      })
-    );
-  });
-
   it("throws validation errors for invalid params", async () => {
     await expect(
       listLedgerEntries("ledger-1", {

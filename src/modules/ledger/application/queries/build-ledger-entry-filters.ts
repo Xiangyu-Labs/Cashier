@@ -1,7 +1,6 @@
-import { and, eq, inArray, isNull, like, lt, or, sql, type SQL } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { and, eq, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { forLedger } from "@/lib/db/scoped-query";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { ledgerEntries } from "@/persistence";
 import {
   buildLedgerEntrySourceDocumentDateCondition,
   buildLedgerEntryVisibilityCondition,
@@ -15,7 +14,6 @@ export interface LedgerEntryFilterParams {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
-  searchQuery?: string | null;
 }
 
 export function buildLedgerEntryFilterConditions(
@@ -62,28 +60,6 @@ export function buildLedgerEntryFilterConditions(
 
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
     conditions.push(sql`CAST(${ledgerEntries.convertedAmount} AS REAL) <= ${filters.maxAmount}`);
-  }
-
-  if (filters.searchQuery != null && filters.searchQuery.trim() !== "") {
-    const q = `%${filters.searchQuery.trim()}%`;
-    const matchingDocIds = db
-      .select({ id: sourceDocuments.id })
-      .from(sourceDocuments)
-      .where(
-        and(
-          eq(sourceDocuments.ledgerId, ledgerId),
-          or(like(sourceDocuments.title, q), like(sourceDocuments.text, q))
-        )
-      );
-
-    const searchCondition = or(
-      like(ledgerEntries.itemName, q),
-      like(ledgerEntries.description, q),
-      inArray(ledgerEntries.sourceDocumentId, matchingDocIds)
-    );
-    if (searchCondition != null) {
-      conditions.push(searchCondition);
-    }
   }
 
   return conditions;
