@@ -4,11 +4,10 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 
 ## Features
 
-- **AI-Powered Entry**: Simply upload a receipt or type a natural language description, and Cashier will extract date, amount, merchants, and items.
-- **Multi-User Support**: Secure email-based authentication supporting multiple users with isolated data.
-- **Device Management**: Detailed session tracking with ability to revoke specific devices.
+- **AI-Powered Entry**: Upload a receipt or type a natural language description, and Cashier extracts dates, amounts, merchants, and items.
+- **Email OTP Authentication**: Secure email verification-code login with isolated user data.
 - **Multi-Currency**: Automatic currency conversion and management.
-- **Global Search**: Unified search across all your documents and transactions.
+- **Service Credentials**: Create scoped API credentials for automation against the current ledger.
 
 ## Tech Stack
 
