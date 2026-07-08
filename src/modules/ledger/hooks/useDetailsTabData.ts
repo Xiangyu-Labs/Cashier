@@ -36,7 +36,6 @@ interface UseDetailsTabDataProps {
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
-    search?: string | null;
   };
 }
 
@@ -71,7 +70,6 @@ export function useDetailsTabData({
           ...(advancedFilters.maxAmount !== undefined
             ? { maxAmount: advancedFilters.maxAmount }
             : {}),
-          ...(advancedFilters.search != null ? { search: advancedFilters.search } : {}),
         }
       ),
     enabled: true,
@@ -89,7 +87,6 @@ export function useDetailsTabData({
         ...(advancedFilters.currency != null ? { currency: advancedFilters.currency } : {}),
         ...(advancedFilters.minAmount != null ? { minAmount: advancedFilters.minAmount } : {}),
         ...(advancedFilters.maxAmount != null ? { maxAmount: advancedFilters.maxAmount } : {}),
-        ...(advancedFilters.search != null ? { search: advancedFilters.search } : {}),
         ...(pageParam !== undefined ? { cursor: pageParam } : {}),
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor,

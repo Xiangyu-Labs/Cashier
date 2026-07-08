@@ -3,7 +3,6 @@ export interface LedgerFilterParams {
   currency: string | null;
   minAmount: number | null;
   maxAmount: number | null;
-  search: string | null;
 }
 
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
@@ -18,7 +17,6 @@ export interface LedgerUrlUpdate {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
-  search?: string | null;
 }
 
 function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchParams {
@@ -67,7 +65,6 @@ export function readLedgerFilterParams(searchParams: SearchParamsLike): LedgerFi
     currency: searchParams.get("currency") ?? null,
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
-    search: searchParams.get("search") ?? null,
   };
 }
 
@@ -99,7 +96,8 @@ export function updateLedgerSearchParams(
   if ("currency" in updates) setOrDeleteStringParam(params, "currency", updates.currency);
   if ("minAmount" in updates) setOrDeleteNumberParam(params, "minAmount", updates.minAmount);
   if ("maxAmount" in updates) setOrDeleteNumberParam(params, "maxAmount", updates.maxAmount);
-  if ("search" in updates) setOrDeleteStringParam(params, "search", updates.search);
+
+  params.delete("search");
 
   return params;
 }

@@ -92,7 +92,6 @@ export function LedgerEntriesTab({
     },
     ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
     ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.search != null ? { search: filters.search } : {}),
   });
   const { groupedCompletedByDate, allSourceDocumentIds } = useGroupedEntries({
     completedGroups: groups.completed,
