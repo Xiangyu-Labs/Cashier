@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -20,6 +20,12 @@ describe("single-ledger product governance", () => {
     const source = read("src/modules/workspace/ui/LedgerPageClient.tsx");
 
     expect(source).not.toContain("allLedgers");
+  });
+
+  it("does not keep the old per-ledger redirect route", () => {
+    expect(existsSync(join(root, "src/app/[locale]/(protected)/ledger/[id]/page.tsx"))).toBe(
+      false
+    );
   });
 
   it("documents the product as single-ledger", () => {
