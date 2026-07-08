@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -7,7 +7,7 @@ import {
   type ListSourceDocumentCollectionInput,
 } from "@/modules/source-document/contract-schemas";
 import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import type { SourceDocumentCollectionDto } from "../../contracts";
 import {
   listEntriesBySourceDocumentIds,
@@ -21,7 +21,6 @@ export interface SourceDocumentCollectionParams {
   endDate?: string | null;
   minAmount?: number;
   maxAmount?: number;
-  search?: string | null;
   limit: number;
 }
 
@@ -34,29 +33,6 @@ export async function querySourceDocumentCollection(
     ...buildSourceDocumentDateConditions(params.startDate, params.endDate),
     ...buildSourceDocumentAmountConditions(ledgerId, params.minAmount, params.maxAmount),
   ];
-
-  if (params.search != null && params.search.trim() !== "") {
-    const q = `%${params.search.trim()}%`;
-    const entryMatchDocIds = db
-      .select({ sourceDocumentId: ledgerEntries.sourceDocumentId })
-      .from(ledgerEntries)
-      .where(
-        and(
-          eq(ledgerEntries.ledgerId, ledgerId),
-          or(like(ledgerEntries.itemName, q), like(ledgerEntries.description, q)),
-          sql`${ledgerEntries.sourceDocumentId} IS NOT NULL`
-        )
-      );
-
-    const searchCondition = or(
-      like(sourceDocuments.title, q),
-      like(sourceDocuments.text, q),
-      inArray(sourceDocuments.id, entryMatchDocIds)
-    );
-    if (searchCondition != null) {
-      conditions.push(searchCondition);
-    }
-  }
 
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -104,7 +80,6 @@ export async function getSourceDocumentCollection(
     endDate: parsed.data.endDate ?? null,
     ...(parsed.data.minAmount !== undefined ? { minAmount: parsed.data.minAmount } : {}),
     ...(parsed.data.maxAmount !== undefined ? { maxAmount: parsed.data.maxAmount } : {}),
-    ...(parsed.data.search !== undefined ? { search: parsed.data.search } : {}),
     limit: parsed.data.limit,
   };
 
