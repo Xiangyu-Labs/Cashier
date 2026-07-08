@@ -29,7 +29,6 @@ describe("queryKeys enhanced stats and source documents", () => {
       "2026-03-31",
       20,
       100,
-      null,
       1000,
     ]);
   });
