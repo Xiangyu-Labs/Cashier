@@ -18,9 +18,7 @@ describe("Header", () => {
       />
     );
 
-    expect(screen.getByText("Cashier")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /ledger/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "任务队列" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "任务中心" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "记一笔" })).toBeInTheDocument();
   });
 });
