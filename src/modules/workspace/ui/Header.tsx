@@ -22,27 +22,18 @@ export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderPro
   return (
     <header className="sticky top-0 z-header border-b border-border bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-3 sm:px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg text-sm font-semibold text-primary">
-            C
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-text">Cashier</div>
-            <div className="hidden text-xs text-muted-foreground sm:block">{t("singleBook")}</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenTaskQueue}
-            aria-label={tTaskQueue("taskQueue")}
-            title={tTaskQueue("taskQueue")}
-            className="h-11 min-w-11 gap-1.5 rounded-md px-2 text-xs font-medium hover:bg-surface2 sm:h-9 sm:min-w-9"
-          >
-            {pendingStats.total > 0 ? (
-              <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onOpenTaskQueue}
+          aria-label={tTaskQueue("taskQueue")}
+          title={tTaskQueue("taskQueue")}
+          className="h-11 max-w-[calc(100vw-5rem)] justify-start gap-2 rounded-md px-2.5 text-sm font-medium hover:bg-surface2 sm:h-9 sm:max-w-none"
+        >
+          {pendingStats.total > 0 ? (
+            <>
+              <span className="truncate">{tTaskQueue("taskQueue")}</span>
+              <span className="hidden items-center gap-1 sm:flex">
                 {pendingStats.pendingCount > 0 && (
                   <span className="inline-flex items-center gap-0.5 text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
@@ -67,22 +58,25 @@ export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderPro
                     <span>{pendingStats.anomalyCount}</span>
                   </span>
                 )}
-              </>
-            ) : (
+              </span>
+            </>
+          ) : (
+            <>
               <Timer className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            )}
-          </Button>
+              <span>{tTaskQueue("taskQueue")}</span>
+            </>
+          )}
+        </Button>
 
-          <Button
-            size="sm"
-            onClick={onOpenInput}
-            aria-label={t("newRecord")}
-            title={t("newRecord")}
-            className="h-11 w-11 rounded-md p-0 sm:h-9 sm:w-9"
-          >
-            <Plus className="h-5 w-5" aria-hidden="true" />
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={onOpenInput}
+          aria-label={t("newRecord")}
+          title={t("newRecord")}
+          className="h-11 w-11 rounded-md p-0 sm:h-9 sm:w-9"
+        >
+          <Plus className="h-5 w-5" aria-hidden="true" />
+        </Button>
       </div>
     </header>
   );
