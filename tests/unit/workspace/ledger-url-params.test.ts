@@ -87,7 +87,6 @@ describe("ledger-url-params", () => {
       currency: "EUR",
       minAmount: 100,
       maxAmount: 250,
-      search: null,
     });
   });
 
@@ -99,6 +98,18 @@ describe("ledger-url-params", () => {
 
     expect(params.get("minAmount")).toBe("100");
     expect(params.get("maxAmount")).toBe("250");
+  });
+
+  it("drops retired search params while preserving unrelated params", () => {
+    const params = updateLedgerSearchParams(
+      new URLSearchParams("search=coffee&period=thisMonth&foo=bar"),
+      { tab: "details" }
+    );
+
+    expect(params.get("search")).toBeNull();
+    expect(params.get("period")).toBe("thisMonth");
+    expect(params.get("foo")).toBe("bar");
+    expect(params.get("tab")).toBe("details");
   });
 
   it("builds URLs without introducing navigation side effects", () => {
