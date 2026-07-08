@@ -94,7 +94,6 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
   currency: optionalCurrencyCodeSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
-  search: z.string().max(200).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -104,7 +103,6 @@ export const ledgerStatsQuerySchema = strictObjectSchema({
   endDate: optionalDateStringSchema,
   categoryId: uuidSchema.optional(),
   currency: optionalCurrencyCodeSchema,
-  search: z.string().max(200).optional(),
 });
 
 export const parseCreateLedgerInput = (input: unknown) =>
