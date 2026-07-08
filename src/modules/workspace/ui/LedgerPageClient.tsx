@@ -172,7 +172,7 @@ export function LedgerPageClient({
       onOpenInput={() => setIsInputOpen(true)}
     >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <div className="flex justify-center md:justify-start">
+        <div className="flex justify-center px-2 md:justify-start">
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
