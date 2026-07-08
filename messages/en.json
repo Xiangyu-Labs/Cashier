@@ -64,8 +64,6 @@
     "confirm": "Confirm"
   },
   "EntryFilterPanel": {
-    "search": "Search",
-    "searchPlaceholder": "Search entries or receipts...",
     "filter": "Filter",
     "dateRange": "Date Range",
     "allTime": "All Time",
@@ -82,8 +80,8 @@
     "filteredTotal": "Total"
   },
   "TaskQueue": {
-    "taskQueue": "Task Queue",
-    "title": "Task Queue",
+    "taskQueue": "Task Center",
+    "title": "Task Center",
     "runningTasks": "{count} {count, plural, one {task} other {tasks}} processing",
     "noActiveTasks": "No active tasks",
     "noActiveTasksDesc": "New record processing will appear here",

@@ -64,8 +64,6 @@
     "confirm": "确认"
   },
   "EntryFilterPanel": {
-    "search": "搜索",
-    "searchPlaceholder": "搜索条目或收据...",
     "filter": "筛选",
     "dateRange": "时间范围",
     "allTime": "全部",
@@ -82,8 +80,8 @@
     "filteredTotal": "合计"
   },
   "TaskQueue": {
-    "taskQueue": "任务队列",
-    "title": "任务队列",
+    "taskQueue": "任务中心",
+    "title": "任务中心",
     "runningTasks": "{count} 个任务处理中",
     "noActiveTasks": "暂无活跃任务",
     "noActiveTasksDesc": "新的记录处理将显示在这里",
