@@ -50,11 +50,7 @@ describe("auth runtime config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    process.env.OIDC_ISSUER = "https://sso.cashier.test";
-    process.env.OIDC_CLIENT_ID = "cashier-web";
-    process.env.OIDC_CLIENT_SECRET = "top-secret";
-    process.env.NEXT_PUBLIC_OIDC_ENABLED = "true";
-    process.env.NEXT_PUBLIC_OIDC_BUTTON_NAME = "Cashier SSO";
+    delete process.env.DEV_AUTH_BYPASS;
   });
 
   it("preserves resolved auth pages", async () => {

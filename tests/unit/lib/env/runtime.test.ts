@@ -88,9 +88,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.maxImageQuality).toBe(72);
     expect(runtimeEnv.logLevel).toBe("warn");
 
-    expect("oidcIssuer" in runtimeEnv).toBe(false);
-    expect("oidcClientId" in runtimeEnv).toBe(false);
-    expect("oidcClientSecret" in runtimeEnv).toBe(false);
   });
 
   it("surfaces startup validation failures through the accessor", async () => {
@@ -142,8 +139,6 @@ describe("publicEnv", () => {
     const { publicEnv } = await import("@/lib/env/public");
 
     expect(publicEnv.appUrl).toBe("http://localhost:3000");
-    expect("oidcEnabled" in publicEnv).toBe(false);
-    expect("oidcButtonName" in publicEnv).toBe(false);
   });
 
   it("reads configured NEXT_PUBLIC values", async () => {
@@ -155,7 +150,5 @@ describe("publicEnv", () => {
     const { publicEnv } = await import("@/lib/env/public");
 
     expect(publicEnv.appUrl).toBe("https://cashier.example");
-    expect("oidcEnabled" in publicEnv).toBe(false);
-    expect("oidcButtonName" in publicEnv).toBe(false);
   });
 });

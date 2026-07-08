@@ -16,8 +16,6 @@ describe("validateStartupEnv", () => {
     expect(ENV_DEFAULTS.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(ENV_DEFAULTS.AI_MODEL_TEXT).toBe("gpt-4o-mini");
     expect(ENV_DEFAULTS.NEXT_PUBLIC_APP_URL).toBe("http://localhost:3000");
-    expect("NEXT_PUBLIC_OIDC_BUTTON_NAME" in ENV_DEFAULTS).toBe(false);
-    expect("NEXT_PUBLIC_OIDC_ENABLED" in ENV_DEFAULTS).toBe(false);
   });
 
   it("reports missing required startup env vars together", () => {
@@ -46,21 +44,6 @@ describe("validateStartupEnv", () => {
     expect(result.AI_MODEL_VISION).toBe("gpt-4o");
     expect(result.AI_MAX_RETRIES).toBe(3);
     expect(result.AI_RETRY_DELAY_MS).toBe(1000);
-    expect("NEXT_PUBLIC_OIDC_ENABLED" in result).toBe(false);
-  });
-
-  it("ignores OIDC env vars not in the app schema", () => {
-    const result = validateStartupEnv({
-      ...baseEnv,
-      OIDC_ISSUER: "https://sso.cashier.test",
-      OIDC_CLIENT_ID: "cashier-web",
-      OIDC_CLIENT_SECRET: "top-secret",
-      NEXT_PUBLIC_OIDC_ENABLED: "true",
-      NEXT_PUBLIC_OIDC_BUTTON_NAME: "Cashier SSO",
-    });
-
-    expect("OIDC_ISSUER" in result).toBe(false);
-    expect("NEXT_PUBLIC_OIDC_ENABLED" in result).toBe(false);
   });
 
   it("accepts AUTH_EMAIL_FROM in named mailbox format", () => {

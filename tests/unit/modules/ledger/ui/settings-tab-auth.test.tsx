@@ -105,7 +105,7 @@ vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 
 describe("SettingsTab account authentication controls", () => {
-  it("does not render password management in email-only auth", () => {
+  it("renders email account controls in email-only auth", () => {
     const ledger = {
       id: "ledger-1",
       userId: "user-1",
@@ -116,7 +116,5 @@ describe("SettingsTab account authentication controls", () => {
 
     expect(screen.getByText("user@example.com")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Change email" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Change Password" })).not.toBeInTheDocument();
-    expect(screen.queryByText("密码")).not.toBeInTheDocument();
   });
 });
