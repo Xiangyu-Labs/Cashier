@@ -80,3 +80,6 @@ chant.sh
 !/docs/operations/
 !/docs/operations/runbook.md
 !/docs/superpowers/
+
+# SDD task artifacts
+.superpowers/
