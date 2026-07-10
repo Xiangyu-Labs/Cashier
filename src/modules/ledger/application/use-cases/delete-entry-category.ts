@@ -1,8 +1,7 @@
-import { cancelTask } from "@/lib/tasks";
 import { forLedger } from "@/lib/db/scoped-query";
 import { db } from "@/lib/db";
-import { entryCategories, ledgerEntries, taskRuns } from "@/persistence";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { entryCategories, ledgerEntries } from "@/persistence";
+import { and, eq, isNull } from "drizzle-orm";
 
 export async function deleteEntryCategory(ledgerId: string, categoryId: string): Promise<boolean> {
   const q = forLedger(entryCategories, ledgerId);
@@ -13,23 +12,6 @@ export async function deleteEntryCategory(ledgerId: string, categoryId: string):
 
   if (existingCategory == null) {
     return false;
-  }
-
-  const pendingTasks = await db
-    .select({ id: taskRuns.id })
-    .from(taskRuns)
-    .where(
-      and(
-        eq(taskRuns.type, "generate_category_metadata"),
-        inArray(taskRuns.status, ["pending", "running"]),
-        isNull(taskRuns.deletedAt),
-        eq(taskRuns.entityType, "category"),
-        eq(taskRuns.entityId, categoryId)
-      )
-    );
-
-  for (const task of pendingTasks) {
-    await cancelTask(task.id);
   }
 
   db.transaction((tx) => {

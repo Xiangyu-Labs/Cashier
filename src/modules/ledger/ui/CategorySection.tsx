@@ -1,5 +1,5 @@
 "use client";
-import { Trash2, GripVertical, Loader2 } from "lucide-react";
+import { Trash2, GripVertical } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -17,7 +17,6 @@ interface CategorySectionProps {
   onDeleteCategory: (id: string) => void;
   onReorderCategories: (ids: string[]) => void;
   onCategoryCreated?: () => void;
-  onAutoCategorize?: () => Promise<{ submittedCount: number; skippedCount: number }>;
 }
 
 interface SortableItemProps {
@@ -37,12 +36,6 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
     transition,
   };
 
-  const isGenerating =
-    category.icon == null ||
-    category.icon === "" ||
-    category.description == null ||
-    category.description === "";
-
   return (
     <div
       ref={setNodeRef}
@@ -54,14 +47,10 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
       </div>
 
       <div className="flex w-8 justify-center">
-        {isGenerating ? (
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        ) : (
-          <IconPicker
-            value={category.icon}
-            onChange={(icon) => onUpdateCategory(category.id, { icon })}
-          />
-        )}
+        <IconPicker
+          value={category.icon}
+          onChange={(icon) => onUpdateCategory(category.id, { icon })}
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -81,17 +70,13 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
             <span className="animate-pulse text-[10px] font-normal text-muted">{t("saving")}</span>
           )}
         </div>
-        {isGenerating ? (
-          <div className="animate-pulse text-xs text-primary">{t("generating")}</div>
-        ) : (
-          <EditableField
-            value={category.description ?? ""}
-            onChange={(description) => onUpdateCategory(category.id, { description })}
-            placeholder={t("categoryDescription")}
-            displayClassName="text-xs text-[var(--muted)]"
-            inputClassName="text-xs"
-          />
-        )}
+        <EditableField
+          value={category.description ?? ""}
+          onChange={(description) => onUpdateCategory(category.id, { description })}
+          placeholder={t("categoryDescription")}
+          displayClassName="text-xs text-[var(--muted)]"
+          inputClassName="text-xs"
+        />
       </div>
 
       <div className="opacity-0 transition-opacity group-hover:opacity-100">
@@ -114,7 +99,6 @@ export function CategorySection({
   onDeleteCategory,
   onReorderCategories,
   onCategoryCreated,
-  onAutoCategorize: _onAutoCategorize,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const {

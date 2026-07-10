@@ -68,10 +68,6 @@ vi.mock("@/modules/ledger/application/services/recalculate-entries-converted-amo
 vi.mock("@/modules/ledger/application/use-cases/reorder-entry-categories", () => ({
   reorderEntryCategories: vi.fn(),
 }));
-vi.mock("@/modules/ledger/application/use-cases/submit-categorize-tasks", () => ({
-  submitAutoCategorize: vi.fn(),
-  submitBatchCategorize: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/update-entry-category", () => ({
   updateEntryCategory: vi.fn(),
 }));

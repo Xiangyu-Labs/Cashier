@@ -51,7 +51,6 @@ vi.mock("@/modules/ledger/hooks", () => ({
     updateLedgerMutation: { mutate: vi.fn() },
     isPending: false,
   }),
-  useAutoCategorizeMutation: () => ({ mutateAsync: vi.fn() }),
   useCategoryMutations: () => ({
     createCategory: { mutate: vi.fn() },
     updateCategory: { mutate: vi.fn() },

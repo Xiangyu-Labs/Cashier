@@ -58,8 +58,6 @@ export const dbUnitFiles = [
   "tests/unit/ledger/application/queries/list-service-credentials.test.ts",
   "tests/unit/ledger/application/services/authenticate-service-credential.test.ts",
   "tests/unit/ledger/application/services/resolve-ledger-for-service-credential.test.ts",
-  "tests/unit/ledger/application/tasks/categorize-entry.test.ts",
-  "tests/unit/ledger/application/tasks/generate-category-metadata.test.ts",
   "tests/unit/ledger/application/use-cases/create-default-ledger.test.ts",
   "tests/unit/ledger/server/actions/delete.test.ts",
   "tests/unit/lib/auth-actions.test.ts",
@@ -101,28 +99,6 @@ export const unitProjects = [
       setupFiles: ["./tests/setup.ts"],
       maxWorkers: "50%",
       testTimeout: 30000,
-    },
-  }),
-];
-
-export const smokeProjects = [
-  defineProject({
-    resolve: {
-      alias: resolveAliases,
-    },
-    test: {
-      ...sharedProjectTestConfig,
-      name: "smoke",
-      sequence: {
-        groupOrder: 5,
-      },
-      include: ["tests/smoke/**/*.test.ts"],
-      exclude: defaultProjectExcludes,
-      environment: "node",
-      setupFiles: ["./tests/smoke/setup.ts"],
-      fileParallelism: false,
-      maxWorkers: 1,
-      testTimeout: 90_000,
     },
   }),
 ];

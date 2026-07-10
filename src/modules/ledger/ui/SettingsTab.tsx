@@ -12,7 +12,6 @@ import { SettingsDangerActions } from "./settings/SettingsDangerActions";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
-  useAutoCategorizeMutation,
   useCategoryMutations,
   useCredentialMutations,
   useLedgerSettings,
@@ -82,7 +81,6 @@ export function SettingsTab({
   } = useCategoryMutations(ledgerId, categories);
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
-  const autoCategorizeMutation = useAutoCategorizeMutation(ledgerId);
 
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
@@ -163,7 +161,6 @@ export function SettingsTab({
               onDeleteCategory={(id) => deleteCategory.mutate(id)}
               onReorderCategories={(ids) => reorderCategories.mutate(ids)}
               onCategoryCreated={categoryCreatedTrigger}
-              onAutoCategorize={() => autoCategorizeMutation.mutateAsync()}
             />
           )}
         </SettingsSection>

@@ -4,7 +4,6 @@ import type { EntryCategoryDto } from "@/modules/ledger/contracts";
 import { mapEntryCategoryDto } from "@/modules/ledger/mappers";
 import { entryCategories } from "@/persistence";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { submitCategoryMetadataTaskIfNeeded } from "@/modules/ledger/application/services/category-metadata-task";
 
 interface CreateEntryCategoryInput {
   name: string;
@@ -40,14 +39,6 @@ export async function createEntryCategory(
   if (createdCategory == null) {
     throw new AppError("Failed to create entry category", "ENTRY_CATEGORY_CREATION_FAILED");
   }
-
-  await submitCategoryMetadataTaskIfNeeded({
-    ledgerId,
-    categoryId: createdCategory.id,
-    categoryName: createdCategory.name,
-    ...(data.icon !== undefined ? { icon: data.icon } : {}),
-    ...(data.description !== undefined ? { description: data.description } : {}),
-  });
 
   return mapEntryCategoryDto(createdCategory);
 }

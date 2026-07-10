@@ -39,28 +39,14 @@ export async function registerAllTasks(engine: TaskRuntime): Promise<void> {
       return;
     }
 
-    const [
-      { parseSourceDocumentTaskDefinition },
-      { generateCategoryMetadataTaskDefinition, categorizeEntryTaskDefinition },
-    ] = await Promise.all([
-      import("@/modules/source-document/tasks"),
-      import("@/modules/ledger/tasks"),
-    ]);
+    const { parseSourceDocumentTaskDefinition } = await import(
+      "@/modules/source-document/tasks"
+    );
 
     registerTaskIfNeeded(
       engine,
       parseSourceDocumentTaskDefinition.type,
       parseSourceDocumentTaskDefinition.handler
-    );
-    registerTaskIfNeeded(
-      engine,
-      generateCategoryMetadataTaskDefinition.type,
-      generateCategoryMetadataTaskDefinition.handler
-    );
-    registerTaskIfNeeded(
-      engine,
-      categorizeEntryTaskDefinition.type,
-      categorizeEntryTaskDefinition.handler
     );
 
     registeredEngines.add(engine);

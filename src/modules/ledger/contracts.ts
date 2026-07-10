@@ -151,7 +151,4 @@ export interface ReorderEntryCategoriesResultDto {
   reorderedCount: number;
 }
 
-export interface CategorizeResult {
-  submittedCount: number;
-  skippedCount: number;
-}
+// CategorizeResult retired — auto-categorization has been removed

@@ -74,7 +74,6 @@ vi.mock("@/modules/ledger/hooks", () => ({
     createCredential: { mutateAsync: vi.fn() },
     deleteCredential: { mutate: vi.fn() },
   }),
-  useAutoCategorizeMutation: () => ({ mutateAsync: vi.fn() }),
 }));
 
 const ledger: Ledger = {
