@@ -9,7 +9,6 @@ export { getSourceDocumentLightAction } from "./server-actions/get-document-ligh
 export {
   batchUpdateSourceDocumentsAction,
   updateSourceDocumentAction,
-  updateSourceDocumentImagesAction,
 } from "./server-actions/update";
 export { deleteSourceDocumentAction } from "./server-actions/delete";
 export { createQuickEntryAction } from "./server-actions/quick-entry";

@@ -8,7 +8,7 @@ vi.mock("next-auth/react", () => ({
     data: {
       user: {
         id: "user-1",
-        email: "user@example.com",
+        email: "person@example.com",
         name: "User",
         image: null,
       },
@@ -64,12 +64,6 @@ vi.mock("@/modules/ledger/hooks", () => ({
   }),
 }));
 
-vi.mock("@/modules/auth/ui", () => ({
-  ChangeEmailForm: () => <button type="button">Change email</button>,
-  ClearDataForm: () => <button type="button">Clear data</button>,
-  DeleteAccountForm: () => <button type="button">Delete account</button>,
-}));
-
 vi.mock("@/modules/ledger/ui/CurrencySection", () => ({
   CurrencySection: () => <div>Currency section</div>,
 }));
@@ -104,7 +98,7 @@ vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 
 describe("SettingsTab account authentication controls", () => {
-  it("renders email account controls in email-only auth", () => {
+  it("renders email and sign-out, but not retired account mutations", () => {
     const ledger = {
       id: "ledger-1",
       userId: "user-1",
@@ -113,7 +107,13 @@ describe("SettingsTab account authentication controls", () => {
 
     render(<SettingsTab ledger={ledger} initialCategories={[]} ledgerId="ledger-1" />);
 
-    expect(screen.getByText("user@example.com")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Change email" })).toBeInTheDocument();
+    // Required: email and sign-out command
+    expect(screen.getAllByText("person@example.com").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /sign out|退出登录/i })).toBeInTheDocument();
+
+    // Retired commands must be absent
+    expect(screen.queryByRole("button", { name: /change email|修改邮箱/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /clear data|清空数据/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /delete account|删除账户/i })).not.toBeInTheDocument();
   });
 });

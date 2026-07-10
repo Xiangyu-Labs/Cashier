@@ -56,7 +56,6 @@ export function SourceDocumentInput({
       onRemoveImage={controller.removeImage}
       onImageOpen={controller.openImage}
       onImageClose={controller.closeImage}
-      onImageModalSave={controller.handleModalSave}
     />
   );
 }

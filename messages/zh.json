@@ -170,24 +170,6 @@
     "discard": "放弃",
     "saveAllSuccess": "已保存 {count} 处修改"
   },
-  "ImageEditor": {
-    "title": "编辑图片",
-    "crop": "裁剪",
-    "draw": "涂鸦",
-    "brushSize": "画笔大小",
-    "reset": "重置",
-    "cancel": "取消",
-    "save": "保存",
-    "cropHint": "调整裁剪框后，点击上方保存确认本次裁剪",
-    "drawHint": "在图片上涂抹后，点击上方保存确认本次涂鸦",
-    "idleHint": "请选择裁剪或涂鸦工具开始编辑",
-    "selectToolHint": "请选择上方工具开始编辑",
-    "pendingChangesTitle": "当前编辑尚未保存",
-    "pendingChangesSwitchDescription": "切换工具前，请先保存或放弃当前这次编辑。",
-    "pendingChangesCloseDescription": "关闭编辑器前，请先保存或放弃当前这次编辑。",
-    "continueEditing": "继续编辑",
-    "closeEditor": "关闭编辑器"
-  },
   "SourceDocumentInput": {
     "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
     "image": "图片",
@@ -198,8 +180,7 @@
     "retrySuccess": "重试已提交",
     "retryError": "重试失败",
     "entryDate": "日期（可选）",
-    "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。",
-    "editImage": "编辑图片"
+    "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"

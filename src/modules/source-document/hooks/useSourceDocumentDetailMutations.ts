@@ -58,7 +58,7 @@ export function useSourceDocumentDetailMutations({
 }: UseSourceDocumentDetailMutationsOptions) {
   const predicates = buildPredicates(ledgerId);
 
-  const { updateSourceDocMutation, updateSourceDocImagesMutation, deleteDocumentMutation } =
+  const { updateSourceDocMutation, deleteDocumentMutation } =
     useSourceDocumentRecordMutations({
       id,
       ledgerId,
@@ -79,8 +79,6 @@ export function useSourceDocumentDetailMutations({
   return {
     updateSourceDoc: async (data: { title?: string; entryDate?: string }) =>
       updateSourceDocMutation.mutateAsync(data),
-    updateImages: async (images: { data: string; mimeType: string }[]) =>
-      updateSourceDocImagesMutation.mutateAsync({ images }),
     updateEntry: async (entryId: string, data: Partial<EntryEditData>) =>
       updateEntryMutation.mutateAsync({ entryId, data }),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>

@@ -43,7 +43,6 @@ const imagesSchema = z
     }
   );
 
-export const sourceDocumentImagesInputSchema = imagesSchema;
 export const sourceDocumentIdSchema = uuidSchema;
 
 const sourceDocumentPayloadSchema = strictObjectSchema({

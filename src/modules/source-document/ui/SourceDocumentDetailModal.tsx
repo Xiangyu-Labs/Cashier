@@ -30,7 +30,6 @@ interface SourceDocumentDetailModalProps {
   open: boolean;
   onClose: () => void;
   onUpdateSourceDoc: (data: { title?: string; entryDate?: string }) => Promise<void>;
-  onUpdateImages: (images: { data: string; mimeType: string }[]) => Promise<void>;
   onUpdateEntry: (id: string, data: Partial<EntryEditData>) => Promise<void>;
   onBatchUpdate: (
     ids: string[],
@@ -57,7 +56,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   open,
   onClose,
   onUpdateSourceDoc,
-  onUpdateImages,
   onUpdateEntry,
   onBatchUpdate,
   onDeleteEntry: _onDeleteEntry,
@@ -243,7 +241,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               isSelectionMode={isSelectionMode}
               isLoadingImages={isLoadingImages}
               onSourceDocChange={handleSourceDocChange}
-              onUpdateImages={onUpdateImages}
               onEntryChange={handleEntryChange}
               onSelectEntry={handleSelectEntry}
               onSelectAllEntries={handleSelectAllEntries}
