@@ -9,7 +9,6 @@ import { type PeriodParams } from "@/lib/period-utils";
 import {
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateTaskQueue,
   queryKeys,
 } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -114,7 +113,6 @@ export function LedgerEntriesTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
     ]);
   }, [queryClient, ledgerId]);
   const handleToggleSelectionMode = useCallback(() => {

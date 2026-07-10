@@ -4,8 +4,6 @@ import { GET as entriesGET } from "@/app/api/v1/entries/route";
 import { GET as sourceDocumentsGET } from "@/app/api/v1/source-documents/route";
 import { GET as statsGET } from "@/app/api/v1/stats/route";
 import { GET as categoriesGET } from "@/app/api/v1/categories/route";
-import { GET as taskItemsGET } from "@/app/api/v1/task/items/route";
-import { GET as taskStatsGET } from "@/app/api/v1/task/stats/route";
 import * as rateLimitModule from "@/lib/ratelimit";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -390,128 +388,8 @@ describe("API v1 Query Endpoints", () => {
     });
   });
 
-  describe("GET /api/v1/task/items", () => {
-    it("should return task items with valid credentials", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
 
-      const response = await taskItemsGET(request);
-      expect(response.status).toBe(200);
 
-      const data = await response.json();
-      expect(Array.isArray(data.items)).toBe(true);
-      expect(data.items.some((item: { status: string }) => item.status === "pending")).toBe(true);
-      expect(data.items.some((item: { status: string }) => item.status === "running")).toBe(true);
-      expect(data.items.some((item: { status: string }) => item.status === "failed")).toBe(true);
-      expect(data.items.some((item: { kind: string }) => item.kind === "anomaly")).toBe(true);
-      expect(data.items.some((item: { status: string }) => item.status === "completed")).toBe(true);
-    });
-
-    it("should not include completed tasks for anomaly source documents", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      const response = await taskItemsGET(request);
-      expect(response.status).toBe(200);
-
-      const data = await response.json();
-      expect(
-        data.items.some((item: { title: string }) => item.title === "Completed Hidden Task")
-      ).toBe(false);
-    });
-
-    it("should return 401 without auth header", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`);
-
-      const response = await taskItemsGET(request);
-      expect(response.status).toBe(401);
-    });
-
-    it("should return 401 with invalid key", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
-        headers: { Authorization: "Bearer invalid_key" },
-      });
-
-      const response = await taskItemsGET(request);
-      expect(response.status).toBe(401);
-    });
-
-    it("should return 429 when rate limit is exceeded", async () => {
-      vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
-        success: false,
-        remaining: 0,
-        resetTime: Date.now(),
-      });
-
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/items`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      const response = await taskItemsGET(request);
-      expect(response.status).toBe(429);
-
-      const data = await response.json();
-      expect(data.error.code).toBe("RATE_LIMIT");
-    });
-  });
-
-  describe("GET /api/v1/task/stats", () => {
-    it("should return task stats with valid credentials", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      const response = await taskStatsGET(request);
-      expect(response.status).toBe(200);
-
-      const data = await response.json();
-      expect(data.stats.pendingCount).toBe(1);
-      expect(data.stats.runningCount).toBe(1);
-      expect(data.stats.failedCount).toBe(1);
-      expect(data.stats.completedCount).toBe(2);
-      expect(data.stats.anomalyCount).toBe(1);
-      expect(data.stats.total).toBe(4);
-      expect(data.stats.totalInputTokens).toBe(300);
-      expect(data.stats.totalOutputTokens).toBe(150);
-      expect(data.stats.avgTokensPerTask).toBe(225);
-    });
-
-    it("should return 401 without auth header", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`);
-
-      const response = await taskStatsGET(request);
-      expect(response.status).toBe(401);
-    });
-
-    it("should return 401 with invalid key", async () => {
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
-        headers: { Authorization: "Bearer invalid_key" },
-      });
-
-      const response = await taskStatsGET(request);
-      expect(response.status).toBe(401);
-    });
-
-    it("should return 429 when rate limit is exceeded", async () => {
-      vi.spyOn(rateLimitModule, "rateLimitApiV1").mockResolvedValue({
-        success: false,
-        remaining: 0,
-        resetTime: Date.now(),
-      });
-
-      const request = createMockRequest(`http://localhost:3000/api/v1/task/stats`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-
-      const response = await taskStatsGET(request);
-      expect(response.status).toBe(429);
-
-      const data = await response.json();
-      expect(data.error.code).toBe("RATE_LIMIT");
-    });
-  });
 });
 afterEach(() => {
   vi.restoreAllMocks();

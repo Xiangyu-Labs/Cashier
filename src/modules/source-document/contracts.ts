@@ -99,32 +99,5 @@ export interface BatchRetrySourceDocumentsResultDto {
   failedCount: number;
 }
 
-export type ProcessingTaskStatusDto = "pending" | "running" | "completed" | "failed" | "cancelled";
 
-export interface ProcessingTaskDto {
-  id: string;
-  type: string;
-  title: string;
-  input: unknown;
-  deduplicationKey: string | null;
-  scopeId: string | null;
-  entityType: string | null;
-  entityId: string | null;
-  status: ProcessingTaskStatusDto;
-  error: string | null;
-  progress: string | null;
-  tokenUsage: Record<string, { input?: number; output?: number } | undefined> | null;
-  createdAt: string;
-  updatedAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  deletedAt: string | null;
-}
 
-export interface ProcessingStatsDto {
-  totalTokens: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  taskCount: number;
-  averageTokensPerTask: number;
-}

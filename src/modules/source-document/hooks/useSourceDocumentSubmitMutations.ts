@@ -1,6 +1,6 @@
 "use client";
 
-import { invalidateSourceDocuments, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
+import { invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createSourceDocumentAction,
@@ -44,9 +44,6 @@ function invalidateSubmitQueries(
   ledgerId: string
 ) {
   fireAndForget(queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }), {
-    context: "SourceDocumentInput",
-  });
-  fireAndForget(queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }), {
     context: "SourceDocumentInput",
   });
 }
@@ -98,7 +95,7 @@ export function useSourceDocumentSubmitMutations({
     },
     successMessage: messages.retrySuccess,
     errorMessage: messages.retryError,
-    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateTaskQueue(ledgerId)],
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
     skipInvalidation: true,
     onOptimisticUpdate: async (queryClient, payload) => {
       const previousDocument =

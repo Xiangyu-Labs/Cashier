@@ -22,9 +22,6 @@ export function useAutoCategorizeMutation(ledgerId: string) {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.uncategorizedCount(ledgerId),
       });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.taskQueue(ledgerId),
-      });
     },
   });
 }

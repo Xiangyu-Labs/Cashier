@@ -6,7 +6,6 @@ import {
   invalidateLedgerSettings,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateTaskQueue,
   queryKeys,
 } from "@/lib/query-keys";
 
@@ -181,13 +180,6 @@ describe("queryKeys", () => {
     });
   });
 
-  describe("task keys", () => {
-    it("应该生成正确的task query keys", () => {
-      expect(queryKeys.processingTasks(ledgerId)).toEqual(["processingTasks", ledgerId]);
-      expect(queryKeys.taskQueue(ledgerId)).toEqual(["taskQueue", ledgerId]);
-    });
-  });
-
   describe("serviceCredentials keys", () => {
     it("应该生成正确的serviceCredentials query key", () => {
       expect(queryKeys.serviceCredentials(ledgerId)).toEqual(["serviceCredentials", ledgerId]);
@@ -290,7 +282,7 @@ describe("query invalidation helpers", () => {
         queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
       })
     ).toBe(true);
-    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.taskQueue(ledgerId) })).toBe(
+    expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
   });
@@ -316,16 +308,6 @@ describe("query invalidation helpers", () => {
       invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
     ).toBe(true);
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
-      false
-    );
-  });
-
-  it("matches task queue queries only", () => {
-    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.taskQueue(ledgerId) })).toBe(true);
-    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.processingTasks(ledgerId) })).toBe(
-      true
-    );
-    expect(invalidateTaskQueue(ledgerId)({ queryKey: queryKeys.sourceDocuments(ledgerId) })).toBe(
       false
     );
   });

@@ -6,7 +6,6 @@ import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateTaskQueue,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations";
 import {
@@ -27,7 +26,7 @@ export function useBatchEntryActions(ledgerId: string, clearSelection: () => voi
     successMessage: "", // Custom message based on result
     errorMessage: tCommon("error"),
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [invalidateTaskQueue(ledgerId)],
+    invalidatePredicates: [invalidateLedgerEntries(ledgerId)],
     onSuccessExtra: (result) => {
       if (result.submittedCount > 0) {
         toast.success(tBatch("aiCategorizeSubmitted", { count: result.submittedCount }));

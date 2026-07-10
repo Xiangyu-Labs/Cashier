@@ -6,7 +6,6 @@ import {
   invalidateLedgerSettings,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateTaskQueue,
 } from "@/lib/query-keys";
 import { toast } from "sonner";
 
@@ -22,7 +21,6 @@ function getDefaultLedgerPredicates(ledgerId: string): QueryPredicate[] {
     invalidateLedgerStats(ledgerId),
     invalidateLedgerSettings(ledgerId),
     invalidateCalendar(ledgerId),
-    invalidateTaskQueue(ledgerId),
   ];
 }
 

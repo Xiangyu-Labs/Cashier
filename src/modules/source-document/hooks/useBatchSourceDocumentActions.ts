@@ -6,7 +6,6 @@ import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateTaskQueue,
   matchSourceDocumentCollection,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -136,8 +135,8 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     successMessage: "",
     errorMessage: tCommon("error"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateTaskQueue(ledgerId)],
-    invalidatePredicates: [invalidateSourceDocuments(ledgerId), invalidateTaskQueue(ledgerId)],
+    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
+    invalidatePredicates: [invalidateSourceDocuments(ledgerId)],
     onSuccessExtra: (_data, ids) => {
       toast.success(tBatch("retrySubmitted", { count: ids.length }));
       clearSelection();

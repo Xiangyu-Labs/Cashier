@@ -13,7 +13,6 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
-  invalidateTaskQueue,
 } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
@@ -157,7 +156,6 @@ export function DetailsTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }),
     ]);
   }, [queryClient, ledgerId]);
 
