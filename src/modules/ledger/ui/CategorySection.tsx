@@ -1,5 +1,5 @@
 "use client";
-import { Trash2, GripVertical, Loader2, AlertTriangle } from "lucide-react";
+import { Trash2, GripVertical, Loader2 } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -95,13 +95,13 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
       </div>
 
       <div className="opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          onClick={onDelete}
-          className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
+          <button
+            onClick={onDelete}
+            className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
     </div>
   );
 }
@@ -142,13 +142,15 @@ export function CategorySection({
 
       <div className="mb-4 space-y-2">
         {uncategorizedCount > 0 && (
-          <div className="flex items-center gap-3 rounded-[var(--radius)] border border-warning/20 bg-warning/10 p-3">
+          <div className="flex items-center gap-3 rounded-[var(--radius)] border border-amber-500/20 bg-amber-500/10 p-3">
             <div className="flex w-8 justify-center">
-              <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+              <span className="text-amber-600 dark:text-amber-400">!</span>
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-warning">{t("uncategorized")}</div>
-              <div className="text-xs text-warning/80">
+              <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                {t("uncategorized")}
+              </div>
+              <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
                 {t("uncategorizedDesc", { count: uncategorizedCount })}
               </div>
             </div>

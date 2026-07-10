@@ -16,7 +16,6 @@ interface HeaderProps {
 }
 
 export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderProps) {
-  const t = useTranslations("LedgerPage");
   const tTaskQueue = useTranslations("TaskQueue");
 
   return (
@@ -26,9 +25,7 @@ export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderPro
           variant="ghost"
           size="sm"
           onClick={onOpenTaskQueue}
-          aria-label={tTaskQueue("taskQueue")}
-          title={tTaskQueue("taskQueue")}
-          className="h-11 max-w-[calc(100vw-5rem)] justify-start gap-2 rounded-md px-2.5 text-sm font-medium hover:bg-surface2 sm:h-9 sm:max-w-none"
+          className="h-9 max-w-[calc(100vw-5rem)] justify-start gap-2 rounded-md px-2.5 text-sm font-medium hover:bg-surface2 sm:max-w-none"
         >
           {pendingStats.total > 0 ? (
             <>
@@ -62,7 +59,7 @@ export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderPro
             </>
           ) : (
             <>
-              <Timer className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Timer className="h-4 w-4 text-muted-foreground" />
               <span>{tTaskQueue("taskQueue")}</span>
             </>
           )}
@@ -71,11 +68,9 @@ export function Header({ pendingStats, onOpenTaskQueue, onOpenInput }: HeaderPro
         <Button
           size="sm"
           onClick={onOpenInput}
-          aria-label={t("newRecord")}
-          title={t("newRecord")}
-          className="h-11 w-11 rounded-md p-0 sm:h-9 sm:w-9"
+          className="h-9 w-9 rounded-md p-0"
         >
-          <Plus className="h-5 w-5" aria-hidden="true" />
+          <Plus className="h-5 w-5" />
         </Button>
       </div>
     </header>

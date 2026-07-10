@@ -25,19 +25,19 @@ const colorClasses = {
     icon: "text-primary",
   },
   red: {
-    dot: "bg-danger",
-    text: "text-danger",
-    icon: "text-danger",
+    dot: "bg-red-500",
+    text: "text-red-500",
+    icon: "text-red-500",
   },
   amber: {
-    dot: "bg-warning",
-    text: "text-warning",
-    icon: "text-warning",
+    dot: "bg-amber-500",
+    text: "text-amber-600",
+    icon: "text-amber-600",
   },
   green: {
-    dot: "bg-success",
-    text: "text-success",
-    icon: "text-success",
+    dot: "bg-green-500",
+    text: "text-green-600",
+    icon: "text-green-600",
   },
 };
 

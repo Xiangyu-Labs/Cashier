@@ -24,15 +24,9 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
   return (
     <div className="relative">
       <button
-        type="button"
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        aria-label={
-          amount > 0
-            ? `${date} ${t("expense")}: ${formatCellAmount(amount)}`
-            : `${date} ${t("noConsumption")}`
-        }
         className={cn(
           "w-full aspect-square rounded-lg transition-all duration-150",
           "flex flex-col items-center justify-center gap-0.5",
@@ -40,7 +34,7 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
         )}
         style={{
           backgroundColor: getHeatmapColor(level),
-          minHeight: "44px",
+          minHeight: "40px",
         }}
       >
         {/* Day number */}

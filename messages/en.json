@@ -576,8 +576,6 @@
     "description": "AI-powered intelligent bookkeeping tool"
   },
   "StatsChart": {
-    "dataTable": "Chart data",
-    "date": "Date",
     "scaleAdjusted": "Scale adjusted",
     "expense": "Expense",
     "exceedsLimit": "(exceeds display limit)",

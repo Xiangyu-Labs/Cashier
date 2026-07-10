@@ -1,5 +1,4 @@
 "use client";
-import type { KeyboardEvent } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -86,13 +85,6 @@ export function StatsRanking({
               onCategoryClick(cat.id ?? "__uncategorized__");
             }
           };
-          const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              handleClick();
-            }
-          };
-
           return (
             <div
               key={idx}
@@ -102,14 +94,6 @@ export function StatsRanking({
                   "cursor-pointer hover:bg-surface2/50 rounded-lg -mx-2 px-2 py-1 transition-colors"
               )}
               onClick={handleClick}
-              onKeyDown={onCategoryClick ? handleKeyDown : undefined}
-              role={onCategoryClick ? "button" : undefined}
-              tabIndex={onCategoryClick ? 0 : undefined}
-              aria-label={
-                onCategoryClick
-                  ? `${cat.name} ${currencySymbol} ${cat.totalConverted.toFixed(2)}`
-                  : undefined
-              }
             >
               {/* Icon Circle */}
               <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-lg shrink-0 group-hover:bg-primary/10 transition-colors">

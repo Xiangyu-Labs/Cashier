@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Header } from "@/modules/workspace/ui/Header";
 
 describe("Header", () => {
-  it("shows product identity and global actions without ledger selection", () => {
+  it("shows task center and global actions without ledger selection", () => {
     render(
       <Header
         pendingStats={{
@@ -18,7 +18,9 @@ describe("Header", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: "任务中心" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "记一笔" })).toBeInTheDocument();
+    expect(screen.getByText("任务中心")).toBeVisible();
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(2);
   });
 });

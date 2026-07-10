@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
 import { type DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
-import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 
@@ -170,24 +169,7 @@ export function StatsChart({
   const formatAmount = (value: number) => formatCurrencyAmount(value, currencySymbol, locale);
 
   return (
-    <div className="w-full relative pt-6 pb-6 select-none">
-      <table className="sr-only" aria-label={t("dataTable")}>
-        <thead>
-          <tr>
-            <th>{t("date")}</th>
-            <th>{t("expense")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {chartPoints.map((point) => (
-            <tr key={point.fullDate}>
-              <td>{point.fullDate}</td>
-              <td>{formatAmount(point.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="relative h-52">
+    <div className="w-full h-52 relative pt-6 pb-6 select-none">
         {/* Outlier indicator */}
         {hasOutliers && (
           <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
@@ -267,23 +249,20 @@ export function StatsChart({
                 }}
               >
                 {/* Data Point */}
-                <button
-                  type="button"
+                <div
                   onMouseEnter={() => setHoveredIndex(i)}
                   onMouseLeave={() => setHoveredIndex(null)}
                   onClick={() => setHoveredIndex(isHovered ? null : i)}
-                  aria-label={`${displayDate} ${formatAmount(p.value)}`}
-                  className="relative flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg"
-                >
-                  <span
-                    className={cn(
-                      "h-2.5 w-2.5 rounded-full bg-bg transition-all duration-300",
+                  className={`
+                    w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
+                    transition-all duration-300 cursor-pointer
+                    ${
                       isCapped
-                        ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-1 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-danger'
+                        ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-danger'
                         : "border-2 border-primary hover:scale-125"
-                    )}
-                  />
-                </button>
+                    }
+                  `}
+                />
 
                 {/* Tooltip */}
                 {isHovered && (
@@ -329,7 +308,6 @@ export function StatsChart({
             );
           })}
         </div>
-      </div>
     </div>
   );
 }

@@ -10,11 +10,11 @@ export function StatusIcon({ status }: StatusIconProps) {
     case "running":
       return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />;
     case "completed":
-      return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
+      return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
     case "failed":
-      return <XCircle className="h-3.5 w-3.5 text-danger" />;
+      return <XCircle className="h-3.5 w-3.5 text-red-500" />;
     case "anomaly":
-      return <AlertTriangle className="h-3.5 w-3.5 text-warning" />;
+      return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
     case "pending":
     default:
       return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;

@@ -240,9 +240,8 @@ export function LedgerPageClient({
           <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
             <button
               onClick={() => setInputMode("ai")}
-              aria-pressed={inputMode === "ai"}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-2 py-2 text-sm font-medium transition-colors sm:min-h-8 sm:py-1.5",
+                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
                 inputMode === "ai"
                   ? "bg-surface text-text shadow-sm"
                   : "text-muted-foreground hover:text-text"
@@ -252,9 +251,8 @@ export function LedgerPageClient({
             </button>
             <button
               onClick={() => setInputMode("quick")}
-              aria-pressed={inputMode === "quick"}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-2 py-2 text-sm font-medium transition-colors sm:min-h-8 sm:py-1.5",
+                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
                 inputMode === "quick"
                   ? "bg-surface text-text shadow-sm"
                   : "text-muted-foreground hover:text-text"

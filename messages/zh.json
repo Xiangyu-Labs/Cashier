@@ -572,8 +572,6 @@
     "notes": "备注"
   },
   "StatsChart": {
-    "dataTable": "图表数据",
-    "date": "日期",
     "scaleAdjusted": "已调整显示比例",
     "expense": "支出",
     "exceedsLimit": "（超出显示上限）",

@@ -99,25 +99,20 @@ export function Calendar({
   };
 
   return (
-    <div className={cn("w-[320px] max-w-[calc(100vw-2rem)] p-3", className)}>
+    <div className={cn("w-[280px] p-3", className)}>
       {/* Shortcuts */}
       {showShortcuts && (
         <div className="grid grid-cols-3 gap-1 mb-3">
-          <Button variant="ghost" size="sm" className="h-10 text-xs sm:h-7" onClick={handleToday}>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleToday}>
             {t("today")}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-10 text-xs sm:h-7"
-            onClick={handleYesterday}
-          >
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleYesterday}>
             {t("yesterday")}
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 text-xs text-muted-foreground sm:h-7"
+            className="text-xs h-7 text-muted-foreground"
             onClick={handleClear}
           >
             {t("clear")}
@@ -127,12 +122,7 @@ export function Calendar({
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 sm:h-7 sm:w-7"
-          onClick={handlePrevMonth}
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrevMonth}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="font-semibold text-sm">
@@ -141,12 +131,7 @@ export function Calendar({
             month: format(viewDate, "M"),
           })}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 sm:h-7 sm:w-7"
-          onClick={handleNextMonth}
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNextMonth}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -176,9 +161,8 @@ export function Calendar({
               key={date.toISOString()}
               onClick={() => handleDateSelect(date)}
               disabled={disabled}
-              type="button"
               className={cn(
-                "flex h-10 w-full items-center justify-center rounded-md text-sm",
+                "h-8 w-8 rounded-md text-sm flex items-center justify-center",
                 "transition-colors relative",
                 "hover:bg-accent",
                 !isCurrentMonth && "text-muted-foreground/40",

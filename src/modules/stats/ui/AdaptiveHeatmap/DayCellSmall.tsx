@@ -5,6 +5,7 @@
 
 "use client";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { HeatmapLevel } from "../../types";
@@ -35,21 +36,13 @@ export function DayCellSmall({
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            type="button"
             onClick={onClick}
-            aria-label={
-              amount > 0
-                ? `${date} ${t("expense")}: ${formatCellAmount(amount, currency, locale)}, ${t("count", { count })}`
-                : `${date} ${t("noConsumption")}`
-            }
-            className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-md transition-colors sm:h-8 sm:w-8"
-          >
-            <span
-              aria-hidden="true"
-              className="h-4 w-4 rounded-sm sm:h-3 sm:w-3"
-              style={{ backgroundColor: getHeatmapColor(level) }}
-            />
-          </button>
+            className={cn(
+              "w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0",
+              "hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary"
+            )}
+            style={{ backgroundColor: getHeatmapColor(level) }}
+          />
         </TooltipTrigger>
         <TooltipContent side="top" align="center">
           <div className="font-medium">{date}</div>
