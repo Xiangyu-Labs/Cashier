@@ -5,7 +5,7 @@ echo "========================================"
 echo "  Cashier Application Startup"
 echo "========================================"
 echo "Environment: ${NODE_ENV:-production}"
-echo "Database: ${DATABASE_URL:-file:./data/sqlite.db}"
+echo "Database: $(echo "${DATABASE_URL:-file:./data/sqlite.db}" | sed 's|://[^:]*:.*@|://***:***@|')"
 echo "Storage: ${LOCAL_STORAGE_PATH:-./data/uploads}"
 echo "========================================"
 

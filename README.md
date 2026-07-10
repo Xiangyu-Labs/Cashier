@@ -81,6 +81,8 @@ docker compose up -d --build
 | `npm run docker:build` | Build production image only          |
 | `npm run docker:down`  | Stop and remove containers           |
 
+> **Note:** The Compose service uses `expose` (container-internal) rather than `ports` (host-facing). For production behind a reverse proxy (nginx, Caddy), the current setup is correct. For direct host access (local testing), add `ports: - "3000:3000"` to `docker-compose.yml`.
+
 ## Testing
 
 Tests use in-memory SQLite, no external database required.
