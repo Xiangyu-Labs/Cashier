@@ -288,7 +288,7 @@
     "automation": "自动化",
     "automationDesc": "这个账本的 API 凭证和后台处理能力。",
     "accountAndData": "账号与数据",
-    "accountAndDataDesc": "邮箱、退出登录和危险数据操作。",
+    "accountAndDataDesc": "邮箱管理和退出登录。",
     "accountAndSecurity": "账户与安全",
     "accountAndSecurityDesc": "管理邮箱和账户安全",
     "appearance": "外观",
@@ -547,15 +547,6 @@
     "activeNow": "当前在线",
     "unknownIp": "未知 IP",
     "unknownDevice": "未知设备"
-  },
-  "Account": {
-    "title": "账户管理",
-    "deleteAccount": "删除账户",
-    "deleteAccountDesc": "永久删除您的账户和所有数据。此操作无法撤销。",
-    "deleteConfirmTitle": "确认删除账户",
-    "deleteConfirmDesc": "您即将永久删除您的账户，包括所有账本、记录和设置。此操作无法撤销。请输入您的邮箱确认：",
-    "deleteConfirmPlaceholder": "输入您的邮箱确认",
-    "deleteSuccess": "账户已删除"
   },
   "Error": {
     "title": "应用错误",

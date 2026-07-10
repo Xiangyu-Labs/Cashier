@@ -288,7 +288,7 @@
     "automation": "Automation",
     "automationDesc": "API credentials and background processing controls for this book.",
     "accountAndData": "Account & data",
-    "accountAndDataDesc": "Email, sign out, and destructive data actions.",
+    "accountAndDataDesc": "Email management and sign out.",
     "accountAndSecurity": "Account & Security",
     "accountAndSecurityDesc": "Manage your email and account security",
     "appearance": "Appearance",
@@ -547,15 +547,6 @@
     "activeNow": "Active now",
     "unknownIp": "Unknown IP",
     "unknownDevice": "Unknown Device"
-  },
-  "Account": {
-    "title": "Account Management",
-    "deleteAccount": "Delete Account",
-    "deleteAccountDesc": "Permanently delete your account and all data. This action cannot be undone.",
-    "deleteConfirmTitle": "Confirm Account Deletion",
-    "deleteConfirmDesc": "You are about to permanently delete your account, including all ledgers, records, and settings. This cannot be undone. Enter your email to confirm:",
-    "deleteConfirmPlaceholder": "Enter your email to confirm",
-    "deleteSuccess": "Account deleted successfully"
   },
   "Error": {
     "title": "Application Error",
