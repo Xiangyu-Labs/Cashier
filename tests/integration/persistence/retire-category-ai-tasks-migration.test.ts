@@ -10,7 +10,6 @@ describe("retire category AI tasks migration", () => {
   const baseTime = 1_720_000_000_000; // Fixed timestamp for consistent assertions
 
   beforeEach(async () => {
-    const db = getTestDb();
     ledgerId = uuidv4();
   });
 

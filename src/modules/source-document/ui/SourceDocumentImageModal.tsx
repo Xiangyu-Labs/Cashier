@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -31,17 +31,22 @@ export function SourceDocumentImageModal({
   const hasImages = images.length > 0;
   const currentImage = hasImages ? images[currentIndex] : null;
 
-  useEffect(() => {
-    if (!open) return;
-    setCurrentIndex(Math.min(initialIndex, Math.max(0, images.length - 1)));
-  }, [images, initialIndex, open]);
+  const title =
+    !hasImages
+      ? ""
+      : images.length === 1
+        ? t("title")
+        : t("titleWithIndex", { current: currentIndex + 1, total: images.length });
+
+  // Reset navigation index when dialog opens with new images
+  if (open) {
+    const clampedIndex = Math.min(initialIndex, Math.max(0, images.length - 1));
+    if (currentIndex !== clampedIndex) {
+      setCurrentIndex(clampedIndex);
+    }
+  }
 
   if (!hasImages) return null;
-
-  const title = useMemo(() => {
-    if (images.length === 1) return t("title");
-    return t("titleWithIndex", { current: currentIndex + 1, total: images.length });
-  }, [currentIndex, images.length, t]);
 
   return (
     <Dialog

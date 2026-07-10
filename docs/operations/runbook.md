@@ -15,7 +15,6 @@
 - 数据库：`./data/sqlite.db`
 - 上传文件：`./data/uploads`
 - 本地环境变量：`./.env.local`
-- Docker 生产环境变量：`./.env`
 
 ### 关键脚本
 
@@ -152,66 +151,6 @@ npm run db:migrate
 
 不要直接在生产上依赖 `db:push` 作为常规迁移手段。
 
-## 5. Docker 生产部署
-
-### 环境文件
-
-生产 Compose 文件 `docker-compose.yml` 实际读取的是：
-
-```text
-.env
-```
-
-不是 `.env.production`。
-
-所以推荐这样准备：
-
-```bash
-cp .env.example .env
-```
-
-然后编辑 `.env`。
-
-### 启动
-
-```bash
-npm run docker:prod
-```
-
-或者：
-
-```bash
-docker compose up -d --build
-```
-
-### 生产容器行为
-
-生产镜像入口脚本 `docker-entrypoint.sh` 会自动执行：
-
-1. 创建数据库目录
-2. 创建上传目录
-3. 执行 `npm run db:migrate`
-4. 启动应用
-
-如果你明确不希望容器自动迁移，可设置：
-
-```bash
-SKIP_MIGRATIONS=true
-```
-
-### 卷挂载
-
-生产 Compose 默认挂载：
-
-```text
-./data:/app/data
-```
-
-这意味着：
-
-- 数据库和上传文件都保存在宿主机 `./data`
-- 重建容器不会丢失数据
-
 ## 6. 非 Docker 生产运行
 
 如果你不使用 Docker，可以按传统 Node 方式运行：
@@ -283,33 +222,3 @@ sqlite3 ./data/sqlite.db "SELECT * FROM __drizzle_migrations ORDER BY created_at
 
 本地开发直接看终端输出。
 
-Docker 生产环境：
-
-```bash
-docker compose logs -f
-```
-
-只看 app 服务：
-
-```bash
-docker compose logs -f app
-```
-
-## 9. 推荐的最小生产操作流程
-
-### 首次上线
-
-```bash
-cp .env.example .env
-# 编辑 .env
-docker compose up -d --build
-```
-
-### 例行升级
-
-```bash
-git pull
-docker compose up -d --build
-```
-
-由于生产入口脚本会自动执行 `npm run db:migrate`，一般不需要额外手工跑迁移。

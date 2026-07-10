@@ -4,7 +4,6 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -54,7 +53,6 @@ export function DetailsTab({
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
-  const tFilter = useTranslations("EntryFilterPanel");
   const _locale = useLocale();
   const queryClient = useQueryClient();
   const push = useModalStackStore((state) => state.push);

@@ -1,11 +1,8 @@
 import { db } from "@/lib/db";
 import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
 import {
-  whereSourceDocumentNotDeleted,
   whereSourceDocumentNotDeletedId,
 } from "@/modules/source-document/application/source-document-state";
-import { sourceDocuments } from "@/persistence";
-import { and, inArray } from "drizzle-orm";
 import {
   cancelActiveSourceDocumentTaskRuns,
   listRelatedSourceDocumentTaskRuns,
