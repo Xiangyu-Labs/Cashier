@@ -2,7 +2,7 @@
 import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { invalidateLedgerSettings, invalidateTaskQueue, queryKeys } from "@/lib/query-keys";
+import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   createEntryCategoryAction,
@@ -59,11 +59,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
 
       return { snapshots };
     },
-    onSettledExtra: (queryClient) => {
-      fireAndForget(queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }), {
-        context: "use-category-mutations",
-      });
-    },
   });
 
   const updateCategory = useLedgerMutation<
@@ -111,9 +106,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
         queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) }),
         { context: "use-category-mutations" }
       );
-      fireAndForget(queryClient.invalidateQueries({ predicate: invalidateTaskQueue(ledgerId) }), {
-        context: "use-category-mutations",
-      });
     },
   });
 

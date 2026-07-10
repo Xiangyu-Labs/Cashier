@@ -29,7 +29,6 @@ import {
   createLedgerEntryAction,
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-  batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
   getLedgerEntriesAction,
 } from "@/modules/ledger/actions";
@@ -289,55 +288,6 @@ describe("deleteLedgerEntryAction", () => {
       where: eq(ledgerEntries.id, entry.id),
     });
     expect(updated?.deletedAt).not.toBeNull();
-  });
-});
-
-describe("batchDeleteLedgerEntriesAction", () => {
-  let ledgerId: string;
-
-  beforeEach(async () => {
-    const db = getTestDb();
-    ledgerId = uuidv4();
-    await db.insert(ledgers).values({
-      id: ledgerId,
-      userId: TEST_USER_ID,
-
-      metadata: {},
-    });
-  });
-
-  it("soft-deletes multiple entries", async () => {
-    const db = getTestDb();
-    const doc = await seedDoc(db, ledgerId);
-    const ids: string[] = [];
-
-    for (let i = 0; i < 3; i++) {
-      const [e] = await db
-        .insert(ledgerEntries)
-        .values({
-          id: uuidv4(),
-          ledgerId,
-          sourceDocumentId: doc.id,
-          itemName: `Item ${i}`,
-          amount: "10.00",
-          currency: "CNY",
-        })
-        .returning();
-      expect(e).toBeDefined();
-      if (e === undefined) {
-        throw new Error("Expected ledger entry insert to return a row");
-      }
-      ids.push(e.id);
-    }
-
-    await batchDeleteLedgerEntriesAction(ledgerId, ids);
-
-    for (const id of ids) {
-      const entry = await db.query.ledgerEntries.findFirst({
-        where: eq(ledgerEntries.id, id),
-      });
-      expect(entry?.deletedAt).not.toBeNull();
-    }
   });
 });
 

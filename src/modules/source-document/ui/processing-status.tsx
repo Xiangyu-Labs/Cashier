@@ -11,24 +11,24 @@ interface ProcessingStatusProps {
 }
 
 export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
-  const t = useTranslations("TaskQueue");
+  const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
 
   const config = {
     queued: {
-      label: t("statusQueued"),
+      label: t("queued"),
       icon: Clock,
       colorClass: "text-muted-foreground",
       bgClass: "bg-muted-foreground",
     },
     processing: {
-      label: t("statusRunning"),
+      label: t("processing"),
       icon: Loader2,
       colorClass: "text-primary/70",
       bgClass: "bg-primary/70",
     },
     completed: {
-      label: t("statusCompleted"),
+      label: t("completed"),
       icon: CheckCircle2,
       colorClass: "text-primary",
       bgClass: "bg-primary",

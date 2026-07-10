@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createSourceDocumentAction,
   deleteSourceDocumentAction,
-  batchDeleteSourceDocumentsAction,
-  batchRetrySourceDocumentsAction,
   getPendingSourceDocumentsAction,
   getSourceDocumentCollectionAction,
   getSourceDocumentsAction,
@@ -15,7 +13,7 @@ import {
   sourceDocuments,
   ledgers,
 } from "@/persistence";
-import { eq, inArray, and, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 
@@ -289,101 +287,6 @@ describe("SourceDocument Actions", () => {
     entriesAfter.forEach((entry) => {
       expect(entry.deletedAt).not.toBeNull();
     });
-  });
-
-  it("should batch delete source documents", async () => {
-    // 1. Create 3 source docs
-    const res1 = await createSourceDocumentAction(testLedgerId, { text: "Doc 1" });
-    const res2 = await createSourceDocumentAction(testLedgerId, { text: "Doc 2" });
-    const res3 = await createSourceDocumentAction(testLedgerId, { text: "Doc 3" });
-
-    // 2. Batch Delete 1 and 2 - batchDeleteSourceDocumentsAction returns void in new format
-    const ids = [res1.sourceDocumentId!, res2.sourceDocumentId!];
-    await batchDeleteSourceDocumentsAction(testLedgerId, ids);
-
-    // 3. Verify
-    const db = getTestDb();
-    const docs = await db.query.sourceDocuments.findMany({
-      where: inArray(sourceDocuments.id, ids),
-    });
-    expect(docs).toHaveLength(2);
-    docs.forEach((d) => {
-      expect(d.status).toBe("deleted");
-      expect(d.deletedAt).not.toBeNull();
-    });
-
-    const retained = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, res3.sourceDocumentId!),
-    });
-    expect(retained).toBeDefined();
-  });
-
-  it("should batch retry source documents", async () => {
-    const db = getTestDb();
-
-    // 1. Manually create docs in anomaly/completed state to avoid initial background processing
-    const doc1 = firstItem(
-      await db
-        .insert(sourceDocuments)
-        .values({
-          ledgerId: testLedgerId,
-          text: "Retry 1",
-          status: "anomaly",
-          imageUrls: [],
-        })
-        .returning(),
-      "Expected first source document for batch retry test"
-    );
-
-    const doc2 = firstItem(
-      await db
-        .insert(sourceDocuments)
-        .values({
-          ledgerId: testLedgerId,
-          text: "Retry 2",
-          status: "anomaly",
-          imageUrls: [],
-        })
-        .returning(),
-      "Expected second source document for batch retry test"
-    );
-
-    // 2. Batch Retry
-    // Note: New approach = soft delete old docs + create new docs with new IDs
-    await batchRetrySourceDocumentsAction(testLedgerId, [doc1.id, doc2.id]);
-
-    // 3. Verify old docs are soft deleted
-    const oldDocs = await db.query.sourceDocuments.findMany({
-      where: and(
-        inArray(sourceDocuments.id, [doc1.id, doc2.id]),
-        isNull(sourceDocuments.deletedAt)
-      ),
-    });
-    expect(oldDocs).toHaveLength(0);
-
-    const deletedDocs = await db.query.sourceDocuments.findMany({
-      where: inArray(sourceDocuments.id, [doc1.id, doc2.id]),
-    });
-    deletedDocs.forEach((doc) => {
-      expect(doc.status).toBe("deleted");
-      expect(doc.deletedAt).not.toBeNull();
-    });
-
-    // 4. Verify new docs are created (status may be queued/processing due to background tasks)
-    // New docs have different IDs, same ledgerId, preserved text
-    const allDocs = await db.query.sourceDocuments.findMany({
-      where: eq(sourceDocuments.ledgerId, testLedgerId),
-    });
-    const newDocs = allDocs.filter((d) => d.id !== doc1.id && d.id !== doc2.id);
-    expect(newDocs).toHaveLength(2);
-    newDocs.forEach((d) => {
-      // Status could be queued or processing (if task started)
-      expect(["queued", "processing"]).toContain(d.status);
-      expect(d.deletedAt).toBeNull();
-    });
-
-    // Clean up any tasks that might have been spawned by batchRetry
-    await processAllPendingTasks();
   });
 
   it("should fetch ledger entries with relations when requested", async () => {

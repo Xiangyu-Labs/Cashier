@@ -1,7 +1,6 @@
 "use client";
 import { type QueryClient } from "@tanstack/react-query";
 import {
-  batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
   deleteLedgerEntryAction,
   updateLedgerEntryAction,
@@ -14,7 +13,6 @@ import type { EntryEditData } from "@/modules/source-document/types";
 import {
   type BatchEntryUpdateData,
   createSourceDocSnapshots,
-  removeBatchEntriesFromCaches,
   removeSingleEntryFromCaches,
   updateBatchEntriesInCaches,
   updateSingleEntryInCaches,
@@ -117,31 +115,9 @@ export function useSourceDocumentEntryMutations({
     onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
   });
 
-  const batchDeleteMutation = useLedgerMutation<void, string[]>(ledgerId, {
-    mutationFn: async (ids) => {
-      if (ledgerId == null || ledgerId === "") return;
-      await batchDeleteLedgerEntriesAction(ledgerId, ids);
-    },
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    ...(sourceDocumentAndEntriesPredicates !== null
-      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
-      : {}),
-    ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
-      : {}),
-    onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-      removeBatchEntriesFromCaches(queryClient, id, ledgerId, ids);
-      return { snapshots };
-    },
-    onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
-  });
-
   return {
     updateEntryMutation,
     batchUpdateMutation,
     deleteEntryMutation,
-    batchDeleteMutation,
   };
 }

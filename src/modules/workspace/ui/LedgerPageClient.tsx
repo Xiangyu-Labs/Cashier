@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   EntriesTabSkeleton,
@@ -21,7 +21,6 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
-import { useTaskQueue } from "@/modules/task-queue/ui";
 import { SourceDocumentInput, QuickEntryForm } from "@/modules/source-document/ui";
 import { AppShell } from "./AppShell";
 import { TabNavigation } from "./TabNavigation";
@@ -29,14 +28,6 @@ import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
-
-const TaskQueueModal = dynamic(
-  () =>
-    import("@/modules/task-queue/ui").then((module) => ({
-      default: module.TaskQueueModal,
-    })),
-  { ssr: false }
-);
 
 const ModalStackRenderer = dynamic(
   () =>
@@ -143,12 +134,8 @@ export function LedgerPageClient({
     setIsInputOpen,
     inputMode,
     setInputMode,
-    isPendingOpen,
-    setIsPendingOpen,
     handleInputDialogChange,
   } = useLedgerDialogState();
-
-  const { stats: pendingStats } = useTaskQueue(ledgerId);
 
   useLedgerPagePrefetching({
     activeTab,
@@ -166,11 +153,7 @@ export function LedgerPageClient({
   }
 
   return (
-    <AppShell
-      pendingStats={pendingStats}
-      onOpenTaskQueue={() => setIsPendingOpen(true)}
-      onOpenInput={() => setIsInputOpen(true)}
-    >
+    <AppShell onOpenInput={() => setIsInputOpen(true)}>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="flex justify-center px-2 md:justify-start">
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
@@ -277,7 +260,6 @@ export function LedgerPageClient({
         </DialogContent>
       </Dialog>
 
-      <TaskQueueModal ledgerId={ledgerId} open={isPendingOpen} onOpenChange={setIsPendingOpen} />
       <ModalStackRenderer categories={categories} />
     </AppShell>
   );

@@ -3,7 +3,6 @@ import { type QueryClient } from "@tanstack/react-query";
 import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
-  updateSourceDocumentImagesAction,
 } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
 import { fireAndForget } from "@/lib/safe-async";
@@ -82,52 +81,6 @@ export function useSourceDocumentRecordMutations({
     }
   );
 
-  const updateSourceDocImagesMutation = useLedgerMutation<
-    void,
-    { images: { data: string; mimeType: string }[] }
-  >(ledgerId, {
-    mutationFn: async ({ images }) => {
-      if (ledgerId == null || ledgerId === "") return;
-      await updateSourceDocumentImagesAction(ledgerId, id, images);
-    },
-    successMessage: tCommon("saveSuccess"),
-    errorMessage: tCommon("saveFailed"),
-    ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
-    ...(sourceDocumentSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentSummaryPredicates }
-      : {}),
-    onOptimisticUpdate: (queryClient, { images }) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-      const nextImageUrls = images.map((image) => image.data);
-
-      queryClient.setQueriesData(
-        { queryKey: queryKeys.sourceDocument(id) },
-        (old: SourceDocumentQueryData | undefined) =>
-          old ? { ...old, imageUrls: nextImageUrls } : old
-      );
-      queryClient.setQueriesData(
-        { queryKey: queryKeys.sourceDocumentLight(id) },
-        (old: SourceDocumentLightQueryData | undefined) =>
-          old ? { ...old, hasImages: nextImageUrls.length > 0 } : old
-      );
-
-      if (ledgerId != null && ledgerId !== "") {
-        updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) =>
-          doc.id === id
-            ? {
-                ...doc,
-                imageUrls: [],
-                hasImages: nextImageUrls.length > 0,
-              }
-            : doc
-        );
-      }
-
-      return { snapshots };
-    },
-    onSettledExtra: (queryClient) => invalidateDetailAndLight(queryClient, id),
-  });
-
   const deleteDocumentMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {
       if (ledgerId == null || ledgerId === "") return;
@@ -167,7 +120,6 @@ export function useSourceDocumentRecordMutations({
 
   return {
     updateSourceDocMutation,
-    updateSourceDocImagesMutation,
     deleteDocumentMutation,
   };
 }

@@ -80,10 +80,6 @@ export const queryKeys = {
   batchConvert: (cacheKey: string, targetCurrency: string) =>
     ["batchConvert", cacheKey, targetCurrency] as const,
 
-  // === Tasks ===
-  processingTasks: (ledgerId: string) => ["processingTasks", ledgerId] as const,
-  taskQueue: (ledgerId: string) => ["taskQueue", ledgerId] as const,
-
   // === Service Credentials ===
   serviceCredentials: (ledgerId: string) => ["serviceCredentials", ledgerId] as const,
 
@@ -180,20 +176,6 @@ export function invalidateCalendar(ledgerId: string): QueryPredicate {
   return (query) => {
     const key = query.queryKey;
     return Array.isArray(key) && key[0] === "calendar" && key[2] === ledgerId;
-  };
-}
-
-/**
- * Helper to match task queue / processing task queries for a ledger.
- */
-export function invalidateTaskQueue(ledgerId: string): QueryPredicate {
-  return (query) => {
-    const key = query.queryKey;
-    return (
-      Array.isArray(key) &&
-      ((key[0] === "taskQueue" && key[1] === ledgerId) ||
-        (key[0] === "processingTasks" && key[1] === ledgerId))
-    );
   };
 }
 

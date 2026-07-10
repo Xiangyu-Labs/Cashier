@@ -32,12 +32,6 @@ vi.mock("@/components/ui/pull-to-refresh", () => ({
   PullToRefresh: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/modules/auth/ui", () => ({
-  ChangeEmailForm: () => <button type="button">Change email</button>,
-  ClearDataForm: () => <button type="button">Clear data</button>,
-  DeleteAccountForm: () => <button type="button">Delete account</button>,
-}));
-
 vi.mock("@/modules/ledger/ui/CurrencySection", () => ({
   CurrencySection: () => <div>Currency section</div>,
 }));
@@ -74,7 +68,6 @@ vi.mock("@/modules/ledger/hooks", () => ({
     createCredential: { mutateAsync: vi.fn() },
     deleteCredential: { mutate: vi.fn() },
   }),
-  useAutoCategorizeMutation: () => ({ mutateAsync: vi.fn() }),
 }));
 
 const ledger: Ledger = {

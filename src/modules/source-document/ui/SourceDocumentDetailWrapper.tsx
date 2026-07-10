@@ -44,11 +44,9 @@ export function SourceDocumentDetailWrapper({
 
   const {
     updateSourceDoc,
-    updateImages,
     updateEntry,
     batchUpdate,
     deleteEntry,
-    batchDelete,
     deleteDocument,
   } = useSourceDocumentDetailMutations({
     id,
@@ -80,11 +78,9 @@ export function SourceDocumentDetailWrapper({
       open={open}
       onClose={onClose}
       onUpdateSourceDoc={updateSourceDoc}
-      onUpdateImages={updateImages}
       onUpdateEntry={updateEntry}
       onBatchUpdate={batchUpdate}
       onDeleteEntry={deleteEntry}
-      onBatchDelete={batchDelete}
       onDelete={deleteDocument}
     />
   );

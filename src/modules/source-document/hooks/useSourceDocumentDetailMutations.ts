@@ -58,7 +58,7 @@ export function useSourceDocumentDetailMutations({
 }: UseSourceDocumentDetailMutationsOptions) {
   const predicates = buildPredicates(ledgerId);
 
-  const { updateSourceDocMutation, updateSourceDocImagesMutation, deleteDocumentMutation } =
+  const { updateSourceDocMutation, deleteDocumentMutation } =
     useSourceDocumentRecordMutations({
       id,
       ledgerId,
@@ -68,7 +68,7 @@ export function useSourceDocumentDetailMutations({
       sourceDocumentEntriesSummaryPredicates: predicates.sourceDocumentEntriesSummaryPredicates,
     });
 
-  const { updateEntryMutation, batchUpdateMutation, deleteEntryMutation, batchDeleteMutation } =
+  const { updateEntryMutation, batchUpdateMutation, deleteEntryMutation } =
     useSourceDocumentEntryMutations({
       id,
       ledgerId,
@@ -79,14 +79,11 @@ export function useSourceDocumentDetailMutations({
   return {
     updateSourceDoc: async (data: { title?: string; entryDate?: string }) =>
       updateSourceDocMutation.mutateAsync(data),
-    updateImages: async (images: { data: string; mimeType: string }[]) =>
-      updateSourceDocImagesMutation.mutateAsync({ images }),
     updateEntry: async (entryId: string, data: Partial<EntryEditData>) =>
       updateEntryMutation.mutateAsync({ entryId, data }),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     deleteEntry: async (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
-    batchDelete: async (ids: string[]) => batchDeleteMutation.mutateAsync(ids),
     deleteDocument: async () => deleteDocumentMutation.mutateAsync(),
   };
 }

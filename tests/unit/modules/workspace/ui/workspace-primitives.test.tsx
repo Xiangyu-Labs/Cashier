@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EmptyState } from "@/modules/workspace/ui/EmptyState";
 import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
-import { BatchActionBar } from "@/modules/workspace/ui/BatchActionBar";
 
 describe("workspace primitives", () => {
   it("renders an accessible empty state with an optional action", () => {
@@ -18,21 +17,5 @@ describe("workspace primitives", () => {
 
     expect(screen.getByText("2026-07-07")).toBeInTheDocument();
     expect(screen.getByText("CNY 123.00")).toHaveClass("tabular-nums");
-  });
-
-  it("renders batch actions with selection count and disabled pending state", () => {
-    render(
-      <BatchActionBar
-        selectedCount={3}
-        selectedLabel="Selected 3"
-        onClear={vi.fn()}
-        actions={[
-          { label: "Delete", iconLabel: "Delete", onClick: vi.fn(), variant: "danger", pending: true },
-        ]}
-      />
-    );
-
-    expect(screen.getByText("Selected 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
   });
 });

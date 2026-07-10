@@ -28,9 +28,6 @@ vi.mock("@/modules/ledger/access", () => ({
   ) => handler,
 }));
 
-vi.mock("@/modules/ledger/application/use-cases/batch-delete-ledger-entries", () => ({
-  batchDeleteLedgerEntries: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
   batchUpdateLedgerEntries: vi.fn(),
   createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,

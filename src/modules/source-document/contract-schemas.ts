@@ -43,7 +43,6 @@ const imagesSchema = z
     }
   );
 
-export const sourceDocumentImagesInputSchema = imagesSchema;
 export const sourceDocumentIdSchema = uuidSchema;
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
@@ -107,13 +106,6 @@ export const createQuickEntryInputSchema = strictObjectSchema({
   entryDate: optionalDateStringSchema,
 });
 
-export const processingTasksQuerySchema = strictObjectSchema({
-  activeOnly: z.boolean().optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-});
-
-export const sourceDocumentIdsSchema = z.array(uuidSchema);
-
 function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -145,4 +137,5 @@ export type ListSourceDocumentCollectionInput = z.input<typeof sourceDocumentCol
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;
-export type ProcessingTasksQueryInput = z.infer<typeof processingTasksQuerySchema>;
+
+

@@ -30,7 +30,6 @@ describe("runtimeEnv", () => {
       AUTH_RATE_LIMIT_WINDOW: "600",
       AUTH_EMAIL_FROM: "Cashier <security@example.com>",
       DISABLE_REGISTRATION: "true",
-      EXPORT_MAX_ENTRIES: "5000",
       LOG_LEVEL: "warn",
       MAX_IMAGE_QUALITY: "72",
       MAX_INPUT_PIXELS: "123456",
@@ -83,7 +82,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.sessionMaxAgeDays).toBe(21);
     expect(runtimeEnv.disableRegistration).toBe(true);
     expect(runtimeEnv.maxTaskWorker).toBe(8);
-    expect(runtimeEnv.exportMaxEntries).toBe(5000);
     expect(runtimeEnv.maxInputPixels).toBe(123456);
     expect(runtimeEnv.maxImageQuality).toBe(72);
     expect(runtimeEnv.logLevel).toBe("warn");

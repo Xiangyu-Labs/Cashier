@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
-import { GET, POST } from "@/app/api/v1/source-documents/route";
+import { POST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { ledgers, serviceCredentials, sourceDocuments } from "@/persistence";
@@ -84,45 +84,5 @@ describe("API v1 source-documents route", () => {
       where: eq(sourceDocuments.id, data.sourceDocumentId),
     });
     expect(created?.ledgerId).toBe(ledgerId);
-  });
-
-  it("GET /api/v1/source-documents returns 200 for valid credential request", async () => {
-    const db = getTestDb();
-    const today = new Date().toISOString().split("T")[0];
-    await db.insert(sourceDocuments).values([
-      {
-        ledgerId,
-        text: "Completed route document",
-        status: "completed",
-        imageUrls: [],
-        entryDate: today,
-      },
-      {
-        ledgerId,
-        text: "Failed route document",
-        status: "failed",
-        imageUrls: [],
-        entryDate: today,
-      },
-    ]);
-
-    const request = new NextRequest(
-      "http://localhost/api/v1/source-documents?status=completed&limit=1",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${credentialKey}`,
-        },
-      }
-    );
-
-    const response = await GET(request);
-    expect(response.status).toBe(200);
-
-    const data = await response.json();
-    expect(Array.isArray(data.items)).toBe(true);
-    expect(data.items).toHaveLength(1);
-    expect(data.items[0]?.status).toBe("completed");
-    expect(data.items[0]?.text).toBeNull();
   });
 });

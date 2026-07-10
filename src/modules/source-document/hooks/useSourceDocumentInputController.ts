@@ -104,6 +104,5 @@ export function useSourceDocumentInputController({
     handleFileInputChange,
     handleTextareaPaste,
     handleSubmit,
-    handleModalSave: draft.handleModalSave,
   };
 }

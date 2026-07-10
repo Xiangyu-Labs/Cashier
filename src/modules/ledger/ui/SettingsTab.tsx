@@ -8,12 +8,9 @@ import { CategorySection } from "./CategorySection";
 import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
-import { SettingsDangerActions } from "./settings/SettingsDangerActions";
-import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
-  useAutoCategorizeMutation,
   useCategoryMutations,
   useCredentialMutations,
   useLedgerSettings,
@@ -26,7 +23,6 @@ import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
-import { ChangeEmailForm, ClearDataForm, DeleteAccountForm } from "@/modules/auth/ui";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -83,7 +79,6 @@ export function SettingsTab({
   } = useCategoryMutations(ledgerId, categories);
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
-  const autoCategorizeMutation = useAutoCategorizeMutation(ledgerId);
 
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
@@ -164,7 +159,6 @@ export function SettingsTab({
               onDeleteCategory={(id) => deleteCategory.mutate(id)}
               onReorderCategories={(ids) => reorderCategories.mutate(ids)}
               onCategoryCreated={categoryCreatedTrigger}
-              onAutoCategorize={() => autoCategorizeMutation.mutateAsync()}
             />
           )}
         </SettingsSection>
@@ -211,25 +205,8 @@ export function SettingsTab({
 
         <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
           <SettingsField title={ta("emailSection")} description={session?.user?.email ?? ""}>
-            <ChangeEmailForm currentEmail={session?.user?.email ?? ""} />
+            <span className="text-sm text-muted-foreground">{session?.user?.email ?? ""}</span>
           </SettingsField>
-          <ExportSection ledgerId={ledgerId} />
-          <SettingsDangerActions title={ta("dangerZone")} description={ta("dangerZoneDesc")}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h4 className="font-medium text-danger">{ta("clearDataTitle")}</h4>
-                <p className="text-sm text-muted-foreground">{ta("clearDataDesc")}</p>
-              </div>
-              <ClearDataForm currentEmail={session?.user?.email ?? ""} />
-            </div>
-            <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h4 className="font-medium text-danger">{ta("deleteTitle")}</h4>
-                <p className="text-sm text-muted-foreground">{ta("deleteDesc")}</p>
-              </div>
-              <DeleteAccountForm currentEmail={session?.user?.email ?? ""} />
-            </div>
-          </SettingsDangerActions>
           <SettingsField title={t("signOut")} description={t("signOutDesc")}>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}

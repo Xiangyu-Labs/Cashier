@@ -27,9 +27,6 @@ vi.mock("@/modules/ledger/access", () => ({
   ) => handler,
 }));
 
-vi.mock("@/modules/ledger/application/use-cases/batch-delete-ledger-entries", () => ({
-  batchDeleteLedgerEntries: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
   batchUpdateLedgerEntries: batchUpdateLedgerEntriesMock,
   createLedgerEntryWithConversion: createLedgerEntryWithConversionMock,
@@ -59,18 +56,11 @@ vi.mock("@/modules/ledger/application/use-cases/delete-ledger-entry", () => ({
 vi.mock("@/modules/ledger/application/use-cases/delete-service-credential", () => ({
   deleteServiceCredential: vi.fn(),
 }));
-vi.mock("@/modules/ledger/application/use-cases/export-ledger-entries", () => ({
-  exportLedgerEntries: vi.fn(),
-}));
 vi.mock("@/modules/ledger/application/services/recalculate-entries-converted-amount", () => ({
   recalculateEntriesConvertedAmount: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/reorder-entry-categories", () => ({
   reorderEntryCategories: vi.fn(),
-}));
-vi.mock("@/modules/ledger/application/use-cases/submit-categorize-tasks", () => ({
-  submitAutoCategorize: vi.fn(),
-  submitBatchCategorize: vi.fn(),
 }));
 vi.mock("@/modules/ledger/application/use-cases/update-entry-category", () => ({
   updateEntryCategory: vi.fn(),

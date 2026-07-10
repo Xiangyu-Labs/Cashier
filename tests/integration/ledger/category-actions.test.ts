@@ -1,21 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
+import { ledgers, ledgerEntries, entryCategories, taskRuns, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
-const { submitMock, cancelMock } = vi.hoisted(() => ({
-  submitMock: vi.fn().mockResolvedValue("mock-task-id"),
-  cancelMock: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("@/lib/tasks", () => ({
-  submitTask: submitMock,
-  cancelTask: cancelMock,
-}));
-
-import { submitTask } from "@/lib/tasks";
 import {
   createEntryCategoryAction,
   deleteEntryCategoryAction,
@@ -39,7 +28,19 @@ describe("createEntryCategoryAction", () => {
     });
   });
 
-  it("creates a category and returns it", async () => {
+  it("creates a category synchronously with user-provided/default metadata and no task run", async () => {
+    const category = await createEntryCategoryAction(ledgerId, { name: "Travel" });
+    expect(category.name).toBe("Travel");
+    expect(category.icon ?? null).toBeNull();
+    expect(category.description ?? null).toBeNull();
+
+    const db = getTestDb();
+    expect(
+      await db.query.taskRuns.findMany({ where: eq(taskRuns.entityId, category.id) })
+    ).toEqual([]);
+  });
+
+  it("creates a category with all fields and no task run", async () => {
     const result = await createEntryCategoryAction(ledgerId, {
       name: "餐饮",
       description: "食物相关",
@@ -49,40 +50,8 @@ describe("createEntryCategoryAction", () => {
     expect(result.name).toBe("餐饮");
     expect(result.ledgerId).toBe(ledgerId);
     expect(result.id).toBeDefined();
-  });
-
-  it("triggers AI metadata generation when icon is missing", async () => {
-    await createEntryCategoryAction(ledgerId, {
-      name: "餐饮",
-      description: "食物相关",
-      // no icon
-    });
-
-    expect(submitTask).toHaveBeenCalledWith(
-      "generate_category_metadata",
-      expect.objectContaining({ categoryName: "餐饮", ledgerId }),
-      expect.any(Object)
-    );
-  });
-
-  it("triggers AI metadata generation when description is missing", async () => {
-    await createEntryCategoryAction(ledgerId, {
-      name: "交通",
-      icon: "🚗",
-      // no description
-    });
-
-    expect(submitTask).toHaveBeenCalled();
-  });
-
-  it("does not trigger AI when both icon and description are provided", async () => {
-    await createEntryCategoryAction(ledgerId, {
-      name: "餐饮",
-      description: "食物相关",
-      icon: "🍽️",
-    });
-
-    expect(submitTask).not.toHaveBeenCalled();
+    expect(result.icon).toBe("🍽️");
+    expect(result.description).toBe("食物相关");
   });
 
   it("different ledgers can have same category name (tenant isolation)", async () => {

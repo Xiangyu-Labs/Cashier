@@ -14,16 +14,11 @@ export {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
-  batchDeleteLedgerEntriesAction,
   createLedgerEntryAction,
   getLedgerEntriesAction,
 } from "./server-actions/entries";
 export { getLedgerEntryAction } from "./server-actions/get-entry";
-export {
-  submitAutoCategorizeAction,
-  submitBatchCategorizeAction,
-} from "./server-actions/categorize";
-export { exportLedgerEntriesAction } from "./server-actions/export";
+// Categorize actions retired — submitAutoCategorizeAction and submitBatchCategorizeAction removed
 export { getLedgerSettingsAction } from "./server-actions/settings";
 export {
   getServiceCredentialsAction,

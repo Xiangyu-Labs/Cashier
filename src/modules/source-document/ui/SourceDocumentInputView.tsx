@@ -42,7 +42,6 @@ export interface SourceDocumentInputViewProps {
   onRemoveImage: (index: number) => void;
   onImageOpen: (index: number) => void;
   onImageClose: () => void;
-  onImageModalSave: (images: SourceDocumentModalImage[]) => void;
 }
 
 export function SourceDocumentInputView({
@@ -64,7 +63,6 @@ export function SourceDocumentInputView({
   onRemoveImage,
   onImageOpen,
   onImageClose,
-  onImageModalSave,
 }: SourceDocumentInputViewProps) {
   return (
     <div className="space-y-4">
@@ -156,13 +154,11 @@ export function SourceDocumentInputView({
         images={images}
         initialIndex={selectedImageIndex ?? 0}
         open={selectedImageIndex !== null}
-        editable
         onOpenChange={(open) => {
           if (!open) {
             onImageClose();
           }
         }}
-        onSave={onImageModalSave}
       />
     </div>
   );

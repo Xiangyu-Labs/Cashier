@@ -9,16 +9,10 @@ export { getSourceDocumentLightAction } from "./server-actions/get-document-ligh
 export {
   batchUpdateSourceDocumentsAction,
   updateSourceDocumentAction,
-  updateSourceDocumentImagesAction,
 } from "./server-actions/update";
-export {
-  deleteSourceDocumentAction,
-  batchDeleteSourceDocumentsAction,
-} from "./server-actions/delete";
-export { batchRetrySourceDocumentsAction } from "./server-actions/batch-retry";
+export { deleteSourceDocumentAction } from "./server-actions/delete";
 export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
 export { createSourceDocumentFromCredentialAction } from "./server-actions/create-from-credential";
 export { retrySourceDocumentAction } from "./server-actions/retry";
-export { getProcessingTasksAction, getProcessingStatsAction } from "./server-actions/processing";
 export { canAccessSourceDocumentUpload } from "./server-actions/uploads";

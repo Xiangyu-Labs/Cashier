@@ -113,10 +113,7 @@ vi.mock("@/lib/logger", () => ({
   logger: loggerMock,
 }));
 
-import {
-  deleteSourceDocument,
-  batchDeleteSourceDocuments,
-} from "@/modules/source-document/application/use-cases/delete-source-document";
+import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 
 describe("deleteSourceDocument", () => {
   beforeEach(() => {
@@ -184,28 +181,3 @@ describe("deleteSourceDocument", () => {
   });
 });
 
-describe("batchDeleteSourceDocuments", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    cancelTaskMock.mockResolvedValue(undefined);
-    taskRunsFindManyMock.mockResolvedValue([]);
-  });
-
-  it("queries active source documents at the SQL boundary before deleting in batch", async () => {
-    sourceDocumentsFindManyMock.mockResolvedValue([{ id: "doc-1" }, { id: "doc-2" }]);
-
-    const result = await batchDeleteSourceDocuments({
-      ledgerId: "ledger-1",
-      sourceDocumentIds: ["doc-1", "doc-2"],
-    });
-
-    expect(result.deletedCount).toBe(2);
-    expect(sourceDocumentsFindManyMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          and: expect.arrayContaining([{ whereSourceDocumentNotDeleted: ["ledger-1"] }]),
-        }),
-      })
-    );
-  });
-});

@@ -14,7 +14,7 @@ interface EmailStepProps {
 }
 
 export function EmailStep({
-  callbackUrl,
+  callbackUrl: _callbackUrl,
   email,
   isLoading,
   error,

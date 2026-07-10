@@ -8,17 +8,6 @@ function mockTaskRegistryDependencies() {
       handler: { execute: vi.fn() },
     },
   }));
-
-  vi.doMock("@/modules/ledger/tasks", () => ({
-    generateCategoryMetadataTaskDefinition: {
-      type: "generate_category_metadata",
-      handler: { execute: vi.fn() },
-    },
-    categorizeEntryTaskDefinition: {
-      type: "categorize_entry",
-      handler: { execute: vi.fn() },
-    },
-  }));
 }
 
 describe("registerAllTasks", () => {
@@ -27,7 +16,7 @@ describe("registerAllTasks", () => {
     vi.clearAllMocks();
   });
 
-  it("registers each task only once across concurrent and repeated calls", async () => {
+  it("registers parse_source_document only once across concurrent and repeated calls", async () => {
     const registerMock = vi.fn();
     mockTaskRegistryDependencies();
 
@@ -37,14 +26,8 @@ describe("registerAllTasks", () => {
     await Promise.all([registerAllTasks(engine), registerAllTasks(engine)]);
     await registerAllTasks(engine);
 
-    expect(registerMock).toHaveBeenCalledTimes(3);
-    expect(registerMock).toHaveBeenNthCalledWith(1, "parse_source_document", expect.any(Object));
-    expect(registerMock).toHaveBeenNthCalledWith(
-      2,
-      "generate_category_metadata",
-      expect.any(Object)
-    );
-    expect(registerMock).toHaveBeenNthCalledWith(3, "categorize_entry", expect.any(Object));
+    expect(registerMock).toHaveBeenCalledTimes(1);
+    expect(registerMock).toHaveBeenCalledWith("parse_source_document", expect.any(Object));
   });
 
   it("tolerates handlers that were already registered elsewhere", async () => {
@@ -59,6 +42,6 @@ describe("registerAllTasks", () => {
     await expect(registerAllTasks(engine)).resolves.toBeUndefined();
     await expect(registerAllTasks(engine)).resolves.toBeUndefined();
 
-    expect(registerMock).toHaveBeenCalledTimes(3);
+    expect(registerMock).toHaveBeenCalledTimes(1);
   });
 });

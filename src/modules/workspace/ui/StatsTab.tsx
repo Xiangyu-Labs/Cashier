@@ -5,7 +5,6 @@ import { getEnhancedStats } from "@/modules/stats/actions";
 import {
   invalidateCalendar,
   invalidateLedgerStats,
-  invalidateTaskQueue,
   queryKeys,
 } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -104,7 +103,6 @@ export function StatsTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(activeLedgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateCalendar(activeLedgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateTaskQueue(activeLedgerId) }),
     ]);
   }, [queryClient, ledgerId]);
 

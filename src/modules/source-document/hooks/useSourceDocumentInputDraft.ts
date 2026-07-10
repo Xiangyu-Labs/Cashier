@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 import type {
   EditableInputImage,
   SourceDocumentInputInitialData,
 } from "./source-document-input-controller.types";
 import {
-  mergeModalImagesIntoEditableImages,
   resolveInitialEntryDate,
   toEditableImages,
   toModalImages,
@@ -52,12 +50,6 @@ export function useSourceDocumentInputDraft({
     });
   }, [initialData, startTransition]);
 
-  const handleModalSave = (updatedImages: SourceDocumentModalImage[]) => {
-    setImages((previousImages) =>
-      mergeModalImagesIntoEditableImages(previousImages, updatedImages)
-    );
-  };
-
   return {
     text,
     setText,
@@ -73,7 +65,6 @@ export function useSourceDocumentInputDraft({
       setImages((previousImages) =>
         previousImages.filter((_, imageIndex) => imageIndex !== index)
       ),
-    handleModalSave,
     canSubmit: text !== "" || images.length > 0,
     isInitializing,
   };

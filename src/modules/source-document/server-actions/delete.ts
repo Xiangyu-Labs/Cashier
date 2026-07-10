@@ -1,12 +1,6 @@
 "use server";
-import type {
-  BatchDeleteSourceDocumentsResultDto,
-  DeleteSourceDocumentResultDto,
-} from "@/modules/source-document/contracts";
-import {
-  batchDeleteSourceDocuments,
-  deleteSourceDocument,
-} from "../application/use-cases/delete-source-document";
+import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
+import { deleteSourceDocument } from "../application/use-cases/delete-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 
 /**
@@ -17,16 +11,5 @@ export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
     deleteSourceDocument({
       ledgerId,
       sourceDocumentId: sourceId,
-    })
-);
-
-/**
- * Batch delete multiple source documents (soft delete with cascade)
- */
-export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
-  async ({ ledgerId }, sourceDocumentIds: string[]): Promise<BatchDeleteSourceDocumentsResultDto> =>
-    batchDeleteSourceDocuments({
-      ledgerId,
-      sourceDocumentIds,
     })
 );

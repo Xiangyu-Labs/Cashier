@@ -24,11 +24,6 @@ npx vitest run tests/unit/lib/date-utils.test.ts
 # Run tests matching a pattern:
 npx vitest run -t "should parse receipt"
 
-# Smoke tests (call real AI, require API keys)
-# Prerequisite: OPENAI_API_KEY (and optionally AI_MODEL_TEXT/AI_MODEL_VISION) in .env.local
-SMOKE_TESTS=1 npx vitest run --project smoke
-# Smoke tests are skipped by default (SMOKE_TESTS !== "1") in all other test runs
-
 # Database (Drizzle ORM)
 npm run db:push          # Push schema changes
 npm run db:generate      # Generate migrations
@@ -36,11 +31,6 @@ npm run db:migrate       # Run migrations
 npm run db:studio        # Launch Drizzle Studio GUI
 npm run db:drop          # Drop database
 
-# Docker
-npm run docker:dev       # Dev with hot reload
-npm run docker:build     # Build Docker image
-npm run docker:prod      # Production deployment
-npm run docker:down      # Stop containers
 ```
 
 ## Architecture
@@ -49,9 +39,9 @@ npm run docker:down      # Stop containers
 
 - `src/app/[locale]/` - Next.js App Router with i18n (next-intl). All routes are locale-prefixed.
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
-- `src/modules/` - Domain modules: `auth`, `currency`, `ledger`, `source-document`, `stats`, `task-queue`, `workspace`. Each module owns its contracts, application logic, public entrypoints, and module-specific UI/hooks
+- `src/modules/` - Domain modules: `auth`, `currency`, `ledger`, `source-document`, `stats`, `workspace`. Each module owns its contracts, application logic, public entrypoints, and module-specific UI/hooks
 - `src/persistence/` - Drizzle schema, relations, and migrations source of truth
-- `src/lib/` - Core infrastructure: `db/` (runtime DB access and scoped query helpers), `flow/` (task engine), `store/` (Zustand), `logger.ts` (Pino)
+- `src/lib/` - Core infrastructure: `db/` (runtime DB access and scoped query helpers), `tasks/` (task runtime), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
 - `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
 - `src/lib/errors.ts` - Standardized error classes (AppError, ValidationError, etc.)
@@ -79,7 +69,7 @@ src/modules/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**In-process task engine** (`src/lib/flow/`): Background tasks (AI parsing, category generation) run as in-process Promises via `flowEngine.submit()`. No Redis or external queue. Task handlers are registered centrally in `src/lib/flow/task-registry.ts` and initialized from `src/instrumentation.ts`.
+**In-process task runtime** (`src/lib/tasks/`): Background tasks (source-document parsing only) run as in-process Promises via `taskRuntime.submit()`. No Redis or external queue. Task handlers are registered centrally in `src/lib/tasks/task-registry.ts` and initialized from `src/instrumentation.ts`.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
 
@@ -159,20 +149,17 @@ export async function POST(request: Request) {
 
 ## Task Handlers
 
-Task handlers live in `src/modules/*/application/tasks/` and must be registered in `src/lib/flow/task-registry.ts`.
+Task handlers are registered centrally in `src/lib/tasks/task-registry.ts`. Currently only `parse_source_document` is registered.
 
 ```typescript
-// src/modules/my-feature/application/tasks/my-task.ts
-import { flowEngine } from "@/lib/flow";
+// src/lib/tasks/task-registry.ts
+import { parseSourceDocumentTaskDefinition } from "@/modules/source-document/tasks";
 
-export default function register(engine: typeof flowEngine) {
-  engine.register("my-task", {
-    async execute(input, context) {
-      // Task logic
-      return result;
-    },
-  });
-}
+registerTaskIfNeeded(
+  engine,
+  parseSourceDocumentTaskDefinition.type,
+  parseSourceDocumentTaskDefinition.handler
+);
 ```
 
 ## Custom Hooks

@@ -80,7 +80,6 @@ describe("validateStartupEnv", () => {
       "DATABASE_URL",
 		      "DEV_AUTH_BYPASS",
       "DISABLE_REGISTRATION",
-      "EXPORT_MAX_ENTRIES",
       "LOCAL_STORAGE_PATH",
       "LOG_LEVEL",
       "MAX_IMAGE_QUALITY",
