@@ -1,0 +1,16 @@
+# Production Docker Compose
+# Usage: docker compose up -d
+
+services:
+  app:
+    image: ghcr.io/xiangyu-labs/cashier:latest
+    container_name: cashier
+    restart: always
+    expose:
+      - "3000"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
