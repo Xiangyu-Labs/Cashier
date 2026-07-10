@@ -31,6 +31,11 @@ npm run db:migrate       # Run migrations
 npm run db:studio        # Launch Drizzle Studio GUI
 npm run db:drop          # Drop database
 
+# Docker
+npm run docker:build     # Build Docker image
+npm run docker:prod      # Start production Compose service
+npm run docker:down      # Stop production Compose service
+
 ```
 
 ## Architecture

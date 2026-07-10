@@ -57,6 +57,30 @@ cp .env.example .env.local
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
+## Docker Deployment
+
+### Production
+
+```bash
+cp .env.example .env
+# Edit .env with production values
+npm run docker:prod
+```
+
+Or manually:
+
+```bash
+docker compose up -d --build
+```
+
+### Docker Commands
+
+| Command                | Description                          |
+| ---------------------- | ------------------------------------ |
+| `npm run docker:prod`  | Build and start production container |
+| `npm run docker:build` | Build production image only          |
+| `npm run docker:down`  | Stop and remove containers           |
+
 ## Testing
 
 Tests use in-memory SQLite, no external database required.
