@@ -30,7 +30,6 @@ export interface RuntimeEnv {
   readonly sessionMaxAgeDays: number;
   readonly disableRegistration: boolean;
   readonly maxTaskWorker: number;
-  readonly exportMaxEntries: number;
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
   readonly logLevel: string;
@@ -130,9 +129,6 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get maxTaskWorker() {
     return getStartupEnvValue("MAX_TASK_WORKER");
-  },
-  get exportMaxEntries() {
-    return getStartupEnvValue("EXPORT_MAX_ENTRIES");
   },
   get maxInputPixels() {
     return getStartupEnvValue("MAX_INPUT_PIXELS");

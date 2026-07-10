@@ -2,10 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   createSourceDocumentFromCredentialAction,
 } from "@/modules/source-document/actions";
-import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
-import { omitNullishProperties } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   return handleApiV1Route(request, {
@@ -24,28 +22,6 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(createResult, { status: 201 });
-    },
-  });
-}
-
-export async function GET(request: NextRequest) {
-  return handleApiV1Route(request, {
-    logContext: "api/v1/source-documents",
-    handler: async ({ credential, request: authorizedRequest }) => {
-      const { searchParams } = new URL(authorizedRequest.url);
-      const result = await listSourceDocuments(
-        credential.ledgerId,
-        omitNullishProperties({
-          status: searchParams.get("status"),
-          startDate: searchParams.get("startDate"),
-          endDate: searchParams.get("endDate"),
-          cursor: searchParams.get("cursor"),
-          limit: searchParams.get("limit"),
-          includeEntries: searchParams.get("includeEntries"),
-        })
-      );
-
-      return NextResponse.json(result);
     },
   });
 }

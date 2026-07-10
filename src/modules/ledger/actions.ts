@@ -22,7 +22,6 @@ export {
   submitAutoCategorizeAction,
   submitBatchCategorizeAction,
 } from "./server-actions/categorize";
-export { exportLedgerEntriesAction } from "./server-actions/export";
 export { getLedgerSettingsAction } from "./server-actions/settings";
 export {
   getServiceCredentialsAction,

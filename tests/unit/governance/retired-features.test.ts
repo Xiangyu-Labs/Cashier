@@ -13,10 +13,6 @@ const retiredPaths = [
   "src/app/api/v1/task",
   "src/modules/ledger/ui/ExportSection.tsx",
   "src/modules/ledger/application/use-cases/export-ledger-entries.ts",
-  "src/modules/ledger/application/use-cases/submit-categorize-tasks.ts",
-  "src/modules/ledger/application/tasks/categorize-entry.ts",
-  "src/modules/ledger/application/tasks/generate-category-metadata.ts",
-  "src/modules/ledger/server-actions/categorize.ts",
   "src/components/ui/image-editor.tsx",
   "src/components/ui/image-editor-crop-pane.tsx",
   "src/components/ui/image-editor-draw-pane.tsx",
@@ -85,7 +81,7 @@ describe("retired feature governance", () => {
       .map((path) => readFileSync(fromRoot(path), "utf8"))
       .join("\n");
     expect(boundaries).not.toMatch(
-      /CategoriesResponseDto|ExportResult|ExportLedgerEntriesOptions|CategorizeResult|BatchDeleteSourceDocumentsResultDto|BatchRetrySourceDocumentItemDto|BatchRetrySourceDocumentsResultDto|ProcessingTaskStatusDto|ProcessingTaskDto|ProcessingStatsDto|sourceDocumentIdsSchema|EXPORT_MAX_ENTRIES/
+      /CategoriesResponseDto|ExportResult|ExportLedgerEntriesOptions|BatchDeleteSourceDocumentsResultDto|BatchRetrySourceDocumentItemDto|BatchRetrySourceDocumentsResultDto|ProcessingTaskStatusDto|ProcessingTaskDto|ProcessingStatsDto|sourceDocumentIdsSchema|EXPORT_MAX_ENTRIES/
     );
   });
 

@@ -1,72 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NextRequest, NextResponse } from "next/server";
-import type { CategoriesResponseDto, EntryCategoryWithCountDto } from "@/modules/ledger/contracts";
+import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 
-const { handleApiV1RouteMock, listEntryCategoriesMock } = vi.hoisted(() => ({
-  handleApiV1RouteMock: vi.fn(),
-  listEntryCategoriesMock: vi.fn(),
-}));
+const API_V1_DIR = path.join(process.cwd(), "src/app/api/v1");
 
-vi.mock("@/app/api/v1/_shared/route-helper", () => ({
-  handleApiV1Route: handleApiV1RouteMock,
-}));
-
-vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
-  listEntryCategories: listEntryCategoriesMock,
-}));
-
-import { GET as getCategories } from "@/app/api/v1/categories/route";
-
-function createRequest(url: string): NextRequest {
-  return new Request(url, { method: "GET" }) as unknown as NextRequest;
-}
-
-describe("api/v1 public response contracts", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    handleApiV1RouteMock.mockImplementation(
-      async (
-        request: NextRequest,
-        {
-          handler,
-        }: {
-          handler: (ctx: {
-            credential: { id: string; ledgerId: string };
-            key: string;
-            request: NextRequest;
-          }) => Promise<NextResponse>;
-        }
-      ) =>
-        handler({
-          credential: { id: "cred-1", ledgerId: "ledger-1" },
-          key: "test-key",
-          request,
-        })
-    );
+describe("api/v1 public contract - only write endpoints remain", () => {
+  it("categories route directory does not exist", () => {
+    expect(fs.existsSync(path.join(API_V1_DIR, "categories/route.ts"))).toBe(false);
   });
 
-  it("returns categories with the explicit response DTO envelope", async () => {
-    const categories: EntryCategoryWithCountDto[] = [
-      {
-        id: "cat-1",
-        ledgerId: "ledger-1",
-        name: "Food",
-        description: null,
-        icon: "utensils",
-        sortOrder: 1,
-        isEditable: true,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-        deletedAt: null,
-        entryCount: 3,
-      },
-    ];
-    listEntryCategoriesMock.mockResolvedValue(categories);
+  it("entries route directory does not exist", () => {
+    expect(fs.existsSync(path.join(API_V1_DIR, "entries/route.ts"))).toBe(false);
+  });
 
-    const response = await getCategories(createRequest("http://localhost:3000/api/v1/categories"));
-    const body = (await response.json()) as CategoriesResponseDto;
+  it("stats route directory does not exist", () => {
+    expect(fs.existsSync(path.join(API_V1_DIR, "stats/route.ts"))).toBe(false);
+  });
 
-    expect(body).toEqual({ categories });
-    expect(Object.keys(body)).toEqual(["categories"]);
+  it("source-documents route exists and exports POST but not GET", () => {
+    const sourcePath = path.join(API_V1_DIR, "source-documents/route.ts");
+    expect(fs.existsSync(sourcePath)).toBe(true);
+    const source = fs.readFileSync(sourcePath, "utf8");
+    expect(source).toContain("export async function POST");
+    expect(source).not.toContain("export async function GET");
   });
 });

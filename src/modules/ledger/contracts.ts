@@ -53,10 +53,6 @@ export type EntryCategory = EntryCategoryDto;
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
 export type EntryCategoryWithCount = EntryCategoryWithCountDto;
 
-export interface CategoriesResponseDto {
-  categories: EntryCategoryWithCountDto[];
-}
-
 export type SourceDocumentReferenceDto = {
   id: string;
   ledgerId: string;
@@ -153,18 +149,6 @@ export interface DeleteEntryCategoryResultDto {
 export interface ReorderEntryCategoriesResultDto {
   categoryIds: string[];
   reorderedCount: number;
-}
-
-export interface ExportResult {
-  csvContent: string;
-  filename: string;
-  isEmpty: boolean;
-}
-
-export interface ExportLedgerEntriesOptions {
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
 }
 
 export interface CategorizeResult {

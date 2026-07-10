@@ -9,7 +9,6 @@ import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
 import { SettingsDangerActions } from "./settings/SettingsDangerActions";
-import { ExportSection } from "./ExportSection";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
@@ -213,7 +212,6 @@ export function SettingsTab({
           <SettingsField title={ta("emailSection")} description={session?.user?.email ?? ""}>
             <ChangeEmailForm currentEmail={session?.user?.email ?? ""} />
           </SettingsField>
-          <ExportSection ledgerId={ledgerId} />
           <SettingsDangerActions title={ta("dangerZone")} description={ta("dangerZoneDesc")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
