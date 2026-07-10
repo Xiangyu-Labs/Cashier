@@ -14,7 +14,6 @@ export {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
-  batchDeleteLedgerEntriesAction,
   createLedgerEntryAction,
   getLedgerEntriesAction,
 } from "./server-actions/entries";

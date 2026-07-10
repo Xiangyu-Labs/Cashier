@@ -4,20 +4,16 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Tags, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
 } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { useSelection } from "@/hooks/use-selection";
 import {
-  useBatchEntryActions,
   useDetailsTabData,
   useDetailsTabGrouping,
   useEntryMutations,
@@ -31,16 +27,6 @@ import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { CategoryIcon } from "@/components/CategoryIcon";
-import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { cn } from "@/lib/utils";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -67,7 +53,6 @@ export function DetailsTab({
   advancedFilters,
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
-  const tBatch = useTranslations("BatchActions");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const _locale = useLocale();
@@ -106,17 +91,6 @@ export function DetailsTab({
     advancedFilters,
   });
 
-  // Selection mode
-  const {
-    isSelectionMode,
-    toggleSelectionMode,
-    selectedIds,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    isAllSelected,
-  } = useSelection({ allIds: entries.map((e) => e.id) });
-
   // Mutations
   const { updateEntry, deleteEntry } = useEntryMutations({
     ledgerId,
@@ -125,24 +99,6 @@ export function DetailsTab({
     setSelectedLedgerEntry,
     setIsDetailModalOpen,
   });
-
-  const { batchCategorize, batchChangeCategory, batchChangeCurrency, batchDelete } =
-    useBatchEntryActions(ledgerId, clearSelection);
-  const currencyList = [
-    ...(ledger?.metadata?.settings?.currencies ?? []).filter((currency) =>
-      SUPPORTED_CURRENCIES.includes(currency as (typeof SUPPORTED_CURRENCIES)[number])
-    ),
-    ...SUPPORTED_CURRENCIES.filter(
-      (currency) => !(ledger?.metadata?.settings?.currencies ?? []).includes(currency)
-    ),
-  ];
-  const isBatchProcessing =
-    batchCategorize.isPending ||
-    batchChangeCategory.isPending ||
-    batchChangeCurrency.isPending ||
-    batchDelete.isPending;
-  const masterChecked: boolean | "indeterminate" =
-    isAllSelected ? true : selectedIds.length > 0 ? "indeterminate" : false;
 
   // Infinite scroll
   const sentinelRef = useInfiniteScroll({
@@ -159,40 +115,11 @@ export function DetailsTab({
     ]);
   }, [queryClient, ledgerId]);
 
-  const batchActions = selectedIds.length > 0
-    ? [
-        {
-          label: tBatch("aiCategorize"),
-          iconLabel: tBatch("aiCategorize"),
-          icon: <Tags className="h-4 w-4" aria-hidden="true" />,
-          onClick: () => batchCategorize.mutate(selectedIds),
-          pending: batchCategorize.isPending,
-          disabled: isBatchProcessing,
-        },
-        {
-          label: tBatch("delete"),
-          iconLabel: tBatch("delete"),
-          icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
-          onClick: () => batchDelete.mutate(selectedIds),
-          pending: batchDelete.isPending,
-          disabled: isBatchProcessing,
-          variant: "danger" as const,
-        },
-      ]
-    : [];
-
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
         <DetailsToolbar
-          hasEntries={entries.length > 0}
-          isSelectionMode={isSelectionMode}
-          selectedCount={selectedIds.length}
-          selectedLabel={tBatch("selected", { count: selectedIds.length })}
           totalLabel={`${monthStats.mainCurrency} ${monthStats.mainTotal.toFixed(2)}`}
-          onToggleSelectionMode={toggleSelectionMode}
-          onClearSelection={clearSelection}
-          batchActions={batchActions}
         >
           <EntryFilterPanel
             filters={filters}
@@ -238,13 +165,8 @@ export function DetailsTab({
                           ? { mainCurrency: ledger.metadata.settings.mainCurrency }
                           : {})}
                         onView={() => {
-                          if (!isSelectionMode) {
-                            handleViewEntry(entry);
-                          }
+                          handleViewEntry(entry);
                         }}
-                        selectionMode={isSelectionMode}
-                        isSelected={selectedIds.includes(entry.id)}
-                        onToggleSelect={() => toggleSelection(entry.id)}
                       />
                     </motion.div>
                   ))}

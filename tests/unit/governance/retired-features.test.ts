@@ -33,6 +33,12 @@ const retiredPaths = [
   ".dockerignore",
   "public/push-worker.js",
   "tests/smoke",
+  "src/modules/workspace/ui/BatchActionBar.tsx",
+  "src/modules/source-document/application/use-cases/batch-retry-source-documents.ts",
+  "src/modules/source-document/server-actions/batch-retry.ts",
+  "src/modules/ledger/application/use-cases/batch-delete-ledger-entries.ts",
+  "src/modules/ledger/hooks/useBatchEntryActions.ts",
+  "src/modules/source-document/ui/batch-action-toolbar/SourceDocumentBatchActionToolbar.tsx",
 ];
 
 describe("retired feature governance", () => {

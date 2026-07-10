@@ -107,7 +107,7 @@ export function LedgerEntriesTab({
     clearSelection,
     isAllSelected,
   } = useSelection({ allIds: allSourceDocumentIds });
-  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
+  const { deleteSourceDocument, batchUpdateDates } =
     useBatchSourceDocumentActions(ledgerId, clearSelection);
   const handleRefresh = useCallback(async () => {
     await Promise.all([
@@ -142,29 +142,17 @@ export function LedgerEntriesTab({
   const handleDeleteConfirmAction = useCallback(() => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
     if (deleteConfirm.type === "sourceDocument") deleteSourceDocument.mutate(deleteConfirm.id);
-    else if (deleteConfirm.id === "ALL_ERRORS")
-      batchDelete.mutate(groups.anomaly.map((g) => g.sourceDocument.id));
     else if (deleteConfirm.type === "ledgerEntry") deleteEntry.mutate(deleteConfirm.id);
     closeDeleteConfirm();
   }, [
     deleteConfirm,
     deleteSourceDocument,
-    batchDelete,
-    groups.anomaly,
     deleteEntry,
     closeDeleteConfirm,
   ]);
   const handleBatchUpdateDates = useCallback(
     (date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }),
     [batchUpdateDates, selectedIds]
-  );
-  const handleBatchDelete = useCallback(
-    () => batchDelete.mutate(selectedIds),
-    [batchDelete, selectedIds]
-  );
-  const handleBatchRetry = useCallback(
-    () => batchRetry.mutate(selectedIds),
-    [batchRetry, selectedIds]
   );
   return (
     <LayoutGroup id={layoutGroupId}>
@@ -178,11 +166,7 @@ export function LedgerEntriesTab({
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
             onUpdateDates={handleBatchUpdateDates}
-            onRetry={handleBatchRetry}
-            onDelete={handleBatchDelete}
             isUpdatingDates={batchUpdateDates.isPending}
-            isRetrying={batchRetry.isPending}
-            isDeleting={batchDelete.isPending}
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}

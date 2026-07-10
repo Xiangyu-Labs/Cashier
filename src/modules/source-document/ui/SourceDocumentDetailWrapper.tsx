@@ -48,7 +48,6 @@ export function SourceDocumentDetailWrapper({
     updateEntry,
     batchUpdate,
     deleteEntry,
-    batchDelete,
     deleteDocument,
   } = useSourceDocumentDetailMutations({
     id,
@@ -84,7 +83,6 @@ export function SourceDocumentDetailWrapper({
       onUpdateEntry={updateEntry}
       onBatchUpdate={batchUpdate}
       onDeleteEntry={deleteEntry}
-      onBatchDelete={batchDelete}
       onDelete={deleteDocument}
     />
   );

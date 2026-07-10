@@ -1,4 +1,4 @@
-import { Calendar, Loader2, RefreshCw } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -7,31 +7,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 interface SourceDocumentActionsProps {
   isProcessing: boolean;
   isUpdatingDates: boolean;
-  isRetrying: boolean;
   onUpdateDates: () => void;
-  onRetry: () => void;
   onCancel: () => void;
   datePickerOpen: boolean;
   setDatePickerOpen: (open: boolean) => void;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   showUpdateDates: boolean;
-  showRetry: boolean;
 }
 
 export function SourceDocumentActions({
   isProcessing,
   isUpdatingDates,
-  isRetrying,
   onUpdateDates,
-  onRetry,
   onCancel,
   datePickerOpen,
   setDatePickerOpen,
   selectedDate,
   setSelectedDate,
   showUpdateDates,
-  showRetry,
 }: SourceDocumentActionsProps) {
   const t = useTranslations("BatchActions");
   const tCommon = useTranslations("Common");
@@ -81,24 +75,6 @@ export function SourceDocumentActions({
             </div>
           </PopoverContent>
         </Popover>
-      )}
-
-      {showRetry && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRetry}
-          disabled={isProcessing}
-          className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-        >
-          {isRetrying ? (
-            <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
-          )}
-          <span className="hidden sm:inline">{t("retry")}</span>
-          <span className="sm:hidden">{t("retryShort")}</span>
-        </Button>
       )}
     </>
   );

@@ -1,8 +1,5 @@
 import { db } from "@/lib/db";
-import type {
-  BatchDeleteSourceDocumentsResultDto,
-  DeleteSourceDocumentResultDto,
-} from "@/modules/source-document/contracts";
+import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
 import {
   whereSourceDocumentNotDeleted,
   whereSourceDocumentNotDeletedId,
@@ -18,11 +15,6 @@ import {
 interface DeleteSourceDocumentInput {
   ledgerId: string;
   sourceDocumentId: string;
-}
-
-interface BatchDeleteSourceDocumentsInput {
-  ledgerId: string;
-  sourceDocumentIds: string[];
 }
 
 export async function deleteSourceDocument({
@@ -55,47 +47,5 @@ export async function deleteSourceDocument({
   return {
     sourceDocumentId,
     deleted: true,
-  };
-}
-
-export async function batchDeleteSourceDocuments({
-  ledgerId,
-  sourceDocumentIds,
-}: BatchDeleteSourceDocumentsInput): Promise<BatchDeleteSourceDocumentsResultDto> {
-  if (sourceDocumentIds.length === 0) {
-    return {
-      sourceDocumentIds,
-      deletedCount: 0,
-    };
-  }
-
-  const documents = await db.query.sourceDocuments.findMany({
-    where: and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds)),
-    columns: { id: true },
-  });
-  const activeDocumentIds = documents.map((document) => document.id);
-
-  if (activeDocumentIds.length === 0) {
-    return {
-      sourceDocumentIds,
-      deletedCount: 0,
-    };
-  }
-
-  const relatedTaskRuns = await listRelatedSourceDocumentTaskRuns(ledgerId, activeDocumentIds);
-  await cancelActiveSourceDocumentTaskRuns(relatedTaskRuns.map((task) => task.id));
-
-  db.transaction((tx) => {
-    softDeleteSourceDocumentsAndTaskRuns(
-      tx,
-      ledgerId,
-      activeDocumentIds,
-      relatedTaskRuns.map((task) => task.id)
-    );
-  });
-
-  return {
-    sourceDocumentIds,
-    deletedCount: activeDocumentIds.length,
   };
 }

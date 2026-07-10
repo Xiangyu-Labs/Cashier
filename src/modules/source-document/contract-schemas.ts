@@ -107,8 +107,6 @@ export const createQuickEntryInputSchema = strictObjectSchema({
   entryDate: optionalDateStringSchema,
 });
 
-export const sourceDocumentIdsSchema = z.array(uuidSchema);
-
 function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {

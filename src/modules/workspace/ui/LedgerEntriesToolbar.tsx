@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, CheckSquare, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,11 +17,7 @@ interface LedgerEntriesToolbarProps {
   onSelectAll: () => void;
   onClearSelection: () => void;
   onUpdateDates?: (date: string) => Promise<void> | void;
-  onRetry?: () => Promise<void> | void;
-  onDelete?: () => Promise<void> | void;
   isUpdatingDates?: boolean;
-  isRetrying?: boolean;
-  isDeleting?: boolean;
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams: PeriodParams;
@@ -39,11 +35,7 @@ export function LedgerEntriesToolbar({
   onSelectAll,
   onClearSelection,
   onUpdateDates,
-  onRetry,
-  onDelete,
   isUpdatingDates = false,
-  isRetrying = false,
-  isDeleting = false,
   filters,
   onFiltersChange,
   periodParams,
@@ -56,7 +48,6 @@ export function LedgerEntriesToolbar({
   const tBatch = useTranslations("BatchActions");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const isProcessing = isUpdatingDates || isRetrying || isDeleting;
   const showBatchActions = isSelectionMode && selectedCount > 0;
   const masterChecked: boolean | "indeterminate" =
     isAllSelected ? true : selectedCount > 0 ? "indeterminate" : false;
@@ -102,40 +93,17 @@ export function LedgerEntriesToolbar({
         <>
           <div className="min-w-0 shrink-0 basis-full sm:basis-auto">
             <SourceDocumentActions
-              isProcessing={isProcessing}
+              isProcessing={isUpdatingDates}
               isUpdatingDates={isUpdatingDates}
-              isRetrying={isRetrying}
               onUpdateDates={handleUpdateDates}
-              onRetry={onRetry ?? (() => {})}
               onCancel={() => setDatePickerOpen(false)}
               datePickerOpen={datePickerOpen}
               setDatePickerOpen={setDatePickerOpen}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               showUpdateDates={onUpdateDates !== undefined}
-              showRetry={onRetry !== undefined}
             />
           </div>
-
-          {onDelete && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void onDelete()}
-              disabled={isProcessing}
-              className={cn(
-                "h-8 sm:h-9 px-2 sm:px-3",
-                "text-destructive hover:text-destructive hover:bg-destructive/10",
-                "border-destructive/30"
-              )}
-            >
-              {isDeleting ? (
-                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-              ) : (
-                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              )}
-            </Button>
-          )}
         </>
       )}
 

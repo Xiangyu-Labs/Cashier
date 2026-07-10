@@ -42,7 +42,6 @@ interface SourceDocumentDetailModalProps {
     }
   ) => Promise<void>;
   onDeleteEntry: (id: string) => Promise<void>;
-  onBatchDelete?: (ids: string[]) => Promise<void>;
   onDelete?: () => void;
 }
 
@@ -62,7 +61,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onUpdateEntry,
   onBatchUpdate,
   onDeleteEntry: _onDeleteEntry,
-  onBatchDelete,
   onDelete,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
@@ -174,21 +172,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     }
   };
 
-  const handleBatchDelete = async () => {
-    if (selectedIds.length === 0 || !onBatchDelete) return;
-
-    setIsSaving(true);
-    try {
-      await onBatchDelete(selectedIds);
-      toast.success(t("batchDeleteSuccess", { count: selectedIds.length }));
-      clearSelection();
-    } catch {
-      toast.error(t("batchDeleteError"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleDeleteDocument = () => {
     onDelete?.();
     setShowDeleteConfirm(false);
@@ -281,9 +264,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           preferredCurrencies={preferredCurrencies}
           isChangingCategory={isSaving}
           isChangingCurrency={isSaving}
-          isDeleting={isSaving}
           variant="inline"
-          {...(onBatchDelete !== undefined ? { onDelete: handleBatchDelete } : {})}
         />
 
         <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-modal-footer">

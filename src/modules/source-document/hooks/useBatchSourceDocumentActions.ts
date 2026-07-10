@@ -12,23 +12,8 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   deleteSourceDocumentAction,
   batchUpdateSourceDocumentsAction,
-  batchDeleteSourceDocumentsAction,
-  batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentCollectionDto } from "@/modules/source-document/contracts";
-
-function removeSourceDocumentsFromPaginatedLists(
-  old: SourceDocumentCollectionDto | undefined,
-  ids: string[]
-): SourceDocumentCollectionDto | undefined {
-  if (old === undefined || old.items === undefined) return old;
-
-  return {
-    ...old,
-    items: old.items.filter((doc) => !ids.includes(doc.id)),
-    total: Math.max(0, old.total - ids.length),
-  };
-}
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
   const tCommon = useTranslations("Common");
@@ -54,7 +39,14 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
 
       queryClient.setQueriesData<SourceDocumentCollectionDto>(
         { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old) => removeSourceDocumentsFromPaginatedLists(old, [id])
+        (old) => {
+          if (old === undefined || old.items === undefined) return old;
+          return {
+            ...old,
+            items: old.items.filter((doc) => doc.id !== id),
+            total: Math.max(0, old.total - 1),
+          };
+        }
       );
 
       return { snapshots };
@@ -98,75 +90,8 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
   });
 
-  const batchDelete = useLedgerMutation(ledgerId, {
-    mutationFn: async (ids: string[]) => {
-      await batchDeleteSourceDocumentsAction(ledgerId, ids);
-    },
-    successMessage: "",
-    errorMessage: tCommon("error"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onSuccessExtra: (_data, ids) => {
-      toast.success(tBatch("entriesDeleted", { count: ids.length }));
-      clearSelection();
-    },
-    onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchSourceDocumentCollection(ledgerId),
-      });
-
-      queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old) => removeSourceDocumentsFromPaginatedLists(old, ids)
-      );
-
-      return { snapshots };
-    },
-  });
-
-  const batchRetry = useLedgerMutation(ledgerId, {
-    mutationFn: async (ids: string[]) => {
-      await batchRetrySourceDocumentsAction(ledgerId, ids);
-    },
-    successMessage: "",
-    errorMessage: tCommon("error"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [invalidateSourceDocuments(ledgerId)],
-    onSuccessExtra: (_data, ids) => {
-      toast.success(tBatch("retrySubmitted", { count: ids.length }));
-      clearSelection();
-    },
-    onOptimisticUpdate: (queryClient, ids) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchSourceDocumentCollection(ledgerId),
-      });
-
-      queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old) => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.map((doc) =>
-              ids.includes(doc.id) ? { ...doc, status: "queued" as const } : doc
-            ),
-          };
-        }
-      );
-
-      return { snapshots };
-    },
-  });
-
   return {
     deleteSourceDocument,
     batchUpdateDates,
-    batchDelete,
-    batchRetry,
   };
 }

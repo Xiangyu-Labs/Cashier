@@ -81,23 +81,3 @@ export interface DeleteSourceDocumentResultDto {
   deleted: boolean;
 }
 
-export interface BatchDeleteSourceDocumentsResultDto {
-  sourceDocumentIds: string[];
-  deletedCount: number;
-}
-
-export interface BatchRetrySourceDocumentItemDto {
-  previousSourceDocumentId: string;
-  sourceDocumentId: string;
-  status: "queued";
-  taskSubmitted: boolean;
-}
-
-export interface BatchRetrySourceDocumentsResultDto {
-  results: BatchRetrySourceDocumentItemDto[];
-  retriedCount: number;
-  failedCount: number;
-}
-
-
-
