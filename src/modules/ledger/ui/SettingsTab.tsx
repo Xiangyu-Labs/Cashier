@@ -204,7 +204,7 @@ export function SettingsTab({
         </SettingsSection>
 
         <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
-          <SettingsField title={ta("emailSection")} description={session?.user?.email ?? ""}>
+          <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
             <span className="text-sm text-muted-foreground">{session?.user?.email ?? ""}</span>
           </SettingsField>
           <SettingsField title={t("signOut")} description={t("signOutDesc")}>
