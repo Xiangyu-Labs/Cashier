@@ -2,7 +2,10 @@
 
 Date: 2026-07-11
 Updated: 2026-07-13
-Status: Draft for revised user review
+Status: Superseded by `2026-07-13-managed-infrastructure-remaining-work-design.md`
+
+> This document is retained as decision history only. Its phase labels, ordering, and planning boundary are no longer
+> active. The July 13 remaining-work spec defines the current migration scope without prescribing an execution order.
 
 ## Purpose
 
