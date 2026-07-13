@@ -18,7 +18,6 @@ export {
   getLedgerEntriesAction,
 } from "./server-actions/entries";
 export { getLedgerEntryAction } from "./server-actions/get-entry";
-// Categorize actions retired — submitAutoCategorizeAction and submitBatchCategorizeAction removed
 export { getLedgerSettingsAction } from "./server-actions/settings";
 export {
   getServiceCredentialsAction,

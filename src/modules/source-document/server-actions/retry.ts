@@ -11,10 +11,8 @@ import { withSourceDocumentLedgerAccess } from "./access";
 /**
  * Retry an existing source document with optional new data
  *
- * New approach: Edit retry = soft delete old document + create brand new document
- * This decouples "cancel task" from "retain/delete document" logic:
- * - Real cancel: call cancelTaskAction → cancel task + soft delete document
- * - Edit retry: call retrySourceDocumentAction → soft delete old + create new + submit new task
+ * Edit retry soft-deletes the prior document, creates a replacement, and queues parsing.
+ * Internal cancellation remains part of the document lifecycle and is not a public action.
  */
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (

@@ -79,6 +79,8 @@ chant.sh
 !/docs/architecture/
 !/docs/operations/
 !/docs/operations/runbook.md
+!/docs/operations/removal-release/
+!/docs/operations/removal-release/**
 !/docs/superpowers/
 
 # SDD task artifacts

@@ -1,4 +1,3 @@
-// useAutoCategorizeMutation retired — auto-categorization has been removed
 export { useCategoryMutations } from "./useCategoryMutations";
 export { useCredentialMutations } from "./useCredentialMutations";
 export { useDetailsTabData } from "./useDetailsTabData";

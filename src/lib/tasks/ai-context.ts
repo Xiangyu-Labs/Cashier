@@ -99,7 +99,7 @@ export function createAIContext({
         signal
       );
 
-      // === JSON validation and repair (internal to task center) ===
+      // JSON validation and repair remains private to the processing runtime.
       if (options.requireJson) {
         logger.debug(
           { rawContent: result.content.substring(0, 1000) },

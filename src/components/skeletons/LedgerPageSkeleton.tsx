@@ -22,18 +22,10 @@ export function LedgerPageSkeleton({ activeTab = "stream" }: { activeTab?: Ledge
   return (
     <div className="min-h-screen bg-bg text-text">
       {/* Header skeleton */}
-      <header className="bg-surface border-b border-border sticky top-0 z-header">
-        <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 h-14 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {/* Ledger switcher skeleton */}
-            <div className="h-8 w-24 bg-surface2 rounded-lg animate-pulse" />
-            {/* Task queue button skeleton */}
-            <div className="h-8 w-8 bg-surface2 rounded-full animate-pulse" />
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Add button skeleton */}
-            <div className="h-8 w-8 bg-primary/20 rounded-full animate-pulse" />
-          </div>
+      <header className="sticky top-0 z-header border-b border-border bg-surface">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-3 sm:px-4 md:px-6">
+          <div className="h-4 w-16 animate-pulse rounded bg-surface2" />
+          <div className="h-9 w-9 animate-pulse rounded-md bg-primary/20" />
         </div>
       </header>
 

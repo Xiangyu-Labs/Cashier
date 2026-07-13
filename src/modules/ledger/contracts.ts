@@ -150,5 +150,3 @@ export interface ReorderEntryCategoriesResultDto {
   categoryIds: string[];
   reorderedCount: number;
 }
-
-// CategorizeResult retired — auto-categorization has been removed

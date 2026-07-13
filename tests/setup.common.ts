@@ -1,6 +1,11 @@
-import { vi } from "vitest";
+import { afterAll, vi } from "vitest";
 import React from "react";
 import type * as ReactModule from "react";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+const testStoragePath = mkdtempSync(path.join(tmpdir(), "cashier-test-storage-"));
 
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
@@ -8,6 +13,11 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-auth-secret";
 process.env.AUTH_URL = process.env.AUTH_URL ?? "http://localhost:3000";
 process.env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+process.env.LOCAL_STORAGE_PATH = testStoragePath;
+
+afterAll(() => {
+  rmSync(testStoragePath, { recursive: true, force: true });
+});
 
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => {

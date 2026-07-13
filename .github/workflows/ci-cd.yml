@@ -34,7 +34,7 @@ jobs:
         run: npm run validate:i18n
 
   build-and-push:
-    # Intentionally independent: test failures do not block image publication.
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
