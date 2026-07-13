@@ -94,7 +94,22 @@ export function mapSourceDocumentReferenceDto(
 }
 
 export function mapLedgerEntryEmbeddedViewDto(
-  entry: LedgerEntry & {
+  entry: Pick<
+    LedgerEntry,
+    | "id"
+    | "ledgerId"
+    | "categoryId"
+    | "sourceDocumentId"
+    | "amount"
+    | "currency"
+    | "itemName"
+    | "description"
+    | "convertedAmount"
+    | "exchangeRate"
+    | "createdAt"
+    | "updatedAt"
+    | "deletedAt"
+  > & {
     category?: EntryCategory | null;
   }
 ): LedgerEntryEmbeddedViewDto {
@@ -117,7 +132,22 @@ export function mapLedgerEntryEmbeddedViewDto(
 }
 
 export function mapLedgerEntryDto(
-  entry: LedgerEntry & {
+  entry: Pick<
+    LedgerEntry,
+    | "id"
+    | "ledgerId"
+    | "categoryId"
+    | "sourceDocumentId"
+    | "amount"
+    | "currency"
+    | "itemName"
+    | "description"
+    | "convertedAmount"
+    | "exchangeRate"
+    | "createdAt"
+    | "updatedAt"
+    | "deletedAt"
+  > & {
     category?: EntryCategory | null;
     sourceDocument?: SourceDocument | null;
   }

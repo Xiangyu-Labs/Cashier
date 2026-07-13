@@ -171,7 +171,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     expect(res.status).toBe(400);
 
     const data = await res.json();
-    expect(data.error.code).toBe("VALIDATION_ERROR");
+    expect(data.error.code).toBe("VALIDATION_FAILED");
   });
 
   it("should derive entryDate from timezone when entryDate is omitted", async () => {

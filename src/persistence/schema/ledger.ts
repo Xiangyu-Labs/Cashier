@@ -84,6 +84,8 @@ export const ledgerEntries = sqliteTable(
       onDelete: "set null",
     }),
     sourceDocumentId: text("source_document_id"),
+    // Nullable compatibility projection. Existing ledger reads continue to use sourceDocumentId.
+    sourceDocumentRevisionId: text("source_document_revision_id"),
     amount: text("amount").notNull(),
     currency: text("currency"),
     itemName: text("item_name").notNull(),
@@ -100,6 +102,8 @@ export const ledgerEntries = sqliteTable(
   },
   (table) => [
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
+    uniqueIndex("uq_ledger_entries_ledger_id_id").on(table.ledgerId, table.id),
+    index("idx_ledger_entries_ledger_revision").on(table.ledgerId, table.sourceDocumentRevisionId),
     index("idx_ledger_entries_ledger_active_created").on(
       table.ledgerId,
       table.deletedAt,

@@ -28,6 +28,7 @@ export default defineConfig({
     "./src/persistence/schema/currency.ts",
     "./src/persistence/schema/ledger.ts",
     "./src/persistence/schema/source-document.ts",
+    "./src/persistence/schema/application-model.ts",
     "./src/persistence/schema/task-queue.ts",
     "./src/persistence/relations.ts",
   ],

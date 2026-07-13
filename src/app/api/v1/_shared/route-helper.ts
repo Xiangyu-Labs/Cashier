@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { authenticateServiceCredential } from "@/modules/ledger/credential-access";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, RateLimitError } from "@/lib/errors";
-import { getErrorStatusCode, logError, toErrorResponse } from "@/lib/error-handlers";
+import { getErrorStatusCode, logError, toSanitizedErrorResponse } from "@/lib/error-handlers";
 
 type ServiceCredential = NonNullable<Awaited<ReturnType<typeof authenticateServiceCredential>>>;
 
@@ -46,6 +46,6 @@ export async function handleApiV1Route(
     return await handler({ request, key, credential });
   } catch (error) {
     logError(logContext, error);
-    return NextResponse.json(toErrorResponse(error), { status: getErrorStatusCode(error) });
+    return NextResponse.json(toSanitizedErrorResponse(error), { status: getErrorStatusCode(error) });
   }
 }

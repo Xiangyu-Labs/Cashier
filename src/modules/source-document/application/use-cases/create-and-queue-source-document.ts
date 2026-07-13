@@ -6,6 +6,7 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { sourceDocuments, type Ledger } from "@/persistence";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { parseCreateSourceDocumentInput } from "@/modules/source-document/contract-schemas";
+import { toSourceDocumentSubmissionContract } from "@/application/contracts";
 import {
   getSourceDocumentTaskContext,
   prepareSourceDocumentTask,
@@ -83,8 +84,5 @@ export async function createAndQueueSourceDocument(
       .where(q.whereId(savedDoc.id));
   }
 
-  return {
-    sourceDocumentId: savedDoc.id,
-    status: "queued",
-  };
+  return toSourceDocumentSubmissionContract({ id: savedDoc.id });
 }

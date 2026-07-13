@@ -9,6 +9,7 @@ describe("mapLedgerEntryDto", () => {
       ledgerId: "ledger-1",
       categoryId: null,
       sourceDocumentId: null,
+      sourceDocumentRevisionId: null,
       amount: "12.50",
       currency: "USD",
       itemName: "Coffee",

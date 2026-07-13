@@ -179,6 +179,7 @@ describe("source-document processing helpers", () => {
         scopeId: "ledger-1",
         entityType: "source_document",
         entityId: "doc-1",
+        deduplicationKey: "parse:doc-1:1",
       }
     );
   });

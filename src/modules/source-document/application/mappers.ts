@@ -7,13 +7,30 @@ import type {
   SourceDocumentListItemDto,
 } from "../contracts";
 
+type LegacySourceDocumentProjection = Pick<
+  SourceDocument,
+  | "id"
+  | "ledgerId"
+  | "title"
+  | "text"
+  | "imageUrls"
+  | "status"
+  | "type"
+  | "anomalyReason"
+  | "entryDate"
+  | "metadata"
+  | "createdAt"
+  | "updatedAt"
+  | "deletedAt"
+>;
+
 function toIso(date: Date | null | undefined): string | null {
   if (date == null) return null;
   return date.toISOString();
 }
 
 export function mapSourceDocumentDto(
-  doc: SourceDocument,
+  doc: LegacySourceDocumentProjection,
   options: {
     imageUrls?: string[];
     text?: string | null;
@@ -114,7 +131,7 @@ export function mapSourceDocumentLedgerEntryDto(
 }
 
 export function mapSourceDocumentListItemDto(
-  doc: SourceDocument,
+  doc: LegacySourceDocumentProjection,
   ledgerEntries?: SourceDocumentLedgerEntryDto[]
 ): SourceDocumentListItemDto {
   return {

@@ -32,18 +32,19 @@ describe("errors", () => {
       expect(response.error.message).toBe("User not found");
     });
 
-    it("omits details when AppError has no details payload", () => {
+    it("omits diagnostics for client-safe errors", () => {
       const response = toErrorResponse(new UnauthorizedError());
 
       expect(Object.hasOwn(response.error, "details")).toBe(false);
     });
 
-    it("should convert generic Error", () => {
-      const error = new Error("Something broke");
+    it("sanitizes generic Error", () => {
+      const error = new Error("Something broke at /private/path");
       const response = toErrorResponse(error);
 
-      expect(response.error.code).toBe("INTERNAL_ERROR");
-      expect(response.error.message).toBe("Something broke");
+      expect(response.error.code).toBe("INTERNAL");
+      expect(response.error.message).not.toContain("/private");
+      expect(response.error.details).toEqual({ correlationId: expect.any(String) });
     });
   });
 

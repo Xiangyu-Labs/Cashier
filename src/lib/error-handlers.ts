@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { AppError } from "./errors";
+import { toApplicationError } from "@/application/contracts/errors";
 
 /**
  * Standard error response format
@@ -16,31 +17,22 @@ export interface ErrorResponse {
  * Convert any error to standard error response
  */
 export function toErrorResponse(error: unknown): ErrorResponse {
-  if (error instanceof AppError) {
-    const errorBody = {
-      message: error.message,
-      code: error.code,
-      ...(error.details !== undefined ? { details: error.details } : {}),
-    };
+  return toSanitizedErrorResponse(error);
+}
 
-    return {
-      error: errorBody,
-    };
-  }
-
-  if (error instanceof Error) {
-    return {
-      error: {
-        message: error.message,
-        code: "INTERNAL_ERROR",
-      },
-    };
-  }
-
+/**
+ * API boundaries use this projection. It has stable codes and intentionally does
+ * not send adapter messages, paths, provider payloads, or error details to clients.
+ */
+export function toSanitizedErrorResponse(error: unknown): ErrorResponse {
+  const applicationError = toApplicationError(error);
   return {
     error: {
-      message: "An unknown error occurred",
-      code: "UNKNOWN_ERROR",
+      message: applicationError.message,
+      code: applicationError.code,
+      ...(applicationError.correlationId !== undefined
+        ? { details: { correlationId: applicationError.correlationId } }
+        : {}),
     },
   };
 }

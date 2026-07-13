@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel } from "drizzle-orm";
 import {
   type SourceDocMetadata,
@@ -32,6 +32,9 @@ export const sourceDocuments = sqliteTable(
     anomalyReason: text("anomaly_reason"),
     entryDate: text("entry_date"),
     metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
+    // Nullable until task group 5 deterministically backfills legacy documents.
+    activeRevisionId: text("active_revision_id"),
+    pendingRevisionId: text("pending_revision_id"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -46,6 +49,9 @@ export const sourceDocuments = sqliteTable(
     index("idx_source_docs_ledger_entry_date").on(table.ledgerId, table.entryDate),
     index("idx_source_docs_ledger_status_date").on(table.ledgerId, table.status, table.entryDate),
     index("idx_source_docs_ledger_status_type").on(table.ledgerId, table.status, table.type),
+    uniqueIndex("uq_source_documents_ledger_id_id").on(table.ledgerId, table.id),
+    index("idx_source_docs_ledger_active_revision").on(table.ledgerId, table.activeRevisionId),
+    index("idx_source_docs_ledger_pending_revision").on(table.ledgerId, table.pendingRevisionId),
   ]
 );
 

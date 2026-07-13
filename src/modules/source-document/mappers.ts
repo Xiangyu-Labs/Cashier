@@ -20,8 +20,25 @@ export interface SerializeSourceDocumentOptions {
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
 }
 
+type LegacySourceDocumentProjection = Pick<
+  SourceDocument,
+  | "id"
+  | "ledgerId"
+  | "title"
+  | "text"
+  | "imageUrls"
+  | "status"
+  | "type"
+  | "anomalyReason"
+  | "entryDate"
+  | "metadata"
+  | "createdAt"
+  | "updatedAt"
+  | "deletedAt"
+>;
+
 export function serializeSourceDocument(
-  doc: SourceDocument,
+  doc: LegacySourceDocumentProjection,
   options: SerializeSourceDocumentOptions = {}
 ): SourceDocumentDto {
   const {
@@ -53,7 +70,7 @@ export function serializeSourceDocument(
   };
 }
 
-export function serializeSourceDocumentLight(doc: SourceDocument): SourceDocumentLightDto {
+export function serializeSourceDocumentLight(doc: LegacySourceDocumentProjection): SourceDocumentLightDto {
   return {
     id: doc.id,
     ledgerId: doc.ledgerId,

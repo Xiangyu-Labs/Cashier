@@ -4,6 +4,7 @@ import {
 } from "@/modules/source-document/actions";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
+import { toApiV1SourceDocumentCreateResponse } from "@/app/api/v1/_shared/compatibility";
 
 export async function POST(request: NextRequest) {
   return handleApiV1Route(request, {
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
         payload: body,
       });
 
-      return NextResponse.json(createResult, { status: 201 });
+      return NextResponse.json(toApiV1SourceDocumentCreateResponse(createResult), { status: 201 });
     },
   });
 }
