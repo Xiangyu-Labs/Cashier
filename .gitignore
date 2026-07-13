@@ -83,3 +83,7 @@ chant.sh
 
 # SDD task artifacts
 .superpowers/
+
+# Local Codex/OpenSpec workflow
+/.codex/
+/openspec/
