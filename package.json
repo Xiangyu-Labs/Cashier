@@ -23,7 +23,7 @@
     "docker:down": "docker compose down",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/migrate-database.mjs",
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
     "format": "prettier --write .",

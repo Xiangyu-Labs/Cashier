@@ -11,6 +11,8 @@ export const coverageConfig = {
   provider: "v8" as const,
   reporter: ["text", "json", "html"],
   reportsDirectory: "./coverage",
+  // The coverage runner creates reportsDirectory/.tmp before Vitest starts.
+  clean: false,
   all: true,
   include: ["src/**/*.ts", "src/**/*.tsx"],
   thresholds: {

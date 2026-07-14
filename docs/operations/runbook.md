@@ -312,4 +312,5 @@ git pull
 docker compose up -d --build
 ```
 
-由于生产入口脚本会自动执行 `npm run db:migrate`，一般不需要额外手工跑迁移。
+由于生产入口脚本会自动执行 `npm run db:migrate`，一般不需要额外手工跑迁移。该命令会先执行
+Drizzle SQL migrations，再执行内部应用层数据迁移和核对；任一阶段失败都会阻止应用启动。
