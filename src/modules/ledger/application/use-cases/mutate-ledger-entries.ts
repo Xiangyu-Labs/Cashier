@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { logger } from "@/lib/logger";
@@ -9,6 +10,7 @@ import { getLedgerMainCurrency } from "../queries/get-ledger-main-currency";
 import { recalculateEntriesConvertedAmount } from "../services/recalculate-entries-converted-amount";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { LedgerEntryDto } from "../../contracts";
+import { getLedgerEntryDetail } from "../queries/get-ledger-entry-detail";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
@@ -125,6 +127,84 @@ export async function updateLedgerEntryWithConversion(input: {
 }): Promise<LedgerEntryDto> {
   const q = forLedger(ledgerEntries, input.ledgerId);
   const updateData = applyLedgerEntryPatch(input, new Date());
+
+  const targetEntry = await db.query.ledgerEntries.findFirst({
+    where: and(
+      eq(ledgerEntries.id, input.ledgerEntryId),
+      eq(ledgerEntries.ledgerId, input.ledgerId),
+      isNull(ledgerEntries.deletedAt)
+    ),
+    with: { sourceDocument: true },
+  });
+  const targetDocument = targetEntry?.sourceDocument;
+  const isTargetManualEntry =
+    targetDocument?.type === "manual" &&
+    targetDocument.activeRevisionId != null &&
+    targetEntry?.sourceDocumentRevisionId === targetDocument.activeRevisionId;
+
+  if (targetEntry != null && targetDocument != null && isTargetManualEntry) {
+    const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
+    const nextAmount = input.amount ?? Number(targetEntry.amount);
+    const nextCurrency = normalizeCurrency(input.currency ?? targetEntry.currency);
+    let convertedAmount = targetEntry.convertedAmount;
+    let exchangeRate = targetEntry.exchangeRate;
+    if (input.amount !== undefined || input.currency !== undefined) {
+      const conversion = await convertEntryAmount({
+        amount: nextAmount,
+        fromCurrency: nextCurrency,
+        toCurrency: mainCurrency,
+        ...(targetDocument.entryDate != null && targetDocument.entryDate !== ""
+          ? { date: targetDocument.entryDate }
+          : {}),
+      });
+      convertedAmount = conversion?.convertedAmount ?? null;
+      exchangeRate = conversion?.exchangeRate ?? null;
+    }
+
+    const activeRevisionId = targetDocument.activeRevisionId!;
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        eq(ledgerEntries.sourceDocumentId, targetDocument.id),
+        eq(ledgerEntries.sourceDocumentRevisionId, activeRevisionId),
+        isNull(ledgerEntries.deletedAt)
+      ),
+      orderBy: (entries, { asc }) => [asc(entries.createdAt), asc(entries.id)],
+    });
+    await sqliteLedgerProjectionAdapter.replaceManual({
+      ledgerId: input.ledgerId,
+      sourceDocumentId: targetDocument.id,
+      expectedActiveRevisionId: activeRevisionId,
+      entries: activeEntries.map((entry) =>
+        entry.id === input.ledgerEntryId
+          ? {
+              id: entry.id,
+              categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
+              amount: input.amount !== undefined ? input.amount.toFixed(2) : entry.amount,
+              currency: input.currency !== undefined ? input.currency : entry.currency,
+              itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
+              description: input.description !== undefined ? input.description : entry.description,
+              convertedAmount,
+              exchangeRate,
+              createdAt: entry.createdAt.toISOString(),
+            }
+          : {
+              id: entry.id,
+              categoryId: entry.categoryId,
+              amount: entry.amount,
+              currency: entry.currency,
+              itemName: entry.itemName,
+              description: entry.description,
+              convertedAmount: entry.convertedAmount,
+              exchangeRate: entry.exchangeRate,
+              createdAt: entry.createdAt.toISOString(),
+            }
+      ),
+    });
+    const updated = await getLedgerEntryDetail(input.ledgerEntryId, input.ledgerId);
+    if (updated == null) throw new NotFoundError("Entry");
+    return updated;
+  }
 
   if (input.amount !== undefined || input.currency !== undefined) {
     const [currentEntry, mainCurrency] = await Promise.all([

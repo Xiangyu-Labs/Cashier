@@ -11,6 +11,7 @@ import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import { SourceDocumentStatus } from "@/modules/source-document/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
+import { buildLedgerEntryVisibilityCondition } from "@/modules/ledger/application/queries/ledger-entry-visibility";
 
 function whereStatsSourceDocumentActive(ledgerId: string) {
   return and(
@@ -76,6 +77,7 @@ export async function getEnhancedStatsQuery({
     return db.query.ledgerEntries.findMany({
       where: and(
         entryScope.whereActive,
+        buildLedgerEntryVisibilityCondition(ledgerId),
         inArray(ledgerEntries.sourceDocumentId, sourceDocumentsInRange)
       ),
       with: {

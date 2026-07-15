@@ -8,6 +8,7 @@ import {
 } from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
+import { activateTestSourceDocumentProjection } from "tests/helpers/schema-setup";
 
 describe("getLedgerEntryDetail", () => {
   beforeEach(() => {
@@ -29,6 +30,7 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(ledgers).values(ledger);
     await db.insert(sourceDocuments).values(sourceDocument);
     await db.insert(ledgerEntries).values(entry);
+    await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
     // pass a different ledgerId — should return null, not throw
     await expect(getLedgerEntryDetail(entry.id, crypto.randomUUID())).resolves.toBeNull();
@@ -55,6 +57,7 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(entryCategories).values(category);
     await db.insert(sourceDocuments).values(sourceDocument);
     await db.insert(ledgerEntries).values(entry);
+    await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
     const result = await getLedgerEntryDetail(entry.id, ledger.id);
 

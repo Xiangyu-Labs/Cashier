@@ -11,6 +11,7 @@ import {
 } from "../helpers/factories";
 import { v4 as uuidv4 } from "uuid";
 import { NotFoundError } from "@/lib/errors";
+import { activateTestSourceDocumentProjection } from "../helpers/schema-setup";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -44,6 +45,7 @@ describe("getSourceDocumentByIdAction", () => {
     // 2. Create Source Document
     const docData = createSourceDocumentData(ledgerData.id);
     await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     // 3. Action
     const result = await getSourceDocumentByIdAction(docData.id);
@@ -111,6 +113,7 @@ describe("getSourceDocumentLightAction", () => {
       text: "Lunch for 25.50",
     });
     await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
@@ -131,13 +134,14 @@ describe("getSourceDocumentLightAction", () => {
       imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
     });
     await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
     expect(result!.hasImages).toBe(true);
     expect((result as unknown as { imageUrls?: string[] }).imageUrls).toEqual([
-      "data:image/jpeg;base64,/9j/4AAQ...",
+      expect.stringMatching(/^\/api\/stored-files\//),
     ]);
   });
 
@@ -148,6 +152,7 @@ describe("getSourceDocumentLightAction", () => {
 
     const docData = createSourceDocumentData(ledgerData.id, { imageUrls: [] });
     await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
@@ -167,6 +172,7 @@ describe("getSourceDocumentLightAction", () => {
       },
     });
     await db.insert(sourceDocuments).values(docData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
@@ -192,6 +198,7 @@ describe("getSourceDocumentLightAction", () => {
       itemName: "Test Entry",
     });
     await db.insert(ledgerEntries).values(entryData);
+    await activateTestSourceDocumentProjection(db, docData.id);
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 

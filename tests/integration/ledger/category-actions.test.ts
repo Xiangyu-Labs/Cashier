@@ -11,6 +11,21 @@ import {
   reorderEntryCategoriesAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
+
+async function getTargetEntryCategoriesAction(ledgerId: string) {
+  const db = getTestDb();
+  const documents = await db.query.sourceDocuments.findMany({
+    where: (documents, { eq }) => eq(documents.ledgerId, ledgerId),
+    columns: { id: true, status: true },
+  });
+  for (const document of documents) {
+    if (document.status !== "deleted") {
+      await activateTestSourceDocumentProjection(db, document.id);
+    }
+  }
+  return getEntryCategoriesAction(ledgerId);
+}
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -35,9 +50,9 @@ describe("createEntryCategoryAction", () => {
     expect(category.description ?? null).toBeNull();
 
     const db = getTestDb();
-    expect(
-      await db.query.taskRuns.findMany({ where: eq(taskRuns.entityId, category.id) })
-    ).toEqual([]);
+    expect(await db.query.taskRuns.findMany({ where: eq(taskRuns.entityId, category.id) })).toEqual(
+      []
+    );
   });
 
   it("creates a category with all fields and no task run", async () => {
@@ -261,7 +276,7 @@ describe("getEntryCategoriesAction", () => {
       { id: uuidv4(), ledgerId, name: "C", sortOrder: 3 },
     ]);
 
-    const result = await getEntryCategoriesAction(ledgerId);
+    const result = await getTargetEntryCategoriesAction(ledgerId);
     expect(result.map((c) => c.name)).toEqual(["A", "B", "C"]);
   });
 
@@ -272,7 +287,7 @@ describe("getEntryCategoriesAction", () => {
       { id: uuidv4(), ledgerId, name: "Deleted", sortOrder: 2, deletedAt: new Date() },
     ]);
 
-    const result = await getEntryCategoriesAction(ledgerId);
+    const result = await getTargetEntryCategoriesAction(ledgerId);
     expect(result).toHaveLength(1);
     const firstCategory = result[0];
     expect(firstCategory).toBeDefined();
@@ -326,7 +341,7 @@ describe("getEntryCategoriesAction", () => {
       },
     ]);
 
-    const result = await getEntryCategoriesAction(ledgerId);
+    const result = await getTargetEntryCategoriesAction(ledgerId);
     const firstCategory = result[0];
     expect(firstCategory).toBeDefined();
     expect(firstCategory?.entryCount).toBe(2);
@@ -395,7 +410,7 @@ describe("getEntryCategoriesAction", () => {
       },
     ]);
 
-    const result = await getEntryCategoriesAction(ledgerId);
+    const result = await getTargetEntryCategoriesAction(ledgerId);
     const category = result.find((item) => item.id === catId);
     expect(category).toBeDefined();
     expect(category?.entryCount).toBe(1);

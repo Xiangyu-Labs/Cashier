@@ -3,6 +3,7 @@ import { getLedgerEntriesAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../../setup";
 import { ledgers, entryCategories, ledgerEntries } from "@/persistence";
 import {
+  activateTestSourceDocumentProjection,
   createTestUserWithLedger,
   createTestSourceDocument,
   TEST_USER_ID,
@@ -56,6 +57,7 @@ describe("getLedgerEntriesAction", () => {
       amount: "25.50",
       itemName: "午餐",
     });
+    await activateTestSourceDocumentProjection(db, testSourceDocId);
 
     const data = await getLedgerEntriesAction(testLedgerId, {});
 
@@ -94,6 +96,7 @@ describe("getLedgerEntriesAction", () => {
         itemName: "交通交易",
       },
     ]);
+    await activateTestSourceDocumentProjection(db, testSourceDocId);
 
     const data = await getLedgerEntriesAction(testLedgerId, { categoryId: testCategoryId });
 
@@ -128,6 +131,7 @@ describe("getLedgerEntriesAction", () => {
         itemName: "应被隐藏分录",
       },
     ]);
+    await activateTestSourceDocumentProjection(db, activeSourceDocId);
 
     const data = await getLedgerEntriesAction(testLedgerId, {});
 

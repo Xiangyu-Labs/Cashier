@@ -8,7 +8,7 @@ import {
 } from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
-import { createTestUser } from "tests/helpers/schema-setup";
+import { activateTestSourceDocumentProjection, createTestUser } from "tests/helpers/schema-setup";
 
 describe("ledger source-document linkage", () => {
   let ledgerId = "";
@@ -54,6 +54,9 @@ describe("ledger source-document linkage", () => {
         itemName: "other ledger entry",
       }),
     ]);
+    await activateTestSourceDocumentProjection(db, firstDoc.id);
+    await activateTestSourceDocumentProjection(db, secondDoc.id);
+    await activateTestSourceDocumentProjection(db, otherDoc.id);
   });
 
   it("returns an empty map when source document ids are empty", async () => {

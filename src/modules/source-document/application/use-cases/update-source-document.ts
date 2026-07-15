@@ -1,10 +1,11 @@
 import { db } from "@/lib/db";
+import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
 import type {
   BatchUpdateSourceDocumentsResultDto,
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
-import { sourceDocuments } from "@/persistence";
-import { and, inArray } from "drizzle-orm";
+import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
@@ -31,6 +32,40 @@ export async function updateSourceDocument({
   sourceDocumentId,
   data,
 }: UpdateSourceDocumentInput): Promise<UpdateSourceDocumentResultDto> {
+  const document = await db.query.sourceDocuments.findFirst({
+    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
+  });
+  if (document?.type === "manual" && document.activeRevisionId != null) {
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+        eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
+        isNull(ledgerEntries.deletedAt)
+      ),
+      orderBy: (entries, { asc }) => [asc(entries.createdAt), asc(entries.id)],
+    });
+    await sqliteLedgerProjectionAdapter.replaceManual({
+      ledgerId,
+      sourceDocumentId,
+      expectedActiveRevisionId: document.activeRevisionId,
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
+      entries: activeEntries.map((entry) => ({
+        id: entry.id,
+        categoryId: entry.categoryId,
+        amount: entry.amount,
+        currency: entry.currency,
+        itemName: entry.itemName,
+        description: entry.description,
+        convertedAmount: entry.convertedAmount,
+        exchangeRate: entry.exchangeRate,
+        createdAt: entry.createdAt.toISOString(),
+      })),
+    });
+    return { sourceDocumentId, updated: true };
+  }
+
   const updatePatch = {
     updatedAt: new Date(),
     ...(data.title !== undefined ? { title: data.title } : {}),

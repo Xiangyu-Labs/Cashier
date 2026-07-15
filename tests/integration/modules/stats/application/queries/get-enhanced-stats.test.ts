@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
-import { createTestUserWithLedger } from "tests/helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+} from "tests/helpers/schema-setup";
 import {
   currencyRates,
   entryCategories,
@@ -14,6 +17,20 @@ import {
   getEnhancedStats,
   getEnhancedStatsQuery,
 } from "@/modules/stats/application/queries/get-enhanced-stats";
+
+async function getTargetEnhancedStatsQuery(
+  input: Parameters<typeof getEnhancedStatsQuery>[0]
+): ReturnType<typeof getEnhancedStatsQuery> {
+  const db = getTestDb();
+  const documents = await db.query.sourceDocuments.findMany({
+    where: (documents, { eq }) => eq(documents.ledgerId, input.ledgerId),
+    columns: { id: true },
+  });
+  for (const document of documents) {
+    await activateTestSourceDocumentProjection(db, document.id);
+  }
+  return getEnhancedStatsQuery(input);
+}
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -118,7 +135,7 @@ describe("getEnhancedStatsQuery", () => {
       },
     ]);
 
-    const result = await getEnhancedStatsQuery({
+    const result = await getTargetEnhancedStatsQuery({
       ledgerId,
       queryRange: { from: "2024-03-01", to: "2024-03-31" },
       compareRange: { from: "2024-02-01", to: "2024-02-29" },
@@ -180,7 +197,7 @@ describe("getEnhancedStatsQuery", () => {
       },
     ]);
 
-    const result = await getEnhancedStatsQuery({
+    const result = await getTargetEnhancedStatsQuery({
       ledgerId,
       queryRange: { from: "2024-03-01", to: "2024-03-31" },
       compareRange: { from: "2024-02-01", to: "2024-02-29" },
@@ -235,7 +252,7 @@ describe("getEnhancedStatsQuery", () => {
       },
     ]);
 
-    const result = await getEnhancedStatsQuery({
+    const result = await getTargetEnhancedStatsQuery({
       ledgerId,
       queryRange: { from: "2024-04-01", to: "2024-04-30" },
       compareRange: { from: "2024-03-01", to: "2024-03-31" },
@@ -269,7 +286,7 @@ describe("getEnhancedStatsQuery", () => {
       categoryId,
     });
 
-    const result = await getEnhancedStatsQuery({
+    const result = await getTargetEnhancedStatsQuery({
       ledgerId,
       queryRange: { from: "2024-05-01", to: "2024-05-31" },
       compareRange: { from: "2024-04-01", to: "2024-04-30" },
@@ -306,7 +323,7 @@ describe("getEnhancedStatsQuery", () => {
       });
     }
 
-    const result = await getEnhancedStatsQuery({
+    const result = await getTargetEnhancedStatsQuery({
       ledgerId,
       queryRange: { from: "2024-06-01", to: "2024-06-30" },
       compareRange: { from: "2024-05-01", to: "2024-05-31" },

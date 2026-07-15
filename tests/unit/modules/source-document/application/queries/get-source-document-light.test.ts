@@ -4,12 +4,18 @@ import type * as DrizzleOrmModule from "drizzle-orm";
 
 const {
   sourceDocumentsFindFirstMock,
+  getTargetSourceDocumentMock,
   requireLedgerAccessMock,
   listLedgerEntryViewsBySourceDocumentIdsMock,
 } = vi.hoisted(() => ({
   sourceDocumentsFindFirstMock: vi.fn(),
+  getTargetSourceDocumentMock: vi.fn(),
   requireLedgerAccessMock: vi.fn(),
   listLedgerEntryViewsBySourceDocumentIdsMock: vi.fn(),
+}));
+
+vi.mock("@/application/adapters/sqlite", () => ({
+  getTargetSourceDocument: getTargetSourceDocumentMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -58,6 +64,7 @@ describe("getSourceDocumentLight", () => {
     vi.clearAllMocks();
     requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
     listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(new Map());
+    getTargetSourceDocumentMock.mockResolvedValue(null);
   });
 
   it("returns a normalized light payload with imageUrls, entries, and sanitized metadata", async () => {
@@ -86,37 +93,33 @@ describe("getSourceDocumentLight", () => {
       ])
     );
 
-    sourceDocumentsFindFirstMock
-      .mockResolvedValueOnce({
-        ledgerId: "ledger-1",
-        imageUrls: ["https://example.com/receipt.jpg"],
-      })
-      .mockResolvedValueOnce({
-        id: "doc-1",
-        ledgerId: "ledger-1",
-        title: "Receipt",
-        text: "Lunch",
-        imageUrls: ["https://example.com/receipt.jpg"],
-        status: "completed",
-        type: "ai_parsed",
-        anomalyReason: null,
-        entryDate: "2026-03-20",
-        metadata: {
-          visionDescription: "secret",
-          originalImageUrls: ["https://example.com/original.jpg"],
-          note: "keep",
-        },
-        createdAt: new Date("2026-03-20T10:00:00.000Z"),
-        updatedAt: new Date("2026-03-20T11:00:00.000Z"),
-        deletedAt: null,
-      });
+    sourceDocumentsFindFirstMock.mockResolvedValueOnce({
+      ledgerId: "ledger-1",
+      imageUrls: ["legacy-local-url"],
+    });
+    getTargetSourceDocumentMock.mockResolvedValueOnce({
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      title: "Receipt",
+      text: "Lunch",
+      imageUrls: ["/api/stored-files/file-1"],
+      status: "completed",
+      type: "ai_parsed",
+      anomalyReason: null,
+      entryDate: "2026-03-20",
+      metadata: { note: "keep" },
+      createdAt: "2026-03-20T10:00:00.000Z",
+      updatedAt: "2026-03-20T11:00:00.000Z",
+      deletedAt: null,
+      hasImages: true,
+    });
 
     const result = await getSourceDocumentLight("doc-1");
 
     expect(result).not.toBeNull();
     expect(result?.hasImages).toBe(true);
     expect((result as { imageUrls?: string[] } | null)?.imageUrls).toEqual([
-      "https://example.com/receipt.jpg",
+      "/api/stored-files/file-1",
     ]);
     expect(result?.ledgerEntries).toEqual([
       expect.objectContaining({

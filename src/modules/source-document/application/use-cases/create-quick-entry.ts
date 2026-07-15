@@ -1,11 +1,9 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { db } from "@/lib/db";
+import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
-import { insertSourceDocumentLedgerEntry } from "@/modules/source-document/application/services/source-document-ledger-entries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
-import { SourceDocumentType } from "@/modules/source-document/types";
-import { sourceDocuments, type Ledger } from "@/persistence";
+import type { Ledger } from "@/persistence";
 
 export interface CreateQuickEntryPayload {
   categoryId: string;
@@ -45,46 +43,33 @@ async function resolveConversion(
   return result ?? { convertedAmount: null, exchangeRate: null };
 }
 
-function createQuickEntryAtomically(
+async function createQuickEntryAtomically(
   ledgerId: string,
   categoryName: string,
   currency: string,
   conversion: ConversionResult,
   data: QuickEntryInsertData
-): { sourceDocumentId: string; ledgerEntryId: string } {
-  const sourceDocumentId = crypto.randomUUID();
+): Promise<{ sourceDocumentId: string; ledgerEntryId: string }> {
   const ledgerEntryId = crypto.randomUUID();
   const itemName = data.itemName ?? categoryName;
-
-  db.transaction((tx) => {
-    tx.insert(sourceDocuments)
-      .values({
-        id: sourceDocumentId,
-        ledgerId,
-        title: categoryName,
-        text: null,
-        imageUrls: [],
-        status: "completed",
-        type: SourceDocumentType.Manual,
-        entryDate: data.entryDate,
-      })
-      .run();
-
-    insertSourceDocumentLedgerEntry(tx, {
-      id: ledgerEntryId,
-      ledgerId,
-      sourceDocumentId,
-      categoryId: data.categoryId,
-      amount: data.amount.toFixed(2),
-      currency,
-      itemName,
-      description: data.description,
-      convertedAmount: conversion.convertedAmount,
-      exchangeRate: conversion.exchangeRate,
-    });
+  const created = await sqliteLedgerProjectionAdapter.createManual({
+    ledgerId,
+    title: categoryName,
+    entryDate: data.entryDate,
+    entries: [
+      {
+        id: ledgerEntryId,
+        categoryId: data.categoryId,
+        amount: data.amount.toFixed(2),
+        currency,
+        itemName,
+        description: data.description,
+        convertedAmount: conversion.convertedAmount,
+        exchangeRate: conversion.exchangeRate,
+      },
+    ],
   });
-
-  return { sourceDocumentId, ledgerEntryId };
+  return { sourceDocumentId: created.sourceDocumentId, ledgerEntryId };
 }
 
 export async function createQuickEntry(
@@ -101,13 +86,19 @@ export async function createQuickEntry(
     resolveConversion(payload.amount, entryCurrency, mainCurrency, entryDate),
   ]);
 
-  const result = createQuickEntryAtomically(ledgerId, categoryName, entryCurrency, conversion, {
-    categoryId: payload.categoryId,
-    itemName: payload.itemName ?? null,
-    description: payload.description ?? null,
-    amount: payload.amount,
-    entryDate,
-  });
+  const result = await createQuickEntryAtomically(
+    ledgerId,
+    categoryName,
+    entryCurrency,
+    conversion,
+    {
+      categoryId: payload.categoryId,
+      itemName: payload.itemName ?? null,
+      description: payload.description ?? null,
+      amount: payload.amount,
+      entryDate,
+    }
+  );
 
   return {
     sourceDocumentId: result.sourceDocumentId,

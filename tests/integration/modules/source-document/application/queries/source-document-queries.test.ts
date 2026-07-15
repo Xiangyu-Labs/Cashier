@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
-import { createTestUserWithLedger } from "tests/helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+} from "tests/helpers/schema-setup";
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
-import {
-  getSourceDocumentFullQuery,
-} from "@/modules/source-document/application/queries/get-source-document-full";
+import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import {
   listSourceDocuments,
@@ -69,6 +70,9 @@ describe("source-document-queries", () => {
         },
       ])
       .returning();
+    for (const document of inserted) {
+      await activateTestSourceDocumentProjection(db, document.id);
+    }
 
     const page1 = await querySourceDocumentPage(ledgerId, {
       status: "completed",
@@ -114,6 +118,7 @@ describe("source-document-queries", () => {
       currency: "CNY",
       itemName: "Lunch",
     });
+    await activateTestSourceDocumentProjection(db, docId);
 
     const result = await querySourceDocumentPage(ledgerId, {
       includeLedgerEntries: true,
@@ -235,6 +240,8 @@ describe("source-document-queries", () => {
         categoryId,
       },
     ]);
+    await activateTestSourceDocumentProjection(db, firstDoc.id);
+    await activateTestSourceDocumentProjection(db, secondDoc.id);
 
     const result = await getSourceDocumentCollection(ledgerId, {
       minAmount: 100,
@@ -248,22 +255,28 @@ describe("source-document-queries", () => {
   it("returns pending groups through the public query barrel", async () => {
     const db = getTestDb();
 
-    await db.insert(sourceDocuments).values([
-      {
-        ledgerId,
-        text: "queued doc",
-        status: "queued",
-        imageUrls: [],
-        entryDate: "2026-03-23",
-      },
-      {
-        ledgerId,
-        text: "failed doc",
-        status: "failed",
-        imageUrls: [],
-        entryDate: "2026-03-22",
-      },
-    ]);
+    const documents = await db
+      .insert(sourceDocuments)
+      .values([
+        {
+          ledgerId,
+          text: "queued doc",
+          status: "queued",
+          imageUrls: [],
+          entryDate: "2026-03-23",
+        },
+        {
+          ledgerId,
+          text: "failed doc",
+          status: "failed",
+          imageUrls: [],
+          entryDate: "2026-03-22",
+        },
+      ])
+      .returning();
+    for (const document of documents) {
+      await activateTestSourceDocumentProjection(db, document.id);
+    }
 
     const result = await getPendingSourceDocuments(ledgerId);
 

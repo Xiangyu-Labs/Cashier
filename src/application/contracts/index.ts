@@ -278,8 +278,10 @@ export interface LedgerProjectionPort {
   replaceManual(input: {
     ledgerId: LedgerId;
     sourceDocumentId: SourceDocumentId;
+    expectedActiveRevisionId?: RevisionId;
     submittedText?: string | null;
     title?: string | null;
+    entryDate?: string | null;
     entries: readonly LedgerProjectionEntryContract[];
   }): Promise<RevisionId>;
   recalculate(input: {
@@ -307,7 +309,5 @@ export interface RevisionProcessingResultContract {
 }
 
 export interface RevisionProcessorPort {
-  process(
-    request: RevisionProcessingRequestContract
-  ): Promise<RevisionProcessingResultContract>;
+  process(request: RevisionProcessingRequestContract): Promise<RevisionProcessingResultContract>;
 }

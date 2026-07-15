@@ -1,29 +1,15 @@
-import { and, desc, type SQL } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { listTargetSourceDocuments } from "@/application/adapters/sqlite";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
-import {
-  mapSourceDocumentListItemDto,
-  mapSourceDocumentLedgerEntryDto,
-} from "@/modules/source-document/mappers";
-import { whereSourceDocumentNotDeleted } from "@/modules/source-document/application/source-document-state";
+import { mapSourceDocumentLedgerEntryDto } from "@/modules/source-document/mappers";
 import {
   type ListSourceDocumentsInput,
   parseListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-import { sourceDocuments } from "@/persistence";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
 } from "../../contracts";
-import {
-  buildSourceDocumentCursorCondition,
-  generateSourceDocumentNextCursor,
-} from "./source-document-query-cursor";
-import { buildSourceDocumentDateConditions } from "./source-document-query-date";
-import { buildSourceDocumentStatusCondition } from "./source-document-query-status";
-
-type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
 
 export interface ListSourceDocumentsParams {
   status?: string | null;
@@ -58,58 +44,42 @@ export async function listEntriesBySourceDocumentIds(
   return mapped;
 }
 
-export function serializeSourceDocumentListItem(
-  document: SourceDocumentRow,
-  ledgerEntries?: SourceDocumentLedgerEntryDto[]
-): SourceDocumentListItemDto {
-  return mapSourceDocumentListItemDto(document, ledgerEntries);
-}
-
 export async function querySourceDocumentPage(
   ledgerId: string,
   params: ListSourceDocumentsParams
 ): Promise<SourceDocumentPageDto> {
   const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
 
-  const conditions = [
-    whereSourceDocumentNotDeleted(ledgerId),
-    buildSourceDocumentStatusCondition(status),
-    ...buildSourceDocumentDateConditions(startDate, endDate),
-    buildSourceDocumentCursorCondition(cursor),
-  ].filter((condition): condition is SQL<unknown> => condition !== null);
-
-  const items = await db.query.sourceDocuments.findMany({
-    where: and(...conditions),
-    orderBy: [
-      desc(sourceDocuments.entryDate),
-      desc(sourceDocuments.createdAt),
-      desc(sourceDocuments.id),
-    ],
-    limit: limit + 1,
+  const statuses = status
+    ?.split(",")
+    .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
+      ["queued", "processing", "completed", "anomaly", "failed"].includes(value)
+    );
+  const page = await listTargetSourceDocuments({
+    ledgerId,
+    ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
+    ...(startDate !== undefined ? { startDate } : {}),
+    ...(endDate !== undefined ? { endDate } : {}),
+    ...(cursor !== undefined ? { cursor } : {}),
+    limit,
   });
-
-  const hasMore = items.length > limit;
-  const resultItems = hasMore ? items.slice(0, limit) : items;
-  const nextCursorItem = hasMore ? items[limit] : undefined;
-  const nextCursor =
-    nextCursorItem != null ? generateSourceDocumentNextCursor(nextCursorItem) : null;
 
   const entriesByDocId =
     includeLedgerEntries === true
       ? await listEntriesBySourceDocumentIds(
           ledgerId,
-          resultItems.map((item) => item.id)
+          page.items.map((item) => item.id)
         )
       : new Map<string, SourceDocumentLedgerEntryDto[]>();
 
   return {
-    items: resultItems.map((item) =>
-      serializeSourceDocumentListItem(
-        item,
-        includeLedgerEntries === true ? (entriesByDocId.get(item.id) ?? []) : undefined
-      )
-    ),
-    nextCursor,
+    items: page.items.map((item) => ({
+      ...item,
+      ...(includeLedgerEntries === true
+        ? { ledgerEntries: entriesByDocId.get(item.id) ?? [] }
+        : {}),
+    })),
+    nextCursor: page.nextCursor,
   };
 }
 

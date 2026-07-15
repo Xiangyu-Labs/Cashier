@@ -16,7 +16,11 @@ import {
   createLedgerEntryData,
   createSourceDocumentData,
 } from "../helpers/factories";
-import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+  TEST_USER_ID,
+} from "../helpers/schema-setup";
 import { eq, isNull, and } from "drizzle-orm";
 
 // Import actions
@@ -32,6 +36,20 @@ import {
 } from "@/modules/ledger/actions";
 import { createLedgerAction } from "@/modules/ledger/actions";
 import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
+
+async function getTargetEntryCategoriesAction(ledgerId: string) {
+  const db = getTestDb();
+  const documents = await db.query.sourceDocuments.findMany({
+    where: (documents, { eq }) => eq(documents.ledgerId, ledgerId),
+    columns: { id: true, status: true },
+  });
+  for (const document of documents) {
+    if (document.status !== "deleted") {
+      await activateTestSourceDocumentProjection(db, document.id);
+    }
+  }
+  return getEntryCategoriesAction(ledgerId);
+}
 
 /**
  * Helper function to create a complete test ledger with categories and entries
@@ -126,7 +144,7 @@ describe("C1: Delete Category → Entries Become Uncategorized", () => {
     await deleteEntryCategoryAction(ledger.id, category.id);
 
     // Verify: Category no longer appears in list
-    const categories = await getEntryCategoriesAction(ledger.id);
+    const categories = await getTargetEntryCategoriesAction(ledger.id);
     expect(categories.find((c) => c.id === category.id)).toBeUndefined();
 
     // Verify: All 3 entries now have categoryId = null (are "uncategorized")
@@ -204,7 +222,7 @@ describe("E1: Create Entry → Data Association Correct", () => {
     expect(entry.categoryId).toBe(category.id);
 
     // Verify category entry count
-    const categories = await getEntryCategoriesAction(ledger.id);
+    const categories = await getTargetEntryCategoriesAction(ledger.id);
     const targetCategory = categories.find((c) => c.id === category.id);
     expect(targetCategory?.entryCount).toBe(1);
   });
@@ -249,14 +267,14 @@ describe("E2: Delete Entry → Related Counts Update", () => {
     await createTestEntry(db, ledger.id, { categoryId: category.id });
 
     // Verify initial count
-    let categories = await getEntryCategoriesAction(ledger.id);
+    let categories = await getTargetEntryCategoriesAction(ledger.id);
     expect(categories.find((c) => c.id === category.id)?.entryCount).toBe(2);
 
     // Delete one entry
     await deleteLedgerEntryAction(ledger.id, entry1.id);
 
     // Verify count decreased
-    categories = await getEntryCategoriesAction(ledger.id);
+    categories = await getTargetEntryCategoriesAction(ledger.id);
     expect(categories.find((c) => c.id === category.id)?.entryCount).toBe(1);
   });
 
@@ -297,7 +315,7 @@ describe("E3: Update Entry Category → Counts Update Correctly", () => {
     const entry = await createTestEntry(db, ledger.id, { categoryId: categoryA.id });
 
     // Verify initial counts
-    let categories = await getEntryCategoriesAction(ledger.id);
+    let categories = await getTargetEntryCategoriesAction(ledger.id);
     expect(categories.find((c) => c.id === categoryA.id)?.entryCount).toBe(1);
     expect(categories.find((c) => c.id === categoryB.id)?.entryCount).toBe(0);
 
@@ -305,7 +323,7 @@ describe("E3: Update Entry Category → Counts Update Correctly", () => {
     await updateLedgerEntryAction(ledger.id, entry.id, { categoryId: categoryB.id });
 
     // Verify counts updated
-    categories = await getEntryCategoriesAction(ledger.id);
+    categories = await getTargetEntryCategoriesAction(ledger.id);
     expect(categories.find((c) => c.id === categoryA.id)?.entryCount).toBe(0);
     expect(categories.find((c) => c.id === categoryB.id)?.entryCount).toBe(1);
   });
@@ -399,7 +417,7 @@ describe("L2: Create Ledger → Default Categories Created", () => {
     const ledger = await createLedgerAction({ aiLanguage: "zh-CN" });
 
     // Verify default categories exist
-    const categories = await getEntryCategoriesAction(ledger.id);
+    const categories = await getTargetEntryCategoriesAction(ledger.id);
 
     // Should have some default categories (at least 1)
     expect(categories.length).toBeGreaterThan(0);

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+  TEST_USER_ID,
+} from "../helpers/schema-setup";
 import { ledgerEntries, sourceDocuments, ledgers } from "@/persistence";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { getEnhancedStats } from "@/modules/stats/actions";
@@ -56,6 +60,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
       itemName: "Deleted Item",
       deletedAt: new Date(),
     });
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 4. Call stat action
     const stats = await getLedgerStatsAction(ledgerId);
@@ -102,6 +107,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
       itemName: "Deleted Enhanced",
       deletedAt: new Date(),
     });
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 4. Call enhanced stats
     const stats = await getEnhancedStats({

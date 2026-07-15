@@ -4,38 +4,20 @@ const {
   convertEntryAmountMock,
   formatDateTimeForApiMock,
   getEntryCategoryNameMock,
-  insertSourceDocumentLedgerEntryMock,
-  insertValuesRunMock: _insertValuesRunMock,
-  insertValuesMock,
-  transactionMock,
-} = vi.hoisted(() => {
-  const insertValuesRunMock = vi.fn();
-  const insertValuesMock = vi.fn(() => ({ run: insertValuesRunMock }));
-  const transactionMock = vi.fn((callback: (tx: unknown) => void) =>
-    callback({
-      insert: vi.fn(() => ({ values: insertValuesMock })),
-    })
-  );
-
-  return {
-    convertEntryAmountMock: vi.fn(),
-    formatDateTimeForApiMock: vi.fn(),
-    getEntryCategoryNameMock: vi.fn(),
-    insertSourceDocumentLedgerEntryMock: vi.fn(),
-    insertValuesRunMock,
-    insertValuesMock,
-    transactionMock,
-  };
-});
+  createManualMock,
+} = vi.hoisted(() => ({
+  convertEntryAmountMock: vi.fn(),
+  formatDateTimeForApiMock: vi.fn(),
+  getEntryCategoryNameMock: vi.fn(),
+  createManualMock: vi.fn(),
+}));
 
 vi.mock("@/lib/date-utils", () => ({
   formatDateTimeForApi: formatDateTimeForApiMock,
 }));
 
-vi.mock("@/lib/db", () => ({
-  db: {
-    transaction: transactionMock,
-  },
+vi.mock("@/application/adapters/sqlite", () => ({
+  sqliteLedgerProjectionAdapter: { createManual: createManualMock },
 }));
 
 vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
@@ -48,10 +30,6 @@ vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => (
 
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   getEntryCategoryName: getEntryCategoryNameMock,
-}));
-
-vi.mock("@/modules/source-document/application/services/source-document-ledger-entries", () => ({
-  insertSourceDocumentLedgerEntry: insertSourceDocumentLedgerEntryMock,
 }));
 
 import { createQuickEntry } from "@/modules/source-document/application/use-cases/create-quick-entry";
@@ -67,10 +45,8 @@ describe("createQuickEntry", () => {
       convertedAmount: "100.00",
       exchangeRate: "1.0000",
     });
-    randomUuidSpy = vi
-      .spyOn(globalThis.crypto, "randomUUID")
-      .mockReturnValueOnce("doc-1")
-      .mockReturnValueOnce("entry-1");
+    createManualMock.mockResolvedValue({ sourceDocumentId: "doc-1", revisionId: "revision-1" });
+    randomUuidSpy = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValueOnce("entry-1");
   });
 
   afterEach(() => {
@@ -100,25 +76,19 @@ describe("createQuickEntry", () => {
       toCurrency: "USD",
       date: "2026-03-20",
     });
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "doc-1",
-        ledgerId: "ledger-1",
-        title: "Food",
-        status: "completed",
-        entryDate: "2026-03-20",
-      })
-    );
-    expect(insertSourceDocumentLedgerEntryMock).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        id: "entry-1",
-        sourceDocumentId: "doc-1",
-        currency: "USD",
-        itemName: "Food",
-        convertedAmount: "100.00",
-      })
-    );
+    expect(createManualMock).toHaveBeenCalledWith({
+      ledgerId: "ledger-1",
+      title: "Food",
+      entryDate: "2026-03-20",
+      entries: [
+        expect.objectContaining({
+          id: "entry-1",
+          currency: "USD",
+          itemName: "Food",
+          convertedAmount: "100.00",
+        }),
+      ],
+    });
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
       ledgerEntryId: "entry-1",
@@ -153,12 +123,16 @@ describe("createQuickEntry", () => {
       toCurrency: "USD",
       date: "2026-01-31",
     });
-    expect(insertSourceDocumentLedgerEntryMock).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(createManualMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        currency: "CNY",
-        itemName: "Tea",
-        description: "afternoon",
+        entryDate: "2026-01-31",
+        entries: [
+          expect.objectContaining({
+            currency: "CNY",
+            itemName: "Tea",
+            description: "afternoon",
+          }),
+        ],
       })
     );
   });

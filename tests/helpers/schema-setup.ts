@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "@/persistence";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -90,4 +90,91 @@ export async function createTestSourceDocument(
   const doc = requireDefined(insertedDocs[0], "Expected inserted source document");
 
   return doc.id;
+}
+
+/** Promote a legacy-shaped fixture into the target active ledger projection. */
+export async function activateTestSourceDocumentProjection(
+  db: BetterSQLite3Database<typeof schema>,
+  sourceDocumentId: string
+): Promise<string> {
+  return db.transaction((tx) => {
+    const document = tx
+      .select()
+      .from(schema.sourceDocuments)
+      .where(eq(schema.sourceDocuments.id, sourceDocumentId))
+      .get();
+    if (document == null) throw new Error("Expected source document fixture");
+    if (document.activeRevisionId != null) return document.activeRevisionId;
+
+    const revision = tx
+      .insert(schema.sourceDocumentRevisions)
+      .values({
+        ledgerId: document.ledgerId,
+        sourceDocumentId,
+        revisionNumber: 1,
+        submittedText: document.text,
+        outcome:
+          document.status === "queued" ||
+          document.status === "processing" ||
+          document.status === "anomaly" ||
+          document.status === "failed"
+            ? document.status
+            : "completed",
+        anomalyReason: document.anomalyReason,
+        finalizedAt:
+          document.status === "queued" || document.status === "processing" ? null : new Date(),
+      })
+      .returning()
+      .get();
+    const entries = tx
+      .select()
+      .from(schema.ledgerEntries)
+      .where(eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId))
+      .all();
+    for (const [position, entry] of entries.entries()) {
+      tx.update(schema.ledgerEntries)
+        .set({ sourceDocumentRevisionId: revision.id })
+        .where(eq(schema.ledgerEntries.id, entry.id))
+        .run();
+      tx.insert(schema.revisionEntries)
+        .values({
+          ledgerId: document.ledgerId,
+          revisionId: revision.id,
+          ledgerEntryId: entry.id,
+          position,
+        })
+        .run();
+    }
+    for (const [position, _imageUrl] of (document.imageUrls ?? []).entries()) {
+      const storedFile = tx
+        .insert(schema.storedFiles)
+        .values({
+          ledgerId: document.ledgerId,
+          storageProvider: "local",
+          storageKey: `tests/${sourceDocumentId}/${position}`,
+          contentType: "image/jpeg",
+          byteSize: 1,
+          finalizedAt: new Date(),
+        })
+        .returning()
+        .get();
+      tx.insert(schema.revisionFiles)
+        .values({
+          ledgerId: document.ledgerId,
+          revisionId: revision.id,
+          storedFileId: storedFile.id,
+          position,
+        })
+        .run();
+    }
+    tx.update(schema.sourceDocuments)
+      .set(
+        revision.outcome === "completed"
+          ? { activeRevisionId: revision.id, pendingRevisionId: null }
+          : { activeRevisionId: null, pendingRevisionId: revision.id }
+      )
+      .where(eq(schema.sourceDocuments.id, sourceDocumentId))
+      .run();
+    return revision.id;
+  });
 }

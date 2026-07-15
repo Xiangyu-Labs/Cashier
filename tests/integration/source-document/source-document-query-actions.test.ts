@@ -8,6 +8,7 @@ import {
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
 describe("source-document query action boundaries", () => {
@@ -58,13 +59,17 @@ describe("source-document query action boundaries", () => {
   it("returns pending groups through the action boundary", async () => {
     const db = getTestDb();
 
-    await db.insert(sourceDocuments).values({
-      ledgerId,
-      text: "queued doc",
-      status: "queued",
-      imageUrls: [],
-      entryDate: "2026-03-23",
-    });
+    const [document] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        text: "queued doc",
+        status: "queued",
+        imageUrls: [],
+        entryDate: "2026-03-23",
+      })
+      .returning();
+    await activateTestSourceDocumentProjection(db, document!.id);
 
     const result = await getPendingSourceDocumentsAction(ledgerId);
 

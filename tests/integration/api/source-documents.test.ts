@@ -14,7 +14,11 @@ import {
   ledgers,
 } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+  TEST_USER_ID,
+} from "../../helpers/schema-setup";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
 
 // Mock OpenAI
@@ -315,6 +319,7 @@ describe("SourceDocument Actions", () => {
       itemName: "Lunch Item",
       categoryId: testCategoryId, // Fixed: Added categoryId
     });
+    await activateTestSourceDocumentProjection(db, docId);
 
     // 3. Fetch with includeEntries
     const result = await getSourceDocumentsAction(testLedgerId, {
@@ -368,6 +373,7 @@ describe("SourceDocument Actions", () => {
       itemName: "Page item",
       categoryId: testCategoryId,
     });
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     const result = await getSourceDocumentsAction(testLedgerId, {
       includeEntries: true,
@@ -420,6 +426,8 @@ describe("SourceDocument Actions", () => {
         .returning(),
       "Expected March source document to be created"
     );
+    await activateTestSourceDocumentProjection(db, docA.id);
+    await activateTestSourceDocumentProjection(db, docB.id);
 
     // Filter for January 2024
     const result = await getSourceDocumentsAction(testLedgerId, {
@@ -462,6 +470,7 @@ describe("SourceDocument Actions", () => {
       itemName: "Collection item",
       categoryId: testCategoryId,
     });
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     const result = await getSourceDocumentCollectionAction(testLedgerId, { limit: 1000 });
     const item = result.items.find((sourceDocument) => sourceDocument.id === doc.id);
@@ -507,6 +516,7 @@ describe("SourceDocument Actions", () => {
       itemName: "Pending item",
       categoryId: testCategoryId,
     });
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     const result = await getPendingSourceDocumentsAction(testLedgerId);
     const group = result.groups.anomaly.find((entry) => entry.sourceDocument.id === doc.id);
@@ -520,7 +530,7 @@ describe("SourceDocument Actions", () => {
     expect(group.sourceDocument.imageUrls).toEqual([]);
     expect(group.sourceDocument.metadata).toEqual({});
     expect(group.sourceDocument.hasImages).toBe(true);
-    expect(group.ledgerEntries).toHaveLength(1);
+    expect(group.ledgerEntries).toHaveLength(0);
     expect(result.stats.anomalyCount).toBeGreaterThan(0);
   });
 });

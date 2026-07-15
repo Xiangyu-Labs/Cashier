@@ -4,6 +4,7 @@ import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 const OTHER_USER_ID = "11111111-1111-1111-1111-111111111111";
@@ -46,6 +47,7 @@ async function seedEntry(
     convertedAmount: opts.convertedAmount ?? opts.amount,
     categoryId: opts.categoryId ?? null,
   });
+  await activateTestSourceDocumentProjection(db, doc.id);
 
   return doc;
 }

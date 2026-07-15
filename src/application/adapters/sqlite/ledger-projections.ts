@@ -109,6 +109,128 @@ function replaceProjection(
   }
 }
 
+function replaceManualProjection(
+  tx: SqliteTransaction,
+  input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    previousRevisionId: string;
+    revisionId: string;
+    entries: readonly LedgerProjectionEntryContract[];
+  }
+): void {
+  assertEntryValues(input.entries);
+  assertCategoryOwnership(tx, input.ledgerId, input.entries);
+  const requestedIds = input.entries.flatMap((entry) => (entry.id == null ? [] : [entry.id]));
+  if (new Set(requestedIds).size !== requestedIds.length) {
+    throw new ValidationError("A ledger entry may only appear once per manual revision");
+  }
+
+  const previousEntries = tx
+    .select()
+    .from(ledgerEntries)
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+        eq(ledgerEntries.sourceDocumentRevisionId, input.previousRevisionId),
+        isNull(ledgerEntries.deletedAt)
+      )
+    )
+    .all();
+  const previousById = new Map(previousEntries.map((entry) => [entry.id, entry]));
+  if (requestedIds.some((id) => !previousById.has(id))) {
+    throw new NotFoundError("Active manual ledger entry");
+  }
+
+  const now = new Date();
+  for (const previous of previousEntries) {
+    const link = tx
+      .select({ id: revisionEntries.id })
+      .from(revisionEntries)
+      .where(
+        and(
+          eq(revisionEntries.ledgerId, input.ledgerId),
+          eq(revisionEntries.revisionId, input.previousRevisionId),
+          eq(revisionEntries.ledgerEntryId, previous.id)
+        )
+      )
+      .get();
+    if (link == null) throw new ConflictError("Manual revision projection is incomplete");
+
+    const archivedId = crypto.randomUUID();
+    tx.insert(ledgerEntries)
+      .values({
+        ...previous,
+        id: archivedId,
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .run();
+    tx.update(revisionEntries)
+      .set({ ledgerEntryId: archivedId })
+      .where(eq(revisionEntries.id, link.id))
+      .run();
+  }
+
+  const retainedIds = new Set(requestedIds);
+  for (const previous of previousEntries) {
+    if (!retainedIds.has(previous.id)) {
+      tx.update(ledgerEntries)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, previous.id)))
+        .run();
+    }
+  }
+
+  for (const [position, entry] of input.entries.entries()) {
+    const existing = entry.id == null ? null : (previousById.get(entry.id) ?? null);
+    const ledgerEntryId = existing?.id ?? entry.id ?? crypto.randomUUID();
+    if (existing == null) {
+      tx.insert(ledgerEntries)
+        .values({
+          id: ledgerEntryId,
+          ledgerId: input.ledgerId,
+          sourceDocumentId: input.sourceDocumentId,
+          sourceDocumentRevisionId: input.revisionId,
+          categoryId: entry.categoryId,
+          amount: entry.amount,
+          currency: entry.currency,
+          itemName: entry.itemName,
+          description: entry.description,
+          convertedAmount: entry.convertedAmount,
+          exchangeRate: entry.exchangeRate,
+          ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+        })
+        .run();
+    } else {
+      tx.update(ledgerEntries)
+        .set({
+          sourceDocumentRevisionId: input.revisionId,
+          categoryId: entry.categoryId,
+          amount: entry.amount,
+          currency: entry.currency,
+          itemName: entry.itemName,
+          description: entry.description,
+          convertedAmount: entry.convertedAmount,
+          exchangeRate: entry.exchangeRate,
+          deletedAt: null,
+          updatedAt: now,
+        })
+        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, ledgerEntryId)))
+        .run();
+    }
+    tx.insert(revisionEntries)
+      .values({
+        ledgerId: input.ledgerId,
+        revisionId: input.revisionId,
+        ledgerEntryId,
+        position,
+      })
+      .run();
+  }
+}
+
 function nextRevisionNumber(tx: SqliteTransaction, sourceDocumentId: string): number {
   const aggregate = tx
     .select({ value: max(sourceDocumentRevisions.revisionNumber) })
@@ -244,6 +366,15 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
         .get();
       if (document == null) throw new NotFoundError("Source document");
+      if (document.type !== "manual" || document.activeRevisionId == null) {
+        throw new ConflictError("Source document is not an active manual entry");
+      }
+      if (
+        input.expectedActiveRevisionId !== undefined &&
+        document.activeRevisionId !== input.expectedActiveRevisionId
+      ) {
+        throw new ConflictError("Manual entry changed before the edit was committed");
+      }
       if (document.pendingRevisionId != null) {
         const pending = tx
           .select({ outcome: sourceDocumentRevisions.outcome })
@@ -254,15 +385,22 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
           throw new ConflictError("Source document has processing work");
         }
       }
+      assertEntryValues(input.entries);
+      assertCategoryOwnership(tx, input.ledgerId, input.entries);
       const revision = createCompletedRevision(tx, input);
-      replaceProjection(tx, { ...input, revisionId: revision.id });
+      replaceManualProjection(tx, {
+        ...input,
+        previousRevisionId: document.activeRevisionId,
+        revisionId: revision.id,
+      });
       tx.update(sourceDocuments)
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
           status: "completed",
           text: input.submittedText ?? document.text,
-          ...(input.title == null ? {} : { title: input.title }),
+          ...(input.title === undefined ? {} : { title: input.title }),
+          ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
           updatedAt: new Date(),
         })
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))

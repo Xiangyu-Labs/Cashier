@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../setup";
-import { createTestUserWithLedger, TEST_USER_ID } from "../helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+  TEST_USER_ID,
+} from "../helpers/schema-setup";
 import { ledgerEntries, ledgers, currencyRates, sourceDocuments } from "@/persistence";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { eq } from "drizzle-orm";
@@ -78,6 +82,7 @@ describe("Stats Currency Conversion", () => {
       convertedAmount: "156.00",
       itemName: "MYR Item",
     });
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 3. Call action
     const stats = await getLedgerStatsAction(ledgerId);
@@ -136,6 +141,7 @@ describe("Stats Currency Conversion", () => {
       convertedAmount: "100.00",
       itemName: "CNY Item",
     });
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 3. Call action
     const stats = await getLedgerStatsAction(ledgerId);

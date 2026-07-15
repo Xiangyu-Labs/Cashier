@@ -1,4 +1,4 @@
-import { and, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, sql, type SQL } from "drizzle-orm";
 import { ledgerEntries } from "@/persistence";
 
 interface SourceDocumentDateRange {
@@ -14,6 +14,7 @@ function buildVisibleSourceDocumentIdsSubquery(
     sql`ledger_id = ${ledgerId}`,
     sql`status != 'deleted'`,
     sql`deleted_at IS NULL`,
+    sql`active_revision_id IS NOT NULL`,
   ];
 
   if (dateRange?.startDate != null && dateRange.startDate !== "") {
@@ -28,11 +29,16 @@ function buildVisibleSourceDocumentIdsSubquery(
 }
 
 export function buildLedgerEntryVisibilityCondition(ledgerId: string): SQL<unknown> {
-  const visibleSourceDocumentIds = buildVisibleSourceDocumentIdsSubquery(ledgerId);
-  return or(
-    isNull(ledgerEntries.sourceDocumentId),
-    sql`${ledgerEntries.sourceDocumentId} IN (${visibleSourceDocumentIds})`
-  )!;
+  return sql`EXISTS (
+    SELECT 1
+    FROM source_documents AS active_documents
+    WHERE active_documents.ledger_id = ${ledgerId}
+      AND active_documents.id = ${ledgerEntries.sourceDocumentId}
+      AND active_documents.status != 'deleted'
+      AND active_documents.deleted_at IS NULL
+      AND active_documents.active_revision_id IS NOT NULL
+      AND active_documents.active_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+  )`;
 }
 
 export function buildLedgerEntrySourceDocumentDateCondition(
@@ -46,5 +52,10 @@ export function buildLedgerEntrySourceDocumentDateCondition(
   }
 
   const sourceDocumentIdsInDateRange = buildVisibleSourceDocumentIdsSubquery(ledgerId, dateRange);
-  return sql`${ledgerEntries.sourceDocumentId} IN (${sourceDocumentIdsInDateRange})`;
+  return (
+    and(
+      sql`${ledgerEntries.sourceDocumentId} IN (${sourceDocumentIdsInDateRange})`,
+      buildLedgerEntryVisibilityCondition(ledgerId)
+    ) ?? null
+  );
 }

@@ -33,6 +33,7 @@ import {
   getLedgerEntriesAction,
 } from "@/modules/ledger/actions";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -54,6 +55,21 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     throw new Error("Expected source document insert to return a row");
   }
   return doc;
+}
+
+async function getTargetLedgerEntriesAction(
+  ledgerId: string,
+  input: Parameters<typeof getLedgerEntriesAction>[1]
+) {
+  const db = getTestDb();
+  const documents = await db.query.sourceDocuments.findMany({
+    where: (documents, { eq }) => eq(documents.ledgerId, ledgerId),
+    columns: { id: true },
+  });
+  for (const document of documents) {
+    await activateTestSourceDocumentProjection(db, document.id);
+  }
+  return getLedgerEntriesAction(ledgerId, input);
 }
 
 describe("createLedgerEntryAction", () => {
@@ -420,7 +436,7 @@ describe("getLedgerEntriesAction", () => {
       });
     }
 
-    const result = await getLedgerEntriesAction(ledgerId, { limit: 3 });
+    const result = await getTargetLedgerEntriesAction(ledgerId, { limit: 3 });
     expect(result.items).toHaveLength(3);
     expect(result.nextCursor).toBeDefined();
   });
@@ -456,7 +472,7 @@ describe("getLedgerEntriesAction", () => {
       },
     ]);
 
-    const result = await getLedgerEntriesAction(ledgerId, { categoryId: catId });
+    const result = await getTargetLedgerEntriesAction(ledgerId, { categoryId: catId });
     expect(result.items).toHaveLength(1);
     const categorizedEntry = result.items[0];
     expect(categorizedEntry).toBeDefined();
@@ -508,7 +524,7 @@ describe("getLedgerEntriesAction", () => {
       throw new Error("Expected ledger entry insert to return a row");
     }
 
-    const result = await getLedgerEntriesAction(ledgerId, {
+    const result = await getTargetLedgerEntriesAction(ledgerId, {
       categoryId: UNCATEGORIZED_SENTINEL,
     });
 
@@ -538,7 +554,7 @@ describe("getLedgerEntriesAction", () => {
       },
     ]);
 
-    const result = await getLedgerEntriesAction(ledgerId, { currency: "USD" });
+    const result = await getTargetLedgerEntriesAction(ledgerId, { currency: "USD" });
     expect(result.items).toHaveLength(1);
     const usdEntry = result.items[0];
     expect(usdEntry).toBeDefined();
@@ -566,7 +582,7 @@ describe("getLedgerEntriesAction", () => {
       });
     }
 
-    const result = await getLedgerEntriesAction(ledgerId, {
+    const result = await getTargetLedgerEntriesAction(ledgerId, {
       startDate: "2024-02-01",
       endDate: "2024-11-01",
     });
@@ -636,7 +652,7 @@ describe("getLedgerEntriesAction", () => {
     });
 
     // Filter for January 2024
-    const result = await getLedgerEntriesAction(ledgerId, {
+    const result = await getTargetLedgerEntriesAction(ledgerId, {
       startDate: "2024-01-01",
       endDate: "2024-01-31",
     });
@@ -681,7 +697,7 @@ describe("getLedgerEntriesAction", () => {
       },
     ]);
 
-    const result = await getLedgerEntriesAction(ledgerId, {
+    const result = await getTargetLedgerEntriesAction(ledgerId, {
       minAmount: 20,
       maxAmount: 100,
     });
@@ -704,7 +720,7 @@ describe("getLedgerEntriesAction", () => {
       deletedAt: new Date(),
     });
 
-    const result = await getLedgerEntriesAction(ledgerId, {});
+    const result = await getTargetLedgerEntriesAction(ledgerId, {});
     expect(result.items).toHaveLength(0);
   });
 });

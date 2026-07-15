@@ -9,6 +9,7 @@ import {
   createSourceDocumentData,
 } from "../helpers/factories";
 import { v4 as uuidv4 } from "uuid";
+import { activateTestSourceDocumentProjection } from "../helpers/schema-setup";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -46,6 +47,7 @@ describe("getLedgerEntryAction", () => {
     // 3. Create Entry
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
+    await activateTestSourceDocumentProjection(db, sourceDocData.id);
 
     // 4. Action - pass ledgerId as first argument
     const result = await getLedgerEntryAction(ledgerData.id, entryData.id);
@@ -73,6 +75,7 @@ describe("getLedgerEntryAction", () => {
 
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
+    await activateTestSourceDocumentProjection(db, sourceDocData.id);
 
     const result = await getLedgerEntryAction(ledgerData.id, entryData.id);
 

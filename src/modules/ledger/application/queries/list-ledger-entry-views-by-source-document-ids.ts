@@ -4,6 +4,7 @@ import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
 import { mapLedgerEntryEmbeddedViewDto } from "../mappers";
 import type { LedgerEntryEmbeddedViewDto } from "../../contracts";
+import { buildLedgerEntryVisibilityCondition } from "./ledger-entry-visibility";
 
 interface ListLedgerEntryViewsBySourceDocumentIdsInput {
   ledgerId: string;
@@ -24,7 +25,11 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
 
   const q = forLedger(ledgerEntries, ledgerId);
   const entries = await db.query.ledgerEntries.findMany({
-    where: and(q.whereActive, inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds)),
+    where: and(
+      q.whereActive,
+      inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
+      buildLedgerEntryVisibilityCondition(ledgerId)
+    ),
     with: { category: true },
   });
 
