@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { executeParser as executeStage0 } from "@/modules/source-document/application/parse-source-document/parser";
 import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
+import { loadStoredFilesForAI } from "@/lib/storage/utils";
 
 // Mock image loading so tests don't need real storage
 vi.mock("@/lib/storage/utils", () => ({
   isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
+  ),
+  loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
+    ids.map((id) => ({ url: id, dataUrl: `data:image/png;base64,STORED`, success: true }))
   ),
 }));
 
@@ -115,6 +119,25 @@ describe("executeStage0 — single-pass receipt parser", () => {
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("vision");
   });
 
+  it("loads image evidence by stored-file identity when available", async () => {
+    await executeStage0(
+      {
+        ledgerId: "ledger-1",
+        storedFileIds: ["file-1"],
+        imageUrls: ["/api/uploads/legacy.jpg"],
+        originalCategories: [],
+      },
+      mockAI
+    );
+
+    expect(loadStoredFilesForAI).toHaveBeenCalledWith("ledger-1", ["file-1"]);
+    const call = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>);
+    expect(call.messages[0]?.content).toEqual([
+      { type: "text", text: "Please parse this source document." },
+      { type: "image_url", image_url: { url: "data:image/png;base64,STORED" } },
+    ]);
+  });
+
   it("passes user content through messages instead of legacy images field", async () => {
     const generate = vi.fn(async (options: AIGenerateOptions) => {
       const firstMessage = options.messages[0];
@@ -147,10 +170,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("uses text model when only text is provided", async () => {
-    await executeStage0(
-      { text: "Taxi fare SGD 28.00", originalCategories: [] },
-      mockAI
-    );
+    await executeStage0({ text: "Taxi fare SGD 28.00", originalCategories: [] }, mockAI);
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("text");
   });
@@ -174,10 +194,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       receipt_totals: [],
     });
 
-    const result = await executeStage0(
-      { text: "random text", originalCategories: [] },
-      aiInvalid
-    );
+    const result = await executeStage0({ text: "random text", originalCategories: [] }, aiInvalid);
 
     expect(result.outcome).toBe("invalid");
   });
@@ -211,14 +228,13 @@ describe("executeStage0 — single-pass receipt parser", () => {
       mockAI
     );
 
-    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain("Food");
+    expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain(
+      "Food"
+    );
   });
 
   it("prompt contains receipt and invoice parser identifier", async () => {
-    await executeStage0(
-      { text: "coffee 10 USD", originalCategories: [] },
-      mockAI
-    );
+    await executeStage0({ text: "coffee 10 USD", originalCategories: [] }, mockAI);
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain(
       "receipt and invoice parser"

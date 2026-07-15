@@ -1,6 +1,6 @@
 import type { TaskDefinition, TaskHandler, TaskContext } from "@/lib/tasks";
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/persistence";
+import { revisionFiles, sourceDocuments } from "@/persistence";
 import { type CategoryInfo, type ParsedLedgerEntry } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import { NotFoundError, ValidationError } from "@/lib/errors";
@@ -12,6 +12,7 @@ import {
   handleParseCancel,
 } from "../parse-source-document/parse-result-handler";
 import { whereSourceDocumentNotDeletedId } from "../source-document-state";
+import { asc, eq } from "drizzle-orm";
 
 // Task type constant
 export const TASK_TYPE_PARSE_SOURCE_DOCUMENT = "parse_source_document";
@@ -21,6 +22,7 @@ export interface ParseSourceDocumentInput {
   sourceDocumentId: string;
   text?: string;
   imageUrls?: string[];
+  storedFileIds?: string[];
   categories: CategoryInfo[];
   aiLanguage?: string;
   settings: {
@@ -72,7 +74,23 @@ export const parseSourceDocumentHandler: TaskHandler<
       .set({ status: "processing" })
       .where(whereSourceDocumentNotDeletedId(ledgerId, input.sourceDocumentId));
 
-    const pipelineResult = await runParsePipeline(input, stageContext);
+    const storedFileIds =
+      input.storedFileIds ??
+      (doc.pendingRevisionId == null
+        ? []
+        : (
+            await db
+              .select({ id: revisionFiles.storedFileId })
+              .from(revisionFiles)
+              .where(eq(revisionFiles.revisionId, doc.pendingRevisionId))
+              .orderBy(asc(revisionFiles.position))
+          ).map((file) => file.id));
+    const identityInput = { ...input };
+    delete identityInput.imageUrls;
+    const pipelineResult = await runParsePipeline(
+      storedFileIds.length === 0 ? input : { ...identityInput, ledgerId, storedFileIds },
+      stageContext
+    );
     return toParseSourceDocumentOutput(pipelineResult);
   },
 

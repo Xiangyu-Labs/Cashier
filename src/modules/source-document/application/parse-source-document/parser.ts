@@ -11,16 +11,18 @@
 import type { AIContext } from "@/lib/tasks/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";
-import type { AIMessageContentPart } from "@/lib/tasks/types";
 import {
-  parserOutputSchema,
-  normalizeResult,
-  type NormalizedParseOutput,
-} from "./parser-schema";
+  isSuccessfulLoadImageResult,
+  loadImagesForAI,
+  loadStoredFilesForAI,
+} from "@/lib/storage/utils";
+import type { AIMessageContentPart } from "@/lib/tasks/types";
+import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 
 export interface ParserInput {
   imageUrls?: string[];
+  storedFileIds?: string[];
+  ledgerId?: string;
   text?: string;
   originalCategories: { name: string; description?: string | null }[];
   aiLanguage?: string;
@@ -28,9 +30,7 @@ export interface ParserInput {
   preferredCurrencies?: string[];
 }
 
-function buildMessageContent(
-  images: { dataUrl: string }[] | undefined
-): AIMessageContentPart[] {
+function buildMessageContent(images: { dataUrl: string }[] | undefined): AIMessageContentPart[] {
   const content: AIMessageContentPart[] = [
     { type: "text", text: "Please parse this source document." },
   ];
@@ -47,14 +47,14 @@ function buildMessageContent(
   return content;
 }
 
-function buildPrompt(
-  input: ParserInput,
-  aiLanguage: string
-): string {
+function buildPrompt(input: ParserInput, aiLanguage: string): string {
   const categorySection =
     input.originalCategories.length > 0
       ? `\n### Expense Categories\nAssign each line item a category_index from this list. Use 0 if no category fits:\n${input.originalCategories
-          .map((c, i) => `${i + 1}. ${c.name}${c.description != null && c.description !== "" ? ` — ${c.description}` : ""}`)
+          .map(
+            (c, i) =>
+              `${i + 1}. ${c.name}${c.description != null && c.description !== "" ? ` — ${c.description}` : ""}`
+          )
           .join("\n")}\n`
       : "\n### Expense Categories\nNo categories provided — use category_index 0 for all entries.\n";
 
@@ -63,13 +63,13 @@ function buildPrompt(
       ? `\n### Preferred Currencies\nWhen currency is ambiguous, prefer: ${input.preferredCurrencies!.join(", ")}\n`
       : "";
 
-  const customSection = input.aiCustomPrompt != null && input.aiCustomPrompt !== ""
-    ? `\n### Additional Instructions\n${input.aiCustomPrompt}\n`
-    : "";
+  const customSection =
+    input.aiCustomPrompt != null && input.aiCustomPrompt !== ""
+      ? `\n### Additional Instructions\n${input.aiCustomPrompt}\n`
+      : "";
 
-  const textSection = input.text != null && input.text !== ""
-    ? `\n### Document Text\n${input.text}\n`
-    : "";
+  const textSection =
+    input.text != null && input.text !== "" ? `\n### Document Text\n${input.text}\n` : "";
 
   return `You are a receipt and invoice parser. Extract all expense line items from the provided document(s) and return structured JSON.
 
@@ -149,17 +149,24 @@ export async function executeParser(
   ai: AIContext
 ): Promise<NormalizedParseOutput> {
   const aiLanguage = input.aiLanguage ?? "zh-CN";
-  const hasImages = (input.imageUrls?.length ?? 0) > 0;
+  const hasStoredFiles = (input.storedFileIds?.length ?? 0) > 0;
+  const hasImages = hasStoredFiles || (input.imageUrls?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
 
   const prompt = buildPrompt(input, aiLanguage);
 
   let images: { dataUrl: string }[] | undefined;
   if (hasImages) {
-    const loaded = await loadImagesForAI(input.imageUrls!);
-    images = loaded
-      .filter(isSuccessfulLoadImageResult)
-      .map((r) => ({ dataUrl: r.dataUrl }));
+    if (hasStoredFiles && (input.ledgerId == null || input.ledgerId === "")) {
+      throw new AppError(
+        "parser: stored-file evidence requires ledger identity",
+        "VALIDATION_ERROR"
+      );
+    }
+    const loaded = hasStoredFiles
+      ? await loadStoredFilesForAI(input.ledgerId!, input.storedFileIds!)
+      : await loadImagesForAI(input.imageUrls!);
+    images = loaded.filter(isSuccessfulLoadImageResult).map((r) => ({ dataUrl: r.dataUrl }));
   }
 
   logger.debug({ model, hasImages }, "parser: calling AI");
@@ -193,6 +200,9 @@ export async function executeParser(
   }
 
   const result = normalizeResult(parsed.data);
-  logger.debug({ outcome: result.outcome, entries: result.ledger_entries.length }, "parser: complete");
+  logger.debug(
+    { outcome: result.outcome, entries: result.ledger_entries.length },
+    "parser: complete"
+  );
   return result;
 }

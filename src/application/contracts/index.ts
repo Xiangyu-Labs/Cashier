@@ -10,7 +10,13 @@ export type StoredFileId = string;
 export type UploadSessionId = string;
 export type ProcessingIntentId = string;
 
-export const REVISION_OUTCOMES = ["queued", "processing", "completed", "anomaly", "failed"] as const;
+export const REVISION_OUTCOMES = [
+  "queued",
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+] as const;
 export type RevisionOutcome = (typeof REVISION_OUTCOMES)[number];
 
 export type SupportedSourceDocumentAction = "retry" | "edit_retry" | "manual_correction" | "delete";
@@ -70,6 +76,13 @@ export interface UploadTargetContract {
   requiredHeaders: Readonly<Record<string, string>>;
 }
 
+export interface UploadFileRequestContract {
+  contentType: string;
+  byteSize: number;
+  originalFilename: string | null;
+  checksum?: string | null;
+}
+
 export interface UploadPlanContract {
   id: UploadSessionId;
   expiresAt: string;
@@ -83,6 +96,7 @@ export interface UploadFinalizationContract {
   uploadSessionId: UploadSessionId;
   finalizationToken: string;
   targetIds: readonly string[];
+  ownerLedgerId?: LedgerId;
 }
 
 export interface AuthorizedFileReadContract {
@@ -107,8 +121,15 @@ export interface ProcessingDiagnostic {
 
 export interface ProcessingCompletionContract {
   intentId: ProcessingIntentId;
+  claimToken: string;
   outcome: Extract<RevisionOutcome, "completed" | "anomaly" | "failed">;
   diagnostic?: ProcessingDiagnostic;
+}
+
+export interface ProcessingClaimContract {
+  intent: ProcessingIntentContract;
+  claimToken: string;
+  expiresAt: string;
 }
 
 export type ApplicationErrorCode =
@@ -160,26 +181,133 @@ export function toSourceDocumentSubmissionContract(
 }
 
 export interface SourceDocumentPort {
-  get(id: SourceDocumentId): Promise<SourceDocumentContract | null>;
+  get(ledgerId: LedgerId, id: SourceDocumentId): Promise<SourceDocumentContract | null>;
+  list(input: {
+    ledgerId: LedgerId;
+    cursor?: string;
+    limit?: number;
+  }): Promise<{ items: readonly SourceDocumentContract[]; nextCursor: string | null }>;
+  createPending(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId?: SourceDocumentId;
+    submittedText?: string | null;
+    storedFileIds?: readonly StoredFileId[];
+  }): Promise<{ document: SourceDocumentContract; revision: SourceDocumentRevisionContract }>;
+  markProcessing(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId: SourceDocumentId;
+    revisionId: RevisionId;
+  }): Promise<boolean>;
+  preserveTerminalOutcome(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId: SourceDocumentId;
+    revisionId: RevisionId;
+    outcome: "anomaly" | "failed";
+    anomalyReason?: string | null;
+    failureCode?: string | null;
+  }): Promise<boolean>;
+  softDelete(ledgerId: LedgerId, sourceDocumentId: SourceDocumentId): Promise<boolean>;
 }
 
-export interface LedgerPort { getLedgerIdForCredential(credentialId: string): Promise<LedgerId | null>; }
-export interface StatsPort { getSummary(ledgerId: LedgerId): Promise<unknown>; }
-export interface CategoryPort { list(ledgerId: LedgerId): Promise<readonly unknown[]>; }
-export interface CurrencyPort { convert(amount: string, from: string, to: string): Promise<string>; }
-export interface SettingsPort { get(ledgerId: LedgerId): Promise<unknown>; }
-export interface AuthenticationPort { requireUser(): Promise<{ id: string }>; }
-export interface ServiceCredentialPort { authenticate(key: string): Promise<{ id: string; ledgerId: LedgerId } | null>; }
-export interface IdempotencyPort { execute<T>(key: string, operation: () => Promise<T>): Promise<T>; }
+export interface LedgerPort {
+  getLedgerIdForCredential(credentialId: string): Promise<LedgerId | null>;
+  isOwnedByUser(ledgerId: LedgerId, userId: string): Promise<boolean>;
+}
+export interface StatsPort {
+  getSummary(ledgerId: LedgerId): Promise<unknown>;
+}
+export interface CategoryPort {
+  list(ledgerId: LedgerId): Promise<readonly unknown[]>;
+}
+export interface CurrencyPort {
+  convert(amount: string, from: string, to: string): Promise<string>;
+}
+export interface SettingsPort {
+  get(ledgerId: LedgerId): Promise<unknown>;
+}
+export interface AuthenticationPort {
+  requireUser(): Promise<{ id: string }>;
+}
+export interface ServiceCredentialPort {
+  authenticate(key: string): Promise<{ id: string; ledgerId: LedgerId } | null>;
+}
+export interface IdempotencyPort {
+  execute<T>(key: string, operation: () => Promise<T>): Promise<T>;
+}
 
 export interface StoredFilePort {
-  createUploadPlan(ledgerId: LedgerId): Promise<UploadPlanContract>;
+  createUploadPlan(
+    ledgerId: LedgerId,
+    files?: readonly UploadFileRequestContract[]
+  ): Promise<UploadPlanContract>;
   finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
-  readAuthorized(ledgerId: LedgerId, fileId: StoredFileId): Promise<AuthorizedFileReadContract | null>;
+  readAuthorized(
+    ledgerId: LedgerId,
+    fileId: StoredFileId
+  ): Promise<AuthorizedFileReadContract | null>;
+}
+
+export interface LedgerProjectionEntryContract {
+  id?: string;
+  categoryId: string | null;
+  amount: string;
+  currency: string | null;
+  itemName: string;
+  description: string | null;
+  convertedAmount: string | null;
+  exchangeRate: string | null;
+  createdAt?: string;
+}
+
+export interface LedgerProjectionPort {
+  activateRevision(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId: SourceDocumentId;
+    revisionId: RevisionId;
+    title?: string | null;
+    entries: readonly LedgerProjectionEntryContract[];
+  }): Promise<boolean>;
+  createManual(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId?: SourceDocumentId;
+    submittedText?: string | null;
+    title?: string | null;
+    entryDate?: string | null;
+    entries: readonly LedgerProjectionEntryContract[];
+  }): Promise<{ sourceDocumentId: SourceDocumentId; revisionId: RevisionId }>;
+  replaceManual(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId: SourceDocumentId;
+    submittedText?: string | null;
+    title?: string | null;
+    entries: readonly LedgerProjectionEntryContract[];
+  }): Promise<RevisionId>;
+  recalculate(input: {
+    ledgerId: LedgerId;
+    updates: readonly { ledgerEntryId: string; convertedAmount: string; exchangeRate: string }[];
+  }): Promise<number>;
+  softDelete(ledgerId: LedgerId, sourceDocumentId: SourceDocumentId): Promise<boolean>;
 }
 
 export interface ProcessingPort {
   dispatch(intent: ProcessingIntentContract): Promise<void>;
-  claim(intentId: ProcessingIntentId): Promise<boolean>;
-  complete(result: ProcessingCompletionContract): Promise<void>;
+  claim(intentId: ProcessingIntentId): Promise<ProcessingClaimContract | null>;
+  complete(result: ProcessingCompletionContract): Promise<boolean>;
+}
+
+export interface RevisionProcessingRequestContract {
+  ledgerId: LedgerId;
+  sourceDocumentId: SourceDocumentId;
+  revisionId: RevisionId;
+}
+
+export interface RevisionProcessingResultContract {
+  outcome: Extract<RevisionOutcome, "completed" | "anomaly">;
+  anomalyReason?: string;
+}
+
+export interface RevisionProcessorPort {
+  process(
+    request: RevisionProcessingRequestContract
+  ): Promise<RevisionProcessingResultContract>;
 }

@@ -25,6 +25,11 @@ export async function register() {
     const { initializeDefaultTaskRuntime } = await import("@/lib/tasks/runtime");
     await initializeDefaultTaskRuntime();
 
+    const { initializeCurrentProcessingDispatcher } = await import(
+      "@/application/adapters/in-process"
+    );
+    await initializeCurrentProcessingDispatcher();
+
     const { initializeExchangeRateLedgerRecalculationOrchestration } = await import(
       "@/lib/orchestration/exchange-rate-ledger-recalculation"
     );

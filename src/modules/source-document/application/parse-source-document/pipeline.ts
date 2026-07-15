@@ -1,6 +1,3 @@
-import { db } from "@/lib/db";
-import { sourceDocuments } from "@/persistence";
-import { and, eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { TaskCancelledError, throwIfCancelled } from "@/lib/tasks/cancellation";
 import type { AIContext } from "@/lib/tasks/types";
@@ -10,7 +7,6 @@ import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
 import { arbitrateResults } from "./arbitration";
 import { shouldDualRun, compareResults } from "./parser-schema";
-import { sourceDocumentNotDeletedCondition } from "../source-document-state";
 import { convertToParsedEntries } from "./result-mapper";
 import { reconcileParseOutput } from "./reconciliation";
 import type { NormalizedParseOutput } from "./parser-schema";
@@ -53,6 +49,8 @@ export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
     })),
     ...(input.text !== undefined ? { text: input.text } : {}),
     ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
+    ...(input.storedFileIds !== undefined ? { storedFileIds: input.storedFileIds } : {}),
+    ledgerId: input.ledgerId,
     ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
     ...(input.preferredCurrencies !== undefined
       ? { preferredCurrencies: input.preferredCurrencies }
@@ -84,7 +82,7 @@ async function persistAndResolveSuccess({
   aiLanguage,
   result,
   wasArbitrated,
-  ctx,
+  ctx: _ctx,
 }: {
   aiLanguage: string | undefined;
   result: NormalizedParseOutput;
@@ -103,7 +101,6 @@ async function persistAndResolveSuccess({
     };
   }
 
-  await persistParseResult(reconciled.result, ctx);
   return resolveSuccess(reconciled.result, wasArbitrated);
 }
 
@@ -119,37 +116,6 @@ function resolveOutcome(
     };
   }
   return { kind: "continue", result };
-}
-
-// ===== Persistence =====
-
-async function persistParseResult(
-  result: unknown,
-  ctx: StageContext
-): Promise<void> {
-  const doc = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.id, ctx.docId),
-      sourceDocumentNotDeletedCondition()
-    ),
-  });
-  if (doc != null) {
-    const existingMeta = (doc.metadata as Record<string, unknown>) ?? {};
-    await db
-      .update(sourceDocuments)
-      .set({
-        metadata: {
-          ...existingMeta,
-          parseResult: result as Record<string, unknown>,
-        },
-      })
-      .where(
-        and(
-          eq(sourceDocuments.id, ctx.docId),
-          sourceDocumentNotDeletedCondition()
-        )
-      );
-  }
 }
 
 // ===== Pipeline =====

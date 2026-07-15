@@ -9,7 +9,11 @@
 import type { AIContext, AIMessageContentPart } from "@/lib/tasks/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { isSuccessfulLoadImageResult, loadImagesForAI } from "@/lib/storage/utils";
+import {
+  isSuccessfulLoadImageResult,
+  loadImagesForAI,
+  loadStoredFilesForAI,
+} from "@/lib/storage/utils";
 import { z } from "zod";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";
@@ -25,7 +29,8 @@ function buildArbitrationPrompt(
   result1: NormalizedParseOutput,
   result2: NormalizedParseOutput
 ): string {
-  const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
+  const textSection =
+    input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced different results for the same document. Choose the more accurate result.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
@@ -46,7 +51,8 @@ function buildArbitrationResultPrompt(
   result1: NormalizedParseOutput,
   result2: NormalizedParseOutput
 ): string {
-  const textSection = input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
+  const textSection =
+    input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced conflicting results. Produce the correct final parse result by reviewing the original document and both attempts.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
@@ -57,18 +63,23 @@ ${JSON.stringify(result2, null, 2)}
 Return the corrected final result as a JSON block matching the parser output format. Return only the JSON block, no other text.`;
 }
 
-async function buildArbitrationMessageContent(
-  imageUrls: string[] | undefined
-): Promise<AIMessageContentPart[]> {
+async function buildArbitrationMessageContent(input: ParserInput): Promise<AIMessageContentPart[]> {
   const content: AIMessageContentPart[] = [
     { type: "text", text: "Please arbitrate these parse results." },
   ];
 
-  if ((imageUrls?.length ?? 0) > 0) {
-    const loaded = await loadImagesForAI(imageUrls!);
-    const images = loaded
-      .filter(isSuccessfulLoadImageResult)
-      .map((r) => ({ dataUrl: r.dataUrl }));
+  const hasStoredFiles = (input.storedFileIds?.length ?? 0) > 0;
+  if (hasStoredFiles || (input.imageUrls?.length ?? 0) > 0) {
+    if (hasStoredFiles && (input.ledgerId == null || input.ledgerId === "")) {
+      throw new AppError(
+        "arbitration: stored-file evidence requires ledger identity",
+        "VALIDATION_ERROR"
+      );
+    }
+    const loaded = hasStoredFiles
+      ? await loadStoredFilesForAI(input.ledgerId!, input.storedFileIds!)
+      : await loadImagesForAI(input.imageUrls!);
+    const images = loaded.filter(isSuccessfulLoadImageResult).map((r) => ({ dataUrl: r.dataUrl }));
     content.push(
       ...images.map((image) => ({
         type: "image_url" as const,
@@ -96,9 +107,9 @@ export async function arbitrateResults(
   },
   ai: AIContext
 ): Promise<ArbitrationResult> {
-  const hasImages = (input.imageUrls?.length ?? 0) > 0;
+  const hasImages = (input.storedFileIds?.length ?? 0) > 0 || (input.imageUrls?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
-  const messageContent = await buildArbitrationMessageContent(input.imageUrls);
+  const messageContent = await buildArbitrationMessageContent(input);
 
   // Step 1: choose which result is better
   const choicePrompt = buildArbitrationPrompt(input, result1, result2);
@@ -124,10 +135,16 @@ export async function arbitrateResults(
 
   const parsedChoice = arbitrationChoiceSchema.safeParse(choiceRaw);
   if (!parsedChoice.success) {
-    logger.warn({ error: parsedChoice.error.message }, "arbitration: invalid choice schema, falling back to result correction");
+    logger.warn(
+      { error: parsedChoice.error.message },
+      "arbitration: invalid choice schema, falling back to result correction"
+    );
   } else {
     const chosen = parsedChoice.data.choice === 1 ? result1 : result2;
-    logger.info({ choice: parsedChoice.data.choice, reason: parsedChoice.data.reason }, "arbitration: chose result");
+    logger.info(
+      { choice: parsedChoice.data.choice, reason: parsedChoice.data.reason },
+      "arbitration: chose result"
+    );
     return { kind: "chosen", result: chosen, wasArbitrated: true };
   }
 

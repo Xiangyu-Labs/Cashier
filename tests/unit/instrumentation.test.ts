@@ -6,6 +6,7 @@ const logger = {
 };
 
 const initializeDefaultTaskRuntime = vi.fn();
+const initializeCurrentProcessingDispatcher = vi.fn();
 const resetTaskRuntime = vi.fn();
 const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
@@ -19,6 +20,10 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/tasks/runtime", () => ({
   initializeDefaultTaskRuntime,
   resetTaskRuntime,
+}));
+
+vi.mock("@/application/adapters/in-process", () => ({
+  initializeCurrentProcessingDispatcher,
 }));
 
 vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
@@ -48,6 +53,7 @@ describe("instrumentation.register", () => {
     expect(initializeOrder).toBeDefined();
     expect(validateOrder!).toBeLessThan(initializeOrder!);
     expect(initializeExchangeRateLedgerRecalculationOrchestration).toHaveBeenCalledTimes(1);
+    expect(initializeCurrentProcessingDispatcher).toHaveBeenCalledTimes(1);
 
     const orchestrationOrder =
       initializeExchangeRateLedgerRecalculationOrchestration.mock.invocationCallOrder.at(0);
@@ -61,6 +67,7 @@ describe("instrumentation.register", () => {
 
     await expect(register()).rejects.toThrow("runtime failed");
     expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
+    expect(initializeCurrentProcessingDispatcher).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 
@@ -73,6 +80,7 @@ describe("instrumentation.register", () => {
 
     await expect(register()).rejects.toThrow("invalid env");
     expect(initializeDefaultTaskRuntime).not.toHaveBeenCalled();
+    expect(initializeCurrentProcessingDispatcher).not.toHaveBeenCalled();
     expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });

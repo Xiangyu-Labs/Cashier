@@ -90,6 +90,16 @@ beforeEach(async () => {
   const db = getTestDb();
 
   const tables = [
+    "processing_outbox",
+    "processing_attempts",
+    "revision_entries",
+    "revision_files",
+    "upload_session_files",
+    "upload_sessions",
+    "stored_files",
+    "source_document_revisions",
+    "idempotency_records",
+    "migration_checkpoints",
     "ledger_entries",
     "source_documents",
     "entry_categories",

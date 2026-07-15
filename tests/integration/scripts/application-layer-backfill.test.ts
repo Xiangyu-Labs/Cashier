@@ -26,7 +26,7 @@ function createPreExpansionMigrationsFolder(): string {
   mkdirSync(metaFolder);
 
   for (const entry of readdirSync(migrationsFolder)) {
-    if (entry.endsWith(".sql") && !entry.startsWith("0035_")) {
+    if (entry.endsWith(".sql") && Number(entry.slice(0, 4)) < 35) {
       copyFileSync(path.join(migrationsFolder, entry), path.join(folder, entry));
     }
   }
@@ -34,7 +34,7 @@ function createPreExpansionMigrationsFolder(): string {
   const journal = JSON.parse(
     readFileSync(path.join(migrationsFolder, "meta", "_journal.json"), "utf8")
   ) as { entries: Array<{ tag: string }> };
-  journal.entries = journal.entries.filter((entry) => !entry.tag.startsWith("0035_"));
+  journal.entries = journal.entries.filter((entry) => Number(entry.tag.slice(0, 4)) < 35);
   writeFileSync(path.join(metaFolder, "_journal.json"), JSON.stringify(journal));
   return folder;
 }
@@ -150,7 +150,7 @@ describe("automatic application-layer database migration", () => {
 
     const db = new Database(fixture.databasePath);
     expect(db.prepare("SELECT count(*) AS count FROM __drizzle_migrations").get()).toEqual({
-      count: 36,
+      count: 38,
     });
     expect(db.prepare("SELECT count(*) AS count FROM source_document_revisions").get()).toEqual({
       count: 3,
@@ -300,7 +300,7 @@ describe("automatic application-layer database migration", () => {
     expect(result.stderr).toContain("Application-layer backfill blocked");
     const verify = new Database(fixture.databasePath, { readonly: true });
     expect(verify.prepare("SELECT count(*) AS count FROM __drizzle_migrations").get()).toEqual({
-      count: 36,
+      count: 38,
     });
     expect(verify.prepare("SELECT count(*) AS count FROM source_document_revisions").get()).toEqual(
       {

@@ -1,0 +1,129 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import { getTestDb } from "../../setup";
+import { createTestUserWithLedger } from "../../helpers/schema-setup";
+import {
+  revisionFiles,
+  sourceDocumentRevisions,
+  sourceDocuments,
+  storedFiles,
+} from "@/persistence";
+import * as authModule from "@/auth";
+
+const { downloadMock } = vi.hoisted(() => ({ downloadMock: vi.fn() }));
+
+vi.mock("@/lib/storage/local", () => ({
+  getLocalStorage: () => ({
+    upload: vi.fn(),
+    download: downloadMock,
+    delete: vi.fn(async () => ({ success: true })),
+  }),
+}));
+
+import { GET } from "@/app/api/stored-files/[fileId]/route";
+
+function request(): NextRequest {
+  return new Request("http://localhost/api/stored-files/file") as NextRequest;
+}
+
+async function createLinkedStoredFile(ledgerId: string) {
+  const db = getTestDb();
+  const [document] = await db
+    .insert(sourceDocuments)
+    .values({ ledgerId, status: "completed", imageUrls: [] })
+    .returning();
+  const [revision] = await db
+    .insert(sourceDocumentRevisions)
+    .values({
+      ledgerId,
+      sourceDocumentId: document!.id,
+      revisionNumber: 1,
+      outcome: "completed",
+      finalizedAt: new Date(),
+    })
+    .returning();
+  const [file] = await db
+    .insert(storedFiles)
+    .values({
+      ledgerId,
+      storageProvider: "local",
+      storageKey: `${ledgerId}/private/file`,
+      contentType: "image/png",
+      byteSize: 5,
+      finalizedAt: new Date(),
+    })
+    .returning();
+  await db.insert(revisionFiles).values({
+    ledgerId,
+    revisionId: revision!.id,
+    storedFileId: file!.id,
+    position: 0,
+  });
+  await db
+    .update(sourceDocuments)
+    .set({ activeRevisionId: revision!.id })
+    .where(eq(sourceDocuments.id, document!.id));
+  return { document: document!, file: file! };
+}
+
+describe("GET /api/stored-files/[fileId]", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    downloadMock.mockReset();
+  });
+
+  it("serves trusted bytes without exposing the local key", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const { file } = await createLinkedStoredFile(ledgerId);
+    downloadMock.mockResolvedValue(Buffer.from("bytes"));
+
+    const response = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    const body = await response.text();
+    expect(body).toBe("bytes");
+    expect(body).not.toContain(file.storageKey);
+  });
+
+  it("returns 404 for another user without revealing file existence", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      undefined,
+      crypto.randomUUID()
+    );
+    const { file } = await createLinkedStoredFile(ledgerId);
+
+    const response = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
+
+    expect(response.status).toBe(404);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 after the owning source document is deleted", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const { document, file } = await createLinkedStoredFile(ledgerId);
+    await db
+      .update(sourceDocuments)
+      .set({ status: "deleted", deletedAt: new Date() })
+      .where(eq(sourceDocuments.id, document.id));
+
+    const response = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
+
+    expect(response.status).toBe(404);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without authentication", async () => {
+    vi.spyOn(authModule, "auth").mockResolvedValue(null as never);
+    const response = await GET(request(), {
+      params: Promise.resolve({ fileId: crypto.randomUUID() }),
+    });
+    expect(response.status).toBe(401);
+  });
+});

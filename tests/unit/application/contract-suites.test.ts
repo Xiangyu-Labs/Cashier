@@ -53,8 +53,25 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
     files: filePort,
     processing: {
       async dispatch(intent: ProcessingIntentContract) { dispatched.add(intent.id); },
-      async claim(intentId) { return dispatched.has(intentId); },
-      async complete(result) { if (!completed.has(result.intentId)) completed.set(result.intentId, result); },
+      async claim(intentId) {
+        if (!dispatched.has(intentId)) return null;
+        return {
+          intent: {
+            id: intentId,
+            sourceDocumentId: "document-1",
+            revisionId: "revision-1",
+            requestedAt: "2026-07-13T00:00:00.000Z",
+            attempt: 1,
+          },
+          claimToken: "claim-1",
+          expiresAt: "2026-07-13T00:05:00.000Z",
+        };
+      },
+      async complete(result) {
+        if (completed.has(result.intentId)) return false;
+        completed.set(result.intentId, result);
+        return true;
+      },
     },
     plan: () => filePort.createUploadPlan("ledger-1"),
     finalize: (currentPlan) => filePort.finalizeUpload({

@@ -30,15 +30,17 @@ function createPreExpansionMigrationsFolder(): string {
   mkdirSync(metaFolder);
 
   for (const entry of readdirSync(migrationsFolder)) {
-    if (entry.endsWith(".sql") && !entry.startsWith("0035_")) {
+    if (entry.endsWith(".sql") && Number(entry.slice(0, 4)) < 35) {
       copyFileSync(path.join(migrationsFolder, entry), path.join(folder, entry));
     }
   }
 
-  const journal = JSON.parse(readFileSync(path.join(sourceMetaFolder, "_journal.json"), "utf8")) as {
+  const journal = JSON.parse(
+    readFileSync(path.join(sourceMetaFolder, "_journal.json"), "utf8")
+  ) as {
     entries: Array<{ tag: string }>;
   };
-  journal.entries = journal.entries.filter((entry) => !entry.tag.startsWith("0035_"));
+  journal.entries = journal.entries.filter((entry) => Number(entry.tag.slice(0, 4)) < 35);
   writeFileSync(path.join(metaFolder, "_journal.json"), JSON.stringify(journal));
   return folder;
 }
@@ -76,6 +78,7 @@ describe("additive application-layer expansion migration", () => {
           "upload_sessions",
           "upload_session_files",
           "migration_checkpoints",
+          "idempotency_records",
         ])
       );
       expect(
@@ -118,13 +121,17 @@ describe("additive application-layer expansion migration", () => {
       ).toEqual({ active_revision_id: null, pending_revision_id: null, image_urls: "[]" });
       expect(
         client
-          .prepare("SELECT source_document_id, source_document_revision_id FROM ledger_entries WHERE id = ?")
+          .prepare(
+            "SELECT source_document_id, source_document_revision_id FROM ledger_entries WHERE id = ?"
+          )
           .get("entry-1")
       ).toEqual({ source_document_id: "document-1", source_document_revision_id: null });
       expect(client.prepare("SELECT status FROM task_runs WHERE id = ?").get("task-1")).toEqual({
         status: "completed",
       });
-      expect(client.prepare("SELECT count(*) AS count FROM source_document_revisions").get()).toEqual({
+      expect(
+        client.prepare("SELECT count(*) AS count FROM source_document_revisions").get()
+      ).toEqual({
         count: 0,
       });
 
@@ -133,9 +140,11 @@ describe("additive application-layer expansion migration", () => {
         .all();
       await migrate(db, { migrationsFolder });
       expect(
-        client.prepare("SELECT hash, created_at FROM __drizzle_migrations ORDER BY created_at").all()
+        client
+          .prepare("SELECT hash, created_at FROM __drizzle_migrations ORDER BY created_at")
+          .all()
       ).toEqual(firstJournal);
-      expect(firstJournal).toHaveLength(36);
+      expect(firstJournal).toHaveLength(38);
     } finally {
       client.close();
     }

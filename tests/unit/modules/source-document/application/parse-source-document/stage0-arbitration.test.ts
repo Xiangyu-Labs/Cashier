@@ -9,15 +9,27 @@ vi.mock("@/lib/storage/utils", () => ({
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKEIMG`, success: true }))
   ),
+  loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
+    ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,FAKEIMG`, success: true }))
+  ),
 }));
 
-const makeResult = (overrides: Partial<NormalizedStage0ParseOutput> = {}): NormalizedStage0ParseOutput => ({
+const makeResult = (
+  overrides: Partial<NormalizedStage0ParseOutput> = {}
+): NormalizedStage0ParseOutput => ({
   outcome: "success",
   title: "Test",
   receipt_count: 1,
   receipt_totals: [{ receipt_index: 0, amount: 10, currency: "USD" }],
   ledger_entries: [
-    { receipt_index: 0, item_name: "Item", amount: 10, currency: "USD", category_index: 1, notes: null },
+    {
+      receipt_index: 0,
+      item_name: "Item",
+      amount: 10,
+      currency: "USD",
+      category_index: 1,
+      notes: null,
+    },
   ],
   order_adjustments: [],
   reasoning: "simple",
@@ -93,7 +105,14 @@ describe("arbitrateStage0Results", () => {
       receipt_count: 1,
       receipt_totals: [{ receipt_index: 0, amount: 10, currency: "USD" }],
       ledger_entries: [
-        { receipt_index: 0, item_name: "Item", amount: 10, currency: "USD", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "Item",
+          amount: 10,
+          currency: "USD",
+          category_index: 1,
+          notes: null,
+        },
       ],
       order_adjustments: [],
       reasoning: "corrected",
@@ -137,7 +156,10 @@ describe("arbitrateStage0Results", () => {
     const generate = vi.fn(async () => ({ content: JSON.stringify({ choice: 1, reason: "ok" }) }));
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results({ input: { originalCategories: [], text: "text only" }, result1, result2 }, ai);
+    await arbitrateStage0Results(
+      { input: { originalCategories: [], text: "text only" }, result1, result2 },
+      ai
+    );
 
     expect(getFirstGenerateCall(generate).model).toBe("text");
   });
@@ -148,11 +170,14 @@ describe("arbitrateStage0Results", () => {
     const generate = vi.fn(async () => ({ content: JSON.stringify({ choice: 1, reason: "ok" }) }));
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results({
-      input: { originalCategories: [], imageUrls: ["data:image/jpeg;base64,FAKE"] },
-      result1,
-      result2,
-    }, ai);
+    await arbitrateStage0Results(
+      {
+        input: { originalCategories: [], imageUrls: ["data:image/jpeg;base64,FAKE"] },
+        result1,
+        result2,
+      },
+      ai
+    );
 
     expect(getFirstGenerateCall(generate).model).toBe("vision");
   });
@@ -167,11 +192,14 @@ describe("arbitrateStage0Results", () => {
     });
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results({
-      input: { originalCategories: [], text: "Receipt: Coffee 5 USD" },
-      result1,
-      result2,
-    }, ai);
+    await arbitrateStage0Results(
+      {
+        input: { originalCategories: [], text: "Receipt: Coffee 5 USD" },
+        result1,
+        result2,
+      },
+      ai
+    );
 
     expect(calls[0]?.prompt).toContain("Coffee 5 USD");
   });
@@ -189,18 +217,20 @@ describe("arbitrateStage0Results", () => {
     });
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results({
-      input: { originalCategories: [], imageUrls: ["https://example.com/receipt.jpg"] },
-      result1,
-      result2,
-    }, ai);
+    await arbitrateStage0Results(
+      {
+        input: { originalCategories: [], imageUrls: ["https://example.com/receipt.jpg"] },
+        result1,
+        result2,
+      },
+      ai
+    );
 
     expect(calls).toHaveLength(2);
     // Both calls should carry the image in messages
     const hasImage = (opts: AIGenerateOptions) =>
-      opts.messages.some((m) =>
-        Array.isArray(m.content) &&
-        m.content.some((p) => p.type === "image_url")
+      opts.messages.some(
+        (m) => Array.isArray(m.content) && m.content.some((p) => p.type === "image_url")
       );
     expect(hasImage(calls[0]!)).toBe(true);
     expect(hasImage(calls[1]!)).toBe(true);

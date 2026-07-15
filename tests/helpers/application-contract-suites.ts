@@ -22,10 +22,13 @@ export interface ApplicationContractHarness {
 }
 
 /** Run this suite for every current and future adapter composition. */
-export function applicationContractSuite(name: string, create: () => ApplicationContractHarness): void {
+export function applicationContractSuite(
+  name: string,
+  create: () => ApplicationContractHarness | Promise<ApplicationContractHarness>
+): void {
   describe(name, () => {
-    it("preserves active revisions and only exposes actions for a terminal pending revision", () => {
-      const harness = create();
+    it("preserves active revisions and only exposes actions for a terminal pending revision", async () => {
+      const harness = await create();
       expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
         .toContain("retry");
       expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
@@ -33,7 +36,7 @@ export function applicationContractSuite(name: string, create: () => Application
     });
 
     it("enforces idempotency", async () => {
-      const harness = create();
+      const harness = await create();
       let calls = 0;
       const operation = async () => ({ value: ++calls });
       await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({ value: 1 });
@@ -42,7 +45,7 @@ export function applicationContractSuite(name: string, create: () => Application
     });
 
     it("finalizes an upload into opaque stored-file identities and authorizes reads", async () => {
-      const harness = create();
+      const harness = await create();
       const plan = await harness.plan();
       const files = await harness.finalize(plan);
       expect(files).toHaveLength(1);
@@ -51,13 +54,13 @@ export function applicationContractSuite(name: string, create: () => Application
     });
 
     it("does not reveal a file when authorization is denied", async () => {
-      const harness = create();
+      const harness = await create();
       const files = await harness.finalize(await harness.plan());
       await expect(harness.files.readAuthorized("other-ledger", files[0]!.id)).resolves.toBeNull();
     });
 
     it("makes duplicate processing dispatch and recovery completion harmless", async () => {
-      const harness = create();
+      const harness = await create();
       const intent: ProcessingIntentContract = {
         id: "intent-1",
         sourceDocumentId: "document-1",
@@ -67,8 +70,18 @@ export function applicationContractSuite(name: string, create: () => Application
       };
       await harness.dispatch(intent);
       await harness.dispatch(intent);
-      await harness.processing.complete({ intentId: intent.id, outcome: "completed" });
-      await harness.processing.complete({ intentId: intent.id, outcome: "completed" });
+      const claim = await harness.processing.claim(intent.id);
+      expect(claim).not.toBeNull();
+      await harness.processing.complete({
+        intentId: intent.id,
+        claimToken: claim!.claimToken,
+        outcome: "completed",
+      });
+      await harness.processing.complete({
+        intentId: intent.id,
+        claimToken: claim!.claimToken,
+        outcome: "completed",
+      });
       expect(harness.completions()).toHaveLength(1);
     });
   });

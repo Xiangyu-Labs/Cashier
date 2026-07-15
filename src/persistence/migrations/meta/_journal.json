@@ -253,6 +253,20 @@
       "when": 1783939445973,
       "tag": "0035_additive_application_layer_expansion",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1784085373824,
+      "tag": "0036_third_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1784087932080,
+      "tag": "0037_public_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

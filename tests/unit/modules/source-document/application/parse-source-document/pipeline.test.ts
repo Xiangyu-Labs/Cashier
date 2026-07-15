@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
-import { buildStageContext, runParsePipeline, buildParserInput } from "@/modules/source-document/application/parse-source-document/pipeline";
+import {
+  buildStageContext,
+  runParsePipeline,
+  buildParserInput,
+} from "@/modules/source-document/application/parse-source-document/pipeline";
 
 // Mock DB so pipeline unit tests don't need a real database
 vi.mock("@/lib/db", () => ({
@@ -24,6 +28,9 @@ vi.mock("@/lib/storage/utils", () => ({
   isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
     urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
+  ),
+  loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
+    ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
   ),
 }));
 
@@ -64,12 +71,14 @@ const COMPLEX_STAGE0_RESULT = {
  * - stage0 parse prompt ("receipt and invoice parser"): returns stage0 result JSON
  * - arbitration prompt ("arbitration AI"): returns choice JSON
  */
-function createMockAI(options: {
-  stage0Result?: object;
-  stage0SecondResult?: object; // if set, 2nd call returns this (for disagreement)
-  arbitrationChoice?: number;
-  stage0Outcome?: "success" | "invalid" | "anomaly";
-} = {}): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
+function createMockAI(
+  options: {
+    stage0Result?: object;
+    stage0SecondResult?: object; // if set, 2nd call returns this (for disagreement)
+    arbitrationChoice?: number;
+    stage0Outcome?: "success" | "invalid" | "anomaly";
+  } = {}
+): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
   const {
     stage0Result = SIMPLE_STAGE0_RESULT,
     stage0SecondResult,
@@ -84,15 +93,16 @@ function createMockAI(options: {
 
     // Arbitration call
     if (prompt.includes("arbitration AI")) {
-      return { content: JSON.stringify({ choice: arbitrationChoice, reason: "result 1 is correct" }) };
+      return {
+        content: JSON.stringify({ choice: arbitrationChoice, reason: "result 1 is correct" }),
+      };
     }
 
     // Stage 0 single-pass
     if (prompt.includes("receipt and invoice parser")) {
       stage0CallCount++;
-      const base = stage0Outcome != null
-        ? { ...stage0Result, outcome: stage0Outcome }
-        : stage0Result;
+      const base =
+        stage0Outcome != null ? { ...stage0Result, outcome: stage0Outcome } : stage0Result;
       if (stage0SecondResult && stage0CallCount >= 2) {
         return { content: JSON.stringify(stage0SecondResult) };
       }
@@ -154,8 +164,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const stage0Calls = generate.mock.calls.filter(
-      (c) => (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+    const stage0Calls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
     );
     expect(stage0Calls).toHaveLength(1);
   });
@@ -165,8 +175,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const stage0Calls = generate.mock.calls.filter(
-      (c) => (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+    const stage0Calls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
     );
     expect(stage0Calls).toHaveLength(2);
   });
@@ -175,8 +185,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai, generate } = createMockAI({ stage0Result: COMPLEX_STAGE0_RESULT });
     await runParsePipeline(createInput(), buildCtx(ai));
 
-    const arbitrationCalls = generate.mock.calls.filter(
-      (c) => (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
+    const arbitrationCalls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
     );
     expect(arbitrationCalls).toHaveLength(0);
   });
@@ -193,8 +203,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const arbitrationCalls = generate.mock.calls.filter(
-      (c) => (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
+    const arbitrationCalls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
     );
     expect(arbitrationCalls).toHaveLength(1);
   });
@@ -204,8 +214,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("invalid");
-    const stage0Calls = generate.mock.calls.filter(
-      (c) => (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+    const stage0Calls = generate.mock.calls.filter((c) =>
+      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
     );
     expect(stage0Calls).toHaveLength(1);
   });
@@ -221,7 +231,10 @@ describe("runParsePipeline — new single-pass flow", () => {
       },
     });
 
-    const result = await runParsePipeline(createInput({ text: "今天天气很好出去散步了" }), buildCtx(ai));
+    const result = await runParsePipeline(
+      createInput({ text: "今天天气很好出去散步了" }),
+      buildCtx(ai)
+    );
 
     expect(result).toMatchObject({
       kind: "invalid",
@@ -244,7 +257,10 @@ describe("runParsePipeline — new single-pass flow", () => {
       },
     });
 
-    const result = await runParsePipeline(createInput({ text: "今天天气很好出去散步了" }), buildCtx(ai));
+    const result = await runParsePipeline(
+      createInput({ text: "今天天气很好出去散步了" }),
+      buildCtx(ai)
+    );
 
     expect(result).toMatchObject({
       kind: "invalid",
@@ -293,7 +309,10 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("text-only input uses text model (no vision call)", async () => {
     const { ai, generate } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
-    await runParsePipeline(createInput({ imageUrls: undefined, text: "Lunch 10 USD" }), buildCtx(ai));
+    await runParsePipeline(
+      createInput({ imageUrls: undefined, text: "Lunch 10 USD" }),
+      buildCtx(ai)
+    );
 
     const visionCalls = generate.mock.calls.filter(
       (c) => (c[0] as AIGenerateOptions).model === "vision"
@@ -337,7 +356,6 @@ describe("runParsePipeline — new single-pass flow", () => {
       );
     }
   });
-
 
   it("returns a reconciled synthetic ledger entry when parser output is below the receipt total", async () => {
     const { ai } = createMockAI({

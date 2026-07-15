@@ -6,6 +6,7 @@ const {
   listEntryCategoryInfosMock,
   loggerDebugMock,
   processImageMock,
+  registerTrustedLocalFileMock,
   submitMock,
 } = vi.hoisted(() => ({
   getLocalStorageMock: vi.fn(),
@@ -13,6 +14,7 @@ const {
   listEntryCategoryInfosMock: vi.fn(),
   loggerDebugMock: vi.fn(),
   processImageMock: vi.fn(),
+  registerTrustedLocalFileMock: vi.fn(),
   submitMock: vi.fn(),
 }));
 
@@ -31,6 +33,12 @@ vi.mock("@/lib/storage/image-processing", () => ({
 
 vi.mock("@/lib/storage/local", () => ({
   getLocalStorage: getLocalStorageMock,
+}));
+
+vi.mock("@/application/adapters/local", () => ({
+  localStoredFileAdapter: {
+    registerTrustedLocalFile: registerTrustedLocalFileMock,
+  },
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -57,6 +65,17 @@ describe("source-document processing helpers", () => {
     processImageMock.mockResolvedValue({
       buffer: new Uint8Array(Buffer.from("processed")),
       mimeType: "image/webp",
+    });
+    registerTrustedLocalFileMock.mockResolvedValue({
+      id: "stored-file-1",
+      ownerLedgerId: "ledger-1",
+      metadata: {
+        contentType: "image/webp",
+        byteSize: 9,
+        originalFilename: null,
+        checksum: null,
+      },
+      createdAt: "2026-07-15T00:00:00.000Z",
     });
     submitMock.mockResolvedValue("task-id");
   });

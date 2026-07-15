@@ -1,0 +1,34 @@
+import { type NextRequest, NextResponse } from "next/server";
+import { localStoredFileAdapter } from "@/application/adapters/local";
+import { requireAuth } from "@/lib/auth-actions";
+import { UnauthorizedError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+
+const CACHE_CONTROL = "private, max-age=3600";
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ fileId: string }> }
+) {
+  try {
+    const userId = await requireAuth();
+    const { fileId } = await params;
+    const read = await localStoredFileAdapter.readAuthorizedForUser(userId, fileId);
+    if (read == null) return new NextResponse("Not Found", { status: 404 });
+    return new NextResponse(Buffer.from(read.body), {
+      status: 200,
+      headers: {
+        "Content-Type": read.file.metadata.contentType,
+        "Content-Length": String(read.file.metadata.byteSize),
+        "Cache-Control": CACHE_CONTROL,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+    logger.error({ error }, "Failed to read stored file");
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

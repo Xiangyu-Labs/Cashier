@@ -4,20 +4,16 @@ import type {
   ProcessingIntentContract,
   ProcessingPort,
   StoredFileContract,
-  StoredFileId,
   TrustedFileMetadata,
 } from ".";
 import { getLocalStorage } from "@/lib/storage/local";
 import { submitTask } from "@/lib/tasks";
+import { localStoredFileAdapter } from "@/application/adapters/local";
 
 export interface LocalStoredFileReceipt {
   file: StoredFileContract;
   /** Private adapter-only compatibility projection for the current image_urls column. */
   legacyReadUrl: string;
-}
-
-function opaqueLocalFileId(key: string): StoredFileId {
-  return `local_${Buffer.from(key).toString("base64url")}`;
 }
 
 /** The current local adapter keeps its filesystem key private from application DTOs. */
@@ -29,13 +25,13 @@ export async function storeLocalFile(input: {
 }): Promise<LocalStoredFileReceipt> {
   const storage = getLocalStorage();
   const legacyReadUrl = await storage.upload(input.key, input.bytes, input.metadata.contentType);
+  const file = await localStoredFileAdapter.registerTrustedLocalFile({
+    ledgerId: input.ledgerId,
+    storageKey: input.key,
+    metadata: input.metadata,
+  });
   return {
-    file: {
-      id: opaqueLocalFileId(input.key),
-      ownerLedgerId: input.ledgerId,
-      metadata: input.metadata,
-      createdAt: new Date().toISOString(),
-    },
+    file,
     legacyReadUrl,
   };
 }
@@ -59,8 +55,12 @@ export function createCurrentProcessingPort<TInput>(input: {
     async dispatch(intent) {
       await submitTask(input.taskType, input.toTaskInput(intent), input.metadata(intent));
     },
-    async claim() { return true; },
-    async complete() {},
+    async claim() {
+      return null;
+    },
+    async complete() {
+      return false;
+    },
   };
 }
 

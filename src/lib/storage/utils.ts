@@ -2,6 +2,7 @@ import { getLocalStorage } from "./local";
 import { isLocalUploadUrl } from "./index";
 import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { localStoredFileAdapter } from "@/application/adapters/local";
 
 /**
  * Load image data for AI processing
@@ -39,6 +40,17 @@ export async function loadImageForAI(url: string): Promise<string> {
   }
 }
 
+export async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Promise<string> {
+  try {
+    const read = await localStoredFileAdapter.readAuthorized(ledgerId, storedFileId);
+    if (read == null) throw new ValidationError("Stored image is not available for this revision");
+    return `data:${read.file.metadata.contentType};base64,${Buffer.from(read.body).toString("base64")}`;
+  } catch (error) {
+    logger.error({ error, ledgerId, storedFileId }, "Failed to load stored image evidence for AI");
+    throw new AppError("Failed to load stored image evidence", "IMAGE_LOAD_FAILED");
+  }
+}
+
 /**
  * Result of loading an image for AI processing.
  * `success` is the discriminant so downstream filters can narrow correctly.
@@ -63,9 +75,7 @@ export function isSuccessfulLoadImageResult(
   return result.success;
 }
 
-export function isFailedLoadImageResult(
-  result: LoadImageResult
-): result is FailedLoadImageResult {
+export function isFailedLoadImageResult(result: LoadImageResult): result is FailedLoadImageResult {
   return !result.success;
 }
 
@@ -105,6 +115,29 @@ export async function loadImagesForAI(urls: string[]): Promise<LoadImageResult[]
       };
     }
   });
+}
+
+export async function loadStoredFilesForAI(
+  ledgerId: string,
+  storedFileIds: string[]
+): Promise<LoadImageResult[]> {
+  return Promise.all(
+    storedFileIds.map(async (storedFileId) => {
+      try {
+        return {
+          url: storedFileId,
+          dataUrl: await loadStoredFileForAI(ledgerId, storedFileId),
+          success: true as const,
+        };
+      } catch (error) {
+        return {
+          url: storedFileId,
+          error: error instanceof Error ? error : new Error(String(error)),
+          success: false as const,
+        };
+      }
+    })
+  );
 }
 
 /**
