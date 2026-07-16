@@ -7,6 +7,7 @@ import {
   ledgerEntries,
   ledgers,
   revisionEntries,
+  revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
@@ -139,8 +140,14 @@ function replaceManualProjection(
     )
     .all();
   const previousById = new Map(previousEntries.map((entry) => [entry.id, entry]));
-  if (requestedIds.some((id) => !previousById.has(id))) {
-    throw new NotFoundError("Active manual ledger entry");
+  for (const id of requestedIds) {
+    if (previousById.has(id)) continue;
+    const existing = tx
+      .select({ id: ledgerEntries.id })
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.id, id))
+      .get();
+    if (existing != null) throw new NotFoundError("Active ledger entry projection");
   }
 
   const now = new Date();
@@ -262,6 +269,81 @@ function createCompletedRevision(
     })
     .returning()
     .get();
+}
+
+export function ensureTargetLedgerProjection(
+  ledgerId: string,
+  sourceDocumentId: string
+): string {
+  return db.transaction((tx) => {
+    const document = tx
+      .select()
+      .from(sourceDocuments)
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .get();
+    if (document == null) throw new NotFoundError("Source document");
+    if (document.activeRevisionId != null) return document.activeRevisionId;
+    if (document.status !== "completed") {
+      throw new ConflictError("Source document has no completed active projection");
+    }
+
+    const revision = createCompletedRevision(tx, {
+      ledgerId,
+      sourceDocumentId,
+      submittedText: document.text,
+    });
+    const entries = tx
+      .select({ id: ledgerEntries.id })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, ledgerId),
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      .all();
+    for (const [position, entry] of entries.entries()) {
+      tx.update(ledgerEntries)
+        .set({ sourceDocumentRevisionId: revision.id, updatedAt: new Date() })
+        .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)))
+        .run();
+      tx.insert(revisionEntries)
+        .values({ ledgerId, revisionId: revision.id, ledgerEntryId: entry.id, position })
+        .run();
+    }
+    tx.update(sourceDocuments)
+      .set({ activeRevisionId: revision.id, pendingRevisionId: null, updatedAt: new Date() })
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .run();
+    return revision.id;
+  });
+}
+
+function copyRevisionFiles(
+  tx: SqliteTransaction,
+  input: { ledgerId: string; fromRevisionId: string; toRevisionId: string }
+): void {
+  const files = tx
+    .select({ storedFileId: revisionFiles.storedFileId, position: revisionFiles.position })
+    .from(revisionFiles)
+    .where(
+      and(
+        eq(revisionFiles.ledgerId, input.ledgerId),
+        eq(revisionFiles.revisionId, input.fromRevisionId)
+      )
+    )
+    .all();
+  for (const file of files) {
+    tx.insert(revisionFiles)
+      .values({
+        ledgerId: input.ledgerId,
+        revisionId: input.toRevisionId,
+        storedFileId: file.storedFileId,
+        position: file.position,
+      })
+      .run();
+  }
 }
 
 export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
@@ -401,6 +483,80 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
           text: input.submittedText ?? document.text,
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+          updatedAt: new Date(),
+        })
+        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
+        .run();
+      return revision.id;
+    });
+  },
+
+  async replaceActive(input) {
+    return db.transaction((tx) => {
+      const document = tx
+        .select()
+        .from(sourceDocuments)
+        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
+        .get();
+      if (document == null) throw new NotFoundError("Source document");
+      if (
+        document.activeRevisionId == null ||
+        document.activeRevisionId !== input.expectedActiveRevisionId
+      ) {
+        throw new ConflictError("Source document active revision changed");
+      }
+      if (document.pendingRevisionId != null) {
+        const pending = tx
+          .select({ outcome: sourceDocumentRevisions.outcome })
+          .from(sourceDocumentRevisions)
+          .where(
+            and(
+              eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+              eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
+              eq(sourceDocumentRevisions.id, document.pendingRevisionId)
+            )
+          )
+          .get();
+        if (pending?.outcome === "queued" || pending?.outcome === "processing") {
+          throw new ConflictError("Source document has processing work");
+        }
+      }
+
+      const activeRevision = tx
+        .select({ submittedText: sourceDocumentRevisions.submittedText })
+        .from(sourceDocumentRevisions)
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+            eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
+            eq(sourceDocumentRevisions.id, document.activeRevisionId),
+            eq(sourceDocumentRevisions.outcome, "completed")
+          )
+        )
+        .get();
+      if (activeRevision == null) throw new ConflictError("Active revision is not completed");
+
+      const revision = createCompletedRevision(tx, {
+        ledgerId: input.ledgerId,
+        sourceDocumentId: input.sourceDocumentId,
+        submittedText: activeRevision.submittedText,
+      });
+      copyRevisionFiles(tx, {
+        ledgerId: input.ledgerId,
+        fromRevisionId: document.activeRevisionId,
+        toRevisionId: revision.id,
+      });
+      replaceManualProjection(tx, {
+        ...input,
+        previousRevisionId: document.activeRevisionId,
+        revisionId: revision.id,
+      });
+      tx.update(sourceDocuments)
+        .set({
+          activeRevisionId: revision.id,
+          pendingRevisionId: null,
+          status: "completed",
+          anomalyReason: null,
           updatedAt: new Date(),
         })
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))

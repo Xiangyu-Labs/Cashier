@@ -1,4 +1,4 @@
-import { collectTargetSourceDocuments } from "@/application/adapters/sqlite";
+import { currentApplication } from "@/application/current";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
@@ -20,7 +20,7 @@ export async function querySourceDocumentCollection(
   ledgerId: string,
   params: SourceDocumentCollectionParams
 ): Promise<SourceDocumentCollectionDto> {
-  const result = await collectTargetSourceDocuments({
+  const result = await currentApplication.sourceDocumentReads.collect({
     ledgerId,
     ...(params.startDate !== undefined ? { startDate: params.startDate } : {}),
     ...(params.endDate !== undefined ? { endDate: params.endDate } : {}),

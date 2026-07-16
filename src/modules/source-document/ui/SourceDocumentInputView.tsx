@@ -11,7 +11,7 @@ import {
 } from "./SourceDocumentImageModal";
 
 const imageActionButtonClassName =
-  "absolute z-10 flex h-6 w-6 items-center justify-center rounded-full text-white transition-opacity opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
+  "absolute z-10 flex h-11 w-11 items-center justify-center rounded-full text-white transition-opacity opacity-100 sm:h-7 sm:w-7 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
 
 export interface SourceDocumentInputViewMessages {
   placeholder: string;
@@ -70,9 +70,11 @@ export function SourceDocumentInputView({
         <div className="grid grid-cols-4 gap-2">
           {images.map((image, index) => (
             <div key={`${image.data}-${index}`} className="group relative">
-              <div
-                className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border transition-opacity hover:opacity-90"
+              <button
+                type="button"
+                className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={() => onImageOpen(index)}
+                aria-label={`Uploaded ${index + 1}`}
               >
                 <Image
                   src={image.data}
@@ -80,7 +82,7 @@ export function SourceDocumentInputView({
                   fill
                   className="object-cover"
                 />
-              </div>
+              </button>
 
               <button
                 onClick={() => onRemoveImage(index)}
@@ -101,6 +103,7 @@ export function SourceDocumentInputView({
         onChange={(event) => onTextChange(event.target.value)}
         onPaste={onTextareaPaste}
         placeholder={messages.placeholder}
+        aria-label={messages.placeholder}
         className="resize-none"
         rows={5}
         autoFocus
@@ -121,6 +124,7 @@ export function SourceDocumentInputView({
           onChange={onFileInputChange}
           accept="image/*"
           multiple
+          aria-label={messages.image}
           className="hidden"
         />
         <Button type="button" variant="outline" size="sm" onClick={onSelectImages}>

@@ -1,6 +1,5 @@
-import { listTargetSourceDocuments } from "@/application/adapters/sqlite";
+import { currentApplication } from "@/application/current";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
-import { mapSourceDocumentLedgerEntryDto } from "@/modules/source-document/mappers";
 import {
   type ListSourceDocumentsInput,
   parseListSourceDocumentsInput,
@@ -37,7 +36,7 @@ export async function listEntriesBySourceDocumentIds(
   for (const [docId, entries] of entriesByDocId.entries()) {
     mapped.set(
       docId,
-      entries.map((entry) => mapSourceDocumentLedgerEntryDto(entry))
+      entries
     );
   }
 
@@ -55,7 +54,7 @@ export async function querySourceDocumentPage(
     .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
       ["queued", "processing", "completed", "anomaly", "failed"].includes(value)
     );
-  const page = await listTargetSourceDocuments({
+  const page = await currentApplication.sourceDocumentReads.list({
     ledgerId,
     ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     ...(startDate !== undefined ? { startDate } : {}),

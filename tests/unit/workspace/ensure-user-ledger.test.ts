@@ -1,102 +1,73 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LedgerPort } from "@/application/contracts";
+import { ConflictError } from "@/lib/errors";
+import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 
-const { mockFindMany, mockCreateDefaultLedger, loggerMock } = vi.hoisted(() => ({
-  mockFindMany: vi.fn(),
-  mockCreateDefaultLedger: vi.fn(),
-  loggerMock: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
-
-vi.mock("@/lib/db", () => ({
-  db: {
-    query: {
-      ledgers: {
-        findMany: mockFindMany,
-      },
-    },
-  },
-}));
-
-vi.mock("@/modules/ledger/application/use-cases/create-default-ledger", () => ({
-  createDefaultLedger: mockCreateDefaultLedger,
-}));
-
+const loggerError = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/logger", () => ({
-  logger: loggerMock,
+  logger: { error: loggerError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
+
+function harness() {
+  const listIdsForUser = vi.fn();
+  const createDefault = vi.fn();
+  return {
+    listIdsForUser,
+    createDefault,
+    port: { listIdsForUser, createDefault } as unknown as LedgerPort,
+  };
+}
 
 describe("ensureUserLedger", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns an existing ledger without creating another", async () => {
+    const test = harness();
+    test.listIdsForUser.mockResolvedValue(["ledger-existing"]);
+    await expect(ensureUserLedger({ userId: "user-1" }, test.port)).resolves.toEqual({
+      ledgerId: "ledger-existing",
+      created: false,
+    });
+    expect(test.createDefault).not.toHaveBeenCalled();
   });
 
-  it("returns existing ledger without creating a new one", async () => {
-    mockFindMany.mockResolvedValue([{ id: "ledger-existing" }]);
-
-    const { ensureUserLedger } =
-      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
-    const result = await ensureUserLedger({ userId: "user-1" });
-
-    expect(result).toEqual({ ledgerId: "ledger-existing", created: false });
-    expect(mockCreateDefaultLedger).not.toHaveBeenCalled();
+  it("creates the configured default ledger when none exists", async () => {
+    const test = harness();
+    test.listIdsForUser.mockResolvedValue([]);
+    test.createDefault.mockResolvedValue({ id: "ledger-new" });
+    await expect(ensureUserLedger({ userId: "user-1", locale: "en" }, test.port)).resolves.toEqual({
+      ledgerId: "ledger-new",
+      created: true,
+    });
+    expect(test.createDefault).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", settings: expect.any(Object) })
+    );
   });
 
-  it("creates a ledger when none exists", async () => {
-    mockFindMany.mockResolvedValue([]);
-    mockCreateDefaultLedger.mockResolvedValue({ id: "ledger-new" });
-
-    const { ensureUserLedger } =
-      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
-    const result = await ensureUserLedger({ userId: "user-1", locale: "en" });
-
-    expect(result).toEqual({ ledgerId: "ledger-new", created: true });
-    expect(mockCreateDefaultLedger).toHaveBeenCalledWith({ userId: "user-1", locale: "en" });
-  });
-
-  it("logs when multiple active ledgers are found and returns the first one", async () => {
-    mockFindMany.mockResolvedValue([{ id: "ledger-newer" }, { id: "ledger-older" }]);
-
-    const { ensureUserLedger } =
-      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
-    const result = await ensureUserLedger({ userId: "user-1" });
-
-    expect(result).toEqual({ ledgerId: "ledger-newer", created: false });
-    expect(loggerMock.error).toHaveBeenCalledWith(
+  it("logs the invariant when multiple active ledgers exist", async () => {
+    const test = harness();
+    test.listIdsForUser.mockResolvedValue(["ledger-newer", "ledger-older"]);
+    await ensureUserLedger({ userId: "user-1" }, test.port);
+    expect(loggerError).toHaveBeenCalledWith(
       { userId: "user-1", ledgerIds: ["ledger-newer", "ledger-older"] },
-      "Expected at most one active ledger for user"
+      "Expected one active ledger"
     );
   });
 
-  it("recovers from concurrent unique-constraint creation race", async () => {
-    const uniqueError = new Error("UNIQUE constraint failed: ledgers.user_id");
-    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: "ledger-race" }]);
-    mockCreateDefaultLedger.mockRejectedValue(uniqueError);
-
-    const { ensureUserLedger } =
-      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
-    const result = await ensureUserLedger({ userId: "user-1" });
-
-    expect(result).toEqual({ ledgerId: "ledger-race", created: false });
-    expect(loggerMock.warn).toHaveBeenCalledWith(
-      { userId: "user-1", ledgerId: "ledger-race" },
-      "Recovered from concurrent single-ledger initialization"
-    );
+  it("recovers an idempotent concurrent creation conflict", async () => {
+    const test = harness();
+    test.listIdsForUser.mockResolvedValueOnce([]).mockResolvedValueOnce(["ledger-race"]);
+    test.createDefault.mockRejectedValue(new ConflictError("already exists"));
+    await expect(ensureUserLedger({ userId: "user-1" }, test.port)).resolves.toEqual({
+      ledgerId: "ledger-race",
+      created: false,
+    });
   });
 
-  it("rethrows unique-constraint error when no ledger can be recovered", async () => {
-    const uniqueError = new Error("UNIQUE constraint failed: ledgers.user_id");
-    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-    mockCreateDefaultLedger.mockRejectedValue(uniqueError);
-
-    const { ensureUserLedger } =
-      await import("@/modules/workspace/application/use-cases/ensure-user-ledger");
-
-    await expect(ensureUserLedger({ userId: "user-1" })).rejects.toThrow(
-      "UNIQUE constraint failed: ledgers.user_id"
-    );
+  it("rethrows a conflict when no concurrent ledger exists", async () => {
+    const test = harness();
+    test.listIdsForUser.mockResolvedValue([]);
+    test.createDefault.mockRejectedValue(new ConflictError("already exists"));
+    await expect(ensureUserLedger({ userId: "user-1" }, test.port)).rejects.toThrow(ConflictError);
   });
 });

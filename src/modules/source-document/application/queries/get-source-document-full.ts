@@ -1,15 +1,12 @@
-import { db } from "@/lib/db";
+import { currentApplication } from "@/application/current";
 import { NotFoundError } from "@/lib/errors";
-import { whereSourceDocumentNotDeletedId } from "@/modules/source-document/application/source-document-state";
 import type { SourceDocumentFullDto } from "../../contracts";
 
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentFullDto> {
-  const document = await db.query.sourceDocuments.findFirst({
-    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
-  });
+  const document = await currentApplication.sourceDocumentReads.get(ledgerId, sourceDocumentId);
 
   if (document == null) {
     throw new NotFoundError("Source document");
@@ -18,9 +15,9 @@ export async function getSourceDocumentFullQuery(
   return {
     id: document.id,
     text: document.text,
-    imageUrls: document.imageUrls ?? [],
+    files: document.files,
     status: document.status,
-    createdAt: document.createdAt.toISOString(),
+    createdAt: document.createdAt,
   };
 }
 

@@ -16,8 +16,10 @@ vi.mock("@/lib/date-utils", () => ({
   formatDateTimeForApi: formatDateTimeForApiMock,
 }));
 
-vi.mock("@/application/adapters/sqlite", () => ({
-  sqliteLedgerProjectionAdapter: { createManual: createManualMock },
+vi.mock("@/application/current", () => ({
+  currentApplication: {
+    ledgerProjections: { createManual: createManualMock },
+  },
 }));
 
 vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({

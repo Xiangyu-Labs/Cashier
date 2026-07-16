@@ -19,6 +19,10 @@ export async function POST(request: NextRequest) {
 
       const createResult = await createSourceDocumentFromCredentialAction({
         credentialId: credential.id,
+        ledgerId: credential.ledgerId,
+        ...(authorizedRequest.headers.get("Idempotency-Key") == null
+          ? {}
+          : { idempotencyKey: authorizedRequest.headers.get("Idempotency-Key")! }),
         payload: body,
       });
 

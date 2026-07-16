@@ -28,6 +28,7 @@ import {
   buildSourceDocumentDetailViewModel,
   type SourceDocumentDetailDisplayEntry,
 } from "./source-document-detail-view-model";
+import { storedFileReadUrl } from "../stored-file-read";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
@@ -146,8 +147,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   }, [displayEntriesById, ledgerEntries]);
 
   const isAnomaly = sourceDocument.status === "anomaly";
-  const imageUrls = sourceDocument.imageUrls;
-  const hasImages = imageUrls.length > 0;
+  const files = sourceDocument.files;
+  const hasImages = files.length > 0;
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
 
   return (
@@ -288,7 +289,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 <span className="text-muted-foreground/40 font-normal lowercase">
                   (
                   {[
-                    hasImages && `${imageUrls?.length} ${tCard("image")}`,
+                    hasImages && `${files.length} ${tCard("image")}`,
                     hasRawText && t("rawContent"),
                   ]
                     .filter(Boolean)
@@ -325,14 +326,14 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         ))}
                       </>
                     ) : (
-                      imageUrls.map((url, idx) => (
+                      files.map((file, idx) => (
                         <div
-                          key={idx}
+                          key={file.id}
                           className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
                           onClick={() => setViewerIndex(idx)}
                         >
                           <Image
-                            src={url}
+                            src={storedFileReadUrl(file.id)}
                             alt={tCard("imageAlt", { index: idx + 1 })}
                             fill
                             className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -365,7 +366,11 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       )}
 
       <SourceDocumentImageModal
-        images={imageUrls.map((url) => ({ data: url, mimeType: "image/jpeg" }))}
+        images={files.map((file) => ({
+          data: "",
+          mimeType: file.contentType,
+          storedFileId: file.id,
+        }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}
         onOpenChange={(open: boolean) => !open && setViewerIndex(null)}

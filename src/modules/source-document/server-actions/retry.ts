@@ -11,12 +11,11 @@ import { withSourceDocumentLedgerAccess } from "./access";
 /**
  * Retry an existing source document with optional new data
  *
- * Edit retry soft-deletes the prior document, creates a replacement, and queues parsing.
- * Internal cancellation remains part of the document lifecycle and is not a public action.
+ * Every retry queues a new immutable revision under the stable document identity.
  */
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, ledger },
+    { ledgerId },
     sourceDocumentId: string,
     input?: RetrySourceDocumentInputContract
   ): Promise<RetrySourceDocumentResponseDto> => {
@@ -25,7 +24,6 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
 
     return retrySourceDocument({
       ledgerId,
-      ledger,
       sourceDocumentId,
       ...(validatedInput == null ? {} : { input: validatedInput }),
     });

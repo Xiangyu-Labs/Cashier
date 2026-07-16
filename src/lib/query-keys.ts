@@ -118,6 +118,25 @@ function createPrefixPredicate(prefix: readonly unknown[]): QueryPredicate {
   return (query) => Array.isArray(query.queryKey) && isQueryKeyPrefixMatch(query.queryKey, prefix);
 }
 
+export function matchExactQueryKey(target: readonly unknown[]): QueryPredicate {
+  return (query) =>
+    Array.isArray(query.queryKey) &&
+    query.queryKey.length === target.length &&
+    target.every((value, index) => query.queryKey[index] === value);
+}
+
+export function invalidateEntryCategories(ledgerId: string): QueryPredicate {
+  return matchExactQueryKey(queryKeys.entryCategories(ledgerId));
+}
+
+export function invalidateUncategorizedCount(ledgerId: string): QueryPredicate {
+  return matchExactQueryKey(queryKeys.uncategorizedCount(ledgerId));
+}
+
+export function invalidateLedgerSettingsView(ledgerId: string): QueryPredicate {
+  return matchExactQueryKey(queryKeys.ledgerSettings(ledgerId));
+}
+
 /**
  * Helper to match ledger resource queries for a specific ledger.
  */

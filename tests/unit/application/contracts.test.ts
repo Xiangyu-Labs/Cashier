@@ -13,7 +13,7 @@ describe("target application contracts", () => {
     expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
       .toEqual(["retry", "edit_retry", "manual_correction", "delete"]);
     expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
-      .toEqual([]);
+      .toEqual(["delete"]);
   });
 
   it("does not allow actions for deleted source documents", () => {
@@ -32,7 +32,11 @@ describe("target application contracts", () => {
   });
 
   it("keeps the published API v1 response fixture and compatibility window", () => {
-    const response = fixture.response as { sourceDocumentId: string; status: "queued" };
+    const response = fixture.response as {
+      sourceDocumentId: string;
+      revisionId: string;
+      revisionState: "queued";
+    };
     expect(toApiV1SourceDocumentCreateResponse(response)).toEqual(fixture.response);
     expect(apiV1Compatibility.version).toBe(fixture.compatibility.version);
     expect(apiV1Compatibility.additiveUntil).toBe(fixture.compatibility.additiveUntil);

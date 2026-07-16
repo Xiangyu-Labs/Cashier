@@ -1,26 +1,17 @@
-import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
+import type { CategoryPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
 import { NotFoundError } from "@/lib/errors";
-import { mapEntryCategoryDto } from "@/modules/ledger/application/mappers";
-import type { EntryCategoryDto } from "@/modules/ledger/contracts";
 import type { UpdateEntryCategoryInput } from "@/modules/ledger/contract-schemas";
-import { entryCategories } from "@/persistence";
+import type { EntryCategoryDto } from "@/modules/ledger/contracts";
+import { omitUndefinedProperties } from "@/lib/validation";
 
 export async function updateEntryCategory(
   ledgerId: string,
   categoryId: string,
-  data: UpdateEntryCategoryInput
+  data: UpdateEntryCategoryInput,
+  categories: CategoryPort = currentApplication.categories
 ): Promise<EntryCategoryDto> {
-  const q = forLedger(entryCategories, ledgerId);
-  const [updatedCategory] = await db
-    .update(entryCategories)
-    .set(data)
-    .where(q.whereId(categoryId))
-    .returning();
-
-  if (updatedCategory == null) {
-    throw new NotFoundError("Category");
-  }
-
-  return mapEntryCategoryDto(updatedCategory);
+  const updated = await categories.update(ledgerId, categoryId, omitUndefinedProperties(data));
+  if (updated == null) throw new NotFoundError("Category");
+  return { ...updated, deletedAt: null };
 }

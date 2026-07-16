@@ -1,7 +1,7 @@
 "use client";
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocumentLight } from "@/modules/source-document/contracts";
-import { useState, useEffect, memo, useCallback } from "react";
+import { useState, useEffect, memo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -181,7 +182,13 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
       <DialogContent
         className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border"
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={() => {
+          restoreFocusRef.current = document.activeElement as HTMLElement | null;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreFocusRef.current?.focus();
+        }}
         aria-describedby={undefined}
       >
         <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">

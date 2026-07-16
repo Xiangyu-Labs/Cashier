@@ -42,7 +42,7 @@ vi.mock("@/lib/tasks", async (importOriginal) => {
 });
 
 // Mock Tasks
-vi.mock("@/modules/source-document/application/tasks/parse-source-document", () => ({
+vi.mock("@/application/adapters/in-process/parse-source-document-task", () => ({
   TASK_TYPE_PARSE_SOURCE_DOCUMENT: "parse_source_document",
   parseSourceDocumentTaskDefinition: {
     type: "parse_source_document",
@@ -225,6 +225,44 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     });
     expect(check).toBeDefined();
     expect(check?.deletedAt).not.toBeNull();
+  });
+
+  it("tracks last use and rejects authentication immediately after revoke", async () => {
+    const db = getTestDb();
+    const credential = await createServiceCredentialAction(testLedgerId, {
+      name: "Lifecycle Credential",
+    });
+    const firstResponse = await ledgerEntryPOST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credential.key}`,
+          "Idempotency-Key": "credential-lifecycle-record",
+        },
+        body: JSON.stringify({ text: "Persist before revoke" }),
+      })
+    );
+    const created = await firstResponse.json();
+    expect(firstResponse.status).toBe(201);
+    const usedCredential = await db.query.serviceCredentials.findFirst({
+      where: eq(serviceCredentials.id, credential.id),
+    });
+    expect(usedCredential?.lastUsedAt).toBeInstanceOf(Date);
+
+    await deleteServiceCredentialAction(testLedgerId, credential.id);
+    const revokedResponse = await ledgerEntryPOST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credential.key}` },
+        body: JSON.stringify({ text: "Must be rejected" }),
+      })
+    );
+    expect(revokedResponse.status).toBe(401);
+    expect(
+      await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, created.sourceDocumentId),
+      })
+    ).toBeDefined();
   });
 
   it("should return credentials with key via getLedgerSettingsAction", async () => {

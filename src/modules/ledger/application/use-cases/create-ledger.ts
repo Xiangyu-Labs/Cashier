@@ -1,45 +1,26 @@
-import { and, eq, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { AppError, ConflictError } from "@/lib/errors";
-import { mapLedgerDto } from "@/modules/ledger/application/mappers";
+import { currentApplication } from "@/application/current";
+import { ConflictError } from "@/lib/errors";
 import type { LedgerDto } from "@/modules/ledger/contracts";
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
-import { ledgers } from "@/persistence";
+import { createDefaultLedger } from "./create-default-ledger";
 
-const SINGLE_LEDGER_CONFLICT_MESSAGE =
-  "User already has a ledger. Only one ledger per user is allowed.";
+const CONFLICT_MESSAGE = "User already has a ledger. Only one ledger per user is allowed.";
 
 export async function createLedger(input: { userId: string; locale?: string }): Promise<LedgerDto> {
-  const existingLedger = await db.query.ledgers.findFirst({
-    where: and(eq(ledgers.userId, input.userId), isNull(ledgers.deletedAt)),
-  });
-
-  if (existingLedger != null) {
-    throw new ConflictError(SINGLE_LEDGER_CONFLICT_MESSAGE);
+  if ((await currentApplication.ledgers.listIdsForUser(input.userId)).length > 0) {
+    throw new ConflictError(CONFLICT_MESSAGE);
   }
-
   try {
-    const payload: Parameters<typeof createDefaultLedger>[0] = {
-      userId: input.userId,
+    const ledger = await createDefaultLedger(input);
+    return {
+      id: ledger.id,
+      userId: ledger.userId,
+      metadata: ledger.metadata,
+      createdAt: ledger.createdAt.toISOString(),
+      updatedAt: ledger.updatedAt.toISOString(),
+      deletedAt: null,
     };
-    if (input.locale !== undefined) {
-      payload.locale = input.locale;
-    }
-
-    const ledger = await createDefaultLedger(payload);
-
-    if (ledger === undefined) {
-      throw new AppError(
-        "Failed to create ledger: transaction returned no result",
-        "LEDGER_CREATION_FAILED"
-      );
-    }
-
-    return mapLedgerDto(ledger);
   } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
-      throw new ConflictError(SINGLE_LEDGER_CONFLICT_MESSAGE);
-    }
+    if (error instanceof ConflictError) throw new ConflictError(CONFLICT_MESSAGE);
     throw error;
   }
 }

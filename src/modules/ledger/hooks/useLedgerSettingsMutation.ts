@@ -2,8 +2,13 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { invalidateLedger, invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
-import { fireAndForget } from "@/lib/safe-async";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  queryKeys,
+} from "@/lib/query-keys";
 import { updateLedgerAction } from "@/modules/ledger/actions";
 import type { Ledger } from "@/modules/ledger/contracts";
 
@@ -57,8 +62,7 @@ export function useLedgerSettingsMutation({
     },
     successMessage,
     errorMessage,
-    cancelPredicates: [invalidateLedger(ledgerId)],
-    invalidatePredicates: [invalidateLedger(ledgerId)],
+    skipInvalidation: true,
     onSuccessExtra: (data) => {
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
     },
@@ -101,10 +105,14 @@ export function useLedgerSettingsMutation({
 
       return { snapshots };
     },
-    onSettledExtra: (qc) => {
-      fireAndForget(qc.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) }), {
-        context: "use-ledger-settings",
-      });
+    onSettledExtra: async (qc, variables, _data, error) => {
+      if (error != null || variables.mainCurrency === undefined) return;
+      await Promise.all([
+        qc.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
+        qc.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+        qc.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+        qc.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
+      ]);
     },
   });
 }

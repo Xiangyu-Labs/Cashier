@@ -1,13 +1,5 @@
-import { db } from "@/lib/db";
+import { currentApplication } from "@/application/current";
 import type { DeleteSourceDocumentResultDto } from "@/modules/source-document/contracts";
-import {
-  whereSourceDocumentNotDeletedId,
-} from "@/modules/source-document/application/source-document-state";
-import {
-  cancelActiveSourceDocumentTaskRuns,
-  listRelatedSourceDocumentTaskRuns,
-  softDeleteSourceDocumentsAndTaskRuns,
-} from "../services/source-document-lifecycle";
 
 interface DeleteSourceDocumentInput {
   ledgerId: string;
@@ -18,31 +10,18 @@ export async function deleteSourceDocument({
   ledgerId,
   sourceDocumentId,
 }: DeleteSourceDocumentInput): Promise<DeleteSourceDocumentResultDto> {
-  const sourceDoc = await db.query.sourceDocuments.findFirst({
-    where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
-  });
-
-  if (sourceDoc == null) {
+  const sourceDocument = await currentApplication.sourceDocumentRevisions.get(ledgerId, sourceDocumentId);
+  if (sourceDocument == null || !sourceDocument.supportedActions.includes("delete")) {
     return {
       sourceDocumentId,
       deleted: false,
     };
   }
 
-  const relatedTaskRuns = await listRelatedSourceDocumentTaskRuns(ledgerId, [sourceDocumentId]);
-  await cancelActiveSourceDocumentTaskRuns(relatedTaskRuns.map((task) => task.id));
-
-  db.transaction((tx) => {
-    softDeleteSourceDocumentsAndTaskRuns(
-      tx,
-      ledgerId,
-      [sourceDocumentId],
-      relatedTaskRuns.map((task) => task.id)
-    );
-  });
+  const deleted = await currentApplication.sourceDocumentRevisions.softDelete(ledgerId, sourceDocumentId);
 
   return {
     sourceDocumentId,
-    deleted: true,
+    deleted,
   };
 }

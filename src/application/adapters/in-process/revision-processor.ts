@@ -75,10 +75,12 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         })
         .from(entryCategories)
         .where(
-          and(
-            eq(entryCategories.ledgerId, request.ledgerId),
-            isNull(entryCategories.deletedAt)
-          )
+          and(eq(entryCategories.ledgerId, request.ledgerId), isNull(entryCategories.deletedAt))
+        )
+        .orderBy(
+          asc(entryCategories.sortOrder),
+          asc(entryCategories.createdAt),
+          asc(entryCategories.id)
         ),
     ]);
     const controller = new AbortController();
@@ -103,9 +105,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     if (output.verificationStatus !== "passed") {
       const anomalyReason =
         output.anomalyReason ??
-        (output.verificationStatus === "invalid"
-          ? "Invalid content"
-          : "Parsing results diverged");
+        (output.verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
       await sqliteRevisionAdapter.preserveTerminalOutcome({
         ...request,
         outcome: "anomaly",
@@ -151,10 +151,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       })),
     });
     if (!activated) {
-      const current = await sqliteRevisionAdapter.get(
-        request.ledgerId,
-        request.sourceDocumentId
-      );
+      const current = await sqliteRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
       if (current?.activeRevisionId !== request.revisionId) {
         throw new Error("Revision completion is stale");
       }

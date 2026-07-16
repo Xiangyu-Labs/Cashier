@@ -110,8 +110,8 @@ export function useLoginFlow(
 
       setError(t("devSignInFailed"));
       setIsLoading(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("devSignInFailed"));
+    } catch {
+      setError(t("devSignInFailed"));
       setIsLoading(false);
     }
   };
@@ -129,12 +129,8 @@ export function useLoginFlow(
       setCanResendAt(result.canResendAt ?? null);
       setStep("otp");
       setIsLoading(false);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(t("unexpectedError"));
-      }
+    } catch {
+      setError(t("unexpectedError"));
       setIsLoading(false);
     }
   };
@@ -167,12 +163,8 @@ export function useLoginFlow(
         setError(getSignInErrorMessage(signInResult, t));
         setIsLoading(false);
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(t("unexpectedError"));
-      }
+    } catch {
+      setError(t("unexpectedError"));
       setIsLoading(false);
     }
   };
@@ -184,12 +176,8 @@ export function useLoginFlow(
       const result = await sendOTPAction(email, locale);
       setExpiresAt(result.expiresAt ?? null);
       setCanResendAt(result.canResendAt ?? null);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(t("resendFailed"));
-      }
+    } catch {
+      setError(t("resendFailed"));
     }
   };
 

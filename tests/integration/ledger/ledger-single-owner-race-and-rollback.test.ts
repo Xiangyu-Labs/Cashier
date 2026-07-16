@@ -25,7 +25,7 @@ describe("ledger single-owner race and rollback", () => {
     expect(recreated.userId).toBe(userId);
   });
 
-  it("maps UNIQUE constraint failures from createDefaultLedger to ConflictError", async () => {
+  it("preserves normalized conflicts from the ledger port", async () => {
     const db = getTestDb();
     const userId = await createTestUser(db, undefined, crypto.randomUUID());
 
@@ -34,9 +34,7 @@ describe("ledger single-owner race and rollback", () => {
         await import("@/modules/ledger/application/use-cases/create-default-ledger"),
         "createDefaultLedger"
       )
-      .mockRejectedValueOnce(
-        new Error("SQLITE_CONSTRAINT: UNIQUE constraint failed: ledgers.user_id")
-      );
+      .mockRejectedValueOnce(new ConflictError("User already has an active ledger"));
 
     await expect(createLedger({ userId, locale: "zh" })).rejects.toThrow(ConflictError);
     createDefaultLedgerSpy.mockRestore();

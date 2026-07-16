@@ -9,6 +9,7 @@ interface CalculatorInputProps {
   value: number;
   onChange: (value: number) => void;
   displayClassName?: string;
+  ariaLabel?: string;
   disabled?: boolean;
   inlineInputMode?: "decimal" | "minor-unit";
 }
@@ -46,6 +47,7 @@ export function CalculatorInput({
   value,
   onChange,
   displayClassName,
+  ariaLabel = "Amount",
   disabled = false,
   inlineInputMode = "decimal",
 }: CalculatorInputProps) {
@@ -310,6 +312,7 @@ export function CalculatorInput({
         )}
         disabled={disabled}
         onClick={() => setMode("input")}
+        aria-label={ariaLabel}
       >
         <span className="font-mono">{value.toFixed(2)}</span>
       </button>
@@ -329,6 +332,7 @@ export function CalculatorInput({
           }
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
+          aria-label={ariaLabel}
           className={cn(
             "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none outline-none focus-visible:ring-0",
             displayClassName
@@ -338,6 +342,7 @@ export function CalculatorInput({
           onClick={() => setMode("calculator")}
           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
           title="Open calculator"
+          aria-label={`Open ${ariaLabel} calculator`}
         >
           <Calculator className="h-4 w-4" />
         </button>

@@ -28,10 +28,10 @@ export function SourceDocumentEditRetryDialog({
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
 
-  const hasImageUrls = (sourceDocument.imageUrls?.length ?? 0) > 0;
+  const hasStoredFiles = (sourceDocument.files?.length ?? 0) > 0;
   const hasText = sourceDocument.text != null && sourceDocument.text !== "";
   const needsFetch =
-    (!hasImageUrls && sourceDocument.hasImages === true) || (!hasImageUrls && !hasText);
+    (!hasStoredFiles && sourceDocument.hasImages === true) || (!hasStoredFiles && !hasText);
 
   const { data: fullData, isLoading } = useQuery({
     queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocument.id),
@@ -40,7 +40,7 @@ export function SourceDocumentEditRetryDialog({
       if (result == null) return null;
       return {
         text: result.text,
-        imageUrls: result.imageUrls,
+        files: result.files,
       };
     },
     enabled: open && needsFetch,

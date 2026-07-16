@@ -12,6 +12,7 @@ import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
 } from "./source-document-input-controller.types";
+import { uploadSourceDocumentSubmissionImages } from "./source-document-submission-upload";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -59,7 +60,11 @@ export function useSourceDocumentSubmitMutations({
     SourceDocumentSubmitPayload,
     CreateRollbackContext
   >(ledgerId, {
-    mutationFn: async (payload) => createSourceDocumentAction(ledgerId, payload),
+    mutationFn: async (payload) =>
+      createSourceDocumentAction(
+        ledgerId,
+        await uploadSourceDocumentSubmissionImages(ledgerId, payload)
+      ),
     successMessage: messages.uploadSuccess,
     errorMessage: messages.uploadError,
     cancelPredicates: [createExactPredicate(queryKeys.sourceDocuments(ledgerId, "pending"))],
@@ -91,7 +96,11 @@ export function useSourceDocumentSubmitMutations({
   >(ledgerId, {
     mutationFn: async (payload) => {
       if (sourceDocumentId == null) return;
-      await retrySourceDocumentAction(ledgerId, sourceDocumentId, payload);
+      await retrySourceDocumentAction(
+        ledgerId,
+        sourceDocumentId,
+        await uploadSourceDocumentSubmissionImages(ledgerId, payload)
+      );
     },
     successMessage: messages.retrySuccess,
     errorMessage: messages.retryError,

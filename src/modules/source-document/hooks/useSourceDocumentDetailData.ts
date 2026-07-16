@@ -1,11 +1,9 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  getSourceDocumentByIdAction,
-  getSourceDocumentLightAction,
-} from "@/modules/source-document/actions";
+import { getSourceDocumentLightAction } from "@/modules/source-document/actions";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
+import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 
 interface UseSourceDocumentDetailDataOptions {
   ledgerId: string;
@@ -20,30 +18,38 @@ export function useSourceDocumentDetailData({
   open,
   initialLedgerEntries,
 }: UseSourceDocumentDetailDataOptions) {
-  const { data: lightData, isLoading: isLoadingLight } = useQuery({
-    queryKey: queryKeys.sourceDocumentLight(id),
+  const {
+    data: sourceDocument,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.sourceDocument(id),
     queryFn: () => getSourceDocumentLightAction(ledgerId, id),
     enabled: open && id !== "",
     staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: fullData, error } = useQuery({
-    queryKey: queryKeys.sourceDocument(id),
-    queryFn: () => getSourceDocumentByIdAction(id),
-    enabled: open && id !== "",
     retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
-  const sourceDocument = fullData ?? lightData ?? null;
-  const isLoading = isLoadingLight && lightData == null;
+  const pending =
+    sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
+  useRevisionStateRefresh({
+    scope: `source-document-detail:${id}`,
+    enabled: open && id !== "",
+    pending,
+    refresh: refetch,
+  });
+
   const currentLedgerEntries = sourceDocument?.ledgerEntries ?? initialLedgerEntries ?? [];
   const isLoadingImages =
     sourceDocument != null &&
     sourceDocument.hasImages === true &&
-    (sourceDocument.imageUrls?.length ?? 0) === 0;
+    sourceDocument.files.length === 0;
 
   return {
-    sourceDocument,
+    sourceDocument: sourceDocument ?? null,
     currentLedgerEntries,
     ledgerId: sourceDocument?.ledgerId ?? ledgerId,
     isLoading,

@@ -19,7 +19,11 @@ export function toEditableImages(images?: SourceDocumentModalImage[]) {
 }
 
 export function toModalImages(images: EditableInputImage[]): SourceDocumentModalImage[] {
-  return images.map(({ data, mimeType }) => ({ data, mimeType }));
+  return images.map(({ data, mimeType, storedFileId }) => ({
+    data,
+    mimeType,
+    ...(storedFileId == null ? {} : { storedFileId }),
+  }));
 }
 
 export function mergeModalImagesIntoEditableImages(
@@ -55,7 +59,12 @@ export function buildSubmitPayload(
   images: EditableInputImage[],
   entryDate: Date
 ): SourceDocumentSubmitPayload {
-  const nextImages = images.map(({ data, mimeType }) => ({ data, mimeType }));
+  const newImages = images
+    .filter((image) => image.storedFileId == null)
+    .map(({ data, mimeType }) => ({ data, mimeType }));
+  const storedFileIds = images.flatMap((image) =>
+    image.storedFileId == null ? [] : [image.storedFileId]
+  );
   const originalImages = images.map(({ originalData, originalMimeType }) => ({
     data: originalData,
     mimeType: originalMimeType,
@@ -64,7 +73,8 @@ export function buildSubmitPayload(
   return {
     entryDate: formatDateTimeForApi(entryDate),
     ...(text !== "" ? { text } : {}),
-    ...(nextImages.length > 0 ? { images: nextImages } : {}),
+    ...(newImages.length > 0 ? { images: newImages } : {}),
+    ...(storedFileIds.length > 0 ? { storedFileIds } : {}),
     ...(images.some((image) => image.isEdited) ? { originalImages } : {}),
   };
 }

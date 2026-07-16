@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks";
-import type { ParseSourceDocumentInput } from "@/modules/source-document/application/tasks/parse-source-document";
+import type { ParseSourceDocumentInput } from "@/modules/source-document/application/parse-source-document/contracts";
 import {
   buildStageContext,
   runParsePipeline,
@@ -130,11 +130,11 @@ function createInput(overrides: ParseSourceDocumentInputOverrides = {}): ParseSo
         ? { text: overrides.text }
         : {}
       : { text: "Lunch 10 USD" }),
-    ...("imageUrls" in overrides
-      ? overrides.imageUrls !== undefined
-        ? { imageUrls: overrides.imageUrls }
+    ...("storedFileIds" in overrides
+      ? overrides.storedFileIds !== undefined
+        ? { storedFileIds: overrides.storedFileIds }
         : {}
-      : { imageUrls: ["data:image/jpeg;base64,FAKE"] }),
+      : { storedFileIds: ["file-1"] }),
     ...("aiLanguage" in overrides
       ? overrides.aiLanguage !== undefined
         ? { aiLanguage: overrides.aiLanguage }
@@ -310,7 +310,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   it("text-only input uses text model (no vision call)", async () => {
     const { ai, generate } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
     await runParsePipeline(
-      createInput({ imageUrls: undefined, text: "Lunch 10 USD" }),
+      createInput({ storedFileIds: undefined, text: "Lunch 10 USD" }),
       buildCtx(ai)
     );
 
@@ -440,10 +440,10 @@ describe("runParsePipeline — new single-pass flow", () => {
 });
 
 describe("buildParserInput", () => {
-  it("includes categories, text, imageUrls, aiLanguage, preferredCurrencies, aiCustomPrompt", () => {
+  it("includes categories, text, storedFileIds, aiLanguage, currencies, and custom prompt", () => {
     const input = createInput({
       text: "user text",
-      imageUrls: ["data:image/jpeg;base64,FAKE"],
+      storedFileIds: ["file-1"],
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       settings: { aiCustomPrompt: "Prefer food-related detail" },
@@ -453,7 +453,7 @@ describe("buildParserInput", () => {
     const stage0Input = buildParserInput(input);
 
     expect(stage0Input.text).toBe("user text");
-    expect(stage0Input.imageUrls).toEqual(["data:image/jpeg;base64,FAKE"]);
+    expect(stage0Input.storedFileIds).toEqual(["file-1"]);
     expect(stage0Input.aiLanguage).toBe("en-US");
     expect(stage0Input.preferredCurrencies).toEqual(["USD"]);
     expect(stage0Input.aiCustomPrompt).toBe("Prefer food-related detail");

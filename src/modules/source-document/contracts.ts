@@ -19,6 +19,7 @@ export type {
   SourceDocumentLightWithEntriesDto,
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
+  SourceDocumentStoredFileDto,
 } from "./document-contracts";
 export type {
   SourceDocumentDto as SourceDocument,
@@ -27,6 +28,7 @@ export type {
 
 export interface CreateSourceDocumentInput {
   text?: string;
+  storedFileIds?: string[];
   images?: { data: string; mimeType: string }[];
   originalImages?: { data: string; mimeType: string }[];
   entryDate?: string;
@@ -35,7 +37,8 @@ export interface CreateSourceDocumentInput {
 
 export interface CreateSourceDocumentResponseDto {
   sourceDocumentId: string;
-  status: "queued";
+  revisionId: string;
+  revisionState: "queued";
 }
 
 export interface RetrySourceDocumentResponseDto {
@@ -80,4 +83,3 @@ export interface DeleteSourceDocumentResultDto {
   sourceDocumentId: string;
   deleted: boolean;
 }
-

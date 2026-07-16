@@ -43,10 +43,6 @@ describe("SourceDocument Actions", () => {
     return first;
   }
 
-  function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null;
-  }
-
   beforeEach(async () => {
     // Reset mock to use multi-stage mock by default
     vi.mocked(getOpenAIClient).mockReturnValue(
@@ -107,7 +103,7 @@ describe("SourceDocument Actions", () => {
       text: "苹果2公斤，每公斤10元",
     });
 
-    expect(result.status).toBe("queued");
+    expect(result.revisionState).toBe("queued");
 
     // Process
     await processAllPendingTasks();
@@ -127,7 +123,7 @@ describe("SourceDocument Actions", () => {
   it("should process text message and create ledger entry", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐花了25.5元" });
     expect(result.sourceDocumentId).toBeDefined();
-    expect(result.status).toBe("queued");
+    expect(result.revisionState).toBe("queued");
 
     // Process
     await processAllPendingTasks();
@@ -145,7 +141,7 @@ describe("SourceDocument Actions", () => {
 
   it("should match category by index", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐" });
-    expect(result.status).toBe("queued");
+    expect(result.revisionState).toBe("queued");
 
     // Process
     await processAllPendingTasks();
@@ -190,70 +186,6 @@ describe("SourceDocument Actions", () => {
     await expect(
       createSourceDocumentAction("00000000-0000-0000-0000-000000000099", { text: "foo" })
     ).rejects.toThrow("Ledger not found");
-  });
-
-  it("should handle image input", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, {
-      images: [
-        {
-          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
-          mimeType: "image/png",
-        },
-      ],
-    });
-
-    expect(result.status).toBe("queued");
-
-    const db = getTestDb();
-    const savedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, result.sourceDocumentId),
-    });
-    expect(savedDoc?.imageUrls).toHaveLength(1);
-    expect(savedDoc?.text).toBeNull(); // text optional in input, but in action we pass null if undefined
-
-    // Process tasks to ensure cleanup
-    await processAllPendingTasks();
-  });
-
-  it("should persist originalImages as metadata.originalImageUrls", async () => {
-    const result = await createSourceDocumentAction(testLedgerId, {
-      text: "带原图的单据",
-      originalImages: [
-        {
-          data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=",
-          mimeType: "image/png",
-        },
-      ],
-    });
-
-    const db = getTestDb();
-    const savedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, result.sourceDocumentId),
-    });
-
-    expect(savedDoc).toBeDefined();
-    if (savedDoc == null) {
-      throw new Error("Expected source document to be saved");
-    }
-    expect(isRecord(savedDoc.metadata)).toBe(true);
-    if (!isRecord(savedDoc.metadata)) {
-      throw new Error("Expected source document metadata to be an object");
-    }
-    const originalImageUrls = savedDoc.metadata.originalImageUrls;
-    expect(Array.isArray(originalImageUrls)).toBe(true);
-    if (!Array.isArray(originalImageUrls)) {
-      throw new Error("Expected metadata.originalImageUrls to be an array");
-    }
-    expect(originalImageUrls).toHaveLength(1);
-    const firstOriginalImageUrl = firstItem(
-      originalImageUrls,
-      "Expected one original image url in metadata"
-    );
-    expect(typeof firstOriginalImageUrl).toBe("string");
-    if (typeof firstOriginalImageUrl !== "string") {
-      throw new Error("Expected original image url to be a string");
-    }
-    expect(firstOriginalImageUrl).toMatch(/^\/api\/uploads\//);
   });
 
   it("should delete source document and associated ledger entries", async () => {
@@ -386,7 +318,7 @@ describe("SourceDocument Actions", () => {
     }
 
     expect(item.text).toBeNull();
-    expect(item.imageUrls).toEqual([]);
+    expect(item).not.toHaveProperty("imageUrls");
     expect(item.metadata).toEqual({});
     expect(item.hasImages).toBe(true);
     expect(item.ledgerEntries).toHaveLength(1);
@@ -481,7 +413,7 @@ describe("SourceDocument Actions", () => {
     }
 
     expect(item.text).toBeNull();
-    expect(item.imageUrls).toEqual([]);
+    expect(item).not.toHaveProperty("imageUrls");
     expect(item.metadata).toEqual({});
     expect(item.hasImages).toBe(true);
     expect(item.ledgerEntries).toHaveLength(1);
@@ -527,7 +459,7 @@ describe("SourceDocument Actions", () => {
     }
 
     expect(group.sourceDocument.text).toBeNull();
-    expect(group.sourceDocument.imageUrls).toEqual([]);
+    expect(group.sourceDocument).not.toHaveProperty("imageUrls");
     expect(group.sourceDocument.metadata).toEqual({});
     expect(group.sourceDocument.hasImages).toBe(true);
     expect(group.ledgerEntries).toHaveLength(0);

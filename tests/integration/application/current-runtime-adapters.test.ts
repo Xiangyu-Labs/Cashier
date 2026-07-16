@@ -24,11 +24,14 @@ import {
   ledgers,
   ledgerEntries,
   revisionEntries,
+  revisionFiles,
   serviceCredentials,
   sourceDocumentRevisions,
   sourceDocuments,
+  storedFiles,
   uploadSessions,
 } from "@/persistence";
+import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 
 class MemoryLocalFileStore {
   readonly files = new Map<string, Buffer>();
@@ -205,6 +208,73 @@ describe("current-runtime target adapters", () => {
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
+  it("soft deletes active and pending documents without removing evidence or accepting late completion", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const active = await sqliteLedgerProjectionAdapter.createManual({
+      ledgerId,
+      entries: [projectionEntry],
+    });
+    const [file] = await db
+      .insert(storedFiles)
+      .values({
+        ledgerId,
+        storageProvider: "local",
+        storageKey: `${ledgerId}/stored/pending-evidence`,
+        contentType: "image/jpeg",
+        byteSize: 7,
+        finalizedAt: new Date(),
+      })
+      .returning();
+    const pending = await sqliteRevisionAdapter.createPending({
+      ledgerId,
+      sourceDocumentId: active.sourceDocumentId,
+      storedFileIds: [file!.id],
+    });
+    expect(pending.document.supportedActions).toEqual(["delete"]);
+    const revisionCount = (await db.select().from(sourceDocumentRevisions)).length;
+    const fileLinkCount = (await db.select().from(revisionFiles)).length;
+
+    await expect(
+      deleteSourceDocument({ ledgerId, sourceDocumentId: active.sourceDocumentId })
+    ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: true });
+    await expect(
+      deleteSourceDocument({ ledgerId, sourceDocumentId: active.sourceDocumentId })
+    ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: false });
+    await expect(
+      sqliteLedgerProjectionAdapter.activateRevision({
+        ledgerId,
+        sourceDocumentId: active.sourceDocumentId,
+        revisionId: pending.revision.id,
+        entries: [{ ...projectionEntry, amount: "99.00" }],
+      })
+    ).resolves.toBe(false);
+    await expect(
+      sqliteRevisionAdapter.markProcessing({
+        ledgerId,
+        sourceDocumentId: active.sourceDocumentId,
+        revisionId: pending.revision.id,
+      })
+    ).resolves.toBe(false);
+
+    const deleted = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, active.sourceDocumentId),
+    });
+    expect(deleted).toMatchObject({
+      status: "deleted",
+      activeRevisionId: active.revisionId,
+      pendingRevisionId: pending.revision.id,
+    });
+    expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(revisionCount);
+    expect(await db.select().from(revisionFiles)).toHaveLength(fileLinkCount);
+    expect(await db.select().from(storedFiles)).toHaveLength(1);
+    expect(
+      await db.query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.sourceDocumentId, active.sourceDocumentId),
+      })
+    ).toMatchObject({ deletedAt: expect.any(Date) });
+  });
+
   it("creates and edits manual projections, recalculates atomically, and soft deletes", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
@@ -350,6 +420,22 @@ describe("current-runtime target adapters", () => {
       targetIds: [plan.targets[0]!.id],
     });
     expect(finalized).toMatchObject({ id: uploaded.id, ownerLedgerId: ledgerId });
+    await expect(
+      adapter.finalizeUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: [plan.targets[0]!.id],
+      })
+    ).resolves.toMatchObject([{ id: uploaded.id }]);
+    await expect(
+      adapter.finalizeUpload({
+        ownerLedgerId: otherLedgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: [plan.targets[0]!.id],
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     const pending = await sqliteRevisionAdapter.createPending({
       ledgerId,
@@ -376,6 +462,20 @@ describe("current-runtime target adapters", () => {
           originalFilename: null,
         }))
       )
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      adapter.createUploadPlan(ledgerId, [
+        { contentType: "text/plain", byteSize: 1, originalFilename: null },
+      ])
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      adapter.createUploadPlan(ledgerId, [
+        {
+          contentType: "image/jpeg",
+          byteSize: LOCAL_UPLOAD_LIMITS.maxBytesPerFile + 1,
+          originalFilename: null,
+        },
+      ])
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 
     const expiring = await adapter.createUploadPlan(ledgerId, [

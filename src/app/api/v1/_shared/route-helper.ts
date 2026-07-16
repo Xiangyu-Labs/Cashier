@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { authenticateServiceCredential } from "@/modules/ledger/credential-access";
+import { currentApplication } from "@/application/current";
+import type { AuthenticatedServiceCredentialContract } from "@/application/contracts";
 import { rateLimitApiV1 } from "@/lib/ratelimit";
 import { UnauthorizedError, RateLimitError } from "@/lib/errors";
 import { getErrorStatusCode, logError, toSanitizedErrorResponse } from "@/lib/error-handlers";
 
-type ServiceCredential = NonNullable<Awaited<ReturnType<typeof authenticateServiceCredential>>>;
-
 interface ApiV1Context {
-  credential: ServiceCredential;
+  credential: AuthenticatedServiceCredentialContract;
   key: string;
   request: NextRequest;
 }
@@ -32,7 +31,7 @@ export async function handleApiV1Route(
 ): Promise<NextResponse> {
   try {
     const key = getBearerKey(request);
-    const credential = await authenticateServiceCredential(key);
+    const credential = await currentApplication.serviceCredentials.authenticate(key);
 
     if (credential == null) {
       throw new UnauthorizedError("Invalid Service Credential");

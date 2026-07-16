@@ -92,7 +92,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           event.stopPropagation();
           onToggleExpanded();
         }}
-        className="p-1.5 -ml-1.5 hover:bg-accent/10 rounded shrink-0 transition-colors"
+        className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-ml-1.5 sm:h-8 sm:w-8"
         aria-label={isExpanded ? t("collapse") : t("expand")}
       >
         <ChevronDown
@@ -103,10 +103,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         />
       </button>
 
-      <div
+      <button
+        type="button"
         onClick={!selectionMode ? onViewDetails : undefined}
+        disabled={selectionMode || onViewDetails == null}
         className={cn(
-          "flex items-center gap-2 overflow-hidden flex-1 px-2 py-1 -my-1 rounded",
+          "flex min-h-11 flex-1 items-center gap-2 overflow-hidden rounded px-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8",
           onViewDetails && !selectionMode && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
         )}
       >
@@ -134,7 +136,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             {t("quickEntry")}
           </span>
         )}
-      </div>
+      </button>
 
       <div className="flex items-center gap-2 shrink-0">
         {shouldShowProcessingStatus && (
@@ -156,7 +158,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="h-7 w-7 text-muted-foreground hover:text-text"
+                className="h-11 w-11 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
                 aria-label="source-document-card-actions"
               >
                 <MoreVertical className="h-4 w-4" />

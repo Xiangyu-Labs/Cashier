@@ -81,7 +81,7 @@ describe("getLedgerEntryAction", () => {
 
     expect(result?.sourceDocument).toBeDefined();
     expect(result?.sourceDocument?.hasImages).toBe(true);
-    expect(result?.sourceDocument?.imageUrls).toEqual([]);
+    expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
     expect(result?.sourceDocument?.metadata).toEqual({ note: "keep-me" });
   });
 

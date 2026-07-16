@@ -71,6 +71,7 @@ export function QuickEntryForm({
     <div className="space-y-4">
       {/* Item Name (optional) */}
       <Input
+        aria-label={t("itemName")}
         value={itemName}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
@@ -96,14 +97,18 @@ export function QuickEntryForm({
       {/* Category Grid */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">{t("selectCategory")}</p>
-        <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+        <div
+          className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto"
+          role="group"
+          aria-label={t("selectCategory")}
+        >
           {categories.map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setSelectedCategoryId(cat.id)}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors",
+                "flex min-h-11 flex-col items-center gap-1 rounded-lg border p-2 transition-colors",
                 selectedCategoryId === cat.id
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border hover:bg-accent/10 text-text"
@@ -119,7 +124,7 @@ export function QuickEntryForm({
       <div>
         <p className="text-sm text-muted-foreground mb-2">{t("currency")}</p>
         <Select value={currency} onValueChange={setCurrency}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label={t("currency")}>
             <SelectValue placeholder={t("selectCurrency")} />
           </SelectTrigger>
           <SelectContent position="popper" sideOffset={4}>
@@ -139,6 +144,7 @@ export function QuickEntryForm({
           onChange={setAmount}
           inlineInputMode="minor-unit"
           displayClassName="text-3xl font-bold font-mono text-center"
+          ariaLabel={t("amount")}
         />
       </div>
 

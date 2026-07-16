@@ -13,8 +13,12 @@ vi.mock("@/modules/source-document/server-actions/access", () => ({
 }));
 
 vi.mock("@/modules/source-document/application/queries/get-source-document-light", () => ({
-  getSourceDocumentLight: vi.fn().mockResolvedValue({ id: "doc-1" }),
+  getSourceDocumentLightForLedger: vi.fn().mockResolvedValue({
+    id: "11111111-1111-4111-8111-111111111111",
+  }),
 }));
+
+const sourceDocumentId = "11111111-1111-4111-8111-111111111111";
 
 describe("getSourceDocumentLightAction", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -23,14 +27,22 @@ describe("getSourceDocumentLightAction", () => {
     const { getSourceDocumentLightAction } =
       await import("@/modules/source-document/server-actions/get-document-light");
     await expect(
-      getSourceDocumentLightAction("unauthorized-ledger", "doc-1")
+      getSourceDocumentLightAction("unauthorized-ledger", sourceDocumentId)
     ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 
   it("returns document for authorized ledger", async () => {
     const { getSourceDocumentLightAction } =
       await import("@/modules/source-document/server-actions/get-document-light");
-    const result = await getSourceDocumentLightAction("valid-ledger", "doc-1");
-    expect(result).toEqual({ id: "doc-1" });
+    const result = await getSourceDocumentLightAction("valid-ledger", sourceDocumentId);
+    expect(result).toEqual({ id: sourceDocumentId });
+  });
+
+  it("validates the document identity inside the action", async () => {
+    const { getSourceDocumentLightAction } =
+      await import("@/modules/source-document/server-actions/get-document-light");
+    await expect(getSourceDocumentLightAction("valid-ledger", "not-a-uuid")).rejects.toThrow(
+      "Validation failed"
+    );
   });
 });

@@ -1,9 +1,8 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
+import { currentApplication } from "@/application/current";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
-import type { Ledger } from "@/persistence";
 
 export interface CreateQuickEntryPayload {
   categoryId: string;
@@ -52,7 +51,7 @@ async function createQuickEntryAtomically(
 ): Promise<{ sourceDocumentId: string; ledgerEntryId: string }> {
   const ledgerEntryId = crypto.randomUUID();
   const itemName = data.itemName ?? categoryName;
-  const created = await sqliteLedgerProjectionAdapter.createManual({
+  const created = await currentApplication.ledgerProjections.createManual({
     ledgerId,
     title: categoryName,
     entryDate: data.entryDate,
@@ -72,17 +71,22 @@ async function createQuickEntryAtomically(
   return { sourceDocumentId: created.sourceDocumentId, ledgerEntryId };
 }
 
-export async function createQuickEntry(
+export async function createQuickEntry<
+  TLedger extends {
+    settings?: { mainCurrency?: string };
+    metadata?: { settings?: { mainCurrency?: string } } | null;
+  },
+>(
   ledgerId: string,
-  ledger: Ledger,
+  ledger: TLedger,
   payload: CreateQuickEntryPayload
 ): Promise<QuickEntryResponseDto> {
-  const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger.settings?.mainCurrency ?? ledger.metadata?.settings?.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
   const entryDate = payload.entryDate ?? formatDateTimeForApi(new Date());
 
   const [categoryName, conversion] = await Promise.all([
-    getEntryCategoryName(payload.categoryId),
+    getEntryCategoryName(ledgerId, payload.categoryId),
     resolveConversion(payload.amount, entryCurrency, mainCurrency, entryDate),
   ]);
 

@@ -167,6 +167,7 @@ export function CategorySection({
       <div className="flex gap-2">
         <input
           type="text"
+          aria-label={t("newCategoryPlaceholder")}
           placeholder={t("newCategoryPlaceholder")}
           value={newCategoryName}
           onChange={(event) => setNewCategoryName(event.target.value)}
@@ -175,7 +176,7 @@ export function CategorySection({
         />
         <button
           onClick={handleCreate}
-          className="rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          className="min-h-11 rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           {t("addCategory")}
         </button>

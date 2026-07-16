@@ -19,6 +19,15 @@ import {
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
+export type SqliteTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export interface CreatePendingRevisionInput {
+  ledgerId: string;
+  sourceDocumentId?: string;
+  submittedText?: string | null;
+  storedFileIds?: readonly string[];
+  entryDate?: string | null;
+}
 
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(
@@ -98,6 +107,127 @@ async function pendingOutcomes(rows: readonly (typeof sourceDocuments.$inferSele
   return result;
 }
 
+export function createPendingRevisionInTransaction(
+  tx: SqliteTransaction,
+  input: CreatePendingRevisionInput
+): { document: SourceDocumentContract; revision: SourceDocumentRevisionContract } {
+  const ledger = tx
+    .select({ id: ledgers.id })
+    .from(ledgers)
+    .where(and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)))
+    .get();
+  if (ledger == null) throw new NotFoundError("Ledger");
+
+  const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
+  let document = tx
+    .select()
+    .from(sourceDocuments)
+    .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
+    .get();
+
+  if (document == null && input.sourceDocumentId != null) {
+    throw new NotFoundError("Source document");
+  }
+  if (document == null) {
+    document = tx
+      .insert(sourceDocuments)
+      .values({
+        id: sourceDocumentId,
+        ledgerId: input.ledgerId,
+        text: input.submittedText ?? null,
+        imageUrls: [],
+        status: "queued",
+        type: "ai_parsed",
+        ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+      })
+      .returning()
+      .get();
+  } else if (document.pendingRevisionId != null) {
+    const currentPending = tx
+      .select({ outcome: sourceDocumentRevisions.outcome })
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+          eq(sourceDocumentRevisions.id, document.pendingRevisionId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
+        )
+      )
+      .get();
+    if (currentPending?.outcome === "queued" || currentPending?.outcome === "processing") {
+      throw new ConflictError("Source document already has a pending revision");
+    }
+  }
+
+  const aggregate = tx
+    .select({ value: max(sourceDocumentRevisions.revisionNumber) })
+    .from(sourceDocumentRevisions)
+    .where(eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId))
+    .get();
+  const revision = tx
+    .insert(sourceDocumentRevisions)
+    .values({
+      ledgerId: input.ledgerId,
+      sourceDocumentId,
+      revisionNumber: (aggregate?.value ?? 0) + 1,
+      submittedText: input.submittedText ?? null,
+      outcome: "queued",
+    })
+    .returning()
+    .get();
+
+  const fileIds = [...new Set(input.storedFileIds ?? [])];
+  if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
+    throw new ValidationError("A stored file may only appear once in a revision");
+  }
+  const legacyImageUrls: string[] = [];
+  for (const [position, storedFileId] of fileIds.entries()) {
+    const file = tx
+      .select({
+        id: storedFiles.id,
+        storageProvider: storedFiles.storageProvider,
+        storageKey: storedFiles.storageKey,
+      })
+      .from(storedFiles)
+      .where(
+        and(
+          eq(storedFiles.ledgerId, input.ledgerId),
+          eq(storedFiles.id, storedFileId),
+          isNull(storedFiles.deletedAt),
+          isNotNull(storedFiles.finalizedAt)
+        )
+      )
+      .get();
+    if (file == null) throw new NotFoundError("Stored file");
+    if (file.storageProvider === "local") {
+      legacyImageUrls.push(`/api/uploads/${file.storageKey}`);
+    }
+    tx.insert(revisionFiles)
+      .values({
+        ledgerId: input.ledgerId,
+        revisionId: revision.id,
+        storedFileId,
+        position,
+      })
+      .run();
+  }
+
+  document = tx
+    .update(sourceDocuments)
+    .set({
+      pendingRevisionId: revision.id,
+      status: "queued",
+      text: input.submittedText ?? document.text,
+      imageUrls: legacyImageUrls,
+      ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+      updatedAt: new Date(),
+    })
+    .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
+    .returning()
+    .get();
+  return { document: mapDocument(document, "queued"), revision: mapRevision(revision) };
+}
+
 export const sqliteRevisionAdapter: SourceDocumentPort = {
   async get(ledgerId, id) {
     const document = await db.query.sourceDocuments.findFirst({
@@ -145,121 +275,7 @@ export const sqliteRevisionAdapter: SourceDocumentPort = {
   },
 
   async createPending(input) {
-    return db.transaction((tx) => {
-      const ledger = tx
-        .select({ id: ledgers.id })
-        .from(ledgers)
-        .where(and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)))
-        .get();
-      if (ledger == null) throw new NotFoundError("Ledger");
-
-      const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
-      let document = tx
-        .select()
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
-        .get();
-
-      if (document == null && input.sourceDocumentId != null) {
-        throw new NotFoundError("Source document");
-      }
-      if (document == null) {
-        document = tx
-          .insert(sourceDocuments)
-          .values({
-            id: sourceDocumentId,
-            ledgerId: input.ledgerId,
-            text: input.submittedText ?? null,
-            imageUrls: [],
-            status: "queued",
-            type: "ai_parsed",
-          })
-          .returning()
-          .get();
-      } else if (document.pendingRevisionId != null) {
-        const currentPending = tx
-          .select({ outcome: sourceDocumentRevisions.outcome })
-          .from(sourceDocumentRevisions)
-          .where(
-            and(
-              eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
-              eq(sourceDocumentRevisions.id, document.pendingRevisionId),
-              eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
-            )
-          )
-          .get();
-        if (currentPending?.outcome === "queued" || currentPending?.outcome === "processing") {
-          throw new ConflictError("Source document already has a pending revision");
-        }
-      }
-
-      const aggregate = tx
-        .select({ value: max(sourceDocumentRevisions.revisionNumber) })
-        .from(sourceDocumentRevisions)
-        .where(eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId))
-        .get();
-      const revision = tx
-        .insert(sourceDocumentRevisions)
-        .values({
-          ledgerId: input.ledgerId,
-          sourceDocumentId,
-          revisionNumber: (aggregate?.value ?? 0) + 1,
-          submittedText: input.submittedText ?? null,
-          outcome: "queued",
-        })
-        .returning()
-        .get();
-
-      const fileIds = [...new Set(input.storedFileIds ?? [])];
-      if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
-        throw new ValidationError("A stored file may only appear once in a revision");
-      }
-      const legacyImageUrls: string[] = [];
-      for (const [position, storedFileId] of fileIds.entries()) {
-        const file = tx
-          .select({
-            id: storedFiles.id,
-            storageProvider: storedFiles.storageProvider,
-            storageKey: storedFiles.storageKey,
-          })
-          .from(storedFiles)
-          .where(
-            and(
-              eq(storedFiles.ledgerId, input.ledgerId),
-              eq(storedFiles.id, storedFileId),
-              isNull(storedFiles.deletedAt),
-              isNotNull(storedFiles.finalizedAt)
-            )
-          )
-          .get();
-        if (file == null) throw new NotFoundError("Stored file");
-        if (file.storageProvider === "local") {
-          legacyImageUrls.push(`/api/uploads/${file.storageKey}`);
-        }
-        tx.insert(revisionFiles)
-          .values({
-            ledgerId: input.ledgerId,
-            revisionId: revision.id,
-            storedFileId,
-            position,
-          })
-          .run();
-      }
-
-      document = tx
-        .update(sourceDocuments)
-        .set({
-          pendingRevisionId: revision.id,
-          status: "queued",
-          text: input.submittedText ?? document.text,
-          imageUrls: legacyImageUrls,
-          updatedAt: new Date(),
-        })
-        .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
-        .returning()
-        .get();
-      return { document: mapDocument(document, "queued"), revision: mapRevision(revision) };
-    });
+    return db.transaction((tx) => createPendingRevisionInTransaction(tx, input));
   },
 
   async markProcessing(input) {

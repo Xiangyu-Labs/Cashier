@@ -1,11 +1,9 @@
 "use client";
-import { type QueryClient } from "@tanstack/react-query";
 import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
-import { fireAndForget } from "@/lib/safe-async";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
 import {
@@ -24,15 +22,6 @@ interface UseSourceDocumentRecordMutationsOptions {
   sourceDocumentPredicates: QueryPredicate[] | null;
   sourceDocumentSummaryPredicates: QueryPredicate[] | null;
   sourceDocumentEntriesSummaryPredicates: QueryPredicate[] | null;
-}
-
-function invalidateDetailAndLight(queryClient: QueryClient, id: string) {
-  fireAndForget(queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }), {
-    context: "SourceDocumentDetailWrapper",
-  });
-  fireAndForget(queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(id) }), {
-    context: "SourceDocumentDetailWrapper",
-  });
 }
 
 export function useSourceDocumentRecordMutations({
@@ -77,7 +66,6 @@ export function useSourceDocumentRecordMutations({
 
         return { snapshots };
       },
-      onSettledExtra: (queryClient) => invalidateDetailAndLight(queryClient, id),
     }
   );
 
@@ -115,7 +103,6 @@ export function useSourceDocumentRecordMutations({
 
       return { snapshots };
     },
-    onSettledExtra: (queryClient) => invalidateDetailAndLight(queryClient, id),
   });
 
   return {

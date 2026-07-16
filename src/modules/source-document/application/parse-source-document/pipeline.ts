@@ -1,8 +1,11 @@
 import { logger } from "@/lib/logger";
-import { TaskCancelledError, throwIfCancelled } from "@/lib/tasks/cancellation";
-import type { AIContext } from "@/lib/tasks/types";
 import type { ParsedLedgerEntry } from "@/lib/ai/types";
-import type { ParseSourceDocumentInput } from "../tasks/parse-source-document";
+import {
+  ProcessingCancelledError,
+  throwIfProcessingCancelled,
+  type AiContextContract,
+  type ParseSourceDocumentInput,
+} from "./contracts";
 import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
 import { arbitrateResults } from "./arbitration";
@@ -15,7 +18,7 @@ import type { NormalizedParseOutput } from "./parser-schema";
 
 export interface StageContext {
   signal: AbortSignal;
-  ai: AIContext;
+  ai: AiContextContract;
   setProgress: (message: string) => Promise<void>;
   docId: string;
   ledgerId: string;
@@ -23,7 +26,7 @@ export interface StageContext {
 
 export function buildStageContext(params: {
   signal: AbortSignal;
-  ai: AIContext;
+  ai: AiContextContract;
   setProgress: (message: string) => Promise<void>;
   docId: string;
   ledgerId: string;
@@ -48,7 +51,6 @@ export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
       description: c.description ?? null,
     })),
     ...(input.text !== undefined ? { text: input.text } : {}),
-    ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
     ...(input.storedFileIds !== undefined ? { storedFileIds: input.storedFileIds } : {}),
     ledgerId: input.ledgerId,
     ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
@@ -125,13 +127,13 @@ export async function runParsePipeline(
   ctx: StageContext
 ): Promise<ParsePipelineResult> {
   try {
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
     await ctx.setProgress("正在解析单据...");
 
     const parserInput = buildParserInput(input);
     const first = await executeParser(parserInput, ctx.ai);
 
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
 
     // Short-circuit: invalid or anomaly
     const firstDecision = resolveOutcome(first);
@@ -149,10 +151,10 @@ export async function runParsePipeline(
 
     // Complex document: run a second pass
     await ctx.setProgress("正在进行二次解析...");
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
 
     const second = await executeParser(parserInput, ctx.ai);
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
 
     // Both passes agree: use first result
     if (compareResults(first, second)) {
@@ -169,7 +171,7 @@ export async function runParsePipeline(
     }
 
     // Results disagree: arbitrate
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
     await ctx.setProgress("正在仲裁单据解析结果...");
 
     logger.info({ docId: ctx.docId }, "parser: dual-run disagrees, arbitrating");
@@ -178,7 +180,7 @@ export async function runParsePipeline(
       ctx.ai
     );
 
-    throwIfCancelled(ctx.signal);
+    throwIfProcessingCancelled(ctx.signal);
 
     if (arbitration.kind === "anomaly") {
       return {
@@ -195,7 +197,7 @@ export async function runParsePipeline(
       ctx,
     });
   } catch (error) {
-    if (error instanceof TaskCancelledError) {
+    if (error instanceof ProcessingCancelledError) {
       return { kind: "cancelled" };
     }
     throw error;

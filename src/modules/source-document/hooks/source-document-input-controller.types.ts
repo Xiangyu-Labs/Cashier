@@ -1,9 +1,7 @@
 import type { SourceDocumentInputProps } from "../ui/source-document-input.types";
 import type { SourceDocumentModalImage } from "../ui/SourceDocumentImageModal";
 
-export type SourceDocumentInputInitialData = NonNullable<
-  SourceDocumentInputProps["initialData"]
->;
+export type SourceDocumentInputInitialData = NonNullable<SourceDocumentInputProps["initialData"]>;
 
 export interface EditableInputImage extends SourceDocumentModalImage {
   originalData: string;
@@ -16,6 +14,7 @@ export interface SourceDocumentSubmitPayload {
   text?: string;
   images?: SourceDocumentModalImage[];
   originalImages?: SourceDocumentModalImage[];
+  storedFileIds?: string[];
 }
 
 export interface SourceDocumentInputControllerMessages {

@@ -32,7 +32,7 @@ export function applicationContractSuite(
       expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
         .toContain("retry");
       expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
-        .toEqual([]);
+        .toEqual(["delete"]);
     });
 
     it("enforces idempotency", async () => {

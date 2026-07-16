@@ -1,8 +1,5 @@
 import { CredentialsSignin } from "@auth/core/errors";
-import { and, eq, isNull } from "drizzle-orm";
 import type { User } from "next-auth";
-import { db } from "@/lib/db";
-import { users } from "@/persistence/schema/auth";
 import { deleteOTPToken } from "@/modules/auth/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { isValidOTPFormat } from "@/modules/auth/services/otp";
@@ -11,9 +8,10 @@ import { findOTPRecord, verifyOTPWithPolicy } from "@/modules/auth/services/otp-
 import { logger } from "@/lib/logger";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
-import { AppError } from "@/lib/errors";
 import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { assertRegistrationAllowed } from "./registration-policy";
+import type { UserAccountPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,41 +64,12 @@ function validateCredentials(email: string, otp: string): string {
   return normalizedEmail;
 }
 
-async function findOrCreateUser(normalizedEmail: string): Promise<{
-  user: NonNullable<Awaited<ReturnType<typeof db.query.users.findFirst>>>;
-  isExistingUser: boolean;
-}> {
-  let user = await db.query.users.findFirst({
-    where: and(eq(users.email, normalizedEmail), isNull(users.deletedAt)),
-  });
-
-  const isExistingUser = user != null;
-
-  if (user == null) {
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        email: normalizedEmail,
-        emailVerified: new Date(),
-      })
-      .returning();
-
-    if (newUser == null) {
-      throw new AppError("Failed to create user", "USER_CREATION_FAILED");
-    }
-
-    user = newUser;
-  }
-
-  return { user, isExistingUser };
-}
-
 export async function authenticateWithOTP(params: {
   email: string;
   otp: string;
   locale?: string;
   requestHeaders: HeadersLike;
-}): Promise<User> {
+}, userAccounts: UserAccountPort = currentApplication.userAccounts): Promise<User> {
   const normalizedEmail = validateCredentials(params.email, params.otp);
   const locale = params.locale ?? "zh";
 
@@ -147,7 +116,7 @@ export async function authenticateWithOTP(params: {
 
   await assertRegistrationAllowed(normalizedEmail);
 
-  const { user, isExistingUser } = await findOrCreateUser(normalizedEmail);
+  const { user, isExistingUser } = await userAccounts.findOrCreate(normalizedEmail);
 
   if (!isExistingUser) {
     await ensureUserLedger({

@@ -1,8 +1,17 @@
 "use client";
 import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { invalidateLedgerSettings, queryKeys } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateEntryCategories,
+  invalidateLedgerEntries,
+  invalidateLedgerSettingsView,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+  invalidateUncategorizedCount,
+  queryKeys,
+} from "@/lib/query-keys";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   createEntryCategoryAction,
@@ -20,6 +29,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 export function useCategoryMutations(ledgerId: string, categories: EntryCategoryWithCount[]) {
   const t = useTranslations("Settings");
   const queryKey = queryKeys.entryCategories(ledgerId);
+  const tempIdSequence = useRef(0);
 
   const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => {});
 
@@ -30,8 +40,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
-    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
-    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
+    cancelPredicates: [invalidateEntryCategories(ledgerId)],
+    invalidatePredicates: [invalidateEntryCategories(ledgerId)],
     onSuccessExtra: () => {
       setCategoryCreatedTrigger(() => () => {});
     },
@@ -39,7 +49,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
       const tempCategory: EntryCategoryWithCount = {
-        id: `temp-${Date.now()}`,
+        id: `temp-category-${ledgerId}-${++tempIdSequence.current}`,
         name,
         icon: null,
         description: null,
@@ -73,8 +83,13 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       }),
     successMessage: t("categoryUpdated"),
     errorMessage: t("updateCategoryFailed"),
-    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
-    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
+    cancelPredicates: [invalidateEntryCategories(ledgerId)],
+    invalidatePredicates: [
+      invalidateEntryCategories(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, { id, data }) => {
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
@@ -90,8 +105,16 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
-    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
-    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
+    cancelPredicates: [invalidateEntryCategories(ledgerId)],
+    invalidatePredicates: [
+      invalidateEntryCategories(ledgerId),
+      invalidateUncategorizedCount(ledgerId),
+      invalidateLedgerSettingsView(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, id) => {
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 
@@ -113,8 +136,13 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
-    cancelPredicates: [invalidateLedgerSettings(ledgerId)],
-    invalidatePredicates: [invalidateLedgerSettings(ledgerId)],
+    cancelPredicates: [invalidateEntryCategories(ledgerId)],
+    invalidatePredicates: [
+      invalidateEntryCategories(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+    ],
     onOptimisticUpdate: (queryClient, categoryIds) => {
       const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
 

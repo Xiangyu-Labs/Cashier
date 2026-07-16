@@ -32,7 +32,7 @@ function buildPredicates(ledgerId: string | undefined): SourceDocumentMutationPr
     sourceDocumentPredicates: hasLedgerId ? [invalidateSourceDocuments(ledgerId)] : null,
     sourceDocumentSummaryPredicates: hasLedgerId
       ? [
-          invalidateSourceDocuments(ledgerId),
+          invalidateLedgerEntries(ledgerId),
           invalidateLedgerStats(ledgerId),
           invalidateCalendar(ledgerId),
         ]
@@ -42,7 +42,6 @@ function buildPredicates(ledgerId: string | undefined): SourceDocumentMutationPr
       : null,
     sourceDocumentEntriesSummaryPredicates: hasLedgerId
       ? [
-          invalidateSourceDocuments(ledgerId),
           invalidateLedgerEntries(ledgerId),
           invalidateLedgerStats(ledgerId),
           invalidateCalendar(ledgerId),

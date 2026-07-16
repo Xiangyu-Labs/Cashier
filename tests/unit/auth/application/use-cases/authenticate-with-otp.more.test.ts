@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
+import type { UserAccountPort } from "@/application/contracts";
 
 const {
   findOTPRecordMock,
@@ -123,11 +124,22 @@ describe("authenticateWithOTP additional coverage", () => {
   });
 
   it("creates user and ledger for first sign-in and defaults locale to zh", async () => {
+    const users = {
+      findOrCreate: vi.fn().mockResolvedValue({
+        user: {
+          id: "new-user-id",
+          email: "new-user@example.com",
+          name: null,
+          image: null,
+        },
+        isExistingUser: false,
+      }),
+    } as unknown as UserAccountPort;
     const result = await authenticateWithOTP({
       email: "NEW-USER@EXAMPLE.COM",
       otp: "123456",
       requestHeaders: new Headers(),
-    });
+    }, users);
 
     expect(assertRegistrationAllowedMock).toHaveBeenCalledWith("new-user@example.com");
     expect(ensureUserLedgerMock).toHaveBeenCalledWith({

@@ -11,20 +11,12 @@ function getEntryCurrency(entry: LedgerEntry, mainCurrency: string): string {
   return entry.currency != null && entry.currency !== "" ? entry.currency : mainCurrency;
 }
 
-export function getSafeImageSrc(data: string): string {
-  if (data.startsWith("http") || data.startsWith("data:") || data.startsWith("/api/uploads/")) {
-    return data;
-  }
-
-  return `data:image/jpeg;base64,${data}`;
-}
-
 export function getSourceDocumentPreview(
   sourceDocument: SourceDocument | SourceDocumentLight
 ): SourceDocumentCardPreviewData {
   return {
     text: sourceDocument.text ?? "",
-    images: sourceDocument.imageUrls ?? [],
+    images: sourceDocument.files,
   };
 }
 

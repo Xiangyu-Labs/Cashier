@@ -35,6 +35,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
           <p className="text-sm text-muted">{t("mainCurrencyDesc")}</p>
         </div>
         <select
+          aria-label={t("mainCurrency")}
           value={mainCurrency}
           onChange={(event) => setMainCurrency(event.target.value)}
           className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
@@ -64,11 +65,12 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
                 type="button"
                 onClick={() => toggleCurrency(currency)}
                 className={cn(
-                  "rounded-lg border px-4 py-2 text-sm font-medium transition-all",
+                  "min-h-11 rounded-lg border px-4 py-2 text-sm font-medium transition-all",
                   isSelected
                     ? "border-primary bg-primary text-white shadow-sm"
                     : "border-border bg-surface text-muted-foreground hover:border-primary/50"
-                )}
+              )}
+              aria-pressed={isSelected}
               >
                 {currency}
               </button>

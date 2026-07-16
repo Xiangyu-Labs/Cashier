@@ -27,7 +27,6 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     errorMessage: tCommon("deleteFailed"),
     cancelPredicates: [invalidateSourceDocuments(ledgerId)],
     invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
       invalidateLedgerEntries(ledgerId),
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
@@ -61,7 +60,6 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     errorMessage: tCommon("error"),
     cancelPredicates: [invalidateSourceDocuments(ledgerId)],
     invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
       invalidateLedgerEntries(ledgerId),
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),

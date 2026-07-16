@@ -1,10 +1,11 @@
-import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 import LoginNotificationEmail from "@/emails/login-notification-email";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import type { SupportedLocale } from "@/i18n/locales";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
+import type { EmailDeliveryPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
 
 type LoginAuthEmailMessages = {
   loginSubject: string;
@@ -16,15 +17,6 @@ type LoginAuthEmailMessages = {
   loginSafe: string;
   loginWarn: string;
 };
-
-function getResendClient(): Resend | null {
-  const apiKey = runtimeEnv.authResendKey;
-  if (apiKey == null || apiKey === "") {
-    return null;
-  }
-
-  return new Resend(apiKey);
-}
 
 async function getLoginNotificationCopy(locale: SupportedLocale) {
   const messages = (await import(`../../../../messages/${locale}.json`)).default as {
@@ -51,13 +43,7 @@ async function getLoginNotificationCopy(locale: SupportedLocale) {
 export async function sendLoginNotification(params: {
   email: string;
   locale?: string;
-}): Promise<void> {
-  const resend = getResendClient();
-  if (resend == null) {
-    logger.warn("AUTH_RESEND_KEY not configured, skipping login notification");
-    return;
-  }
-
+}, emailDelivery: EmailDeliveryPort = currentApplication.email): Promise<void> {
   const locale = resolveSupportedLocale({ explicitLocale: params.locale ?? null });
 
   try {
@@ -69,17 +55,22 @@ export async function sendLoginNotification(params: {
 
     const { subject, copy } = await getLoginNotificationCopy(locale);
 
-    await resend.emails.send({
+    const delivery = await emailDelivery.send({
       from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
       to: params.email,
       subject,
-      react: LoginNotificationEmail({
+      content: LoginNotificationEmail({
         locale,
         email: params.email,
         loginTime,
         copy,
       }),
     });
+
+    if (delivery === "not_configured") {
+      logger.warn("AUTH_RESEND_KEY not configured, skipping login notification");
+      return;
+    }
 
     logger.info({ email: params.email }, "Login notification sent");
   } catch (error) {

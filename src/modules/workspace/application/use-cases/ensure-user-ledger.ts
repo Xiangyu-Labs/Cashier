@@ -1,27 +1,11 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { AppError } from "@/lib/errors";
+import type { LedgerPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
+import { getDefaultLedger } from "@/config/default-ledger";
+import { ConflictError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { ledgers } from "@/persistence";
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
 
-export interface EnsureUserLedgerInput {
-  userId: string;
-  locale?: string;
-}
-
-export interface EnsureUserLedgerResult {
-  ledgerId: string;
-  created: boolean;
-}
-
-async function listActiveLedgers(userId: string) {
-  return db.query.ledgers.findMany({
-    where: and(eq(ledgers.userId, userId), isNull(ledgers.deletedAt)),
-    orderBy: [desc(ledgers.createdAt)],
-    columns: { id: true },
-  });
-}
+export interface EnsureUserLedgerInput { userId: string; locale?: string }
+export interface EnsureUserLedgerResult { ledgerId: string; created: boolean }
 
 export async function resolveSingleLedgerForUser(
   input: EnsureUserLedgerInput
@@ -30,64 +14,26 @@ export async function resolveSingleLedgerForUser(
 }
 
 export async function ensureUserLedger(
-  input: EnsureUserLedgerInput
+  input: EnsureUserLedgerInput,
+  ledgers: LedgerPort = currentApplication.ledgers
 ): Promise<EnsureUserLedgerResult> {
-  const existingLedgers = await listActiveLedgers(input.userId);
-
-  if (existingLedgers.length > 1) {
-    logger.error(
-      {
-        userId: input.userId,
-        ledgerIds: existingLedgers.map((ledger) => ledger.id),
-      },
-      "Expected at most one active ledger for user"
-    );
+  const existing = await ledgers.listIdsForUser(input.userId);
+  if (existing.length > 1) {
+    logger.error({ userId: input.userId, ledgerIds: existing }, "Expected one active ledger");
   }
-
-  if (existingLedgers.length > 0) {
-    const firstLedger = existingLedgers[0];
-    if (firstLedger == null) {
-      throw new AppError(
-        "Invariant violation: existing ledger list is unexpectedly empty",
-        "INVARIANT_VIOLATION"
-      );
-    }
-    return {
-      ledgerId: firstLedger.id,
-      created: false,
-    };
-  }
-
+  if (existing[0] != null) return { ledgerId: existing[0], created: false };
+  const defaults = getDefaultLedger(input.locale ?? "zh");
   try {
-    const createdLedger = await createDefaultLedger({
+    const ledger = await ledgers.createDefault({
       userId: input.userId,
-      ...(input.locale !== undefined ? { locale: input.locale } : {}),
+      settings: defaults.settings,
+      categories: defaults.categories,
     });
-
-    return {
-      ledgerId: createdLedger.id,
-      created: true,
-    };
+    return { ledgerId: ledger.id, created: true };
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("UNIQUE constraint failed")) {
-      throw error;
-    }
-
-    const concurrentLedgers = await listActiveLedgers(input.userId);
-    const concurrentLedger = concurrentLedgers[0];
-
-    if (concurrentLedger == null) {
-      throw error;
-    }
-
-    logger.warn(
-      { userId: input.userId, ledgerId: concurrentLedger.id },
-      "Recovered from concurrent single-ledger initialization"
-    );
-
-    return {
-      ledgerId: concurrentLedger.id,
-      created: false,
-    };
+    if (!(error instanceof ConflictError)) throw error;
+    const concurrent = await ledgers.listIdsForUser(input.userId);
+    if (concurrent[0] == null) throw error;
+    return { ledgerId: concurrent[0], created: false };
   }
 }

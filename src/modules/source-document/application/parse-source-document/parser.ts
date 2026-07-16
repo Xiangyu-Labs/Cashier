@@ -8,19 +8,19 @@
  * Downstream can run a second pass (dual-run) for complex documents.
  */
 
-import type { AIContext } from "@/lib/tasks/types";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
   isSuccessfulLoadImageResult,
-  loadImagesForAI,
   loadStoredFilesForAI,
 } from "@/lib/storage/utils";
-import type { AIMessageContentPart } from "@/lib/tasks/types";
+import type {
+  AiContextContract,
+  AiMessageContentPart as AIMessageContentPart,
+} from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 
 export interface ParserInput {
-  imageUrls?: string[];
   storedFileIds?: string[];
   ledgerId?: string;
   text?: string;
@@ -146,26 +146,23 @@ Return a single JSON object:
 
 export async function executeParser(
   input: ParserInput,
-  ai: AIContext
+  ai: AiContextContract
 ): Promise<NormalizedParseOutput> {
   const aiLanguage = input.aiLanguage ?? "zh-CN";
-  const hasStoredFiles = (input.storedFileIds?.length ?? 0) > 0;
-  const hasImages = hasStoredFiles || (input.imageUrls?.length ?? 0) > 0;
+  const hasImages = (input.storedFileIds?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
 
   const prompt = buildPrompt(input, aiLanguage);
 
   let images: { dataUrl: string }[] | undefined;
   if (hasImages) {
-    if (hasStoredFiles && (input.ledgerId == null || input.ledgerId === "")) {
+    if (input.ledgerId == null || input.ledgerId === "") {
       throw new AppError(
         "parser: stored-file evidence requires ledger identity",
         "VALIDATION_ERROR"
       );
     }
-    const loaded = hasStoredFiles
-      ? await loadStoredFilesForAI(input.ledgerId!, input.storedFileIds!)
-      : await loadImagesForAI(input.imageUrls!);
+    const loaded = await loadStoredFilesForAI(input.ledgerId, input.storedFileIds!);
     images = loaded.filter(isSuccessfulLoadImageResult).map((r) => ({ dataUrl: r.dataUrl }));
   }
 

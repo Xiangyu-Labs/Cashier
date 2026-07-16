@@ -42,8 +42,12 @@ export function supportedSourceDocumentActions(input: {
   pendingOutcome: RevisionOutcome | null;
   deleted?: boolean;
 }): readonly SupportedSourceDocumentAction[] {
-  if (input.deleted || input.pendingOutcome === "queued" || input.pendingOutcome === "processing") {
+  if (input.deleted) {
     return [];
+  }
+
+  if (input.pendingOutcome === "queued" || input.pendingOutcome === "processing") {
+    return ["delete"];
   }
 
   if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
@@ -170,14 +174,20 @@ export interface SourceDocumentDetailContract extends SourceDocumentListContract
 
 export interface SourceDocumentSubmissionContract {
   sourceDocumentId: SourceDocumentId;
-  status: "queued";
+  revisionId: RevisionId;
+  revisionState: "queued";
 }
 
 /** Compatibility projection used until retained callers move to revision DTOs. */
 export function toSourceDocumentSubmissionContract(
-  sourceDocument: Pick<SourceDocumentContract, "id">
+  sourceDocument: Pick<SourceDocumentContract, "id">,
+  revision: Pick<SourceDocumentRevisionContract, "id" | "outcome">
 ): SourceDocumentSubmissionContract {
-  return { sourceDocumentId: sourceDocument.id, status: "queued" };
+  return {
+    sourceDocumentId: sourceDocument.id,
+    revisionId: revision.id,
+    revisionState: "queued",
+  };
 }
 
 export interface SourceDocumentPort {
@@ -192,6 +202,7 @@ export interface SourceDocumentPort {
     sourceDocumentId?: SourceDocumentId;
     submittedText?: string | null;
     storedFileIds?: readonly StoredFileId[];
+    entryDate?: string | null;
   }): Promise<{ document: SourceDocumentContract; revision: SourceDocumentRevisionContract }>;
   markProcessing(input: {
     ledgerId: LedgerId;
@@ -209,30 +220,182 @@ export interface SourceDocumentPort {
   softDelete(ledgerId: LedgerId, sourceDocumentId: SourceDocumentId): Promise<boolean>;
 }
 
+export interface PendingRevisionSubmissionContract {
+  document: SourceDocumentContract;
+  revision: SourceDocumentRevisionContract;
+  intent: ProcessingIntentContract;
+}
+
+/** Atomically persists submitted evidence and the durable work needed to process it. */
+export interface SourceDocumentSubmissionPort {
+  createPendingWithIntent(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId?: SourceDocumentId;
+    submittedText?: string | null;
+    storedFileIds?: readonly StoredFileId[];
+    entryDate?: string | null;
+    inheritEvidence?: boolean;
+  }): Promise<PendingRevisionSubmissionContract>;
+}
+
 export interface LedgerPort {
   getLedgerIdForCredential(credentialId: string): Promise<LedgerId | null>;
   isOwnedByUser(ledgerId: LedgerId, userId: string): Promise<boolean>;
+  getOwned(ledgerId: LedgerId, userId: string): Promise<LedgerContract | null>;
+  listIdsForUser(userId: string): Promise<readonly LedgerId[]>;
+  listForUser(userId: string): Promise<readonly LedgerContract[]>;
+  createDefault(input: {
+    userId: string;
+    settings: LedgerSettingsContract;
+    categories: readonly CategoryMutationContract[];
+  }): Promise<LedgerContract>;
+  deleteOwned(
+    ledgerId: LedgerId,
+    userId: string
+  ): Promise<"deleted" | "already_deleted" | "forbidden" | "not_found">;
 }
 export interface StatsPort {
   getSummary(ledgerId: LedgerId): Promise<unknown>;
 }
 export interface CategoryPort {
-  list(ledgerId: LedgerId): Promise<readonly unknown[]>;
+  list(ledgerId: LedgerId): Promise<readonly CategoryContract[]>;
+  get(ledgerId: LedgerId, categoryId: string): Promise<CategoryContract | null>;
+  listWithCount(ledgerId: LedgerId): Promise<readonly CategoryWithCountContract[]>;
+  create(ledgerId: LedgerId, input: CategoryMutationContract): Promise<CategoryContract>;
+  update(
+    ledgerId: LedgerId,
+    categoryId: string,
+    input: Partial<CategoryMutationContract>
+  ): Promise<CategoryContract | null>;
+  delete(ledgerId: LedgerId, categoryId: string): Promise<boolean>;
+  reorder(ledgerId: LedgerId, categoryIds: readonly string[]): Promise<number>;
+  countUncategorized(ledgerId: LedgerId): Promise<number>;
 }
 export interface CurrencyPort {
-  convert(amount: string, from: string, to: string): Promise<string>;
+  convert(amount: string, from: string, to: string, date?: string): Promise<string>;
+  recalculateLedger(ledgerId: LedgerId, mainCurrency: string): Promise<number>;
 }
 export interface SettingsPort {
-  get(ledgerId: LedgerId): Promise<unknown>;
+  get(ledgerId: LedgerId): Promise<LedgerSettingsContract | null>;
+  update(input: {
+    ledgerId: LedgerId;
+    userId: string;
+    settings: Partial<LedgerSettingsContract>;
+  }): Promise<LedgerContract | null>;
 }
 export interface AuthenticationPort {
   requireUser(): Promise<{ id: string }>;
 }
 export interface ServiceCredentialPort {
-  authenticate(key: string): Promise<{ id: string; ledgerId: LedgerId } | null>;
+  authenticate(key: string): Promise<AuthenticatedServiceCredentialContract | null>;
+  list(ledgerId: LedgerId): Promise<readonly ServiceCredentialContract[]>;
+  create(ledgerId: LedgerId, name: string): Promise<ServiceCredentialContract>;
+  revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
 }
 export interface IdempotencyPort {
   execute<T>(key: string, operation: () => Promise<T>): Promise<T>;
+}
+
+export interface EmailDeliveryPort {
+  send(input: {
+    from: string;
+    to: string;
+    subject: string;
+    content: unknown;
+  }): Promise<"sent" | "not_configured">;
+}
+
+export interface OtpTokenContract {
+  email: string;
+  tokenHash: string;
+  expiresAt: Date;
+  attempts: number;
+  lockedUntil: Date | null;
+}
+
+export interface OtpTokenPort {
+  replace(input: {
+    email: string;
+    tokenHash: string;
+    expiresAt: Date;
+    ipAddress?: string;
+  }): Promise<void>;
+  find(email: string): Promise<OtpTokenContract | null>;
+  recordFailure(input: {
+    email: string;
+    attempts: number;
+    lockedUntil?: Date;
+  }): Promise<void>;
+  markVerified(email: string): Promise<void>;
+  delete(email: string): Promise<void>;
+  cleanupExpired(now: Date): Promise<number>;
+}
+
+export interface UserAccountContract {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+}
+
+export interface UserAccountPort {
+  findOrCreate(email: string, name?: string): Promise<{
+    user: UserAccountContract;
+    isExistingUser: boolean;
+  }>;
+  findByEmail(email: string): Promise<UserAccountContract | null>;
+  findById(id: string): Promise<UserAccountContract | null>;
+}
+
+export interface CategoryMutationContract {
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+}
+
+export interface CategoryContract {
+  id: string;
+  ledgerId: LedgerId;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
+  isEditable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryWithCountContract extends CategoryContract {
+  entryCount: number;
+}
+
+export interface LedgerSettingsContract {
+  aiLanguage?: string;
+  currencies?: string[];
+  mainCurrency?: string;
+  collapseEntriesDefault?: boolean;
+  aiCustomPrompt?: string;
+}
+
+export interface LedgerContract {
+  id: LedgerId;
+  userId: string;
+  settings: LedgerSettingsContract;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthenticatedServiceCredentialContract {
+  id: string;
+  ledgerId: LedgerId;
+}
+
+export interface ServiceCredentialContract extends AuthenticatedServiceCredentialContract {
+  key: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
 }
 
 export interface StoredFilePort {
@@ -282,6 +445,12 @@ export interface LedgerProjectionPort {
     submittedText?: string | null;
     title?: string | null;
     entryDate?: string | null;
+    entries: readonly LedgerProjectionEntryContract[];
+  }): Promise<RevisionId>;
+  replaceActive(input: {
+    ledgerId: LedgerId;
+    sourceDocumentId: SourceDocumentId;
+    expectedActiveRevisionId: RevisionId;
     entries: readonly LedgerProjectionEntryContract[];
   }): Promise<RevisionId>;
   recalculate(input: {

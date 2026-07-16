@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
@@ -46,6 +46,7 @@ export function useQuickEntryFormController({
   const [currency, setCurrency] = useState(mainCurrency);
   const [itemName, setItemName] = useState("");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
+  const tempIdSequence = useRef(0);
 
   useEffect(() => {
     setCurrency(mainCurrency);
@@ -65,8 +66,9 @@ export function useQuickEntryFormController({
       invalidateCalendar(ledgerId),
     ],
     onOptimisticUpdate: (queryClient, variables) => {
-      const tempDocId = `temp-doc-${Date.now()}`;
-      const tempEntryId = `temp-entry-${Date.now()}`;
+      const sequence = ++tempIdSequence.current;
+      const tempDocId = `temp-doc-${ledgerId}-${sequence}`;
+      const tempEntryId = `temp-entry-${ledgerId}-${sequence}`;
       const now = new Date().toISOString();
       const entryDateStr = variables.entryDate;
       const optimisticConvertedAmount =
@@ -103,9 +105,11 @@ export function useQuickEntryFormController({
         updatedAt: now,
         deletedAt: null,
         metadata: {},
-        imageUrls: [],
+        files: [],
         hasImages: false,
         anomalyReason: null,
+        supportedActions: ["retry", "edit_retry", "delete"],
+        errorCode: null,
         ledgerEntries: [
           {
             id: tempEntryId,

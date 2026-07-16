@@ -64,7 +64,7 @@ describe("getLedgerEntryDetail", () => {
     expect(result).not.toBeNull();
     expect(result?.id).toBe(entry.id);
     expect(result?.category?.id).toBe(category.id);
-    expect(result?.sourceDocument?.imageUrls).toEqual([]);
+    expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
     expect(result?.sourceDocument?.hasImages).toBe(true);
     expect(result?.sourceDocument?.metadata).toEqual({ note: "keep-me" });
   });

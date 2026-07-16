@@ -13,7 +13,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
  */
 export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, ledger },
+    { ledgerId },
     input: CreateSourceDocumentInputContract
   ): Promise<CreateSourceDocumentResponseDto> => {
     const validated = createSourceDocumentInputSchema.parse(input);
@@ -21,7 +21,6 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
 
     return createAndQueueSourceDocument({
       ledgerId,
-      ledger,
       ...payload,
     });
   }

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions } from "@/lib/tasks";
-import { arbitrateResults as arbitrateStage0Results } from "@/modules/source-document/application/parse-source-document/arbitration";
+import { arbitrateResults } from "@/modules/source-document/application/parse-source-document/arbitration";
 import type { NormalizedParseOutput as NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
 import type { ParserInput as Stage0Input } from "@/modules/source-document/application/parse-source-document/parser";
 
 vi.mock("@/lib/storage/utils", () => ({
   isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
   loadImagesForAI: vi.fn(async (urls: string[]) =>
-    urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKEIMG`, success: true }))
+    urls.map((url) => ({ url, dataUrl: `data:image/png;base64,STOREDIMG`, success: true }))
   ),
   loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
-    ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,FAKEIMG`, success: true }))
+    ids.map((id) => ({ url: id, dataUrl: `data:image/png;base64,STOREDIMG`, success: true }))
   ),
 }));
 
@@ -40,6 +40,16 @@ const INPUT: Stage0Input = {
   originalCategories: [],
   text: "Lunch 10 USD",
 };
+
+function arbitrateStage0Results(
+  input: Parameters<typeof arbitrateResults>[0],
+  ai: Parameters<typeof arbitrateResults>[1]
+) {
+  return arbitrateResults(
+    { ...input, input: { ledgerId: "ledger-1", ...input.input } },
+    ai
+  );
+}
 
 function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOptions {
   const firstCall = generate.mock.calls[0]?.[0];
@@ -164,7 +174,7 @@ describe("arbitrateStage0Results", () => {
     expect(getFirstGenerateCall(generate).model).toBe("text");
   });
 
-  it("uses vision model when imageUrls are present", async () => {
+  it("uses vision model when storedFileIds are present", async () => {
     const result1 = makeResult();
     const result2 = makeResult();
     const generate = vi.fn(async () => ({ content: JSON.stringify({ choice: 1, reason: "ok" }) }));
@@ -172,7 +182,7 @@ describe("arbitrateStage0Results", () => {
 
     await arbitrateStage0Results(
       {
-        input: { originalCategories: [], imageUrls: ["data:image/jpeg;base64,FAKE"] },
+        input: { originalCategories: [], storedFileIds: ["data:image/png;base64,STORED"] },
         result1,
         result2,
       },
@@ -219,7 +229,7 @@ describe("arbitrateStage0Results", () => {
 
     await arbitrateStage0Results(
       {
-        input: { originalCategories: [], imageUrls: ["https://example.com/receipt.jpg"] },
+        input: { originalCategories: [], storedFileIds: ["https://example.com/receipt.jpg"] },
         result1,
         result2,
       },

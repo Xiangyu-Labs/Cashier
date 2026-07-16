@@ -4,11 +4,13 @@
   },
   "response": {
     "sourceDocumentId": "00000000-0000-4000-8000-000000000001",
+    "revisionId": "00000000-0000-4000-8000-000000000002",
+    "revisionState": "queued",
     "status": "queued"
   },
   "compatibility": {
     "version": "v1",
     "additiveUntil": "2026-10-13",
-    "deprecatedTaskFields": []
+    "deprecatedTaskFields": ["status"]
   }
 }

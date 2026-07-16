@@ -4,7 +4,6 @@ import type { EntryCategory, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import {
   buildSourceDocumentCardTotals,
-  getSafeImageSrc,
   getSourceDocumentPreview,
   sortSourceDocumentEntries,
 } from "@/modules/source-document/ui/source-document-card.utils";
@@ -28,7 +27,7 @@ function createSourceDocument(overrides: Partial<SourceDocument> = {}): SourceDo
     ledgerId: "ledger-1",
     title: "测试单据",
     text: "原始文本",
-    imageUrls: [],
+    files: [],
     status: "completed",
     type: "ai_parsed",
     anomalyReason: null,
@@ -38,6 +37,8 @@ function createSourceDocument(overrides: Partial<SourceDocument> = {}): SourceDo
     updatedAt: "2024-01-01",
     deletedAt: null,
     hasImages: false,
+    supportedActions: ["retry", "edit_retry", "delete"],
+    errorCode: null,
     ...overrides,
   };
 }
@@ -50,16 +51,15 @@ function createSourceDocumentLight(
     ledgerId: "ledger-1",
     title: "轻量单据",
     text: "轻量文本",
-    imageUrls: [],
+    files: [],
     status: "processing",
     type: "manual",
     anomalyReason: null,
     entryDate: "2024-01-01",
-    metadata: {},
     createdAt: "2024-01-01",
-    updatedAt: "2024-01-01",
-    deletedAt: null,
     hasImages: false,
+    supportedActions: ["delete"],
+    errorCode: null,
     ...overrides,
   };
 }
@@ -131,20 +131,19 @@ describe("source-document-card utils", () => {
       getSourceDocumentPreview(
         createSourceDocument({
           text: "OCR preview",
-          imageUrls: ["image-a", "image-b"],
+          files: [
+            { id: "file-a", contentType: "image/jpeg", byteSize: 10, originalFilename: null },
+            { id: "file-b", contentType: "image/png", byteSize: 20, originalFilename: null },
+          ],
         })
       )
     ).toEqual({
       text: "OCR preview",
-      images: ["image-a", "image-b"],
+      images: [
+        { id: "file-a", contentType: "image/jpeg", byteSize: 10, originalFilename: null },
+        { id: "file-b", contentType: "image/png", byteSize: 20, originalFilename: null },
+      ],
     });
-  });
-
-  it("normalizes safe image sources for browser rendering", () => {
-    expect(getSafeImageSrc("https://example.com/a.jpg")).toBe("https://example.com/a.jpg");
-    expect(getSafeImageSrc("data:image/png;base64,abc")).toBe("data:image/png;base64,abc");
-    expect(getSafeImageSrc("/api/uploads/a.jpg")).toBe("/api/uploads/a.jpg");
-    expect(getSafeImageSrc("base64-image")).toBe("data:image/jpeg;base64,base64-image");
   });
 
   it("builds totals with converted amounts and falls back to main-currency entry amounts", () => {

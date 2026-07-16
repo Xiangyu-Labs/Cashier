@@ -28,7 +28,7 @@ describe("deleteSourceDocument", () => {
     ({ ledgerId } = await createTestUserWithLedger(db, undefined, "Lifecycle Delete Ledger"));
   });
 
-  it("cancels active tasks, soft deletes entries, and soft deletes related task runs", async () => {
+  it("soft deletes target projections while preserving historical task runs", async () => {
     const db = getTestDb();
     const [sourceDocument] = await db
       .insert(sourceDocuments)
@@ -113,9 +113,9 @@ describe("deleteSourceDocument", () => {
       deletedAt: expect.any(Date),
     });
     expect(activeEntries).toEqual([]);
-    expect(activeTaskRuns).toEqual([]);
-    expect(cancelMock).toHaveBeenCalledTimes(1);
-    expect(cancelMock).toHaveBeenCalledWith(runningTask.id);
-    expect(cancelMock).not.toHaveBeenCalledWith(completedTask.id);
+    expect(activeTaskRuns.map((task) => task.id).sort()).toEqual(
+      [runningTask.id, completedTask.id].sort()
+    );
+    expect(cancelMock).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,7 @@ vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => (
   convertEntryAmount: convertEntryAmountMock,
 }));
 
-import { handleParseResult } from "@/modules/source-document/application/parse-source-document/parse-result-handler";
+import { handleParseResult } from "@/application/adapters/in-process/legacy-processing/parse-result-handler";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 
 async function createSourceDocument(ledgerId: string, overrides: Record<string, unknown> = {}) {

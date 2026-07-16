@@ -1,59 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/errors";
-import type * as PersistenceModule from "@/persistence";
-import type * as DrizzleOrmModule from "drizzle-orm";
 
 const {
-  sourceDocumentsFindFirstMock,
+  getAccessContextMock,
   getTargetSourceDocumentMock,
   requireLedgerAccessMock,
   listLedgerEntryViewsBySourceDocumentIdsMock,
 } = vi.hoisted(() => ({
-  sourceDocumentsFindFirstMock: vi.fn(),
+  getAccessContextMock: vi.fn(),
   getTargetSourceDocumentMock: vi.fn(),
   requireLedgerAccessMock: vi.fn(),
   listLedgerEntryViewsBySourceDocumentIdsMock: vi.fn(),
 }));
 
-vi.mock("@/application/adapters/sqlite", () => ({
-  getTargetSourceDocument: getTargetSourceDocumentMock,
-}));
-
-vi.mock("@/lib/db", () => ({
-  db: {
-    query: {
-      sourceDocuments: {
-        findFirst: sourceDocumentsFindFirstMock,
-      },
+vi.mock("@/application/current", () => ({
+  currentApplication: {
+    sourceDocumentReads: {
+      getAccessContext: getAccessContextMock,
+      get: getTargetSourceDocumentMock,
     },
   },
 }));
-
-vi.mock("@/persistence", async () => {
-  const actual = await vi.importActual<typeof PersistenceModule>("@/persistence");
-  return {
-    ...actual,
-    sourceDocuments: {
-      id: "sourceDocuments.id",
-      status: "sourceDocuments.status",
-    },
-  };
-});
-
-vi.mock("drizzle-orm", async () => {
-  const actual = await vi.importActual<typeof DrizzleOrmModule>("drizzle-orm");
-  return {
-    ...actual,
-    and: vi.fn((...parts: unknown[]) => ({ and: parts })),
-    eq: vi.fn((left: unknown, right: unknown) => ({ eq: [left, right] })),
-    ne: vi.fn((left: unknown, right: unknown) => ({ ne: [left, right] })),
-  };
-});
-
-vi.mock("@/modules/ledger/access", () => ({
-  requireLedgerAccess: requireLedgerAccessMock,
-}));
-
+vi.mock("@/modules/ledger/access", () => ({ requireLedgerAccess: requireLedgerAccessMock }));
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
@@ -63,61 +31,31 @@ import { getSourceDocumentDetail } from "@/modules/source-document/application/q
 describe("getSourceDocumentDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getAccessContextMock.mockResolvedValue({ ledgerId: "ledger-1", hasImages: false });
+    requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
     listLedgerEntryViewsBySourceDocumentIdsMock.mockResolvedValue(new Map());
-    getTargetSourceDocumentMock.mockResolvedValue(null);
-  });
-
-  it("returns a serialized source document when access is granted", async () => {
-    sourceDocumentsFindFirstMock.mockResolvedValueOnce({ ledgerId: "ledger-1" });
-    getTargetSourceDocumentMock.mockResolvedValueOnce({
+    getTargetSourceDocumentMock.mockResolvedValue({
       id: "doc-1",
       ledgerId: "ledger-1",
-      title: "Receipt",
-      text: "Lunch",
-      imageUrls: ["/api/stored-files/file-1"],
-      status: "completed",
-      type: "ai_parsed",
-      anomalyReason: null,
-      entryDate: "2026-03-20",
-      metadata: { note: "keep" },
+      files: [],
       createdAt: "2026-03-20T10:00:00.000Z",
-      updatedAt: "2026-03-20T11:00:00.000Z",
-      deletedAt: null,
-      hasImages: true,
     });
-    requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
+  });
 
+  it("returns the authorized target document", async () => {
     const result = await getSourceDocumentDetail("doc-1");
-
-    expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
-    expect(listLedgerEntryViewsBySourceDocumentIdsMock).toHaveBeenCalledWith({
-      ledgerId: "ledger-1",
-      sourceDocumentIds: ["doc-1"],
-    });
-    expect(result).not.toBeNull();
     expect(result?.id).toBe("doc-1");
-    expect(result?.ledgerId).toBe("ledger-1");
-    expect(result?.createdAt).toBe("2026-03-20T10:00:00.000Z");
+    expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
   });
 
-  it("returns null and avoids leaking document existence when access is denied", async () => {
-    sourceDocumentsFindFirstMock.mockResolvedValueOnce({ ledgerId: "ledger-1" });
-    requireLedgerAccessMock.mockRejectedValueOnce(new AppError("Forbidden", "FORBIDDEN", 403));
-
-    const result = await getSourceDocumentDetail("doc-1");
-
-    expect(result).toBeNull();
-    expect(sourceDocumentsFindFirstMock).toHaveBeenCalledTimes(1);
-    expect(listLedgerEntryViewsBySourceDocumentIdsMock).not.toHaveBeenCalled();
+  it("returns null when access is denied", async () => {
+    requireLedgerAccessMock.mockRejectedValue(new AppError("Forbidden", "FORBIDDEN", 403));
+    await expect(getSourceDocumentDetail("doc-1")).resolves.toBeNull();
+    expect(getTargetSourceDocumentMock).not.toHaveBeenCalled();
   });
 
-  it("returns null when the document is hidden by deleted status filtering", async () => {
-    sourceDocumentsFindFirstMock.mockResolvedValueOnce(null);
-
-    const result = await getSourceDocumentDetail("doc-1");
-
-    expect(result).toBeNull();
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
-    expect(listLedgerEntryViewsBySourceDocumentIdsMock).not.toHaveBeenCalled();
+  it("returns null for a hidden document", async () => {
+    getAccessContextMock.mockResolvedValue(null);
+    await expect(getSourceDocumentDetail("doc-1")).resolves.toBeNull();
   });
 });

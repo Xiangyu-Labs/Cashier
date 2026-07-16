@@ -258,6 +258,8 @@
     "edit": "Edit Current Image",
     "backToPreview": "Back to Preview",
     "close": "Close",
+    "previous": "Previous image",
+    "next": "Next image",
     "pendingChangesTitle": "This edit is not saved yet",
     "pendingChangesCloseDescription": "Save or discard the current edit before closing.",
     "pendingChangesLeaveDescription": "Save or discard the current edit before returning to preview.",

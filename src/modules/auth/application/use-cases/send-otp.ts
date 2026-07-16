@@ -15,6 +15,8 @@ import {
   setResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP } from "@/modules/auth/services/otp";
+import type { EmailDeliveryPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
 
 type OTPAuthEmailMessages = {
   otpSubject: string;
@@ -51,40 +53,12 @@ async function getOTPEmailCopy(
   };
 }
 
-type AuthResendEmailClient = {
-  emails: {
-    send: (params: {
-      from: string;
-      to: string;
-      subject: string;
-      react: ReturnType<typeof OTPEmail>;
-    }) => Promise<unknown>;
-  };
-};
-
-function getResendClient(): AuthResendEmailClient | null {
-  const apiKey = runtimeEnv.authResendKey;
-  if (apiKey == null || apiKey === "") {
-    return null;
-  }
-
-  return {
-    emails: {
-      send: async (params) => {
-        const { Resend } = await import("resend");
-        const resend = new Resend(apiKey);
-        return resend.emails.send(params);
-      },
-    },
-  };
-}
-
 export async function sendOTP(params: {
   email: SendOTPEmail;
   ip: string;
   host: string;
   locale?: SupportedLocale;
-}): Promise<{
+}, emailDelivery: EmailDeliveryPort = currentApplication.email): Promise<{
   expiresIn: number;
   expiresAt: number;
   canResendAt: number | null;
@@ -125,36 +99,25 @@ export async function sendOTP(params: {
     const otp = generateOTP();
     const { expiresAt } = await createOTPToken(normalizedEmail, otp, params.ip);
 
-    const resend = getResendClient();
-    if (resend == null) {
-      logger.warn("AUTH_RESEND_KEY not configured, skipping email send");
-      logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
-    } else {
-      try {
-        const locale = params.locale ?? DEFAULT_LOCALE;
-        const expiresInMinutes = 5;
-        const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
-        await resend.emails.send({
-          from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
-          to: normalizedEmail,
-          subject,
-          react: OTPEmail({
-            otp,
-            host: params.host,
-            expiresInMinutes,
-            locale,
-            copy,
-          }),
-        });
-
+    try {
+      const locale = params.locale ?? DEFAULT_LOCALE;
+      const expiresInMinutes = 5;
+      const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
+      const delivery = await emailDelivery.send({
+        from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
+        to: normalizedEmail,
+        subject,
+        content: OTPEmail({ otp, host: params.host, expiresInMinutes, locale, copy }),
+      });
+      if (delivery === "not_configured") {
+        logger.warn("AUTH_RESEND_KEY not configured, skipping email send");
+        logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
+      } else {
         logger.info({ email: normalizedEmail }, "OTP email sent successfully");
-      } catch (error) {
-        logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
-        throw new AppError(
-          "Failed to send verification code. Please try again.",
-          "EMAIL_SEND_FAILED"
-        );
       }
+    } catch (error) {
+      logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
+      throw new AppError("Failed to send verification code. Please try again.", "EMAIL_SEND_FAILED");
     }
 
     await setResendCooldown(normalizedEmail);

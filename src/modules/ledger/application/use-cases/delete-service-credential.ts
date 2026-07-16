@@ -1,20 +1,13 @@
-import { db } from "@/lib/db";
-import { forLedger } from "@/lib/db/scoped-query";
+import type { ServiceCredentialPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
 import { NotFoundError } from "@/lib/errors";
-import { serviceCredentials } from "@/persistence/schema/ledger";
 
 export async function deleteServiceCredential(
   ledgerId: string,
-  credentialId: string
+  credentialId: string,
+  credentials: ServiceCredentialPort = currentApplication.serviceCredentials
 ): Promise<void> {
-  const q = forLedger(serviceCredentials, ledgerId);
-  const result = await db
-    .update(serviceCredentials)
-    .set(q.softDelete)
-    .where(q.whereId(credentialId))
-    .returning({ id: serviceCredentials.id });
-
-  if (result.length === 0) {
+  if (!(await credentials.revoke(ledgerId, credentialId))) {
     throw new NotFoundError("Credential");
   }
 }

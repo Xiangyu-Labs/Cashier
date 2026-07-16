@@ -1,69 +1,28 @@
-import { and, eq, isNull } from "drizzle-orm";
-import { updateTag } from "next/cache";
-import { db } from "@/lib/db";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
-import { omitUndefinedProperties } from "@/lib/validation";
-import { mapLedgerDto } from "@/modules/ledger/application/mappers";
-import type { LedgerDto } from "@/modules/ledger/contracts";
+import type { SettingsPort } from "@/application/contracts";
+import { currentApplication } from "@/application/current";
+import { NotFoundError } from "@/lib/errors";
 import type { UpdateLedgerInput } from "@/modules/ledger/contract-schemas";
-import { recalculateEntriesConvertedAmount } from "@/modules/ledger/application/services/recalculate-entries-converted-amount";
-import { ledgers } from "@/persistence";
+import type { LedgerDto } from "@/modules/ledger/contracts";
+import { omitUndefinedProperties } from "@/lib/validation";
 
 export async function updateLedger(
   userId: string,
   ledgerId: string,
-  data: UpdateLedgerInput
+  data: UpdateLedgerInput,
+  settings: SettingsPort = currentApplication.settings
 ): Promise<LedgerDto> {
-  const existing = await db.query.ledgers.findFirst({
-    where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+  const updated = await settings.update({
+    ledgerId,
+    userId,
+    settings: omitUndefinedProperties(data.settings ?? {}),
   });
-
-  if (existing == null) {
-    throw new NotFoundError("Ledger");
-  }
-
-  if (existing.userId !== userId) {
-    throw new ForbiddenError("Access denied to this ledger");
-  }
-
-  const currentMetadata = existing.metadata ?? {};
-  const currentSettings = currentMetadata.settings ?? {};
-  const oldMainCurrency = currentSettings.mainCurrency ?? "CNY";
-  const newMainCurrency = data.settings?.mainCurrency;
-
-  const newSettings = omitUndefinedProperties({
-    ...currentSettings,
-    ...(data.settings ?? {}),
-  });
-
-  const [updatedLedger] = await db
-    .update(ledgers)
-    .set({
-      metadata: {
-        ...currentMetadata,
-        settings: newSettings,
-      },
-    })
-    .where(eq(ledgers.id, ledgerId))
-    .returning();
-
-  if (updatedLedger == null) {
-    throw new NotFoundError("Ledger");
-  }
-
-  updateTag("ledger");
-
-  if (newMainCurrency != null && newMainCurrency !== oldMainCurrency) {
-    logger.info(
-      { ledgerId, oldMainCurrency, newMainCurrency },
-      "Main currency changed, recalculating entries"
-    );
-
-    recalculateEntriesConvertedAmount(ledgerId, newMainCurrency).catch((err: unknown) => {
-      logger.error({ err, ledgerId }, "Failed to recalculate entries after currency change");
-    });
-  }
-
-  return mapLedgerDto(updatedLedger);
+  if (updated == null) throw new NotFoundError("Ledger");
+  return {
+    id: updated.id,
+    userId: updated.userId,
+    metadata: { settings: updated.settings },
+    createdAt: updated.createdAt,
+    updatedAt: updated.updatedAt,
+    deletedAt: null,
+  };
 }

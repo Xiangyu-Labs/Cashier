@@ -1,6 +1,8 @@
 "use server";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import { getSourceDocumentDetail } from "../application/queries/get-source-document-detail";
+import { sourceDocumentIdSchema } from "../contract-schemas";
+import { ValidationError } from "@/lib/errors";
 
 /**
  * Fetch a source document by its global ID.
@@ -12,5 +14,9 @@ import { getSourceDocumentDetail } from "../application/queries/get-source-docum
  * to avoid leaking document existence information.
  */
 export async function getSourceDocumentByIdAction(id: string): Promise<SourceDocumentDto | null> {
-  return getSourceDocumentDetail(id);
+  const parsed = sourceDocumentIdSchema.safeParse(id);
+  if (!parsed.success) {
+    throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+  }
+  return getSourceDocumentDetail(parsed.data);
 }

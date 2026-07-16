@@ -1,308 +1,108 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { eq, isNull, and } from "drizzle-orm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSourceDocumentAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
+import { getOpenAIClient } from "@/lib/ai/openai-client";
+import { createMultiStageMock } from "../../helpers/mocks/openai";
+import { processAllPendingTasks } from "../../helpers/processing";
+import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 import {
-  sourceDocuments,
+  entryCategories,
   ledgerEntries,
-  entryCategories as categories,
   ledgers,
+  sourceDocumentRevisions,
+  sourceDocuments,
 } from "@/persistence";
-import { eq } from "drizzle-orm";
-import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
-import { createMultiStageMock } from "../../helpers/mocks/openai";
-import { getOpenAIClient } from "@/lib/ai/openai-client";
-import { initializeDefaultTaskRuntime, resetTaskRuntime } from "@/lib/tasks/runtime";
-import { processAllPendingTasks } from "../../helpers/processing";
-import { ValidationError } from "@/lib/errors";
 
-// Mock OpenAI
 vi.mock("@/lib/ai/openai-client", () => ({
   getOpenAIClient: vi.fn(),
   resetOpenAIClient: vi.fn(),
 }));
 
-describe("SourceDocument Retry Action", () => {
-  let testLedgerId: string;
-
-  function firstItem<T>(items: T[], errorMessage: string): T {
-    const first = items[0];
-    if (first == null) {
-      throw new Error(errorMessage);
-    }
-    return first;
-  }
+describe("source-document retry action", () => {
+  let ledgerId = "";
 
   beforeEach(async () => {
-    // Reset mock to use multi-stage mock by default
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
-
-    resetTaskRuntime();
-    await initializeDefaultTaskRuntime();
-
     const db = getTestDb();
-    // Clean up existing ledger for TEST_USER_ID to avoid unique constraint
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
-    const { ledgerId } = await createTestUserWithLedger(db, undefined, "Test Ledger", TEST_USER_ID);
-    testLedgerId = ledgerId;
-
-    // Setup "餐饮" category
-    await db
-      .insert(categories)
-      .values({
-        name: "餐饮",
-        description: "餐饮服务",
-        sortOrder: 1,
-        ledgerId: testLedgerId,
-      })
-      .returning();
+    ({ ledgerId } = await createTestUserWithLedger(db, undefined, "Retry Ledger", TEST_USER_ID));
+    await db.insert(entryCategories).values({
+      ledgerId,
+      name: "餐饮",
+      description: "餐饮服务",
+      sortOrder: 1,
+    });
   });
 
-  it("should retry a document and re-process it", async () => {
-    // 1. Create a document
-    const createRes = await createSourceDocumentAction(testLedgerId, { text: "Lunch 25" });
-    const docId = createRes.sourceDocumentId!;
-
-    // Process it
+  it("reprocesses a new revision while keeping the source-document identity stable", async () => {
+    const db = getTestDb();
+    const created = await createSourceDocumentAction(ledgerId, { text: "午餐 25元" });
     await processAllPendingTasks();
-
-    const db = getTestDb();
-    const docBefore = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, docId),
+    const before = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(docBefore?.status).toBe("completed");
+    expect(before?.status).toBe("completed");
 
-    // 2. Call retry with new text
-    // Note: New retry approach = soft delete old doc + create new doc
-    const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Dinner 50" });
-    expect(retryRes.status).toBe("queued");
-    const newDocId = retryRes.sourceDocumentId!;
-    expect(newDocId).not.toBe(docId); // New document has different ID
-
-    // Old document should be soft deleted
-    const oldDocAfterRetry = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, docId),
-    });
-    expect(oldDocAfterRetry?.deletedAt).not.toBeNull();
-
-    // New document should be queued with new text
-    const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, newDocId),
-    });
-    expect(["queued", "processing"]).toContain(newDocAfterRetry?.status);
-    expect(newDocAfterRetry?.text).toBe("Dinner 50");
-
-    // 3. Process tasks again
-    await processAllPendingTasks();
-
-    // New document should be completed
-    const newDocFinal = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, newDocId),
-    });
-    expect(newDocFinal?.status).toBe("completed");
-
-    // Verify entries on NEW document
-    const newEntries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, newDocId),
-    });
-    const activeNewEntries = newEntries.filter((e) => !e.deletedAt);
-    expect(activeNewEntries.length).toBeGreaterThan(0);
-
-    // Old document entries are NOT soft-deleted but linked to deleted source doc
-    // They become invisible because their source doc is soft deleted
-    const oldEntries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, docId),
-    });
-    // Entries remain but source doc is deleted, so they're effectively hidden
-    expect(oldEntries.length).toBeGreaterThan(0);
-  });
-
-  it("should rehome local image urls into the new source document namespace on retry", async () => {
-    const db = getTestDb();
-    const imageData =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+xDoAAAAASUVORK5CYII=";
-
-    const createRes = await createSourceDocumentAction(testLedgerId, {
-      text: "Receipt with image",
-      images: [{ data: imageData, mimeType: "image/png" }],
-    });
-    await processAllPendingTasks();
-
-    const createdDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
-    });
-    const existingLocalImageUrl = createdDoc?.imageUrls?.[0];
-    if (existingLocalImageUrl == null) {
-      throw new Error("Expected created source document local image url");
-    }
-
-    const retryRes = await retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
-      text: "Retried receipt with image",
-      images: [{ data: existingLocalImageUrl, mimeType: "image/png" }],
-    });
-
-    const retriedDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, retryRes.sourceDocumentId),
-    });
-
-    expect(retriedDoc?.imageUrls).toHaveLength(1);
-    expect(retriedDoc?.imageUrls?.[0]).toContain(`/${retryRes.sourceDocumentId}/`);
-    expect(retriedDoc?.imageUrls?.[0]).not.toContain(`/${createRes.sourceDocumentId}/`);
-  });
-
-  it("should reject retry input when images contain a foreign-ledger local upload URL", async () => {
-    const db = getTestDb();
-    const { ledgerId: foreignLedgerId } = await createTestUserWithLedger(
-      db,
-      undefined,
-      "Foreign Ledger",
-      crypto.randomUUID()
-    );
-    const createRes = await createSourceDocumentAction(testLedgerId, { text: "Lunch 25" });
-    const foreignLedgerLocalUrl = `/api/uploads/${foreignLedgerId}/${createRes.sourceDocumentId}/image.webp`;
-
-    await expect(
-      retrySourceDocumentAction(testLedgerId, createRes.sourceDocumentId, {
-        images: [{ data: foreignLedgerLocalUrl, mimeType: "image/png" }],
-      })
-    ).rejects.toThrow(ValidationError);
-
-    const sourceDocumentAfterFailedRetry = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, createRes.sourceDocumentId),
-    });
-    expect(sourceDocumentAfterFailedRetry?.deletedAt).toBeNull();
-  });
-
-  it("should retry an anomaly document", async () => {
-    // 1. Simulate an anomaly
-    const db = getTestDb();
-    const doc = firstItem(
-      await db
-        .insert(sourceDocuments)
-        .values({
-          ledgerId: testLedgerId,
-          status: "anomaly",
-          text: "Invalid data",
-          anomalyReason: "无效内容",
-        })
-        .returning(),
-      "Expected anomaly source document to be created"
-    );
-    const docId = doc.id;
-
-    // 2. Retry it
-    // Note: New retry approach = soft delete old doc + create new doc
-    const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "Fixed data" });
-    expect(retryRes.status).toBe("queued");
-    const newDocId = retryRes.sourceDocumentId!;
-    expect(newDocId).not.toBe(docId); // New document has different ID
-
-    // Old document should be soft deleted
-    const oldDocAfterRetry = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, docId),
-    });
-    expect(oldDocAfterRetry?.deletedAt).not.toBeNull();
-
-    // New document should be queued
-    const newDocAfterRetry = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, newDocId),
-    });
-    expect(["queued", "processing"]).toContain(newDocAfterRetry?.status);
-
-    // 3. Process
-    await processAllPendingTasks();
-
-    // New document should be completed
-    const newDocFinal = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, newDocId),
-    });
-    expect(newDocFinal?.status).toBe("completed");
-  });
-
-  it("should replace old entries with new entries on retry", async () => {
-    const db = getTestDb();
-
-    // First processing: "午餐 25元"
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock({
-        entries: [
-          {
-            item_name: "午餐",
-            amount: 25,
-            currency: "CNY",
-            category_index: 1,
-            entry_date: "2025-01-25",
-          },
-        ],
-        title: "午餐消费",
-      }) as unknown as ReturnType<typeof getOpenAIClient>
-    );
-
-    const createRes = await createSourceDocumentAction(testLedgerId, { text: "午餐 25元" });
-    const docId = createRes.sourceDocumentId!;
-    await processAllPendingTasks();
-
-    // Verify first entry on original document
-    const entriesBeforeRetry = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, docId),
-    });
-    const activeBeforeRetry = entriesBeforeRetry.filter((e) => !e.deletedAt);
-    expect(activeBeforeRetry.length).toBe(1);
-    const beforeRetryEntry = firstItem(activeBeforeRetry, "Expected one active entry before retry");
-    expect(beforeRetryEntry.itemName).toBe("午餐");
-    expect(beforeRetryEntry.amount).toBe("25.00");
-
-    // Switch to second response for retry: "晚餐 50元"
-    vi.mocked(getOpenAIClient).mockReturnValue(
-      createMultiStageMock({
+        title: "晚餐费用",
         entries: [
           {
             item_name: "晚餐",
             amount: 50,
             currency: "CNY",
             category_index: 1,
-            entry_date: "2025-01-25",
+            entry_date: "2026-07-15",
           },
         ],
-        title: "晚餐费用",
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
-
-    // Retry with new text
-    // Note: New retry approach = soft delete old doc + create new doc
-    const retryRes = await retrySourceDocumentAction(testLedgerId, docId, { text: "晚餐 50元" });
-    const newDocId = retryRes.sourceDocumentId!;
-    expect(newDocId).not.toBe(docId); // New document has different ID
-
+    const retried = await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+      text: "晚餐 50元",
+    });
+    expect(retried).toMatchObject({
+      sourceDocumentId: created.sourceDocumentId,
+      previousSourceDocumentId: created.sourceDocumentId,
+      status: "queued",
+    });
     await processAllPendingTasks();
 
-    // Old document should be soft deleted with its entries
-    const oldDoc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, docId),
+    const after = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(oldDoc?.deletedAt).not.toBeNull();
+    const revisions = await db.query.sourceDocumentRevisions.findMany({
+      where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
+    });
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.sourceDocumentId, created.sourceDocumentId),
+        isNull(ledgerEntries.deletedAt)
+      ),
+    });
+    expect(after).toMatchObject({
+      id: created.sourceDocumentId,
+      status: "completed",
+      deletedAt: null,
+      pendingRevisionId: null,
+    });
+    expect(after?.activeRevisionId).not.toBe(before?.activeRevisionId);
+    expect(revisions).toHaveLength(2);
+    expect(activeEntries).toMatchObject([{ itemName: "晚餐", amount: "50.00" }]);
+  });
 
-    // Old entries are soft deleted along with the old source document lifecycle
-    const entriesAfterRetry = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, docId),
-    });
-    expect(entriesAfterRetry.length).toBe(1);
-    const oldEntryAfterRetry = firstItem(entriesAfterRetry, "Expected one old entry after retry");
-    expect(oldEntryAfterRetry.itemName).toBe("午餐");
-    expect(oldEntryAfterRetry.deletedAt).not.toBeNull();
-
-    // New document should have new active entries
-    const newEntries = await db.query.ledgerEntries.findMany({
-      where: eq(ledgerEntries.sourceDocumentId, newDocId),
-    });
-    const activeNewEntries = newEntries.filter((e) => !e.deletedAt);
-    expect(activeNewEntries.length).toBe(1);
-    const activeNewEntry = firstItem(activeNewEntries, "Expected one new active entry after retry");
-    expect(activeNewEntry.itemName).toBe("晚餐");
-    expect(activeNewEntry.amount).toBe("50.00");
+  it("rejects raw image payloads that bypass upload finalization", async () => {
+    const created = await createSourceDocumentAction(ledgerId, { text: "Lunch 25" });
+    await processAllPendingTasks();
+    await expect(
+      retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+        images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
+      })
+    ).rejects.toThrow("Images must be finalized");
   });
 });

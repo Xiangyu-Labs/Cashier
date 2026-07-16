@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   invalidateCalendar,
+  invalidateEntryCategories,
   invalidateLedger,
   invalidateLedgerEntries,
   invalidateLedgerSettings,
+  invalidateLedgerSettingsView,
   invalidateLedgerStats,
   invalidateSourceDocuments,
+  invalidateUncategorizedCount,
   queryKeys,
 } from "@/lib/query-keys";
 
@@ -310,6 +313,23 @@ describe("query invalidation helpers", () => {
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
+  });
+
+  it("targets category settings without matching credentials or sibling settings", () => {
+    expect(
+      invalidateEntryCategories(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
+    ).toBe(true);
+    expect(
+      invalidateEntryCategories(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
+    ).toBe(false);
+    expect(
+      invalidateUncategorizedCount(ledgerId)({
+        queryKey: queryKeys.uncategorizedCount(ledgerId),
+      })
+    ).toBe(true);
+    expect(
+      invalidateLedgerSettingsView(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
+    ).toBe(true);
   });
 
   it("matches calendar queries only", () => {

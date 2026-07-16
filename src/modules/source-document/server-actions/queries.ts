@@ -44,8 +44,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
 );
 
 /**
- * Get a single source document with full data (including imageUrls).
- * Used for edit-retry when the list view has stripped imageUrls.
+ * Get a single source document with stored-file identities for edit retry.
  */
 export const getSourceDocumentFullAction = withLedgerAccess(
   async (ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentFullDto> => {

@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentCollectionAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto as SourceDocumentListItemWithEntries } from "@/modules/source-document/contracts";
-import { useSmartPolling } from "@/hooks/use-smart-polling";
+import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
@@ -49,15 +49,8 @@ export function useSourceDocumentCollection(
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
-  const processingPolling = useSmartPolling<{ items: SourceDocumentListItemWithEntries[] }>({
-    isPollingActive: useCallback(
-      (data) =>
-        data?.items.some((doc) => doc.status === "queued" || doc.status === "processing") ?? false,
-      []
-    ),
-  });
-
-  const { data: response, isLoading } = useQuery({
+  const collectionScope = `${ledgerId}:${startDate ?? ""}:${endDate ?? ""}:${minAmount ?? ""}:${maxAmount ?? ""}`;
+  const { data: response, isLoading, refetch } = useQuery({
     queryKey: queryKeys.sourceDocumentCollection(ledgerId, {
       startDate,
       endDate,
@@ -73,10 +66,19 @@ export function useSourceDocumentCollection(
         ...(maxAmount != null ? { maxAmount } : {}),
         limit: STREAM_COLLECTION_LIMIT,
       }),
-    refetchInterval: processingPolling,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const rawData = response?.items;
+  const hasPendingRevision =
+    rawData?.some((document) => isRefreshableRevisionState(document.status)) === true;
+  useRevisionStateRefresh({
+    scope: `source-document-collection:${collectionScope}`,
+    enabled: true,
+    pending: hasPendingRevision,
+    refresh: refetch,
+  });
 
   const { groups, stats } = useMemo(() => {
     if (!rawData) {

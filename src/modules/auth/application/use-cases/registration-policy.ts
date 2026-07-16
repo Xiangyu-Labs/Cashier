@@ -1,26 +1,24 @@
 import { CredentialsSignin } from "@auth/core/errors";
-import { eq } from "drizzle-orm";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { db } from "@/lib/db";
 import { runtimeEnv } from "@/lib/env/runtime";
-import { users } from "@/persistence/schema/auth";
 import { logger } from "@/lib/logger";
+import { currentApplication } from "@/application/current";
+import type { UserAccountPort } from "@/application/contracts";
 
 export class RegistrationDisabledError extends CredentialsSignin {
   code = AUTH_ERROR_CODES.REGISTRATION_DISABLED;
 }
 
-export async function isRegistrationAllowed(email: string): Promise<boolean> {
+export async function isRegistrationAllowed(
+  email: string,
+  users: UserAccountPort = currentApplication.userAccounts
+): Promise<boolean> {
   if (!runtimeEnv.disableRegistration) {
     return true;
   }
 
   const normalizedEmail = email.toLowerCase();
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, normalizedEmail),
-  });
-
-  return user != null;
+  return (await users.findByEmail(normalizedEmail)) != null;
 }
 
 export async function assertRegistrationAllowed(email: string): Promise<void> {

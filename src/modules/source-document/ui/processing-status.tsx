@@ -42,7 +42,11 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
   };
 
   if (status === "completed") {
-    return null;
+    return (
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {config.completed.label}
+      </span>
+    );
   }
 
   const configItem = config[status];
@@ -50,7 +54,12 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
   const displayLabel = label ?? configLabel;
 
   return (
-    <div className={cn("inline-flex items-center gap-2", className)}>
+    <div
+      className={cn("inline-flex items-center gap-2", className)}
+      role={status === "error" ? "alert" : "status"}
+      aria-live={status === "error" ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
       <div className="relative flex items-center justify-center">
         {status === "processing" ? (
           <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />

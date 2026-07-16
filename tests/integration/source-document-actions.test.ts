@@ -125,7 +125,7 @@ describe("getSourceDocumentLightAction", () => {
     expect(typeof result!.createdAt).toBe("string");
   });
 
-  it("should include imageUrls in the normalized light response", async () => {
+  it("should include stored-file identities in the normalized light response", async () => {
     const db = getTestDb();
     const ledgerData = createLedgerData({ userId: testUserId });
     await db.insert(ledgers).values(ledgerData);
@@ -140,9 +140,10 @@ describe("getSourceDocumentLightAction", () => {
 
     expect(result).not.toBeNull();
     expect(result!.hasImages).toBe(true);
-    expect((result as unknown as { imageUrls?: string[] }).imageUrls).toEqual([
-      expect.stringMatching(/^\/api\/stored-files\//),
+    expect(result!.files).toEqual([
+      expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" }),
     ]);
+    expect(result).not.toHaveProperty("imageUrls");
   });
 
   it("should hasImages should be false when no images", async () => {
@@ -177,8 +178,7 @@ describe("getSourceDocumentLightAction", () => {
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
     expect(result).not.toBeNull();
-    expect(result!.metadata).not.toHaveProperty("visionDescription");
-    expect(result!.metadata).toHaveProperty("normalField", "should-be-included");
+    expect(result).not.toHaveProperty("metadata");
   });
 
   it("should include associated ledgerEntries", async () => {

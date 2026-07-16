@@ -1,10 +1,16 @@
 import { and, desc, eq, inArray, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
+  SourceDocumentStoredFileDto,
   SourceDocumentDto,
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
 } from "@/modules/source-document/contracts";
+import {
+  supportedSourceDocumentActions,
+  type ApplicationErrorCode,
+  type RevisionOutcome,
+} from "@/application/contracts";
 import {
   revisionFiles,
   sourceDocumentRevisions,
@@ -23,6 +29,29 @@ export interface TargetSourceDocumentListInput {
   maxAmount?: number;
   cursor?: string | null;
   limit: number;
+}
+
+export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
+  const document = await db.query.sourceDocuments.findFirst({
+    where: and(
+      eq(sourceDocuments.id, sourceDocumentId),
+      ne(sourceDocuments.status, "deleted"),
+      isNull(sourceDocuments.deletedAt)
+    ),
+    columns: { ledgerId: true, activeRevisionId: true, pendingRevisionId: true },
+  });
+  if (document == null) return null;
+  const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
+  const hasFiles =
+    revisionId != null &&
+    (await db.query.revisionFiles.findFirst({
+      where: and(
+        eq(revisionFiles.ledgerId, document.ledgerId),
+        eq(revisionFiles.revisionId, revisionId)
+      ),
+      columns: { id: true },
+    })) != null;
+  return { ledgerId: document.ledgerId, hasImages: hasFiles };
 }
 
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
@@ -166,7 +195,9 @@ function statusForRow(
   throw new Error(`Source document ${row.id} has no readable current revision`);
 }
 
-async function loadFileIds(rows: readonly SourceDocumentRow[]): Promise<Map<string, string[]>> {
+async function loadFiles(
+  rows: readonly SourceDocumentRow[]
+): Promise<Map<string, SourceDocumentStoredFileDto[]>> {
   const selected = new Map(
     rows.flatMap((row) => {
       const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
@@ -175,7 +206,13 @@ async function loadFileIds(rows: readonly SourceDocumentRow[]): Promise<Map<stri
   );
   if (selected.size === 0) return new Map();
   const files = await db
-    .select({ revisionId: revisionFiles.revisionId, storedFileId: revisionFiles.storedFileId })
+    .select({
+      revisionId: revisionFiles.revisionId,
+      id: revisionFiles.storedFileId,
+      contentType: storedFiles.contentType,
+      byteSize: storedFiles.byteSize,
+      originalFilename: storedFiles.originalFilename,
+    })
     .from(revisionFiles)
     .innerJoin(
       storedFiles,
@@ -187,12 +224,17 @@ async function loadFileIds(rows: readonly SourceDocumentRow[]): Promise<Map<stri
     )
     .where(inArray(revisionFiles.revisionId, [...selected.keys()]))
     .orderBy(revisionFiles.position);
-  const result = new Map<string, string[]>();
+  const result = new Map<string, SourceDocumentStoredFileDto[]>();
   for (const file of files) {
     const documentId = selected.get(file.revisionId);
     if (documentId == null) continue;
     const ids = result.get(documentId) ?? [];
-    ids.push(file.storedFileId);
+    ids.push({
+      id: file.id,
+      contentType: file.contentType,
+      byteSize: file.byteSize,
+      originalFilename: file.originalFilename,
+    });
     result.set(documentId, ids);
   }
   return result;
@@ -201,7 +243,7 @@ async function loadFileIds(rows: readonly SourceDocumentRow[]): Promise<Map<stri
 function mapListItem(
   row: SourceDocumentRow,
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>,
-  fileIds: ReadonlyMap<string, readonly string[]>
+  files: ReadonlyMap<string, readonly SourceDocumentStoredFileDto[]>
 ): SourceDocumentListItemDto {
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const revision = revisionId == null ? null : revisions.get(revisionId);
@@ -210,7 +252,7 @@ function mapListItem(
     ledgerId: row.ledgerId,
     title: row.title,
     text: null,
-    imageUrls: [],
+    files: [],
     status: statusForRow(row, revisions),
     type: row.type,
     anomalyReason: revision?.anomalyReason ?? null,
@@ -219,8 +261,36 @@ function mapListItem(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
-    hasImages: (fileIds.get(row.id)?.length ?? 0) > 0,
+    hasImages: (files.get(row.id)?.length ?? 0) > 0,
+    supportedActions: [...supportedSourceDocumentActions({
+      activeRevisionId: row.activeRevisionId,
+      pendingOutcome:
+        row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
+    })],
+    errorCode: sanitizedErrorCode(revision?.outcome, revision?.failureCode),
   };
+}
+
+function sanitizedErrorCode(
+  outcome: string | undefined,
+  failureCode: string | null | undefined
+): ApplicationErrorCode | null {
+  if (outcome === "anomaly") return "VALIDATION_FAILED";
+  if (outcome !== "failed") return null;
+  const allowed: readonly ApplicationErrorCode[] = [
+    "VALIDATION_FAILED",
+    "UNAUTHENTICATED",
+    "FORBIDDEN",
+    "NOT_FOUND",
+    "CONFLICT",
+    "RATE_LIMITED",
+    "PROCESSING_UNAVAILABLE",
+    "STORAGE_UNAVAILABLE",
+    "INTERNAL",
+  ];
+  return allowed.includes(failureCode as ApplicationErrorCode)
+    ? (failureCode as ApplicationErrorCode)
+    : "PROCESSING_UNAVAILABLE";
 }
 
 async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: boolean) {
@@ -245,13 +315,13 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const rows = await fetchRows(input, true);
   const hasMore = rows.length > input.limit;
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, fileIds] = await Promise.all([
+  const [revisions, files] = await Promise.all([
     loadRevisionFacts(pageRows),
-    loadFileIds(pageRows),
+    loadFiles(pageRows),
   ]);
   const last = pageRows.at(-1);
   return {
-    items: pageRows.map((row) => mapListItem(row, revisions, fileIds)),
+    items: pageRows.map((row) => mapListItem(row, revisions, files)),
     nextCursor: hasMore && last != null ? encodeCursor(last) : null,
   };
 }
@@ -268,12 +338,12 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
   ]);
   const hasMore = rows.length > input.limit;
   const resultRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, fileIds] = await Promise.all([
+  const [revisions, files] = await Promise.all([
     loadRevisionFacts(resultRows),
-    loadFileIds(resultRows),
+    loadFiles(resultRows),
   ]);
   return {
-    items: resultRows.map((row) => mapListItem(row, revisions, fileIds)),
+    items: resultRows.map((row) => mapListItem(row, revisions, files)),
     hasMore,
     total: Number(countRow?.count ?? 0),
   };
@@ -293,11 +363,14 @@ export async function getTargetSourceDocument(
     ),
   });
   if (row == null) return null;
-  const [revisions, fileIds] = await Promise.all([loadRevisionFacts([row]), loadFileIds([row])]);
+  const [revisions, filesByDocument] = await Promise.all([
+    loadRevisionFacts([row]),
+    loadFiles([row]),
+  ]);
   const selectedRevisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const selectedRevision =
     selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
-  const ids = fileIds.get(row.id) ?? [];
+  const files = filesByDocument.get(row.id) ?? [];
   const {
     visionDescription: _visionDescription,
     visionUnderstanding: _visionUnderstanding,
@@ -309,7 +382,7 @@ export async function getTargetSourceDocument(
     ledgerId: row.ledgerId,
     title: row.title,
     text: selectedRevision?.submittedText ?? null,
-    imageUrls: ids.map((id) => `/api/stored-files/${id}`),
+    files,
     status: statusForRow(row, revisions),
     type: row.type,
     anomalyReason: selectedRevision?.anomalyReason ?? null,
@@ -318,6 +391,14 @@ export async function getTargetSourceDocument(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
-    hasImages: ids.length > 0,
+    hasImages: files.length > 0,
+    supportedActions: [...supportedSourceDocumentActions({
+      activeRevisionId: row.activeRevisionId,
+      pendingOutcome:
+        row.pendingRevisionId == null
+          ? null
+          : ((selectedRevision?.outcome as RevisionOutcome) ?? null),
+    })],
+    errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
   };
 }

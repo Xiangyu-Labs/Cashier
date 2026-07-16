@@ -40,7 +40,7 @@ export async function registerAllTasks(engine: TaskRuntime): Promise<void> {
     }
 
     const { parseSourceDocumentTaskDefinition } = await import(
-      "@/modules/source-document/tasks"
+      "@/application/adapters/in-process/parse-source-document-task"
     );
 
     registerTaskIfNeeded(

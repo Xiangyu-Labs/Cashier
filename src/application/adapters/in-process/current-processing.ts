@@ -3,8 +3,12 @@ import { createAIContext } from "@/lib/tasks/ai-context";
 import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { processingOutbox } from "@/persistence";
-import { sqliteRevisionAdapter, SqliteProcessingIntentAdapter } from "@/application/adapters/sqlite";
+import {
+  sqliteRevisionAdapter,
+  SqliteProcessingIntentAdapter,
+} from "@/application/adapters/sqlite";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { CurrentRevisionProcessor } from "./revision-processor";
 import { InProcessProcessingDispatcher } from "./dispatcher";
@@ -73,6 +77,15 @@ export async function dispatchRevisionProcessingIntent(
 ): Promise<void> {
   await initializeCurrentProcessingDispatcher();
   await dispatcher!.dispatch(intent);
+}
+
+export function triggerRevisionProcessingIntent(intent: ProcessingIntentContract): void {
+  void dispatchRevisionProcessingIntent(intent).catch((error: unknown) => {
+    logger.error(
+      { error, processingIntentId: intent.id },
+      "Failed to wake revision processing dispatcher"
+    );
+  });
 }
 
 export function resetCurrentProcessingDispatcher(): void {

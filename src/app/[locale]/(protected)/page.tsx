@@ -35,10 +35,12 @@ function readAdvancedFilters(searchParams: Record<string, string | string[] | un
 }
 
 export default async function HomePage({ searchParams }: HomePageProps): Promise<ReactNode> {
-  const session = await auth();
-  const locale = await getLocale();
-  const t = await getTranslations("HomePage");
-  const resolvedSearchParams = await searchParams;
+  const [session, locale, t, resolvedSearchParams] = await Promise.all([
+    auth(),
+    getLocale(),
+    getTranslations("HomePage"),
+    searchParams,
+  ]);
 
   if (session?.user?.id == null) {
     redirect({ href: "/login", locale });

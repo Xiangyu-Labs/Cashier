@@ -147,15 +147,19 @@ describe("source-document-queries", () => {
       })
       .returning();
     const docId = requireDefined(docs[0], "source document").id;
+    await activateTestSourceDocumentProjection(db, docId);
 
     const existing = await getSourceDocumentFullQuery(ledgerId, docId);
-    expect(existing).toEqual({
+    expect(existing).toMatchObject({
       id: docId,
       text: "full payload",
-      imageUrls: ["/api/uploads/a.jpg"],
+      files: [
+        expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" }),
+      ],
       status: "queued",
       createdAt: expect.any(String),
     });
+    expect(existing).not.toHaveProperty("imageUrls");
 
     await expect(getSourceDocumentFullQuery(ledgerId, crypto.randomUUID())).rejects.toThrow(
       NotFoundError

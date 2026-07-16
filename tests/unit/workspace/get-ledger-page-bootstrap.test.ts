@@ -41,10 +41,9 @@ function createAuthorizedLedger() {
     ledger: {
       id: "ledger-1",
       userId: "user-1",
-      metadata: { settings: { mainCurrency: "USD" } },
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-      deletedAt: null,
+      settings: { mainCurrency: "USD" },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     },
   };
 }

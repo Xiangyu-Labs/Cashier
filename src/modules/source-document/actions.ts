@@ -15,4 +15,7 @@ export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
 export { createSourceDocumentFromCredentialAction } from "./server-actions/create-from-credential";
 export { retrySourceDocumentAction } from "./server-actions/retry";
-export { canAccessSourceDocumentUpload } from "./server-actions/uploads";
+export {
+  createSourceDocumentUploadPlanAction,
+  finalizeSourceDocumentUploadAction,
+} from "./server-actions/uploads";

@@ -16,7 +16,7 @@ import {
   parseSourceDocumentHandler,
   type ParseSourceDocumentInput,
   type ParseSourceDocumentOutput,
-} from "@/modules/source-document/application/tasks/parse-source-document";
+} from "@/application/adapters/in-process/parse-source-document-task";
 import type { ParsePipelineResult } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, ledgerEntries, entryCategories } from "@/persistence";

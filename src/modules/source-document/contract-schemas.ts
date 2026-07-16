@@ -47,6 +47,7 @@ export const sourceDocumentIdSchema = uuidSchema;
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z.string().max(10000, "Text too long").optional(),
+  storedFileIds: z.array(uuidSchema).max(10, "Maximum 10 images allowed").optional(),
   images: imagesSchema.optional(),
   originalImages: imagesSchema.optional(),
   entryDate: optionalDateStringSchema,
@@ -57,7 +58,8 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
   (value, ctx) => {
     if (
       (value.text == null || value.text === "") &&
-      (value.images == null || value.images.length === 0)
+      (value.images == null || value.images.length === 0) &&
+      (value.storedFileIds == null || value.storedFileIds.length === 0)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -68,6 +70,28 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
 );
 
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
+
+export const createSourceDocumentUploadPlanInputSchema = z
+  .array(
+    strictObjectSchema({
+      contentType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
+      byteSize: z.number().int().positive().max(MAX_FILE_SIZE),
+      originalFilename: z.string().max(255).nullable(),
+      checksum: z
+        .string()
+        .regex(/^[a-f\d]{64}$/i)
+        .nullable()
+        .optional(),
+    })
+  )
+  .min(1)
+  .max(10);
+
+export const finalizeSourceDocumentUploadInputSchema = strictObjectSchema({
+  uploadSessionId: uuidSchema,
+  finalizationToken: z.string().min(1).max(256),
+  targetIds: z.array(uuidSchema).min(1).max(10),
+});
 
 export const listSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
@@ -131,11 +155,15 @@ export const parseListSourceDocumentsInput = (input: unknown) =>
 
 export type CreateSourceDocumentInputContract = z.infer<typeof createSourceDocumentInputSchema>;
 export type RetrySourceDocumentInputContract = z.infer<typeof retrySourceDocumentInputSchema>;
+export type CreateSourceDocumentUploadPlanInput = z.infer<
+  typeof createSourceDocumentUploadPlanInputSchema
+>;
+export type FinalizeSourceDocumentUploadInput = z.infer<
+  typeof finalizeSourceDocumentUploadInputSchema
+>;
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
 export type ListSourceDocumentsValidatedInput = z.infer<typeof listSourceDocumentsInputSchema>;
 export type ListSourceDocumentCollectionInput = z.input<typeof sourceDocumentCollectionInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;
-
-

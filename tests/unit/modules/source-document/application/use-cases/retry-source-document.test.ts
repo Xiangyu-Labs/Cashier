@@ -1,328 +1,93 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const {
-  cancelActiveSourceDocumentTaskRunsMock,
-  findFirstMock,
-  getSourceDocumentTaskContextMock,
-  insertMock,
-  insertValuesMock,
-  listRelatedSourceDocumentTaskRunsMock,
-  loggerDebugMock,
-  prepareSourceDocumentTaskMock,
-  processImagesMock,
-  rehomeLocalUploadUrlsMock,
-  softDeleteSourceDocumentsAndTaskRunsMock,
-  transactionMock,
-} = vi.hoisted(() => {
-  const insertValuesMock = vi.fn();
-  const insertMock = vi.fn(() => ({ values: insertValuesMock }));
-  const transactionMock = vi.fn((callback: (tx: object) => void) => callback({}));
-
-  return {
-    cancelActiveSourceDocumentTaskRunsMock: vi.fn(),
-    findFirstMock: vi.fn(),
-    getSourceDocumentTaskContextMock: vi.fn(),
-    insertMock,
-    insertValuesMock,
-    listRelatedSourceDocumentTaskRunsMock: vi.fn(),
-    loggerDebugMock: vi.fn(),
-    prepareSourceDocumentTaskMock: vi.fn(),
-    processImagesMock: vi.fn(),
-    rehomeLocalUploadUrlsMock: vi.fn(),
-    softDeleteSourceDocumentsAndTaskRunsMock: vi.fn(),
-    transactionMock,
-  };
-});
-
-vi.mock("@/lib/db", () => ({
-  db: {
-    query: {
-      sourceDocuments: {
-        findFirst: findFirstMock,
-      },
-    },
-    insert: insertMock,
-    transaction: transactionMock,
-  },
-}));
-
-vi.mock("@/modules/source-document/application/source-document-state", () => ({
-  whereSourceDocumentNotDeletedId: vi.fn((ledgerId: string, sourceDocumentId: string) => ({
-    whereSourceDocumentNotDeletedId: [ledgerId, sourceDocumentId],
-  })),
-}));
-
-vi.mock("@/modules/source-document/application/services/source-document-lifecycle", () => ({
-  listRelatedSourceDocumentTaskRuns: listRelatedSourceDocumentTaskRunsMock,
-  cancelActiveSourceDocumentTaskRuns: cancelActiveSourceDocumentTaskRunsMock,
-  softDeleteSourceDocumentsAndTaskRuns: softDeleteSourceDocumentsAndTaskRunsMock,
-}));
-
-vi.mock("@/lib/logger", () => ({
-  logger: {
-    debug: loggerDebugMock,
-    error: vi.fn(),
-  },
-}));
-
-vi.mock("@/modules/source-document/application/services/processing", () => ({
-  getSourceDocumentTaskContext: getSourceDocumentTaskContextMock,
-  prepareSourceDocumentTask: prepareSourceDocumentTaskMock,
-  processImages: processImagesMock,
-}));
-
-vi.mock("@/modules/source-document/application/services/rehome-local-upload-urls", () => ({
-  rehomeLocalUploadUrls: rehomeLocalUploadUrlsMock,
-}));
-
 import { NotFoundError } from "@/lib/errors";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 
+const ledger = {
+  id: "ledger-1",
+  userId: "user-1",
+  metadata: {},
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  deletedAt: null,
+};
+
 describe("retrySourceDocument", () => {
+  const createPendingWithIntent = vi.fn();
+  const triggerProcessing = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
-    listRelatedSourceDocumentTaskRunsMock.mockResolvedValue([]);
-    cancelActiveSourceDocumentTaskRunsMock.mockResolvedValue(undefined);
-    getSourceDocumentTaskContextMock.mockResolvedValue({
-      categories: [{ id: "cat-1", name: "Food" }],
-      settings: { aiLanguage: "en", settings: {} },
+    createPendingWithIntent.mockResolvedValue({
+      document: { id: "doc-1" },
+      revision: { id: "revision-2" },
+      intent: { id: "intent-2" },
     });
   });
 
-  it("throws when the source document does not exist", async () => {
-    findFirstMock.mockResolvedValueOnce(null);
-
+  it("propagates missing-document failures without dispatch", async () => {
+    createPendingWithIntent.mockRejectedValueOnce(new NotFoundError("Source document"));
     await expect(
-      retrySourceDocument({
-        ledgerId: "ledger-1",
-        ledger: {
-          id: "ledger-1",
-          userId: "user-1",
-          metadata: {},
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
-        },
-        sourceDocumentId: "doc-1",
-      })
+      retrySourceDocument(
+        { ledgerId: ledger.id, ledger, sourceDocumentId: "missing" },
+        { submissions: { createPendingWithIntent }, triggerProcessing }
+      )
     ).rejects.toThrow(NotFoundError);
-
-    expect(findFirstMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { whereSourceDocumentNotDeletedId: ["ledger-1", "doc-1"] },
-      })
-    );
+    expect(triggerProcessing).not.toHaveBeenCalled();
   });
 
-  it("reuses existing originals, falls back to existing imageUrls, cancels related tasks, and omits null text", async () => {
-    findFirstMock.mockResolvedValueOnce({
-      id: "doc-1",
-      ledgerId: "ledger-1",
-      entryDate: "2026-03-20",
-      text: null,
-      status: "failed",
-      deletedAt: null,
-      imageUrls: ["/api/uploads/old.jpg"],
-      metadata: {
-        originalImageUrls: ["/api/uploads/original.jpg"],
-      },
-    });
-    listRelatedSourceDocumentTaskRunsMock.mockResolvedValueOnce([{ id: "task-1" }]);
-    rehomeLocalUploadUrlsMock
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current.webp"])
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original.webp"]);
-
-    await retrySourceDocument({
-      ledgerId: "ledger-1",
-      ledger: {
-        id: "ledger-1",
-        userId: "user-1",
-        metadata: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      },
+  it("creates a new revision under the stable document identity and inherits evidence", async () => {
+    const result = await retrySourceDocument(
+      { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1" },
+      { submissions: { createPendingWithIntent }, triggerProcessing }
+    );
+    expect(createPendingWithIntent).toHaveBeenCalledWith({
+      ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
-      input: {
-        originalImages: [{ data: "new-original", mimeType: "image/jpeg" }],
-      },
+      inheritEvidence: true,
     });
-
-    expect(processImagesMock).not.toHaveBeenCalled();
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ledgerId: "ledger-1",
-        imageUrls: ["/api/uploads/ledger-1/new-doc/current.webp"],
-        metadata: {
-          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original.webp"],
-        },
-      })
-    );
-    expect(listRelatedSourceDocumentTaskRunsMock).toHaveBeenCalledWith("ledger-1", ["doc-1"]);
-    expect(cancelActiveSourceDocumentTaskRunsMock).toHaveBeenCalledWith(["task-1"]);
-    expect(transactionMock).toHaveBeenCalledTimes(1);
-    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
-      {},
-      "ledger-1",
-      ["doc-1"],
-      ["task-1"]
-    );
-    expect(prepareSourceDocumentTaskMock).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        text: expect.anything(),
-      })
-    );
+    expect(triggerProcessing).toHaveBeenCalledWith({ id: "intent-2" });
+    expect(result).toEqual({
+      sourceDocumentId: "doc-1",
+      previousSourceDocumentId: "doc-1",
+      status: "queued",
+    });
   });
 
-  it("rehomes local urls returned from processImages when retry input provides images and originalImages", async () => {
-    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
-    findFirstMock.mockResolvedValueOnce({
-      id: "doc-1",
-      ledgerId: "ledger-1",
-      entryDate: "2026-03-20",
-      text: "old text",
-      status: "anomaly",
-      deletedAt: null,
-      imageUrls: ["/api/uploads/ledger-1/doc-1/fallback.webp"],
-      metadata: {},
-    });
-    processImagesMock
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/current-from-input.webp"])
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/doc-1/original-from-input.webp"]);
-    rehomeLocalUploadUrlsMock
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/current-from-input.webp"])
-      .mockResolvedValueOnce(["/api/uploads/ledger-1/new-doc/original-from-input.webp"]);
-
-    try {
-      await retrySourceDocument({
-        ledgerId: "ledger-1",
-        ledger: {
-          id: "ledger-1",
-          userId: "user-1",
-          metadata: {},
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
-        },
+  it("creates immutable edit-retry evidence from finalized file identities", async () => {
+    await retrySourceDocument(
+      {
+        ledgerId: ledger.id,
+        ledger,
         sourceDocumentId: "doc-1",
         input: {
-          text: "retry text",
-          images: [{ data: "current-input", mimeType: "image/webp" }],
-          originalImages: [{ data: "original-input", mimeType: "image/webp" }],
+          text: "corrected",
+          entryDate: "2026-07-16",
+          storedFileIds: ["00000000-0000-4000-8000-000000000001"],
         },
-      });
-    } finally {
-      randomUUIDMock.mockRestore();
-    }
-
-    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(1, {
-      ledgerId: "ledger-1",
-      sourceDocumentId: "new-doc",
-      imageUrls: ["/api/uploads/ledger-1/doc-1/current-from-input.webp"],
-    });
-    expect(rehomeLocalUploadUrlsMock).toHaveBeenNthCalledWith(2, {
-      ledgerId: "ledger-1",
-      sourceDocumentId: "new-doc",
-      imageUrls: ["/api/uploads/ledger-1/doc-1/original-from-input.webp"],
-    });
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        imageUrls: ["/api/uploads/ledger-1/new-doc/current-from-input.webp"],
-        metadata: {
-          originalImageUrls: ["/api/uploads/ledger-1/new-doc/original-from-input.webp"],
-        },
-      })
+      },
+      { submissions: { createPendingWithIntent }, triggerProcessing }
     );
-    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
-      {},
-      "ledger-1",
-      ["doc-1"],
-      []
-    );
+    expect(createPendingWithIntent).toHaveBeenCalledWith({
+      ledgerId: ledger.id,
+      sourceDocumentId: "doc-1",
+      inheritEvidence: true,
+      submittedText: "corrected",
+      entryDate: "2026-07-16",
+      storedFileIds: ["00000000-0000-4000-8000-000000000001"],
+    });
   });
 
-  it("uses input.entryDate when provided, ignoring existingDocument.entryDate", async () => {
-    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
-    findFirstMock.mockResolvedValueOnce({
-      id: "doc-1",
-      ledgerId: "ledger-1",
-      entryDate: "2026-03-10",
-      text: "t",
-      status: "failed",
-      deletedAt: null,
-      imageUrls: [],
-      metadata: {},
-    });
-    processImagesMock.mockResolvedValueOnce([]);
-    rehomeLocalUploadUrlsMock.mockImplementation(({ imageUrls }: { imageUrls: string[] }) =>
-      Promise.resolve(imageUrls)
-    );
-
-    await retrySourceDocument({
-      ledgerId: "ledger-1",
-      ledger: {
-        id: "ledger-1",
-        userId: "u",
-        metadata: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      },
-      sourceDocumentId: "doc-1",
-      input: { entryDate: "2026-03-22" },
-    });
-
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entryDate: "2026-03-22" })
-    );
-    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
-      {},
-      "ledger-1",
-      ["doc-1"],
-      []
-    );
-    randomUUIDMock.mockRestore();
-  });
-
-  it("falls back to existingDocument.entryDate when input.entryDate not provided", async () => {
-    const randomUUIDMock = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("new-doc");
-    findFirstMock.mockResolvedValueOnce({
-      id: "doc-1",
-      ledgerId: "ledger-1",
-      entryDate: "2026-03-10",
-      text: "t",
-      status: "failed",
-      deletedAt: null,
-      imageUrls: [],
-      metadata: {},
-    });
-    processImagesMock.mockResolvedValueOnce([]);
-    rehomeLocalUploadUrlsMock.mockImplementation(({ imageUrls }: { imageUrls: string[] }) =>
-      Promise.resolve(imageUrls)
-    );
-
-    await retrySourceDocument({
-      ledgerId: "ledger-1",
-      ledger: {
-        id: "ledger-1",
-        userId: "u",
-        metadata: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      },
-      sourceDocumentId: "doc-1",
-    });
-
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entryDate: "2026-03-10" })
-    );
-    expect(softDeleteSourceDocumentsAndTaskRunsMock).toHaveBeenCalledWith(
-      {},
-      "ledger-1",
-      ["doc-1"],
-      []
-    );
-    randomUUIDMock.mockRestore();
+  it("rejects raw image retry payloads", async () => {
+    await expect(
+      retrySourceDocument(
+        {
+          ledgerId: ledger.id,
+          ledger,
+          sourceDocumentId: "doc-1",
+          input: { images: [{ data: "raw", mimeType: "image/jpeg" }] },
+        },
+        { submissions: { createPendingWithIntent }, triggerProcessing }
+      )
+    ).rejects.toThrow("Images must be finalized");
   });
 });

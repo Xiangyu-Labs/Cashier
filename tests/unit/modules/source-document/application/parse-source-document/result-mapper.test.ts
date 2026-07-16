@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TaskCancelledError } from "@/lib/tasks/cancellation";
+import { ProcessingCancelledError } from "@/modules/source-document/application/parse-source-document/contracts";
 import type { ParsePipelineResult } from "@/modules/source-document/application/parse-source-document/pipeline";
 import {
   convertToParsedEntries,
@@ -195,6 +195,6 @@ describe("toParseSourceDocumentOutput", () => {
   it("throws when pipeline reports cancellation", () => {
     const result: ParsePipelineResult = { kind: "cancelled" };
 
-    expect(() => toParseSourceDocumentOutput(result)).toThrow(TaskCancelledError);
+    expect(() => toParseSourceDocumentOutput(result)).toThrow(ProcessingCancelledError);
   });
 });

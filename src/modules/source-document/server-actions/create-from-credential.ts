@@ -10,6 +10,8 @@ import { createSourceDocumentFromCredential } from "../application/use-cases/cre
 
 export async function createSourceDocumentFromCredentialAction(input: {
   credentialId: string;
+  ledgerId: string;
+  idempotencyKey?: string;
   payload: unknown;
 }): Promise<CreateSourceDocumentResponseDto> {
   const parsed = createSourceDocumentInputSchema.safeParse(input.payload);
@@ -19,6 +21,8 @@ export async function createSourceDocumentFromCredentialAction(input: {
 
   return createSourceDocumentFromCredential({
     credentialId: input.credentialId,
+    ledgerId: input.ledgerId,
+    ...(input.idempotencyKey == null ? {} : { idempotencyKey: input.idempotencyKey }),
     payload: parsed.data as CreateSourceDocumentInput,
   });
 }

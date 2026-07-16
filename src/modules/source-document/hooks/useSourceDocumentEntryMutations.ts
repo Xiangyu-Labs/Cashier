@@ -1,12 +1,9 @@
 "use client";
-import { type QueryClient } from "@tanstack/react-query";
 import {
   batchUpdateLedgerEntriesAction,
   deleteLedgerEntryAction,
   updateLedgerEntryAction,
 } from "@/modules/ledger/actions";
-import { queryKeys } from "@/lib/query-keys";
-import { fireAndForget } from "@/lib/safe-async";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
 import type { EntryEditData } from "@/modules/source-document/types";
@@ -25,12 +22,6 @@ interface UseSourceDocumentEntryMutationsOptions {
   ledgerId: string | undefined;
   sourceDocumentAndEntriesPredicates: QueryPredicate[] | null;
   sourceDocumentEntriesSummaryPredicates: QueryPredicate[] | null;
-}
-
-function invalidateDetail(queryClient: QueryClient, id: string) {
-  fireAndForget(queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(id) }), {
-    context: "SourceDocumentDetailWrapper",
-  });
 }
 
 export function useSourceDocumentEntryMutations({
@@ -68,7 +59,6 @@ export function useSourceDocumentEntryMutations({
       updateSingleEntryInCaches(queryClient, id, ledgerId, entryId, data);
       return { snapshots };
     },
-    onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
   });
 
   const batchUpdateMutation = useLedgerMutation<
@@ -91,7 +81,6 @@ export function useSourceDocumentEntryMutations({
       updateBatchEntriesInCaches(queryClient, id, ledgerId, ids, data);
       return { snapshots };
     },
-    onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
   });
 
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {
@@ -112,7 +101,6 @@ export function useSourceDocumentEntryMutations({
       removeSingleEntryFromCaches(queryClient, id, ledgerId, entryId);
       return { snapshots };
     },
-    onSettledExtra: (queryClient) => invalidateDetail(queryClient, id),
   });
 
   return {

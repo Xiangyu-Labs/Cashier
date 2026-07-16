@@ -58,7 +58,6 @@ export type SourceDocumentReferenceDto = {
   ledgerId: string;
   title: string | null;
   text: string | null;
-  imageUrls: string[];
   status: SourceDocumentReferenceStatus;
   type: SourceDocumentReferenceType;
   anomalyReason: string | null;

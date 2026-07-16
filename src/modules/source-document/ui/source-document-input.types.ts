@@ -5,7 +5,7 @@ export interface SourceDocumentInputProps {
   sourceDocumentId?: string;
   initialData?: {
     text?: string;
-    images?: Array<{ data: string; mimeType: string }>;
+    images?: Array<{ data: string; mimeType: string; storedFileId?: string }>;
     entryDate?: string;
   };
 }

@@ -1,29 +1,31 @@
 import type { SourceDocumentInputInitialData } from "@/modules/source-document/hooks/source-document-input-controller.types";
+import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
 
 export interface RetrySeedSourceDocument {
   id: string;
   text?: string | null;
-  imageUrls?: string[];
+  files?: SourceDocumentStoredFileDto[];
   entryDate?: string | null;
   hasImages?: boolean;
 }
 
 export interface RetrySeedFullData {
   text: string | null;
-  imageUrls: string[];
+  files: SourceDocumentStoredFileDto[];
 }
 
 export function buildSourceDocumentRetrySeed(
   sourceDocument: RetrySeedSourceDocument,
   fullData?: RetrySeedFullData
 ): SourceDocumentInputInitialData {
-  const imageUrls = fullData?.imageUrls ?? sourceDocument.imageUrls ?? [];
+  const files = fullData?.files ?? sourceDocument.files ?? [];
   const text = fullData?.text ?? sourceDocument.text ?? undefined;
 
   return {
-    images: imageUrls.map((url) => ({
-      data: url,
-      mimeType: "image/jpeg",
+    images: files.map((file) => ({
+      data: "",
+      mimeType: file.contentType,
+      storedFileId: file.id,
     })),
     ...(text != null ? { text } : {}),
     ...(sourceDocument.entryDate != null ? { entryDate: sourceDocument.entryDate } : {}),

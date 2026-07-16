@@ -1,4 +1,15 @@
 import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
+import type {
+  ApplicationErrorCode,
+  SupportedSourceDocumentAction,
+} from "@/application/contracts";
+
+export interface SourceDocumentStoredFileDto {
+  id: string;
+  contentType: string;
+  byteSize: number;
+  originalFilename: string | null;
+}
 
 export type SourceDocumentEntryCategoryDto = {
   id: string;
@@ -35,7 +46,7 @@ export interface SourceDocumentDto {
   ledgerId: string;
   title: string | null;
   text: string | null;
-  imageUrls: string[];
+  files: SourceDocumentStoredFileDto[];
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
   anomalyReason: string | null;
@@ -46,6 +57,8 @@ export interface SourceDocumentDto {
   deletedAt: string | null;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
+  supportedActions: SupportedSourceDocumentAction[];
+  errorCode: ApplicationErrorCode | null;
 }
 
 export interface SourceDocumentListItemDto {
@@ -53,7 +66,7 @@ export interface SourceDocumentListItemDto {
   ledgerId: string;
   title: string | null;
   text: null;
-  imageUrls: [];
+  files: [];
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
   anomalyReason: string | null;
@@ -64,6 +77,8 @@ export interface SourceDocumentListItemDto {
   deletedAt: string | null;
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages: boolean;
+  supportedActions: SupportedSourceDocumentAction[];
+  errorCode: ApplicationErrorCode | null;
 }
 
 export interface SourceDocumentLightDto {
@@ -71,16 +86,15 @@ export interface SourceDocumentLightDto {
   ledgerId: string;
   title: string | null;
   text: string | null;
-  imageUrls: string[];
+  files: SourceDocumentStoredFileDto[];
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
   anomalyReason: string | null;
   entryDate: string | null;
-  metadata: Record<string, unknown>;
   createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
   hasImages: boolean;
+  supportedActions: SupportedSourceDocumentAction[];
+  errorCode: ApplicationErrorCode | null;
 }
 
 export interface SourceDocumentGroupDto {
@@ -102,7 +116,7 @@ export interface SourceDocumentCollectionDto {
 export interface SourceDocumentFullDto {
   id: string;
   text: string | null;
-  imageUrls: string[];
+  files: SourceDocumentStoredFileDto[];
   status: SourceDocumentStatusType;
   createdAt: string;
 }

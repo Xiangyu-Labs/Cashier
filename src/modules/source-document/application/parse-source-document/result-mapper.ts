@@ -1,6 +1,5 @@
-import { TaskCancelledError } from "@/lib/tasks/cancellation";
 import type { ParsedLedgerEntry } from "@/lib/ai/types";
-import type { ParseSourceDocumentOutput } from "../tasks/parse-source-document";
+import { ProcessingCancelledError, type ParseSourceDocumentOutput } from "./contracts";
 import type { ParsePipelineResult } from "./pipeline";
 import type { NormalizedLedgerEntry, NormalizedOrderAdjustment } from "./parser-schema";
 
@@ -100,6 +99,6 @@ export function toParseSourceDocumentOutput(
         verificationStatus: "anomaly",
       };
     case "cancelled":
-      throw new TaskCancelledError();
+      throw new ProcessingCancelledError();
   }
 }

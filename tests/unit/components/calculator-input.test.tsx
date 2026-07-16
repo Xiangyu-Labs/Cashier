@@ -12,7 +12,7 @@ describe("CalculatorInput", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "0.00" }));
+    fireEvent.click(screen.getByRole("button", { name: "Amount" }));
     const input = screen.getByRole("textbox");
 
     expect(input.className).toContain("font-mono");

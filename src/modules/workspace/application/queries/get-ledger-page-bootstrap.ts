@@ -38,10 +38,10 @@ export async function getLedgerPageBootstrap(input: {
     ledgerDto = {
       id: ledger.id,
       userId: ledger.userId,
-      metadata: ledger.metadata,
-      createdAt: ledger.createdAt.toISOString(),
-      updatedAt: ledger.updatedAt.toISOString(),
-      deletedAt: ledger.deletedAt?.toISOString() ?? null,
+      metadata: { settings: ledger.settings },
+      createdAt: ledger.createdAt,
+      updatedAt: ledger.updatedAt,
+      deletedAt: null,
     };
   } catch (error) {
     if (error instanceof NotFoundError || error instanceof UnauthorizedError) {

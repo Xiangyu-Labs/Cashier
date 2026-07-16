@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { localStoredFileAdapter } from "@/application/adapters/local";
+import { currentApplication } from "@/application/current";
 import { requireAuth } from "@/lib/auth-actions";
 import { UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -13,7 +13,7 @@ export async function GET(
   try {
     const userId = await requireAuth();
     const { fileId } = await params;
-    const read = await localStoredFileAdapter.readAuthorizedForUser(userId, fileId);
+    const read = await currentApplication.storedFiles.readAuthorizedForUser(userId, fileId);
     if (read == null) return new NextResponse("Not Found", { status: 404 });
     return new NextResponse(Buffer.from(read.body), {
       status: 200,
