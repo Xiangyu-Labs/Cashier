@@ -1,11 +1,13 @@
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { ValidationError } from "@/lib/errors";
 import { omitUndefinedProperties } from "@/lib/validation";
 import type { SourceDocumentSubmissionPort } from "@/application/contracts";
 import { toSourceDocumentSubmissionContract } from "@/application/contracts";
 import { currentApplication } from "@/application/current";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { parseCreateSourceDocumentInput } from "@/modules/source-document/contract-schemas";
+import { processImage as processImageFn } from "@/lib/storage/image-processing";
+import { prepareInlineImages } from "./prepare-inline-images";
+import type { InlineImageUploader } from "./prepare-inline-images";
 
 export interface CreateAndQueueSourceDocumentInput {
   ledgerId: string;
@@ -21,11 +23,15 @@ export interface CreateAndQueueSourceDocumentInput {
 
 interface CreateAndQueueSourceDocumentDependencies {
   submissions: SourceDocumentSubmissionPort;
+  storedFiles: InlineImageUploader;
+  processImage: typeof processImageFn;
   triggerProcessing: (intent: Parameters<typeof currentApplication.triggerRevisionProcessingIntent>[0]) => void;
 }
 
 const defaultDependencies: CreateAndQueueSourceDocumentDependencies = {
   submissions: currentApplication.sourceDocumentSubmissions,
+  storedFiles: currentApplication.storedFiles,
+  processImage: processImageFn,
   triggerProcessing: currentApplication.triggerRevisionProcessingIntent,
 };
 
@@ -48,14 +54,38 @@ export async function createAndQueueSourceDocument(
       timezone: input.timezone,
     })
   );
-  if ((validated.images?.length ?? 0) > 0 || (validated.originalImages?.length ?? 0) > 0) {
-    throw new ValidationError("Images must be finalized before source-document submission");
-  }
+
+  // Process inline images - decode, process, upload, finalize
+  const imagesToProcess = validated.images ?? [];
+  const originalImagesToProcess = validated.originalImages ?? [];
+  const processedImageIds = imagesToProcess.length > 0
+    ? await prepareInlineImages(
+        imagesToProcess,
+        dependencies.storedFiles,
+        dependencies.processImage,
+        input.ledgerId
+      )
+    : [];
+  const processedOriginalImageIds = originalImagesToProcess.length > 0
+    ? await prepareInlineImages(
+        originalImagesToProcess,
+        dependencies.storedFiles,
+        dependencies.processImage,
+        input.ledgerId
+      )
+    : [];
+
+  // Combine in input order: existing storedFileIds, then processed images, then processed originals
+  const allStoredFileIds = [
+    ...(validated.storedFileIds ?? []),
+    ...processedImageIds,
+    ...processedOriginalImageIds,
+  ];
 
   const pending = await dependencies.submissions.createPendingWithIntent({
     ledgerId: input.ledgerId,
     submittedText: validated.text ?? null,
-    storedFileIds: validated.storedFileIds ?? [],
+    storedFileIds: allStoredFileIds,
     entryDate: resolveEntryDate(validated.entryDate, validated.timezone),
   });
   dependencies.triggerProcessing(pending.intent);

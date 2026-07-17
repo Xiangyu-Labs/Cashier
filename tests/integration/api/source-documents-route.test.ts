@@ -7,9 +7,11 @@ import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-set
 import {
   ledgers,
   processingOutbox,
+  revisionFiles,
   serviceCredentials,
   sourceDocumentRevisions,
   sourceDocuments,
+  storedFiles,
 } from "@/persistence";
 
 vi.mock("@/lib/processing", () => ({
@@ -39,6 +41,47 @@ vi.mock("@/application/adapters/in-process/parse-source-document-task", () => ({
   },
 }));
 
+// Hoisted shared memory store so the beforeEach and vi.mock factory share the same Map
+const mockR2 = vi.hoisted(() => {
+  const files = new Map<string, Buffer>();
+  return {
+    files,
+    getStorage: () => ({
+      upload: async (key: string, data: Buffer) => {
+        files.set(key, Buffer.from(data));
+      },
+      download: async (key: string) => {
+        const data = files.get(key);
+        if (data == null) throw new Error("File not found");
+        return Buffer.from(data);
+      },
+      delete: async (key: string) => {
+        files.delete(key);
+        return { success: true };
+      },
+    }),
+    R2StorageProvider: class {
+      async upload(key: string, data: Buffer) {
+        files.set(key, Buffer.from(data));
+      }
+      async download(key: string) {
+        const data = files.get(key);
+        if (data == null) throw new Error("File not found");
+        return Buffer.from(data);
+      }
+      async delete(key: string) {
+        files.delete(key);
+        return { success: true };
+      }
+    },
+  };
+});
+
+vi.mock("@/lib/storage/r2", () => ({
+  R2StorageProvider: mockR2.R2StorageProvider,
+  getR2Storage: mockR2.getStorage,
+}));
+
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
   if (first === undefined) {
@@ -53,6 +96,7 @@ describe("API v1 source-documents route", () => {
 
   beforeEach(async () => {
     const db = getTestDb();
+    mockR2.files.clear();
 
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
     const setup = await createTestUserWithLedger(db, undefined, "Route Test Ledger", TEST_USER_ID);
@@ -128,5 +172,145 @@ describe("API v1 source-documents route", () => {
     expect(documents).toHaveLength(1);
     expect(revisions).toHaveLength(1);
     expect(intents).toHaveLength(1);
+  });
+
+  describe("inline image ingestion", () => {
+    it("returns 201 with a valid inline base64 image and creates a finalized stored file", async () => {
+      const fakeJpegBase64 = Buffer.from("fake-jpeg-bytes").toString("base64");
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+        body: JSON.stringify({
+          text: "Receipt with inline image",
+          images: [{ data: fakeJpegBase64, mimeType: "image/jpeg" }],
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(201);
+
+      const data = await response.json();
+      expect(data.revisionState).toBe("queued");
+
+      // Verify the revision has a linked stored file
+      const db = getTestDb();
+      const revisionFilesRows = await db
+        .select({
+          storedFileId: revisionFiles.storedFileId,
+          position: revisionFiles.position,
+        })
+        .from(revisionFiles)
+        .innerJoin(
+          sourceDocumentRevisions,
+          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
+        )
+        .where(
+          eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId)
+        );
+      expect(revisionFilesRows).toHaveLength(1);
+      expect(revisionFilesRows[0]!.position).toBe(0);
+
+      // Verify the stored file is finalized with provider r2
+      const storedFile = await db
+        .select()
+        .from(storedFiles)
+        .where(eq(storedFiles.id, revisionFilesRows[0]!.storedFileId))
+        .then((rows) => rows[0]);
+      expect(storedFile).not.toBeUndefined();
+      expect(storedFile!.storageProvider).toBe("r2");
+      expect(storedFile!.finalizedAt).not.toBeNull();
+
+      // Verify one processing outbox record exists
+      const intents = await db
+        .select({ id: processingOutbox.id })
+        .from(processingOutbox)
+        .where(eq(processingOutbox.revisionId, data.revisionId));
+      expect(intents).toHaveLength(1);
+    });
+
+    it("returns 201 with a valid data URL image", async () => {
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+        body: JSON.stringify({
+          text: "Receipt with data URL image",
+          images: [{ data: "data:image/png;base64,iVBORw0KGgo=", mimeType: "image/png" }],
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(201);
+
+      const data = await response.json();
+      expect(data.revisionState).toBe("queued");
+
+      const db = getTestDb();
+      const revisionFilesRows = await db
+        .select()
+        .from(revisionFiles)
+        .innerJoin(
+          sourceDocumentRevisions,
+          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
+        )
+        .where(
+          eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId)
+        );
+      // Should have at least one file linked
+      expect(revisionFilesRows.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("rejects invalid base64 with 400", async () => {
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+        body: JSON.stringify({
+          text: "Bad image",
+          images: [{ data: "!!!invalid-base64!!!", mimeType: "image/jpeg" }],
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error).toBeDefined();
+    });
+
+    it("rejects data URL MIME mismatch with 400", async () => {
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+        body: JSON.stringify({
+          text: "MIME mismatch",
+          images: [{ data: "data:image/png;base64,iVBORw0KGgo=", mimeType: "image/jpeg" }],
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects unsupported MIME type with 400", async () => {
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${credentialKey}`,
+        },
+        body: JSON.stringify({
+          text: "Unsupported MIME",
+          images: [{ data: "dGVzdA==", mimeType: "image/tiff" }],
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
   });
 });
