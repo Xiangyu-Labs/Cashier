@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type {
   AuthorizedFileReadContract,
   LedgerId,
@@ -304,7 +304,7 @@ export class StoredFileAdapter implements StoredFilePort {
       throw new ConflictError("Upload plan has expired");
     }
 
-    const files = await db.transaction(async (tx) => {
+    const { files, targets } = await db.transaction(async (tx) => {
       const targets = await tx
         .select()
         .from(uploadSessionFiles)
@@ -314,7 +314,8 @@ export class StoredFileAdapter implements StoredFilePort {
             eq(uploadSessionFiles.uploadSessionId, session.id),
             inArray(uploadSessionFiles.targetId, targetIds)
           )
-        );
+        )
+        .orderBy(asc(uploadSessionFiles.position));
       if (
         targets.length !== targetIds.length ||
         targets.some(
@@ -348,14 +349,20 @@ export class StoredFileAdapter implements StoredFilePort {
         .update(uploadSessions)
         .set({ status: "finalized", finalizedAt: now })
         .where(eq(uploadSessions.id, session.id));
-      return await tx
+      const files = await tx
         .select()
         .from(storedFiles)
         .where(
           and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
         );
+      return { files, targets };
     });
-    return files.map(mapStoredFile);
+    // Preserve position order from the targets query, ensuring files are returned
+    // in request order regardless of database default ordering
+    const positionOrder = new Map(targets.map((t, i) => [t.storedFileId, i]));
+    return files
+      .sort((a, b) => (positionOrder.get(a.id) ?? 0) - (positionOrder.get(b.id) ?? 0))
+      .map(mapStoredFile);
   }
 
   async readAuthorized(

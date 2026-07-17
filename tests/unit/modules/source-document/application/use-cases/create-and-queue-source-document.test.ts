@@ -214,7 +214,6 @@ describe("createAndQueueSourceDocument", () => {
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
         targets: [
           { id: "target-img-1", method: "PUT" as const, url: "/upload/img-1", requiredHeaders: {} },
-          { id: "target-oi-1", method: "PUT" as const, url: "/upload/oi-1", requiredHeaders: {} },
         ],
         finalizationToken: "token-3",
         maxFiles: 10,
@@ -226,19 +225,11 @@ describe("createAndQueueSourceDocument", () => {
           id: "session-img",
           targets: [{ id: "target-img-1", method: "PUT" as const, url: "/upload/img-1", requiredHeaders: {} }],
           finalizationToken: "token-img",
-        })
-        .mockResolvedValueOnce({
-          ...uploadPlan,
-          id: "session-oi",
-          targets: [{ id: "target-oi-1", method: "PUT" as const, url: "/upload/oi-1", requiredHeaders: {} }],
-          finalizationToken: "token-oi",
         });
       uploadTarget
-        .mockResolvedValueOnce({ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() })
-        .mockResolvedValueOnce({ id: "stored-oi-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
+        .mockResolvedValueOnce({ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
       finalizeUpload
-        .mockResolvedValueOnce([{ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }])
-        .mockResolvedValueOnce([{ id: "stored-oi-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+        .mockResolvedValueOnce([{ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
 
       await createAndQueueSourceDocument(
         {
@@ -247,7 +238,6 @@ describe("createAndQueueSourceDocument", () => {
           text: "Mixed",
           storedFileIds: [existingFileId],
           images: [{ data: Buffer.from("img-data").toString("base64"), mimeType: "image/jpeg" }],
-          originalImages: [{ data: Buffer.from("oi-data").toString("base64"), mimeType: "image/jpeg" }],
         },
         {
           submissions: { createPendingWithIntent },
@@ -259,9 +249,53 @@ describe("createAndQueueSourceDocument", () => {
 
       expect(createPendingWithIntent).toHaveBeenCalledWith(
         expect.objectContaining({
-          storedFileIds: ["00000000-0000-4000-8000-000000000001", "stored-img-1", "stored-oi-1"],
+          storedFileIds: ["00000000-0000-4000-8000-000000000001", "stored-img-1"],
         })
       );
+    });
+
+    it("rejects originalImages before creating any upload plan or durable state", async () => {
+      await expect(
+        createAndQueueSourceDocument(
+          {
+            ledgerId: ledger.id,
+            ledger,
+            text: "With original images",
+            images: [{ data: Buffer.from("img-data").toString("base64"), mimeType: "image/jpeg" }],
+            originalImages: [{ data: Buffer.from("oi-data").toString("base64"), mimeType: "image/jpeg" }],
+          },
+          {
+            submissions: { createPendingWithIntent },
+            storedFiles: mockStoredFiles,
+            processImage,
+            triggerProcessing,
+          }
+        )
+      ).rejects.toThrow(ValidationError);
+      expect(createUploadPlan).not.toHaveBeenCalled();
+      expect(createPendingWithIntent).not.toHaveBeenCalled();
+    });
+
+    it("rejects decoded image data exceeding 10 MB before creating any upload plan or durable state", async () => {
+      const oversizedBase64 = Buffer.alloc(10 * 1024 * 1024 + 1, "a").toString("base64");
+      await expect(
+        createAndQueueSourceDocument(
+          {
+            ledgerId: ledger.id,
+            ledger,
+            text: "Oversized image",
+            images: [{ data: oversizedBase64, mimeType: "image/jpeg" }],
+          },
+          {
+            submissions: { createPendingWithIntent },
+            storedFiles: mockStoredFiles,
+            processImage,
+            triggerProcessing,
+          }
+        )
+      ).rejects.toThrow(ValidationError);
+      expect(createUploadPlan).not.toHaveBeenCalled();
+      expect(createPendingWithIntent).not.toHaveBeenCalled();
     });
 
     it("passes no raw image data to createPendingWithIntent", async () => {

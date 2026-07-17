@@ -1,3 +1,4 @@
+import { ValidationError } from "@/lib/errors";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { omitUndefinedProperties } from "@/lib/validation";
 import type { SourceDocumentSubmissionPort } from "@/application/contracts";
@@ -58,6 +59,11 @@ export async function createAndQueueSourceDocument(
   // Process inline images - decode, process, upload, finalize
   const imagesToProcess = validated.images ?? [];
   const originalImagesToProcess = validated.originalImages ?? [];
+
+  if (originalImagesToProcess.length > 0) {
+    throw new ValidationError("Images must be finalized before source-document submission");
+  }
+
   const processedImageIds = imagesToProcess.length > 0
     ? await prepareInlineImages(
         imagesToProcess,
@@ -66,20 +72,11 @@ export async function createAndQueueSourceDocument(
         input.ledgerId
       )
     : [];
-  const processedOriginalImageIds = originalImagesToProcess.length > 0
-    ? await prepareInlineImages(
-        originalImagesToProcess,
-        dependencies.storedFiles,
-        dependencies.processImage,
-        input.ledgerId
-      )
-    : [];
 
-  // Combine in input order: existing storedFileIds, then processed images, then processed originals
+  // Combine in input order: existing storedFileIds, then processed images
   const allStoredFileIds = [
     ...(validated.storedFileIds ?? []),
     ...processedImageIds,
-    ...processedOriginalImageIds,
   ];
 
   const pending = await dependencies.submissions.createPendingWithIntent({

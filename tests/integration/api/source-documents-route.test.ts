@@ -12,6 +12,8 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
+  uploadSessionFiles,
+  uploadSessions,
 } from "@/persistence";
 
 vi.mock("@/lib/processing", () => ({
@@ -311,6 +313,64 @@ describe("API v1 source-documents route", () => {
 
       const response = await POST(request);
       expect(response.status).toBe(400);
+    });
+
+    it("returns identical 201 responses for concurrent idempotent requests with inline images", async () => {
+      const fakeJpegBase64 = Buffer.from("idempotent-image-bytes").toString("base64");
+      const makeRequest = () =>
+        new NextRequest("http://localhost/api/v1/source-documents", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${credentialKey}`,
+            "Idempotency-Key": "same-image-ingestion-request",
+          },
+          body: JSON.stringify({
+            text: "Concurrent image ingestion",
+            images: [{ data: fakeJpegBase64, mimeType: "image/jpeg" }],
+          }),
+        });
+
+      const [first, second] = await Promise.all([POST(makeRequest()), POST(makeRequest())]);
+      expect(first.status).toBe(201);
+      expect(second.status).toBe(201);
+      const [firstBody, secondBody] = await Promise.all([first.json(), second.json()]);
+      expect(secondBody).toEqual(firstBody);
+
+      const db = getTestDb();
+      const documents = await db
+        .select({ id: sourceDocuments.id })
+        .from(sourceDocuments)
+        .where(eq(sourceDocuments.ledgerId, ledgerId));
+      const revisions = await db
+        .select({ id: sourceDocumentRevisions.id })
+        .from(sourceDocumentRevisions)
+        .where(eq(sourceDocumentRevisions.sourceDocumentId, firstBody.sourceDocumentId));
+      const storedFilesRows = await db
+        .select({ id: storedFiles.id })
+        .from(storedFiles)
+        .where(eq(storedFiles.ledgerId, ledgerId));
+      const revisionFilesRows = await db
+        .select({ id: revisionFiles.id })
+        .from(revisionFiles)
+        .innerJoin(
+          sourceDocumentRevisions,
+          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
+        )
+        .where(eq(sourceDocumentRevisions.sourceDocumentId, firstBody.sourceDocumentId));
+      const sessions = await db
+        .select({ id: uploadSessions.id })
+        .from(uploadSessions)
+        .where(eq(uploadSessions.ledgerId, ledgerId));
+      const intents = await db
+        .select({ id: processingOutbox.id })
+        .from(processingOutbox)
+        .where(eq(processingOutbox.revisionId, firstBody.revisionId));
+      expect(documents).toHaveLength(1);
+      expect(revisions).toHaveLength(1);
+      expect(storedFilesRows).toHaveLength(1);
+      expect(revisionFilesRows).toHaveLength(1);
+      expect(sessions).toHaveLength(1);
+      expect(intents).toHaveLength(1);
     });
   });
 });
