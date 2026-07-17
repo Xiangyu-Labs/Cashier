@@ -11,11 +11,11 @@ export function initializeExchangeRateLedgerRecalculationOrchestration(): void {
     return;
   }
 
-  const unsubscribe = registerExchangeRatesStoredHandler(() => {
+  const unsubscribe = registerExchangeRatesStoredHandler(() =>
     onExchangeRatesStored().catch((err) => {
       logger.error({ err }, "Failed to trigger ledger recalculation after exchange rate update");
-    });
-  });
+    })
+  );
 
   if (unsubscribe == null) {
     return;
@@ -35,15 +35,19 @@ export async function onExchangeRatesStored(): Promise<void> {
       columns: { id: true, metadata: true },
     });
 
-    for (const ledger of allLedgers) {
-      const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
-      recalculateEntriesConvertedAmount(ledger.id, mainCurrency).catch((err) => {
-        logger.error(
-          { err, ledgerId: ledger.id },
-          "Failed to recalculate after exchange rate update"
-        );
-      });
-    }
+    await Promise.all(
+      allLedgers.map(async (ledger) => {
+        const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+        try {
+          await recalculateEntriesConvertedAmount(ledger.id, mainCurrency);
+        } catch (err) {
+          logger.error(
+            { err, ledgerId: ledger.id },
+            "Failed to recalculate after exchange rate update"
+          );
+        }
+      })
+    );
   } catch (err) {
     logger.error({ err }, "Failed to trigger ledger recalculation after exchange rate update");
   }

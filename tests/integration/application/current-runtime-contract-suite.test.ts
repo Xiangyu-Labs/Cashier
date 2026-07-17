@@ -36,16 +36,23 @@ class ContractFileStore {
 
 applicationContractSuite("real SQLite/local-file/in-process adapter composition", () => {
   const db = getTestDb();
-  const setup = createTestUserWithLedger(db);
   const files = new LocalStoredFileAdapter(new ContractFileStore());
   const processing = new PostgresProcessingIntentAdapter();
   const actualIntents = new Map<string, ProcessingIntentContract>();
   const completions: ProcessingCompletionContract[] = [];
+  let setupPromise: ReturnType<typeof createTestUserWithLedger> | null = null;
+
+  function getSetup(): ReturnType<typeof createTestUserWithLedger> {
+    if (setupPromise == null) {
+      setupPromise = createTestUserWithLedger(db);
+    }
+    return setupPromise;
+  }
 
   async function prepareIntent(intent: ProcessingIntentContract): Promise<ProcessingIntentContract> {
     const existing = actualIntents.get(intent.id);
     if (existing != null) return existing;
-    const { ledgerId } = await setup;
+    const { ledgerId } = await getSetup();
     const pending = await postgresRevisionAdapter.createPending({
       ledgerId,
       submittedText: "contract processing input",
@@ -72,7 +79,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
   };
 
   async function plan(): Promise<UploadPlanContract> {
-    const { ledgerId } = await setup;
+    const { ledgerId } = await getSetup();
     const bytes = Buffer.from("contract-file");
     const current = await files.createUploadPlan(ledgerId, [
       {
@@ -98,7 +105,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
     processing: processingPort,
     plan,
     async finalize(current) {
-      const { ledgerId } = await setup;
+      const { ledgerId } = await getSetup();
       const finalized = await files.finalizeUpload({
         ownerLedgerId: ledgerId,
         uploadSessionId: current.id,
@@ -112,7 +119,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
       return finalized;
     },
     async read(file) {
-      const { ledgerId } = await setup;
+      const { ledgerId } = await getSetup();
       return files.readAuthorized(ledgerId, file.id);
     },
     dispatch: (intent) => processingPort.dispatch(intent),

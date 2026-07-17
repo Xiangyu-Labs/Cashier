@@ -90,18 +90,39 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       }),
     } as Response);
 
+    let releaseRecalculation: (() => void) | undefined;
+    const recalculationGate = new Promise<void>((resolve) => {
+      releaseRecalculation = resolve;
+    });
+    recalculateEntriesConvertedAmountMock.mockReturnValueOnce(recalculationGate);
+
     initializeExchangeRateLedgerRecalculationOrchestration();
 
-    await batchConvertCurrencyAction([{ amount: 1, currency: "USD", date: "2024-02-10" }], "CNY");
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    let firstConversionSettled = false;
+    const firstConversion = batchConvertCurrencyAction(
+      [{ amount: 1, currency: "USD", date: "2024-02-10" }],
+      "CNY"
+    ).then((result) => {
+      firstConversionSettled = true;
+      return result;
+    });
 
-    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(1);
-    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "CNY");
+    await vi.waitFor(() => {
+      expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(1);
+      expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "CNY");
+    });
+    expect(firstConversionSettled).toBe(false);
+
+    if (releaseRecalculation == null) {
+      throw new Error("Expected a deferred recalculation resolver");
+    }
+    releaseRecalculation();
+    await firstConversion;
+    expect(firstConversionSettled).toBe(true);
 
     recalculateEntriesConvertedAmountMock.mockClear();
 
     await batchConvertCurrencyAction([{ amount: 1, currency: "USD", date: "2024-02-10" }], "CNY");
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(recalculateEntriesConvertedAmountMock).not.toHaveBeenCalled();
