@@ -396,6 +396,40 @@ describe("createAndQueueSourceDocument", () => {
       expect(createPendingWithIntent).not.toHaveBeenCalled();
     });
 
+    it("accepts base64 with whitespace and newlines, stripping them before decode validation", async () => {
+      const uploadPlan = {
+        id: "session-whitespace",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        targets: [{ id: "target-ws", method: "PUT" as const, url: "/upload/ws", requiredHeaders: {} }],
+        finalizationToken: "token-ws",
+        maxFiles: 10,
+        maxBytesPerFile: 10 * 1024 * 1024,
+      };
+      createUploadPlan.mockResolvedValue(uploadPlan);
+      uploadTarget.mockResolvedValue({ id: "stored-ws", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
+      finalizeUpload.mockResolvedValue([{ id: "stored-ws", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+
+      // Base64 with embedded newlines as produced by e.g. base64 -w 76
+      const base64WithNewlines = Buffer.from("test-image-data").toString("base64").replace(/.{8}/g, "$&\n");
+      await expect(
+        createAndQueueSourceDocument(
+          {
+            ledgerId: ledger.id,
+            ledger,
+            text: "Whitespace base64",
+            images: [{ data: base64WithNewlines, mimeType: "image/jpeg" }],
+          },
+          {
+            submissions: { createPendingWithIntent },
+            storedFiles: mockStoredFiles,
+            processImage,
+            triggerProcessing,
+          }
+        )
+      ).resolves.not.toThrow();
+      expect(createUploadPlan).toHaveBeenCalled();
+    });
+
     it("rejects unsupported MIME type in payload validation", async () => {
       await expect(
         createAndQueueSourceDocument(

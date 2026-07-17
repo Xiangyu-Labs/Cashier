@@ -58,6 +58,9 @@ function decodeImageData(data: string, mimeType: string): Buffer {
     base64Data = match[2]!;
   }
 
+  // Strip whitespace — Buffer.from silently ignores it but our regex does not
+  base64Data = base64Data.replace(/\s+/g, "");
+
   if (base64Data.length === 0) {
     throw new ValidationError("Image data is empty");
   }
