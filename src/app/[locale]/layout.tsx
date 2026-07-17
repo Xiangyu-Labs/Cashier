@@ -1,8 +1,19 @@
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/components/providers";
-import { getTranslations } from "next-intl/server";
+import { routing } from "@/i18n/routing";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { getMessages, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+function validateLocale(locale: string) {
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
+  return locale;
+}
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,7 +34,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const locale = validateLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "Metadata" });
 
   return {
@@ -46,8 +57,6 @@ export const viewport = {
   userScalable: false, // Prevent zooming on mobile for app-like feel
   viewportFit: "cover", // Ensure content extends to edges including notches
 };
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
 
 export default async function LocaleLayout({
   children,
@@ -56,7 +65,7 @@ export default async function LocaleLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }>): Promise<React.ReactNode> {
-  const { locale } = await params;
+  const locale = validateLocale((await params).locale);
 
   // Providing all messages to the client
   // side is the easiest way to get started
