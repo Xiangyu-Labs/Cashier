@@ -1,8 +1,18 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  pgTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+  timestamp,
+  jsonb,
+  boolean,
+  numeric,
+} from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
 import { users } from "./auth";
 
-export const ledgers = sqliteTable(
+export const ledgers = pgTable(
   "ledgers",
   {
     id: text("id")
@@ -11,14 +21,14 @@ export const ledgers = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    metadata: text("metadata", { mode: "json" }).$type<LedgerMetadata>().default({}),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    metadata: jsonb("metadata").$type<LedgerMetadata>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_ledgers_user_id").on(table.userId),
@@ -40,7 +50,7 @@ export interface LedgerMetadata {
 
 export type Ledger = InferSelectModel<typeof ledgers>;
 
-export const entryCategories = sqliteTable(
+export const entryCategories = pgTable(
   "entry_categories",
   {
     id: text("id")
@@ -53,14 +63,14 @@ export const entryCategories = sqliteTable(
     description: text("description"),
     icon: text("icon"),
     sortOrder: integer("sort_order").notNull().default(0),
-    isEditable: integer("is_editable", { mode: "boolean" }).notNull().default(true),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    isEditable: boolean("is_editable").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("uniq_category_name_per_ledger")
@@ -71,7 +81,7 @@ export const entryCategories = sqliteTable(
 
 export type EntryCategory = InferSelectModel<typeof entryCategories>;
 
-export const ledgerEntries = sqliteTable(
+export const ledgerEntries = pgTable(
   "ledger_entries",
   {
     id: text("id")
@@ -86,19 +96,19 @@ export const ledgerEntries = sqliteTable(
     sourceDocumentId: text("source_document_id"),
     // Nullable compatibility projection. Existing ledger reads continue to use sourceDocumentId.
     sourceDocumentRevisionId: text("source_document_revision_id"),
-    amount: text("amount").notNull(),
+    amount: numeric("amount", { precision: 20, scale: 2, mode: "string" }).notNull(),
     currency: text("currency"),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    convertedAmount: text("converted_amount"),
-    exchangeRate: text("exchange_rate"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    convertedAmount: numeric("converted_amount", { precision: 20, scale: 2, mode: "string" }),
+    exchangeRate: numeric("exchange_rate", { precision: 30, scale: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
@@ -120,7 +130,7 @@ export const ledgerEntries = sqliteTable(
 
 export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 
-export const serviceCredentials = sqliteTable(
+export const serviceCredentials = pgTable(
   "service_credentials",
   {
     id: text("id")
@@ -131,11 +141,11 @@ export const serviceCredentials = sqliteTable(
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [index("idx_service_credentials_ledger_id").on(table.ledgerId)]
 );

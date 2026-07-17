@@ -1,17 +1,16 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-  sqliteSourceDocumentSubmissionAdapter,
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+  postgresSourceDocumentSubmissionAdapter,
   getTargetSourceDocument,
-} from "@/application/adapters/sqlite";
+} from "@/application/adapters/postgres";
 import {
   ledgerEntries,
   processingOutbox,
   revisionEntries,
   sourceDocuments,
-  taskRuns,
 } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
@@ -40,7 +39,7 @@ describe("local contract release", () => {
   it("writes only target revision, processing, and ledger projections", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const pending = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const pending = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       submittedText: "Lunch 12.50",
     });
@@ -57,13 +56,13 @@ describe("local contract release", () => {
       metadata: {},
     });
 
-    await sqliteRevisionAdapter.markProcessing({
+    await postgresRevisionAdapter.markProcessing({
       ledgerId,
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
     });
     await expect(
-      sqliteLedgerProjectionAdapter.activateRevision({
+      postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: pending.document.id,
         revisionId: pending.revision.id,
@@ -86,11 +85,10 @@ describe("local contract release", () => {
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
   });
 
-  it("leaves retained legacy rows and task history unchanged", async () => {
+  it("leaves retained legacy rows unchanged", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const legacyDocumentId = crypto.randomUUID();
-    const legacyTaskId = crypto.randomUUID();
     await db.insert(sourceDocuments).values({
       id: legacyDocumentId,
       ledgerId,
@@ -101,21 +99,11 @@ describe("local contract release", () => {
       metadata: { originalImageUrls: ["retained-original.jpg"] },
       deletedAt: new Date("2026-07-16T00:00:00.000Z"),
     });
-    await db.insert(taskRuns).values({
-      id: legacyTaskId,
-      type: "parse_source_document",
-      title: "Retained task history",
-      input: { sourceDocumentId: legacyDocumentId },
-      status: "completed",
-      entityType: "source_document",
-      entityId: legacyDocumentId,
-    });
     const beforeDocument = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, legacyDocumentId),
     });
-    const beforeTask = await db.query.taskRuns.findFirst({ where: eq(taskRuns.id, legacyTaskId) });
 
-    await sqliteLedgerProjectionAdapter.createManual({
+    await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       title: "Target-only entry",
       entries: [projectionEntry],
@@ -124,15 +112,12 @@ describe("local contract release", () => {
     expect(
       await db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, legacyDocumentId) })
     ).toEqual(beforeDocument);
-    expect(await db.query.taskRuns.findFirst({ where: eq(taskRuns.id, legacyTaskId) })).toEqual(
-      beforeTask
-    );
   });
 
   it("derives reads from revisions instead of the legacy status column", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       submittedText: "target revision text",
       entries: [projectionEntry],

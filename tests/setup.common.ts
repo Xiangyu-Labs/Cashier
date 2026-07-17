@@ -7,6 +7,9 @@ import path from "node:path";
 
 const testStoragePath = mkdtempSync(path.join(tmpdir(), "cashier-test-storage-"));
 
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";

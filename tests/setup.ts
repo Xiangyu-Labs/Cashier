@@ -1,135 +1,91 @@
-// Setup for Vitest integration tests with per-file database isolation
-
-import { beforeAll, afterAll, beforeEach, expect, vi } from "vitest";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import crypto from "node:crypto";
+import path from "node:path";
+import { afterAll, beforeAll, beforeEach, expect, vi } from "vitest";
+import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import * as schema from "@/persistence";
-import { createTestSchema } from "./helpers/schema-setup";
 import { memoryStore } from "@/lib/memory-store";
 import "./setup.common";
 
-// Map to store database instances per test file
-const dbInstances = new Map<
-  string,
-  {
-    client: Database.Database;
-    db: ReturnType<typeof drizzle<typeof schema>>;
-  }
->();
+const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 
-// Get current test file path from Vitest state
+interface TestDatabase {
+  pool: Pool;
+  db: ReturnType<typeof drizzle<typeof schema>>;
+  schemaName: string;
+}
+
+const dbInstances = new Map<string, TestDatabase>();
+
 function getCurrentTestFile(): string {
   return expect.getState().testPath ?? "unknown";
 }
 
-// Get database instance for current test file
-export function getTestDb() {
-  const testPath = getCurrentTestFile();
-  const instance = dbInstances.get(testPath);
-  if (instance == null) {
-    throw new Error(
-      `No database instance found for test file: ${testPath}. Make sure beforeAll ran.`
-    );
-  }
-  return instance.db;
+function schemaNameFor(testPath: string): string {
+  return `test_${crypto.createHash("sha256").update(testPath).digest("hex").slice(0, 16)}`;
 }
 
-// Get database client for current test file (for raw SQL operations)
-function getTestClient(): Database.Database {
-  const testPath = getCurrentTestFile();
-  const instance = dbInstances.get(testPath);
-  if (instance == null) {
-    throw new Error(`No database instance found for test file: ${testPath}`);
-  }
-  return instance.client;
+export function getTestDb() {
+  const instance = dbInstances.get(getCurrentTestFile());
+  if (instance == null) throw new Error("Test PostgreSQL database is not initialized");
+  return instance.db;
 }
 
 beforeAll(async () => {
   if (process.env.NO_DB != null) return;
-
   const testPath = getCurrentTestFile();
+  const schemaName = schemaNameFor(testPath);
+  const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
+  await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+  await admin.query(`CREATE SCHEMA "${schemaName}"`);
+  await admin.end();
 
-  // Create independent in-memory SQLite database for this test file
-  const client = new Database(":memory:");
-
-  // Configure SQLite PRAGMA for consistency with production
-  client.pragma("journal_mode = WAL");
-  client.pragma("foreign_keys = ON");
-  client.pragma("synchronous = NORMAL");
-
-  const db = drizzle(client, { schema });
-
-  // Store instance
-  dbInstances.set(testPath, { client, db });
-
-  // Run migrations
-  await createTestSchema(db);
-  const { initializeDefaultTaskRuntime, resetTaskRuntime } = await import("@/lib/tasks/runtime");
-  resetTaskRuntime();
-  await initializeDefaultTaskRuntime();
+  const pool = new Pool({
+    connectionString: TEST_DATABASE_URL,
+    options: `-c search_path=${schemaName}`,
+    max: 2,
+  });
+  const db = drizzle(pool, { schema });
+  await migrate(db, {
+    migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
+    migrationsSchema: `${schemaName}_migrations`,
+  });
+  dbInstances.set(testPath, { pool, db, schemaName });
 });
 
 afterAll(async () => {
-  // Close all database instances
-  for (const [testPath, { client }] of dbInstances) {
-    try {
-      client.close();
-    } catch (error) {
-      console.warn(`Failed to close database for ${testPath}:`, error);
-    }
+  for (const { pool, schemaName } of dbInstances.values()) {
+    await pool.end();
+    const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
+    await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+    await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}_migrations" CASCADE`);
+    await admin.end();
   }
   dbInstances.clear();
 });
 
 beforeEach(async () => {
-  // Clean memory store before each test
   await memoryStore.flushall();
-
-  // Clean all tables before each test
-  const client = getTestClient();
   const db = getTestDb();
-
-  const tables = [
-    "processing_outbox",
-    "processing_attempts",
-    "revision_entries",
-    "revision_files",
-    "upload_session_files",
-    "upload_sessions",
-    "stored_files",
-    "source_document_revisions",
-    "idempotency_records",
-    "migration_checkpoints",
-    "ledger_entries",
-    "source_documents",
-    "entry_categories",
-    "ledgers",
-    "service_credentials",
-    "task_runs",
-    "currency_rates",
-    "otp_tokens",
-    "users",
-  ];
-
-  for (const table of tables) {
-    client.prepare(`DELETE FROM "${table}"`).run();
-  }
-
-  // Ensure default test user exists (ignore unique constraint errors)
-  try {
-    await db.insert(schema.users).values({
-      id: "00000000-0000-0000-0000-000000000000",
-      email: "test@example.com",
-      name: "Test User",
-      emailVerified: new Date(),
-    });
-  } catch (e) {
-    // User already exists, which is the expected case
-    console.log("[Test Setup] Test user already exists or other error:", e as Error);
-  }
+  await db.execute(sql.raw(`TRUNCATE TABLE
+    processing_outbox, processing_attempts, revision_entries, revision_files,
+    upload_session_files, upload_sessions, stored_files, source_document_revisions,
+    idempotency_records, ledger_entries, source_documents, entry_categories,
+    service_credentials, currency_rates, otp_tokens, ledgers, users
+    RESTART IDENTITY CASCADE`));
+  await db.insert(schema.users).values({
+    id: "00000000-0000-0000-0000-000000000000",
+    email: "test@example.com",
+    name: "Test User",
+    emailVerified: new Date(),
+  });
 });
 
-// Mock the db module globally
 vi.mock("@/lib/db", () => ({
   get db() {
     return getTestDb();

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { taskRuns, sourceDocuments } from "@/persistence";
+import { sourceDocuments } from "@/persistence";
 import { eq, or } from "drizzle-orm";
 
 /**
@@ -11,17 +11,11 @@ export async function processAllPendingTasks(timeoutMs: number = 10000) {
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
-    // Check for any task_runs that are still 'running'
-    const pendingRuns = await db.query.taskRuns.findMany({
-      where: eq(taskRuns.status, "running"),
-    });
-
-    // Also check source_documents if they are in transient states
     const pendingDocs = await db.query.sourceDocuments.findMany({
       where: or(eq(sourceDocuments.status, "queued"), eq(sourceDocuments.status, "processing")),
     });
 
-    if (pendingRuns.length === 0 && pendingDocs.length === 0) {
+    if (pendingDocs.length === 0) {
       return;
     }
 

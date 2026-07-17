@@ -29,12 +29,11 @@ export default defineConfig({
     "./src/persistence/schema/ledger.ts",
     "./src/persistence/schema/source-document.ts",
     "./src/persistence/schema/application-model.ts",
-    "./src/persistence/schema/task-queue.ts",
     "./src/persistence/relations.ts",
   ],
-  out: "./src/persistence/migrations",
-  dialect: "sqlite",
+  out: "./src/persistence/postgres-migrations",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "sqlite.db",
+    url: process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL ?? "",
   },
 });

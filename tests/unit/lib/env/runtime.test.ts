@@ -4,7 +4,7 @@ const originalEnv = { ...process.env };
 
 const baseEnv = {
   NODE_ENV: "test",
-  DATABASE_URL: "file:./data/sqlite.db",
+  DATABASE_URL: "postgresql://cashier:cashier@localhost:5432/cashier",
   OPENAI_API_KEY: "sk-test",
   AUTH_SECRET: "auth-secret",
   AUTH_URL: "http://localhost:3000",
@@ -53,7 +53,7 @@ describe("runtimeEnv", () => {
 
     const { runtimeEnv } = await import("@/lib/env/runtime");
 
-    expect(runtimeEnv.databaseUrl).toBe("file:./data/sqlite.db");
+    expect(runtimeEnv.databaseUrl).toBe("postgresql://cashier:cashier@localhost:5432/cashier");
     expect(runtimeEnv.openaiApiKey).toBe("sk-test");
     expect(runtimeEnv.openaiBaseUrl).toBe("https://openai-proxy.example/v1");
     expect(runtimeEnv.hasOpenaiBaseUrl).toBe(true);
@@ -116,7 +116,7 @@ describe("runtimeEnv", () => {
   it("allows reading databaseUrl without unrelated required secrets", async () => {
     process.env = {
       ...originalEnv,
-      DATABASE_URL: "file:./data/sqlite.db",
+      DATABASE_URL: "postgresql://cashier:cashier@localhost:5432/cashier",
       OPENAI_API_KEY: "",
       AUTH_SECRET: "",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
@@ -124,7 +124,7 @@ describe("runtimeEnv", () => {
 
     const { runtimeEnv } = await import("@/lib/env/runtime");
 
-    expect(runtimeEnv.databaseUrl).toBe("file:./data/sqlite.db");
+    expect(runtimeEnv.databaseUrl).toBe("postgresql://cashier:cashier@localhost:5432/cashier");
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * SQLite cannot make the source_documents active/pending pointer prove that a
+ * The database cannot make the source_documents active/pending pointer prove that a
  * revision belongs to that same document. Target write adapters must load the
  * referenced revisions in their transaction and call these checks before commit.
  */

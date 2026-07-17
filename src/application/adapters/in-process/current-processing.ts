@@ -6,9 +6,9 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { processingOutbox } from "@/persistence";
 import {
-  sqliteRevisionAdapter,
-  SqliteProcessingIntentAdapter,
-} from "@/application/adapters/sqlite";
+  postgresRevisionAdapter,
+  PostgresProcessingIntentAdapter,
+} from "@/application/adapters/postgres";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { CurrentRevisionProcessor } from "./revision-processor";
 import { InProcessProcessingDispatcher } from "./dispatcher";
@@ -17,7 +17,7 @@ let dispatcher: InProcessProcessingDispatcher | null = null;
 let initialization: Promise<InProcessProcessingDispatcher> | null = null;
 
 function createDispatcher(): InProcessProcessingDispatcher {
-  const intents = new SqliteProcessingIntentAdapter();
+  const intents = new PostgresProcessingIntentAdapter();
   const processor = new CurrentRevisionProcessor({
     createAIContext: (signal) =>
       createAIContext({
@@ -43,7 +43,7 @@ function createDispatcher(): InProcessProcessingDispatcher {
         revisionId: claim.intent.revisionId,
       });
     } catch (error) {
-      await sqliteRevisionAdapter.preserveTerminalOutcome({
+      await postgresRevisionAdapter.preserveTerminalOutcome({
         ledgerId: row.ledgerId,
         sourceDocumentId: claim.intent.sourceDocumentId,
         revisionId: claim.intent.revisionId,

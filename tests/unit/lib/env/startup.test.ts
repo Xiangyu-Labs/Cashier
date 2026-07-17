@@ -3,7 +3,7 @@ import { ENV_DEFAULTS, validateStartupEnv } from "@/lib/env/startup";
 
 const baseEnv = {
   NODE_ENV: "test",
-  DATABASE_URL: "file:./data/sqlite.db",
+  DATABASE_URL: "postgresql://cashier:cashier@localhost:5432/cashier",
   OPENAI_API_KEY: "sk-test",
   AUTH_SECRET: "auth-secret",
   AUTH_URL: "http://localhost:3000",
@@ -12,10 +12,18 @@ const baseEnv = {
 
 describe("validateStartupEnv", () => {
   it("exports the default values used by startup, runtime, and public env readers", () => {
-    expect(ENV_DEFAULTS.DATABASE_URL).toBe("file:./data/sqlite.db");
     expect(ENV_DEFAULTS.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(ENV_DEFAULTS.AI_MODEL_TEXT).toBe("gpt-4o-mini");
     expect(ENV_DEFAULTS.NEXT_PUBLIC_APP_URL).toBe("http://localhost:3000");
+  });
+
+  it("rejects SQLite database URLs", () => {
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        DATABASE_URL: "file:./data/sqlite.db",
+      })
+    ).toThrow(/PostgreSQL/);
   });
 
   it("reports missing required startup env vars together", () => {
@@ -77,7 +85,6 @@ describe("validateStartupEnv", () => {
       "AUTH_RATE_LIMIT_WINDOW",
       "AUTH_URL",
       "CURRENCY_STALE_TIME_MS",
-      "DATABASE_URL",
 		      "DEV_AUTH_BYPASS",
       "DISABLE_REGISTRATION",
       "LOCAL_STORAGE_PATH",

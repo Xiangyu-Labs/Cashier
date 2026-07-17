@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { pgTable, text, index, uniqueIndex, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { type InferSelectModel } from "drizzle-orm";
 import {
   type SourceDocMetadata,
@@ -9,7 +9,7 @@ import {
 } from "@/modules/source-document/types";
 import { ledgers } from "./ledger";
 
-export const sourceDocuments = sqliteTable(
+export const sourceDocuments = pgTable(
   "source_documents",
   {
     id: text("id")
@@ -20,7 +20,7 @@ export const sourceDocuments = sqliteTable(
       .references(() => ledgers.id, { onDelete: "cascade" }),
     title: text("title"),
     text: text("text"),
-    imageUrls: text("image_urls", { mode: "json" }).$type<string[]>().default([]),
+    imageUrls: jsonb("image_urls").$type<string[]>().default([]),
     status: text("status")
       .notNull()
       .default(SourceDocumentStatus.Queued)
@@ -31,17 +31,17 @@ export const sourceDocuments = sqliteTable(
       .$type<SourceDocumentTypeValue>(),
     anomalyReason: text("anomaly_reason"),
     entryDate: text("entry_date"),
-    metadata: text("metadata", { mode: "json" }).$type<SourceDocMetadata>().default({}),
+    metadata: jsonb("metadata").$type<SourceDocMetadata>().default({}),
     // Nullable until task group 5 deterministically backfills legacy documents.
     activeRevisionId: text("active_revision_id"),
     pendingRevisionId: text("pending_revision_id"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_source_docs_ledger_status").on(table.ledgerId, table.status),

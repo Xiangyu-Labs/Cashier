@@ -7,10 +7,10 @@ import {
   InProcessProcessingDispatcher,
 } from "@/application/adapters/in-process";
 import {
-  SqliteProcessingIntentAdapter,
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-} from "@/application/adapters/sqlite";
+  PostgresProcessingIntentAdapter,
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { ledgerEntries, processingAttempts, processingOutbox } from "@/persistence";
 
@@ -19,7 +19,7 @@ async function pendingIntent(
 ): Promise<{ ledgerId: string; intent: ProcessingIntentContract }> {
   const db = getTestDb();
   const { ledgerId } = await createTestUserWithLedger(db);
-  const pending = await sqliteRevisionAdapter.createPending({
+  const pending = await postgresRevisionAdapter.createPending({
     ledgerId,
     submittedText: "Lunch 12.50 CNY",
   });
@@ -81,7 +81,7 @@ describe("SQLite processing intents and in-process dispatcher", () => {
 
     expect(generate).toHaveBeenCalledTimes(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
-    await expect(sqliteRevisionAdapter.get(ledgerId, intent.sourceDocumentId)).resolves.toMatchObject(
+    await expect(postgresRevisionAdapter.get(ledgerId, intent.sourceDocumentId)).resolves.toMatchObject(
       {
         activeRevisionId: intent.revisionId,
         pendingRevisionId: null,
@@ -92,7 +92,7 @@ describe("SQLite processing intents and in-process dispatcher", () => {
   it("deduplicates dispatch and permits only one concurrent claim", async () => {
     const db = getTestDb();
     const { intent } = await pendingIntent();
-    const adapter = new SqliteProcessingIntentAdapter();
+    const adapter = new PostgresProcessingIntentAdapter();
 
     await Promise.all([adapter.dispatch(intent), adapter.dispatch(intent)]);
     const claims = await Promise.all([adapter.claim(intent.id), adapter.claim(intent.id)]);
@@ -105,7 +105,7 @@ describe("SQLite processing intents and in-process dispatcher", () => {
   it("reclaims an expired lease and rejects stale completion", async () => {
     let now = new Date("2026-07-15T00:00:00.000Z");
     const { intent } = await pendingIntent(now.toISOString());
-    const adapter = new SqliteProcessingIntentAdapter({ leaseMs: 1_000, now: () => now });
+    const adapter = new PostgresProcessingIntentAdapter({ leaseMs: 1_000, now: () => now });
     await adapter.dispatch(intent);
 
     const first = await adapter.claim(intent.id);
@@ -134,10 +134,10 @@ describe("SQLite processing intents and in-process dispatcher", () => {
   it("recovers after dispatcher restart and projects the ledger exactly once", async () => {
     const db = getTestDb();
     const { ledgerId, intent } = await pendingIntent();
-    const durableStore = new SqliteProcessingIntentAdapter();
+    const durableStore = new PostgresProcessingIntentAdapter();
     await durableStore.dispatch(intent);
     const execute = vi.fn(async () => {
-      const activated = await sqliteLedgerProjectionAdapter.activateRevision({
+      const activated = await postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: intent.sourceDocumentId,
         revisionId: intent.revisionId,
@@ -159,11 +159,11 @@ describe("SQLite processing intents and in-process dispatcher", () => {
     });
 
     await new InProcessProcessingDispatcher(
-      new SqliteProcessingIntentAdapter(),
+      new PostgresProcessingIntentAdapter(),
       execute
     ).start();
     await new InProcessProcessingDispatcher(
-      new SqliteProcessingIntentAdapter(),
+      new PostgresProcessingIntentAdapter(),
       execute
     ).start();
 

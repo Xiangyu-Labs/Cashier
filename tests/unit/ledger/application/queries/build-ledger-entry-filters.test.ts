@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildLedgerEntryCursorCondition,
   buildLedgerEntryFilterConditions,
-} from "@/application/adapters/sqlite/ledger-reads/build-ledger-entry-filters";
-import type { LedgerEntryFilterParams } from "@/application/adapters/sqlite/ledger-reads/build-ledger-entry-filters";
+} from "@/application/adapters/postgres/ledger-reads/build-ledger-entry-filters";
+import type { LedgerEntryFilterParams } from "@/application/adapters/postgres/ledger-reads/build-ledger-entry-filters";
 
 describe("buildLedgerEntryCursorCondition", () => {
   it("returns null for cursors with an invalid createdAt value", () => {

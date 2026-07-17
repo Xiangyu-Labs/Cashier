@@ -1,9 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-} from "@/application/adapters/sqlite";
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres";
 import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
@@ -35,16 +35,16 @@ describe("target upper workflows", () => {
   it("derives list state from revision pointers and paginates without skips", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const completed = await sqliteLedgerProjectionAdapter.createManual({
+    const completed = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entryDate: "2026-07-15",
       entries: [entry],
     });
-    const pending = await sqliteRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createPending({
       ledgerId,
       submittedText: "pending",
     });
-    await sqliteRevisionAdapter.markProcessing({
+    await postgresRevisionAdapter.markProcessing({
       ledgerId,
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
@@ -79,7 +79,7 @@ describe("target upper workflows", () => {
       .insert(entryCategories)
       .values({ ledgerId, name: "Food" })
       .returning();
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entryDate: "2026-07-15",
       entries: [{ ...entry, categoryId: category!.id }],
@@ -87,12 +87,12 @@ describe("target upper workflows", () => {
     const activeEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, created.revisionId),
     });
-    const failedPending = await sqliteRevisionAdapter.createPending({
+    const failedPending = await postgresRevisionAdapter.createPending({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
       submittedText: "failed replacement",
     });
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
       revisionId: failedPending.revision.id,
@@ -129,7 +129,7 @@ describe("target upper workflows", () => {
     expect(summary.convertedTotal).toEqual({ total: 12.5, currency: "CNY" });
     expect(enhanced.summary).toMatchObject({ total: 12.5, currency: "CNY" });
 
-    await sqliteLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId);
+    await postgresLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId);
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
     await expect(getLedgerEntryDetail(activeEntry!.id, ledgerId)).resolves.toBeNull();
   });
@@ -143,7 +143,7 @@ describe("target upper workflows", () => {
       .returning();
     const transactionAt = "2026-07-14T12:30:00.000Z";
     const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()] as const;
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       title: "Receipt with adjustments",
       entryDate: "2026-07-14",
@@ -216,7 +216,7 @@ describe("target upper workflows", () => {
     expect(stats.totals).toContainEqual({ currency: "USD", total: 11.73, count: 3 });
 
     await expect(
-      sqliteLedgerProjectionAdapter.recalculate({
+      postgresLedgerProjectionAdapter.recalculate({
         ledgerId,
         updates: [
           { ledgerEntryId: ids[0]!, convertedAmount: "86.38", exchangeRate: "7.000000" },
@@ -261,7 +261,7 @@ describe("target upper workflows", () => {
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
     await expect(
-      sqliteLedgerProjectionAdapter.createManual({
+      postgresLedgerProjectionAdapter.createManual({
         ledgerId,
         entries: [{ ...entry, categoryId: otherCategory!.id }],
       })
@@ -271,7 +271,7 @@ describe("target upper workflows", () => {
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
     expect(await db.select().from(revisionEntries)).toHaveLength(0);
 
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entries: [entry],
     });
@@ -287,7 +287,7 @@ describe("target upper workflows", () => {
       items: [],
     });
     await expect(
-      sqliteLedgerProjectionAdapter.replaceManual({
+      postgresLedgerProjectionAdapter.replaceManual({
         ledgerId,
         sourceDocumentId: created.sourceDocumentId,
         expectedActiveRevisionId: created.revisionId,
@@ -309,7 +309,7 @@ describe("target upper workflows", () => {
   it("edits a manual entry through an immediate revision while keeping the legacy id", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entryDate: "2026-07-15",
       entries: [entry],
@@ -363,8 +363,8 @@ describe("target upper workflows", () => {
       .insert(entryCategories)
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
-    const pending = await sqliteRevisionAdapter.createPending({ ledgerId, submittedText: "Lunch" });
-    await sqliteLedgerProjectionAdapter.activateRevision({
+    const pending = await postgresRevisionAdapter.createPending({ ledgerId, submittedText: "Lunch" });
+    await postgresLedgerProjectionAdapter.activateRevision({
       ledgerId,
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,

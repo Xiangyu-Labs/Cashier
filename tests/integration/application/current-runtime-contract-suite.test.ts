@@ -9,10 +9,10 @@ import type {
 } from "@/application/contracts";
 import { LocalStoredFileAdapter } from "@/application/adapters/local";
 import {
-  SqliteProcessingIntentAdapter,
-  sqliteIdempotencyAdapter,
-  sqliteRevisionAdapter,
-} from "@/application/adapters/sqlite";
+  PostgresProcessingIntentAdapter,
+  postgresIdempotencyAdapter,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres";
 
 class ContractFileStore {
   readonly files = new Map<string, Buffer>();
@@ -38,7 +38,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
   const db = getTestDb();
   const setup = createTestUserWithLedger(db);
   const files = new LocalStoredFileAdapter(new ContractFileStore());
-  const processing = new SqliteProcessingIntentAdapter();
+  const processing = new PostgresProcessingIntentAdapter();
   const actualIntents = new Map<string, ProcessingIntentContract>();
   const completions: ProcessingCompletionContract[] = [];
 
@@ -46,7 +46,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
     const existing = actualIntents.get(intent.id);
     if (existing != null) return existing;
     const { ledgerId } = await setup;
-    const pending = await sqliteRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createPending({
       ledgerId,
       submittedText: "contract processing input",
     });
@@ -93,7 +93,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
 
   return {
     sourceDocumentActions: supportedSourceDocumentActions,
-    executeIdempotently: (key, operation) => sqliteIdempotencyAdapter.execute(key, operation),
+    executeIdempotently: (key, operation) => postgresIdempotencyAdapter.execute(key, operation),
     files,
     processing: processingPort,
     plan,
@@ -105,7 +105,7 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
         finalizationToken: current.finalizationToken,
         targetIds: [current.targets[0]!.id],
       });
-      await sqliteRevisionAdapter.createPending({
+      await postgresRevisionAdapter.createPending({
         ledgerId,
         storedFileIds: finalized.map((file) => file.id),
       });

@@ -29,7 +29,7 @@ vi.mock("@/lib/ai/openai-client", () => ({
 }));
 
 import { getOpenAIClient } from "@/lib/ai/openai-client";
-import { initializeDefaultTaskRuntime, resetTaskRuntime } from "@/lib/tasks/runtime";
+import { resetCurrentProcessingDispatcher } from "@/application/adapters/in-process/current-processing";
 import { processAllPendingTasks } from "../../helpers/processing";
 
 describe("SourceDocument Actions", () => {
@@ -50,8 +50,7 @@ describe("SourceDocument Actions", () => {
       createMultiStageMock() as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    resetTaskRuntime();
-    await initializeDefaultTaskRuntime();
+    resetCurrentProcessingDispatcher();
 
     const db = getTestDb();
 

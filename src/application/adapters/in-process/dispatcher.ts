@@ -3,7 +3,7 @@ import type {
   ProcessingCompletionContract,
   ProcessingIntentContract,
 } from "@/application/contracts";
-import type { SqliteProcessingIntentAdapter } from "@/application/adapters/sqlite";
+import type { PostgresProcessingIntentAdapter } from "@/application/adapters/postgres";
 import { logger } from "@/lib/logger";
 
 export type ProcessingExecutor = (
@@ -14,7 +14,7 @@ export class InProcessProcessingDispatcher {
   private drainPromise: Promise<void> | null = null;
 
   constructor(
-    private readonly intents: SqliteProcessingIntentAdapter,
+    private readonly intents: PostgresProcessingIntentAdapter,
     private readonly execute: ProcessingExecutor
   ) {}
 

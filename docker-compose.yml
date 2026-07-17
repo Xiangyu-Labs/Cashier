@@ -16,7 +16,5 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     env_file:
       - .env
-    environment:
-      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
     volumes:
       - ./data:/app/data

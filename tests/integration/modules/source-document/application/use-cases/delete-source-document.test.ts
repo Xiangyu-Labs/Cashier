@@ -1,34 +1,20 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
-import { ledgerEntries, sourceDocuments, taskRuns } from "@/persistence";
+import { ledgerEntries, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
-
-const { cancelMock } = vi.hoisted(() => ({
-  cancelMock: vi.fn(),
-}));
-
-vi.mock("@/lib/tasks", async () => {
-  const actual = await vi.importActual("@/lib/tasks");
-  return {
-    ...actual,
-    cancelTask: cancelMock,
-  };
-});
 
 describe("deleteSourceDocument", () => {
   let ledgerId: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    cancelMock.mockResolvedValue(undefined);
-
     const db = getTestDb();
     ({ ledgerId } = await createTestUserWithLedger(db, undefined, "Lifecycle Delete Ledger"));
   });
 
-  it("soft deletes target projections while preserving historical task runs", async () => {
+  it("soft deletes target projections", async () => {
     const db = getTestDb();
     const [sourceDocument] = await db
       .insert(sourceDocuments)
@@ -58,29 +44,7 @@ describe("deleteSourceDocument", () => {
       })
       .returning();
 
-    const [runningTask, completedTask] = await db
-      .insert(taskRuns)
-      .values([
-        {
-          scopeId: ledgerId,
-          entityType: "source_document",
-          entityId: sourceDocument.id,
-          type: "parse_source_document",
-          status: "running",
-          title: "Running parse",
-        },
-        {
-          scopeId: ledgerId,
-          entityType: "source_document",
-          entityId: sourceDocument.id,
-          type: "parse_source_document",
-          status: "completed",
-          title: "Completed parse",
-        },
-      ])
-      .returning();
-
-    if (entry == null || runningTask == null || completedTask == null) {
+    if (entry == null) {
       throw new Error("Expected delete lifecycle fixtures to be created");
     }
 
@@ -103,9 +67,6 @@ describe("deleteSourceDocument", () => {
         isNull(ledgerEntries.deletedAt)
       ),
     });
-    const activeTaskRuns = await db.query.taskRuns.findMany({
-      where: and(eq(taskRuns.entityId, sourceDocument.id), isNull(taskRuns.deletedAt)),
-    });
 
     expect(deletedDocument).toMatchObject({
       id: sourceDocument.id,
@@ -113,9 +74,5 @@ describe("deleteSourceDocument", () => {
       deletedAt: expect.any(Date),
     });
     expect(activeEntries).toEqual([]);
-    expect(activeTaskRuns.map((task) => task.id).sort()).toEqual(
-      [runningTask.id, completedTask.id].sort()
-    );
-    expect(cancelMock).not.toHaveBeenCalled();
   });
 });

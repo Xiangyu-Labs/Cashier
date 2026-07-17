@@ -1,60 +1,44 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { resolveDatabasePath } from "./production-data-inventory.mjs";
-import { runApplicationLayerBackfill } from "./migrations/application-layer-backfill.mjs";
+import pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 function loadLocalEnvironment() {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  if (!existsSync(envPath)) return;
-
-  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
-    const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
-    if (!match || process.env[match[1]] !== undefined) continue;
-    const value = match[2].trim().replace(/^(['"])(.*)\1$/, "$2");
-    process.env[match[1]] = value;
+  for (const filename of [".env.local", ".env.neon.local"]) {
+    const envPath = path.resolve(process.cwd(), filename);
+    if (!existsSync(envPath)) continue;
+    for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+      const match = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+      if (!match || process.env[match[1]] !== undefined) continue;
+      process.env[match[1]] = match[2].trim().replace(/^(['"])(.*)\1$/, "$2");
+    }
   }
 }
 
 async function main() {
   loadLocalEnvironment();
-  const databasePath = resolveDatabasePath(process.env.DATABASE_URL ?? "file:./data/sqlite.db");
-  const uploadsPath = path.resolve(process.env.LOCAL_STORAGE_PATH ?? "./data/uploads");
-  const migrationsFolder = path.resolve("src/persistence/migrations");
-
-  mkdirSync(path.dirname(databasePath), { recursive: true });
-  mkdirSync(uploadsPath, { recursive: true });
-
-  const client = new Database(databasePath);
+  const configuredUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.NEON_DATABASE_URL;
+  const connectionString = configuredUrl?.replace("-pooler.", ".");
+  if (connectionString == null || !/^postgres(ql)?:\/\//.test(connectionString)) {
+    throw new Error("DATABASE_MIGRATION_URL must be a direct PostgreSQL connection URL");
+  }
+  const client = new pg.Client({ connectionString });
+  await client.connect();
   try {
-    client.pragma("busy_timeout = 5000");
-    client.pragma("journal_mode = WAL");
-    client.pragma("foreign_keys = ON");
-    await migrate(drizzle(client), { migrationsFolder });
-    const backfill = runApplicationLayerBackfill({ db: client, uploadsPath });
-    console.log(
-      JSON.stringify(
-        {
-          mode: "migrate",
-          database: "sqlite",
-          schemaMigrations: "complete",
-          backfill,
-        },
-        null,
-        2
-      )
-    );
+    await client.query("SELECT pg_advisory_lock($1)", [0x43415348]);
+    await migrate(drizzle(client), {
+      migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
+    });
+    console.log(JSON.stringify({ mode: "migrate", database: "postgresql", status: "complete" }));
   } finally {
-    client.close();
+    await client.query("SELECT pg_advisory_unlock($1)", [0x43415348]).catch(() => undefined);
+    await client.end();
   }
 }
 
-try {
-  await main();
-} catch (error) {
+main().catch((error) => {
   console.error(`[db:migrate] ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
-}
+});

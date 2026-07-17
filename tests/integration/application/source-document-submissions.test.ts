@@ -2,12 +2,12 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { LocalStoredFileAdapter } from "@/application/adapters/local";
 import {
-  SqliteProcessingIntentAdapter,
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-  sqliteSourceDocumentSubmissionAdapter,
+  PostgresProcessingIntentAdapter,
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+  postgresSourceDocumentSubmissionAdapter,
   getTargetSourceDocument,
-} from "@/application/adapters/sqlite";
+} from "@/application/adapters/postgres";
 import {
   ledgerEntries,
   processingAttempts,
@@ -75,15 +75,15 @@ describe("target source-document submissions", () => {
     const storage = new LocalStoredFileAdapter(new MemoryFileStore());
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
 
-    const text = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const text = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       submittedText: "Lunch 12.50",
     });
-    const imageOnly = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const imageOnly = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       storedFileIds: [image.id],
     });
-    const mixed = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const mixed = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       submittedText: "Mixed",
       storedFileIds: [image.id],
@@ -115,7 +115,7 @@ describe("target source-document submissions", () => {
       .returning();
 
     await expect(
-      sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
         ledgerId,
         storedFileIds: [unfinalized!.id],
       })
@@ -133,13 +133,13 @@ describe("target source-document submissions", () => {
     async (outcome, failureCode) => {
       const db = getTestDb();
       const { ledgerId } = await createTestUserWithLedger(db);
-      const pending = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      const pending = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
         ledgerId,
         submittedText: "first parse evidence",
       });
 
       await expect(
-        sqliteRevisionAdapter.preserveTerminalOutcome({
+        postgresRevisionAdapter.preserveTerminalOutcome({
           ledgerId,
           sourceDocumentId: pending.document.id,
           revisionId: pending.revision.id,
@@ -148,7 +148,7 @@ describe("target source-document submissions", () => {
         })
       ).resolves.toBe(true);
 
-      const document = await sqliteRevisionAdapter.get(ledgerId, pending.document.id);
+      const document = await postgresRevisionAdapter.get(ledgerId, pending.document.id);
       expect(document).toMatchObject({
         activeRevisionId: null,
         pendingRevisionId: pending.revision.id,
@@ -162,30 +162,30 @@ describe("target source-document submissions", () => {
   it("preserves active results across failed/anomalous retries and rejects stale activation", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const active = await sqliteLedgerProjectionAdapter.createManual({ ledgerId, entries: [entry] });
+    const active = await postgresLedgerProjectionAdapter.createManual({ ledgerId, entries: [entry] });
     const activeEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, active.revisionId),
     });
 
-    const failed = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const failed = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       submittedText: "failed retry",
       inheritEvidence: true,
     });
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       revisionId: failed.revision.id,
       outcome: "failed",
     });
-    const anomalous = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const anomalous = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       submittedText: "anomalous edit retry",
       inheritEvidence: true,
     });
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       revisionId: anomalous.revision.id,
@@ -194,7 +194,7 @@ describe("target source-document submissions", () => {
     });
 
     expect(
-      await sqliteLedgerProjectionAdapter.activateRevision({
+      await postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: active.sourceDocumentId,
         revisionId: failed.revision.id,
@@ -202,14 +202,14 @@ describe("target source-document submissions", () => {
       })
     ).toBe(false);
     expect(
-      await sqliteRevisionAdapter.preserveTerminalOutcome({
+      await postgresRevisionAdapter.preserveTerminalOutcome({
         ledgerId,
         sourceDocumentId: active.sourceDocumentId,
         revisionId: failed.revision.id,
         outcome: "failed",
       })
     ).toBe(false);
-    const document = await sqliteRevisionAdapter.get(ledgerId, active.sourceDocumentId);
+    const document = await postgresRevisionAdapter.get(ledgerId, active.sourceDocumentId);
     expect(document).toMatchObject({
       activeRevisionId: active.revisionId,
       pendingRevisionId: anomalous.revision.id,
@@ -224,26 +224,26 @@ describe("target source-document submissions", () => {
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new LocalStoredFileAdapter(new MemoryFileStore());
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
-    const initial = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       submittedText: "original",
       storedFileIds: [image.id],
     });
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: initial.document.id,
       revisionId: initial.revision.id,
       outcome: "failed",
     });
-    const retry = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const retry = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       sourceDocumentId: initial.document.id,
       inheritEvidence: true,
     });
 
     await Promise.all([
-      new SqliteProcessingIntentAdapter().dispatch(retry.intent),
-      new SqliteProcessingIntentAdapter().dispatch(retry.intent),
+      new PostgresProcessingIntentAdapter().dispatch(retry.intent),
+      new PostgresProcessingIntentAdapter().dispatch(retry.intent),
     ]);
     const retryRevision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.id, retry.revision.id),
@@ -271,7 +271,7 @@ describe("target source-document submissions", () => {
     const first = await finalizedFile(storage, ledgerId, Buffer.from("first"));
     const second = await finalizedFile(storage, ledgerId, Buffer.from("second"));
     const other = await finalizedFile(storage, otherLedgerId, Buffer.from("other"));
-    const submitted = await sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+    const submitted = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
       storedFileIds: [second.id, first.id],
     });
@@ -281,21 +281,21 @@ describe("target source-document submissions", () => {
     expect(detail).not.toHaveProperty("imageUrls");
     expect(JSON.stringify(detail)).not.toContain("/api/uploads/");
     expect(JSON.stringify(detail)).not.toContain("storageKey");
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: submitted.document.id,
       revisionId: submitted.revision.id,
       outcome: "failed",
     });
     await expect(
-      sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
         ledgerId,
         sourceDocumentId: submitted.document.id,
         storedFileIds: [other.id],
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(
-      sqliteSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
         ledgerId: otherLedgerId,
         sourceDocumentId: submitted.document.id,
         inheritEvidence: true,

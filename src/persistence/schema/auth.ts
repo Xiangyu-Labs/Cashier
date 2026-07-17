@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, index, timestamp } from "drizzle-orm/pg-core";
 import { type InferSelectModel } from "drizzle-orm";
 
-export const users = sqliteTable(
+export const users = pgTable(
   "users",
   {
     id: text("id")
@@ -9,22 +9,22 @@ export const users = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name"),
     email: text("email").notNull().unique(),
-    emailVerified: integer("email_verified", { mode: "timestamp_ms" }),
+    emailVerified: timestamp("email_verified", { withTimezone: true }),
     image: text("image"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [index("idx_users_email").on(table.email)]
 );
 
 export type User = InferSelectModel<typeof users>;
 
-export const otpTokens = sqliteTable(
+export const otpTokens = pgTable(
   "otp_tokens",
   {
     id: text("id")
@@ -32,14 +32,14 @@ export const otpTokens = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     email: text("email").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
     attempts: integer("attempts").notNull().default(0),
-    lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
-    lastAttemptAt: integer("last_attempt_at", { mode: "timestamp_ms" }),
-    verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
     ipAddress: text("ip_address"),
   },
   (table) => [

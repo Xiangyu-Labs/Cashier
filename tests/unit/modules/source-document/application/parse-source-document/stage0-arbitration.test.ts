@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { AIContext, AIGenerateOptions } from "@/lib/tasks";
+import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
 import { arbitrateResults } from "@/modules/source-document/application/parse-source-document/arbitration";
 import type { NormalizedParseOutput as NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
 import type { ParserInput as Stage0Input } from "@/modules/source-document/application/parse-source-document/parser";

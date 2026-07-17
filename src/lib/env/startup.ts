@@ -2,7 +2,6 @@ import { z } from "zod";
 import { AppError } from "@/lib/errors";
 import { isValidAuthEmailFrom } from "@/lib/utils/email";
 export const ENV_DEFAULTS = {
-  DATABASE_URL: "file:./data/sqlite.db",
   OPENAI_BASE_URL: "https://api.openai.com/v1",
   AUTH_URL: "http://localhost:3000",
   LOCAL_STORAGE_PATH: "./data/uploads",
@@ -47,6 +46,16 @@ function requiredString(name: string) {
   return z.preprocess(blankToUndefined, z.string().trim().min(1, `${name} is required`));
 }
 
+function requiredPostgresUrl(name: string) {
+  return z.preprocess(
+    blankToUndefined,
+    z
+      .string()
+      .trim()
+      .regex(/^postgres(?:ql)?:\/\//, `${name} must be a PostgreSQL connection URL`)
+  );
+}
+
 function stringWithDefault(name: keyof typeof ENV_DEFAULTS) {
   return z.preprocess(blankToUndefined, z.string().trim().default(getDefaultString(name)));
 }
@@ -88,7 +97,7 @@ function booleanStringWithDefault(name: keyof typeof ENV_DEFAULTS) {
 }
 
 const startupEnvFields = {
-  DATABASE_URL: stringWithDefault("DATABASE_URL"),
+  DATABASE_URL: requiredPostgresUrl("DATABASE_URL"),
   OPENAI_API_KEY: requiredString("OPENAI_API_KEY"),
   OPENAI_BASE_URL: urlWithDefault("OPENAI_BASE_URL"),
   AUTH_SECRET: requiredString("AUTH_SECRET"),

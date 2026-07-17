@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
+import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
 import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
 import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
@@ -22,7 +22,7 @@ describe("target Settings currency workflow", () => {
       base: "EUR",
       rates: { CNY: 8, USD: 1 },
     });
-    await sqliteLedgerProjectionAdapter.createManual({
+    await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entryDate: "2026-07-15",
       entries: [

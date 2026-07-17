@@ -4,16 +4,18 @@ import {
   foreignKey,
   index,
   integer,
-  sqliteTable,
+  pgTable,
   text,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+  timestamp,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { ledgers, ledgerEntries } from "./ledger";
 import { sourceDocuments } from "./source-document";
 
-const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" }).notNull();
+const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true }).notNull();
 
-export const sourceDocumentRevisions = sqliteTable(
+export const sourceDocumentRevisions = pgTable(
   "source_document_revisions",
   {
     id: text("id")
@@ -26,9 +28,9 @@ export const sourceDocumentRevisions = sqliteTable(
     outcome: text("outcome").notNull().default("queued"),
     anomalyReason: text("anomaly_reason"),
     failureCode: text("failure_code"),
-    submittedAt: timestamp("submitted_at").$defaultFn(() => new Date()),
-    finalizedAt: integer("finalized_at", { mode: "timestamp_ms" }),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    submittedAt: requiredTimestamp("submitted_at").$defaultFn(() => new Date()),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -54,7 +56,7 @@ export const sourceDocumentRevisions = sqliteTable(
   ]
 );
 
-export const storedFiles = sqliteTable(
+export const storedFiles = pgTable(
   "stored_files",
   {
     id: text("id")
@@ -69,9 +71,9 @@ export const storedFiles = sqliteTable(
     byteSize: integer("byte_size").notNull(),
     originalFilename: text("original_filename"),
     checksum: text("checksum"),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
-    finalizedAt: integer("finalized_at", { mode: "timestamp_ms" }),
-    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("uq_stored_files_ledger_id_id").on(table.ledgerId, table.id),
@@ -81,7 +83,7 @@ export const storedFiles = sqliteTable(
   ]
 );
 
-export const revisionFiles = sqliteTable(
+export const revisionFiles = pgTable(
   "revision_files",
   {
     id: text("id")
@@ -91,7 +93,7 @@ export const revisionFiles = sqliteTable(
     revisionId: text("revision_id").notNull(),
     storedFileId: text("stored_file_id").notNull(),
     position: integer("position").notNull(),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -111,7 +113,7 @@ export const revisionFiles = sqliteTable(
   ]
 );
 
-export const revisionEntries = sqliteTable(
+export const revisionEntries = pgTable(
   "revision_entries",
   {
     id: text("id")
@@ -121,7 +123,7 @@ export const revisionEntries = sqliteTable(
     revisionId: text("revision_id").notNull(),
     ledgerEntryId: text("ledger_entry_id").notNull(),
     position: integer("position").notNull(),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -140,7 +142,7 @@ export const revisionEntries = sqliteTable(
   ]
 );
 
-export const processingAttempts = sqliteTable(
+export const processingAttempts = pgTable(
   "processing_attempts",
   {
     id: text("id")
@@ -153,9 +155,9 @@ export const processingAttempts = sqliteTable(
     retryClassification: text("retry_classification"),
     diagnosticCode: text("diagnostic_code"),
     correlationId: text("correlation_id"),
-    startedAt: integer("started_at", { mode: "timestamp_ms" }),
-    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -177,7 +179,7 @@ export const processingAttempts = sqliteTable(
   ]
 );
 
-export const processingOutbox = sqliteTable(
+export const processingOutbox = pgTable(
   "processing_outbox",
   {
     id: text("id")
@@ -188,13 +190,13 @@ export const processingOutbox = sqliteTable(
     attemptNumber: integer("attempt_number").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     status: text("status").notNull().default("pending"),
-    payload: text("payload", { mode: "json" }).$type<unknown>(),
-    availableAt: timestamp("available_at").$defaultFn(() => new Date()),
+    payload: jsonb("payload").$type<unknown>(),
+    availableAt: requiredTimestamp("available_at").$defaultFn(() => new Date()),
     claimToken: text("claim_token"),
-    claimedAt: integer("claimed_at", { mode: "timestamp_ms" }),
-    claimExpiresAt: integer("claim_expires_at", { mode: "timestamp_ms" }),
-    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -214,7 +216,7 @@ export const processingOutbox = sqliteTable(
   ]
 );
 
-export const uploadSessions = sqliteTable(
+export const uploadSessions = pgTable(
   "upload_sessions",
   {
     id: text("id")
@@ -225,9 +227,9 @@ export const uploadSessions = sqliteTable(
       .references(() => ledgers.id, { onDelete: "cascade" }),
     finalizationTokenHash: text("finalization_token_hash").notNull(),
     status: text("status").notNull().default("open"),
-    expiresAt: timestamp("expires_at"),
-    finalizedAt: integer("finalized_at", { mode: "timestamp_ms" }),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    expiresAt: requiredTimestamp("expires_at"),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("uq_upload_sessions_ledger_id_id").on(table.ledgerId, table.id),
@@ -244,7 +246,7 @@ export const uploadSessions = sqliteTable(
   ]
 );
 
-export const uploadSessionFiles = sqliteTable(
+export const uploadSessionFiles = pgTable(
   "upload_session_files",
   {
     id: text("id")
@@ -261,7 +263,7 @@ export const uploadSessionFiles = sqliteTable(
     originalFilename: text("original_filename"),
     expectedChecksum: text("expected_checksum"),
     status: text("status").notNull().default("planned"),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -292,44 +294,17 @@ export const uploadSessionFiles = sqliteTable(
   ]
 );
 
-export const idempotencyRecords = sqliteTable(
+export const idempotencyRecords = pgTable(
   "idempotency_records",
   {
     key: text("key").primaryKey(),
     status: text("status").notNull().default("pending"),
-    result: text("result", { mode: "json" }).$type<unknown>(),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
-    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    result: jsonb("result").$type<unknown>(),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_idempotency_records_status_created").on(table.status, table.createdAt),
     check("ck_idempotency_records_status", sql`${table.status} IN ('pending', 'completed')`),
-  ]
-);
-
-export const migrationCheckpoints = sqliteTable(
-  "migration_checkpoints",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    migrationName: text("migration_name").notNull(),
-    checkpointKey: text("checkpoint_key").notNull(),
-    ledgerId: text("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
-    status: text("status").notNull().default("pending"),
-    cursor: text("cursor"),
-    processedCount: integer("processed_count").notNull().default(0),
-    details: text("details", { mode: "json" }).$type<unknown>(),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
-    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
-  },
-  (table) => [
-    uniqueIndex("uq_migration_checkpoints_name_key").on(table.migrationName, table.checkpointKey),
-    index("idx_migration_checkpoints_ledger_status").on(table.ledgerId, table.status),
-    check("ck_migration_checkpoints_processed_count", sql`${table.processedCount} >= 0`),
-    check(
-      "ck_migration_checkpoints_status",
-      sql`${table.status} IN ('pending', 'running', 'completed', 'failed')`
-    ),
   ]
 );

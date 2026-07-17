@@ -3,16 +3,16 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
-  createSqliteAuthenticationAdapter,
-  sqliteCategoryAdapter,
-  sqliteCurrencyAdapter,
-  sqliteIdempotencyAdapter,
-  sqliteLedgerAdapter,
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-  sqliteServiceCredentialAdapter,
-  sqliteSettingsAdapter,
-} from "@/application/adapters/sqlite";
+  createPostgresAuthenticationAdapter,
+  postgresCategoryAdapter,
+  postgresCurrencyAdapter,
+  postgresIdempotencyAdapter,
+  postgresLedgerAdapter,
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+  postgresServiceCredentialAdapter,
+  postgresSettingsAdapter,
+} from "@/application/adapters/postgres";
 import {
   createLocalUploadPlanForSubmission,
   LocalStoredFileAdapter,
@@ -74,23 +74,23 @@ describe("current-runtime target adapters", () => {
       crypto.randomUUID()
     );
 
-    const first = await sqliteRevisionAdapter.createPending({
+    const first = await postgresRevisionAdapter.createPending({
       ledgerId,
       submittedText: "first",
     });
-    await expect(sqliteRevisionAdapter.get(otherLedgerId, first.document.id)).resolves.toBeNull();
+    await expect(postgresRevisionAdapter.get(otherLedgerId, first.document.id)).resolves.toBeNull();
     await expect(
-      sqliteRevisionAdapter.createPending({ ledgerId, sourceDocumentId: first.document.id })
+      postgresRevisionAdapter.createPending({ ledgerId, sourceDocumentId: first.document.id })
     ).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(
-      sqliteRevisionAdapter.markProcessing({
+      postgresRevisionAdapter.markProcessing({
         ledgerId,
         sourceDocumentId: first.document.id,
         revisionId: first.revision.id,
       })
     ).resolves.toBe(true);
     await expect(
-      sqliteRevisionAdapter.preserveTerminalOutcome({
+      postgresRevisionAdapter.preserveTerminalOutcome({
         ledgerId,
         sourceDocumentId: first.document.id,
         revisionId: first.revision.id,
@@ -99,18 +99,18 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(true);
 
-    const retry = await sqliteRevisionAdapter.createPending({
+    const retry = await postgresRevisionAdapter.createPending({
       ledgerId,
       sourceDocumentId: first.document.id,
       submittedText: "retry",
     });
-    await sqliteRevisionAdapter.markProcessing({
+    await postgresRevisionAdapter.markProcessing({
       ledgerId,
       sourceDocumentId: first.document.id,
       revisionId: retry.revision.id,
     });
     await expect(
-      sqliteLedgerProjectionAdapter.activateRevision({
+      postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: first.document.id,
         revisionId: retry.revision.id,
@@ -118,27 +118,27 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(true);
 
-    const failedRetry = await sqliteRevisionAdapter.createPending({
+    const failedRetry = await postgresRevisionAdapter.createPending({
       ledgerId,
       sourceDocumentId: first.document.id,
       submittedText: "bad retry",
     });
-    await sqliteRevisionAdapter.preserveTerminalOutcome({
+    await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId,
       sourceDocumentId: first.document.id,
       revisionId: failedRetry.revision.id,
       outcome: "anomaly",
       anomalyReason: "unreadable",
     });
-    const preserved = await sqliteRevisionAdapter.get(ledgerId, first.document.id);
+    const preserved = await postgresRevisionAdapter.get(ledgerId, first.document.id);
     expect(preserved).toMatchObject({
       activeRevisionId: retry.revision.id,
       pendingRevisionId: failedRetry.revision.id,
     });
 
-    const second = await sqliteRevisionAdapter.createPending({ ledgerId, submittedText: "second" });
-    const page1 = await sqliteRevisionAdapter.list({ ledgerId, limit: 1 });
-    const page2 = await sqliteRevisionAdapter.list({
+    const second = await postgresRevisionAdapter.createPending({ ledgerId, submittedText: "second" });
+    const page1 = await postgresRevisionAdapter.list({ ledgerId, limit: 1 });
+    const page2 = await postgresRevisionAdapter.list({
       ledgerId,
       limit: 1,
       cursor: page1.nextCursor!,
@@ -161,10 +161,10 @@ describe("current-runtime target adapters", () => {
       .insert(entryCategories)
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
-    const pending = await sqliteRevisionAdapter.createPending({ ledgerId });
+    const pending = await postgresRevisionAdapter.createPending({ ledgerId });
 
     await expect(
-      sqliteLedgerProjectionAdapter.activateRevision({
+      postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: pending.document.id,
         revisionId: pending.revision.id,
@@ -201,7 +201,7 @@ describe("current-runtime target adapters", () => {
       .returning();
 
     await expect(
-      sqliteRevisionAdapter.createPending({ ledgerId, sourceDocumentId: legacy!.id })
+      postgresRevisionAdapter.createPending({ ledgerId, sourceDocumentId: legacy!.id })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(0);
     expect(await db.select().from(revisionEntries)).toHaveLength(0);
@@ -211,7 +211,7 @@ describe("current-runtime target adapters", () => {
   it("soft deletes active and pending documents without removing evidence or accepting late completion", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const active = await sqliteLedgerProjectionAdapter.createManual({
+    const active = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       entries: [projectionEntry],
     });
@@ -226,7 +226,7 @@ describe("current-runtime target adapters", () => {
         finalizedAt: new Date(),
       })
       .returning();
-    const pending = await sqliteRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createPending({
       ledgerId,
       sourceDocumentId: active.sourceDocumentId,
       storedFileIds: [file!.id],
@@ -242,7 +242,7 @@ describe("current-runtime target adapters", () => {
       deleteSourceDocument({ ledgerId, sourceDocumentId: active.sourceDocumentId })
     ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: false });
     await expect(
-      sqliteLedgerProjectionAdapter.activateRevision({
+      postgresLedgerProjectionAdapter.activateRevision({
         ledgerId,
         sourceDocumentId: active.sourceDocumentId,
         revisionId: pending.revision.id,
@@ -250,7 +250,7 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(false);
     await expect(
-      sqliteRevisionAdapter.markProcessing({
+      postgresRevisionAdapter.markProcessing({
         ledgerId,
         sourceDocumentId: active.sourceDocumentId,
         revisionId: pending.revision.id,
@@ -279,7 +279,7 @@ describe("current-runtime target adapters", () => {
   it("creates and edits manual projections, recalculates atomically, and soft deletes", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       title: "Manual",
       entryDate: "2026-07-15",
@@ -290,7 +290,7 @@ describe("current-runtime target adapters", () => {
     });
     expect(originalEntry).toBeDefined();
 
-    const replacementRevisionId = await sqliteLedgerProjectionAdapter.replaceManual({
+    const replacementRevisionId = await postgresLedgerProjectionAdapter.replaceManual({
       ledgerId,
       sourceDocumentId: created.sourceDocumentId,
       title: "Edited",
@@ -306,7 +306,7 @@ describe("current-runtime target adapters", () => {
     ).not.toBeNull();
 
     await expect(
-      sqliteLedgerProjectionAdapter.recalculate({
+      postgresLedgerProjectionAdapter.recalculate({
         ledgerId,
         updates: [
           {
@@ -318,7 +318,7 @@ describe("current-runtime target adapters", () => {
       })
     ).resolves.toBe(1);
     await expect(
-      sqliteLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId)
+      postgresLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId)
     ).resolves.toBe(true);
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
@@ -353,21 +353,21 @@ describe("current-runtime target adapters", () => {
       name: "API",
     });
 
-    await expect(sqliteLedgerAdapter.isOwnedByUser(ledgerId, userId)).resolves.toBe(true);
-    await expect(sqliteLedgerAdapter.getLedgerIdForCredential("credential-1")).resolves.toBe(
+    await expect(postgresLedgerAdapter.isOwnedByUser(ledgerId, userId)).resolves.toBe(true);
+    await expect(postgresLedgerAdapter.getLedgerIdForCredential("credential-1")).resolves.toBe(
       ledgerId
     );
-    await expect(sqliteCategoryAdapter.list(ledgerId)).resolves.toHaveLength(1);
-    await expect(sqliteSettingsAdapter.get(ledgerId)).resolves.toMatchObject({
+    await expect(postgresCategoryAdapter.list(ledgerId)).resolves.toHaveLength(1);
+    await expect(postgresSettingsAdapter.get(ledgerId)).resolves.toMatchObject({
       mainCurrency: "CNY",
     });
-    await expect(sqliteCurrencyAdapter.convert("16", "CNY", "USD")).resolves.toBe("4.000000");
+    await expect(postgresCurrencyAdapter.convert("16", "CNY", "USD")).resolves.toBe("4.000000");
     await expect(
-      createSqliteAuthenticationAdapter(async () => userId).requireUser()
+      createPostgresAuthenticationAdapter(async () => userId).requireUser()
     ).resolves.toEqual({
       id: userId,
     });
-    await expect(sqliteServiceCredentialAdapter.authenticate("secret-key")).resolves.toEqual({
+    await expect(postgresServiceCredentialAdapter.authenticate("secret-key")).resolves.toEqual({
       id: "credential-1",
       ledgerId,
     });
@@ -379,8 +379,8 @@ describe("current-runtime target adapters", () => {
       return { id: calls };
     });
     const results = await Promise.all([
-      sqliteIdempotencyAdapter.execute("same-key", operation),
-      sqliteIdempotencyAdapter.execute("same-key", operation),
+      postgresIdempotencyAdapter.execute("same-key", operation),
+      postgresIdempotencyAdapter.execute("same-key", operation),
     ]);
     expect(results).toEqual([{ id: 1 }, { id: 1 }]);
     expect(operation).toHaveBeenCalledTimes(1);
@@ -438,7 +438,7 @@ describe("current-runtime target adapters", () => {
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
-    const pending = await sqliteRevisionAdapter.createPending({
+    const pending = await postgresRevisionAdapter.createPending({
       ledgerId,
       storedFileIds: [uploaded.id],
     });

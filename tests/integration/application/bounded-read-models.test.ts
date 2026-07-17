@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { sqliteLedgerProjectionAdapter } from "@/application/adapters/sqlite";
+import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { querySourceDocumentPage } from "@/modules/source-document/application/queries/list-source-document-page";
@@ -154,7 +154,7 @@ describe("bounded target read models", () => {
     const localPath = "/var/lib/cashier/uploads/private/ledger-receipt.jpg";
     const storageKey = "private/ledger-receipt.jpg";
     const createdAt = "2026-07-15T08:00:00.000Z";
-    const created = await sqliteLedgerProjectionAdapter.createManual({
+    const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
       title: "Large receipt",
       submittedText: sensitiveText,

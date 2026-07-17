@@ -38,26 +38,28 @@ async function captureSqlStatements<T>(
   fn: () => Promise<T>
 ): Promise<{ result: T; statements: string[] }> {
   const dbWithClient = getTestDb() as unknown as {
-    $client?: { prepare: (sql: string, ...args: unknown[]) => unknown };
+    $client?: {
+      query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+    };
   };
   const client = dbWithClient.$client;
   if (client == null) {
     throw new Error("Expected drizzle client to exist in integration tests");
   }
 
-  const originalPrepare = client.prepare.bind(client);
+  const originalQuery = client.query.bind(client);
   const statements: string[] = [];
 
-  client.prepare = ((sqlStatement: string, ...args: unknown[]) => {
-    statements.push(sqlStatement);
-    return originalPrepare(sqlStatement, ...args);
-  }) as typeof client.prepare;
+  client.query = ((query: string | { text?: string }, ...args: unknown[]) => {
+    statements.push(typeof query === "string" ? query : (query.text ?? ""));
+    return originalQuery(query, ...args);
+  }) as typeof client.query;
 
   try {
     const result = await fn();
     return { result, statements };
   } finally {
-    client.prepare = originalPrepare;
+    client.query = originalQuery;
   }
 }
 
@@ -251,14 +253,14 @@ describe("Enhanced Stats Actions", () => {
 
       expect(entryQueries.length).toBeGreaterThanOrEqual(2);
       for (const query of entryQueries.slice(0, 2)) {
-        expect(query).toContain('"ledgerentries"."ledger_id" = ?');
+        expect(query).toMatch(/"ledgerentries"\."ledger_id" = \$\d+/);
         expect(query).toContain('"ledgerentries"."deleted_at" is null');
         expect(query).toContain('select "id" from "source_documents"');
-        expect(query).toContain('"source_documents"."ledger_id" = ?');
+        expect(query).toMatch(/"source_documents"\."ledger_id" = \$\d+/);
         expect(query).not.toContain('"source_documents"."status"');
         expect(query).toContain('"source_documents"."deleted_at" is null');
-        expect(query).toContain('"source_documents"."entry_date" >= ?');
-        expect(query).toContain('"source_documents"."entry_date" <= ?');
+        expect(query).toMatch(/"source_documents"\."entry_date" >= \$\d+/);
+        expect(query).toMatch(/"source_documents"\."entry_date" <= \$\d+/);
       }
     });
 

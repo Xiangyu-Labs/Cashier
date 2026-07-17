@@ -1,7 +1,8 @@
 import { eq, sql } from "drizzle-orm";
-import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@/persistence";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+
+type TestDatabase = NodePgDatabase<typeof schema>;
 
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -12,13 +13,9 @@ function requireDefined<T>(value: T | undefined, message: string): T {
   return value;
 }
 
-export async function createTestSchema(db: BetterSQLite3Database<typeof schema>) {
-  await migrate(db, { migrationsFolder: "src/persistence/migrations" });
-}
-
 // Helper to create a test user and return the user ID
 export async function createTestUser(
-  db: BetterSQLite3Database<typeof schema>,
+  db: TestDatabase,
   email?: string, // 改为可选，默认使用随机email避免冲突
   id = TEST_USER_ID
 ): Promise<string> {
@@ -51,7 +48,7 @@ export async function createTestUser(
 
 // Helper to create a test user and ledger together
 export async function createTestUserWithLedger(
-  db: BetterSQLite3Database<typeof schema>,
+  db: TestDatabase,
   email?: string, // 改为可选，默认使用随机email
   _ledgerName?: string, // 已废弃，账本名称不再使用
   userId?: string
@@ -70,7 +67,7 @@ export async function createTestUserWithLedger(
 
 // Helper to create a test source document
 export async function createTestSourceDocument(
-  db: BetterSQLite3Database<typeof schema>,
+  db: TestDatabase,
   ledgerId: string,
   overrides: Partial<{
     text: string;
@@ -94,19 +91,20 @@ export async function createTestSourceDocument(
 
 /** Promote a legacy-shaped fixture into the target active ledger projection. */
 export async function activateTestSourceDocumentProjection(
-  db: BetterSQLite3Database<typeof schema>,
+  db: TestDatabase,
   sourceDocumentId: string
 ): Promise<string> {
-  return db.transaction((tx) => {
-    const document = tx
+  return db.transaction(async (tx) => {
+    const documents = await tx
       .select()
       .from(schema.sourceDocuments)
       .where(eq(schema.sourceDocuments.id, sourceDocumentId))
-      .get();
+      .limit(1);
+    const document = documents[0];
     if (document == null) throw new Error("Expected source document fixture");
     if (document.activeRevisionId != null) return document.activeRevisionId;
 
-    const revision = tx
+    const revisions = await tx
       .insert(schema.sourceDocumentRevisions)
       .values({
         ledgerId: document.ledgerId,
@@ -124,29 +122,26 @@ export async function activateTestSourceDocumentProjection(
         finalizedAt:
           document.status === "queued" || document.status === "processing" ? null : new Date(),
       })
-      .returning()
-      .get();
-    const entries = tx
+      .returning();
+    const revision = requireDefined(revisions[0], "Expected inserted revision");
+    const entries = await tx
       .select()
       .from(schema.ledgerEntries)
-      .where(eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId))
-      .all();
+      .where(eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId));
     for (const [position, entry] of entries.entries()) {
-      tx.update(schema.ledgerEntries)
+      await tx.update(schema.ledgerEntries)
         .set({ sourceDocumentRevisionId: revision.id })
-        .where(eq(schema.ledgerEntries.id, entry.id))
-        .run();
-      tx.insert(schema.revisionEntries)
+        .where(eq(schema.ledgerEntries.id, entry.id));
+      await tx.insert(schema.revisionEntries)
         .values({
           ledgerId: document.ledgerId,
           revisionId: revision.id,
           ledgerEntryId: entry.id,
           position,
-        })
-        .run();
+        });
     }
     for (const [position, _imageUrl] of (document.imageUrls ?? []).entries()) {
-      const storedFile = tx
+      const storedFileRows = await tx
         .insert(schema.storedFiles)
         .values({
           ledgerId: document.ledgerId,
@@ -156,25 +151,23 @@ export async function activateTestSourceDocumentProjection(
           byteSize: 1,
           finalizedAt: new Date(),
         })
-        .returning()
-        .get();
-      tx.insert(schema.revisionFiles)
+        .returning();
+      const storedFile = requireDefined(storedFileRows[0], "Expected inserted stored file");
+      await tx.insert(schema.revisionFiles)
         .values({
           ledgerId: document.ledgerId,
           revisionId: revision.id,
           storedFileId: storedFile.id,
           position,
-        })
-        .run();
+        });
     }
-    tx.update(schema.sourceDocuments)
+    await tx.update(schema.sourceDocuments)
       .set(
         revision.outcome === "completed"
           ? { activeRevisionId: revision.id, pendingRevisionId: null }
           : { activeRevisionId: null, pendingRevisionId: revision.id }
       )
-      .where(eq(schema.sourceDocuments.id, sourceDocumentId))
-      .run();
+      .where(eq(schema.sourceDocuments.id, sourceDocumentId));
     return revision.id;
   });
 }

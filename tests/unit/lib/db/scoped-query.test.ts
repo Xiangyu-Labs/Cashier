@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { forLedger } from "@/lib/db/scoped-query";
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { SQL } from "drizzle-orm";
 
 // Create a test table that mimics the structure of real tables
-const testTable = sqliteTable("test_entities", {
+const testTable = pgTable("test_entities", {
   id: text("id").primaryKey(),
   ledgerId: text("ledger_id").notNull(),
   name: text("name"),
-  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 // Create a table without deletedAt to test conditional logic
-const tableWithoutSoftDelete = sqliteTable("no_soft_delete", {
+const tableWithoutSoftDelete = pgTable("no_soft_delete", {
   id: text("id").primaryKey(),
   ledgerId: text("ledger_id").notNull(),
   name: text("name"),

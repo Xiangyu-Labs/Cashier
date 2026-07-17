@@ -1,54 +1,54 @@
 import {
-  sqliteCategoryAdapter,
-  sqliteCurrencyAdapter,
-  sqliteIdempotencyAdapter,
-  sqliteLedgerAdapter,
-  sqliteOtpTokenAdapter,
-  sqliteServiceCredentialAdapter,
-  sqliteLedgerProjectionAdapter,
-  sqliteSourceDocumentSubmissionAdapter,
-  sqliteSettingsAdapter,
-  sqliteUserAccountAdapter,
-  sqliteRevisionAdapter,
+  postgresCategoryAdapter,
+  postgresCurrencyAdapter,
+  postgresIdempotencyAdapter,
+  postgresLedgerAdapter,
+  postgresOtpTokenAdapter,
+  postgresServiceCredentialAdapter,
+  postgresLedgerProjectionAdapter,
+  postgresSourceDocumentSubmissionAdapter,
+  postgresSettingsAdapter,
+  postgresUserAccountAdapter,
+  postgresRevisionAdapter,
   collectTargetSourceDocuments,
   getTargetSourceDocument,
   getTargetSourceDocumentAccessContext,
   listTargetSourceDocuments,
   updateSourceDocument,
   batchUpdateSourceDocuments,
-} from "@/application/adapters/sqlite";
+} from "@/application/adapters/postgres";
 import {
   batchUpdateLedgerEntries,
   createLedgerEntryWithConversion,
   updateLedgerEntryWithConversion,
-} from "@/application/adapters/sqlite/mutate-ledger-entries";
-import { deleteLedgerEntry } from "@/application/adapters/sqlite/delete-ledger-entry";
+} from "@/application/adapters/postgres/mutate-ledger-entries";
+import { deleteLedgerEntry } from "@/application/adapters/postgres/delete-ledger-entry";
 import { resendEmailAdapter } from "@/application/adapters/email/resend";
 import { triggerRevisionProcessingIntent } from "@/application/adapters/in-process";
 import { localStoredFileAdapter } from "@/application/adapters/local";
-import { listLedgerEntryPage } from "@/application/adapters/sqlite/ledger-reads/list-ledger-entry-page";
-import { getLedgerEntryDetail } from "@/application/adapters/sqlite/ledger-reads/get-ledger-entry-detail";
-import { calculateLedgerEntryStats } from "@/application/adapters/sqlite/ledger-reads/calculate-ledger-entry-stats";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/application/adapters/sqlite/ledger-reads/list-ledger-entry-views-by-source-document-ids";
+import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
+import { getLedgerEntryDetail } from "@/application/adapters/postgres/ledger-reads/get-ledger-entry-detail";
+import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
+import { listLedgerEntryViewsBySourceDocumentIds } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-views-by-source-document-ids";
 import {
   getEnhancedStats,
   getEnhancedStatsQuery,
-} from "@/application/adapters/sqlite/ledger-reads/get-enhanced-stats";
+} from "@/application/adapters/postgres/ledger-reads/get-enhanced-stats";
 import {
   ExchangeRateService,
   fetchWithRetry as fetchExchangeRatesWithRetry,
-} from "@/application/adapters/sqlite/exchange-rate";
+} from "@/application/adapters/postgres/exchange-rate";
 
-/** Composition root for the current Docker/SQLite runtime. */
+/** Composition root for the PostgreSQL-backed Docker runtime. */
 export const currentApplication = {
-  categories: sqliteCategoryAdapter,
-  currencies: sqliteCurrencyAdapter,
+  categories: postgresCategoryAdapter,
+  currencies: postgresCurrencyAdapter,
   email: resendEmailAdapter,
   exchangeRates: ExchangeRateService,
   fetchExchangeRatesWithRetry,
-  idempotency: sqliteIdempotencyAdapter,
-  ledgers: sqliteLedgerAdapter,
-  ledgerProjections: sqliteLedgerProjectionAdapter,
+  idempotency: postgresIdempotencyAdapter,
+  ledgers: postgresLedgerAdapter,
+  ledgerProjections: postgresLedgerProjectionAdapter,
   ledgerMutations: {
     batchUpdateEntries: batchUpdateLedgerEntries,
     createEntry: createLedgerEntryWithConversion,
@@ -65,16 +65,16 @@ export const currentApplication = {
     getEnhanced: getEnhancedStats,
     queryEnhanced: getEnhancedStatsQuery,
   },
-  otpTokens: sqliteOtpTokenAdapter,
-  serviceCredentials: sqliteServiceCredentialAdapter,
-  settings: sqliteSettingsAdapter,
+  otpTokens: postgresOtpTokenAdapter,
+  serviceCredentials: postgresServiceCredentialAdapter,
+  settings: postgresSettingsAdapter,
   storedFiles: localStoredFileAdapter,
-  sourceDocumentSubmissions: sqliteSourceDocumentSubmissionAdapter,
+  sourceDocumentSubmissions: postgresSourceDocumentSubmissionAdapter,
   sourceDocumentUpdates: {
     update: updateSourceDocument,
     batchUpdate: batchUpdateSourceDocuments,
   },
-  sourceDocumentRevisions: sqliteRevisionAdapter,
+  sourceDocumentRevisions: postgresRevisionAdapter,
   sourceDocumentReads: {
     collect: collectTargetSourceDocuments,
     get: getTargetSourceDocument,
@@ -82,5 +82,5 @@ export const currentApplication = {
     list: listTargetSourceDocuments,
   },
   triggerRevisionProcessingIntent,
-  userAccounts: sqliteUserAccountAdapter,
+  userAccounts: postgresUserAccountAdapter,
 } as const;

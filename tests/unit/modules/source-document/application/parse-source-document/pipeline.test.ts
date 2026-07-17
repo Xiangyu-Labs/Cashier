@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks";
+import type { AIContext, AIGenerateOptions, AIResponse } from "@/lib/tasks/types";
 import type { ParseSourceDocumentInput } from "@/modules/source-document/application/parse-source-document/contracts";
 import {
   buildStageContext,

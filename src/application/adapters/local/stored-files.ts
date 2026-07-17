@@ -116,14 +116,14 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     const expiresAt = new Date(now.getTime() + LOCAL_UPLOAD_LIMITS.expiresInMs);
     const targetIds = files.map(() => crypto.randomUUID());
 
-    db.transaction((tx) => {
-      const ledger = tx
+    await db.transaction(async (tx) => {
+      const ledger = await tx
         .select({ id: ledgers.id })
         .from(ledgers)
         .where(and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)))
-        .get();
+        .then((rows) => rows[0]);
       if (ledger == null) throw new NotFoundError("Ledger");
-      tx.insert(uploadSessions)
+      await tx.insert(uploadSessions)
         .values({
           id: sessionId,
           ledgerId,
@@ -132,9 +132,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
           expiresAt,
           createdAt: now,
         })
-        .run();
       for (const [position, file] of files.entries()) {
-        tx.insert(uploadSessionFiles)
+        await tx.insert(uploadSessionFiles)
           .values({
             ledgerId,
             uploadSessionId: sessionId,
@@ -146,7 +145,6 @@ export class LocalStoredFileAdapter implements StoredFilePort {
             expectedChecksum: file.checksum ?? null,
             status: "planned",
           })
-          .run();
       }
     });
 
@@ -240,8 +238,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     const storageKey = `${input.ledgerId}/stored/${storedFileId}`;
     await this.storage.upload(storageKey, bytes, input.contentType);
     try {
-      const file = db.transaction((tx) => {
-        const insertedFile = tx
+      const file = await db.transaction(async (tx) => {
+        const insertedFile = await tx
           .insert(storedFiles)
           .values({
             id: storedFileId,
@@ -255,8 +253,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
             createdAt: now,
           })
           .returning()
-          .get();
-        const claimed = tx
+          .then((rows) => rows[0]);
+        const claimed = await tx
           .update(uploadSessionFiles)
           .set({ storedFileId, status: "uploaded" })
           .where(
@@ -267,8 +265,9 @@ export class LocalStoredFileAdapter implements StoredFilePort {
               eq(uploadSessionFiles.status, "planned")
             )
           )
-          .run();
-        if (claimed.changes === 0) throw new ConflictError("Upload target was already used");
+          .returning({ id: uploadSessionFiles.id });
+        if (claimed.length === 0) throw new ConflictError("Upload target was already used");
+        if (insertedFile == null) throw new ConflictError("Stored file was not created");
         return insertedFile;
       });
       return mapStoredFile(file);
@@ -302,8 +301,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
       throw new ConflictError("Upload plan has expired");
     }
 
-    const files = db.transaction((tx) => {
-      const targets = tx
+    const files = await db.transaction(async (tx) => {
+      const targets = await tx
         .select()
         .from(uploadSessionFiles)
         .where(
@@ -312,8 +311,7 @@ export class LocalStoredFileAdapter implements StoredFilePort {
             eq(uploadSessionFiles.uploadSessionId, session.id),
             inArray(uploadSessionFiles.targetId, targetIds)
           )
-        )
-        .all();
+        );
       if (
         targets.length !== targetIds.length ||
         targets.some(
@@ -328,32 +326,28 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         throw new ConflictError("Upload session cannot be finalized");
       }
       const storedFileIds = targets.map((target) => target.storedFileId!);
-      tx.update(storedFiles)
+      await tx.update(storedFiles)
         .set({ finalizedAt: now })
         .where(
           and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
-        )
-        .run();
-      tx.update(uploadSessionFiles)
+        );
+      await tx.update(uploadSessionFiles)
         .set({ status: "finalized" })
         .where(
           and(
             eq(uploadSessionFiles.uploadSessionId, session.id),
             inArray(uploadSessionFiles.targetId, targetIds)
           )
-        )
-        .run();
-      tx.update(uploadSessions)
+        );
+      await tx.update(uploadSessions)
         .set({ status: "finalized", finalizedAt: now })
-        .where(eq(uploadSessions.id, session.id))
-        .run();
-      return tx
+        .where(eq(uploadSessions.id, session.id));
+      return await tx
         .select()
         .from(storedFiles)
         .where(
           and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
-        )
-        .all();
+        );
     });
     return files.map(mapStoredFile);
   }
@@ -422,8 +416,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     storageKey: string;
     metadata: TrustedFileMetadata;
   }): Promise<StoredFileContract> {
-    const row = db.transaction((tx) => {
-      const existing = tx
+    const row = await db.transaction(async (tx) => {
+      const existing = await tx
         .select()
         .from(storedFiles)
         .where(
@@ -432,12 +426,12 @@ export class LocalStoredFileAdapter implements StoredFilePort {
             eq(storedFiles.storageKey, input.storageKey)
           )
         )
-        .get();
+        .then((rows) => rows[0]);
       if (existing != null && existing.ledgerId !== input.ledgerId) {
         throw new ConflictError("Stored file ownership mismatch");
       }
       if (existing != null) {
-        return tx
+        return await tx
           .update(storedFiles)
           .set({
             contentType: input.metadata.contentType,
@@ -447,9 +441,9 @@ export class LocalStoredFileAdapter implements StoredFilePort {
           })
           .where(eq(storedFiles.id, existing.id))
           .returning()
-          .get();
+          .then((rows) => rows[0]);
       }
-      return tx
+      return await tx
         .insert(storedFiles)
         .values({
           ledgerId: input.ledgerId,
@@ -462,8 +456,9 @@ export class LocalStoredFileAdapter implements StoredFilePort {
           finalizedAt: this.now(),
         })
         .returning()
-        .get();
+        .then((rows) => rows[0]);
     });
+    if (row == null) throw new ConflictError("Stored file registration failed");
     return mapStoredFile(row);
   }
 }

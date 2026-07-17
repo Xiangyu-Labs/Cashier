@@ -1,37 +1,25 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "@/persistence";
 import { runtimeEnv } from "@/lib/env/runtime";
 
-const sqlitePath = runtimeEnv.databaseUrl.replace(/^file:/, "");
-
-if (sqlitePath !== ":memory:") {
-  mkdirSync(path.dirname(sqlitePath), { recursive: true });
-}
-
-// Singleton pattern for database connection
 const globalForDb = global as unknown as {
-  conn: Database.Database | undefined;
+  pool: Pool | undefined;
 };
 
-const client =
-  globalForDb.conn ??
-  new Database(sqlitePath, {
-    timeout: 5000, // 5 second timeout
+const pool =
+  globalForDb.pool ??
+  new Pool({
+    connectionString: runtimeEnv.databaseUrl,
+    max: 10,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 30_000,
   });
 
-// The single-process migration runner normally establishes WAL before parallel build/server imports.
-client.pragma("busy_timeout = 5000");
-if (client.pragma("journal_mode", { simple: true }) !== "wal") {
-  client.pragma("journal_mode = WAL");
-}
-client.pragma("foreign_keys = ON");
-client.pragma("synchronous = NORMAL");
-
 if (process.env.NODE_ENV !== "production") {
-  globalForDb.conn = client;
+  globalForDb.pool = pool;
 }
 
-export const db = drizzle(client, { schema });
+export const db = drizzle(pool, { schema });
+export const databasePool = pool;

@@ -5,9 +5,9 @@ import type {
   RevisionProcessorPort,
 } from "@/application/contracts";
 import {
-  sqliteLedgerProjectionAdapter,
-  sqliteRevisionAdapter,
-} from "@/application/adapters/sqlite";
+  postgresLedgerProjectionAdapter,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
@@ -106,7 +106,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       const anomalyReason =
         output.anomalyReason ??
         (output.verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
-      await sqliteRevisionAdapter.preserveTerminalOutcome({
+      await postgresRevisionAdapter.preserveTerminalOutcome({
         ...request,
         outcome: "anomaly",
         anomalyReason,
@@ -117,7 +117,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     const validation = validateEntries(output.ledgerEntries);
     if (!validation.isValid) {
       const anomalyReason = validation.reason ?? "No valid entries";
-      await sqliteRevisionAdapter.preserveTerminalOutcome({
+      await postgresRevisionAdapter.preserveTerminalOutcome({
         ...request,
         outcome: "anomaly",
         anomalyReason,
@@ -136,7 +136,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       mainCurrency,
       fallbackDate,
     });
-    const activated = await sqliteLedgerProjectionAdapter.activateRevision({
+    const activated = await postgresLedgerProjectionAdapter.activateRevision({
       ...request,
       ...(output.title == null ? {} : { title: output.title }),
       entries: entries.map((entry) => ({
@@ -151,7 +151,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       })),
     });
     if (!activated) {
-      const current = await sqliteRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
+      const current = await postgresRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
       if (current?.activeRevisionId !== request.revisionId) {
         throw new Error("Revision completion is stale");
       }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories, taskRuns, users } from "@/persistence";
+import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
@@ -43,16 +43,11 @@ describe("createEntryCategoryAction", () => {
     });
   });
 
-  it("creates a category synchronously with user-provided/default metadata and no task run", async () => {
+  it("creates a category synchronously with user-provided/default metadata", async () => {
     const category = await createEntryCategoryAction(ledgerId, { name: "Travel" });
     expect(category.name).toBe("Travel");
     expect(category.icon ?? null).toBeNull();
     expect(category.description ?? null).toBeNull();
-
-    const db = getTestDb();
-    expect(await db.query.taskRuns.findMany({ where: eq(taskRuns.entityId, category.id) })).toEqual(
-      []
-    );
   });
 
   it("creates a category with all fields and no task run", async () => {

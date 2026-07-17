@@ -1,11 +1,11 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { type InferSelectModel } from "drizzle-orm";
 
-export const currencyRates = sqliteTable("currency_rates", {
+export const currencyRates = pgTable("currency_rates", {
   date: text("date").primaryKey(),
   base: text("base").notNull().default("EUR"),
-  rates: text("rates", { mode: "json" }).$type<Record<string, number>>().notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+  rates: jsonb("rates").$type<Record<string, number>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date()),
 });

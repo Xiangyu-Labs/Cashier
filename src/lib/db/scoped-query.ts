@@ -1,21 +1,21 @@
 import { and, eq, isNull, type SQL } from "drizzle-orm";
-import type { SQLiteTable, SQLiteColumn } from "drizzle-orm/sqlite-core";
+import type { PgTable, PgColumn } from "drizzle-orm/pg-core";
 
 /**
  * Interface for tables that have ledgerId and optional deletedAt columns
  * This allows type-safe access to these columns without 'as unknown as' casts
  */
 interface LedgerScopedTable {
-  ledgerId: SQLiteColumn;
-  deletedAt?: SQLiteColumn;
-  id: SQLiteColumn;
+  ledgerId: PgColumn;
+  deletedAt?: PgColumn;
+  id: PgColumn;
 }
 
 /**
  * 为指定 ledgerId 创建作用域查询条件
  * 自动添加租户隔离 + 软删除过滤
  */
-export function forLedger<T extends SQLiteTable>(table: T & LedgerScopedTable, ledgerId: string) {
+export function forLedger<T extends PgTable>(table: T & LedgerScopedTable, ledgerId: string) {
   return {
     /**
      * 生成标准的 WHERE 条件 (租户隔离 + 软删除)
