@@ -4,6 +4,7 @@ import {
   ledgers,
   entryCategories,
   sourceDocuments,
+  sourceDocumentRevisions,
   ledgerEntries,
   users,
   currencyRates,
@@ -92,7 +93,11 @@ describe("createQuickEntryAction", () => {
     });
     expect(sourceDoc).toBeDefined();
     expect(sourceDoc?.type).toBe("manual");
-    expect(sourceDoc?.status).toBe("completed");
+    await expect(
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, sourceDoc!.activeRevisionId!),
+      })
+    ).resolves.toMatchObject({ outcome: "completed" });
 
     // Verify ledger entry was created
     const entry = await db.query.ledgerEntries.findFirst({

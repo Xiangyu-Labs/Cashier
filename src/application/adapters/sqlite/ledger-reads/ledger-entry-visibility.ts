@@ -14,7 +14,6 @@ function buildVisibleSourceDocumentIdsSubquery(
 ): SQL<unknown> {
   const conditions: SQL<unknown>[] = [
     sql`ledger_id = ${ledgerId}`,
-    sql`status != 'deleted'`,
     sql`deleted_at IS NULL`,
     sql`active_revision_id IS NOT NULL`,
   ];
@@ -36,7 +35,6 @@ export function buildLedgerEntryVisibilityCondition(ledgerId: string): SQL<unkno
     FROM source_documents AS active_documents
     WHERE active_documents.ledger_id = ${ledgerId}
       AND active_documents.id = ${ledgerEntries.sourceDocumentId}
-      AND active_documents.status != 'deleted'
       AND active_documents.deleted_at IS NULL
       AND active_documents.active_revision_id IS NOT NULL
       AND active_documents.active_revision_id = ${ledgerEntries.sourceDocumentRevisionId}

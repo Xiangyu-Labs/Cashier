@@ -2,7 +2,9 @@ import { compressImage } from "@/lib/image-utils";
 import { toEditableImage } from "./source-document-input-controller.core";
 import type { SourceDocumentInputImageLoadResult } from "./source-document-input-controller.types";
 
-export const MAX_FALLBACK_SIZE = 5 * 1024 * 1024;
+export const MAX_FALLBACK_SIZE = 10 * 1024 * 1024;
+
+const SUPPORTED_FALLBACK_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,6 +43,11 @@ export async function loadSourceDocumentInputFiles(
       results.push({ kind: "ready", image: toEditableImage(compressed) });
     } catch (error) {
       console.error("Failed to compress image:", error);
+
+      if (!SUPPORTED_FALLBACK_TYPES.has(file.type)) {
+        results.push({ kind: "unsupported", fileName: file.name });
+        continue;
+      }
 
       if (file.size > MAX_FALLBACK_SIZE) {
         results.push({ kind: "too-large", fileName: file.name });

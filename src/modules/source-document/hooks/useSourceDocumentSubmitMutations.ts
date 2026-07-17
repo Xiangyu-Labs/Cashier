@@ -8,11 +8,15 @@ import {
 } from "@/modules/source-document/actions";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { fireAndForget } from "@/lib/safe-async";
+import { toast } from "sonner";
 import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
 } from "./source-document-input-controller.types";
-import { uploadSourceDocumentSubmissionImages } from "./source-document-submission-upload";
+import {
+  SourceDocumentSubmissionUploadError,
+  uploadSourceDocumentSubmissionImages,
+} from "./source-document-submission-upload";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -29,6 +33,7 @@ interface UseSourceDocumentSubmitMutationsOptions {
   mode: "create" | "retry";
   sourceDocumentId?: string;
   messages: SourceDocumentInputControllerMessages;
+  onSuccess?: () => void;
 }
 
 function createExactPredicate(target: readonly unknown[]): QueryPredicate {
@@ -54,7 +59,17 @@ export function useSourceDocumentSubmitMutations({
   mode,
   sourceDocumentId,
   messages,
+  onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
+  const handleSubmitError = (error: Error, fallbackMessage: string) => {
+    console.error("Source document submission failed:", error);
+    if (error instanceof SourceDocumentSubmissionUploadError) {
+      toast.error(error.stage === "prepare" ? messages.imageReadError : messages.imageUploadError);
+      return;
+    }
+    toast.error(fallbackMessage);
+  };
+
   const createMutation = useLedgerMutation<
     unknown,
     SourceDocumentSubmitPayload,
@@ -66,7 +81,7 @@ export function useSourceDocumentSubmitMutations({
         await uploadSourceDocumentSubmissionImages(ledgerId, payload)
       ),
     successMessage: messages.uploadSuccess,
-    errorMessage: messages.uploadError,
+    errorMessage: null,
     cancelPredicates: [createExactPredicate(queryKeys.sourceDocuments(ledgerId, "pending"))],
     skipInvalidation: true,
     onOptimisticUpdate: async (queryClient) => {
@@ -87,6 +102,8 @@ export function useSourceDocumentSubmitMutations({
     onSettledExtra: (queryClient) => {
       invalidateSubmitQueries(queryClient, ledgerId);
     },
+    ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
+    onErrorExtra: (error) => handleSubmitError(error, messages.uploadError),
   });
 
   const retryMutation = useLedgerMutation<
@@ -103,7 +120,7 @@ export function useSourceDocumentSubmitMutations({
       );
     },
     successMessage: messages.retrySuccess,
-    errorMessage: messages.retryError,
+    errorMessage: null,
     cancelPredicates: [invalidateSourceDocuments(ledgerId)],
     skipInvalidation: true,
     onOptimisticUpdate: async (queryClient, payload) => {
@@ -140,6 +157,8 @@ export function useSourceDocumentSubmitMutations({
     onSettledExtra: (queryClient) => {
       invalidateSubmitQueries(queryClient, ledgerId);
     },
+    ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
+    onErrorExtra: (error) => handleSubmitError(error, messages.retryError),
   });
 
   const activeMutation = mode === "retry" ? retryMutation : createMutation;

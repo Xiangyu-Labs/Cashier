@@ -31,6 +31,7 @@ export function useSourceDocumentInputController({
     ledgerId,
     mode,
     messages,
+    ...(onSuccess != null ? { onSuccess } : {}),
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
   });
 
@@ -40,6 +41,10 @@ export function useSourceDocumentInputController({
     results.forEach((result) => {
       if (result.kind === "too-large") {
         toast.error(messages.imageTooLarge(result.fileName));
+        return;
+      }
+      if (result.kind === "unsupported") {
+        toast.error(messages.imageUnsupported(result.fileName));
         return;
       }
 
@@ -78,12 +83,7 @@ export function useSourceDocumentInputController({
   const handleSubmit = () => {
     if (!draft.canSubmit) return;
 
-    const submitted = submitMutations.submit(
-      buildSubmitPayload(draft.text, draft.images, draft.entryDate)
-    );
-    if (submitted) {
-      onSuccess?.();
-    }
+    submitMutations.submit(buildSubmitPayload(draft.text, draft.images, draft.entryDate));
   };
 
   return {

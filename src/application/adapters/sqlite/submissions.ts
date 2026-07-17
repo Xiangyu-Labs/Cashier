@@ -27,7 +27,6 @@ export const sqliteSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPort
           .select({
             activeRevisionId: sourceDocuments.activeRevisionId,
             pendingRevisionId: sourceDocuments.pendingRevisionId,
-            text: sourceDocuments.text,
           })
           .from(sourceDocuments)
           .where(
@@ -54,7 +53,7 @@ export const sqliteSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPort
                     )
                   )
                   .get();
-          submittedText = evidenceRevision?.submittedText ?? document?.text ?? null;
+          submittedText = evidenceRevision?.submittedText ?? null;
         }
 
         if (storedFileIds === undefined && evidenceRevisionId != null) {

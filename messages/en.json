@@ -180,7 +180,10 @@
     "retrySuccess": "Retry submitted",
     "retryError": "Failed to retry",
     "entryDate": "Date (optional)",
-    "imageTooLarge": "Image too large: {fileName}. Please use a smaller image."
+    "imageTooLarge": "Image too large: {fileName}. Please use a smaller image.",
+    "imageUnsupported": "Unsupported image format: {fileName}. Please use JPEG, PNG, GIF, or WebP.",
+    "imageReadError": "Could not read the selected image. Please select it again.",
+    "imageUploadError": "Image upload failed. Your input has been kept; please retry."
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"

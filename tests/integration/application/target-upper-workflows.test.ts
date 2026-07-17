@@ -123,7 +123,7 @@ describe("target upper workflows", () => {
       convertedAmount: stream.items[0]!.convertedAmount,
       exchangeRate: stream.items[0]!.exchangeRate,
       categoryId: stream.items[0]!.categoryId,
-      sourceDocument: expect.objectContaining({ text: "failed replacement", status: "failed" }),
+      sourceDocument: expect.objectContaining({ text: null, status: "completed" }),
     });
     expect(stream.items[0]?.sourceDocument?.text).toBeNull();
     expect(summary.convertedTotal).toEqual({ total: 12.5, currency: "CNY" });
@@ -419,7 +419,9 @@ describe("target upper workflows", () => {
     });
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
     await expect(getLedgerEntryDetail(original!.id, ledgerId)).resolves.toBeNull();
-    await expect(calculateLedgerStats(ledgerId, undefined, undefined, "CNY")).resolves.toMatchObject({
+    await expect(
+      calculateLedgerStats(ledgerId, undefined, undefined, "CNY")
+    ).resolves.toMatchObject({
       convertedTotal: { total: 0, currency: "CNY" },
     });
   });

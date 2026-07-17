@@ -30,8 +30,9 @@ async function main() {
 
   const client = new Database(databasePath);
   try {
-    client.pragma("foreign_keys = ON");
     client.pragma("busy_timeout = 5000");
+    client.pragma("journal_mode = WAL");
+    client.pragma("foreign_keys = ON");
     await migrate(drizzle(client), { migrationsFolder });
     const backfill = runApplicationLayerBackfill({ db: client, uploadsPath });
     console.log(

@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as ledgerEntryPOST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
-import { serviceCredentials, sourceDocuments, ledgers } from "@/persistence";
+import {
+  serviceCredentials,
+  sourceDocumentRevisions,
+  sourceDocuments,
+  ledgers,
+} from "@/persistence";
 import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import {
@@ -87,9 +92,9 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
   });
 
   it("rejects blank credential name with ValidationError", async () => {
-    await expect(createServiceCredentialAction(testLedgerId, { name: "" } as never)).rejects.toThrow(
-      ValidationError
-    );
+    await expect(
+      createServiceCredentialAction(testLedgerId, { name: "" } as never)
+    ).rejects.toThrow(ValidationError);
   });
 
   it("rejects invalid credential id with ValidationError", async () => {
@@ -129,8 +134,12 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       where: eq(sourceDocuments.id, data.sourceDocumentId),
     });
     expect(doc).toBeDefined();
-    expect(doc?.text).toBe("API Ledger Entry");
     expect(doc?.ledgerId).toBe(testLedgerId);
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId),
+    });
+    expect(revision?.submittedText).toBe("API Ledger Entry");
+    expect(["queued", "processing"]).toContain(revision?.outcome);
   });
 
   it("should reject ledger entry with invalid service credential", async () => {

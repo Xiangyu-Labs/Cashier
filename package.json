@@ -12,6 +12,8 @@
     "ops:inventory": "node scripts/production-inventory.mjs",
     "ops:backup": "node scripts/coordinated-backup.mjs",
     "ops:verify-backup": "node scripts/verify-coordinated-backup.mjs",
+    "ops:rehearse-switch": "node scripts/rehearse-local-switch.mjs",
+    "ops:rehearse-contract-release": "node scripts/rehearse-contract-release.mjs",
     "check": "eslint && tsc --noEmit && vitest run --config vitest.unit.config.ts && vitest run --config vitest.integration.config.ts --reporter=dot && node scripts/run-test-coverage.mjs && next build && node scripts/validate-i18n-catalogs.mjs",
     "test": "vitest --config vitest.config.ts",
     "test:run": "vitest run --config vitest.config.ts",

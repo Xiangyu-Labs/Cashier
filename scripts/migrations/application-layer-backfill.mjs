@@ -102,6 +102,15 @@ function collectPlan(db, uploadsPath) {
     if (!outcome) addError("unmapped_document_status");
 
     const revisionId = stableId("legacy-revision", document.id);
+    const deterministicRevision = db
+      .prepare("SELECT 1 FROM source_document_revisions WHERE id = ? AND source_document_id = ?")
+      .get(revisionId, document.id);
+    const targetRevision = db
+      .prepare("SELECT 1 FROM source_document_revisions WHERE source_document_id = ? LIMIT 1")
+      .get(document.id);
+    // Documents created after the target-model switch already have native revisions and are not legacy input.
+    if (!deterministicRevision && targetRevision) continue;
+
     const files = [];
     for (let position = 0; position < images.length; position += 1) {
       const parsed = safeLocalKey(images[position]);

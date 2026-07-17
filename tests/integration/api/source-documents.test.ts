@@ -10,6 +10,7 @@ import { getTestDb } from "../../setup";
 import {
   entryCategories as categories,
   ledgerEntries,
+  sourceDocumentRevisions,
   sourceDocuments,
   ledgers,
 } from "@/persistence";
@@ -168,9 +169,13 @@ describe("SourceDocument Actions", () => {
     });
 
     expect(savedDoc).toBeDefined();
-    expect(savedDoc?.status).toBeDefined();
-    expect(savedDoc?.text).toBe("午餐25元");
+    expect(savedDoc?.text).toBeNull();
     expect(savedDoc?.imageUrls).toEqual([]);
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.sourceDocumentId, result.sourceDocumentId!),
+    });
+    expect(revision?.submittedText).toBe("午餐25元");
+    expect(["queued", "processing"]).toContain(revision?.outcome);
 
     // Process tasks to ensure cleanup
     await processAllPendingTasks();
@@ -213,7 +218,7 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
-    expect(docAfter?.status).toBe("deleted");
+    expect(docAfter?.status).toBe("queued");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({

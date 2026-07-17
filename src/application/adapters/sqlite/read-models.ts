@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
   SourceDocumentStoredFileDto,
@@ -33,11 +33,7 @@ export interface TargetSourceDocumentListInput {
 
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
   const document = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.id, sourceDocumentId),
-      ne(sourceDocuments.status, "deleted"),
-      isNull(sourceDocuments.deletedAt)
-    ),
+    where: and(eq(sourceDocuments.id, sourceDocumentId), isNull(sourceDocuments.deletedAt)),
     columns: { ledgerId: true, activeRevisionId: true, pendingRevisionId: true },
   });
   if (document == null) return null;
@@ -80,7 +76,6 @@ function baseConditions(input: TargetSourceDocumentListInput): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [
     eq(sourceDocuments.ledgerId, input.ledgerId),
     isNull(sourceDocuments.deletedAt),
-    ne(sourceDocuments.status, "deleted"),
     sql`${derivedStatusExpression()} IS NOT NULL`,
   ];
 
@@ -262,11 +257,13 @@ function mapListItem(
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
     hasImages: (files.get(row.id)?.length ?? 0) > 0,
-    supportedActions: [...supportedSourceDocumentActions({
-      activeRevisionId: row.activeRevisionId,
-      pendingOutcome:
-        row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
-    })],
+    supportedActions: [
+      ...supportedSourceDocumentActions({
+        activeRevisionId: row.activeRevisionId,
+        pendingOutcome:
+          row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
+      }),
+    ],
     errorCode: sanitizedErrorCode(revision?.outcome, revision?.failureCode),
   };
 }
@@ -315,10 +312,7 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const rows = await fetchRows(input, true);
   const hasMore = rows.length > input.limit;
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, files] = await Promise.all([
-    loadRevisionFacts(pageRows),
-    loadFiles(pageRows),
-  ]);
+  const [revisions, files] = await Promise.all([loadRevisionFacts(pageRows), loadFiles(pageRows)]);
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => mapListItem(row, revisions, files)),
@@ -358,7 +352,6 @@ export async function getTargetSourceDocument(
       eq(sourceDocuments.ledgerId, ledgerId),
       eq(sourceDocuments.id, sourceDocumentId),
       isNull(sourceDocuments.deletedAt),
-      ne(sourceDocuments.status, "deleted"),
       sql`${derivedStatusExpression()} IS NOT NULL`
     ),
   });
@@ -392,13 +385,15 @@ export async function getTargetSourceDocument(
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
     hasImages: files.length > 0,
-    supportedActions: [...supportedSourceDocumentActions({
-      activeRevisionId: row.activeRevisionId,
-      pendingOutcome:
-        row.pendingRevisionId == null
-          ? null
-          : ((selectedRevision?.outcome as RevisionOutcome) ?? null),
-    })],
+    supportedActions: [
+      ...supportedSourceDocumentActions({
+        activeRevisionId: row.activeRevisionId,
+        pendingOutcome:
+          row.pendingRevisionId == null
+            ? null
+            : ((selectedRevision?.outcome as RevisionOutcome) ?? null),
+      }),
+    ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
   };
 }

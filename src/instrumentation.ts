@@ -22,20 +22,15 @@ export async function register() {
       "Service configuration status"
     );
 
-    const { initializeDefaultTaskRuntime } = await import("@/lib/tasks/runtime");
-    await initializeDefaultTaskRuntime();
-
-    const { initializeCurrentProcessingDispatcher } = await import(
-      "@/application/adapters/in-process"
-    );
+    const { initializeCurrentProcessingDispatcher } =
+      await import("@/application/adapters/in-process");
     await initializeCurrentProcessingDispatcher();
 
-    const { initializeExchangeRateLedgerRecalculationOrchestration } = await import(
-      "@/lib/orchestration/exchange-rate-ledger-recalculation"
-    );
+    const { initializeExchangeRateLedgerRecalculationOrchestration } =
+      await import("@/lib/orchestration/exchange-rate-ledger-recalculation");
     initializeExchangeRateLedgerRecalculationOrchestration();
 
-    logger.info("Task runtime initialized successfully");
+    logger.info("Target processing runtime initialized successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
     throw error;

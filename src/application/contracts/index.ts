@@ -3,6 +3,8 @@
  * describe business values only; persistence and provider details stay in adapters.
  */
 
+export const APPLICATION_CONTRACT_VERSION = "1.0.0" as const;
+
 export type SourceDocumentId = string;
 export type RevisionId = string;
 export type LedgerId = string;
@@ -153,7 +155,7 @@ export interface ApplicationErrorContract {
   correlationId?: string;
 }
 
-/** Public models remain bounded while legacy reads are still active. */
+/** Public models are bounded target read contracts. */
 export interface SourceDocumentListContract {
   id: SourceDocumentId;
   ledgerId: LedgerId;
@@ -178,7 +180,6 @@ export interface SourceDocumentSubmissionContract {
   revisionState: "queued";
 }
 
-/** Compatibility projection used until retained callers move to revision DTOs. */
 export function toSourceDocumentSubmissionContract(
   sourceDocument: Pick<SourceDocumentContract, "id">,
   revision: Pick<SourceDocumentRevisionContract, "id" | "outcome">
@@ -321,11 +322,7 @@ export interface OtpTokenPort {
     ipAddress?: string;
   }): Promise<void>;
   find(email: string): Promise<OtpTokenContract | null>;
-  recordFailure(input: {
-    email: string;
-    attempts: number;
-    lockedUntil?: Date;
-  }): Promise<void>;
+  recordFailure(input: { email: string; attempts: number; lockedUntil?: Date }): Promise<void>;
   markVerified(email: string): Promise<void>;
   delete(email: string): Promise<void>;
   cleanupExpired(now: Date): Promise<number>;
@@ -339,7 +336,10 @@ export interface UserAccountContract {
 }
 
 export interface UserAccountPort {
-  findOrCreate(email: string, name?: string): Promise<{
+  findOrCreate(
+    email: string,
+    name?: string
+  ): Promise<{
     user: UserAccountContract;
     isExistingUser: boolean;
   }>;

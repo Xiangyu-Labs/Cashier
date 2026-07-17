@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
-import path from "node:path";
-import { and, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type {
   AuthorizedFileReadContract,
   LedgerId,
@@ -47,12 +46,6 @@ interface LocalFileStore {
   delete(key: string): Promise<{ success: boolean }>;
   extractKeyFromUrl?(url: string): string | null;
 }
-
-const LEGACY_MIME_TYPES: Record<string, string> = {
-  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-  ".webp": "image/webp", ".gif": "image/gif", ".heic": "image/heic",
-  ".heif": "image/heif", ".avif": "image/avif",
-};
 
 function tokenHash(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -400,7 +393,6 @@ export class LocalStoredFileAdapter implements StoredFilePort {
           eq(storedFiles.storageProvider, "local"),
           isNotNull(storedFiles.finalizedAt),
           isNull(storedFiles.deletedAt),
-          ne(sourceDocuments.status, "deleted"),
           isNull(sourceDocuments.deletedAt)
         )
       )
@@ -473,52 +465,6 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         .get();
     });
     return mapStoredFile(row);
-  }
-
-  async readAuthorizedLegacyUpload(
-    userId: string,
-    segments: readonly string[]
-  ): Promise<{ body: Uint8Array; contentType: string } | null> {
-    if (
-      segments.length < 3 ||
-      segments.some(
-        (segment) =>
-          segment === "" || segment === "." || segment.includes("..") ||
-          segment.includes("\\") || segment.startsWith("/")
-      )
-    ) return null;
-    const ledgerId = segments[0];
-    const sourceDocumentId = segments[1];
-    const filename = segments.slice(2).join("/");
-    if (ledgerId == null || sourceDocumentId == null || filename === "") return null;
-    const document = await db.query.sourceDocuments.findFirst({
-      where: and(
-        eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        ne(sourceDocuments.status, "deleted"),
-        isNull(sourceDocuments.deletedAt)
-      ),
-      columns: { imageUrls: true, metadata: true },
-      with: { ledger: { columns: { userId: true } } },
-    });
-    if (document == null || document.ledger.userId !== userId) return null;
-    const key = `${ledgerId}/${sourceDocumentId}/${filename}`;
-    const referenced = [
-      ...(document.imageUrls ?? []),
-      ...(Array.isArray(document.metadata?.originalImageUrls)
-        ? document.metadata.originalImageUrls.filter((value): value is string => typeof value === "string")
-        : []),
-    ].some((url) => this.storage.extractKeyFromUrl?.(url) === key);
-    if (!referenced) return null;
-    try {
-      return {
-        body: new Uint8Array(await this.storage.download(key)),
-        contentType: LEGACY_MIME_TYPES[path.extname(filename).toLowerCase()] ?? "application/octet-stream",
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("File not found")) return null;
-      throw error;
-    }
   }
 }
 

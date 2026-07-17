@@ -255,7 +255,7 @@ describe("Enhanced Stats Actions", () => {
         expect(query).toContain('"ledgerentries"."deleted_at" is null');
         expect(query).toContain('select "id" from "source_documents"');
         expect(query).toContain('"source_documents"."ledger_id" = ?');
-        expect(query).toMatch(/"source_documents"\."status"\s*(<>|!=)\s*\?/);
+        expect(query).not.toContain('"source_documents"."status"');
         expect(query).toContain('"source_documents"."deleted_at" is null');
         expect(query).toContain('"source_documents"."entry_date" >= ?');
         expect(query).toContain('"source_documents"."entry_date" <= ?');

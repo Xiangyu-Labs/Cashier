@@ -122,7 +122,7 @@ export function SourceDocumentInputView({
           type="file"
           ref={fileInputRef}
           onChange={onFileInputChange}
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif,image/webp"
           multiple
           aria-label={messages.image}
           className="hidden"

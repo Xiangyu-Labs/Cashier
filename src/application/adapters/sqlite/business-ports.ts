@@ -184,7 +184,9 @@ export const sqliteLedgerAdapter: LedgerPort = {
           .returning()
           .get();
         for (const category of input.categories) {
-          tx.insert(entryCategories).values({ ...category, ledgerId: row.id }).run();
+          tx.insert(entryCategories)
+            .values({ ...category, ledgerId: row.id })
+            .run();
         }
         return {
           id: row.id,
@@ -217,15 +219,13 @@ export const sqliteLedgerAdapter: LedgerPort = {
         .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
         .run();
       tx.update(sourceDocuments)
-        .set({ status: "deleted", deletedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(sourceDocuments.ledgerId, ledgerId),
-            isNull(sourceDocuments.deletedAt)
-          )
-        )
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
         .run();
-      tx.update(ledgers).set({ deletedAt: now, updatedAt: now }).where(eq(ledgers.id, ledgerId)).run();
+      tx.update(ledgers)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(eq(ledgers.id, ledgerId))
+        .run();
       return "deleted" as const;
     });
   },
@@ -488,14 +488,14 @@ export function createSqliteAuthenticationAdapter(
 export const sqliteServiceCredentialAdapter: ServiceCredentialPort = {
   async authenticate(key) {
     const match = await db
-        .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
-        .from(serviceCredentials)
-        .innerJoin(
-          ledgers,
-          and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
-        )
-        .where(and(eq(serviceCredentials.key, key), isNull(serviceCredentials.deletedAt)))
-        .get();
+      .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
+      .from(serviceCredentials)
+      .innerJoin(
+        ledgers,
+        and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
+      )
+      .where(and(eq(serviceCredentials.key, key), isNull(serviceCredentials.deletedAt)))
+      .get();
     if (match == null) return null;
     try {
       const updated = await db
@@ -623,12 +623,7 @@ export const sqliteOtpTokenAdapter: OtpTokenPort = {
     });
   },
   async find(email) {
-    const row = await db
-      .select()
-      .from(otpTokens)
-      .where(eq(otpTokens.email, email))
-      .limit(1)
-      .get();
+    const row = await db.select().from(otpTokens).where(eq(otpTokens.email, email)).limit(1).get();
     return row == null
       ? null
       : {
@@ -650,10 +645,7 @@ export const sqliteOtpTokenAdapter: OtpTokenPort = {
       .where(eq(otpTokens.email, input.email));
   },
   async markVerified(email) {
-    await db
-      .update(otpTokens)
-      .set({ verifiedAt: new Date() })
-      .where(eq(otpTokens.email, email));
+    await db.update(otpTokens).set({ verifiedAt: new Date() }).where(eq(otpTokens.email, email));
   },
   async delete(email) {
     await db.delete(otpTokens).where(eq(otpTokens.email, email));
@@ -673,7 +665,12 @@ export const sqliteUserAccountAdapter: UserAccountPort = {
         .get();
       if (existing != null) {
         return {
-          user: { id: existing.id, email: existing.email, name: existing.name, image: existing.image },
+          user: {
+            id: existing.id,
+            email: existing.email,
+            name: existing.name,
+            image: existing.image,
+          },
           isExistingUser: true,
         };
       }

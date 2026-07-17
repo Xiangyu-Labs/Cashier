@@ -117,10 +117,7 @@ export class SqliteProcessingIntentAdapter implements ProcessingPort {
           lte(processingOutbox.availableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
-            and(
-              eq(processingOutbox.status, "claimed"),
-              lte(processingOutbox.claimExpiresAt, now)
-            )
+            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
           )
         )
       )
@@ -151,10 +148,7 @@ export class SqliteProcessingIntentAdapter implements ProcessingPort {
             lte(processingOutbox.availableAt, now),
             or(
               eq(processingOutbox.status, "pending"),
-              and(
-                eq(processingOutbox.status, "claimed"),
-                lte(processingOutbox.claimExpiresAt, now)
-              )
+              and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
             )
           )
         )
@@ -178,16 +172,6 @@ export class SqliteProcessingIntentAdapter implements ProcessingPort {
           and(
             eq(sourceDocumentRevisions.id, row.revisionId),
             eq(sourceDocumentRevisions.outcome, "queued")
-          )
-        )
-        .run();
-      tx.update(sourceDocuments)
-        .set({ status: "processing", updatedAt: now })
-        .where(
-          and(
-            eq(sourceDocuments.id, intent.sourceDocumentId),
-            eq(sourceDocuments.pendingRevisionId, row.revisionId),
-            isNull(sourceDocuments.deletedAt)
           )
         )
         .run();
@@ -224,7 +208,11 @@ export class SqliteProcessingIntentAdapter implements ProcessingPort {
           status: result.outcome,
           completedAt: now,
           retryClassification:
-            result.outcome === "anomaly" ? "anomaly" : result.outcome === "failed" ? "retryable" : null,
+            result.outcome === "anomaly"
+              ? "anomaly"
+              : result.outcome === "failed"
+                ? "retryable"
+                : null,
           diagnosticCode: result.diagnostic?.code ?? null,
           correlationId: result.diagnostic?.correlationId ?? null,
         })

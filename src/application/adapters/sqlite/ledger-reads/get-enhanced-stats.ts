@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { and, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { parseDateString } from "@/lib/date-utils";
 import {
   parseEnhancedStatsInput,
@@ -9,16 +9,11 @@ import {
 } from "@/modules/stats/contract-schemas";
 import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
-import { SourceDocumentStatus } from "@/modules/source-document/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 import { buildLedgerEntryVisibilityCondition } from "./ledger-entry-visibility";
 
 function whereStatsSourceDocumentActive(ledgerId: string) {
-  return and(
-    eq(sourceDocuments.ledgerId, ledgerId),
-    isNull(sourceDocuments.deletedAt),
-    ne(sourceDocuments.status, SourceDocumentStatus.Deleted)
-  )!;
+  return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
 }
 
 function calculateStats(amounts: number[]): CalendarHeatmapStats {

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, max, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, max } from "drizzle-orm";
 import type { LedgerProjectionEntryContract, LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -18,7 +18,6 @@ function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(
     eq(sourceDocuments.ledgerId, ledgerId),
     eq(sourceDocuments.id, sourceDocumentId),
-    ne(sourceDocuments.status, "deleted"),
     isNull(sourceDocuments.deletedAt)
   )!;
 }
@@ -271,10 +270,7 @@ function createCompletedRevision(
     .get();
 }
 
-export function ensureTargetLedgerProjection(
-  ledgerId: string,
-  sourceDocumentId: string
-): string {
+export function ensureTargetLedgerProjection(ledgerId: string, sourceDocumentId: string): string {
   return db.transaction((tx) => {
     const document = tx
       .select()
@@ -383,8 +379,6 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: input.revisionId,
           pendingRevisionId: null,
-          status: "completed",
-          anomalyReason: null,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
           updatedAt: now,
         })
@@ -414,9 +408,6 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
           id: sourceDocumentId,
           ledgerId: input.ledgerId,
           title: input.title ?? null,
-          text: input.submittedText ?? null,
-          imageUrls: [],
-          status: "completed",
           type: "manual",
           entryDate: input.entryDate ?? null,
         })
@@ -479,8 +470,6 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
-          status: "completed",
-          text: input.submittedText ?? document.text,
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
           updatedAt: new Date(),
@@ -555,8 +544,6 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
-          status: "completed",
-          anomalyReason: null,
           updatedAt: new Date(),
         })
         .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
@@ -589,7 +576,6 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
               eq(ledgerEntries.ledgerId, input.ledgerId),
               eq(ledgerEntries.id, update.ledgerEntryId),
               isNull(ledgerEntries.deletedAt),
-              ne(sourceDocuments.status, "deleted"),
               isNull(sourceDocuments.deletedAt)
             )
           )
@@ -618,7 +604,7 @@ export const sqliteLedgerProjectionAdapter: LedgerProjectionPort = {
       const now = new Date();
       const deleted = tx
         .update(sourceDocuments)
-        .set({ status: "deleted", deletedAt: now, updatedAt: now })
+        .set({ deletedAt: now, updatedAt: now })
         .where(activeDocumentWhere(ledgerId, sourceDocumentId))
         .run();
       if (deleted.changes === 0) return false;

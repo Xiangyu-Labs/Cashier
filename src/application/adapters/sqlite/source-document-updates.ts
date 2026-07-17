@@ -10,10 +10,14 @@ import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
 } from "@/modules/source-document/contract-schemas";
-import {
-  whereSourceDocumentNotDeleted,
-  whereSourceDocumentNotDeletedId,
-} from "@/application/adapters/in-process/legacy-processing/source-document-state";
+
+function whereSourceDocumentNotDeleted(ledgerId: string) {
+  return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
+}
+
+function whereSourceDocumentNotDeletedId(ledgerId: string, sourceDocumentId: string) {
+  return and(whereSourceDocumentNotDeleted(ledgerId), eq(sourceDocuments.id, sourceDocumentId))!;
+}
 
 interface UpdateSourceDocumentInput {
   ledgerId: string;
@@ -98,7 +102,6 @@ export async function batchUpdateSourceDocuments({
 
   const updatePatch = {
     updatedAt: new Date(),
-    ...(data.status !== undefined ? { status: data.status } : {}),
     ...(data.title !== undefined ? { title: data.title } : {}),
     ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
   };

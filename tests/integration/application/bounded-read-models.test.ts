@@ -128,7 +128,9 @@ describe("bounded target read models", () => {
     }
 
     const detail = await getSourceDocumentFullQuery(ledgerId, documents[0]!.id);
-    expect(Object.keys(detail).sort()).toEqual(["createdAt", "files", "id", "status", "text"].sort());
+    expect(Object.keys(detail).sort()).toEqual(
+      ["createdAt", "files", "id", "status", "text"].sort()
+    );
     expect(detail.text).toBe(`${sensitiveText}-0`);
     expect(detail.files).toEqual([
       {
@@ -189,7 +191,7 @@ describe("bounded target read models", () => {
       id: created.sourceDocumentId,
       text: null,
       metadata: {},
-      hasImages: true,
+      hasImages: false,
     });
     expect(serialized.length).toBeLessThan(15_000);
     for (const forbidden of [

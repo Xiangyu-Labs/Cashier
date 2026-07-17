@@ -251,6 +251,29 @@ describe("automatic application-layer database migration", () => {
     verify.close();
   });
 
+  it("leaves target-native revisions out of legacy restart reconciliation", async () => {
+    const fixture = await createFixture();
+    expectSuccessfulMigration(fixture.databasePath, fixture.uploadsPath);
+    const db = new Database(fixture.databasePath);
+    const documentId = "target-native-document";
+    const revisionId = "target-native-revision";
+    db.prepare(
+      "INSERT INTO source_documents (id, ledger_id, text, image_urls, status, type, metadata, created_at, updated_at, active_revision_id) VALUES (?, 'ledger-1', 'native entry', '[]', 'completed', 'manual', '{}', 40, 40, ?)"
+    ).run(documentId, revisionId);
+    db.prepare(
+      "INSERT INTO source_document_revisions (id, ledger_id, source_document_id, revision_number, submitted_text, outcome, submitted_at, finalized_at, created_at) VALUES (?, 'ledger-1', ?, 1, 'native entry', 'completed', 40, 40, 40)"
+    ).run(revisionId, documentId);
+    db.close();
+
+    const rerun = expectSuccessfulMigration(fixture.databasePath, fixture.uploadsPath);
+    expect(rerun.backfill).toMatchObject({
+      batches: 0,
+      appliedDocuments: 0,
+      preflight: { documents: 3, excludedDeletedDocuments: 1 },
+      reconciliation: { documents: 3, unresolvedCount: 0 },
+    });
+  });
+
   it("resumes from completed mappings after an interrupted batch", async () => {
     const fixture = await createFixture({ expanded: true });
     const interrupted = new Database(fixture.databasePath);

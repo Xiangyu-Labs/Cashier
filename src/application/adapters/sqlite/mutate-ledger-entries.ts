@@ -1,4 +1,4 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   ensureTargetLedgerProjection,
   sqliteLedgerProjectionAdapter,
@@ -19,7 +19,7 @@ function whereActiveSourceDocumentForLedger(ledgerId: string, sourceDocumentId: 
   return and(
     eq(sourceDocuments.id, sourceDocumentId),
     eq(sourceDocuments.ledgerId, ledgerId),
-    ne(sourceDocuments.status, "deleted")
+    isNull(sourceDocuments.deletedAt)
   )!;
 }
 
@@ -140,10 +140,7 @@ export async function updateLedgerEntryWithConversion(input: {
     ),
     with: { sourceDocument: true },
   });
-  if (
-    targetEntry?.sourceDocument != null &&
-    targetEntry.sourceDocument.activeRevisionId == null
-  ) {
+  if (targetEntry?.sourceDocument != null && targetEntry.sourceDocument.activeRevisionId == null) {
     ensureTargetLedgerProjection(input.ledgerId, targetEntry.sourceDocument.id);
     targetEntry = await db.query.ledgerEntries.findFirst({
       where: and(

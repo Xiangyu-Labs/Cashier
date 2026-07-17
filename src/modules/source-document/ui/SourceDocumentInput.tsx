@@ -25,6 +25,9 @@ export function SourceDocumentInput({
       retrySuccess: t("retrySuccess"),
       retryError: t("retryError"),
       imageTooLarge: (fileName: string) => t("imageTooLarge", { fileName }),
+      imageUnsupported: (fileName: string) => t("imageUnsupported", { fileName }),
+      imageReadError: t("imageReadError"),
+      imageUploadError: t("imageUploadError"),
     },
   });
 

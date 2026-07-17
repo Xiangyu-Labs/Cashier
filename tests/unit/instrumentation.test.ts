@@ -40,20 +40,21 @@ describe("instrumentation.register", () => {
     process.env.NEXT_RUNTIME = "nodejs";
   });
 
-  it("validates startup env before initializing the flow runtime", async () => {
+  it("validates startup env before initializing target processing", async () => {
     const { register } = await import("@/instrumentation");
 
     await register();
 
     expect(validateStartupEnv).toHaveBeenCalledTimes(1);
     const validateOrder = validateStartupEnv.mock.invocationCallOrder.at(0);
-    const initializeOrder = initializeDefaultTaskRuntime.mock.invocationCallOrder.at(0);
+    const initializeOrder = initializeCurrentProcessingDispatcher.mock.invocationCallOrder.at(0);
 
     expect(validateOrder).toBeDefined();
     expect(initializeOrder).toBeDefined();
     expect(validateOrder!).toBeLessThan(initializeOrder!);
     expect(initializeExchangeRateLedgerRecalculationOrchestration).toHaveBeenCalledTimes(1);
     expect(initializeCurrentProcessingDispatcher).toHaveBeenCalledTimes(1);
+    expect(initializeDefaultTaskRuntime).not.toHaveBeenCalled();
 
     const orchestrationOrder =
       initializeExchangeRateLedgerRecalculationOrchestration.mock.invocationCallOrder.at(0);
@@ -61,13 +62,13 @@ describe("instrumentation.register", () => {
     expect(initializeOrder!).toBeLessThan(orchestrationOrder!);
   });
 
-  it("rethrows when runtime initialization fails", async () => {
-    initializeDefaultTaskRuntime.mockRejectedValueOnce(new Error("runtime failed"));
+  it("rethrows when target processing initialization fails", async () => {
+    initializeCurrentProcessingDispatcher.mockRejectedValueOnce(new Error("runtime failed"));
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("runtime failed");
     expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
-    expect(initializeCurrentProcessingDispatcher).not.toHaveBeenCalled();
+    expect(initializeDefaultTaskRuntime).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 

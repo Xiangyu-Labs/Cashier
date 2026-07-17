@@ -168,6 +168,7 @@ describe("getEnhancedStatsQuery", () => {
           status: "deleted",
           imageUrls: [],
           entryDate: "2024-03-05",
+          deletedAt: new Date(),
         },
       ])
       .returning();

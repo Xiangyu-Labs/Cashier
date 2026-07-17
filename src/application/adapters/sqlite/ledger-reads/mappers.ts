@@ -9,22 +9,23 @@ import type {
 
 type DateFields = { createdAt: Date; updatedAt: Date; deletedAt: Date | null };
 type LedgerRow = Omit<LedgerDto, "createdAt" | "updatedAt" | "deletedAt"> & DateFields;
-type EntryCategoryRow = Omit<
-  EntryCategoryDto,
-  "createdAt" | "updatedAt" | "deletedAt"
-> & DateFields;
-type ServiceCredentialRow = Omit<
-  ServiceCredentialDto,
-  "createdAt" | "lastUsedAt" | "deletedAt"
-> & { createdAt: Date; lastUsedAt: Date | null; deletedAt: Date | null };
-type SourceDocumentRow = Omit<
+type EntryCategoryRow = Omit<EntryCategoryDto, "createdAt" | "updatedAt" | "deletedAt"> &
+  DateFields;
+type ServiceCredentialRow = Omit<ServiceCredentialDto, "createdAt" | "lastUsedAt" | "deletedAt"> & {
+  createdAt: Date;
+  lastUsedAt: Date | null;
+  deletedAt: Date | null;
+};
+type SourceDocumentRow = Pick<
   SourceDocumentReferenceDto,
-  "createdAt" | "updatedAt" | "deletedAt" | "hasImages" | "metadata" | "imageUrls"
-> & DateFields & { metadata: unknown; imageUrls: string[] | null };
+  "id" | "ledgerId" | "title" | "type" | "entryDate"
+> &
+  DateFields & { metadata: unknown };
 type LedgerEntryRow = Omit<
   LedgerEntryDto,
   "createdAt" | "updatedAt" | "deletedAt" | "category" | "sourceDocument"
-> & DateFields;
+> &
+  DateFields;
 
 function toIso(date: Date | null | undefined): string | null {
   if (date == null) return null;
@@ -75,11 +76,7 @@ export function mapSourceDocumentReferenceDto(
     | "id"
     | "ledgerId"
     | "title"
-    | "text"
-    | "imageUrls"
-    | "status"
     | "type"
-    | "anomalyReason"
     | "entryDate"
     | "metadata"
     | "createdAt"
@@ -91,16 +88,16 @@ export function mapSourceDocumentReferenceDto(
     id: doc.id,
     ledgerId: doc.ledgerId,
     title: doc.title,
-    text: doc.text,
-    status: doc.status,
+    text: null,
+    status: "completed",
     type: doc.type,
-    anomalyReason: doc.anomalyReason,
+    anomalyReason: null,
     entryDate: doc.entryDate,
     metadata: (doc.metadata ?? {}) as Record<string, unknown>,
     createdAt: toIso(doc.createdAt)!,
     updatedAt: toIso(doc.updatedAt)!,
     deletedAt: toIso(doc.deletedAt),
-    hasImages: (doc.imageUrls?.length ?? 0) > 0,
+    hasImages: false,
   };
 }
 

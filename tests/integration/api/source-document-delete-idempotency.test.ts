@@ -67,7 +67,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const deletedDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDoc.id),
     });
-    expect(deletedDoc?.status).toBe("deleted");
+    expect(deletedDoc?.status).toBe("completed");
     expect(deletedDoc?.deletedAt).not.toBeNull();
   });
 
@@ -149,7 +149,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const doc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDoc.id),
     });
-    expect(doc?.status).toBe("deleted");
+    expect(doc?.status).toBe("completed");
     expect(doc?.deletedAt).not.toBeNull();
   });
 

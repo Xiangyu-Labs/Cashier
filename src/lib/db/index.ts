@@ -22,11 +22,13 @@ const client =
     timeout: 5000, // 5 second timeout
   });
 
-// Configure SQLite PRAGMA for performance and data integrity
-client.pragma("journal_mode = WAL");
+// The single-process migration runner normally establishes WAL before parallel build/server imports.
+client.pragma("busy_timeout = 5000");
+if (client.pragma("journal_mode", { simple: true }) !== "wal") {
+  client.pragma("journal_mode = WAL");
+}
 client.pragma("foreign_keys = ON");
 client.pragma("synchronous = NORMAL");
-client.pragma("busy_timeout = 5000");
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.conn = client;

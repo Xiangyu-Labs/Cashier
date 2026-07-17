@@ -47,7 +47,12 @@ describe("source-document retry action", () => {
     const before = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(before?.status).toBe("completed");
+    expect(before?.activeRevisionId).not.toBeNull();
+    await expect(
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, before!.activeRevisionId!),
+      })
+    ).resolves.toMatchObject({ outcome: "completed" });
 
     vi.mocked(getOpenAIClient).mockReturnValue(
       createMultiStageMock({
@@ -87,7 +92,7 @@ describe("source-document retry action", () => {
     });
     expect(after).toMatchObject({
       id: created.sourceDocumentId,
-      status: "completed",
+      status: "queued",
       deletedAt: null,
       pendingRevisionId: null,
     });

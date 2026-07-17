@@ -180,7 +180,10 @@
     "retrySuccess": "重试已提交",
     "retryError": "重试失败",
     "entryDate": "日期（可选）",
-    "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。"
+    "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。",
+    "imageUnsupported": "不支持的图片格式：{fileName}。请使用 JPEG、PNG、GIF 或 WebP。",
+    "imageReadError": "无法读取所选图片，请重新选择。",
+    "imageUploadError": "图片上传失败，输入内容已保留，请重试。"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"

@@ -1,7 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { createUploadPlanActionMock, finalizeUploadActionMock } = vi.hoisted(() => ({
+  createUploadPlanActionMock: vi.fn(),
+  finalizeUploadActionMock: vi.fn(),
+}));
+
+vi.mock("@/modules/source-document/actions", () => ({
+  createSourceDocumentUploadPlanAction: createUploadPlanActionMock,
+  finalizeSourceDocumentUploadAction: finalizeUploadActionMock,
+}));
+
 import { uploadSourceDocumentSubmissionImages } from "@/modules/source-document/hooks/source-document-submission-upload";
 
 describe("source-document submission uploads", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    createUploadPlanActionMock.mockReset();
+    finalizeUploadActionMock.mockReset();
+  });
+
   it("bypasses upload planning for text-only submissions", async () => {
     const createPlan = vi.fn();
     const finalize = vi.fn();
@@ -18,12 +35,8 @@ describe("source-document submission uploads", () => {
   });
 
   it("uploads in display order, finalizes targets, and returns only stored-file identities", async () => {
-    const sourceResponses = [
-      new Response(new Uint8Array([1]), { headers: { "Content-Type": "image/jpeg" } }),
-      new Response(new Uint8Array([2, 3]), { headers: { "Content-Type": "image/png" } }),
-    ];
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.startsWith("source:")) return sourceResponses.shift()!;
+      if (!url.startsWith("target:")) throw new Error(`Unexpected fetch URL: ${url}`);
       return new Response(null, { status: 201 });
     });
     const createPlan = vi.fn().mockResolvedValue({
@@ -45,8 +58,8 @@ describe("source-document submission uploads", () => {
         entryDate: "2026-07-15",
         text: "Mixed",
         images: [
-          { data: "source:1", mimeType: "image/jpeg" },
-          { data: "source:2", mimeType: "image/png" },
+          { data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" },
+          { data: "data:image/png;base64,AgM=", mimeType: "image/png" },
         ],
         originalImages: [{ data: "private-original", mimeType: "image/jpeg" }],
       },
@@ -67,14 +80,11 @@ describe("source-document submission uploads", () => {
       text: "Mixed",
       storedFileIds: ["file-1", "file-2"],
     });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("keeps authorized retry seed identities before newly uploaded files", async () => {
-    const fetchMock = vi.fn(async (url: string) =>
-      url === "source:new"
-        ? new Response(new Uint8Array([4]), { headers: { "Content-Type": "image/webp" } })
-        : new Response(null, { status: 201 })
-    );
+    const fetchMock = vi.fn(async () => new Response(null, { status: 201 }));
     const createPlan = vi.fn().mockResolvedValue({
       id: "session-2",
       expiresAt: "2026-07-15T01:00:00.000Z",
@@ -91,7 +101,7 @@ describe("source-document submission uploads", () => {
         {
           entryDate: "2026-07-15",
           storedFileIds: ["file-existing-1", "file-existing-2"],
-          images: [{ data: "source:new", mimeType: "image/webp" }],
+          images: [{ data: "data:image/webp;base64,BA==", mimeType: "image/webp" }],
         },
         { createPlan, finalize, fetch: fetchMock as typeof fetch }
       )
@@ -99,5 +109,83 @@ describe("source-document submission uploads", () => {
       entryDate: "2026-07-15",
       storedFileIds: ["file-existing-1", "file-existing-2", "file-new"],
     });
+  });
+
+  it("rejects malformed local image data before creating an upload plan", async () => {
+    const createPlan = vi.fn();
+    const finalize = vi.fn();
+    const fetchMock = vi.fn();
+
+    await expect(
+      uploadSourceDocumentSubmissionImages(
+        "ledger-1",
+        {
+          entryDate: "2026-07-15",
+          images: [{ data: "blob:already-revoked", mimeType: "image/jpeg" }],
+        },
+        { createPlan, finalize, fetch: fetchMock }
+      )
+    ).rejects.toMatchObject({ stage: "prepare" });
+
+    expect(createPlan).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(finalize).not.toHaveBeenCalled();
+  });
+
+  it("reports failed target requests as upload-stage errors", async () => {
+    const createPlan = vi.fn().mockResolvedValue({
+      id: "session-3",
+      expiresAt: "2026-07-15T01:00:00.000Z",
+      finalizationToken: "finalize-3",
+      maxFiles: 10,
+      maxBytesPerFile: 10,
+      targets: [{ id: "target-3", method: "PUT", url: "target:3", requiredHeaders: {} }],
+    });
+    const finalize = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 413 }));
+
+    await expect(
+      uploadSourceDocumentSubmissionImages(
+        "ledger-1",
+        {
+          entryDate: "2026-07-15",
+          images: [{ data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" }],
+        },
+        { createPlan, finalize, fetch: fetchMock }
+      )
+    ).rejects.toMatchObject({ stage: "upload" });
+
+    expect(finalize).not.toHaveBeenCalled();
+  });
+
+  it("preserves the browser receiver when using the default fetch dependency", async () => {
+    createUploadPlanActionMock.mockResolvedValue({
+      id: "session-default",
+      expiresAt: "2026-07-15T01:00:00.000Z",
+      finalizationToken: "finalize-default",
+      maxFiles: 10,
+      maxBytesPerFile: 10,
+      targets: [
+        { id: "target-default", method: "PUT", url: "target:default", requiredHeaders: {} },
+      ],
+    });
+    finalizeUploadActionMock.mockResolvedValue(["file-default"]);
+    const receiverSensitiveFetch = vi.fn(function (this: typeof globalThis) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return Promise.resolve(new Response(null, { status: 201 }));
+    });
+    vi.stubGlobal("fetch", receiverSensitiveFetch);
+
+    await expect(
+      uploadSourceDocumentSubmissionImages("ledger-1", {
+        entryDate: "2026-07-15",
+        images: [{ data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" }],
+      })
+    ).resolves.toEqual({
+      entryDate: "2026-07-15",
+      storedFileIds: ["file-default"],
+    });
+
+    expect(receiverSensitiveFetch).toHaveBeenCalledTimes(1);
   });
 });

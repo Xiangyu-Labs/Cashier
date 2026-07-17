@@ -261,7 +261,8 @@ describe("current-runtime target adapters", () => {
       where: eq(sourceDocuments.id, active.sourceDocumentId),
     });
     expect(deleted).toMatchObject({
-      status: "deleted",
+      status: "queued",
+      deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
       pendingRevisionId: pending.revision.id,
     });
@@ -322,7 +323,7 @@ describe("current-runtime target adapters", () => {
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(deleted?.status).toBe("deleted");
+    expect(deleted).toMatchObject({ status: "queued", deletedAt: expect.any(Date) });
     expect(
       (
         await db.query.ledgerEntries.findFirst({
@@ -445,7 +446,7 @@ describe("current-runtime target adapters", () => {
       await db.query.sourceDocuments.findFirst({
         where: eq(sourceDocuments.id, pending.document.id),
       })
-    ).toMatchObject({ imageUrls: [`/api/uploads/${ledgerId}/stored/${uploaded.id}`] });
+    ).toMatchObject({ imageUrls: [] });
     await expect(adapter.readAuthorized(ledgerId, uploaded.id)).resolves.toMatchObject({
       file: { id: uploaded.id },
     });

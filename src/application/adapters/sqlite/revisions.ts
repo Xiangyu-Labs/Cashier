@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, lt, max, ne, or } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, lt, max, or } from "drizzle-orm";
 import type {
   RevisionOutcome,
   SourceDocumentContract,
@@ -33,7 +33,6 @@ function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(
     eq(sourceDocuments.ledgerId, ledgerId),
     eq(sourceDocuments.id, sourceDocumentId),
-    ne(sourceDocuments.status, "deleted"),
     isNull(sourceDocuments.deletedAt)
   )!;
 }
@@ -134,9 +133,6 @@ export function createPendingRevisionInTransaction(
       .values({
         id: sourceDocumentId,
         ledgerId: input.ledgerId,
-        text: input.submittedText ?? null,
-        imageUrls: [],
-        status: "queued",
         type: "ai_parsed",
         ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
       })
@@ -180,14 +176,9 @@ export function createPendingRevisionInTransaction(
   if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
     throw new ValidationError("A stored file may only appear once in a revision");
   }
-  const legacyImageUrls: string[] = [];
   for (const [position, storedFileId] of fileIds.entries()) {
     const file = tx
-      .select({
-        id: storedFiles.id,
-        storageProvider: storedFiles.storageProvider,
-        storageKey: storedFiles.storageKey,
-      })
+      .select({ id: storedFiles.id })
       .from(storedFiles)
       .where(
         and(
@@ -199,9 +190,6 @@ export function createPendingRevisionInTransaction(
       )
       .get();
     if (file == null) throw new NotFoundError("Stored file");
-    if (file.storageProvider === "local") {
-      legacyImageUrls.push(`/api/uploads/${file.storageKey}`);
-    }
     tx.insert(revisionFiles)
       .values({
         ledgerId: input.ledgerId,
@@ -216,9 +204,6 @@ export function createPendingRevisionInTransaction(
     .update(sourceDocuments)
     .set({
       pendingRevisionId: revision.id,
-      status: "queued",
-      text: input.submittedText ?? document.text,
-      imageUrls: legacyImageUrls,
       ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
       updatedAt: new Date(),
     })
@@ -257,7 +242,6 @@ export const sqliteRevisionAdapter: SourceDocumentPort = {
       .where(
         and(
           eq(sourceDocuments.ledgerId, ledgerId),
-          ne(sourceDocuments.status, "deleted"),
           isNull(sourceDocuments.deletedAt),
           cursorCondition
         )
@@ -299,10 +283,6 @@ export const sqliteRevisionAdapter: SourceDocumentPort = {
         )
         .run();
       if (updated.changes === 0) return false;
-      tx.update(sourceDocuments)
-        .set({ status: "processing", updatedAt: new Date() })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .run();
       return true;
     });
   },
@@ -336,14 +316,6 @@ export const sqliteRevisionAdapter: SourceDocumentPort = {
         )
         .run();
       if (updated.changes === 0) return false;
-      tx.update(sourceDocuments)
-        .set({
-          status: input.outcome,
-          anomalyReason: input.anomalyReason ?? null,
-          updatedAt: new Date(),
-        })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .run();
       return true;
     });
   },
@@ -352,7 +324,7 @@ export const sqliteRevisionAdapter: SourceDocumentPort = {
     return db.transaction((tx) => {
       const deleted = tx
         .update(sourceDocuments)
-        .set({ status: "deleted", deletedAt: new Date(), updatedAt: new Date() })
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
         .where(activeDocumentWhere(ledgerId, sourceDocumentId))
         .run();
       if (deleted.changes === 0) return false;

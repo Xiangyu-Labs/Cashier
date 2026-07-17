@@ -1,4 +1,4 @@
-import { and } from "drizzle-orm";
+import { and, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { mapLedgerEntryDto } from "./mappers";
@@ -7,6 +7,7 @@ import {
   buildLedgerEntryFilterConditions,
   type LedgerEntryFilterParams,
 } from "./build-ledger-entry-filters";
+import { revisionFiles } from "@/persistence";
 
 interface ListLedgerEntryPageInput {
   ledgerId: string;
@@ -33,7 +34,19 @@ export async function listLedgerEntryPage({
     limit: limit + 1,
     with: {
       category: true,
-      sourceDocument: true,
+      sourceDocument: {
+        columns: {
+          id: true,
+          ledgerId: true,
+          title: true,
+          type: true,
+          entryDate: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
+      },
     },
   });
 
@@ -48,6 +61,20 @@ export async function listLedgerEntryPage({
     nextCursor = `${lastItem.createdAt.toISOString()}|${lastItem.id}`;
   }
 
+  const revisionIds = pagedRows.flatMap((row) =>
+    row.sourceDocumentRevisionId == null ? [] : [row.sourceDocumentRevisionId]
+  );
+  const revisionsWithFiles = new Set(
+    revisionIds.length === 0
+      ? []
+      : (
+          await db
+            .select({ revisionId: revisionFiles.revisionId })
+            .from(revisionFiles)
+            .where(inArray(revisionFiles.revisionId, revisionIds))
+        ).map((row) => row.revisionId)
+  );
+
   const items = pagedRows.map((row) => {
     const dto = mapLedgerEntryDto({
       ...row,
@@ -60,7 +87,11 @@ export async function listLedgerEntryPage({
         ...dto.sourceDocument,
         text: null,
         metadata: {},
-        hasImages: (row.sourceDocument?.imageUrls?.length ?? 0) > 0,
+        status: "completed",
+        anomalyReason: null,
+        hasImages:
+          row.sourceDocumentRevisionId != null &&
+          revisionsWithFiles.has(row.sourceDocumentRevisionId),
       };
     }
 

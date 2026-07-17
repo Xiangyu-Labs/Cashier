@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { mapLedgerEntryDto } from "./mappers";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
-import { ledgerEntries } from "@/persistence";
+import { ledgerEntries, revisionFiles } from "@/persistence";
 import { buildLedgerEntryVisibilityCondition } from "./ledger-entry-visibility";
 
 // Current-runtime read implementation.
@@ -20,7 +20,19 @@ export async function getLedgerEntryDetail(
     ),
     with: {
       category: true,
-      sourceDocument: true,
+      sourceDocument: {
+        columns: {
+          id: true,
+          ledgerId: true,
+          title: true,
+          type: true,
+          entryDate: true,
+          metadata: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
+      },
     },
   });
 
@@ -35,6 +47,12 @@ export async function getLedgerEntryDetail(
   });
 
   if (serializedEntry.sourceDocument != null) {
+    const hasImages =
+      entry.sourceDocumentRevisionId != null &&
+      (await db.query.revisionFiles.findFirst({
+        where: eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId),
+        columns: { id: true },
+      })) != null;
     const {
       visionDescription: _visionDescription,
       originalImageUrls: _originalImageUrls,
@@ -43,8 +61,11 @@ export async function getLedgerEntryDetail(
 
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
+      text: null,
+      status: "completed",
+      anomalyReason: null,
       metadata: lightMetadata,
-      hasImages: (entry.sourceDocument?.imageUrls?.length ?? 0) > 0,
+      hasImages,
     };
   }
 
