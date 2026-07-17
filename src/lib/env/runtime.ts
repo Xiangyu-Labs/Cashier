@@ -8,7 +8,10 @@ export interface RuntimeEnv {
   readonly authUrl: string | undefined;
   readonly authResendKey: string | undefined;
   readonly authEmailFrom: string;
-  readonly localStoragePath: string;
+  readonly r2AccountId: string;
+  readonly r2BucketName: string;
+  readonly r2AccessKeyId: string;
+  readonly r2SecretAccessKey: string;
   readonly trustedProxy: string | undefined;
   readonly timeZone: string;
   readonly aiModelText: string;
@@ -64,8 +67,17 @@ export const runtimeEnv: RuntimeEnv = {
   get authEmailFrom() {
     return getStartupEnvValue("AUTH_EMAIL_FROM");
   },
-  get localStoragePath() {
-    return getStartupEnvValue("LOCAL_STORAGE_PATH");
+  get r2AccountId() {
+    return getStartupEnvValue("R2_ACCOUNT_ID");
+  },
+  get r2BucketName() {
+    return getStartupEnvValue("R2_BUCKET_NAME");
+  },
+  get r2AccessKeyId() {
+    return getStartupEnvValue("R2_ACCESS_KEY_ID");
+  },
+  get r2SecretAccessKey() {
+    return getStartupEnvValue("R2_SECRET_ACCESS_KEY");
   },
   get trustedProxy() {
     return getStartupEnvValue("TRUSTED_PROXY");

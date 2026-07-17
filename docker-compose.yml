@@ -16,5 +16,3 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     env_file:
       - .env
-    volumes:
-      - ./data:/app/data

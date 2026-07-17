@@ -25,7 +25,7 @@ import {
 import { deleteLedgerEntry } from "@/application/adapters/postgres/delete-ledger-entry";
 import { resendEmailAdapter } from "@/application/adapters/email/resend";
 import { triggerRevisionProcessingIntent } from "@/application/adapters/in-process";
-import { localStoredFileAdapter } from "@/application/adapters/local";
+import { storedFileAdapter } from "@/application/adapters/storage";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import { getLedgerEntryDetail } from "@/application/adapters/postgres/ledger-reads/get-ledger-entry-detail";
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
@@ -68,7 +68,7 @@ export const currentApplication = {
   otpTokens: postgresOtpTokenAdapter,
   serviceCredentials: postgresServiceCredentialAdapter,
   settings: postgresSettingsAdapter,
-  storedFiles: localStoredFileAdapter,
+  storedFiles: storedFileAdapter,
   sourceDocumentSubmissions: postgresSourceDocumentSubmissionAdapter,
   sourceDocumentUpdates: {
     update: updateSourceDocument,

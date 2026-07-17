@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { currentApplication } from "@/application/current";
 import { requireAuth } from "@/lib/auth-actions";
-import { UnauthorizedError } from "@/lib/errors";
+import { AppError, UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 const CACHE_CONTROL = "private, max-age=3600";
@@ -27,6 +27,12 @@ export async function GET(
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+    if (error instanceof AppError) {
+      logger.error({ code: error.code, statusCode: error.statusCode }, "Stored file read failed");
+      return new NextResponse(error.statusCode === 404 ? "Not Found" : "Storage Unavailable", {
+        status: error.statusCode,
+      });
     }
     logger.error({ error }, "Failed to read stored file");
     return new NextResponse("Internal Server Error", { status: 500 });

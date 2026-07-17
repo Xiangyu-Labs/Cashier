@@ -14,10 +14,10 @@ import {
   postgresSettingsAdapter,
 } from "@/application/adapters/postgres";
 import {
-  createLocalUploadPlanForSubmission,
-  LocalStoredFileAdapter,
-  LOCAL_UPLOAD_LIMITS,
-} from "@/application/adapters/local";
+  createUploadPlanForSubmission,
+  StoredFileAdapter,
+  UPLOAD_LIMITS,
+} from "@/application/adapters/storage";
 import {
   currencyRates,
   entryCategories,
@@ -33,7 +33,7 @@ import {
 } from "@/persistence";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 
-class MemoryLocalFileStore {
+class MemoryObjectStore {
   readonly files = new Map<string, Buffer>();
 
   async upload(key: string, data: Buffer): Promise<string> {
@@ -48,6 +48,29 @@ class MemoryLocalFileStore {
   }
 
   async delete(key: string): Promise<{ success: boolean }> {
+    this.files.delete(key);
+    return { success: true };
+  }
+}
+
+class CoordinatedObjectStore extends MemoryObjectStore {
+  readonly deletedKeys: string[] = [];
+  private uploadCount = 0;
+  private releaseUploads: (() => void) | null = null;
+  private readonly uploadsReady = new Promise<void>((resolve) => {
+    this.releaseUploads = resolve;
+  });
+
+  override async upload(key: string, data: Buffer): Promise<string> {
+    this.files.set(key, Buffer.from(data));
+    this.uploadCount += 1;
+    if (this.uploadCount === 2) this.releaseUploads?.();
+    await this.uploadsReady;
+    return `/private/${key}`;
+  }
+
+  override async delete(key: string): Promise<{ success: boolean }> {
+    this.deletedKeys.push(key);
     this.files.delete(key);
     return { success: true };
   }
@@ -136,7 +159,10 @@ describe("current-runtime target adapters", () => {
       pendingRevisionId: failedRetry.revision.id,
     });
 
-    const second = await postgresRevisionAdapter.createPending({ ledgerId, submittedText: "second" });
+    const second = await postgresRevisionAdapter.createPending({
+      ledgerId,
+      submittedText: "second",
+    });
     const page1 = await postgresRevisionAdapter.list({ ledgerId, limit: 1 });
     const page2 = await postgresRevisionAdapter.list({
       ledgerId,
@@ -386,7 +412,7 @@ describe("current-runtime target adapters", () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
-  it("plans, validates, finalizes, expires, and authorizes local stored files", async () => {
+  it("plans, validates, finalizes, expires, and authorizes R2 stored files", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const { ledgerId: otherLedgerId } = await createTestUserWithLedger(
@@ -395,9 +421,9 @@ describe("current-runtime target adapters", () => {
       undefined,
       crypto.randomUUID()
     );
-    const storage = new MemoryLocalFileStore();
+    const storage = new MemoryObjectStore();
     let now = new Date("2026-07-15T00:00:00.000Z");
-    const adapter = new LocalStoredFileAdapter(storage, () => now);
+    const adapter = new StoredFileAdapter(storage, () => now);
     const bytes = Buffer.from("image-bytes");
     const plan = await adapter.createUploadPlan(ledgerId, [
       {
@@ -451,13 +477,24 @@ describe("current-runtime target adapters", () => {
       file: { id: uploaded.id },
     });
     await expect(adapter.readAuthorized(otherLedgerId, uploaded.id)).resolves.toBeNull();
+    await db
+      .update(storedFiles)
+      .set({ storageProvider: "local" })
+      .where(eq(storedFiles.id, uploaded.id));
+    await expect(adapter.readAuthorized(ledgerId, uploaded.id)).rejects.toMatchObject({
+      code: "UNSUPPORTED_STORAGE_PROVIDER",
+    });
+    await db
+      .update(storedFiles)
+      .set({ storageProvider: "r2" })
+      .where(eq(storedFiles.id, uploaded.id));
     expect(pending.document.pendingRevisionId).toBe(pending.revision.id);
 
-    await expect(createLocalUploadPlanForSubmission(ledgerId, [])).resolves.toBeNull();
+    await expect(createUploadPlanForSubmission(ledgerId, [])).resolves.toBeNull();
     await expect(
       adapter.createUploadPlan(
         ledgerId,
-        Array.from({ length: LOCAL_UPLOAD_LIMITS.maxFiles + 1 }, () => ({
+        Array.from({ length: UPLOAD_LIMITS.maxFiles + 1 }, () => ({
           contentType: "image/jpeg",
           byteSize: 1,
           originalFilename: null,
@@ -473,7 +510,7 @@ describe("current-runtime target adapters", () => {
       adapter.createUploadPlan(ledgerId, [
         {
           contentType: "image/jpeg",
-          byteSize: LOCAL_UPLOAD_LIMITS.maxBytesPerFile + 1,
+          byteSize: UPLOAD_LIMITS.maxBytesPerFile + 1,
           originalFilename: null,
         },
       ])
@@ -495,5 +532,31 @@ describe("current-runtime target adapters", () => {
     expect(
       await db.query.uploadSessions.findFirst({ where: eq(uploadSessions.id, expiring.id) })
     ).toMatchObject({ status: "expired" });
+  });
+
+  it("cleans up the R2 object when a concurrent target claim loses its transaction", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new CoordinatedObjectStore();
+    const adapter = new StoredFileAdapter(storage);
+    const bytes = Buffer.from("same-target");
+    const plan = await adapter.createUploadPlan(ledgerId, [
+      { contentType: "image/jpeg", byteSize: bytes.length, originalFilename: "receipt.jpg" },
+    ]);
+    const upload = () =>
+      adapter.uploadTarget({
+        ledgerId,
+        uploadSessionId: plan.id,
+        targetId: plan.targets[0]!.id,
+        contentType: "image/jpeg",
+        body: bytes,
+      });
+
+    const results = await Promise.allSettled([upload(), upload()]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(storage.deletedKeys).toHaveLength(1);
+    expect(storage.files.size).toBe(1);
   });
 });

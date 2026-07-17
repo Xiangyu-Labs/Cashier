@@ -17,7 +17,10 @@ ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
-ENV LOCAL_STORAGE_PATH=/tmp/cashier-build-uploads
+ENV R2_ACCOUNT_ID=build-placeholder
+ENV R2_BUCKET_NAME=cashier-images
+ENV R2_ACCESS_KEY_ID=build-placeholder
+ENV R2_SECRET_ACCESS_KEY=build-placeholder
 RUN npm run build
 
 FROM base AS runner
@@ -28,9 +31,6 @@ ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
-# Prepare the local-storage volume for the non-root runtime user.
-RUN mkdir -p /app/data/uploads && chown -R node:node /app/data
 
 USER node
 

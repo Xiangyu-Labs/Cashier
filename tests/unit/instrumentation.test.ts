@@ -9,6 +9,7 @@ const initializeCurrentProcessingDispatcher = vi.fn();
 const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
   DATABASE_URL: "file:./data/sqlite.db",
+  R2_BUCKET_NAME: "cashier-images",
 }));
 
 vi.mock("@/lib/logger", () => ({

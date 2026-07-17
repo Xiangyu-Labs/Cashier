@@ -10,11 +10,12 @@ import {
   storedFiles,
 } from "@/persistence";
 import * as authModule from "@/auth";
+import { AppError } from "@/lib/errors";
 
 const { downloadMock } = vi.hoisted(() => ({ downloadMock: vi.fn() }));
 
-vi.mock("@/lib/storage/local", () => ({
-  getLocalStorage: () => ({
+vi.mock("@/lib/storage/r2", () => ({
+  getR2Storage: () => ({
     upload: vi.fn(),
     download: downloadMock,
     delete: vi.fn(async () => ({ success: true })),
@@ -47,7 +48,7 @@ async function createLinkedStoredFile(ledgerId: string) {
     .insert(storedFiles)
     .values({
       ledgerId,
-      storageProvider: "local",
+      storageProvider: "r2",
       storageKey: `${ledgerId}/private/file`,
       contentType: "image/png",
       byteSize: 5,
@@ -73,7 +74,7 @@ describe("GET /api/stored-files/[fileId]", () => {
     downloadMock.mockReset();
   });
 
-  it("serves trusted bytes without exposing the local key", async () => {
+  it("serves trusted bytes without exposing the R2 key", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const { file } = await createLinkedStoredFile(ledgerId);
@@ -117,6 +118,22 @@ describe("GET /api/stored-files/[fileId]", () => {
 
     expect(response.status).toBe(404);
     expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("maps missing R2 objects and R2 outages to controlled responses", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const { file } = await createLinkedStoredFile(ledgerId);
+
+    downloadMock.mockRejectedValueOnce(new AppError("missing", "FILE_NOT_FOUND", 404));
+    await expect(
+      GET(request(), { params: Promise.resolve({ fileId: file.id }) })
+    ).resolves.toMatchObject({ status: 404 });
+
+    downloadMock.mockRejectedValueOnce(new AppError("outage", "R2_DOWNLOAD_FAILED", 503));
+    await expect(
+      GET(request(), { params: Promise.resolve({ fileId: file.id }) })
+    ).resolves.toMatchObject({ status: 503 });
   });
 
   it("returns 401 without authentication", async () => {

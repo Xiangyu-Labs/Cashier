@@ -8,6 +8,10 @@ const baseEnv = {
   AUTH_SECRET: "auth-secret",
   AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+  R2_ACCOUNT_ID: "test-account",
+  R2_BUCKET_NAME: "cashier-images",
+  R2_ACCESS_KEY_ID: "test-access-key",
+  R2_SECRET_ACCESS_KEY: "test-secret-key",
 } satisfies NodeJS.ProcessEnv;
 
 describe("validateStartupEnv", () => {
@@ -34,6 +38,21 @@ describe("validateStartupEnv", () => {
         AUTH_SECRET: "",
       })
     ).toThrow(/OPENAI_API_KEY|AUTH_SECRET/);
+  });
+
+  it("requires every R2 setting without exposing configured credentials", () => {
+    let message = "";
+    try {
+      validateStartupEnv({
+        ...baseEnv,
+        R2_BUCKET_NAME: "",
+        R2_SECRET_ACCESS_KEY: "do-not-log-this-secret",
+      });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain("R2_BUCKET_NAME");
+    expect(message).not.toContain("do-not-log-this-secret");
   });
 
   it("rejects invalid numeric values", () => {
@@ -85,15 +104,14 @@ describe("validateStartupEnv", () => {
       "AUTH_RATE_LIMIT_WINDOW",
       "AUTH_URL",
       "CURRENCY_STALE_TIME_MS",
-		      "DEV_AUTH_BYPASS",
+      "DEV_AUTH_BYPASS",
       "DISABLE_REGISTRATION",
-      "LOCAL_STORAGE_PATH",
       "LOG_LEVEL",
       "MAX_IMAGE_QUALITY",
       "MAX_INPUT_PIXELS",
       "MAX_TASK_WORKER",
       "NEXT_PUBLIC_APP_URL",
-		      "NEXT_PUBLIC_DEV_AUTH_BYPASS",
+      "NEXT_PUBLIC_DEV_AUTH_BYPASS",
       "OPENAI_BASE_URL",
       "OTP_EXPIRES_SECONDS",
       "OTP_IP_MAX_ATTEMPTS_PER_HOUR",

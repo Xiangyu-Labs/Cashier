@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { LocalStoredFileAdapter } from "@/application/adapters/local";
+import { StoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
   postgresLedgerProjectionAdapter,
@@ -38,7 +38,7 @@ class MemoryFileStore {
   }
 }
 
-async function finalizedFile(adapter: LocalStoredFileAdapter, ledgerId: string, body: Buffer) {
+async function finalizedFile(adapter: StoredFileAdapter, ledgerId: string, body: Buffer) {
   const plan = await adapter.createUploadPlan(ledgerId, [
     { contentType: "image/jpeg", byteSize: body.length, originalFilename: "receipt.jpg" },
   ]);
@@ -72,7 +72,7 @@ describe("target source-document submissions", () => {
   it("atomically creates text, image, and mixed pending revisions with durable intents", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const storage = new LocalStoredFileAdapter(new MemoryFileStore());
+    const storage = new StoredFileAdapter(new MemoryFileStore());
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
 
     const text = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
@@ -222,7 +222,7 @@ describe("target source-document submissions", () => {
   it("inherits immutable evidence on retry and deduplicates post-commit dispatch", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const storage = new LocalStoredFileAdapter(new MemoryFileStore());
+    const storage = new StoredFileAdapter(new MemoryFileStore());
     const image = await finalizedFile(storage, ledgerId, Buffer.from("image"));
     const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
       ledgerId,
@@ -267,7 +267,7 @@ describe("target source-document submissions", () => {
       undefined,
       crypto.randomUUID()
     );
-    const storage = new LocalStoredFileAdapter(new MemoryFileStore());
+    const storage = new StoredFileAdapter(new MemoryFileStore());
     const first = await finalizedFile(storage, ledgerId, Buffer.from("first"));
     const second = await finalizedFile(storage, ledgerId, Buffer.from("second"));
     const other = await finalizedFile(storage, otherLedgerId, Buffer.from("other"));

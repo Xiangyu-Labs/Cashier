@@ -7,7 +7,7 @@ import type {
   ProcessingIntentContract,
   UploadPlanContract,
 } from "@/application/contracts";
-import { LocalStoredFileAdapter } from "@/application/adapters/local";
+import { StoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
   postgresIdempotencyAdapter,
@@ -34,9 +34,9 @@ class ContractFileStore {
   }
 }
 
-applicationContractSuite("real SQLite/local-file/in-process adapter composition", () => {
+applicationContractSuite("real Postgres/object-storage/in-process adapter composition", () => {
   const db = getTestDb();
-  const files = new LocalStoredFileAdapter(new ContractFileStore());
+  const files = new StoredFileAdapter(new ContractFileStore());
   const processing = new PostgresProcessingIntentAdapter();
   const actualIntents = new Map<string, ProcessingIntentContract>();
   const completions: ProcessingCompletionContract[] = [];
@@ -49,7 +49,9 @@ applicationContractSuite("real SQLite/local-file/in-process adapter composition"
     return setupPromise;
   }
 
-  async function prepareIntent(intent: ProcessingIntentContract): Promise<ProcessingIntentContract> {
+  async function prepareIntent(
+    intent: ProcessingIntentContract
+  ): Promise<ProcessingIntentContract> {
     const existing = actualIntents.get(intent.id);
     if (existing != null) return existing;
     const { ledgerId } = await getSetup();

@@ -1,26 +1,19 @@
-import { afterAll, vi } from "vitest";
+import { vi } from "vitest";
 import React from "react";
 import type * as ReactModule from "react";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-
-const testStoragePath = mkdtempSync(path.join(tmpdir(), "cashier-test-storage-"));
 
 process.env.DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
+  process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-auth-secret";
 process.env.AUTH_URL = process.env.AUTH_URL ?? "http://localhost:3000";
 process.env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-process.env.LOCAL_STORAGE_PATH = testStoragePath;
-
-afterAll(() => {
-  rmSync(testStoragePath, { recursive: true, force: true });
-});
+process.env.R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? "test-account";
+process.env.R2_BUCKET_NAME = process.env.R2_BUCKET_NAME ?? "cashier-test-images";
+process.env.R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? "test-access-key";
+process.env.R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? "test-secret-key";
 
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => {

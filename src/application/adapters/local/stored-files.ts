@@ -6,14 +6,14 @@ import type {
   StoredFileContract,
   StoredFileId,
   StoredFilePort,
-  TrustedFileMetadata,
   UploadFileRequestContract,
   UploadFinalizationContract,
   UploadPlanContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import { getLocalStorage } from "@/lib/storage/local";
+import { AppError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { getR2Storage } from "@/lib/storage/r2";
 import {
   ledgers,
   revisionFiles,
@@ -24,7 +24,7 @@ import {
   uploadSessions,
 } from "@/persistence";
 
-export const LOCAL_UPLOAD_LIMITS = {
+export const UPLOAD_LIMITS = {
   maxFiles: 10,
   maxBytesPerFile: 10 * 1024 * 1024,
   expiresInMs: 15 * 60 * 1000,
@@ -40,11 +40,10 @@ const SUPPORTED_CONTENT_TYPES = new Set([
   "image/avif",
 ]);
 
-interface LocalFileStore {
-  upload(key: string, data: Buffer, contentType: string): Promise<string>;
+interface ObjectFileStore {
+  upload(key: string, data: Buffer, contentType: string): Promise<unknown>;
   download(key: string): Promise<Buffer>;
-  delete(key: string): Promise<{ success: boolean }>;
-  extractKeyFromUrl?(url: string): string | null;
+  delete(key: string): Promise<{ success: boolean; error?: Error }>;
 }
 
 function tokenHash(token: string): string {
@@ -76,8 +75,8 @@ function mapStoredFile(row: typeof storedFiles.$inferSelect): StoredFileContract
 }
 
 function validateRequests(files: readonly UploadFileRequestContract[]): void {
-  if (files.length === 0 || files.length > LOCAL_UPLOAD_LIMITS.maxFiles) {
-    throw new ValidationError(`Upload plans require 1-${LOCAL_UPLOAD_LIMITS.maxFiles} files`);
+  if (files.length === 0 || files.length > UPLOAD_LIMITS.maxFiles) {
+    throw new ValidationError(`Upload plans require 1-${UPLOAD_LIMITS.maxFiles} files`);
   }
   for (const file of files) {
     if (!SUPPORTED_CONTENT_TYPES.has(file.contentType)) {
@@ -86,7 +85,7 @@ function validateRequests(files: readonly UploadFileRequestContract[]): void {
     if (
       !Number.isInteger(file.byteSize) ||
       file.byteSize <= 0 ||
-      file.byteSize > LOCAL_UPLOAD_LIMITS.maxBytesPerFile
+      file.byteSize > UPLOAD_LIMITS.maxBytesPerFile
     ) {
       throw new ValidationError("Upload file size exceeds the configured limit");
     }
@@ -99,9 +98,9 @@ function validateRequests(files: readonly UploadFileRequestContract[]): void {
   }
 }
 
-export class LocalStoredFileAdapter implements StoredFilePort {
+export class StoredFileAdapter implements StoredFilePort {
   constructor(
-    private readonly storage: LocalFileStore = getLocalStorage(),
+    private readonly storage: ObjectFileStore = getR2Storage(),
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -113,7 +112,7 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     const sessionId = crypto.randomUUID();
     const finalizationToken = crypto.randomBytes(32).toString("base64url");
     const now = this.now();
-    const expiresAt = new Date(now.getTime() + LOCAL_UPLOAD_LIMITS.expiresInMs);
+    const expiresAt = new Date(now.getTime() + UPLOAD_LIMITS.expiresInMs);
     const targetIds = files.map(() => crypto.randomUUID());
 
     await db.transaction(async (tx) => {
@@ -123,28 +122,26 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         .where(and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)))
         .then((rows) => rows[0]);
       if (ledger == null) throw new NotFoundError("Ledger");
-      await tx.insert(uploadSessions)
-        .values({
-          id: sessionId,
-          ledgerId,
-          finalizationTokenHash: tokenHash(finalizationToken),
-          status: "open",
-          expiresAt,
-          createdAt: now,
-        })
+      await tx.insert(uploadSessions).values({
+        id: sessionId,
+        ledgerId,
+        finalizationTokenHash: tokenHash(finalizationToken),
+        status: "open",
+        expiresAt,
+        createdAt: now,
+      });
       for (const [position, file] of files.entries()) {
-        await tx.insert(uploadSessionFiles)
-          .values({
-            ledgerId,
-            uploadSessionId: sessionId,
-            targetId: targetIds[position]!,
-            position,
-            expectedContentType: file.contentType,
-            expectedByteSize: file.byteSize,
-            originalFilename: file.originalFilename,
-            expectedChecksum: file.checksum ?? null,
-            status: "planned",
-          })
+        await tx.insert(uploadSessionFiles).values({
+          ledgerId,
+          uploadSessionId: sessionId,
+          targetId: targetIds[position]!,
+          position,
+          expectedContentType: file.contentType,
+          expectedByteSize: file.byteSize,
+          originalFilename: file.originalFilename,
+          expectedChecksum: file.checksum ?? null,
+          status: "planned",
+        });
       }
     });
 
@@ -158,8 +155,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         requiredHeaders: { "Content-Type": file.contentType },
       })),
       finalizationToken,
-      maxFiles: LOCAL_UPLOAD_LIMITS.maxFiles,
-      maxBytesPerFile: LOCAL_UPLOAD_LIMITS.maxBytesPerFile,
+      maxFiles: UPLOAD_LIMITS.maxFiles,
+      maxBytesPerFile: UPLOAD_LIMITS.maxBytesPerFile,
     };
   }
 
@@ -222,7 +219,7 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     if (
       input.contentType !== target.expectedContentType ||
       bytes.length !== target.expectedByteSize ||
-      bytes.length > LOCAL_UPLOAD_LIMITS.maxBytesPerFile
+      bytes.length > UPLOAD_LIMITS.maxBytesPerFile
     ) {
       throw new ValidationError("Uploaded bytes do not match the scoped target");
     }
@@ -244,7 +241,7 @@ export class LocalStoredFileAdapter implements StoredFilePort {
           .values({
             id: storedFileId,
             ledgerId: input.ledgerId,
-            storageProvider: "local",
+            storageProvider: "r2",
             storageKey,
             contentType: input.contentType,
             byteSize: bytes.length,
@@ -272,7 +269,13 @@ export class LocalStoredFileAdapter implements StoredFilePort {
       });
       return mapStoredFile(file);
     } catch (error) {
-      await this.storage.delete(storageKey);
+      const cleanup = await this.storage.delete(storageKey);
+      if (!cleanup.success) {
+        logger.error(
+          { provider: "r2", storageKey, cleanupError: cleanup.error },
+          "Failed to clean up R2 object after database transaction failure"
+        );
+      }
       throw error;
     }
   }
@@ -326,12 +329,14 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         throw new ConflictError("Upload session cannot be finalized");
       }
       const storedFileIds = targets.map((target) => target.storedFileId!);
-      await tx.update(storedFiles)
+      await tx
+        .update(storedFiles)
         .set({ finalizedAt: now })
         .where(
           and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
         );
-      await tx.update(uploadSessionFiles)
+      await tx
+        .update(uploadSessionFiles)
         .set({ status: "finalized" })
         .where(
           and(
@@ -339,7 +344,8 @@ export class LocalStoredFileAdapter implements StoredFilePort {
             inArray(uploadSessionFiles.targetId, targetIds)
           )
         );
-      await tx.update(uploadSessions)
+      await tx
+        .update(uploadSessions)
         .set({ status: "finalized", finalizedAt: now })
         .where(eq(uploadSessions.id, session.id));
       return await tx
@@ -384,7 +390,6 @@ export class LocalStoredFileAdapter implements StoredFilePort {
         and(
           eq(storedFiles.ledgerId, ledgerId),
           eq(storedFiles.id, fileId),
-          eq(storedFiles.storageProvider, "local"),
           isNotNull(storedFiles.finalizedAt),
           isNull(storedFiles.deletedAt),
           isNull(sourceDocuments.deletedAt)
@@ -393,6 +398,14 @@ export class LocalStoredFileAdapter implements StoredFilePort {
       .limit(1);
     const row = rows[0]?.file;
     if (row == null) return null;
+    if (row.storageProvider !== "r2") {
+      throw new AppError(
+        `Unsupported stored file provider: ${row.storageProvider}`,
+        "UNSUPPORTED_STORAGE_PROVIDER",
+        500,
+        { provider: row.storageProvider, fileId: row.id }
+      );
+    }
     const body = await this.storage.download(row.storageKey);
     return { file: mapStoredFile(row), body: new Uint8Array(body) };
   }
@@ -410,64 +423,13 @@ export class LocalStoredFileAdapter implements StoredFilePort {
     const ledgerId = owner[0]?.ledgerId;
     return ledgerId == null ? null : this.readAuthorized(ledgerId, fileId);
   }
-
-  async registerTrustedLocalFile(input: {
-    ledgerId: string;
-    storageKey: string;
-    metadata: TrustedFileMetadata;
-  }): Promise<StoredFileContract> {
-    const row = await db.transaction(async (tx) => {
-      const existing = await tx
-        .select()
-        .from(storedFiles)
-        .where(
-          and(
-            eq(storedFiles.storageProvider, "local"),
-            eq(storedFiles.storageKey, input.storageKey)
-          )
-        )
-        .then((rows) => rows[0]);
-      if (existing != null && existing.ledgerId !== input.ledgerId) {
-        throw new ConflictError("Stored file ownership mismatch");
-      }
-      if (existing != null) {
-        return await tx
-          .update(storedFiles)
-          .set({
-            contentType: input.metadata.contentType,
-            byteSize: input.metadata.byteSize,
-            originalFilename: input.metadata.originalFilename,
-            checksum: input.metadata.checksum,
-          })
-          .where(eq(storedFiles.id, existing.id))
-          .returning()
-          .then((rows) => rows[0]);
-      }
-      return await tx
-        .insert(storedFiles)
-        .values({
-          ledgerId: input.ledgerId,
-          storageProvider: "local",
-          storageKey: input.storageKey,
-          contentType: input.metadata.contentType,
-          byteSize: input.metadata.byteSize,
-          originalFilename: input.metadata.originalFilename,
-          checksum: input.metadata.checksum,
-          finalizedAt: this.now(),
-        })
-        .returning()
-        .then((rows) => rows[0]);
-    });
-    if (row == null) throw new ConflictError("Stored file registration failed");
-    return mapStoredFile(row);
-  }
 }
 
-export const localStoredFileAdapter = new LocalStoredFileAdapter();
+export const storedFileAdapter = new StoredFileAdapter();
 
-export async function createLocalUploadPlanForSubmission(
+export async function createUploadPlanForSubmission(
   ledgerId: string,
   files: readonly UploadFileRequestContract[]
 ): Promise<UploadPlanContract | null> {
-  return files.length === 0 ? null : localStoredFileAdapter.createUploadPlan(ledgerId, files);
+  return files.length === 0 ? null : storedFileAdapter.createUploadPlan(ledgerId, files);
 }

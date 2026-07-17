@@ -4,7 +4,6 @@ import { isValidAuthEmailFrom } from "@/lib/utils/email";
 export const ENV_DEFAULTS = {
   OPENAI_BASE_URL: "https://api.openai.com/v1",
   AUTH_URL: "http://localhost:3000",
-  LOCAL_STORAGE_PATH: "./data/uploads",
   TZ: "Asia/Shanghai",
   AI_MODEL_TEXT: "gpt-4o-mini",
   AI_MODEL_VISION: "gpt-4o",
@@ -114,7 +113,10 @@ const startupEnvFields = {
       )
       .default(getDefaultString("AUTH_EMAIL_FROM"))
   ),
-  LOCAL_STORAGE_PATH: stringWithDefault("LOCAL_STORAGE_PATH"),
+  R2_ACCOUNT_ID: requiredString("R2_ACCOUNT_ID"),
+  R2_BUCKET_NAME: requiredString("R2_BUCKET_NAME"),
+  R2_ACCESS_KEY_ID: requiredString("R2_ACCESS_KEY_ID"),
+  R2_SECRET_ACCESS_KEY: requiredString("R2_SECRET_ACCESS_KEY"),
   TRUSTED_PROXY: z.preprocess(blankToUndefined, z.string().trim().optional()),
   TZ: stringWithDefault("TZ"),
   AI_MODEL_TEXT: stringWithDefault("AI_MODEL_TEXT"),

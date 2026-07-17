@@ -9,6 +9,10 @@ const baseEnv = {
   AUTH_SECRET: "auth-secret",
   AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+  R2_ACCOUNT_ID: "test-account",
+  R2_BUCKET_NAME: "cashier-images",
+  R2_ACCESS_KEY_ID: "test-access-key",
+  R2_SECRET_ACCESS_KEY: "test-secret-key",
 } satisfies NodeJS.ProcessEnv;
 
 afterEach(() => {
@@ -45,7 +49,6 @@ describe("runtimeEnv", () => {
       SOURCE_DOC_STALE_TIME_MS: "654321",
       CURRENCY_STALE_TIME_MS: "7654321",
       TZ: "UTC",
-      LOCAL_STORAGE_PATH: "./data/test-uploads",
       TRUSTED_PROXY: "loopback",
       AUTH_RESEND_KEY: "re_test",
       OPENAI_BASE_URL: "https://openai-proxy.example/v1",
@@ -60,7 +63,10 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.authUrl).toBe("http://localhost:3000");
     expect(runtimeEnv.authResendKey).toBe("re_test");
     expect(runtimeEnv.authEmailFrom).toBe("Cashier <security@example.com>");
-    expect(runtimeEnv.localStoragePath).toBe("./data/test-uploads");
+    expect(runtimeEnv.r2AccountId).toBe("test-account");
+    expect(runtimeEnv.r2BucketName).toBe("cashier-images");
+    expect(runtimeEnv.r2AccessKeyId).toBe("test-access-key");
+    expect(runtimeEnv.r2SecretAccessKey).toBe("test-secret-key");
     expect(runtimeEnv.trustedProxy).toBe("loopback");
     expect(runtimeEnv.timeZone).toBe("UTC");
     expect(runtimeEnv.aiModelText).toBe("custom-text-model");
@@ -85,7 +91,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.maxInputPixels).toBe(123456);
     expect(runtimeEnv.maxImageQuality).toBe(72);
     expect(runtimeEnv.logLevel).toBe("warn");
-
   });
 
   it("surfaces startup validation failures through the accessor", async () => {
