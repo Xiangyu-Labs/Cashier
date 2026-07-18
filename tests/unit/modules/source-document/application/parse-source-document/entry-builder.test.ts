@@ -42,7 +42,7 @@ describe("entry-builder", () => {
     const result = await buildEntriesForInsert({
       validEntries: [
         {
-          amount: 10,
+          amount: "10",
           currency: "USD",
           categoryIndex: 1,
           entryDate: null,
@@ -78,7 +78,7 @@ describe("entry-builder", () => {
     const result = await buildEntriesForInsert({
       validEntries: [
         {
-          amount: 10,
+          amount: "10",
           currency: "CNY",
           categoryIndex: 0,
           entryDate: null,
@@ -113,7 +113,7 @@ describe("entry-builder", () => {
     const result = await buildEntriesForInsert({
       validEntries: [
         {
-          amount: 10,
+          amount: "10",
           currency: "CNY",
           categoryIndex: 1,
           entryDate: null,
@@ -121,7 +121,7 @@ describe("entry-builder", () => {
           notes: null,
         },
         {
-          amount: 20,
+          amount: "20",
           currency: "CNY",
           categoryIndex: 2,
           entryDate: null,
@@ -155,7 +155,7 @@ describe("entry-builder", () => {
     expect(
       validateEntries([
         {
-          amount: -2,
+          amount: "-2",
           currency: "USD",
           categoryIndex: 0,
           entryDate: null,
@@ -171,7 +171,7 @@ describe("entry-builder", () => {
     expect(
       validateEntries([
         {
-          amount: 0,
+          amount: "0",
           currency: "CNY",
           categoryIndex: 0,
           entryDate: null,
@@ -184,7 +184,7 @@ describe("entry-builder", () => {
     expect(
       validateEntries([
         {
-          amount: 12,
+          amount: "12",
           currency: "unknown",
           categoryIndex: 0,
           entryDate: null,

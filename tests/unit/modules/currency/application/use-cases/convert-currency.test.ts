@@ -17,7 +17,7 @@ describe("convertCurrency", () => {
       date: "2026-03-20",
     });
 
-    expect(result).toEqual({ converted: 14.67 });
+    expect(result).toEqual({ converted: "14.67" });
     expect(convertSpy).toHaveBeenCalledTimes(1);
 
     const [amountArg, , , dateArg] = convertSpy.mock.calls[0] ?? [];
@@ -27,6 +27,18 @@ describe("convertCurrency", () => {
     expect(parsed.getFullYear()).toBe(2026);
     expect(parsed.getMonth()).toBe(2);
     expect(parsed.getDate()).toBe(20);
+  });
+
+  it("returns a raw decimal string without rounding to cents", async () => {
+    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue("681.8181818181818");
+
+    const result = await convertCurrency({
+      amount: 100,
+      from: "USD",
+      to: "CNY",
+    });
+
+    expect(result).toEqual({ converted: "681.8181818181818" });
   });
 
   it("passes undefined date when date is absent or empty", async () => {

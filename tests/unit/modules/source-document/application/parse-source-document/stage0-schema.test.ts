@@ -10,12 +10,12 @@ const simpleSuccess = {
   outcome: "success",
   title: "Coffee",
   receipt_count: 1,
-  receipt_totals: [{ receipt_index: 0, amount: 12.5, currency: "USD" }],
+  receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "USD" }],
   ledger_entries: [
     {
       receipt_index: 0,
       item_name: "Coffee",
-      amount: 12.5,
+      amount: "12.50",
       currency: "USD",
       category_index: 1,
       notes: null,
@@ -126,7 +126,7 @@ describe("stage0-schema", () => {
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
         order_adjustments: [
-          { receipt_index: 0, item_name: "Discount", amount: -2, currency: "USD" },
+          { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
         ],
       })
     );
@@ -139,7 +139,7 @@ describe("stage0-schema", () => {
     const right = normalizeResult(
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
-        receipt_totals: [{ receipt_index: 0, amount: 99.99, currency: "USD" }],
+        receipt_totals: [{ receipt_index: 0, amount: "99.99", currency: "USD" }],
       })
     );
 
@@ -158,9 +158,9 @@ describe("stage0-schema", () => {
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, amount: 15.0 },
+          { ...simpleSuccess.ledger_entries[0]!, amount: "15.00" },
         ],
-        receipt_totals: [{ receipt_index: 0, amount: 15.0, currency: "USD" }],
+        receipt_totals: [{ receipt_index: 0, amount: "15.00", currency: "USD" }],
       })
     );
     expect(compareResults(left, right)).toBe(false);
@@ -170,7 +170,7 @@ describe("stage0-schema", () => {
     const withZeroEntry = stage0ParseOutputSchema.parse({
       ...simpleSuccess,
       ledger_entries: [
-        { ...simpleSuccess.ledger_entries[0]!, amount: 0 },
+        { ...simpleSuccess.ledger_entries[0]!, amount: "0" },
       ],
     });
     const result = normalizeResult(withZeroEntry);
@@ -181,7 +181,7 @@ describe("stage0-schema", () => {
     const withNegativeEntry = stage0ParseOutputSchema.parse({
       ...simpleSuccess,
       ledger_entries: [
-        { ...simpleSuccess.ledger_entries[0]!, amount: -5 },
+        { ...simpleSuccess.ledger_entries[0]!, amount: "-5" },
       ],
     });
     const result = normalizeResult(withNegativeEntry);
@@ -194,11 +194,64 @@ describe("stage0-schema", () => {
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, amount: 12.505 },
+          { ...simpleSuccess.ledger_entries[0]!, amount: "12.505" },
         ],
-        receipt_totals: [{ receipt_index: 0, amount: 12.505, currency: "USD" }],
+        receipt_totals: [{ receipt_index: 0, amount: "12.505", currency: "USD" }],
       })
     );
     expect(compareResults(left, right)).toBe(true);
+  });
+
+  it("rejects unquoted numeric amounts (schema-invalid outcome)", () => {
+    const unquoted = {
+      ...simpleSuccess,
+      ledger_entries: [
+        {
+          receipt_index: 0,
+          item_name: "Coffee",
+          amount: 12.5, // unquoted JSON number
+          currency: "USD",
+          category_index: 1,
+          notes: null,
+        },
+      ],
+    };
+    const result = stage0ParseOutputSchema.safeParse(unquoted);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects exponent notation in amount strings", () => {
+    const exponentEntry = {
+      ...simpleSuccess,
+      ledger_entries: [
+        {
+          ...simpleSuccess.ledger_entries[0]!,
+          amount: "1e2",
+        },
+      ],
+    };
+    const result = stage0ParseOutputSchema.safeParse(exponentEntry);
+    expect(result.success).toBe(false);
+  });
+
+  it("exposes binary floating-point error: 0.1 + 0.2 does not round-trip correctly with number", () => {
+    // 0.1 + 0.2 = 0.30000000000000004 in JavaScript
+    // Using decimal strings avoids this error
+    const parsed = normalizeResult(
+      stage0ParseOutputSchema.parse({
+        ...simpleSuccess,
+        receipt_totals: [{ receipt_index: 0, amount: "0.30", currency: "USD" }],
+        ledger_entries: [
+          { ...simpleSuccess.ledger_entries[0]!, amount: "0.10", item_name: "Item A" },
+          { ...simpleSuccess.ledger_entries[0]!, amount: "0.20", item_name: "Item B" },
+        ],
+      })
+    );
+    expect(parsed.ledger_entries).toHaveLength(2);
+    // 0.10 + 0.20 should exactly equal 0.30 as strings
+    expect(
+      Number.parseFloat(parsed.ledger_entries[0]!.amount) +
+      Number.parseFloat(parsed.ledger_entries[1]!.amount)
+    ).not.toBe(0.30); // BINARY ERROR: proves we need strings
   });
 });

@@ -61,12 +61,12 @@ describe("PostgresProcessingIntentAdapter", () => {
         anomaly_reason: null,
         title: "Lunch",
         receipt_count: 1,
-        receipt_totals: [{ receipt_index: 0, amount: 12.5, currency: "CNY" }],
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
         ledger_entries: [
           {
             receipt_index: 0,
             item_name: "Lunch",
-            amount: 12.5,
+            amount: "12.50",
             currency: "CNY",
             category_index: 0,
             notes: null,
@@ -192,12 +192,12 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
         anomaly_reason: null,
         title: "Lunch",
         receipt_count: 1,
-        receipt_totals: [{ receipt_index: 0, amount: 12.5, currency: "CNY" }],
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
         ledger_entries: [
           {
             receipt_index: 0,
             item_name: "Lunch",
-            amount: 12.5,
+            amount: "12.50",
             currency: "CNY",
             category_index: 0,
             notes: null,

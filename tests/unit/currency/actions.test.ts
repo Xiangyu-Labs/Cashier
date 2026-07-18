@@ -18,7 +18,7 @@ describe("currency actions", () => {
   });
 
   it("delegates single conversion to the application use-case", async () => {
-    vi.mocked(convertCurrency).mockResolvedValue({ converted: 14.67 });
+    vi.mocked(convertCurrency).mockResolvedValue({ converted: "14.67" });
 
     const result = await convertCurrencyAction(100, "CNY", "USD", "2026-02-04");
 
@@ -28,7 +28,7 @@ describe("currency actions", () => {
       to: "USD",
       date: "2026-02-04",
     });
-    expect(result).toEqual({ converted: 14.67 });
+    expect(result).toEqual({ converted: "14.67" });
   });
 
   it("delegates batch conversion to the application use-case and unwraps results", async () => {
@@ -38,8 +38,8 @@ describe("currency actions", () => {
     ];
 
     vi.mocked(convertAmountsBatch).mockResolvedValue([
-      { convertedAmount: 13.33, exchangeRate: 0.1333 },
-      { convertedAmount: 50, exchangeRate: 1 },
+      { convertedAmount: "13.33", exchangeRate: "0.1333" },
+      { convertedAmount: "50", exchangeRate: "1" },
     ]);
 
     const result = await batchConvertCurrencyAction(items, "EUR");
@@ -47,13 +47,13 @@ describe("currency actions", () => {
     expect(convertAmountsBatch).toHaveBeenCalledWith(
       [
         {
-          amount: 100,
+          amount: "100",
           fromCurrency: "CNY",
           toCurrency: "EUR",
           date: "2026-02-04",
         },
         {
-          amount: 50,
+          amount: "50",
           fromCurrency: "",
           toCurrency: "EUR",
           date: "2026-02-04",
@@ -65,6 +65,6 @@ describe("currency actions", () => {
         fallbackToOriginalAmountOnMissingRate: true,
       }
     );
-    expect(result).toEqual({ results: [13.33, 50] });
+    expect(result).toEqual({ results: ["13.33", "50"] });
   });
 });

@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import Decimal from "decimal.js";
 
 /**
  * Multi-stage Mock AI for Integration Tests
@@ -9,7 +10,7 @@ import { vi } from "vitest";
 
 export interface MockEntryData {
   item_name: string;
-  amount: number;
+  amount: string; // canonical decimal string, e.g. "25.50"
   currency?: string;
   category_index?: number;
   entry_date?: string | null;
@@ -44,7 +45,7 @@ const DEFAULT_OPTIONS: Required<Omit<MultiStageMockOptions, "incompleteReason" |
   entries: [
     {
       item_name: "午餐",
-      amount: 25.5,
+      amount: "25.50",
       currency: "CNY",
       category_index: 1,
       entry_date: getCurrentDateIso(),
@@ -93,7 +94,7 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
               category_index: e.category_index ?? index + 1,
               notes: e.notes ?? null,
             }));
-            const totalAmount = entries.reduce((s, e) => s + e.amount, 0);
+            const totalAmount = entries.reduce((s, e) => new Decimal(s).plus(e.amount).toFixed(), "0");
             const currency = opts.currencies[0] ?? "CNY";
             return Promise.resolve({
               content: JSON.stringify({

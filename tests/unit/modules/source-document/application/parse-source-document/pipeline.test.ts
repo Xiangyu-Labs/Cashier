@@ -37,7 +37,7 @@ vi.mock("@/lib/storage/utils", () => ({
 const SIMPLE_ENTRY = {
   receipt_index: 0,
   item_name: "Lunch",
-  amount: 10,
+  amount: "10",
   currency: "USD",
   category_index: 1,
   notes: null,
@@ -47,22 +47,22 @@ const SIMPLE_STAGE0_RESULT = {
   outcome: "success",
   title: "Test Receipt",
   receipt_count: 1,
-  receipt_totals: [{ receipt_index: 0, amount: 10, currency: "USD" }],
+  receipt_totals: [{ receipt_index: 0, amount: "10", currency: "USD" }],
   ledger_entries: [SIMPLE_ENTRY],
   order_adjustments: [],
   reasoning: "single item",
 };
 
 const COMPLEX_ENTRIES = [
-  { receipt_index: 0, item_name: "A", amount: 10, currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "B", amount: 20, currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "C", amount: 30, currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "D", amount: 40, currency: "USD", category_index: 1, notes: null },
+  { receipt_index: 0, item_name: "A", amount: "10", currency: "USD", category_index: 1, notes: null },
+  { receipt_index: 0, item_name: "B", amount: "20", currency: "USD", category_index: 1, notes: null },
+  { receipt_index: 0, item_name: "C", amount: "30", currency: "USD", category_index: 1, notes: null },
+  { receipt_index: 0, item_name: "D", amount: "40", currency: "USD", category_index: 1, notes: null },
 ];
 
 const COMPLEX_STAGE0_RESULT = {
   ...SIMPLE_STAGE0_RESULT,
-  receipt_totals: [{ receipt_index: 0, amount: 100, currency: "USD" }],
+  receipt_totals: [{ receipt_index: 0, amount: "100", currency: "USD" }],
   ledger_entries: COMPLEX_ENTRIES,
 };
 
@@ -194,7 +194,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   it("triggers arbitration when complex results disagree", async () => {
     const differentResult = {
       ...COMPLEX_STAGE0_RESULT,
-      ledger_entries: COMPLEX_ENTRIES.map((e) => ({ ...e, amount: e.amount + 5 })),
+      ledger_entries: COMPLEX_ENTRIES.map((e) => ({ ...e, amount: String(Number.parseFloat(e.amount) + 5) })),
     };
     const { ai, generate } = createMockAI({
       stage0Result: COMPLEX_STAGE0_RESULT,
@@ -331,7 +331,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.ledgerEntries).toHaveLength(1);
-      expect(result.ledgerEntries[0]?.amount).toBe(10);
+      expect(result.ledgerEntries[0]?.amount).toBe("10");
     }
   });
 
@@ -339,8 +339,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: 12, currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        receipt_totals: [{ receipt_index: 0, amount: "12", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
       },
     });
@@ -351,7 +351,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     if (result.kind === "success") {
       expect(result.ledgerEntries).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ amount: 2, itemName: expect.any(String) }),
+          expect.objectContaining({ amount: "2.00", itemName: expect.any(String) }),
         ])
       );
     }
@@ -361,8 +361,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: 15, currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        receipt_totals: [{ receipt_index: 0, amount: "15", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
       },
     });
@@ -373,7 +373,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     if (result.kind === "success") {
       expect(result.ledgerEntries).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ amount: 5, itemName: expect.any(String), isAdjustment: false }),
+          expect.objectContaining({ amount: "5.00", itemName: expect.any(String), isAdjustment: false }),
         ])
       );
     }
@@ -383,8 +383,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: 8, currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: 10 }],
+        receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
       },
     });
@@ -394,19 +394,19 @@ describe("runParsePipeline — new single-pass flow", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.ledgerEntries).toHaveLength(1);
-      expect(result.ledgerEntries[0]).toMatchObject({ amount: 8, itemName: "Lunch" });
+      expect(result.ledgerEntries[0]).toMatchObject({ amount: "8.00", itemName: "Lunch" });
     }
   });
 
   it("order_adjustments are folded proportionally into ledgerEntries", async () => {
-    // SIMPLE_ENTRY: { receipt_index: 0, amount: 10, currency: "USD", item_name: "Lunch" }
+    // SIMPLE_ENTRY: { receipt_index: 0, amount: "10", currency: "USD", item_name: "Lunch" }
     // receipt total is 8 after a -2 bill-level discount, so reconciliation should not add residuals.
     const { ai } = createMockAI({
       stage0Result: {
         ...SIMPLE_STAGE0_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: 8, currency: "USD" }],
+        receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
         order_adjustments: [
-          { receipt_index: 0, item_name: "Discount", amount: -2, currency: "USD" },
+          { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
         ],
       },
     });
@@ -417,7 +417,7 @@ describe("runParsePipeline — new single-pass flow", () => {
       // No separate adjustment row — discount is folded into the entry
       expect(result.ledgerEntries.every((e) => !e.isAdjustment)).toBe(true);
       const entry = result.ledgerEntries.find((e) => e.itemName === "Lunch");
-      expect(entry?.amount).toBe(8);
+      expect(entry?.amount).toBe("8.00");
     }
   });
 

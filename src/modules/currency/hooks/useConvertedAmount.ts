@@ -26,7 +26,7 @@ export function useConvertedAmount(
     ),
     queryFn: async () => {
       if (normalizedFrom == null || normalizedTo == null) {
-        return { converted: amount };
+        return { converted: String(amount) };
       }
 
       return convertCurrencyAction(amount, normalizedFrom, normalizedTo, normalizedDate);
@@ -44,7 +44,7 @@ export function useConvertedAmount(
   }
 
   return {
-    converted: data?.converted ?? amount,
+    converted: data?.converted != null ? Number.parseFloat(data.converted) : amount,
     isLoading,
     error,
   };

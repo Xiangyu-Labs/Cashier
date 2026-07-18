@@ -11,25 +11,26 @@ describe("currency contracts exports", () => {
     expect(contracts).toBeDefined();
   });
 
-  it("exports ConvertCurrencyResult", () => {
-    const result: ConvertCurrencyResult = { converted: 42 };
-    expect(typeof result.converted).toBe("number");
+  it("exports ConvertCurrencyResult with string converted", () => {
+    const result: ConvertCurrencyResult = { converted: "42.00" };
+    expect(typeof result.converted).toBe("string");
   });
 
-  it("exports BatchConversionItem", () => {
+  it("exports BatchConversionItem with number amount (UI-input boundary)", () => {
     const item: BatchConversionItem = { amount: 100, currency: "USD" };
     expect(typeof item.amount).toBe("number");
     expect(item.date).toBeUndefined();
   });
 
-  it("exports BatchConvertCurrencyResult", () => {
-    const result: BatchConvertCurrencyResult = { results: [1, 2, 3] };
+  it("exports BatchConvertCurrencyResult with string results", () => {
+    const result: BatchConvertCurrencyResult = { results: ["1.00", "2.00", "3.00"] };
     expect(result.results).toHaveLength(3);
+    expect(result.results.every((r) => typeof r === "string")).toBe(true);
   });
 
   it("keeps ConvertCurrencyResult compatible with the public use-cases type", () => {
-    const contractResult: ConvertCurrencyResult = { converted: 13 };
+    const contractResult: ConvertCurrencyResult = { converted: "13.00" };
     const useCaseResult: UseCaseConvertCurrencyResult = contractResult;
-    expect(useCaseResult.converted).toBe(13);
+    expect(useCaseResult.converted).toBe("13.00");
   });
 });

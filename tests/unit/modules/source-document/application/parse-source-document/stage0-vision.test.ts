@@ -21,12 +21,12 @@ const SIMPLE_SUCCESS_RESPONSE = {
   outcome: "success",
   title: "Test Restaurant",
   receipt_count: 1,
-  receipt_totals: [{ receipt_index: 0, amount: 45.0, currency: "CNY" }],
+  receipt_totals: [{ receipt_index: 0, amount: "45.00", currency: "CNY" }],
   ledger_entries: [
     {
       receipt_index: 0,
       item_name: "Lunch set",
-      amount: 45.0,
+      amount: "45.00",
       currency: "CNY",
       category_index: 1,
       notes: null,
@@ -102,7 +102,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
     const aiWithAdjustment = createMockAI({
       ...SIMPLE_SUCCESS_RESPONSE,
       order_adjustments: [
-        { receipt_index: 0, item_name: "Discount", amount: -5.0, currency: "CNY" },
+        { receipt_index: 0, item_name: "Discount", amount: "-5.00", currency: "CNY" },
       ],
     });
 
@@ -112,7 +112,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
     );
 
     expect(result.order_adjustments).toHaveLength(1);
-    expect(result.order_adjustments[0]?.amount).toBe(-5.0);
+    expect(result.order_adjustments[0]?.amount).toBe("-5.00");
   });
 
   // === Model selection ===

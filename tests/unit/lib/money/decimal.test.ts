@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   parse,
   normalize,
+  abs,
   add,
   subtract,
   multiply,
@@ -72,6 +73,20 @@ describe("decimal", () => {
 
     it("returns 1 when a > b", () => {
       expect(compare("3.00", "1.00")).toBe(1);
+    });
+  });
+
+  describe("abs", () => {
+    it("returns the same value for positive numbers", () => {
+      expect(abs("42.00")).toBe("42");
+    });
+
+    it("returns the absolute value for negative numbers", () => {
+      expect(abs("-42.00")).toBe("42");
+    });
+
+    it("handles zero", () => {
+      expect(abs("0")).toBe("0");
     });
   });
 

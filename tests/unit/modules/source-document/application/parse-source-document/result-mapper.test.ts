@@ -13,7 +13,7 @@ describe("convertToParsedEntries", () => {
         {
           receipt_index: 2,
           item_name: "Lunch",
-          amount: 10,
+          amount: "10",
           currency: "USD",
           category_index: 1,
           notes: "team meal",
@@ -25,7 +25,7 @@ describe("convertToParsedEntries", () => {
     expect(result).toEqual([
       {
         itemName: "Lunch",
-        amount: 10,
+        amount: "10",
         currency: "USD",
         categoryIndex: 1,
         entryDate: null,
@@ -39,50 +39,51 @@ describe("convertToParsedEntries", () => {
   it("folds a same-currency adjustment into the single matching entry", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 1, item_name: "Meal", amount: 10, currency: "USD", category_index: 1, notes: null },
+        { receipt_index: 1, item_name: "Meal", amount: "10", currency: "USD", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 1, item_name: "Discount", amount: -2, currency: "USD" },
+        { receipt_index: 1, item_name: "Discount", amount: "-2", currency: "USD" },
       ],
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Meal", amount: 8, currency: "USD", isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Meal", amount: "8.00", currency: "USD", isAdjustment: false });
   });
 
   it("distributes adjustment proportionally across multiple entries", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "A", amount: 10, currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "B", amount: 20, currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "C", amount: 30, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "A", amount: "10", currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "B", amount: "20", currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "C", amount: "30", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 0, item_name: "Service fee", amount: -6, currency: "CNY" },
+        { receipt_index: 0, item_name: "Service fee", amount: "-6", currency: "CNY" },
       ],
     });
 
     // Total = 60, adjustment = -6. Shares: A=-1, B=-2, C=-3
     expect(result).toHaveLength(3);
-    expect(result[0]).toMatchObject({ itemName: "A", amount: 9 });
-    expect(result[1]).toMatchObject({ itemName: "B", amount: 18 });
-    expect(result[2]).toMatchObject({ itemName: "C", amount: 27 });
+    expect(result[0]).toMatchObject({ itemName: "A", amount: "9.00" });
+    expect(result[1]).toMatchObject({ itemName: "B", amount: "18.00" });
+    expect(result[2]).toMatchObject({ itemName: "C", amount: "27.00" });
   });
 
   it("gives rounding remainder to last entry so total is preserved", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "X", amount: 10, currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "Y", amount: 20, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "X", amount: "10", currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "Y", amount: "20", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 0, item_name: "Rounding", amount: -0.1, currency: "CNY" },
+        { receipt_index: 0, item_name: "Rounding", amount: "-0.1", currency: "CNY" },
       ],
     });
 
-    // Total = 30, adjustment = -0.1. X share = -0.03, Y gets remainder = -0.07
-    const total = (result[0]?.amount ?? 0) + (result[1]?.amount ?? 0);
-    expect(Math.round(total * 100)).toBe(2990); // 29.90 in cents
+    // Total = 30, adjustment = -0.1. Total should be 29.90
+    const total = Number.parseFloat(result[0]?.amount ?? "0") + Number.parseFloat(result[1]?.amount ?? "0");
+    // 29.90 in exact decimal: should be 29.9 (both entries after rounding must sum to exactly 29.90)
+    expect(total).toBeCloseTo(29.9, 10);
     expect(result).toHaveLength(2);
     expect(result.every((e) => !e.isAdjustment)).toBe(true);
   });
@@ -92,59 +93,59 @@ describe("convertToParsedEntries", () => {
     // receipt_index 0 has one CNY entry → adjustment folds in regardless of adj.currency value.
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: 10, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "Item", amount: "10", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 0, item_name: "Fee", amount: -1, currency: "USD" },
+        { receipt_index: 0, item_name: "Fee", amount: "-1", currency: "USD" },
       ],
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Item", amount: 9, isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Item", amount: "9.00", isAdjustment: false });
   });
 
   it("drops adjustment when its receipt_index has no matching entries", () => {
     // receipt_index: 1 has no ledger entries → adjustment is silently dropped.
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: 10, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "Item", amount: "10", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 1, item_name: "Discount", amount: -2, currency: "CNY" },
+        { receipt_index: 1, item_name: "Discount", amount: "-2", currency: "CNY" },
       ],
     });
 
     // Orphaned adjustment is dropped — no separate row
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Item", amount: 10, isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Item", amount: "10", isAdjustment: false });
   });
 
   it("returns entries unchanged when there are no adjustments", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Tea", amount: 5, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "Tea", amount: "5", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [],
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Tea", amount: 5, isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Tea", amount: "5", isAdjustment: false });
   });
 
   it("aggregates multiple adjustments before distributing", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: 100, currency: "CNY", category_index: 1, notes: null },
+        { receipt_index: 0, item_name: "Item", amount: "100", currency: "CNY", category_index: 1, notes: null },
       ],
       orderAdjustments: [
-        { receipt_index: 0, item_name: "Discount", amount: -10, currency: "CNY" },
-        { receipt_index: 0, item_name: "Tax", amount: 5, currency: "CNY" },
+        { receipt_index: 0, item_name: "Discount", amount: "-10", currency: "CNY" },
+        { receipt_index: 0, item_name: "Tax", amount: "5", currency: "CNY" },
       ],
     });
 
     // Net adjustment = -5, single entry absorbs all
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ amount: 95 });
+    expect(result[0]).toMatchObject({ amount: "95.00" });
   });
 });
 

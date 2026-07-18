@@ -86,24 +86,30 @@ Return a single JSON object:
   "title": "merchant or document name",
   "receipt_count": 1,
   "receipt_totals": [
-    { "receipt_index": 0, "amount": 45.00, "currency": "CNY" }
+    { "receipt_index": 0, "amount": "45.00", "currency": "CNY" }
   ],
   "ledger_entries": [
     {
       "receipt_index": 0,
       "item_name": "Lunch set",
-      "amount": 45.00,
+      "amount": "45.00",
       "currency": "CNY",
       "category_index": 1,
       "notes": null
     }
   ],
   "order_adjustments": [
-    { "receipt_index": 0, "item_name": "Discount", "amount": -5.00, "currency": "CNY" }
+    { "receipt_index": 0, "item_name": "Discount", "amount": "-5.00", "currency": "CNY" }
   ],
   "reasoning": "brief explanation"
 }
 \`\`\`
+
+### Important: Amount Formatting
+- All amount fields must be **quoted decimal strings** (e.g. "45.00", "-5.00", "0.10").
+- Never output unquoted JSON numbers for amounts — the system will reject them.
+- Always include exactly 2 decimal places.
+- Use standard minus sign - for negative values.
 
 ### Rules
 - Set outcome to "invalid" if the document is not a receipt or invoice.

@@ -35,7 +35,7 @@ export async function batchConvertCurrencyAction(
 
   const results = await convertAmountsBatch(
     items.map((item) => ({
-      amount: item.amount,
+      amount: String(item.amount),
       fromCurrency: item.currency,
       toCurrency: targetCurrency,
       ...(item.date != null ? { date: item.date } : {}),

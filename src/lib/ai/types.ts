@@ -10,7 +10,7 @@ export interface SourceDocumentInput {
 
 export interface ParsedLedgerEntry {
   itemName: string;
-  amount: number;
+  amount: string; // canonical decimal string, e.g. "45.00"
   currency: string | null;
   categoryIndex: number; // 0 = no category, 1+ = index into categories array
   entryDate: string | null; // YYYY-MM-DD 格式

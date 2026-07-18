@@ -20,6 +20,7 @@ import {
   sourceDocuments,
 } from "@/persistence";
 import { getLedgerMainCurrency } from "@/modules/ledger/source-document-queries";
+import { compare } from "@/lib/money/decimal";
 import {
   buildEntriesForInsert,
   getEntryFallbackDate,
@@ -130,7 +131,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
     const entries = await buildEntriesForInsert({
       validEntries: output.ledgerEntries.filter(
-        (entry) => entry.amount > 0 || entry.isAdjustment === true
+        (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
       ),
       categories,
       sourceDocumentId: request.sourceDocumentId,

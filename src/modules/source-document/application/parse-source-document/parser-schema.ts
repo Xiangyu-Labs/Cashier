@@ -1,17 +1,30 @@
 import { z } from "zod";
+import Decimal from "decimal.js";
+import { isValidDecimal, compare } from "@/lib/money/decimal";
+
+// ===== Decimal string validation =====
+
+/**
+ * Zod type for canonical decimal strings.
+ * Rejects raw JSON numbers — the AI must output quoted strings.
+ */
+const decimalStringSchema = z.string().refine(
+  (v) => isValidDecimal(v),
+  { message: "Must be a valid decimal number string (e.g. \"45.00\")" }
+);
 
 // ===== Raw Zod schema (AI response shape) =====
 
 const receiptTotalSchema = z.object({
   receipt_index: z.number().int().min(0),
-  amount: z.number(),
+  amount: decimalStringSchema,
   currency: z.string(),
 });
 
 const ledgerEntrySchema = z.object({
   receipt_index: z.number().int().min(0),
   item_name: z.string(),
-  amount: z.number(),
+  amount: decimalStringSchema,
   currency: z.string(),
   category_index: z.number().int().min(0),
   notes: z.string().nullish(),
@@ -20,7 +33,7 @@ const ledgerEntrySchema = z.object({
 const orderAdjustmentSchema = z.object({
   receipt_index: z.number().int().min(0),
   item_name: z.string(),
-  amount: z.number(),
+  amount: decimalStringSchema,
   currency: z.string(),
 });
 
@@ -39,14 +52,14 @@ export const parserOutputSchema = z.object({
 
 export interface NormalizedReceiptTotal {
   receipt_index: number;
-  amount: number;
+  amount: string;
   currency: string;
 }
 
 export interface NormalizedLedgerEntry {
   receipt_index: number;
   item_name: string;
-  amount: number;
+  amount: string;
   currency: string;
   category_index: number;
   notes: string | null;
@@ -55,7 +68,7 @@ export interface NormalizedLedgerEntry {
 export interface NormalizedOrderAdjustment {
   receipt_index: number;
   item_name: string;
-  amount: number;
+  amount: string;
   currency: string;
 }
 
@@ -92,7 +105,7 @@ export function normalizeResult(
   output: z.infer<typeof parserOutputSchema>
 ): NormalizedParseOutput {
   // Validate: ledger_entry amounts must be positive (> 0)
-  const invalidEntry = output.ledger_entries.find((e) => e.amount <= 0);
+  const invalidEntry = output.ledger_entries.find((e) => compare(e.amount, "0") <= 0);
   if (invalidEntry != null) {
     return {
       outcome: "anomaly",
@@ -146,37 +159,49 @@ export function shouldDualRun(result: NormalizedParseOutput): boolean {
 
 // ===== Result comparison =====
 
-function groupTotals(entries: { currency: string; category_index: number; amount: number }[]): Record<string, number> {
-  return entries.reduce<Record<string, number>>((acc, e) => {
+function groupTotals(entries: { currency: string; category_index: number; amount: string }[]): Record<string, string> {
+  return entries.reduce<Record<string, string>>((acc, e) => {
     const key = `${e.currency}:${e.category_index}`;
-    acc[key] = (acc[key] ?? 0) + e.amount;
+    const prev = acc[key];
+    acc[key] = prev != null
+      ? new Decimal(prev).plus(e.amount).toFixed()
+      : e.amount;
     return acc;
   }, {});
 }
 
-function groupAdjustments(adjustments: { currency: string; amount: number }[]): Record<string, number> {
-  return adjustments.reduce<Record<string, number>>((acc, a) => {
-    acc[a.currency] = (acc[a.currency] ?? 0) + a.amount;
+function groupAdjustments(adjustments: { currency: string; amount: string }[]): Record<string, string> {
+  return adjustments.reduce<Record<string, string>>((acc, a) => {
+    const prev = acc[a.currency];
+    acc[a.currency] = prev != null
+      ? new Decimal(prev).plus(a.amount).toFixed()
+      : a.amount;
     return acc;
   }, {});
 }
 
 
 function groupReceiptTotals(
-  totals: { receipt_index: number; currency: string; amount: number }[]
-): Record<string, number> {
-  return totals.reduce<Record<string, number>>((acc, total) => {
+  totals: { receipt_index: number; currency: string; amount: string }[]
+): Record<string, string> {
+  return totals.reduce<Record<string, string>>((acc, total) => {
     const key = `${total.receipt_index}:${total.currency}`;
-    acc[key] = (acc[key] ?? 0) + total.amount;
+    const prev = acc[key];
+    acc[key] = prev != null
+      ? new Decimal(prev).plus(total.amount).toFixed()
+      : total.amount;
     return acc;
   }, {});
 }
 
-function mapsMatch(a: Record<string, number>, b: Record<string, number>): boolean {
+function mapsMatch(a: Record<string, string>, b: Record<string, string>): boolean {
   const aKeys = Object.keys(a).sort();
   const bKeys = Object.keys(b).sort();
   if (aKeys.join("|") !== bKeys.join("|")) return false;
-  return aKeys.every((k) => Math.abs((a[k] ?? 0) - (b[k] ?? 0)) <= 0.01);
+  return aKeys.every((k) => {
+    const diff = new Decimal(a[k] ?? "0").minus(b[k] ?? "0").abs();
+    return diff.lte("0.01");
+  });
 }
 
 /**

@@ -5,7 +5,7 @@ import type { ConvertCurrencyInput } from "../../contract-schemas";
 export type { ConvertCurrencyInput } from "../../contract-schemas";
 
 export interface ConvertCurrencyResult {
-  converted: number;
+  converted: string;
 }
 
 function normalizeConversionDate(date?: string): Date | undefined {
@@ -20,5 +20,5 @@ export async function convertCurrency(input: ConvertCurrencyInput): Promise<Conv
     normalizeConversionDate(input.date)
   );
 
-  return { converted: Number(converted) };
+  return { converted };
 }

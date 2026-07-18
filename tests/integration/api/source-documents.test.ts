@@ -87,7 +87,7 @@ describe("SourceDocument Actions", () => {
         entries: [
           {
             item_name: "苹果",
-            amount: 20,
+            amount: "20",
             currency: "CNY",
             category_index: 1,
             notes: "2kg * 10元/kg, 红富士苹果",

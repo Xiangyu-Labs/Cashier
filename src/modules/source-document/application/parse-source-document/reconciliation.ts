@@ -1,3 +1,5 @@
+import Decimal from "decimal.js";
+import { add, subtract, compare, round } from "@/lib/money/decimal";
 import type {
   NormalizedLedgerEntry,
   NormalizedParseOutput,
@@ -18,10 +20,6 @@ const RECONCILIATION_NOTES = {
   zh: "根据账单总额自动补齐的差额项目。",
   default: "Created during receipt-total reconciliation.",
 } as const;
-
-function roundToCents(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
 
 function isZhLanguage(aiLanguage?: string): boolean {
   return aiLanguage?.toLowerCase().startsWith("zh") ?? false;
@@ -63,7 +61,11 @@ function determineTargetTotal(
 
   const hasConflict = matching.some(
     (candidate) =>
-      candidate.currency !== first.currency || Math.abs(candidate.amount - first.amount) > 0.01
+      candidate.currency !== first.currency ||
+      compare(
+        new Decimal(candidate.amount).minus(first.amount).abs().toFixed(),
+        "0.01"
+      ) > 0
   );
   if (hasConflict) {
     return {
@@ -76,18 +78,18 @@ function determineTargetTotal(
 }
 
 function dominantCategoryIndex(entries: NormalizedLedgerEntry[]): number {
-  const buckets = new Map<number, { amount: number; count: number }>();
+  const buckets = new Map<number, { amount: string; count: number }>();
   for (const entry of entries) {
     if (entry.category_index <= 0) continue;
-    const bucket = buckets.get(entry.category_index) ?? { amount: 0, count: 0 };
-    bucket.amount += entry.amount;
+    const bucket = buckets.get(entry.category_index) ?? { amount: "0", count: 0 };
+    bucket.amount = add(bucket.amount, entry.amount);
     bucket.count += 1;
     buckets.set(entry.category_index, bucket);
   }
 
   const ranked = [...buckets.entries()].sort((a, b) => {
-    const amountDiff = b[1].amount - a[1].amount;
-    if (Math.abs(amountDiff) > 0.01) return amountDiff;
+    const amountCmp = compare(b[1].amount, a[1].amount);
+    if (amountCmp !== 0) return amountCmp;
     const countDiff = b[1].count - a[1].count;
     if (countDiff !== 0) return countDiff;
     return a[0] - b[0];
@@ -128,16 +130,16 @@ export function reconcileParseOutput({
       (adjustment) => adjustment.receipt_index === receiptIndex
     );
 
-    const entriesTotal = entriesForReceipt.reduce((sum, entry) => sum + entry.amount, 0);
-    const adjustmentsTotal = adjustmentsForReceipt.reduce((sum, adjustment) => sum + adjustment.amount, 0);
-    const currentTotal = roundToCents(entriesTotal + adjustmentsTotal);
-    const delta = roundToCents(target.total.amount - currentTotal);
+    const entriesTotal = entriesForReceipt.reduce((sum, entry) => add(sum, entry.amount), "0");
+    const adjustmentsTotal = adjustmentsForReceipt.reduce((sum, adjustment) => add(sum, adjustment.amount), "0");
+    const currentTotal = round(add(entriesTotal, adjustmentsTotal), 2);
+    const delta = round(subtract(target.total.amount, currentTotal), 2);
 
-    if (Math.abs(delta) <= 0.01) {
+    if (compare(new Decimal(delta).abs().toFixed(), "0.01") <= 0) {
       continue;
     }
 
-    if (delta > 0) {
+    if (compare(delta, "0") > 0) {
       reconciledEntries.push({
         receipt_index: receiptIndex,
         item_name: genericItemName(aiLanguage),
@@ -149,11 +151,11 @@ export function reconcileParseOutput({
       continue;
     }
 
-    const syntheticAdjustmentAmount = delta;
+    // delta is negative — synthesize an adjustment
     reconciledAdjustments.push({
       receipt_index: receiptIndex,
       item_name: genericAdjustmentName(aiLanguage),
-      amount: syntheticAdjustmentAmount,
+      amount: delta,
       currency: target.total.currency,
     });
   }

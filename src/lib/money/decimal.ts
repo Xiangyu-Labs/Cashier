@@ -91,6 +91,13 @@ export function compare(a: string, b: string): -1 | 0 | 1 {
 }
 
 /**
+ * Return the absolute value of a decimal string.
+ */
+export function abs(value: string): string {
+  return new Decimal(value).abs().toFixed();
+}
+
+/**
  * Round a decimal string to the given number of decimal places using half-up rounding.
  */
 export function round(value: string, decimals: number): string {

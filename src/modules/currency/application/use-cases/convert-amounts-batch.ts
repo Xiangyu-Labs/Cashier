@@ -1,16 +1,18 @@
+import Decimal from "decimal.js";
+import { multiply, divide } from "@/lib/money/decimal";
 import { AppError } from "@/lib/errors";
 import { ExchangeRateService, type ExchangeRates } from "../services/exchange-rate";
 
 export interface CurrencyBatchConversionItem {
-  amount: number;
+  amount: string;
   fromCurrency: string;
   toCurrency?: string;
   date?: string;
 }
 
 export interface CurrencyBatchConversionResult {
-  convertedAmount: number;
-  exchangeRate: number;
+  convertedAmount: string;
+  exchangeRate: string;
 }
 
 export interface ConvertAmountsBatchOptions {
@@ -47,14 +49,14 @@ function resolveBatchItemConversion(
   if (item.fromCurrency === targetCurrency) {
     return {
       convertedAmount: item.amount,
-      exchangeRate: 1,
+      exchangeRate: "1",
     };
   }
 
   if (options.allowBlankSourceCurrency && item.fromCurrency === "") {
     return {
       convertedAmount: item.amount,
-      exchangeRate: 1,
+      exchangeRate: "1",
     };
   }
 
@@ -66,7 +68,7 @@ function resolveBatchItemConversion(
     if (options.fallbackToOriginalAmountOnMissingRate) {
       return {
         convertedAmount: item.amount,
-        exchangeRate: 1,
+        exchangeRate: "1",
       };
     }
 
@@ -76,10 +78,15 @@ function resolveBatchItemConversion(
     );
   }
 
-  const convertedAmount = item.amount * (toRate / fromRate);
+  // Decimal arithmetic: Amount * (ToRate / FromRate)
+  const rateRatio = divide(String(toRate), String(fromRate));
+  const convertedAmount = multiply(item.amount, rateRatio);
+  const exchangeRate = new Decimal(item.amount).isZero()
+    ? "1"
+    : new Decimal(convertedAmount).dividedBy(item.amount).toFixed();
   return {
     convertedAmount,
-    exchangeRate: item.amount !== 0 ? convertedAmount / item.amount : 1,
+    exchangeRate,
   };
 }
 

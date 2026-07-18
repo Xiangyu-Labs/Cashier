@@ -6,7 +6,7 @@ function entry(overrides: Partial<NormalizedLedgerEntry> = {}): NormalizedLedger
   return {
     receipt_index: overrides.receipt_index ?? 0,
     item_name: overrides.item_name ?? "Item",
-    amount: overrides.amount ?? 10,
+    amount: overrides.amount ?? "10",
     currency: overrides.currency ?? "CNY",
     category_index: overrides.category_index ?? 1,
     notes: overrides.notes ?? null,
@@ -17,7 +17,7 @@ function adjustment(overrides: Partial<NormalizedOrderAdjustment> = {}): Normali
   return {
     receipt_index: overrides.receipt_index ?? 0,
     item_name: overrides.item_name ?? "Adjustment",
-    amount: overrides.amount ?? -5,
+    amount: overrides.amount ?? "-5",
     currency: overrides.currency ?? "CNY",
   };
 }
@@ -25,7 +25,7 @@ function adjustment(overrides: Partial<NormalizedOrderAdjustment> = {}): Normali
 function receiptTotal(overrides: Partial<NormalizedReceiptTotal> = {}): NormalizedReceiptTotal {
   return {
     receipt_index: overrides.receipt_index ?? 0,
-    amount: overrides.amount ?? 10,
+    amount: overrides.amount ?? "10",
     currency: overrides.currency ?? "CNY",
   };
 }
@@ -47,10 +47,10 @@ describe("reconcileParseOutput", () => {
     const result = reconcileParseOutput({
       aiLanguage: "zh-CN",
       result: successResult({
-        receipt_totals: [receiptTotal({ amount: 30 })],
+        receipt_totals: [receiptTotal({ amount: "30" })],
         ledger_entries: [
-          entry({ item_name: "A", amount: 10, category_index: 1 }),
-          entry({ item_name: "B", amount: 20, category_index: 1 }),
+          entry({ item_name: "A", amount: "10", category_index: 1 }),
+          entry({ item_name: "B", amount: "20", category_index: 1 }),
         ],
         order_adjustments: [],
       }),
@@ -67,8 +67,8 @@ describe("reconcileParseOutput", () => {
     const result = reconcileParseOutput({
       aiLanguage: "zh-CN",
       result: successResult({
-        receipt_totals: [receiptTotal({ amount: 42 })],
-        ledger_entries: [entry({ item_name: "Visible Item", amount: 30, category_index: 2 })],
+        receipt_totals: [receiptTotal({ amount: "42" })],
+        ledger_entries: [entry({ item_name: "Visible Item", amount: "30", category_index: 2 })],
         order_adjustments: [],
       }),
     });
@@ -76,8 +76,8 @@ describe("reconcileParseOutput", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.result.ledger_entries).toEqual([
-        expect.objectContaining({ item_name: "Visible Item", amount: 30, category_index: 2 }),
-        expect.objectContaining({ amount: 12, category_index: 2 }),
+        expect.objectContaining({ item_name: "Visible Item", amount: "30", category_index: 2 }),
+        expect.objectContaining({ amount: "12.00", category_index: 2 }),
       ]);
       expect(result.result.order_adjustments).toEqual([]);
     }
@@ -87,8 +87,8 @@ describe("reconcileParseOutput", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
-        receipt_totals: [receiptTotal({ amount: 90, currency: "USD" })],
-        ledger_entries: [entry({ item_name: "Meal", amount: 100, currency: "USD", category_index: 1 })],
+        receipt_totals: [receiptTotal({ amount: "90", currency: "USD" })],
+        ledger_entries: [entry({ item_name: "Meal", amount: "100", currency: "USD", category_index: 1 })],
         order_adjustments: [],
       }),
     });
@@ -96,7 +96,7 @@ describe("reconcileParseOutput", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.result.order_adjustments).toEqual([
-        expect.objectContaining({ receipt_index: 0, amount: -10, currency: "USD" }),
+        expect.objectContaining({ receipt_index: 0, amount: "-10.00", currency: "USD" }),
       ]);
     }
   });
@@ -105,10 +105,10 @@ describe("reconcileParseOutput", () => {
     const result = reconcileParseOutput({
       aiLanguage: "zh-CN",
       result: successResult({
-        receipt_totals: [receiptTotal({ amount: 75 })],
+        receipt_totals: [receiptTotal({ amount: "75" })],
         ledger_entries: [
-          entry({ item_name: "Food 1", amount: 40, category_index: 3 }),
-          entry({ item_name: "Shop 1", amount: 20, category_index: 2 }),
+          entry({ item_name: "Food 1", amount: "40", category_index: 3 }),
+          entry({ item_name: "Shop 1", amount: "20", category_index: 2 }),
         ],
         order_adjustments: [],
       }),
@@ -116,7 +116,7 @@ describe("reconcileParseOutput", () => {
 
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
-      expect(result.result.ledger_entries[2]).toMatchObject({ amount: 15, category_index: 3 });
+      expect(result.result.ledger_entries[2]).toMatchObject({ amount: "15.00", category_index: 3 });
     }
   });
 
@@ -125,7 +125,7 @@ describe("reconcileParseOutput", () => {
       aiLanguage: "en-US",
       result: successResult({
         receipt_totals: [],
-        ledger_entries: [entry({ item_name: "A", amount: 10, category_index: 1 })],
+        ledger_entries: [entry({ item_name: "A", amount: "10", category_index: 1 })],
         order_adjustments: [],
       }),
     });
@@ -141,10 +141,10 @@ describe("reconcileParseOutput", () => {
       aiLanguage: "en-US",
       result: successResult({
         receipt_totals: [
-          receiptTotal({ receipt_index: 0, amount: 10, currency: "USD" }),
-          receiptTotal({ receipt_index: 0, amount: 12, currency: "USD" }),
+          receiptTotal({ receipt_index: 0, amount: "10", currency: "USD" }),
+          receiptTotal({ receipt_index: 0, amount: "12", currency: "USD" }),
         ],
-        ledger_entries: [entry({ item_name: "A", amount: 10, currency: "USD", category_index: 1 })],
+        ledger_entries: [entry({ item_name: "A", amount: "10", currency: "USD", category_index: 1 })],
         order_adjustments: [],
       }),
     });
@@ -159,18 +159,18 @@ describe("reconcileParseOutput", () => {
     const result = reconcileParseOutput({
       aiLanguage: "en-US",
       result: successResult({
-        receipt_totals: [receiptTotal({ amount: 105, currency: "USD" })],
-        ledger_entries: [entry({ item_name: "Item", amount: 100, currency: "USD", category_index: 4 })],
-        order_adjustments: [adjustment({ item_name: "Shipping", amount: 3, currency: "USD" })],
+        receipt_totals: [receiptTotal({ amount: "105", currency: "USD" })],
+        ledger_entries: [entry({ item_name: "Item", amount: "100", currency: "USD", category_index: 4 })],
+        order_adjustments: [adjustment({ item_name: "Shipping", amount: "3", currency: "USD" })],
       }),
     });
 
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.result.order_adjustments).toEqual([
-        expect.objectContaining({ item_name: "Shipping", amount: 3, currency: "USD" }),
+        expect.objectContaining({ item_name: "Shipping", amount: "3", currency: "USD" }),
       ]);
-      expect(result.result.ledger_entries[1]).toMatchObject({ amount: 2, category_index: 4 });
+      expect(result.result.ledger_entries[1]).toMatchObject({ amount: "2.00", category_index: 4 });
     }
   });
 });

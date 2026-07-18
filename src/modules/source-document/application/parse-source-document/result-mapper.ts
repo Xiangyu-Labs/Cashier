@@ -46,15 +46,15 @@ function distributeAdjustments(
       const i = matchingIndices[k]!;
       const entry = result[i]!;
       const share = netAmount.times(entry.amount).dividedBy(totalAmount);
-      const roundedShare = Number(share.toFixed(2));
-      entry.amount = Number(new Decimal(entry.amount).plus(roundedShare).toFixed(2));
+      const roundedShare = share.toFixed(2);
+      entry.amount = new Decimal(entry.amount).plus(roundedShare).toFixed(2);
       distributed = distributed.plus(roundedShare);
     }
 
     // Last entry absorbs rounding remainder to preserve exact total
     const lastIdx = matchingIndices[matchingIndices.length - 1]!;
-    const remainder = Number(netAmount.minus(distributed).toFixed(2));
-    result[lastIdx]!.amount = Number(new Decimal(result[lastIdx]!.amount).plus(remainder).toFixed(2));
+    const remainder = netAmount.minus(distributed).toFixed(2);
+    result[lastIdx]!.amount = new Decimal(result[lastIdx]!.amount).plus(remainder).toFixed(2);
   }
 
   return result;

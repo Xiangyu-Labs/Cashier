@@ -1,5 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { round } from "@/lib/money/decimal";
+import { round, compare } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
@@ -101,7 +101,7 @@ export interface ValidationResult {
  */
 export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult {
   // Adjustments (discounts, fees) may have negative amounts — keep them
-  const positiveEntries = entries.filter((entry) => entry.amount > 0 || entry.isAdjustment === true);
+  const positiveEntries = entries.filter((entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true);
 
   if (positiveEntries.length === 0) {
     return { isValid: false, reason: "No entries with valid amount" };

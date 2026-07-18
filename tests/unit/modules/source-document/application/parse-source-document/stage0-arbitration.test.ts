@@ -20,12 +20,12 @@ const makeResult = (
   outcome: "success",
   title: "Test",
   receipt_count: 1,
-  receipt_totals: [{ receipt_index: 0, amount: 10, currency: "USD" }],
+  receipt_totals: [{ receipt_index: 0, amount: "10", currency: "USD" }],
   ledger_entries: [
     {
       receipt_index: 0,
       item_name: "Item",
-      amount: 10,
+      amount: "10",
       currency: "USD",
       category_index: 1,
       notes: null,
@@ -113,12 +113,12 @@ describe("arbitrateStage0Results", () => {
       outcome: "success",
       title: "Corrected",
       receipt_count: 1,
-      receipt_totals: [{ receipt_index: 0, amount: 10, currency: "USD" }],
+      receipt_totals: [{ receipt_index: 0, amount: "10", currency: "USD" }],
       ledger_entries: [
         {
           receipt_index: 0,
           item_name: "Item",
-          amount: 10,
+          amount: "10",
           currency: "USD",
           category_index: 1,
           notes: null,

@@ -60,7 +60,7 @@ describe("source-document retry action", () => {
         entries: [
           {
             item_name: "晚餐",
-            amount: 50,
+            amount: "50",
             currency: "CNY",
             category_index: 1,
             entry_date: "2026-07-15",
@@ -162,7 +162,7 @@ describe("source-document retry action", () => {
         entries: [
           {
             item_name: "晚餐",
-            amount: 50,
+            amount: "50",
             currency: "CNY",
             category_index: 1,
             entry_date: "2026-07-15",

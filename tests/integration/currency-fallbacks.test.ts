@@ -28,7 +28,7 @@ describe("currency fallbacks integration", () => {
       "USD"
     );
 
-    expect(result).toEqual({ results: [100] });
+    expect(result).toEqual({ results: ["100"] });
   });
 
   it("batch conversion falls back to original amount when target currency is unknown", async () => {
@@ -37,7 +37,7 @@ describe("currency fallbacks integration", () => {
       "ZZZ"
     );
 
-    expect(result).toEqual({ results: [100] });
+    expect(result).toEqual({ results: ["100"] });
   });
 
   it("keeps order while mixing converted and fallback items", async () => {
@@ -51,9 +51,9 @@ describe("currency fallbacks integration", () => {
     );
 
     expect(result.results).toHaveLength(3);
-    expect(result.results[0]).toBeCloseTo(14.67, 1);
-    expect(result.results[1]).toBe(50);
-    expect(result.results[2]).toBe(25);
+    expect(Number.parseFloat(result.results[0]!)).toBeCloseTo(14.67, 1);
+    expect(result.results[1]).toBe("50");
+    expect(result.results[2]).toBe("25");
   });
 
   it("single conversion still fails for unknown currency", async () => {
