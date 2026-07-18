@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
+import sharp from "sharp";
 import { POST } from "@/app/api/v1/source-documents/route";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -15,6 +16,15 @@ import {
   uploadSessionFiles,
   uploadSessions,
 } from "@/persistence";
+
+async function validJpegBase64(): Promise<string> {
+  const buffer = await sharp({
+    create: { width: 1, height: 1, channels: 3, background: { r: 255, g: 0, b: 0 } },
+  })
+    .jpeg()
+    .toBuffer();
+  return buffer.toString("base64");
+}
 
 vi.mock("@/lib/processing", () => ({
   createProcessingTask: vi.fn(),
@@ -178,7 +188,7 @@ describe("API v1 source-documents route", () => {
 
   describe("inline image ingestion", () => {
     it("returns 201 with a valid inline base64 image and creates a finalized stored file", async () => {
-      const fakeJpegBase64 = Buffer.from("fake-jpeg-bytes").toString("base64");
+      const fakeJpegBase64 = await validJpegBase64();
       const request = new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
         headers: {
@@ -233,6 +243,13 @@ describe("API v1 source-documents route", () => {
     });
 
     it("returns 201 with a valid data URL image", async () => {
+      const pngBase64 = (
+        await sharp({
+          create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+        })
+          .png()
+          .toBuffer()
+      ).toString("base64");
       const request = new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
         headers: {
@@ -240,7 +257,7 @@ describe("API v1 source-documents route", () => {
         },
         body: JSON.stringify({
           text: "Receipt with data URL image",
-          images: [{ data: "data:image/png;base64,iVBORw0KGgo=", mimeType: "image/png" }],
+          images: [{ data: `data:image/png;base64,${pngBase64}`, mimeType: "image/png" }],
         }),
       });
 
@@ -316,7 +333,7 @@ describe("API v1 source-documents route", () => {
     });
 
     it("returns identical 201 responses for concurrent idempotent requests with inline images", async () => {
-      const fakeJpegBase64 = Buffer.from("idempotent-image-bytes").toString("base64");
+      const fakeJpegBase64 = await validJpegBase64();
       const makeRequest = () =>
         new NextRequest("http://localhost/api/v1/source-documents", {
           method: "POST",

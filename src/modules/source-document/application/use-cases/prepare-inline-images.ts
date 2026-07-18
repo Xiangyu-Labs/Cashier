@@ -5,6 +5,7 @@ import type {
   UploadPlanContract,
 } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
 
 /**
  * Interface for the stored-files operations needed by prepareInlineImages.
@@ -32,7 +33,7 @@ export type ImageProcessor = (
   mimeType: string
 ) => Promise<{ buffer: Buffer; mimeType: string }>;
 
-const MAX_DECODED_SIZE = 10 * 1024 * 1024;
+const MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
 
 /**
  * Decode either a raw base64 string or a data:image URL into a Buffer.

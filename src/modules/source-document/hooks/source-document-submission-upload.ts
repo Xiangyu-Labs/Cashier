@@ -5,6 +5,11 @@ import {
   finalizeSourceDocumentUploadAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
+import {
+  MAX_FILES,
+  MAX_ORIGINAL_BYTES_PER_FILE,
+  SUPPORTED_MIME_TYPES,
+} from "@/modules/source-document/upload-policy";
 
 interface SubmissionUploadDependencies {
   createPlan: typeof createSourceDocumentUploadPlanAction;
@@ -38,8 +43,15 @@ function withoutInlineImages(payload: SourceDocumentSubmitPayload): SourceDocume
   return submission;
 }
 
-const IMAGE_DATA_URL_PATTERN = /^data:(image\/(?:jpeg|png|gif|webp));base64,([a-z\d+/]*={0,2})$/i;
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// Build data URL pattern from the shared policy MIME list
+const IMAGE_MIME_PATTERN = SUPPORTED_MIME_TYPES.map((t) =>
+  t.replace("image/", "").replace(/[.+*?^${}()|[\]\\]/g, "\\$&")
+).join("|");
+const IMAGE_DATA_URL_PATTERN = new RegExp(
+  `^data:(image/(?:${IMAGE_MIME_PATTERN}));base64,([a-z\\d+/]*={0,2})$`,
+  "i"
+);
+const MAX_IMAGE_BYTES = MAX_ORIGINAL_BYTES_PER_FILE;
 
 function decodeImageDataUrl(dataUrl: string): { bytes: ArrayBuffer; contentType: string } {
   const match = IMAGE_DATA_URL_PATTERN.exec(dataUrl);

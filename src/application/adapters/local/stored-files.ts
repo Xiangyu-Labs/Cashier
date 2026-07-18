@@ -23,22 +23,13 @@ import {
   uploadSessionFiles,
   uploadSessions,
 } from "@/persistence";
-
-export const UPLOAD_LIMITS = {
-  maxFiles: 10,
-  maxBytesPerFile: 10 * 1024 * 1024,
-  expiresInMs: 15 * 60 * 1000,
-} as const;
-
-const SUPPORTED_CONTENT_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-  "image/avif",
-]);
+import {
+  MAX_FILES,
+  MAX_ORIGINAL_BYTES_PER_FILE,
+  MAX_NORMALIZED_BYTES_PER_REVISION,
+  SUPPORTED_MIME_SET,
+  UPLOAD_SESSION_EXPIRY_MS,
+} from "@/modules/source-document/upload-policy";
 
 interface ObjectFileStore {
   upload(key: string, data: Buffer, contentType: string): Promise<unknown>;
@@ -75,17 +66,17 @@ function mapStoredFile(row: typeof storedFiles.$inferSelect): StoredFileContract
 }
 
 function validateRequests(files: readonly UploadFileRequestContract[]): void {
-  if (files.length === 0 || files.length > UPLOAD_LIMITS.maxFiles) {
-    throw new ValidationError(`Upload plans require 1-${UPLOAD_LIMITS.maxFiles} files`);
+  if (files.length === 0 || files.length > MAX_FILES) {
+    throw new ValidationError(`Upload plans require 1-${MAX_FILES} files`);
   }
   for (const file of files) {
-    if (!SUPPORTED_CONTENT_TYPES.has(file.contentType)) {
+    if (!SUPPORTED_MIME_SET.has(file.contentType)) {
       throw new ValidationError("Unsupported upload content type");
     }
     if (
       !Number.isInteger(file.byteSize) ||
       file.byteSize <= 0 ||
-      file.byteSize > UPLOAD_LIMITS.maxBytesPerFile
+      file.byteSize > MAX_ORIGINAL_BYTES_PER_FILE
     ) {
       throw new ValidationError("Upload file size exceeds the configured limit");
     }
@@ -112,7 +103,7 @@ export class StoredFileAdapter implements StoredFilePort {
     const sessionId = crypto.randomUUID();
     const finalizationToken = crypto.randomBytes(32).toString("base64url");
     const now = this.now();
-    const expiresAt = new Date(now.getTime() + UPLOAD_LIMITS.expiresInMs);
+    const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
     const targetIds = files.map(() => crypto.randomUUID());
 
     await db.transaction(async (tx) => {
@@ -155,8 +146,8 @@ export class StoredFileAdapter implements StoredFilePort {
         requiredHeaders: { "Content-Type": file.contentType },
       })),
       finalizationToken,
-      maxFiles: UPLOAD_LIMITS.maxFiles,
-      maxBytesPerFile: UPLOAD_LIMITS.maxBytesPerFile,
+      maxFiles: MAX_FILES,
+      maxBytesPerFile: MAX_ORIGINAL_BYTES_PER_FILE,
     };
   }
 
@@ -219,7 +210,7 @@ export class StoredFileAdapter implements StoredFilePort {
     if (
       input.contentType !== target.expectedContentType ||
       bytes.length !== target.expectedByteSize ||
-      bytes.length > UPLOAD_LIMITS.maxBytesPerFile
+      bytes.length > MAX_ORIGINAL_BYTES_PER_FILE
     ) {
       throw new ValidationError("Uploaded bytes do not match the scoped target");
     }
@@ -329,7 +320,25 @@ export class StoredFileAdapter implements StoredFilePort {
       if (session.status !== "open" && session.status !== "finalized") {
         throw new ConflictError("Upload session cannot be finalized");
       }
+      // Validate unique display order: deduplicate on position since targets are unique
+      const positionSet = new Set(targets.map((t) => t.position));
+      if (positionSet.size !== targets.length) {
+        throw new ValidationError("Upload targets have duplicate display positions");
+      }
       const storedFileIds = targets.map((target) => target.storedFileId!);
+      // Enforce total normalized bytes per revision
+      const files = await tx
+        .select()
+        .from(storedFiles)
+        .where(
+          and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
+        );
+      const totalBytes = files.reduce((sum, f) => sum + f.byteSize, 0);
+      if (totalBytes > MAX_NORMALIZED_BYTES_PER_REVISION) {
+        throw new ValidationError(
+          `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
+        );
+      }
       await tx
         .update(storedFiles)
         .set({ finalizedAt: now })
@@ -349,12 +358,6 @@ export class StoredFileAdapter implements StoredFilePort {
         .update(uploadSessions)
         .set({ status: "finalized", finalizedAt: now })
         .where(eq(uploadSessions.id, session.id));
-      const files = await tx
-        .select()
-        .from(storedFiles)
-        .where(
-          and(eq(storedFiles.ledgerId, session.ledgerId), inArray(storedFiles.id, storedFileIds))
-        );
       return { files, targets };
     });
     // Preserve position order from the targets query, ensuring files are returned

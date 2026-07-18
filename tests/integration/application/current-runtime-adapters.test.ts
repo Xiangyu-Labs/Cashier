@@ -16,8 +16,11 @@ import {
 import {
   createUploadPlanForSubmission,
   StoredFileAdapter,
-  UPLOAD_LIMITS,
 } from "@/application/adapters/storage";
+import {
+  MAX_FILES,
+  MAX_ORIGINAL_BYTES_PER_FILE,
+} from "@/modules/source-document/upload-policy";
 import {
   currencyRates,
   entryCategories,
@@ -494,7 +497,7 @@ describe("current-runtime target adapters", () => {
     await expect(
       adapter.createUploadPlan(
         ledgerId,
-        Array.from({ length: UPLOAD_LIMITS.maxFiles + 1 }, () => ({
+        Array.from({ length: MAX_FILES + 1 }, () => ({
           contentType: "image/jpeg",
           byteSize: 1,
           originalFilename: null,
@@ -510,7 +513,7 @@ describe("current-runtime target adapters", () => {
       adapter.createUploadPlan(ledgerId, [
         {
           contentType: "image/jpeg",
-          byteSize: UPLOAD_LIMITS.maxBytesPerFile + 1,
+          byteSize: MAX_ORIGINAL_BYTES_PER_FILE + 1,
           originalFilename: null,
         },
       ])

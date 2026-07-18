@@ -2,8 +2,13 @@ import { z } from "zod";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import {
+  MAX_FILES,
+  MAX_ORIGINAL_BYTES_PER_FILE,
+  MAX_TEXT_CHARACTERS,
+  SUPPORTED_MIME_TYPES,
+} from "@/modules/source-document/upload-policy";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
@@ -18,14 +23,21 @@ const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
 const sourceDocumentCursorSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}\|.+\|.+$/, "Invalid source document cursor");
+
+// Build MIME pattern from the shared policy list
+const SUPPORTED_MIME_PATTERN = SUPPORTED_MIME_TYPES.map((t) =>
+  t.replace("image/", "").replace(/[.+*?^${}()|[\]\\]/g, "\\$&")
+).join("|");
+const IMAGE_MIME_REGEX = new RegExp(`^image/(${SUPPORTED_MIME_PATTERN})$`);
+
 const imagePayloadSchema = strictObjectSchema({
   data: z.string(),
-  mimeType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
+  mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
 });
 
 const imagesSchema = z
   .array(imagePayloadSchema)
-  .max(10, "Maximum 10 images allowed")
+  .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
   .refine(
     (images) => {
       if (images.length === 0) {
@@ -35,19 +47,25 @@ const imagesSchema = z
       return images.every((img) => {
         const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
-        return buffer.length <= MAX_FILE_SIZE;
+        return buffer.length <= MAX_ORIGINAL_BYTES_PER_FILE;
       });
     },
     {
-      message: `Image size exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+      message: `Image size exceeds maximum allowed size of ${MAX_ORIGINAL_BYTES_PER_FILE / 1024 / 1024}MB`,
     }
   );
 
 export const sourceDocumentIdSchema = uuidSchema;
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
-  text: z.string().max(10000, "Text too long").optional(),
-  storedFileIds: z.array(uuidSchema).max(10, "Maximum 10 images allowed").optional(),
+  text: z
+    .string()
+    .max(MAX_TEXT_CHARACTERS, `Text too long (max ${MAX_TEXT_CHARACTERS} characters)`)
+    .optional(),
+  storedFileIds: z
+    .array(uuidSchema)
+    .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
+    .optional(),
   images: imagesSchema.optional(),
   originalImages: imagesSchema.optional(),
   entryDate: optionalDateStringSchema,
@@ -74,8 +92,8 @@ export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 export const createSourceDocumentUploadPlanInputSchema = z
   .array(
     strictObjectSchema({
-      contentType: z.string().regex(/^image\/(jpeg|png|gif|webp)$/, "Invalid image type"),
-      byteSize: z.number().int().positive().max(MAX_FILE_SIZE),
+      contentType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
+      byteSize: z.number().int().positive().max(MAX_ORIGINAL_BYTES_PER_FILE),
       originalFilename: z.string().max(255).nullable(),
       checksum: z
         .string()
@@ -85,12 +103,12 @@ export const createSourceDocumentUploadPlanInputSchema = z
     })
   )
   .min(1)
-  .max(10);
+  .max(MAX_FILES);
 
 export const finalizeSourceDocumentUploadInputSchema = strictObjectSchema({
   uploadSessionId: uuidSchema,
   finalizationToken: z.string().min(1).max(256),
-  targetIds: z.array(uuidSchema).min(1).max(10),
+  targetIds: z.array(uuidSchema).min(1).max(MAX_FILES),
 });
 
 export const listSourceDocumentsInputSchema = strictObjectSchema({

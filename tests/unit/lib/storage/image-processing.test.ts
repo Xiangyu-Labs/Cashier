@@ -111,17 +111,13 @@ describe("image-processing", () => {
       );
     });
 
-    it("should handle invalid buffer gracefully", async () => {
+    it("should throw on invalid buffer instead of returning original bytes", async () => {
       const invalidBuffer = Buffer.from("not an image");
 
-      const result = await processImage(invalidBuffer, "image/jpeg");
-
-      // Should return original on error
-      expect(result.buffer).toBe(invalidBuffer);
-      expect(result.mimeType).toBe("image/jpeg");
+      await expect(processImage(invalidBuffer, "image/jpeg")).rejects.toThrow();
     });
 
-    it("should return original if processed size is larger", async () => {
+    it("should return processed output even if larger than original", async () => {
       // Create a very small compressed image
       const buffer = await sharp({
         create: { width: 10, height: 10, channels: 3, background: { r: 0, g: 0, b: 0 } },
@@ -131,19 +127,20 @@ describe("image-processing", () => {
 
       const result = await processImage(buffer, "image/jpeg");
 
-      // Should return original if processed is larger
-      expect(result.buffer).toBe(buffer);
+      // Should return processed buffer (not the original fallback)
+      expect(result.buffer).toBeInstanceOf(Buffer);
+      expect(result.buffer.length).toBeGreaterThan(0);
     });
   });
 
   describe("isSupportedImageFormat", () => {
-    it("should support common image formats", () => {
+    it("should support the web upload policy formats", () => {
       expect(isSupportedImageFormat("image/jpeg")).toBe(true);
-      expect(isSupportedImageFormat("image/jpg")).toBe(true);
       expect(isSupportedImageFormat("image/png")).toBe(true);
       expect(isSupportedImageFormat("image/webp")).toBe(true);
       expect(isSupportedImageFormat("image/gif")).toBe(true);
       expect(isSupportedImageFormat("image/heic")).toBe(true);
+      expect(isSupportedImageFormat("image/heif")).toBe(true);
       expect(isSupportedImageFormat("image/avif")).toBe(true);
     });
 
@@ -151,6 +148,8 @@ describe("image-processing", () => {
       expect(isSupportedImageFormat("application/pdf")).toBe(false);
       expect(isSupportedImageFormat("text/plain")).toBe(false);
       expect(isSupportedImageFormat("image/svg+xml")).toBe(false);
+      expect(isSupportedImageFormat("image/jpg")).toBe(false);
+      expect(isSupportedImageFormat("image/tiff")).toBe(false);
     });
 
     it("should be case insensitive", () => {

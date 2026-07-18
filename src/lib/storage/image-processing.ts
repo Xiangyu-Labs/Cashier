@@ -2,11 +2,20 @@
  * Image Processing Utilities
  *
  * Provides image compression, resizing, and format optimization using sharp.
+ * Enforces the shared Web upload policy for pixel limits, format support,
+ * and decode security.
  */
 
 import sharp from "sharp";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
+import {
+  MAX_NORMALIZED_BYTES_PER_FILE,
+  MAX_MEGAPIXELS_PER_FILE,
+  SUPPORTED_MIME_SET,
+  validateImageProcessing,
+  sanitizeMimeType,
+} from "@/modules/source-document/upload-policy";
 
 /**
  * Image processing options
@@ -40,17 +49,24 @@ export const DEFAULT_IMAGE_OPTIONS: Required<ImageProcessingOptions> = {
 };
 
 /**
- * Maximum output file size (5MB after compression)
+ * Maximum output file size (from policy)
  */
-const MAX_OUTPUT_SIZE = 5 * 1024 * 1024;
+const MAX_OUTPUT_SIZE = MAX_NORMALIZED_BYTES_PER_FILE;
+
+/**
+ * Limit input pixels for Sharp. Uses the environment value which defaults
+ * to 25 MP (higher than the policy 16 MP to allow a controlled error path).
+ */
+const MAX_INPUT_PIXELS = MAX_MEGAPIXELS_PER_FILE * 1_000_000 * 1.5;
 
 /**
  * Process and compress an image buffer
  *
  * @param buffer - Input image buffer
- * @param mimeType - Input MIME type
+ * @param mimeType - Declared input MIME type (may be overridden by detected content)
  * @param options - Processing options
- * @returns Processed buffer and output MIME type
+ * @returns Processed buffer and trusted output MIME type
+ * @throws {Error} If the image cannot be decoded or violates policy limits
  */
 export async function processImage(
   buffer: Buffer,
@@ -61,14 +77,24 @@ export async function processImage(
 
   try {
     let pipeline = sharp(buffer, {
-      // Limit input dimensions to prevent memory issues
-      limitInputPixels: runtimeEnv.maxInputPixels,
+      limitInputPixels: Math.round(MAX_INPUT_PIXELS),
     });
 
-    // Get image metadata
+    // Get image metadata to determine the actual input format
     const metadata = await pipeline.metadata();
     const width = metadata.width ?? 0;
     const height = metadata.height ?? 0;
+
+    // Validate decoded metadata against policy
+    validateImageProcessing({
+      width,
+      height,
+      format: metadata.format ?? "unknown",
+    });
+
+    // Determine trusted MIME from decoded content, not client headers
+    const detectedFormat = metadata.format ?? "";
+    const trustedMime = sanitizeMimeType(mimeType, formatToMimeType(detectedFormat));
 
     // Resize if dimensions exceed max
     const maxDim = opts.maxDimension;
@@ -87,8 +113,8 @@ export async function processImage(
     // Determine output format
     let outputFormat = opts.format;
     if (outputFormat === "auto") {
-      // Convert to WebP for better compression, except for PNGs that might need transparency
-      outputFormat = mimeType === "image/png" ? "png" : "webp";
+      // Use the trusted MIME to decide output format
+      outputFormat = trustedMime === "image/png" ? "png" : "webp";
     }
 
     // Apply format-specific compression
@@ -108,7 +134,6 @@ export async function processImage(
         break;
 
       case "png":
-        // PNG uses lossless compression, quality option is ignored by sharp
         outputBuffer = await pipeline
           .png({
             compressionLevel: 9,
@@ -122,7 +147,7 @@ export async function processImage(
         outputBuffer = await pipeline
           .webp({
             quality: opts.quality,
-            effort: 6, // Compression effort 0-6
+            effort: 6,
           })
           .toBuffer();
         outputMimeType = "image/webp";
@@ -132,7 +157,7 @@ export async function processImage(
         outputBuffer = await pipeline
           .avif({
             quality: opts.quality,
-            effort: 4, // Compression effort 0-9
+            effort: 4,
           })
           .toBuffer();
         outputMimeType = "image/avif";
@@ -140,7 +165,7 @@ export async function processImage(
 
       default:
         // Keep original format with compression
-        if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
+        if (trustedMime === "image/jpeg") {
           outputBuffer = await pipeline
             .jpeg({
               quality: opts.quality,
@@ -148,24 +173,23 @@ export async function processImage(
               mozjpeg: true,
             })
             .toBuffer();
-          outputMimeType = mimeType;
-        } else if (mimeType === "image/png") {
-          // PNG uses lossless compression, quality option is ignored by sharp
+          outputMimeType = "image/jpeg";
+        } else if (trustedMime === "image/png") {
           outputBuffer = await pipeline
             .png({
               compressionLevel: 9,
               progressive: true,
             })
             .toBuffer();
-          outputMimeType = mimeType;
-        } else if (mimeType === "image/webp") {
+          outputMimeType = "image/png";
+        } else if (trustedMime === "image/webp") {
           outputBuffer = await pipeline
             .webp({
               quality: opts.quality,
               effort: 6,
             })
             .toBuffer();
-          outputMimeType = mimeType;
+          outputMimeType = "image/webp";
         } else {
           // Default to JPEG for unknown formats
           outputBuffer = await pipeline
@@ -178,21 +202,13 @@ export async function processImage(
         }
     }
 
-    // Check if compression actually reduced the size
-    if (outputBuffer.length > buffer.length && opts.format === "auto") {
-      // If processed image is larger, use original
-      logger.debug(
-        { originalSize: buffer.length, processedSize: outputBuffer.length },
-        "Processed image larger than original, using original"
-      );
-      return { buffer, mimeType };
-    }
-
-    // Final size check
+    // Final size check — use the processed output regardless of size comparison
+    // (the original bytes have been decoded by sharp and are trusted, but we
+    // always store the processed version for consistency)
     if (outputBuffer.length > MAX_OUTPUT_SIZE) {
       logger.warn(
         { size: outputBuffer.length, maxSize: MAX_OUTPUT_SIZE },
-        "Processed image still exceeds max size"
+        "Processed image exceeds max size, retrying with lower quality"
       );
       // Attempt one more pass with lower quality
       return processImage(buffer, mimeType, {
@@ -207,6 +223,7 @@ export async function processImage(
         processedSize: outputBuffer.length,
         originalMime: mimeType,
         outputMime: outputMimeType,
+        trustedMime,
         width,
         height,
       },
@@ -215,28 +232,36 @@ export async function processImage(
 
     return { buffer: outputBuffer, mimeType: outputMimeType };
   } catch (error) {
-    logger.error({ error, mimeType }, "Image processing failed, returning original");
-    // Return original buffer on error
-    return { buffer, mimeType };
+    // Sharp decode/processing failure is terminal — do not return unverified original bytes
+    logger.error({ error, mimeType }, "Image processing failed");
+    throw error;
   }
 }
 
 /**
- * Check if a MIME type is a supported image format
+ * Map a sharp format string to a MIME type.
+ */
+function formatToMimeType(format: string): string {
+  const map: Record<string, string> = {
+    jpeg: "image/jpeg",
+    jpg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    heic: "image/heic",
+    heif: "image/heif",
+    avif: "image/avif",
+    svg: "image/svg+xml",
+    tiff: "image/tiff",
+  };
+  return map[format.toLowerCase()] ?? `image/${format.toLowerCase()}`;
+}
+
+/**
+ * Check if a MIME type is a supported image format (Web upload policy).
  */
 export function isSupportedImageFormat(mimeType: string): boolean {
-  const supportedFormats = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-    "image/heic",
-    "image/heif",
-    "image/avif",
-    "image/tiff",
-  ];
-  return supportedFormats.includes(mimeType.toLowerCase());
+  return SUPPORTED_MIME_SET.has(mimeType.toLowerCase());
 }
 
 /**
