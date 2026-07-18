@@ -160,17 +160,11 @@ describe("cannot authenticate by prefix/suffix alone", () => {
 });
 
 describe("missing pepper fails startup validation", () => {
-  it("throws when getStartupEnvValue is called without API_KEY_PEPPER set", () => {
+  it("throws when computeHash is called without API_KEY_PEPPER set", () => {
     const originalPepper = process.env.API_KEY_PEPPER;
     delete process.env.API_KEY_PEPPER;
 
-    // The getStartupEnvValue call happens inside computeHash which is called by createToken
-    expect(() => {
-      // Import the module fresh to pick up the env change
-      delete require("../../../dist").API_KEY_PEPPER;
-    }).toThrow();
-
-    // We can test this through computeHash which calls getStartupEnvValue
+    // computeHash calls getStartupEnvValue which validates API_KEY_PEPPER is set
     expect(() => computeHash("sk_live_test")).toThrow(/API_KEY_PEPPER/);
 
     process.env.API_KEY_PEPPER = originalPepper;

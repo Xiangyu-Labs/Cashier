@@ -150,7 +150,12 @@ export const serviceCredentials = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (table) => [index("idx_service_credentials_ledger_id").on(table.ledgerId)]
+  (table) => [
+    index("idx_service_credentials_ledger_id").on(table.ledgerId),
+    uniqueIndex("uniq_service_credentials_token_hash")
+      .on(table.tokenHash)
+      .where(sql`${table.tokenHash} IS NOT NULL`),
+  ]
 );
 
 export type ServiceCredential = InferSelectModel<typeof serviceCredentials>;

@@ -503,17 +503,24 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
 
     if (hashMatch) {
       try {
-        await db
+        const [updated] = await db
           .update(serviceCredentials)
           .set({ lastUsedAt: new Date() })
           .where(and(eq(serviceCredentials.id, hashMatch.id), isNull(serviceCredentials.deletedAt)))
           .returning({ id: serviceCredentials.id });
+        // Revoke-race guard: if credential was revoked between SELECT and UPDATE,
+        // the UPDATE returns 0 rows — return null to prevent auth through revoked credential.
+        if (!updated) return null;
       } catch (error) {
         logError("modules/ledger:authenticate-service-credential:update-last-used", error);
       }
       return hashMatch;
     }
 
+    // TODO: Remove this legacy plaintext fallback once
+    //   scripts/migrations/hash-service-credentials.mjs backfill && verify && clear-plaintext
+    // has been run in production and all active credentials have tokenHash populated.
+    // The `key` column will be dropped after the fallback is removed.
     // Fallback: legacy plaintext key lookup for rows without tokenHash
     const legacyMatch = await db
       .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
@@ -528,11 +535,12 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
     if (legacyMatch == null) return null;
 
     try {
-      await db
+      const [updated] = await db
         .update(serviceCredentials)
         .set({ lastUsedAt: new Date() })
         .where(and(eq(serviceCredentials.id, legacyMatch.id), isNull(serviceCredentials.deletedAt)))
         .returning({ id: serviceCredentials.id });
+      if (!updated) return null;
     } catch (error) {
       logError("modules/ledger:authenticate-service-credential:update-last-used", error);
     }

@@ -13,3 +13,5 @@ CREATE TABLE "rate_limit_buckets" (
 	"window_start" timestamp with time zone NOT NULL,
 	"created_at" timestamp with time zone NOT NULL
 );
+--> statement-breakpoint
+CREATE UNIQUE INDEX "uniq_service_credentials_token_hash" ON "service_credentials" ("token_hash") WHERE token_hash IS NOT NULL;
