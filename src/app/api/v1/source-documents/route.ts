@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 120;
 import {
   createSourceDocumentFromCredentialAction,
 } from "@/modules/source-document/actions";

@@ -13,8 +13,6 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 
-export const maxDuration = 120;
-
 /**
  * Create a new source document and trigger processing
  */

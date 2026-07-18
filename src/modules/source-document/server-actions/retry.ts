@@ -12,8 +12,6 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 
-export const maxDuration = 120;
-
 /**
  * Retry an existing source document with optional new data
  *

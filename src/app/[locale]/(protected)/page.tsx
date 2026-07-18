@@ -10,6 +10,8 @@ import { LedgerPageSkeleton } from "@/components/skeletons";
 import { HydrationBoundary } from "@tanstack/react-query";
 import { resolveHome } from "@/modules/workspace/application/use-cases/resolve-home";
 
+export const maxDuration = 120;
+
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }

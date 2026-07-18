@@ -11,8 +11,6 @@ import type {
 import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
 
-export const maxDuration = 120;
-
 export async function createSourceDocumentFromCredentialAction(input: {
   credentialId: string;
   ledgerId: string;
