@@ -132,6 +132,7 @@ export interface LedgerEntryPageDto {
 export interface LedgerSettingsViewDto {
   uncategorizedCount: number;
   credentials: ServiceCredentialDto[];
+  mainCurrencyMutable: boolean;
 }
 
 export interface DeleteLedgerEntryResultDto {

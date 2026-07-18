@@ -52,6 +52,7 @@ export function useLedgerSettingsQueries({
   const { data: settingsData, isLoading: isSettingsLoading } = useQuery<{
     uncategorizedCount: number;
     credentials: ServiceCredential[];
+    mainCurrencyMutable: boolean;
   }>({
     queryKey: queryKeys.ledgerSettings(ledgerId),
     queryFn: () => getLedgerSettingsAction(ledgerId),
@@ -62,6 +63,7 @@ export function useLedgerSettingsQueries({
     categories,
     uncategorizedCount: settingsData?.uncategorizedCount ?? 0,
     credentials: settingsData?.credentials ?? [],
+    mainCurrencyMutable: settingsData?.mainCurrencyMutable ?? true,
     isSettingsLoading,
   };
 }

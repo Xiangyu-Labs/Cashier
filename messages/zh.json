@@ -358,6 +358,7 @@
     "english": "英文",
     "mainCurrency": "主货币",
     "mainCurrencyDesc": "统计与详情页展示所使用的基准货币（非主货币统计时按交易时汇率折算）",
+    "mainCurrencyLocked": "记录第一笔账目后，主币种将不可更改。",
     "preferredCurrencies": "偏好货币",
     "preferredCurrenciesDesc": "此账本中常用的货币列表。",
     "categories": "分类",

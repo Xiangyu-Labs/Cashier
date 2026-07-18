@@ -358,6 +358,7 @@
     "english": "English",
     "mainCurrency": "Main Currency",
     "mainCurrencyDesc": "The base currency used for statistics and totals (converted using historical rates based on transaction date).",
+    "mainCurrencyLocked": "Main currency cannot be changed after the first ledger entry is recorded.",
     "preferredCurrencies": "Preferred Currencies",
     "preferredCurrenciesDesc": "List of currencies used in this ledger.",
     "categories": "Categories",

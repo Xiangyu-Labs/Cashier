@@ -60,6 +60,7 @@ export function SettingsTab({
     categories,
     uncategorizedCount,
     credentials,
+    mainCurrencyMutable,
     updateLedgerMutation,
     isPending,
   } = useLedgerSettings({ ledgerId, ledger, initialCategories });
@@ -152,6 +153,7 @@ export function SettingsTab({
               currencies: settingsLedger.metadata?.settings?.currencies || [],
             }}
             onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
+            mainCurrencyMutable={mainCurrencyMutable}
           />
           {categories.length > 0 && (
             <CategorySection

@@ -425,7 +425,27 @@ export const postgresSettingsAdapter: SettingsPort = {
       const previousMainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
       const nextMainCurrency = settings.mainCurrency ?? "CNY";
       if (previousMainCurrency !== nextMainCurrency) {
-        await recalculateActiveEntries(tx, input.ledgerId, nextMainCurrency);
+        const [activeRow] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(ledgerEntries)
+          .innerJoin(
+            sourceDocuments,
+            and(
+              eq(sourceDocuments.ledgerId, input.ledgerId),
+              eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+              eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+              isNull(sourceDocuments.deletedAt)
+            )
+          )
+          .where(
+            and(
+              eq(ledgerEntries.ledgerId, input.ledgerId),
+              isNull(ledgerEntries.deletedAt)
+            )
+          );
+        if (Number(activeRow?.count ?? 0) > 0) {
+          throw new ConflictError("Main currency cannot be changed after the first entry");
+        }
       }
       const updated = await tx
         .update(ledgers)

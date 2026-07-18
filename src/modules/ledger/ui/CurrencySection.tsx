@@ -7,9 +7,10 @@ import { useTranslations } from "next-intl";
 interface CurrencySectionProps {
   settings: Settings;
   onUpdateSettings: (data: Partial<Settings>) => void;
+  mainCurrencyMutable?: boolean;
 }
 
-export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+export function CurrencySection({ settings, onUpdateSettings, mainCurrencyMutable = true }: CurrencySectionProps) {
   const t = useTranslations("Settings");
   const selectedCurrencies = settings.currencies ?? [];
   const mainCurrency = settings.mainCurrency ?? "CNY";
@@ -33,19 +34,30 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
         <div>
           <h3 className="text-base font-medium">{t("mainCurrency")}</h3>
           <p className="text-sm text-muted">{t("mainCurrencyDesc")}</p>
+          {!mainCurrencyMutable && (
+            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+              {t("mainCurrencyLocked")}
+            </p>
+          )}
         </div>
-        <select
-          aria-label={t("mainCurrency")}
-          value={mainCurrency}
-          onChange={(event) => setMainCurrency(event.target.value)}
-          className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
-        >
-          {SUPPORTED_CURRENCIES.map((currency) => (
-            <option key={currency} value={currency}>
-              {currency}
-            </option>
-          ))}
-        </select>
+        {mainCurrencyMutable ? (
+          <select
+            aria-label={t("mainCurrency")}
+            value={mainCurrency}
+            onChange={(event) => setMainCurrency(event.target.value)}
+            className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
+          >
+            {SUPPORTED_CURRENCIES.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm sm:w-auto cursor-not-allowed opacity-60">
+            {mainCurrency}
+          </span>
+        )}
       </div>
 
       <div className="h-px bg-border" />
