@@ -4,8 +4,17 @@ import type {
   SourceDocumentLight,
   SourceDocumentStatusType,
 } from "@/modules/source-document/contracts";
+import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
-import { ChevronDown, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
+import {
+  CheckCheck,
+  ChevronDown,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -14,27 +23,36 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { parseDateString } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
+import type { ApplicationErrorCode, AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
+import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null | undefined;
+  errorCode?: ApplicationErrorCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
   isExpanded: boolean;
   isRetrying: boolean;
   selectionMode: boolean;
   isSelected: boolean;
+  supportedActions: readonly SupportedSourceDocumentAction[];
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
-  onRetry?: (() => void | Promise<void>) | undefined;
+  onDirectRetry?: (() => void | Promise<void>) | undefined;
+  onEditRetry?: (() => void | Promise<void>) | undefined;
+  onManualCorrection?: (() => void | Promise<void>) | undefined;
+  onAcceptCandidate?: (() => void | Promise<void>) | undefined;
+  onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
@@ -54,26 +72,44 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   sourceDocument,
   status,
   anomalyReason,
+  errorCode,
   ledgerEntries,
   mainCurrency,
   isExpanded,
   isRetrying,
   selectionMode,
   isSelected,
+  supportedActions,
   onToggleExpanded,
   onViewDetails,
   onToggleSelect,
-  onRetry,
+  onDirectRetry,
+  onEditRetry,
+  onManualCorrection,
+  onAcceptCandidate,
+  onAbandonCandidate,
   onDelete,
 }: SourceDocumentCardHeaderProps) {
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
+  const tActions = useTranslations("CandidateAction");
+  const tDiag = useTranslations("DiagnosticCode");
   const locale = useLocale();
 
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
     processingStatus != null &&
     (ledgerEntries.length === 0 || status === "anomaly" || status === "failed");
+
+  // Derive stable error code for display
+  const stableErrorCode =
+    status === "anomaly"
+      ? toStableAnomalyCode(anomalyReason)
+      : status === "failed"
+        ? toStableFailureCode(errorCode)
+        : null;
+
+  const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
 
   return (
     <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
@@ -145,6 +181,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
               ? { label: anomalyReason }
               : {})}
+            stableErrorCode={stableErrorCode}
           />
         )}
 
@@ -164,14 +201,43 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {onRetry != null && sourceDocument.type !== "manual" && (
-                <DropdownMenuItem onClick={onRetry} disabled={isRetrying}>
-                  <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                  {status === "queued" || status === "processing" || status === "failed"
-                    ? tCommon("retry")
-                    : t("editRetry")}
+            <DropdownMenuContent align="end" className="w-44">
+              {/* Candidate actions */}
+              {hasAction("accept_candidate") && onAcceptCandidate != null && (
+                <DropdownMenuItem onClick={onAcceptCandidate}>
+                  <CheckCheck className="mr-2 h-4 w-4 text-primary" />
+                  {tActions("accept")}
                 </DropdownMenuItem>
+              )}
+              {hasAction("abandon_candidate") && onAbandonCandidate != null && (
+                <DropdownMenuItem onClick={onAbandonCandidate}>
+                  <XCircle className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {tActions("abandon")}
+                </DropdownMenuItem>
+              )}
+
+              {/* Recovery actions for anomaly/failed */}
+              {hasAction("manual_correction") && onManualCorrection != null && (
+                <DropdownMenuItem onClick={onManualCorrection}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {tActions("manualCorrection")}
+                </DropdownMenuItem>
+              )}
+              {hasAction("retry") && onDirectRetry != null && (
+                <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
+                  <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
+                  {tActions("retry")}
+                </DropdownMenuItem>
+              )}
+              {hasAction("edit_retry") && onEditRetry != null && (
+                <DropdownMenuItem onClick={onEditRetry}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {tActions("editRetry")}
+                </DropdownMenuItem>
+              )}
+
+              {(hasAction("accept_candidate") || hasAction("manual_correction") || hasAction("retry")) && onDelete != null && (
+                <DropdownMenuSeparator />
               )}
 
               {onDelete != null && (

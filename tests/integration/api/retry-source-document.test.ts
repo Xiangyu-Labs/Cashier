@@ -2,7 +2,7 @@ import { asc, eq, isNull, and } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSourceDocumentAction,
-  retrySourceDocumentAction,
+  editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { createMultiStageMock } from "../../helpers/mocks/openai";
@@ -68,7 +68,7 @@ describe("source-document retry action", () => {
         ],
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
-    const retried = await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+    const retried = await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
       text: "晚餐 50元",
     });
     expect(retried).toMatchObject({
@@ -112,7 +112,7 @@ describe("source-document retry action", () => {
     const created = await createSourceDocumentAction(ledgerId, { text: "Lunch 25" });
     await processAllPendingTasks();
     await expect(
-      retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+      editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
         images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
       })
     ).rejects.toThrow("Images must be finalized");
@@ -136,7 +136,7 @@ describe("source-document retry action", () => {
       generateContent: vi.fn().mockRejectedValue(new Error("AI service failure")),
     } as unknown as ReturnType<typeof getOpenAIClient>);
 
-    await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+    await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
       text: "修改 50元",
     });
     await processAllPendingTasks();
@@ -171,7 +171,7 @@ describe("source-document retry action", () => {
       }) as unknown as ReturnType<typeof getOpenAIClient>
     );
 
-    const retried = await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+    const retried = await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
       text: "晚餐 50元",
     });
     expect(retried.status).toBe("queued");

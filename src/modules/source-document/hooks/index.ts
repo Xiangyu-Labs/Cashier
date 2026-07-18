@@ -6,3 +6,4 @@ export { useSourceDocumentDetailMutations } from "./useSourceDocumentDetailMutat
 export { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 export { useSourceDocumentInputController } from "./useSourceDocumentInputController";
 export { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
+export { useSourceDocumentRecoveryMutations } from "./useSourceDocumentRecoveryMutations";

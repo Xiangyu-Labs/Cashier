@@ -14,7 +14,10 @@ export { deleteSourceDocumentAction } from "./server-actions/delete";
 export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
 export { createSourceDocumentFromCredentialAction } from "./server-actions/create-from-credential";
-export { retrySourceDocumentAction } from "./server-actions/retry";
+export {
+  retrySourceDocumentAction,
+  editRetrySourceDocumentAction,
+} from "./server-actions/retry";
 export {
   createSourceDocumentUploadPlanAction,
   finalizeSourceDocumentUploadAction,
@@ -23,3 +26,4 @@ export {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "./server-actions/candidates";
+export { createManualCorrectionAction } from "./server-actions/manual-correction";

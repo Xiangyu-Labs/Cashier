@@ -2,6 +2,8 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, memo } from "react";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import type { SupportedSourceDocumentAction } from "@/application/contracts";
+import type { ApplicationErrorCode } from "@/application/contracts";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
@@ -18,8 +20,14 @@ interface SourceDocumentCardProps {
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
   onRetry?: () => void | Promise<void>;
+  onDirectRetry?: () => void | Promise<void>;
+  onEditRetry?: () => void | Promise<void>;
+  onManualCorrection?: () => void | Promise<void>;
+  onAcceptCandidate?: () => void | Promise<void>;
+  onAbandonCandidate?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
+  errorCode?: ApplicationErrorCode | null | undefined;
   className?: string;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -35,8 +43,14 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   onViewDetails: _onViewDetails,
   defaultExpanded = false,
   onRetry,
+  onDirectRetry,
+  onEditRetry,
+  onManualCorrection,
+  onAcceptCandidate,
+  onAbandonCandidate,
   status,
   anomalyReason,
+  errorCode,
   className,
   selectionMode = false,
   isSelected = false,
@@ -51,11 +65,20 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     [sourceDocument]
   );
 
-  async function handleRetry() {
-    if (onRetry == null) return;
+  const supportedActions: readonly SupportedSourceDocumentAction[] =
+    "supportedActions" in sourceDocument
+      ? (sourceDocument as SourceDocument).supportedActions ?? []
+      : (sourceDocument as SourceDocumentLight).supportedActions ?? [];
+
+  async function handleDirectRetry() {
+    if (onDirectRetry == null && onRetry == null) return;
     setIsRetrying(true);
     try {
-      await onRetry();
+      if (onDirectRetry != null) {
+        await onDirectRetry();
+      } else if (onRetry != null) {
+        await onRetry();
+      }
     } finally {
       setIsRetrying(false);
     }
@@ -75,16 +98,22 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         sourceDocument={sourceDocument}
         status={status}
         anomalyReason={anomalyReason}
+        errorCode={errorCode}
         ledgerEntries={ledgerEntries}
         mainCurrency={mainCurrency}
         isExpanded={isItemsExpanded}
         isRetrying={isRetrying}
         selectionMode={selectionMode}
         isSelected={isSelected}
+        supportedActions={supportedActions}
         onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
         onViewDetails={_onViewDetails}
         onToggleSelect={onToggleSelect}
-        onRetry={handleRetry}
+        onDirectRetry={handleDirectRetry}
+        onEditRetry={onEditRetry ?? onRetry}
+        onManualCorrection={onManualCorrection}
+        onAcceptCandidate={onAcceptCandidate}
+        onAbandonCandidate={onAbandonCandidate}
         onDelete={onDelete}
       />
 

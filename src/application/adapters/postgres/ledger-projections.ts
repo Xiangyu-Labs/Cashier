@@ -863,3 +863,116 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
     });
   },
 };
+
+/**
+ * Create a manual correction revision for a source document that has failed or has an anomaly.
+ *
+ * Inherits the evidence (submittedText + stored files) from the current pending revision,
+ * creates a new completed revision, copies files, and atomically activates it.
+ * Subject to Task 3 candidate/pending mutual exclusion (rejects if there is concurrent
+ * queued/processing/completed pending work).
+ *
+ * Returns null when:
+ * - The document does not exist or is deleted
+ * - The document has no pending revision to inherit evidence from
+ * - The pending revision is in a non-inheritable state
+ */
+export async function createManualCorrectionInTransaction(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<{ revisionId: string } | null> {
+  return db.transaction(async (tx) => {
+    const document = await tx
+      .select()
+      .from(sourceDocuments)
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .then((rows) => rows[0]);
+    if (document == null) return null;
+
+    // Must have a pending revision to inherit evidence
+    if (document.pendingRevisionId == null) return null;
+
+    // Check current pending revision is in a correctable state (anomaly or failed)
+    const pendingRevision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.id, document.pendingRevisionId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (pendingRevision == null) return null;
+    if (pendingRevision.outcome !== "anomaly" && pendingRevision.outcome !== "failed") return null;
+
+    const now = new Date();
+
+    // Create a new completed revision inheriting evidence
+    const revisionNumber = await nextRevisionNumber(tx, sourceDocumentId);
+    const newRevision = await tx
+      .insert(sourceDocumentRevisions)
+      .values({
+        ledgerId,
+        sourceDocumentId,
+        revisionNumber,
+        submittedText: pendingRevision.submittedText,
+        outcome: "completed",
+        finalizedAt: now,
+        submittedAt: now,
+      })
+      .returning()
+      .then((rows) => rows[0]);
+    if (newRevision == null) return null;
+
+    // Copy stored files from the evidence revision
+    const files = await tx
+      .select({ storedFileId: revisionFiles.storedFileId, position: revisionFiles.position })
+      .from(revisionFiles)
+      .where(
+        and(
+          eq(revisionFiles.ledgerId, ledgerId),
+          eq(revisionFiles.revisionId, document.pendingRevisionId)
+        )
+      )
+      .orderBy(revisionFiles.position);
+    for (const file of files) {
+      await tx.insert(revisionFiles)
+        .values({
+          ledgerId,
+          revisionId: newRevision.id,
+          storedFileId: file.storedFileId,
+          position: file.position,
+        })
+        ;
+    }
+
+    // If there is an active revision, soft-delete its entries
+    if (document.activeRevisionId != null) {
+      await tx.update(ledgerEntries)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(ledgerEntries.ledgerId, ledgerId),
+            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+            eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
+            isNull(ledgerEntries.deletedAt)
+          )
+        )
+        ;
+    }
+
+    // Update document: set type to manual, activeRevisionId to new revision, clear pendingRevisionId
+    await tx.update(sourceDocuments)
+      .set({
+        type: "manual",
+        activeRevisionId: newRevision.id,
+        pendingRevisionId: null,
+        updatedAt: now,
+      })
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      ;
+    return { revisionId: newRevision.id };
+  });
+}

@@ -13,11 +13,42 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 
 /**
- * Retry an existing source document with optional new data
+ * Direct Retry: retry an existing source document with immutable evidence.
  *
- * Every retry queues a new immutable revision under the stable document identity.
+ * Inherits the current evidence (text + files) and queues a new processing revision
+ * immediately. This is a "re-parse with same input" action.
+ *
+ * Direct retry never accepts input overrides — it always inherits evidence.
+ * For editing evidence before retry, use `editRetrySourceDocumentAction`.
  */
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
+  async (
+    { ledgerId },
+    sourceDocumentId: string
+  ): Promise<RetrySourceDocumentResponseDto> => {
+    const scheduleProcessing = (intent: ProcessingIntentContract) => {
+      after(() => executeSingleProcessingIntent(intent));
+    };
+
+    return retrySourceDocument(
+      { ledgerId, sourceDocumentId },
+      {
+        submissions: currentApplication.sourceDocumentSubmissions,
+        scheduleProcessing,
+      }
+    );
+  }
+);
+
+/**
+ * Edit Retry: retry an existing source document with user-provided evidence overrides.
+ *
+ * Unlike direct retry, this accepts optional text/storedFileIds/entryDate overrides
+ * and opens the prefilled edit dialog on the client. Processing is scheduled immediately.
+ *
+ * For a simple re-parse with no changes, use `retrySourceDocumentAction`.
+ */
+export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
     sourceDocumentId: string,

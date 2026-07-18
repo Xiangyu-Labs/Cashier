@@ -4,7 +4,7 @@ import { invalidateSourceDocuments, queryKeys } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createSourceDocumentAction,
-  retrySourceDocumentAction,
+  editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { fireAndForget } from "@/lib/safe-async";
@@ -113,7 +113,7 @@ export function useSourceDocumentSubmitMutations({
   >(ledgerId, {
     mutationFn: async (payload) => {
       if (sourceDocumentId == null) return;
-      await retrySourceDocumentAction(
+      await editRetrySourceDocumentAction(
         ledgerId,
         sourceDocumentId,
         await uploadSourceDocumentSubmissionImages(ledgerId, payload)

@@ -134,6 +134,7 @@ export type ProcessingRetryClassification = "retryable" | "permanent" | "anomaly
 export interface ProcessingDiagnostic {
   correlationId: string;
   code: ApplicationErrorCode;
+  stableCode?: AnomalyCode | ProcessingFailureCode;
 }
 
 export interface ProcessingCompletionContract {
@@ -160,6 +161,112 @@ export type ApplicationErrorCode =
   | "STORAGE_UNAVAILABLE"
   | "INTERNAL";
 
+/**
+ * Stable, user-facing anomaly codes for documents that parsed but need user attention.
+ * These are localized and sanitized before being shown in the UI.
+ */
+export const ANOMALY_CODES = [
+  "insufficient_evidence",
+  "currency_required",
+  "amount_conflict",
+  "unsupported_document",
+] as const;
+export type AnomalyCode = (typeof ANOMALY_CODES)[number];
+
+/**
+ * Stable, user-facing processing failure codes for documents that failed to parse.
+ * These are localized and sanitized before being shown in the UI.
+ */
+export const PROCESSING_FAILURE_CODES = [
+  "ai_provider_unavailable",
+  "ai_schema_invalid",
+  "exchange_rate_failure",
+  "storage_failure",
+  "processing_unavailable",
+  "database_unavailable",
+  "request_bound_retry_exhausted",
+] as const;
+export type ProcessingFailureCode = (typeof PROCESSING_FAILURE_CODES)[number];
+
+/**
+ * Map a legacy or unknown failure code to a stable ProcessingFailureCode.
+ * Unknown values are mapped to "processing_unavailable" without discarding
+ * the original stored value in the database.
+ */
+export function toStableFailureCode(
+  legacyCode: string | null | undefined
+): ProcessingFailureCode {
+  if (legacyCode == null) return "processing_unavailable";
+
+  // Direct matches for known stable codes
+  if ((PROCESSING_FAILURE_CODES as readonly string[]).includes(legacyCode)) {
+    return legacyCode as ProcessingFailureCode;
+  }
+
+  // Map legacy ApplicationErrorCode values to stable codes
+  switch (legacyCode) {
+    case "INTERNAL":
+    case "VALIDATION_FAILED":
+      return "ai_schema_invalid";
+    case "RATE_LIMITED":
+      return "ai_provider_unavailable";
+    case "STORAGE_UNAVAILABLE":
+      return "storage_failure";
+    case "NOT_FOUND":
+    case "CONFLICT":
+      return "database_unavailable";
+    default:
+      return "processing_unavailable";
+  }
+}
+
+/**
+ * Map a legacy anomaly reason string to a stable AnomalyCode.
+ * Falls back to "insufficient_evidence" for unknown values.
+ */
+export function toStableAnomalyCode(
+  reason: string | null | undefined
+): AnomalyCode {
+  if (reason == null) return "insufficient_evidence";
+
+  const normalized = reason.toLowerCase().replace(/\s+/g, "_");
+
+  if ((ANOMALY_CODES as readonly string[]).includes(normalized)) {
+    return normalized as AnomalyCode;
+  }
+
+  // Map common legacy values
+  if (
+    normalized.includes("currency") ||
+    normalized.includes("unknown_currency")
+  ) {
+    return "currency_required";
+  }
+  if (
+    normalized.includes("amount") ||
+    normalized.includes("conflict") ||
+    normalized.includes("diverg")
+  ) {
+    return "amount_conflict";
+  }
+  if (
+    normalized.includes("unsupported") ||
+    normalized.includes("invalid") ||
+    normalized.includes("unrecognized")
+  ) {
+    return "unsupported_document";
+  }
+  if (
+    normalized.includes("evidence") ||
+    normalized.includes("content") ||
+    normalized.includes("anomaly")
+  ) {
+    return "insufficient_evidence";
+  }
+
+  return "insufficient_evidence";
+}
+
 export interface ApplicationErrorContract {
   code: ApplicationErrorCode;
   message: string;
@@ -183,6 +290,8 @@ export interface SourceDocumentDetailContract extends SourceDocumentListContract
   text: string | null;
   files: readonly Pick<StoredFileContract, "id" | "metadata">[];
   anomalyReason: string | null;
+  errorCode: ApplicationErrorCode | null;
+  stableErrorCode: AnomalyCode | ProcessingFailureCode | null;
 }
 
 export interface SourceDocumentSubmissionContract {

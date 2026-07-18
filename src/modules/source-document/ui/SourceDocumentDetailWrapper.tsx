@@ -1,12 +1,13 @@
 "use client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import {
   useSourceDocumentDetailData,
   useSourceDocumentDetailMutations,
+  useSourceDocumentRecoveryMutations,
 } from "@/modules/source-document/hooks";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
@@ -54,6 +55,34 @@ export function SourceDocumentDetailWrapper({
     onClose,
   });
 
+  const {
+    acceptCandidate,
+    abandonCandidate,
+    createManualCorrection,
+    isAccepting,
+    isAbandoning,
+    isCreatingManualCorrection,
+  } = useSourceDocumentRecoveryMutations({
+    ledgerId: detailLedgerId ?? ledgerId,
+    sourceDocumentId: id,
+    onSuccess: onClose,
+  });
+
+  const handleAcceptCandidate = useCallback(async () => {
+    if (sourceDocument == null) return;
+    await acceptCandidate();
+  }, [sourceDocument, acceptCandidate]);
+
+  const handleAbandonCandidate = useCallback(async () => {
+    if (sourceDocument == null) return;
+    await abandonCandidate();
+  }, [sourceDocument, abandonCandidate]);
+
+  const handleManualCorrection = useCallback(async () => {
+    if (sourceDocument == null) return;
+    await createManualCorrection();
+  }, [sourceDocument, createManualCorrection]);
+
   useEffect(() => {
     if (error != null) {
       toast.error(tCommon("error"));
@@ -82,6 +111,12 @@ export function SourceDocumentDetailWrapper({
       onBatchUpdate={batchUpdate}
       onDeleteEntry={deleteEntry}
       onDelete={deleteDocument}
+      onAcceptCandidate={handleAcceptCandidate}
+      onAbandonCandidate={handleAbandonCandidate}
+      onManualCorrection={handleManualCorrection}
+      isAccepting={isAccepting}
+      isAbandoning={isAbandoning}
+      isCreatingManualCorrection={isCreatingManualCorrection}
     />
   );
 }
