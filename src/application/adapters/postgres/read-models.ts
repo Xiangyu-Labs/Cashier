@@ -52,15 +52,24 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
 
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
 
+function pendingOutcomeSubquery() {
+  return sql<string>`(
+    SELECT pending.outcome
+    FROM source_document_revisions AS pending
+    WHERE pending.ledger_id = ${sourceDocuments.ledgerId}
+      AND pending.source_document_id = ${sourceDocuments.id}
+      AND pending.id = ${sourceDocuments.pendingRevisionId}
+  )`;
+}
+
 function derivedStatusExpression() {
   return sql<SourceDocumentStatusType>`CASE
-    WHEN ${sourceDocuments.pendingRevisionId} IS NOT NULL THEN (
-      SELECT pending.outcome
-      FROM source_document_revisions AS pending
-      WHERE pending.ledger_id = ${sourceDocuments.ledgerId}
-        AND pending.source_document_id = ${sourceDocuments.id}
-        AND pending.id = ${sourceDocuments.pendingRevisionId}
-    )
+    WHEN ${sourceDocuments.pendingRevisionId} IS NOT NULL AND ${sourceDocuments.activeRevisionId} IS NOT NULL THEN
+      CASE
+        WHEN ${pendingOutcomeSubquery()} = 'completed' THEN 'candidate_pending'
+        ELSE ${pendingOutcomeSubquery()}
+      END
+    WHEN ${sourceDocuments.pendingRevisionId} IS NOT NULL THEN ${pendingOutcomeSubquery()}
     WHEN ${sourceDocuments.activeRevisionId} IS NOT NULL THEN (
       SELECT active.outcome
       FROM source_document_revisions AS active
@@ -176,6 +185,14 @@ function statusForRow(
   row: SourceDocumentRow,
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
 ): SourceDocumentStatusType {
+  // A document with both an active revision and a completed pending revision -> candidate_pending
+  if (row.activeRevisionId != null && row.pendingRevisionId != null) {
+    const pendingOutcome = revisions.get(row.pendingRevisionId)?.outcome;
+    if (pendingOutcome === "completed") {
+      return "candidate_pending";
+    }
+  }
+
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const outcome = revisionId == null ? null : revisions.get(revisionId)?.outcome;
   if (

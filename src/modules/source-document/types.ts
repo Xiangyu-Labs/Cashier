@@ -5,6 +5,7 @@ export const SOURCE_DOCUMENT_STATUSES = [
   "anomaly",
   "failed",
   "deleted",
+  "candidate_pending",
 ] as const;
 
 export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
@@ -13,6 +14,7 @@ export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
   "completed",
   "anomaly",
   "failed",
+  "candidate_pending",
 ] as const;
 
 export const SourceDocumentStatus = {

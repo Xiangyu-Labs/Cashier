@@ -5,8 +5,10 @@ import type {
   RevisionProcessorPort,
 } from "@/application/contracts";
 import {
+  acceptCandidateRevision,
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
+  storeCandidateRevision,
 } from "@/application/adapters/postgres";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
@@ -136,24 +138,41 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       mainCurrency,
       fallbackDate,
     });
-    const activated = await postgresLedgerProjectionAdapter.activateRevision({
-      ...request,
-      ...(output.title == null ? {} : { title: output.title }),
-      entries: entries.map((entry) => ({
-        categoryId: entry.categoryId,
-        amount: entry.amount,
-        currency: entry.currency,
-        itemName: entry.itemName,
-        description: entry.description,
-        convertedAmount: entry.convertedAmount,
-        exchangeRate: entry.exchangeRate,
-        createdAt: entry.entryDate,
-      })),
-    });
-    if (!activated) {
-      const current = await postgresRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
-      if (current?.activeRevisionId !== request.revisionId) {
-        throw new Error("Revision completion is stale");
+    const entryInputs = entries.map((entry) => ({
+      categoryId: entry.categoryId,
+      amount: entry.amount,
+      currency: entry.currency,
+      itemName: entry.itemName,
+      description: entry.description,
+      convertedAmount: entry.convertedAmount,
+      exchangeRate: entry.exchangeRate,
+      createdAt: entry.entryDate,
+    }));
+
+    if (document.activeRevisionId == null) {
+      // First parse: activate revision (replace projection, update pointers)
+      const activated = await postgresLedgerProjectionAdapter.activateRevision({
+        ...request,
+        ...(output.title == null ? {} : { title: output.title }),
+        entries: entryInputs,
+      });
+      if (!activated) {
+        const current = await postgresRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
+        if (current?.activeRevisionId !== request.revisionId) {
+          throw new Error("Revision completion is stale");
+        }
+      }
+    } else {
+      // Document already has an active projection -> store as candidate revision
+      const stored = await storeCandidateRevision(
+        request.ledgerId,
+        request.sourceDocumentId,
+        request.revisionId,
+        output.title,
+        entryInputs
+      );
+      if (!stored) {
+        throw new Error("Failed to store candidate revision");
       }
     }
     return { outcome: "completed" };

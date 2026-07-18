@@ -19,3 +19,7 @@ export {
   createSourceDocumentUploadPlanAction,
   finalizeSourceDocumentUploadAction,
 } from "./server-actions/uploads";
+export {
+  acceptSourceDocumentCandidateAction,
+  abandonSourceDocumentCandidateAction,
+} from "./server-actions/candidates";

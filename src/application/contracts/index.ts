@@ -18,10 +18,17 @@ export const REVISION_OUTCOMES = [
   "completed",
   "anomaly",
   "failed",
+  "abandoned",
 ] as const;
 export type RevisionOutcome = (typeof REVISION_OUTCOMES)[number];
 
-export type SupportedSourceDocumentAction = "retry" | "edit_retry" | "manual_correction" | "delete";
+export type SupportedSourceDocumentAction =
+  | "retry"
+  | "edit_retry"
+  | "manual_correction"
+  | "delete"
+  | "accept_candidate"
+  | "abandon_candidate";
 
 export interface SourceDocumentContract {
   id: SourceDocumentId;
@@ -56,6 +63,12 @@ export function supportedSourceDocumentActions(input: {
     return ["retry", "edit_retry", "manual_correction", "delete"];
   }
 
+  // Document has an existing active projection and a completed pending revision -> candidate pending
+  if (input.activeRevisionId != null && input.pendingOutcome === "completed") {
+    return ["accept_candidate", "abandon_candidate", "delete"];
+  }
+
+  // First parse completed successfully (no active revision yet)
   return ["retry", "edit_retry", "delete"];
 }
 

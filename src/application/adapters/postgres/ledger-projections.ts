@@ -58,6 +58,44 @@ async function assertCategoryOwnership(
   }
 }
 
+async function insertRevisionEntries(
+  tx: PostgresTransaction,
+  input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    revisionId: string;
+    entries: readonly LedgerProjectionEntryContract[];
+  }
+): Promise<void> {
+  for (const [position, entry] of input.entries.entries()) {
+    const ledgerEntryId = entry.id ?? crypto.randomUUID();
+    await tx.insert(ledgerEntries)
+      .values({
+        id: ledgerEntryId,
+        ledgerId: input.ledgerId,
+        sourceDocumentId: input.sourceDocumentId,
+        sourceDocumentRevisionId: input.revisionId,
+        categoryId: entry.categoryId,
+        amount: entry.amount,
+        currency: entry.currency,
+        itemName: entry.itemName,
+        description: entry.description,
+        convertedAmount: entry.convertedAmount,
+        exchangeRate: entry.exchangeRate,
+        ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+      })
+      ;
+    await tx.insert(revisionEntries)
+      .values({
+        ledgerId: input.ledgerId,
+        revisionId: input.revisionId,
+        ledgerEntryId,
+        position,
+      })
+      ;
+  }
+}
+
 async function replaceProjection(
   tx: PostgresTransaction,
   input: {
@@ -108,6 +146,195 @@ async function replaceProjection(
       })
       ;
   }
+}
+
+/**
+ * Store a completed but non-activated revision candidate.
+ * Inserts ledger entries linked to the candidate revision and marks the revision as completed,
+ * but does NOT update activeRevisionId or clear pendingRevisionId on the document.
+ */
+export async function storeCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string,
+  title: string | null | undefined,
+  entries: readonly LedgerProjectionEntryContract[]
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const document = await tx
+      .select()
+      .from(sourceDocuments)
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .then((rows) => rows[0]);
+    if (document == null || document.pendingRevisionId !== revisionId) return false;
+
+    const revision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, revisionId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (
+      revision == null ||
+      (revision.outcome !== "queued" && revision.outcome !== "processing")
+    ) {
+      return false;
+    }
+
+    const now = new Date();
+    assertEntryValues(entries);
+    await assertCategoryOwnership(tx, ledgerId, entries);
+    await insertRevisionEntries(tx, { ledgerId, sourceDocumentId, revisionId, entries });
+    await tx.update(sourceDocumentRevisions)
+      .set({ outcome: "completed", finalizedAt: now, anomalyReason: null, failureCode: null })
+      .where(eq(sourceDocumentRevisions.id, revisionId))
+      ;
+    // Do NOT update activeRevisionId or clear pendingRevisionId
+    if (title != null && title !== "") {
+      await tx.update(sourceDocuments)
+        .set({ title, updatedAt: now })
+        .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+        ;
+    }
+    return true;
+  });
+}
+
+/**
+ * Accept a candidate revision: replace the active projection with the candidate's entries
+ * and update document pointers.
+ */
+export async function acceptCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  candidateRevisionId: string
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const document = await tx
+      .select()
+      .from(sourceDocuments)
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .then((rows) => rows[0]);
+    if (document == null) return false;
+
+    // Idempotent: candidate is already active
+    if (document.activeRevisionId === candidateRevisionId && document.pendingRevisionId == null) {
+      return true;
+    }
+
+    // CAS: verify the pending revision matches exactly
+    if (document.pendingRevisionId !== candidateRevisionId || document.activeRevisionId == null) {
+      return false;
+    }
+
+    const revision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, candidateRevisionId),
+          eq(sourceDocumentRevisions.outcome, "completed")
+        )
+      )
+      .then((rows) => rows[0]);
+    if (revision == null) return false;
+
+    const now = new Date();
+    // Soft-delete the old active revision's entries
+    await tx.update(ledgerEntries)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, ledgerId),
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      ;
+
+    // Update document to point activeRevisionId to the candidate and clear pending
+    await tx.update(sourceDocuments)
+      .set({
+        activeRevisionId: candidateRevisionId,
+        pendingRevisionId: null,
+        updatedAt: now,
+      })
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      ;
+    return true;
+  });
+}
+
+/**
+ * Abandon a candidate revision: mark the revision as abandoned and clear pendingRevisionId
+ * without touching the active projection.
+ */
+export async function abandonCandidateRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  candidateRevisionId: string
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const document = await tx
+      .select()
+      .from(sourceDocuments)
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      .then((rows) => rows[0]);
+    if (document == null) return false;
+
+    // Idempotent: candidate revision is already abandoned (pendingRevisionId cleared)
+    if (document.pendingRevisionId == null) {
+      const revision = await tx
+        .select()
+        .from(sourceDocumentRevisions)
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, ledgerId),
+            eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+            eq(sourceDocumentRevisions.id, candidateRevisionId),
+            eq(sourceDocumentRevisions.outcome, "abandoned")
+          )
+        )
+        .then((rows) => rows[0]);
+      if (revision != null) return true;
+    }
+
+    // CAS: verify the pending revision matches exactly
+    if (document.pendingRevisionId !== candidateRevisionId) return false;
+
+    const revision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, candidateRevisionId),
+          eq(sourceDocumentRevisions.outcome, "completed")
+        )
+      )
+      .then((rows) => rows[0]);
+    if (revision == null) return false;
+
+    const now = new Date();
+    await tx.update(sourceDocumentRevisions)
+      .set({ outcome: "abandoned", finalizedAt: now })
+      .where(eq(sourceDocumentRevisions.id, candidateRevisionId))
+      ;
+    await tx.update(sourceDocuments)
+      .set({ pendingRevisionId: null, updatedAt: now })
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
+      ;
+    return true;
+  });
 }
 
 async function replaceManualProjection(

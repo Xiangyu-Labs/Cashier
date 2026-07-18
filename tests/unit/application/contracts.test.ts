@@ -16,6 +16,16 @@ describe("target application contracts", () => {
       .toEqual(["delete"]);
   });
 
+  it("offers accept/abandon actions when a completed candidate is pending", () => {
+    expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "completed" }))
+      .toEqual(["accept_candidate", "abandon_candidate", "delete"]);
+  });
+
+  it("offers retry actions for first-parse completed with no active revision", () => {
+    expect(supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "completed" }))
+      .toEqual(["retry", "edit_retry", "delete"]);
+  });
+
   it("does not allow actions for deleted source documents", () => {
     expect(supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "failed", deleted: true }))
       .toEqual([]);

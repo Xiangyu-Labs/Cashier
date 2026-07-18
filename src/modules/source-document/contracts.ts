@@ -83,3 +83,15 @@ export interface DeleteSourceDocumentResultDto {
   sourceDocumentId: string;
   deleted: boolean;
 }
+
+export interface AcceptCandidateResponseDto {
+  sourceDocumentId: string;
+  revisionId: string;
+  status: "completed";
+}
+
+export interface AbandonCandidateResponseDto {
+  sourceDocumentId: string;
+  revisionId: string;
+  status: "abandoned";
+}

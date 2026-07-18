@@ -83,22 +83,29 @@ describe("source-document retry action", () => {
     });
     const revisions = await db.query.sourceDocumentRevisions.findMany({
       where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
+      orderBy: asc(sourceDocumentRevisions.revisionNumber),
     });
     const activeEntries = await db.query.ledgerEntries.findMany({
       where: and(
         eq(ledgerEntries.sourceDocumentId, created.sourceDocumentId),
+        eq(ledgerEntries.sourceDocumentRevisionId, after!.activeRevisionId!),
         isNull(ledgerEntries.deletedAt)
       ),
     });
+
+    // Document has an active revision and a completed pending candidate
     expect(after).toMatchObject({
       id: created.sourceDocumentId,
       status: "queued",
       deletedAt: null,
-      pendingRevisionId: null,
     });
-    expect(after?.activeRevisionId).not.toBe(before?.activeRevisionId);
+    expect(after?.pendingRevisionId).not.toBeNull();
+    expect(after?.activeRevisionId).toBe(before?.activeRevisionId);
     expect(revisions).toHaveLength(2);
-    expect(activeEntries).toMatchObject([{ itemName: "晚餐", amount: "50.00" }]);
+    expect(revisions[0]?.outcome).toBe("completed");
+    expect(revisions[1]?.outcome).toBe("completed");
+    // Active entries are from the original parse (candidate not auto-activated)
+    expect(activeEntries).toMatchObject([{ itemName: "午餐" }]);
   });
 
   it("rejects raw image payloads that bypass upload finalization", async () => {
@@ -170,12 +177,12 @@ describe("source-document retry action", () => {
     expect(retried.status).toBe("queued");
     await processAllPendingTasks();
 
-    // Step 5: Verify final state — 3 revisions, latest completed, no pending
+    // Step 5: Verify final state — 3 revisions, candidate is pending, original active preserved
     const afterRetry = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(afterRetry?.pendingRevisionId).toBeNull();
-    expect(afterRetry?.activeRevisionId).not.toBe(originalActiveRevisionId);
+    expect(afterRetry?.pendingRevisionId).not.toBeNull();
+    expect(afterRetry?.activeRevisionId).toBe(originalActiveRevisionId);
 
     const revisions2 = await db.query.sourceDocumentRevisions.findMany({
       where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
@@ -184,14 +191,16 @@ describe("source-document retry action", () => {
     expect(revisions2).toHaveLength(3);
     expect(revisions2[0]?.outcome).toBe("completed"); // original
     expect(revisions2[1]?.outcome).toBe("failed"); // failed retry
-    expect(revisions2[2]?.outcome).toBe("completed"); // successful retry
+    expect(revisions2[2]?.outcome).toBe("completed"); // successful retry candidate
 
     const activeEntries = await db.query.ledgerEntries.findMany({
       where: and(
         eq(ledgerEntries.sourceDocumentId, created.sourceDocumentId),
+        eq(ledgerEntries.sourceDocumentRevisionId, afterRetry!.activeRevisionId!),
         isNull(ledgerEntries.deletedAt)
       ),
     });
-    expect(activeEntries).toMatchObject([{ itemName: "晚餐", amount: "50.00" }]);
+    // Active entries are from the original parse (candidate not auto-activated)
+    expect(activeEntries).toMatchObject([{ itemName: "午餐" }]);
   });
 });

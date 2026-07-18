@@ -51,7 +51,7 @@ export const sourceDocumentRevisions = pgTable(
     check("ck_source_document_revisions_number", sql`${table.revisionNumber} > 0`),
     check(
       "ck_source_document_revisions_outcome",
-      sql`${table.outcome} IN ('queued', 'processing', 'completed', 'anomaly', 'failed')`
+      sql`${table.outcome} IN ('queued', 'processing', 'completed', 'anomaly', 'failed', 'abandoned')`
     ),
   ]
 );
