@@ -70,7 +70,7 @@ describe("getLedgerStatsAction", () => {
     expect(result.totals).toHaveLength(0);
     expect(result.trend).toHaveLength(0);
     expect(result.convertedTotal).not.toBeNull();
-    expect(result.convertedTotal?.total).toBe(0);
+    expect(result.convertedTotal?.total).toBe("0");
     expect(result.convertedTotal?.currency).toBe("CNY");
   });
 
@@ -85,10 +85,10 @@ describe("getLedgerStatsAction", () => {
     const usd = result.totals.find((t) => t.currency === "USD");
 
     expect(cny).toBeDefined();
-    expect(cny!.total).toBeCloseTo(150);
+    expect(cny!.total).toBe("150");
     expect(cny!.count).toBe(2);
     expect(usd).toBeDefined();
-    expect(usd!.total).toBeCloseTo(20);
+    expect(usd!.total).toBe("20");
     expect(usd!.count).toBe(1);
   });
 
@@ -120,7 +120,7 @@ describe("getLedgerStatsAction", () => {
     const result = await getLedgerStatsAction(ledgerId, "2024-02-01");
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(2);
-    expect(cny!.total).toBeCloseTo(500);
+    expect(cny!.total).toBe("500");
   });
 
   it("filters by endDate using sourceDocument.entryDate", async () => {
@@ -132,7 +132,7 @@ describe("getLedgerStatsAction", () => {
     const result = await getLedgerStatsAction(ledgerId, undefined, "2024-02-01");
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(2);
-    expect(cny!.total).toBeCloseTo(300);
+    expect(cny!.total).toBe("300");
   });
 
   it("filters by categoryId", async () => {
@@ -153,7 +153,7 @@ describe("getLedgerStatsAction", () => {
     });
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(1);
-    expect(cny!.total).toBeCloseTo(100);
+    expect(cny!.total).toBe("100");
   });
 
   it("filters by currency", async () => {
@@ -180,7 +180,7 @@ describe("getLedgerStatsAction", () => {
     });
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(1);
-    expect(cny!.total).toBeCloseTo(200);
+    expect(cny!.total).toBe("200");
   });
 
   it("filters by maxAmount using convertedAmount", async () => {
@@ -193,7 +193,7 @@ describe("getLedgerStatsAction", () => {
     });
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(1);
-    expect(cny!.total).toBeCloseTo(50);
+    expect(cny!.total).toBe("50");
   });
 
   it("uses stored convertedAmount for convertedTotal", async () => {
@@ -211,7 +211,7 @@ describe("getLedgerStatsAction", () => {
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
     expect(result.convertedTotal).not.toBeNull();
     expect(result.convertedTotal?.currency).toBe("CNY");
-    expect(result.convertedTotal?.total).toBeCloseTo(720);
+    expect(result.convertedTotal?.total).toBe("720");
   });
 
   it("single currency ledger: convertedTotal equals sum of amounts", async () => {
@@ -221,7 +221,7 @@ describe("getLedgerStatsAction", () => {
 
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
     expect(result.convertedTotal).not.toBeNull();
-    expect(result.convertedTotal?.total).toBeCloseTo(150);
+    expect(result.convertedTotal?.total).toBe("150");
     expect(result.convertedTotal?.currency).toBe("CNY");
   });
 

@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { createListSnapshots, type MutationSnapshot } from "@/lib/mutations/use-ledger-mutation";
+import { round } from "@/lib/money/decimal";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
   SourceDocumentCollectionDto,
@@ -106,7 +107,7 @@ export function applyBatchEntryUpdate<
   if (data.currency !== undefined) patch.currency = data.currency as T["currency"];
   if (data.itemName !== undefined) patch.itemName = data.itemName as T["itemName"];
   if (data.description !== undefined) patch.description = data.description as T["description"];
-  if (data.amount !== undefined) patch.amount = data.amount.toFixed(2) as T["amount"];
+  if (data.amount !== undefined) patch.amount = round(String(data.amount), 2) as T["amount"];
 
   return { ...entry, ...patch };
 }

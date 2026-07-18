@@ -55,7 +55,7 @@ describe("target Settings currency workflow", () => {
       "2026-07-31",
       "USD"
     );
-    expect(stats.convertedTotal).toEqual({ total: 10, currency: "USD" });
+    expect(stats.convertedTotal).toEqual({ total: "10", currency: "USD" });
   });
 
   it("rolls back both settings and projections when conversion facts are unavailable", async () => {

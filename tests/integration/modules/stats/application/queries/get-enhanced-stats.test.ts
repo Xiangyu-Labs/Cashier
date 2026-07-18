@@ -142,7 +142,7 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.currency).toBe("CNY");
-    expect(result.summary.total).toBe(70);
+    expect(result.summary.total).toBe("70");
     expect(result.chart).toEqual([
       { date: "2024-03-01", total: 40 },
       { date: "2024-03-02", total: 30 },
@@ -204,7 +204,7 @@ describe("getEnhancedStatsQuery", () => {
       compareRange: { from: "2024-02-01", to: "2024-02-29" },
     });
 
-    expect(result.summary.total).toBe(100);
+    expect(result.summary.total).toBe("100");
     expect(result.heatmap.days).toHaveLength(1);
     expect(result.heatmap.days[0]?.totalAmount).toBe(100);
   });
@@ -260,7 +260,7 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.currency).toBe("USD");
-    expect(result.summary.total).toBe(75);
+    expect(result.summary.total).toBe("75");
   });
 
   it("defaults summary currency to CNY when ledger main currency is absent", async () => {
@@ -294,7 +294,7 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.currency).toBe("CNY");
-    expect(result.summary.total).toBe(10);
+    expect(result.summary.total).toBe("10");
   });
 
   it("computes heatmap p80Amount using zero-based percentile indexing", async () => {

@@ -92,11 +92,14 @@ export function StatsTab({
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
-  const totalExpense = stats?.summary.total ?? 0;
+  const totalExpense = Number(stats?.summary.total ?? 0);
   const currencySymbol =
     stats?.summary.currency ?? ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const averageDaily = stats?.summary.dailyAverage ?? 0;
-  const trend = stats?.summary.trend;
+  const statsTrend = stats?.summary.trend;
+  const trend = statsTrend !== undefined
+    ? { percent: statsTrend.percent, amount: Number(statsTrend.amount) }
+    : undefined;
 
   const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";
@@ -178,7 +181,19 @@ export function StatsTab({
         </div>
 
         <StatsRanking
-          data={stats?.categories || []}
+          data={(stats?.categories ?? []).map((c) => {
+            const base = {
+              id: c.id,
+              name: c.name,
+              icon: c.icon,
+              totalConverted: Number(c.totalConverted),
+              percent: c.percent,
+              count: c.count,
+            };
+            return c.trend
+              ? { ...base, trend: { percent: c.trend.percent, amount: Number(c.trend.amount) } }
+              : base;
+          })}
           isLoading={isLoading}
           currencySymbol={currencySymbol}
           onCategoryClick={handleCategoryClick}

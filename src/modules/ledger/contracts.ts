@@ -97,24 +97,24 @@ export type Settings = LedgerSettingsDto;
 
 export interface LedgerSummaryDto {
   convertedTotal: {
-    total: number;
+    total: string;
     currency: string;
   } | null;
   totals: {
     currency: string;
-    total: number;
+    total: string;
     count: number;
   }[];
   trend: {
     date: string;
-    total: number;
+    total: string;
   }[];
   byCategory: {
     categoryId: string | null;
     categoryName: string;
     categoryIcon: string | null;
     currency: string | null;
-    total: number;
+    total: string;
     count: number;
   }[];
 }

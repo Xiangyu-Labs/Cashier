@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { round } from "@/lib/money/decimal";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
@@ -72,7 +73,7 @@ export function useQuickEntryFormController({
       const now = new Date().toISOString();
       const entryDateStr = variables.entryDate;
       const optimisticConvertedAmount =
-        variables.currency === mainCurrency ? variables.amount.toFixed(2) : null;
+        variables.currency === mainCurrency ? round(String(variables.amount), 2) : null;
       const optimisticExchangeRate = variables.currency === mainCurrency ? "1" : null;
 
       const tempEntry: LedgerEntry = {
@@ -80,7 +81,7 @@ export function useQuickEntryFormController({
         ledgerId,
         sourceDocumentId: tempDocId,
         categoryId: variables.categoryId,
-        amount: variables.amount.toFixed(2),
+        amount: round(String(variables.amount), 2),
         currency: variables.currency,
         itemName: variables.itemName ?? selectedCategory?.name ?? "",
         description: null,
@@ -120,7 +121,7 @@ export function useQuickEntryFormController({
             description: null,
             categoryId: variables.categoryId,
             sourceDocumentId: tempDocId,
-            amount: variables.amount.toFixed(2),
+            amount: round(String(variables.amount), 2),
             currency: variables.currency,
             itemName: variables.itemName ?? selectedCategory?.name ?? "",
             convertedAmount: optimisticConvertedAmount,

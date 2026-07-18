@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
@@ -110,29 +111,31 @@ export async function getEnhancedStatsQuery({
   }
 
   const processBatch = (entries: typeof currentEntries) => {
-    let total = 0;
+    let total = new Decimal(0);
     const categoryMap = new Map<
       string,
       {
         id: string | null;
         name: string;
         icon: string | null;
-        amount: number;
+        amount: Decimal;
         count: number;
       }
     >();
-    const dailyMap = new Map<string, number>();
+    const dailyMap = new Map<string, Decimal>();
 
     for (const entry of entries) {
       const dateStr = entry.sourceDocument?.entryDate ?? "";
-      const converted = convertAmount({
-        amount: Number(entry.amount),
-        fromCurrency: entry.currency ?? mainCurrency,
-        toCurrency: mainCurrency,
-        rates: ratesMap[dateStr] ?? null,
-      });
+      const converted = new Decimal(
+        convertAmount({
+          amount: Number(entry.amount),
+          fromCurrency: entry.currency ?? mainCurrency,
+          toCurrency: mainCurrency,
+          rates: ratesMap[dateStr] ?? null,
+        })
+      );
 
-      total += converted;
+      total = total.plus(converted);
 
       const categoryKey = entry.categoryId ?? "uncategorized";
       const categoryName = entry.category?.name ?? "Uncategorized";
@@ -143,21 +146,27 @@ export async function getEnhancedStatsQuery({
           id: entry.categoryId,
           name: categoryName,
           icon: categoryIcon,
-          amount: 0,
+          amount: new Decimal(0),
           count: 0,
         });
       }
 
       const category = categoryMap.get(categoryKey)!;
-      category.amount += converted;
+      category.amount = category.amount.plus(converted);
       category.count += 1;
 
       if (dateStr !== "") {
-        dailyMap.set(dateStr, (dailyMap.get(dateStr) ?? 0) + converted);
+        dailyMap.set(dateStr, (dailyMap.get(dateStr) ?? new Decimal(0)).plus(converted));
       }
     }
 
-    return { total, categoryMap, dailyMap };
+    return {
+      total: total.toFixed(),
+      categoryMap,
+      dailyMap: new Map(
+        Array.from(dailyMap.entries()).map(([d, v]) => [d, v.toNumber()])
+      ),
+    };
   };
 
   const currentStats = processBatch(currentEntries);
@@ -166,19 +175,28 @@ export async function getEnhancedStatsQuery({
   const categories: EnhancedCategoryStatDto[] = Array.from(currentStats.categoryMap.values())
     .map((category) => {
       const prevCategory = prevStats.categoryMap.get(category.id ?? "uncategorized");
+      const prevAmount = prevCategory?.amount ?? new Decimal(0);
+      const categoryTotal = category.amount.toFixed();
+      const prevTotal = prevAmount.toFixed();
+      const growth = calculateGrowth(Number(categoryTotal), Number(prevTotal));
       return {
         id: category.id,
         name: category.name,
         icon: category.icon,
-        totalOriginal: 0,
-        totalConverted: category.amount,
+        totalOriginal: "0",
+        totalConverted: categoryTotal,
         currency: mainCurrency,
-        percent: currentStats.total > 0 ? (category.amount / currentStats.total) * 100 : 0,
+        percent: new Decimal(currentStats.total).gt(0)
+          ? category.amount.dividedBy(currentStats.total).times(100).toNumber()
+          : 0,
         count: category.count,
-        trend: calculateGrowth(category.amount, prevCategory?.amount ?? 0),
+        trend: {
+          percent: growth.percent,
+          amount: String(growth.amount),
+        },
       };
     })
-    .sort((a, b) => b.totalConverted - a.totalConverted);
+    .sort((a, b) => Number(b.totalConverted) - Number(a.totalConverted));
 
   const chart = Array.from(currentStats.dailyMap.entries())
     .map(([date, total]) => ({ date, total }))
@@ -210,12 +228,16 @@ export async function getEnhancedStatsQuery({
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const totalGrowth = calculateGrowth(Number(currentStats.total), Number(prevStats.total));
   return {
     summary: {
       total: currentStats.total,
       currency: mainCurrency,
-      trend: calculateGrowth(currentStats.total, prevStats.total),
-      dailyAverage: daysDiff > 0 ? currentStats.total / daysDiff : 0,
+      trend: {
+        percent: totalGrowth.percent,
+        amount: String(totalGrowth.amount),
+      },
+      dailyAverage: daysDiff > 0 ? Number(currentStats.total) / daysDiff : 0,
     },
     categories,
     chart,

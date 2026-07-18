@@ -1,3 +1,5 @@
+import Decimal from "decimal.js";
+import { round } from "@/lib/money/decimal";
 import { parseAmount } from "@/lib/formatters";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryEditData } from "@/modules/source-document/types";
@@ -38,7 +40,7 @@ export function buildSourceDocumentDetailViewModel({
       currency === mainCurrency
         ? amount
         : exchangeRate != null
-          ? Number((amount * exchangeRate).toFixed(2))
+          ? Number(round(new Decimal(amount).times(exchangeRate).toFixed(), 2))
           : entry.convertedAmount != null &&
               entry.convertedAmount !== "" &&
               change.amount === undefined &&

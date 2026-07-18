@@ -73,7 +73,7 @@ export function LedgerEntriesTab({
         }
       ),
   });
-  const filteredTotal = summaryData?.convertedTotal?.total ?? 0;
+  const filteredTotal = Number(summaryData?.convertedTotal?.total ?? 0);
   const {
     deleteConfirm,
     setDeleteConfirm,

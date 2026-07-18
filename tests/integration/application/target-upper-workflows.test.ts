@@ -126,8 +126,8 @@ describe("target upper workflows", () => {
       sourceDocument: expect.objectContaining({ text: null, status: "completed" }),
     });
     expect(stream.items[0]?.sourceDocument?.text).toBeNull();
-    expect(summary.convertedTotal).toEqual({ total: 12.5, currency: "CNY" });
-    expect(enhanced.summary).toMatchObject({ total: 12.5, currency: "CNY" });
+    expect(summary.convertedTotal).toEqual({ total: "12.5", currency: "CNY" });
+    expect(enhanced.summary).toMatchObject({ total: "12.5", currency: "CNY" });
 
     await postgresLedgerProjectionAdapter.softDelete(ledgerId, created.sourceDocumentId);
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
@@ -212,8 +212,8 @@ describe("target upper workflows", () => {
       sourceDocument: { id: created.sourceDocumentId, entryDate: "2026-07-14" },
     });
     expect(detail?.createdAt).toBe(transactionAt);
-    expect(stats.convertedTotal).toEqual({ total: 93.84, currency: "CNY" });
-    expect(stats.totals).toContainEqual({ currency: "USD", total: 11.73, count: 3 });
+    expect(stats.convertedTotal).toEqual({ total: "93.84", currency: "CNY" });
+    expect(stats.totals).toContainEqual({ currency: "USD", total: "11.73", count: 3 });
 
     await expect(
       postgresLedgerProjectionAdapter.recalculate({
@@ -391,7 +391,7 @@ describe("target upper workflows", () => {
     const stats = await calculateLedgerStats(ledgerId, undefined, undefined, "CNY");
     expect(stream.items[0]).toMatchObject({ id: original!.id, amount: "18.00" });
     expect(detail).toMatchObject({ id: original!.id, amount: "18.00" });
-    expect(stats.convertedTotal).toEqual({ total: 18, currency: "CNY" });
+    expect(stats.convertedTotal).toEqual({ total: "18", currency: "CNY" });
 
     await expect(
       updateLedgerEntryWithConversion({
@@ -422,7 +422,7 @@ describe("target upper workflows", () => {
     await expect(
       calculateLedgerStats(ledgerId, undefined, undefined, "CNY")
     ).resolves.toMatchObject({
-      convertedTotal: { total: 0, currency: "CNY" },
+      convertedTotal: { total: "0", currency: "CNY" },
     });
   });
 });

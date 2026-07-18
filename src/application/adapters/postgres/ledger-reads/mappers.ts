@@ -1,3 +1,4 @@
+import { compare } from "@/lib/money/decimal";
 import type {
   EntryCategoryDto,
   LedgerDto,
@@ -33,7 +34,7 @@ function toIso(date: Date | null | undefined): string | null {
 }
 
 function mapExchangeRate(value: string | null): string | null {
-  return value != null && Number(value) === 1 ? "1" : value;
+  return value != null && compare(value, "1") === 0 ? "1" : value;
 }
 
 export function mapLedgerDto(ledger: LedgerRow): LedgerDto {

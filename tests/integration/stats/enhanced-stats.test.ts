@@ -205,7 +205,7 @@ describe("Enhanced Stats Actions", () => {
       });
 
       // Should only include data from docA (entryDate in January)
-      expect(result.summary.total).toBe(100);
+      expect(result.summary.total).toBe("100");
       expect(result.chart).toHaveLength(1);
       const januaryPoint = requireFirst(result.chart, "chart point");
       expect(januaryPoint.date).toBe("2024-01-15");
@@ -298,7 +298,7 @@ describe("Enhanced Stats Actions", () => {
         compareRange: { from: "2024-02-01", to: "2024-02-29" },
       });
 
-      expect(result.summary.total).toBe(300);
+      expect(result.summary.total).toBe("300");
       expect(result.summary.currency).toBe("CNY");
       expect(result.chart).toHaveLength(3);
     });
@@ -349,13 +349,13 @@ describe("Enhanced Stats Actions", () => {
       const transportCategory = result.categories.find((c) => c.name === "交通");
 
       expect(foodCategory).toBeDefined();
-      expect(foodCategory?.totalConverted).toBe(100);
-      expect(foodCategory?.percent).toBe((100 / 150) * 100);
+      expect(foodCategory?.totalConverted).toBe("100");
+      expect(foodCategory?.percent).toBeCloseTo((100 / 150) * 100, 10);
       expect(foodCategory?.count).toBe(1);
 
       expect(transportCategory).toBeDefined();
-      expect(transportCategory?.totalConverted).toBe(50);
-      expect(transportCategory?.percent).toBe((50 / 150) * 100);
+      expect(transportCategory?.totalConverted).toBe("50");
+      expect(transportCategory?.percent).toBeCloseTo((50 / 150) * 100, 10);
     });
 
     it("should calculate trend correctly", async () => {
@@ -412,7 +412,7 @@ describe("Enhanced Stats Actions", () => {
       });
 
       // Trend from 100 to 200 is 100% increase
-      expect(result.summary.trend.amount).toBe(100);
+      expect(result.summary.trend.amount).toBe("100");
       expect(result.summary.trend.percent).toBe(100);
     });
 
@@ -491,7 +491,7 @@ describe("Enhanced Stats Actions", () => {
         compareRange: { from: "2024-02-01", to: "2024-02-29" },
       });
 
-      expect(result.summary.total).toBe(100);
+      expect(result.summary.total).toBe("100");
     });
 
     it("should generate correct heatmap data", async () => {
@@ -572,7 +572,7 @@ describe("Enhanced Stats Actions", () => {
       expect(result.categories).toHaveLength(1);
       const uncategorizedCategory = requireFirst(result.categories, "category");
       expect(uncategorizedCategory.name).toBe("Uncategorized");
-      expect(uncategorizedCategory.totalConverted).toBe(100);
+      expect(uncategorizedCategory.totalConverted).toBe("100");
     });
   });
 });

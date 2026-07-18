@@ -5,6 +5,7 @@ import {
 } from "@/application/adapters/postgres/ledger-projections";
 import { db } from "@/lib/db";
 import { AppError, NotFoundError } from "@/lib/errors";
+import { round } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getLedgerMainCurrency } from "@/modules/ledger/application/queries/get-ledger-main-currency";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
@@ -76,7 +77,7 @@ export async function createLedgerEntryWithConversion(input: {
       ...activeEntries.map(toProjectionEntry),
       {
         id: ledgerEntryId,
-        amount: input.amount.toFixed(2),
+        amount: round(String(input.amount), 2),
         itemName: input.itemName,
         currency: entryCurrency,
         categoryId: input.categoryId ?? null,
@@ -161,7 +162,7 @@ export async function updateLedgerEntryWithConversion(input: {
     throw new NotFoundError("Active ledger entry projection");
   }
   const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
-  const nextAmount = input.amount ?? Number(targetEntry.amount);
+  const nextAmount = input.amount ?? Number(targetEntry.amount); // Converted to number for ExchangeRateService API
   const nextCurrency = normalizeCurrency(input.currency ?? targetEntry.currency);
   let convertedAmount = targetEntry.convertedAmount;
   let exchangeRate = targetEntry.exchangeRate;
@@ -191,7 +192,7 @@ export async function updateLedgerEntryWithConversion(input: {
         ? {
             ...toProjectionEntry(entry),
             categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
-            amount: input.amount !== undefined ? input.amount.toFixed(2) : entry.amount,
+            amount: input.amount !== undefined ? round(String(input.amount), 2) : entry.amount,
             currency: input.currency !== undefined ? input.currency : entry.currency,
             itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
             description: input.description !== undefined ? input.description : entry.description,

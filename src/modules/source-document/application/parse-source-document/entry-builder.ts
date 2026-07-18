@@ -1,4 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { round } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
@@ -51,7 +52,7 @@ export async function buildEntriesForInsert({
       let exchangeRate: string | null = null;
 
       if (entryCurrency === mainCurrency) {
-        convertedAmount = entry.amount.toFixed(2);
+        convertedAmount = round(String(entry.amount), 2);
         exchangeRate = "1";
       } else {
         try {
@@ -78,7 +79,7 @@ export async function buildEntriesForInsert({
         ledgerId,
         categoryId,
         sourceDocumentId,
-        amount: entry.amount.toFixed(2),
+        amount: round(String(entry.amount), 2),
         currency: entryCurrency,
         itemName: entry.itemName !== "" ? entry.itemName : "Uncategorized",
         description: entry.notes ?? null,

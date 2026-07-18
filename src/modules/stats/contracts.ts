@@ -4,24 +4,24 @@ export type EnhancedCategoryStatDto = {
   id: string | null;
   name: string;
   icon: string | null;
-  totalOriginal: number;
-  totalConverted: number;
+  totalOriginal: string;
+  totalConverted: string;
   currency: string;
   percent: number;
   count: number;
   trend: {
     percent: number;
-    amount: number;
+    amount: string;
   };
 };
 
 export interface EnhancedStatsDto {
   summary: {
-    total: number;
+    total: string;
     currency: string;
     trend: {
       percent: number;
-      amount: number;
+      amount: string;
     };
     dailyAverage: number;
   };

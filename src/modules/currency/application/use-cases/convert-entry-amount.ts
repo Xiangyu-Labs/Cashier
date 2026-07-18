@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { round } from "@/lib/money/decimal";
 import { CurrencyService } from "../services/currency";
 import { ExchangeRateService } from "../services/exchange-rate";
 
@@ -21,7 +22,7 @@ export async function convertEntryAmount(
 
   if (fromCurrency === toCurrency) {
     return {
-      convertedAmount: amount.toFixed(2),
+      convertedAmount: round(String(amount), 2),
       exchangeRate: "1",
     };
   }
@@ -35,7 +36,7 @@ export async function convertEntryAmount(
     );
 
     return {
-      convertedAmount: converted.toFixed(2),
+      convertedAmount: round(String(converted), 2),
       exchangeRate: CurrencyService.calculateExchangeRate(amount, converted),
     };
   } catch (err) {

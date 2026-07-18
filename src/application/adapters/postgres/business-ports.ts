@@ -14,6 +14,7 @@ import type {
 import { db } from "@/lib/db";
 import { ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
+import { parse, add, subtract, multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/money/decimal";
 import {
   currencyRates,
   entryCategories,
@@ -71,8 +72,8 @@ async function recalculateActiveEntries(
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
   for (const entry of entries) {
     const sourceCurrency = entry.currency ?? "CNY";
-    let convertedAmount = Number(entry.amount);
-    let exchangeRate = 1;
+    let convertedAmount: string;
+    let exchangeRate: string;
     if (sourceCurrency !== mainCurrency) {
       const rate = await tx
         .select()
@@ -90,13 +91,17 @@ async function recalculateActiveEntries(
       if (fromRate == null || toRate == null || fromRate <= 0 || toRate <= 0) {
         throw new ValidationError("Unsupported currency conversion");
       }
-      exchangeRate = toRate / fromRate;
-      convertedAmount *= exchangeRate;
+      const rateRatio = multiply(String(toRate), divide(String(1), String(fromRate)));
+      convertedAmount = decimalRound(multiply(entry.amount, rateRatio), 2);
+      exchangeRate = decimalRound(rateRatio, 6);
+    } else {
+      convertedAmount = decimalRound(entry.amount, 2);
+      exchangeRate = "1";
     }
     await tx.update(ledgerEntries)
       .set({
-        convertedAmount: convertedAmount.toFixed(2),
-        exchangeRate: exchangeRate.toFixed(6),
+        convertedAmount,
+        exchangeRate,
         updatedAt: new Date(),
       })
       .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)))
@@ -442,8 +447,7 @@ export const postgresSettingsAdapter: SettingsPort = {
 
 export const postgresCurrencyAdapter: CurrencyPort = {
   async convert(amount, from, to, date) {
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount)) throw new ValidationError("Amount must be numeric");
+    if (!isValidDecimal(amount)) throw new ValidationError("Amount must be numeric");
     if (from === to) return amount;
     const [rateRow] = await db
       .select()
@@ -457,7 +461,8 @@ export const postgresCurrencyAdapter: CurrencyPort = {
     if (fromRate == null || toRate == null || fromRate <= 0 || toRate <= 0) {
       throw new ValidationError("Unsupported currency conversion");
     }
-    return ((numericAmount / fromRate) * toRate).toFixed(6);
+    const rateRatio = divide(String(toRate), String(fromRate));
+    return decimalRound(multiply(amount, rateRatio), 6);
   },
   async recalculateLedger(ledgerId, mainCurrency) {
     return db.transaction(async (tx) => recalculateActiveEntries(tx, ledgerId, mainCurrency));

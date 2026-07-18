@@ -117,7 +117,7 @@ export function DetailsTab({
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
         <DetailsToolbar
-          totalLabel={`${monthStats.mainCurrency} ${monthStats.mainTotal.toFixed(2)}`}
+          totalLabel={`${monthStats.mainCurrency} ${Number(monthStats.mainTotal).toFixed(2)}`}
         >
           <EntryFilterPanel
             filters={filters}

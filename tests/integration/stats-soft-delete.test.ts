@@ -67,7 +67,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
 
     // 5. Assert
     const cnyTotal = stats.totals.find((t) => t.currency === "CNY");
-    expect(cnyTotal?.total).toBe(100);
+    expect(cnyTotal?.total).toBe("100");
     expect(cnyTotal?.count).toBe(1);
   });
 
@@ -117,6 +117,6 @@ describe("Stats Soft Delete Filtering Regression", () => {
     });
 
     // 5. Assert
-    expect(stats.summary.total).toBe(200);
+    expect(stats.summary.total).toBe("200");
   });
 });

@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, max } from "drizzle-orm";
 import type { LedgerProjectionEntryContract, LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { isValidDecimal } from "@/lib/money/decimal";
 import {
   entryCategories,
   ledgerEntries,
@@ -24,7 +25,7 @@ function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
 
 function assertEntryValues(entries: readonly LedgerProjectionEntryContract[]): void {
   for (const entry of entries) {
-    if (entry.itemName.trim() === "" || !Number.isFinite(Number(entry.amount))) {
+    if (entry.itemName.trim() === "" || !isValidDecimal(entry.amount)) {
       throw new ValidationError(
         "Ledger projection entries require an item name and numeric amount"
       );

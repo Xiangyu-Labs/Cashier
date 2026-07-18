@@ -17,10 +17,10 @@ export interface UseDetailsTabDataReturn {
   hasNextPage: boolean;
   fetchNextPage: () => void;
   monthStats: {
-    mainTotal: number;
+    mainTotal: string;
     mainCurrency: string;
     hasMultipleCurrencies: boolean;
-    breakdown: { currency: string; total: number; count: number }[];
+    breakdown: { currency: string; total: string; count: number }[];
   };
   filterKey: string | null;
   startDateStr: string | null;
@@ -105,7 +105,7 @@ export function useDetailsTabData({
   const monthStats = useMemo(() => {
     const totals = summaryData?.totals ?? [];
     const convertedTotal = summaryData?.convertedTotal;
-    const mainTotal = convertedTotal?.total ?? 0;
+    const mainTotal = convertedTotal?.total ?? "0";
     const hasMultipleCurrencies = totals.length > 1;
 
     return {

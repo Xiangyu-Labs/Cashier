@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import type { ParsedLedgerEntry } from "@/lib/ai/types";
 import { ProcessingCancelledError, type ParseSourceDocumentOutput } from "./contracts";
 import type { ParsePipelineResult } from "./pipeline";
@@ -18,10 +19,11 @@ function distributeAdjustments(
     return ledgerEntries;
   }
 
-  // Group adjustments by receipt_index → net amount
-  const adjByReceipt = new Map<number, number>();
+  // Group adjustments by receipt_index → net amount (as Decimal)
+  const adjByReceipt = new Map<number, Decimal>();
   for (const adj of orderAdjustments) {
-    adjByReceipt.set(adj.receipt_index, (adjByReceipt.get(adj.receipt_index) ?? 0) + adj.amount);
+    const current = adjByReceipt.get(adj.receipt_index) ?? new Decimal(0);
+    adjByReceipt.set(adj.receipt_index, current.plus(adj.amount));
   }
 
   // Clone entries so originals are not mutated
@@ -34,21 +36,25 @@ function distributeAdjustments(
 
     if (matchingIndices.length === 0) continue;
 
-    const totalAmount = matchingIndices.reduce((sum, i) => sum + (result[i]?.amount ?? 0), 0);
-    let distributed = 0;
+    const totalAmount = matchingIndices.reduce(
+      (sum, i) => sum.plus(result[i]?.amount ?? 0),
+      new Decimal(0)
+    );
+    let distributed = new Decimal(0);
 
     for (let k = 0; k < matchingIndices.length - 1; k++) {
       const i = matchingIndices[k]!;
       const entry = result[i]!;
-      const share = parseFloat(((netAmount * entry.amount) / totalAmount).toFixed(2));
-      entry.amount = parseFloat((entry.amount + share).toFixed(2));
-      distributed += share;
+      const share = netAmount.times(entry.amount).dividedBy(totalAmount);
+      const roundedShare = Number(share.toFixed(2));
+      entry.amount = Number(new Decimal(entry.amount).plus(roundedShare).toFixed(2));
+      distributed = distributed.plus(roundedShare);
     }
 
     // Last entry absorbs rounding remainder to preserve exact total
     const lastIdx = matchingIndices[matchingIndices.length - 1]!;
-    const remainder = parseFloat((netAmount - distributed).toFixed(2));
-    result[lastIdx]!.amount = parseFloat((result[lastIdx]!.amount + remainder).toFixed(2));
+    const remainder = Number(netAmount.minus(distributed).toFixed(2));
+    result[lastIdx]!.amount = Number(new Decimal(result[lastIdx]!.amount).plus(remainder).toFixed(2));
   }
 
   return result;

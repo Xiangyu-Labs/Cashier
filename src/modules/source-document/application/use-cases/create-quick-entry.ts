@@ -1,5 +1,6 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { currentApplication } from "@/application/current";
+import { round } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
@@ -59,7 +60,7 @@ async function createQuickEntryAtomically(
       {
         id: ledgerEntryId,
         categoryId: data.categoryId,
-        amount: data.amount.toFixed(2),
+        amount: round(String(data.amount), 2),
         currency,
         itemName,
         description: data.description,

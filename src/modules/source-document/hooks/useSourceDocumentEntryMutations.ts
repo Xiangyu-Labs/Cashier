@@ -5,6 +5,7 @@ import {
   updateLedgerEntryAction,
 } from "@/modules/ledger/actions";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { round } from "@/lib/money/decimal";
 import { useTranslations } from "next-intl";
 import type { EntryEditData } from "@/modules/source-document/types";
 import {
@@ -43,8 +44,10 @@ export function useSourceDocumentEntryMutations({
         ...(data.currency !== undefined ? { currency: data.currency } : {}),
         ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.amount !== undefined ? { amount: parseFloat(data.amount) } : {}),
+        ...(data.amount !== undefined ? { amount: Number(round(data.amount, 2)) } : {}),
       };
+      // Note: round() ensures canonical decimal precision before converting to Number
+      // for the server action boundary. The server action will re-round to 2 decimals.
       await updateLedgerEntryAction(ledgerId, entryId, mutationData);
     },
     errorMessage: tCommon("saveFailed"),

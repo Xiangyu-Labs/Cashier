@@ -7,6 +7,7 @@ import {
 } from "./build-ledger-entry-filters";
 import type { LedgerEntrySummary } from "@/modules/ledger/contracts";
 import { ledgers } from "@/persistence";
+import { normalize as decimalNormalize } from "@/lib/money/decimal";
 
 // Current-runtime aggregate implementation.
 
@@ -35,7 +36,7 @@ export async function calculateLedgerEntryStats({
 
   const totals = totalsQuery.map((row) => ({
     currency: row.currency ?? "CNY",
-    total: Number(row.total) ?? 0,
+    total: decimalNormalize(String(row.total ?? "0")),
     count: Number(row.count) ?? 0,
   }));
 
@@ -54,7 +55,7 @@ export async function calculateLedgerEntryStats({
     .filter((row) => row.date != null && row.date !== "")
     .map((row) => ({
       date: row.date ?? "",
-      total: Number(row.total) ?? 0,
+      total: decimalNormalize(String(row.total ?? "0")),
     }));
 
   const convertedTotalResult = await db
@@ -63,7 +64,7 @@ export async function calculateLedgerEntryStats({
     })
     .from(ledgerEntries)
     .where(and(...conditions));
-  const convertedTotalValue = Number(convertedTotalResult[0]?.total) ?? 0;
+  const convertedTotalValue = decimalNormalize(String(convertedTotalResult[0]?.total ?? "0"));
 
   const settings =
     mainCurrency == null
