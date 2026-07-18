@@ -34,7 +34,7 @@ async function resolveConversion(
   date: string
 ): Promise<ConversionResult> {
   const result = await convertEntryAmount({
-    amount,
+    amount: String(amount),
     fromCurrency,
     toCurrency,
     date,

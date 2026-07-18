@@ -2,7 +2,7 @@ import { currentApplication } from "@/application/current";
 
 export function createLedgerEntryWithConversion(input: {
   ledgerId: string;
-  amount: number;
+  amount: string;
   currency?: string;
   itemName: string;
   categoryId?: string;
@@ -16,7 +16,7 @@ export function updateLedgerEntryWithConversion(input: {
   ledgerId: string;
   ledgerEntryId: string;
   categoryId?: string | null;
-  amount?: number;
+  amount?: string;
   currency?: string | null;
   itemName?: string;
   description?: string | null;
@@ -29,7 +29,7 @@ export function batchUpdateLedgerEntries(input: {
   ledgerEntryIds: string[];
   categoryId?: string | null;
   currency?: string | null;
-  amount?: number;
+  amount?: string;
   description?: string | null;
   itemName?: string;
 }) {

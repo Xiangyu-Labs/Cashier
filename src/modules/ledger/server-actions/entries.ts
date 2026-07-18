@@ -27,7 +27,7 @@ export const createLedgerEntryAction = withLedgerAccess(
     const validated = parseCreateLedgerEntryInput(data);
     const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
-      amount: validated.amount,
+      amount: String(validated.amount),
       itemName: validated.itemName,
       sourceDocumentId: validated.sourceDocumentId,
     };
@@ -51,7 +51,7 @@ export const updateLedgerEntryAction = withLedgerAccess(
       ledgerEntryId: validatedLedgerEntryId,
     };
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
-    if (validated.amount !== undefined) payload.amount = validated.amount;
+    if (validated.amount !== undefined) payload.amount = String(validated.amount);
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     if (validated.description !== undefined) payload.description = validated.description;
@@ -80,7 +80,7 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     };
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
     if (validated.currency !== undefined) payload.currency = validated.currency;
-    if (validated.amount !== undefined) payload.amount = validated.amount;
+    if (validated.amount !== undefined) payload.amount = String(validated.amount);
     if (validated.description !== undefined) payload.description = validated.description;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     const affectedCount = await batchUpdateLedgerEntries(payload);

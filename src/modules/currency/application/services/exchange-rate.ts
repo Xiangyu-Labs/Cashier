@@ -20,18 +20,18 @@ export class ExchangeRateService {
   }
 
   static convert(
-    amount: number,
+    amount: string,
     fromCurrency: string,
     toCurrency: string,
     date?: Date | string
-  ): Promise<number> {
+  ): Promise<string> {
     return currentApplication.exchangeRates.convert(amount, fromCurrency, toCurrency, date);
   }
 
   static convertBatch(
-    items: Array<{ amount: number; from: string; to: string; date?: Date | string }>,
+    items: Array<{ amount: string; from: string; to: string; date?: Date | string }>,
     targetCurrency: string
-  ): Promise<Array<{ convertedAmount: number; exchangeRate: number }>> {
+  ): Promise<Array<{ convertedAmount: string; exchangeRate: string }>> {
     return currentApplication.exchangeRates.convertBatch(items, targetCurrency);
   }
 }

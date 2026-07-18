@@ -8,7 +8,7 @@ describe("convertCurrency", () => {
   });
 
   it("normalizes YYYY-MM-DD input to a Date and delegates conversion", async () => {
-    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue(14.67);
+    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue("14.67");
 
     const result = await convertCurrency({
       amount: 100,
@@ -20,7 +20,8 @@ describe("convertCurrency", () => {
     expect(result).toEqual({ converted: 14.67 });
     expect(convertSpy).toHaveBeenCalledTimes(1);
 
-    const [, , , dateArg] = convertSpy.mock.calls[0] ?? [];
+    const [amountArg, , , dateArg] = convertSpy.mock.calls[0] ?? [];
+    expect(amountArg).toBe("100");
     expect(dateArg).toBeInstanceOf(Date);
     const parsed = dateArg as Date;
     expect(parsed.getFullYear()).toBe(2026);
@@ -29,7 +30,7 @@ describe("convertCurrency", () => {
   });
 
   it("passes undefined date when date is absent or empty", async () => {
-    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue(681.82);
+    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue("681.82");
 
     await convertCurrency({
       amount: 100,
@@ -43,7 +44,7 @@ describe("convertCurrency", () => {
       date: "",
     });
 
-    expect(convertSpy).toHaveBeenNthCalledWith(1, 100, "USD", "CNY", undefined);
-    expect(convertSpy).toHaveBeenNthCalledWith(2, 100, "USD", "CNY", undefined);
+    expect(convertSpy).toHaveBeenNthCalledWith(1, "100", "USD", "CNY", undefined);
+    expect(convertSpy).toHaveBeenNthCalledWith(2, "100", "USD", "CNY", undefined);
   });
 });

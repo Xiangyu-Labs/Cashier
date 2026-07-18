@@ -57,7 +57,7 @@ export async function buildEntriesForInsert({
       } else {
         try {
           const conversion = await convertEntryAmount({
-            amount: entry.amount,
+            amount: String(entry.amount),
             fromCurrency: entryCurrency,
             toCurrency: mainCurrency,
             date: fallbackDate,

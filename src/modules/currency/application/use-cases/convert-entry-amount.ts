@@ -4,7 +4,7 @@ import { CurrencyService } from "../services/currency";
 import { ExchangeRateService } from "../services/exchange-rate";
 
 export interface ConvertEntryAmountInput {
-  amount: number;
+  amount: string;
   fromCurrency: string;
   toCurrency: string;
   date?: string;
@@ -22,7 +22,7 @@ export async function convertEntryAmount(
 
   if (fromCurrency === toCurrency) {
     return {
-      convertedAmount: round(String(amount), 2),
+      convertedAmount: round(amount, 2),
       exchangeRate: "1",
     };
   }
@@ -36,7 +36,7 @@ export async function convertEntryAmount(
     );
 
     return {
-      convertedAmount: round(String(converted), 2),
+      convertedAmount: round(converted, 2),
       exchangeRate: CurrencyService.calculateExchangeRate(amount, converted),
     };
   } catch (err) {

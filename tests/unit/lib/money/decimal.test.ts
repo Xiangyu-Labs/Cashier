@@ -141,8 +141,11 @@ describe("decimal", () => {
       expect(isValidDecimal("-Infinity")).toBe(false);
     });
 
-    it("accepts exponent notation (decimal.js compatible)", () => {
-      expect(isValidDecimal("1e2")).toBe(true); // decimal.js accepts this
+    it("rejects exponent notation (decimal.js compatible but not allowed per spec)", () => {
+      expect(isValidDecimal("1e2")).toBe(false);
+      expect(isValidDecimal("1E2")).toBe(false);
+      expect(isValidDecimal("1e+2")).toBe(false);
+      expect(isValidDecimal("1e-2")).toBe(false);
     });
 
     it("rejects non-numeric strings", () => {

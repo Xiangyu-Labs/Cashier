@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import { format } from "date-fns";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
@@ -156,11 +157,11 @@ export class ExchangeRateService {
    * Convert amount from one currency to another using specific date's rates.
    */
   static async convert(
-    amount: number,
+    amount: string,
     fromCurrency: string,
     toCurrency: string,
     date?: Date | string
-  ): Promise<number> {
+  ): Promise<string> {
     if (fromCurrency === toCurrency) return amount;
 
     const ratesData = await this.getRates(date);
@@ -168,7 +169,7 @@ export class ExchangeRateService {
 
     // Add base currency (EUR) to rates map for easy calculation if not present
     // (Frankfurter results usually exclude the base from 'rates' object)
-    const fullRates = { ...rates, [ratesData.base]: 1.0 };
+    const fullRates = { ...rates, [ratesData.base]: 1 };
 
     const fromRate = fullRates[fromCurrency];
     const toRate = fullRates[toCurrency];
@@ -180,12 +181,12 @@ export class ExchangeRateService {
       throw new AppError(`Currency not found: ${toCurrency}`, "CURRENCY_NOT_FOUND");
     }
 
-    // Cross-Rate Calculation:
-    // Target = Amount * (ToRate / FromRate)
-    const result = amount * (toRate / fromRate);
+    // Cross-Rate Calculation using Decimal arithmetic:
+    // Result = Amount * (ToRate / FromRate)
+    const result = new Decimal(amount).times(toRate).dividedBy(fromRate);
 
-    // Return with reasonable precision (client can format)
-    return result;
+    // Return canonical non-exponent string
+    return result.toFixed();
   }
 
   private static async notifyRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
@@ -205,9 +206,9 @@ export class ExchangeRateService {
    * For N items with M unique dates, this performs M DB queries instead of N.
    */
   static async convertBatch(
-    items: Array<{ amount: number; from: string; to: string; date?: Date | string }>,
+    items: Array<{ amount: string; from: string; to: string; date?: Date | string }>,
     targetCurrency: string
-  ): Promise<Array<{ convertedAmount: number; exchangeRate: number }>> {
+  ): Promise<Array<{ convertedAmount: string; exchangeRate: string }>> {
     if (items.length === 0) return [];
 
     // 1. Collect all unique dates
@@ -222,11 +223,14 @@ export class ExchangeRateService {
     return Promise.all(
       items.map(async (item) => {
         if (item.from === targetCurrency) {
-          return { convertedAmount: item.amount, exchangeRate: 1 };
+          return { convertedAmount: item.amount, exchangeRate: "1" };
         }
 
         const converted = await this.convert(item.amount, item.from, targetCurrency, item.date);
-        const rate = item.amount !== 0 ? converted / item.amount : 1;
+        const rate =
+          new Decimal(item.amount).isZero() || new Decimal(item.amount).isNaN()
+            ? "1"
+            : new Decimal(converted).dividedBy(item.amount).toFixed();
         return { convertedAmount: converted, exchangeRate: rate };
       })
     );

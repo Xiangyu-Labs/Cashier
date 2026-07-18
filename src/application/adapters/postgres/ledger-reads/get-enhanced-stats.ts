@@ -100,13 +100,17 @@ export async function getEnhancedStatsQuery({
     )
   );
 
-  const ratesMap: Record<string, Record<string, number>> = {};
+  const ratesMap: Record<string, Record<string, string>> = {};
   if (uniqueDates.length > 0) {
     const ratesData = await db.query.currencyRates.findMany({
       where: inArray(currencyRates.date, uniqueDates),
     });
     for (const rate of ratesData) {
-      ratesMap[rate.date] = rate.rates;
+      const stringRates: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rate.rates)) {
+        stringRates[k] = String(v);
+      }
+      ratesMap[rate.date] = stringRates;
     }
   }
 
@@ -128,7 +132,7 @@ export async function getEnhancedStatsQuery({
       const dateStr = entry.sourceDocument?.entryDate ?? "";
       const converted = new Decimal(
         convertAmount({
-          amount: Number(entry.amount),
+          amount: entry.amount,
           fromCurrency: entry.currency ?? mainCurrency,
           toCurrency: mainCurrency,
           rates: ratesMap[dateStr] ?? null,

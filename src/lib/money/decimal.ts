@@ -28,14 +28,25 @@ export function normalize(value: string): string {
   return new Decimal(value).toFixed();
 }
 
+/** Maximum total digits allowed in a canonical decimal string. */
+const MAX_DIGITS = 1000;
+
 /**
  * Returns true if the string is a valid finite decimal representable at
- * database precision (max 1000 digits).
+ * database precision (max 1000 digits). Rejects exponent notation.
  */
 export function isValidDecimal(value: string): boolean {
+  // Reject exponent notation (e, E, e+, e-, etc.)
+  if (/[eE]/.test(value)) return false;
+
   try {
     const d = new Decimal(value);
-    return d.isFinite();
+    if (!d.isFinite()) return false;
+
+    // Check total digit count (excluding sign and decimal point)
+    const normalized = d.toFixed();
+    const digits = normalized.replace(/[^0-9]/g, "");
+    return digits.length <= MAX_DIGITS;
   } catch {
     return false;
   }
@@ -94,9 +105,10 @@ export function round(value: string, decimals: number): string {
  *
  * @param value - The source amount as a decimal string.
  * @param ratios - An array of non-negative ratio numbers. Does not need to sum to 1.
+ * @param decimals - Number of decimal places for rounding (default 2).
  * @returns An array of allocated decimal strings whose sum equals the input value.
  */
-export function allocate(value: string, ratios: number[]): string[] {
+export function allocate(value: string, ratios: number[], decimals = 2): string[] {
   if (ratios.length === 0) return [];
 
   const decimalValue = new Decimal(value);
@@ -108,11 +120,11 @@ export function allocate(value: string, ratios: number[]): string[] {
     const results: string[] = [];
     let distributed = new Decimal(0);
     for (let i = 0; i < ratios.length - 1; i++) {
-      const rounded = perPart.toFixed(2, Decimal.ROUND_HALF_UP);
+      const rounded = perPart.toFixed(decimals, Decimal.ROUND_HALF_UP);
       results.push(rounded);
       distributed = distributed.plus(rounded);
     }
-    results.push(decimalValue.minus(distributed).toFixed(2, Decimal.ROUND_HALF_UP));
+    results.push(decimalValue.minus(distributed).toFixed(decimals, Decimal.ROUND_HALF_UP));
     return results;
   }
 
@@ -121,14 +133,14 @@ export function allocate(value: string, ratios: number[]): string[] {
 
   for (let i = 0; i < ratios.length - 1; i++) {
     const share = decimalValue.times(ratios[i]!).dividedBy(totalRatio);
-    const rounded = share.toFixed(2, Decimal.ROUND_HALF_UP);
+    const rounded = share.toFixed(decimals, Decimal.ROUND_HALF_UP);
     results.push(rounded);
     distributed = distributed.plus(rounded);
   }
 
   // Last part absorbs rounding remainder
   const remainder = decimalValue.minus(distributed);
-  results.push(remainder.toFixed(2, Decimal.ROUND_HALF_UP));
+  results.push(remainder.toFixed(decimals, Decimal.ROUND_HALF_UP));
 
   return results;
 }

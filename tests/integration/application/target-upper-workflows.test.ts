@@ -324,7 +324,7 @@ describe("target upper workflows", () => {
     const updated = await updateLedgerEntryWithConversion({
       ledgerId,
       ledgerEntryId: original!.id,
-      amount: 18,
+      amount: "18",
     });
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
@@ -380,7 +380,7 @@ describe("target upper workflows", () => {
     await updateLedgerEntryWithConversion({
       ledgerId,
       ledgerEntryId: original!.id,
-      amount: 18,
+      amount: "18",
     });
     const afterUpdate = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, pending.document.id),
@@ -409,7 +409,7 @@ describe("target upper workflows", () => {
       updateLedgerEntryWithConversion({
         ledgerId: otherLedgerId,
         ledgerEntryId: original!.id,
-        amount: 99,
+        amount: "99",
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 

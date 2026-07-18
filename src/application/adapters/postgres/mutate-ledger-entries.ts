@@ -26,7 +26,7 @@ function whereActiveSourceDocumentForLedger(ledgerId: string, sourceDocumentId: 
 
 export async function createLedgerEntryWithConversion(input: {
   ledgerId: string;
-  amount: number;
+  amount: string;
   currency?: string;
   itemName: string;
   categoryId?: string;
@@ -128,7 +128,7 @@ export async function updateLedgerEntryWithConversion(input: {
   ledgerId: string;
   ledgerEntryId: string;
   categoryId?: string | null;
-  amount?: number;
+  amount?: string;
   currency?: string | null;
   itemName?: string;
   description?: string | null;
@@ -162,7 +162,7 @@ export async function updateLedgerEntryWithConversion(input: {
     throw new NotFoundError("Active ledger entry projection");
   }
   const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
-  const nextAmount = input.amount ?? Number(targetEntry.amount); // Converted to number for ExchangeRateService API
+  const nextAmount = input.amount ?? targetEntry.amount;
   const nextCurrency = normalizeCurrency(input.currency ?? targetEntry.currency);
   let convertedAmount = targetEntry.convertedAmount;
   let exchangeRate = targetEntry.exchangeRate;
@@ -212,7 +212,7 @@ export async function batchUpdateLedgerEntries(input: {
   ledgerEntryIds: string[];
   categoryId?: string | null;
   currency?: string | null;
-  amount?: number;
+  amount?: string;
   description?: string | null;
   itemName?: string;
 }): Promise<number> {

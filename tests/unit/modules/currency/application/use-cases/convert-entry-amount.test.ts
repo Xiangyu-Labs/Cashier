@@ -11,7 +11,7 @@ describe("convertEntryAmount", () => {
     const convertSpy = vi.spyOn(ExchangeRateService, "convert");
 
     const result = await convertEntryAmount({
-      amount: 100,
+      amount: "100",
       fromCurrency: "CNY",
       toCurrency: "CNY",
       date: "2026-02-04",
@@ -28,7 +28,7 @@ describe("convertEntryAmount", () => {
     vi.spyOn(ExchangeRateService, "convert").mockRejectedValue(new Error("upstream unavailable"));
 
     const result = await convertEntryAmount({
-      amount: 100,
+      amount: "100",
       fromCurrency: "USD",
       toCurrency: "CNY",
       date: "2026-02-04",

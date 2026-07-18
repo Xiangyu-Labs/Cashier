@@ -8,10 +8,10 @@ import { eq } from "drizzle-orm";
 // Mock currency conversion use-case to avoid external API calls
 vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => ({
   convertEntryAmount: vi.fn(
-    async (input: { amount: number; fromCurrency: string; toCurrency: string }) => {
+    async (input: { amount: string; fromCurrency: string; toCurrency: string }) => {
       if (input.fromCurrency === input.toCurrency) {
         return {
-          convertedAmount: input.amount.toFixed(2),
+          convertedAmount: Number(input.amount).toFixed(2),
           exchangeRate: "1",
         };
       }
@@ -103,7 +103,7 @@ describe("createLedgerEntryAction", () => {
     expect(result.convertedAmount).toBe("50.00");
     expect(result.exchangeRate).toBe("1");
     expect(convertEntryAmount).toHaveBeenCalledWith({
-      amount: 50,
+      amount: "50",
       fromCurrency: "CNY",
       toCurrency: "CNY",
     });
@@ -125,7 +125,7 @@ describe("createLedgerEntryAction", () => {
     expect(result.currency).toBe("USD");
     expect(result.convertedAmount).toBe("720.00");
     expect(convertEntryAmount).toHaveBeenCalledWith({
-      amount: 100,
+      amount: "100",
       fromCurrency: "USD",
       toCurrency: "CNY",
     });

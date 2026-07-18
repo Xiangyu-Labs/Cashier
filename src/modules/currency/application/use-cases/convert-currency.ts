@@ -14,11 +14,11 @@ function normalizeConversionDate(date?: string): Date | undefined {
 
 export async function convertCurrency(input: ConvertCurrencyInput): Promise<ConvertCurrencyResult> {
   const converted = await ExchangeRateService.convert(
-    input.amount,
+    String(input.amount),
     input.from,
     input.to,
     normalizeConversionDate(input.date)
   );
 
-  return { converted };
+  return { converted: Number(converted) };
 }

@@ -116,7 +116,7 @@ describe("ledger server action omission semantics", () => {
     >;
 
     expect(payload.ledgerId).toBe("ledger-1");
-    expect(payload.amount).toBe(12.5);
+    expect(payload.amount).toBe("12.5");
     expect(payload.itemName).toBe("Lunch");
     expect(Object.prototype.hasOwnProperty.call(payload, "currency")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(payload, "categoryId")).toBe(false);
@@ -151,7 +151,7 @@ describe("ledger server action omission semantics", () => {
 
     expect(payload.ledgerId).toBe("ledger-1");
     expect(payload.ledgerEntryIds).toEqual(["123e4567-e89b-42d3-a456-426614174002"]);
-    expect(payload.amount).toBe(9.99);
+    expect(payload.amount).toBe("9.99");
     expect(Object.prototype.hasOwnProperty.call(payload, "categoryId")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(payload, "currency")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(payload, "description")).toBe(false);

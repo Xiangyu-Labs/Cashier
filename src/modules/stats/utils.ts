@@ -1,3 +1,5 @@
+import Decimal from "decimal.js";
+
 export function convertAmount({
   amount,
   fromCurrency,
@@ -5,12 +7,12 @@ export function convertAmount({
   rates,
   baseCurrency = "EUR",
 }: {
-  amount: number;
+  amount: string;
   fromCurrency: string;
   toCurrency: string;
-  rates: Record<string, number> | null;
+  rates: Record<string, string> | null;
   baseCurrency?: string;
-}): number {
+}): string {
   if (fromCurrency === "" || toCurrency === "" || fromCurrency === toCurrency) {
     return amount;
   }
@@ -19,14 +21,15 @@ export function convertAmount({
     return amount;
   }
 
-  const sourceRate = fromCurrency === baseCurrency ? 1 : rates[fromCurrency];
-  const targetRate = toCurrency === baseCurrency ? 1 : rates[toCurrency];
+  const sourceRate = fromCurrency === baseCurrency ? "1" : rates[fromCurrency];
+  const targetRate = toCurrency === baseCurrency ? "1" : rates[toCurrency];
 
   if (sourceRate === undefined || targetRate === undefined) {
     return amount;
   }
 
-  return (amount / sourceRate) * targetRate;
+  // Use Decimal arithmetic: (amount / sourceRate) * targetRate
+  return new Decimal(amount).dividedBy(sourceRate).times(targetRate).toFixed();
 }
 
 export function calculateGrowth(

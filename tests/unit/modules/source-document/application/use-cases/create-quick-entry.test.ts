@@ -73,7 +73,7 @@ describe("createQuickEntry", () => {
     );
 
     expect(convertEntryAmountMock).toHaveBeenCalledWith({
-      amount: 100,
+      amount: "100",
       fromCurrency: "USD",
       toCurrency: "USD",
       date: "2026-03-20",
@@ -120,7 +120,7 @@ describe("createQuickEntry", () => {
     );
 
     expect(convertEntryAmountMock).toHaveBeenCalledWith({
-      amount: 25,
+      amount: "25",
       fromCurrency: "CNY",
       toCurrency: "USD",
       date: "2026-01-31",

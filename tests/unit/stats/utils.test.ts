@@ -3,41 +3,41 @@ import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
 
 describe("Stats Utils", () => {
   describe("convertAmount", () => {
-    const rates = {
-      USD: 1.1, // 1 EUR = 1.1 USD
-      CNY: 7.8, // 1 EUR = 7.8 CNY
+    const rates: Record<string, string> = {
+      USD: "1.1", // 1 EUR = 1.1 USD
+      CNY: "7.8", // 1 EUR = 7.8 CNY
     };
 
     it("should return original amount if currencies match", () => {
       const result = convertAmount({
-        amount: 100,
+        amount: "100",
         fromCurrency: "CNY",
         toCurrency: "CNY",
         rates,
       });
-      expect(result).toBe(100);
+      expect(result).toBe("100");
     });
 
     it("should convert correctly using base currency logic", () => {
       // Convert 110 USD to CNY
       // 110 USD -> 100 EUR -> 780 CNY
       const result = convertAmount({
-        amount: 110,
+        amount: "110",
         fromCurrency: "USD",
         toCurrency: "CNY",
         rates,
       });
-      expect(result).toBeCloseTo(780);
+      expect(result).toBe("780");
     });
 
     it("should fallback to 1:1 if rates are missing", () => {
       const result = convertAmount({
-        amount: 100,
+        amount: "100",
         fromCurrency: "USD",
         toCurrency: "CNY",
         rates: null,
       });
-      expect(result).toBe(100);
+      expect(result).toBe("100");
     });
   });
 
