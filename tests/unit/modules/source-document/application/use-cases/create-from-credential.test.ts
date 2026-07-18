@@ -71,6 +71,7 @@ describe("createSourceDocumentFromCredential", () => {
       ledgerId: "ledger-1",
       ledger: expect.objectContaining({ id: "ledger-1" }),
       text: "receipt",
+      maxDecodedImageBytes: 10 * 1024 * 1024,
     });
     expect(callInput).not.toHaveProperty("timezone");
   });

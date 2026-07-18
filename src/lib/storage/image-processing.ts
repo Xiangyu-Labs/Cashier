@@ -8,6 +8,7 @@
 
 import sharp from "sharp";
 import { runtimeEnv } from "@/lib/env/runtime";
+import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
   MAX_NORMALIZED_BYTES_PER_FILE,
@@ -54,6 +55,11 @@ export const DEFAULT_IMAGE_OPTIONS: Required<ImageProcessingOptions> = {
 const MAX_OUTPUT_SIZE = MAX_NORMALIZED_BYTES_PER_FILE;
 
 /**
+ * Maximum number of quality-reduction retries before giving up.
+ */
+const MAX_RETRIES = 3;
+
+/**
  * Limit input pixels for Sharp. Uses the environment value which defaults
  * to 25 MP (higher than the policy 16 MP to allow a controlled error path).
  */
@@ -71,7 +77,8 @@ const MAX_INPUT_PIXELS = MAX_MEGAPIXELS_PER_FILE * 1_000_000 * 1.5;
 export async function processImage(
   buffer: Buffer,
   mimeType: string,
-  options: ImageProcessingOptions = {}
+  options: ImageProcessingOptions = {},
+  retryCount: number = 0
 ): Promise<{ buffer: Buffer; mimeType: string }> {
   const opts = { ...DEFAULT_IMAGE_OPTIONS, ...options };
 
@@ -206,15 +213,20 @@ export async function processImage(
     // (the original bytes have been decoded by sharp and are trusted, but we
     // always store the processed version for consistency)
     if (outputBuffer.length > MAX_OUTPUT_SIZE) {
+      if (retryCount >= MAX_RETRIES) {
+        throw new ValidationError(
+          `Unable to compress image within size limit after ${MAX_RETRIES} attempts`
+        );
+      }
       logger.warn(
-        { size: outputBuffer.length, maxSize: MAX_OUTPUT_SIZE },
+        { size: outputBuffer.length, maxSize: MAX_OUTPUT_SIZE, retryCount: retryCount + 1 },
         "Processed image exceeds max size, retrying with lower quality"
       );
-      // Attempt one more pass with lower quality
+      // Attempt another pass with lower quality
       return processImage(buffer, mimeType, {
         ...opts,
         quality: Math.max(60, opts.quality - 15),
-      });
+      }, retryCount + 1);
     }
 
     logger.debug(

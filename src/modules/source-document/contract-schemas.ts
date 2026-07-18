@@ -9,6 +9,13 @@ import {
   SUPPORTED_MIME_TYPES,
 } from "@/modules/source-document/upload-policy";
 
+/**
+ * API v1 has narrower limits than the Web submission flow.
+ * These constants keep the boundary explicit and prevent policy creep.
+ */
+const API_V1_MAX_ORIGINAL_BYTES = 10 * 1024 * 1024; // 10 MB
+const API_V1_MAX_TEXT_CHARACTERS = 10000;
+
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
@@ -73,6 +80,59 @@ const sourceDocumentPayloadSchema = strictObjectSchema({
 });
 
 export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.superRefine(
+  (value, ctx) => {
+    if (
+      (value.text == null || value.text === "") &&
+      (value.images == null || value.images.length === 0) &&
+      (value.storedFileIds == null || value.storedFileIds.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Content (text or images) is required",
+      });
+    }
+  }
+);
+
+/**
+ * API v1 source-document input schema — same structure as the Web schema but
+ * with narrower limits (10 MB per file, 10 K text characters).
+ */
+const imagesSchemaV1 = z
+  .array(imagePayloadSchema)
+  .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
+  .refine(
+    (images) => {
+      if (images.length === 0) {
+        return true;
+      }
+      return images.every((img) => {
+        const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        return buffer.length <= API_V1_MAX_ORIGINAL_BYTES;
+      });
+    },
+    {
+      message: `Image size exceeds maximum allowed size of ${API_V1_MAX_ORIGINAL_BYTES / 1024 / 1024}MB`,
+    }
+  );
+
+const sourceDocumentPayloadSchemaV1 = strictObjectSchema({
+  text: z
+    .string()
+    .max(API_V1_MAX_TEXT_CHARACTERS, `Text too long (max ${API_V1_MAX_TEXT_CHARACTERS} characters)`)
+    .optional(),
+  storedFileIds: z
+    .array(uuidSchema)
+    .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
+    .optional(),
+  images: imagesSchemaV1.optional(),
+  originalImages: imagesSchemaV1.optional(),
+  entryDate: optionalDateStringSchema,
+  timezone: z.string().max(50).optional(),
+});
+
+export const createSourceDocumentInputSchemaV1 = sourceDocumentPayloadSchemaV1.superRefine(
   (value, ctx) => {
     if (
       (value.text == null || value.text === "") &&

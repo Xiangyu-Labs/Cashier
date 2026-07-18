@@ -1,3 +1,5 @@
+import { ValidationError } from "@/lib/errors";
+
 /**
  * Shared Web Upload Policy
  *
@@ -7,6 +9,14 @@
  *
  * These defaults apply to the Web submission flow only. The API v1 flow
  * has its own separate limits and is not covered by this module.
+ *
+ * KNOWN GAP (escalation condition — not fixed in Task 6):
+ * The Web submission path (createSourceDocumentAction) accepts pre-finalized
+ * storedFileIds without re-validating them against the current upload policy.
+ * A stored file that passed policy checks at finalization time could later
+ * exceed policy limits if the policy is tightened. Closing this gap requires
+ * a policy version stamp on stored files or a re-validation step at revision
+ * creation time. See Issue 2 in the Task 6 review.
  */
 
 // ---------------------------------------------------------------------------
@@ -34,14 +44,19 @@ export const MAX_TEXT_CHARACTERS = 20000;
 /** Upload session expiry in milliseconds. */
 export const UPLOAD_SESSION_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
-/** Explicitly supported MIME types for Web uploads. */
+/**
+ * Explicitly supported MIME types for Web uploads.
+ *
+ * HEIC/HEIF are omitted because sharp cannot decode them deterministically
+ * across all inputs — encoding variants and exif orientation frequently cause
+ * decode failures or silent data corruption. Users must convert to JPEG/PNG
+ * before upload.
+ */
 export const SUPPORTED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
-  "image/heic",
-  "image/heif",
   "image/avif",
 ] as const;
 
@@ -63,13 +78,13 @@ export function validateFileUpload(file: {
   byteSize: number;
 }): void {
   if (!SUPPORTED_MIME_SET.has(file.contentType)) {
-    throw new Error(`Unsupported content type: ${file.contentType}`);
+    throw new ValidationError(`Unsupported content type: ${file.contentType}`);
   }
   if (!Number.isInteger(file.byteSize) || file.byteSize <= 0) {
-    throw new Error(`Invalid byte size: ${file.byteSize}`);
+    throw new ValidationError(`Invalid byte size: ${file.byteSize}`);
   }
   if (file.byteSize > MAX_ORIGINAL_BYTES_PER_FILE) {
-    throw new Error(
+    throw new ValidationError(
       `File exceeds maximum original size of ${MAX_ORIGINAL_BYTES_PER_FILE} bytes`
     );
   }
@@ -86,14 +101,14 @@ export function validateImageProcessing(metadata: {
 }): void {
   const megapixels = (metadata.width * metadata.height) / 1_000_000;
   if (megapixels > MAX_MEGAPIXELS_PER_FILE) {
-    throw new Error(
+    throw new ValidationError(
       `Image dimensions ${metadata.width}x${metadata.height} (${megapixels.toFixed(1)} MP) ` +
         `exceed maximum of ${MAX_MEGAPIXELS_PER_FILE} MP`
     );
   }
   const mimeType = formatToMimeType(metadata.format);
   if (!SUPPORTED_MIME_SET.has(mimeType)) {
-    throw new Error(`Unsupported image format: ${metadata.format}`);
+    throw new ValidationError(`Unsupported image format: ${metadata.format}`);
   }
 }
 
@@ -111,7 +126,7 @@ export function validateRevisionUpload(
 ): void {
   const total = aggregateNormalizedBytes + newFileBytes;
   if (total > MAX_NORMALIZED_BYTES_PER_REVISION) {
-    throw new Error(
+    throw new ValidationError(
       `Total normalized bytes ${total} exceeds revision limit of ` +
         `${MAX_NORMALIZED_BYTES_PER_REVISION}`
     );
@@ -123,7 +138,7 @@ export function validateRevisionUpload(
  */
 export function validateFileCount(count: number): void {
   if (count < 1 || count > MAX_FILES) {
-    throw new Error(`File count ${count} must be between 1 and ${MAX_FILES}`);
+    throw new ValidationError(`File count ${count} must be between 1 and ${MAX_FILES}`);
   }
 }
 
@@ -153,7 +168,7 @@ export function sanitizeMimeType(
     return declaredClean;
   }
 
-  throw new Error(
+  throw new ValidationError(
     `Unsupported MIME type: declared="${declaredClean}", detected="${detectedClean}"`
   );
 }
@@ -172,8 +187,6 @@ function formatToMimeType(format: string): string {
     png: "image/png",
     webp: "image/webp",
     gif: "image/gif",
-    heic: "image/heic",
-    heif: "image/heif",
     avif: "image/avif",
   };
   return map[format.toLowerCase()] ?? `image/${format.toLowerCase()}`;

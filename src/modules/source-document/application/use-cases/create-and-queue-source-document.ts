@@ -20,6 +20,7 @@ export interface CreateAndQueueSourceDocumentInput {
   storedFileIds?: string[];
   images?: Array<{ data: string; mimeType: string }>;
   originalImages?: Array<{ data: string; mimeType: string }>;
+  maxDecodedImageBytes?: number;
   entryDate?: string;
   timezone?: string;
 }
@@ -64,7 +65,8 @@ export async function createAndQueueSourceDocument(
         imagesToProcess,
         dependencies.storedFiles,
         dependencies.processImage,
-        input.ledgerId
+        input.ledgerId,
+        input.maxDecodedImageBytes
       )
     : [];
 

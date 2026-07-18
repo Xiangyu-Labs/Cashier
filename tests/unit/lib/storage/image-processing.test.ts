@@ -139,8 +139,6 @@ describe("image-processing", () => {
       expect(isSupportedImageFormat("image/png")).toBe(true);
       expect(isSupportedImageFormat("image/webp")).toBe(true);
       expect(isSupportedImageFormat("image/gif")).toBe(true);
-      expect(isSupportedImageFormat("image/heic")).toBe(true);
-      expect(isSupportedImageFormat("image/heif")).toBe(true);
       expect(isSupportedImageFormat("image/avif")).toBe(true);
     });
 

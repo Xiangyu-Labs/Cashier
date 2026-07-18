@@ -33,7 +33,7 @@ export type ImageProcessor = (
   mimeType: string
 ) => Promise<{ buffer: Buffer; mimeType: string }>;
 
-const MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
+const DEFAULT_MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
 
 /**
  * Decode either a raw base64 string or a data:image URL into a Buffer.
@@ -41,7 +41,7 @@ const MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
  *
  * Throws ValidationError for any decode-level failure.
  */
-function decodeImageData(data: string, mimeType: string): Buffer {
+function decodeImageData(data: string, mimeType: string, maxDecodedSize?: number): Buffer {
   let base64Data = data;
 
   // Handle data:image/... URLs
@@ -77,9 +77,10 @@ function decodeImageData(data: string, mimeType: string): Buffer {
   }
 
   // Safety net — schema already enforces this for published payloads
-  if (buffer.length > MAX_DECODED_SIZE) {
+  const effectiveMax = maxDecodedSize ?? DEFAULT_MAX_DECODED_SIZE;
+  if (buffer.length > effectiveMax) {
     throw new ValidationError(
-      `Decoded image data exceeds maximum size of ${MAX_DECODED_SIZE / 1024 / 1024}MB`
+      `Decoded image data exceeds maximum size of ${effectiveMax / 1024 / 1024}MB`
     );
   }
 
@@ -99,12 +100,13 @@ export async function prepareInlineImages(
   images: Array<{ data: string; mimeType: string }>,
   storedFiles: InlineImageUploader,
   processImage: ImageProcessor,
-  ledgerId: string
+  ledgerId: string,
+  maxDecodedBytes?: number
 ): Promise<string[]> {
   // Phase 1: decode and process all images (fail-fast if any is bad)
   const processedImages = await Promise.all(
     images.map(async (img) => {
-      const rawBuffer = decodeImageData(img.data, img.mimeType);
+      const rawBuffer = decodeImageData(img.data, img.mimeType, maxDecodedBytes);
       const processed = await processImage(rawBuffer, img.mimeType);
       return { buffer: processed.buffer, mimeType: processed.mimeType };
     })

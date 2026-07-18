@@ -10,6 +10,9 @@ import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { resolveLedgerForServiceCredential } from "@/modules/ledger/credential-access";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
 
+/** API v1 max decoded bytes per file (narrower than the Web policy). */
+const API_V1_MAX_ORIGINAL_BYTES = 10 * 1024 * 1024;
+
 export async function createSourceDocumentFromCredential(
   input: {
     credentialId: string;
@@ -30,7 +33,7 @@ export async function createSourceDocumentFromCredential(
 
   const create = () =>
     createAndQueueSourceDocument(
-      { ledgerId: ledger.id, ledger, ...payload },
+      { ledgerId: ledger.id, ledger, ...payload, maxDecodedImageBytes: API_V1_MAX_ORIGINAL_BYTES },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
         storedFiles: currentApplication.storedFiles,

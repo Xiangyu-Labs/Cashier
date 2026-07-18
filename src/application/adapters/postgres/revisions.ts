@@ -9,6 +9,9 @@ import { supportedSourceDocumentActions } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import {
+  MAX_NORMALIZED_BYTES_PER_REVISION,
+} from "@/modules/source-document/upload-policy";
+import {
   ledgerEntries,
   ledgers,
   revisionFiles,
@@ -181,9 +184,11 @@ export async function createPendingRevisionInTransaction(
   if (fileIds.length !== (input.storedFileIds?.length ?? 0)) {
     throw new ValidationError("A stored file may only appear once in a revision");
   }
-  for (const [position, storedFileId] of fileIds.entries()) {
+  // Collect byte sizes for the per-revision aggregate check
+  const storedFileRows: Array<{ id: string; byteSize: number }> = [];
+  for (const storedFileId of fileIds) {
     const file = await tx
-      .select({ id: storedFiles.id })
+      .select({ id: storedFiles.id, byteSize: storedFiles.byteSize })
       .from(storedFiles)
       .where(
         and(
@@ -195,11 +200,21 @@ export async function createPendingRevisionInTransaction(
       )
       .then((rows) => rows[0]);
     if (file == null) throw new NotFoundError("Stored file");
+    storedFileRows.push(file);
+  }
+  // Enforce per-revision byte aggregate limit
+  const totalBytes = storedFileRows.reduce((sum, f) => sum + f.byteSize, 0);
+  if (totalBytes > MAX_NORMALIZED_BYTES_PER_REVISION) {
+    throw new ValidationError(
+      `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
+    );
+  }
+  for (const [position, storedFileRow] of storedFileRows.entries()) {
     await tx.insert(revisionFiles)
       .values({
         ledgerId: input.ledgerId,
         revisionId: revision.id,
-        storedFileId,
+        storedFileId: storedFileRow.id,
         position,
       })
       ;
