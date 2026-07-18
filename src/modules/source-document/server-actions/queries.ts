@@ -1,4 +1,5 @@
 "use server";
+import { after } from "next/server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
@@ -20,10 +21,14 @@ import {
   type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
+import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 
 export const getSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> =>
-    listSourceDocuments(ledgerId, params)
+  async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> => {
+    // Schedule processing recovery alongside data reads
+    after(() => scheduleProcessingRecovery(ledgerId));
+    return listSourceDocuments(ledgerId, params);
+  }
 );
 
 /**
@@ -34,6 +39,8 @@ export const getSourceDocumentCollectionAction = withLedgerAccess(
     ledgerId: string,
     params: ListSourceDocumentCollectionInput
   ): Promise<SourceDocumentCollectionDto> => {
+    // Schedule processing recovery alongside data reads
+    after(() => scheduleProcessingRecovery(ledgerId));
     return getSourceDocumentCollection(ledgerId, params);
   }
 );
@@ -43,8 +50,11 @@ export const getSourceDocumentCollectionAction = withLedgerAccess(
  * Used for the pending source documents modal that should always show ALL pending items.
  */
 export const getPendingSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> =>
-    getPendingSourceDocuments(ledgerId)
+  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
+    // Schedule processing recovery alongside data reads
+    after(() => scheduleProcessingRecovery(ledgerId));
+    return getPendingSourceDocuments(ledgerId);
+  }
 );
 
 /**
@@ -52,16 +62,22 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
  * Bounded independently; returns items + total count.
  */
 export const getSourceDocumentAttentionAction = withLedgerAccess(
-  async (ledgerId: string): Promise<SourceDocumentAttentionDto> =>
-    getSourceDocumentAttentionQuery(ledgerId)
+  async (ledgerId: string): Promise<SourceDocumentAttentionDto> => {
+    // Schedule processing recovery alongside attention reads
+    after(() => scheduleProcessingRecovery(ledgerId));
+    return getSourceDocumentAttentionQuery(ledgerId);
+  }
 );
 
 /**
  * Get lightweight processing and attention counts for the header.
  */
 export const getSourceDocumentCountsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<SourceDocumentCountsDto> =>
-    getSourceDocumentCountsQuery(ledgerId)
+  async (ledgerId: string): Promise<SourceDocumentCountsDto> => {
+    // Schedule processing recovery alongside count reads
+    after(() => scheduleProcessingRecovery(ledgerId));
+    return getSourceDocumentCountsQuery(ledgerId);
+  }
 );
 
 /**
@@ -74,6 +90,8 @@ export const getSourceDocumentFullAction = withLedgerAccess(
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
 
+    // Schedule processing recovery alongside detail reads
+    after(() => scheduleProcessingRecovery(ledgerId));
     return getSourceDocumentFullQuery(ledgerId, parsed.data);
   }
 );

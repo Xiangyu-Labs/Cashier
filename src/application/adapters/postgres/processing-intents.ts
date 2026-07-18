@@ -1,9 +1,10 @@
-import { and, asc, eq, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   ProcessingClaimContract,
   ProcessingCompletionContract,
   ProcessingIntentContract,
   ProcessingPort,
+  RecoverableProcessingIntentContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
 import {
@@ -223,6 +224,158 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           )
         )
         ;
+      return true;
+    });
+  }
+
+  /**
+   * Atomically increments schedule_attempt_count, sets last_scheduled_at,
+   * and advances next_available_at for the given outbox row.
+   * Returns true if the row existed and was updated, false otherwise.
+   */
+  async scheduleRecovery(
+    revisionId: string,
+    intentId: string,
+    ledgerId: string,
+    cooldownSeconds: number
+  ): Promise<boolean> {
+    const now = this.now();
+    const nextAvailable = new Date(now.getTime() + cooldownSeconds * 1000);
+    const result = await db
+      .update(processingOutbox)
+      .set({
+        scheduleAttemptCount: sql`${processingOutbox.scheduleAttemptCount} + 1`,
+        lastScheduledAt: now,
+        nextAvailableAt: nextAvailable,
+      })
+      .where(
+        and(
+          eq(processingOutbox.id, intentId),
+          eq(processingOutbox.ledgerId, ledgerId),
+          eq(processingOutbox.revisionId, revisionId),
+          or(
+            eq(processingOutbox.status, "pending"),
+            and(
+              eq(processingOutbox.status, "claimed"),
+              lte(processingOutbox.claimExpiresAt, now)
+            )
+          )
+        )
+      )
+      .returning({ id: processingOutbox.id })
+      .then((rows) => rows[0]);
+    return result != null;
+  }
+
+  /**
+   * Selects recoverable processing intents for the given ledger.
+   * Returns intents that are pending or have an expired claim,
+   * whose next_available_at <= NOW, and whose revision is still the
+   * current pending revision for the source document.
+   * Ordered by next_available_at ASC, limited by `limit`.
+   */
+  async selectRecoverable(
+    ledgerId: string,
+    limit: number
+  ): Promise<readonly RecoverableProcessingIntentContract[]> {
+    const now = this.now();
+    const rows = await db
+      .select({
+        id: processingOutbox.id,
+        sourceDocumentId: sql<string>`${processingOutbox.payload}->>'sourceDocumentId'`,
+        revisionId: processingOutbox.revisionId,
+        requestedAt: sql<string>`COALESCE(${processingOutbox.payload}->>'requestedAt', ${processingOutbox.createdAt}::text)`,
+        attempt: processingOutbox.attemptNumber,
+        scheduleAttemptCount: processingOutbox.scheduleAttemptCount,
+        nextAvailableAt: processingOutbox.nextAvailableAt,
+      })
+      .from(processingOutbox)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`),
+          eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .where(
+        and(
+          eq(processingOutbox.ledgerId, ledgerId),
+          lte(processingOutbox.nextAvailableAt, now),
+          or(
+            eq(processingOutbox.status, "pending"),
+            and(
+              eq(processingOutbox.status, "claimed"),
+              lte(processingOutbox.claimExpiresAt, now)
+            )
+          )
+        )
+      )
+      .orderBy(asc(processingOutbox.nextAvailableAt))
+      .limit(limit);
+    return rows.map((row) => ({
+      id: row.id,
+      sourceDocumentId: row.sourceDocumentId,
+      revisionId: row.revisionId,
+      requestedAt: row.requestedAt,
+      attempt: row.attempt,
+      scheduleAttemptCount: row.scheduleAttemptCount,
+      nextAvailableAt: row.nextAvailableAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Marks an outbox intent as exhausted (failed with request_bound_retry_exhausted).
+   * Only applies if the revision is still the current pending revision for the source document.
+   */
+  async markExhausted(intentId: string): Promise<boolean> {
+    const now = this.now();
+    return db.transaction(async (tx) => {
+      const row = await tx
+        .select({
+          revisionId: processingOutbox.revisionId,
+          ledgerId: processingOutbox.ledgerId,
+          payloadSourceDocumentId: sql<string>`${processingOutbox.payload}->>'sourceDocumentId'`,
+          attemptNumber: processingOutbox.attemptNumber,
+        })
+        .from(processingOutbox)
+        .where(eq(processingOutbox.id, intentId))
+        .then((rows) => rows[0]);
+      if (row == null) return false;
+
+      const updated = await tx
+        .update(processingOutbox)
+        .set({
+          status: "failed",
+          completedAt: now,
+        })
+        .where(
+          and(
+            eq(processingOutbox.id, intentId),
+            or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed"))
+          )
+        )
+        .returning({ id: processingOutbox.id })
+        .then((rows) => rows[0]);
+      if (updated == null) return false;
+
+      // Only preserve failure code if this is still the current pending revision
+      await tx
+        .update(sourceDocumentRevisions)
+        .set({
+          outcome: "failed",
+          failureCode: "request_bound_retry_exhausted",
+          finalizedAt: now,
+        })
+        .where(
+          and(
+            eq(sourceDocumentRevisions.id, row.revisionId),
+            eq(sourceDocumentRevisions.outcome, "queued")
+          )
+        )
+        .then();
+
       return true;
     });
   }

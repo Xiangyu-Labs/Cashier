@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
@@ -20,6 +21,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
+import { scheduleProcessingRecovery } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
@@ -211,6 +213,9 @@ export async function getLedgerPageBootstrap(input: {
         ]
       : []),
   ]);
+
+  // Schedule recovery of any missed processing intents after the response is sent
+  after(() => scheduleProcessingRecovery(input.ledgerId));
 
   return {
     dehydratedState: dehydrate(queryClient),

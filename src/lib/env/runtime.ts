@@ -37,6 +37,8 @@ export interface RuntimeEnv {
   readonly maxImageQuality: number;
   readonly logLevel: string;
   readonly devAuthBypass: boolean;
+  readonly processingRecoveryMaxBatch: number;
+  readonly processingRecoveryCooldownSeconds: number;
 }
 
 function hasExplicitValue(name: string): boolean {
@@ -153,5 +155,11 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get devAuthBypass() {
     return getStartupEnvValue("DEV_AUTH_BYPASS") === "true";
+  },
+  get processingRecoveryMaxBatch() {
+    return getStartupEnvValue("PROCESSING_RECOVERY_MAX_BATCH");
+  },
+  get processingRecoveryCooldownSeconds() {
+    return getStartupEnvValue("PROCESSING_RECOVERY_COOLDOWN_SECONDS");
   },
 };

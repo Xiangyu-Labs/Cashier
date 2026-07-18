@@ -11,6 +11,7 @@ import {
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
+import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -30,13 +31,18 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       after(() => executeSingleProcessingIntent(intent));
     };
 
-    return retrySourceDocument(
+    const result = await retrySourceDocument(
       { ledgerId, sourceDocumentId },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
         scheduleProcessing,
       }
     );
+
+    // Also recover any missed processing intents
+    after(() => scheduleProcessingRecovery(ledgerId));
+
+    return result;
   }
 );
 
@@ -61,7 +67,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       after(() => executeSingleProcessingIntent(intent));
     };
 
-    return retrySourceDocument(
+    const result = await retrySourceDocument(
       {
         ledgerId,
         sourceDocumentId,
@@ -72,5 +78,10 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
         scheduleProcessing,
       }
     );
+
+    // Also recover any missed processing intents
+    after(() => scheduleProcessingRecovery(ledgerId));
+
+    return result;
   }
 );

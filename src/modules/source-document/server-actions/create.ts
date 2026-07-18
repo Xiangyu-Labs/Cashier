@@ -12,6 +12,7 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
+import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 
 /**
  * Create a new source document and trigger processing
@@ -28,7 +29,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
       after(() => executeSingleProcessingIntent(intent));
     };
 
-    return createAndQueueSourceDocument(
+    const result = await createAndQueueSourceDocument(
       { ledgerId, ...payload },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
@@ -37,5 +38,10 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
         scheduleProcessing,
       }
     );
+
+    // Also recover any missed processing intents
+    after(() => scheduleProcessingRecovery(ledgerId));
+
+    return result;
   }
 );

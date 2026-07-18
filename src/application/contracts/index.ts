@@ -591,6 +591,16 @@ export interface ProcessingPort {
   complete(result: ProcessingCompletionContract): Promise<boolean>;
 }
 
+export interface RecoverableProcessingIntentContract extends ProcessingIntentContract {
+  scheduleAttemptCount: number;
+  nextAvailableAt: string;
+}
+
+export interface ProcessingRecoveryConfig {
+  maxBatch: number;
+  cooldownSeconds: number;
+}
+
 export interface RevisionProcessingRequestContract {
   ledgerId: LedgerId;
   sourceDocumentId: SourceDocumentId;

@@ -197,6 +197,9 @@ export const processingOutbox = pgTable(
     claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+    scheduleAttemptCount: integer("schedule_attempt_count").notNull().default(0),
+    lastScheduledAt: timestamp("last_scheduled_at", { withTimezone: true }),
+    nextAvailableAt: requiredTimestamp("next_available_at").$defaultFn(() => new Date()),
   },
   (table) => [
     foreignKey({
@@ -208,6 +211,7 @@ export const processingOutbox = pgTable(
     uniqueIndex("uq_processing_outbox_revision_attempt").on(table.revisionId, table.attemptNumber),
     index("idx_processing_outbox_dispatch").on(table.status, table.availableAt),
     index("idx_processing_outbox_claim_expiry").on(table.status, table.claimExpiresAt),
+    index("idx_processing_outbox_recoverable").on(table.ledgerId, table.status, table.nextAvailableAt),
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
     check(
       "ck_processing_outbox_status",

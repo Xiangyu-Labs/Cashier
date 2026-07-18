@@ -30,6 +30,8 @@ export const ENV_DEFAULTS = {
   DEV_AUTH_BYPASS: "false",
   NEXT_PUBLIC_DEV_AUTH_BYPASS: "false",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+  PROCESSING_RECOVERY_MAX_BATCH: "5",
+  PROCESSING_RECOVERY_COOLDOWN_SECONDS: "60",
 } as const;
 
 function blankToUndefined(value: unknown): unknown {
@@ -158,6 +160,8 @@ const startupEnvFields = {
   DEV_AUTH_BYPASS: booleanStringWithDefault("DEV_AUTH_BYPASS"),
   NEXT_PUBLIC_DEV_AUTH_BYPASS: booleanStringWithDefault("NEXT_PUBLIC_DEV_AUTH_BYPASS"),
   NEXT_PUBLIC_APP_URL: urlWithDefault("NEXT_PUBLIC_APP_URL"),
+  PROCESSING_RECOVERY_MAX_BATCH: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_BATCH"),
+  PROCESSING_RECOVERY_COOLDOWN_SECONDS: positiveIntWithDefault("PROCESSING_RECOVERY_COOLDOWN_SECONDS"),
 } satisfies z.ZodRawShape;
 
 const startupEnvSchema = z.object(startupEnvFields);
