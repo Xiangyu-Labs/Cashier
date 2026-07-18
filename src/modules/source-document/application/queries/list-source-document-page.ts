@@ -16,6 +16,8 @@ export interface ListSourceDocumentsParams {
   cursor?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  minAmount?: number | undefined;
+  maxAmount?: number | undefined;
   includeLedgerEntries?: boolean;
 }
 
@@ -47,7 +49,7 @@ export async function querySourceDocumentPage(
   ledgerId: string,
   params: ListSourceDocumentsParams
 ): Promise<SourceDocumentPageDto> {
-  const { status, limit = 20, startDate, endDate, cursor, includeLedgerEntries } = params;
+  const { status, limit = 20, startDate, endDate, minAmount, maxAmount, cursor, includeLedgerEntries } = params;
 
   const statuses = status
     ?.split(",")
@@ -59,6 +61,8 @@ export async function querySourceDocumentPage(
     ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     ...(startDate !== undefined ? { startDate } : {}),
     ...(endDate !== undefined ? { endDate } : {}),
+    ...(minAmount !== undefined ? { minAmount } : {}),
+    ...(maxAmount !== undefined ? { maxAmount } : {}),
     ...(cursor !== undefined ? { cursor } : {}),
     limit,
   });
@@ -91,6 +95,8 @@ export async function listSourceDocuments(
     status: validated.status ?? null,
     startDate: validated.startDate ?? null,
     endDate: validated.endDate ?? null,
+    minAmount: validated.minAmount,
+    maxAmount: validated.maxAmount,
     cursor: validated.cursor ?? null,
     limit: validated.limit,
     includeLedgerEntries: validated.includeEntries,

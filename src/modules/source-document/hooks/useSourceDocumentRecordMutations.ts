@@ -3,7 +3,7 @@ import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys, invalidateSourceDocumentCompleted, invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
 import {
@@ -115,6 +115,16 @@ export function useSourceDocumentRecordMutations({
       }
 
       return { snapshots };
+    },
+    onSettledExtra: (queryClient) => {
+      if (ledgerId != null && ledgerId !== "") {
+        queryClient.invalidateQueries({
+          predicate: invalidateSourceDocumentCompleted(ledgerId),
+        });
+        queryClient.invalidateQueries({
+          predicate: invalidateSourceDocumentCounts(ledgerId),
+        });
+      }
     },
   });
 

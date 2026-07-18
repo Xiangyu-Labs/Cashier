@@ -83,7 +83,12 @@ export async function getLedgerPageBootstrap(input: {
           }),
           // First completed page (paginated)
           queryClient.prefetchInfiniteQuery({
-            queryKey: queryKeys.sourceDocumentCompletedPage(input.ledgerId),
+            queryKey: queryKeys.sourceDocumentCompletedPage(input.ledgerId, {
+              startDate: detailsState.startDateStr,
+              endDate: detailsState.endDateStr,
+              minAmount: input.advancedFilters?.minAmount,
+              maxAmount: input.advancedFilters?.maxAmount,
+            }),
             queryFn: ({ pageParam }) =>
               listSourceDocuments(input.ledgerId, {
                 status: "completed",

@@ -45,4 +45,15 @@ describe("grouping helpers", () => {
     });
     expect(calculatePendingTotal(pendingGroups)).toBe(4);
   });
+
+  it("groups candidate_pending documents into the failed/attention group", () => {
+    const groups = groupSourceDocumentsByStatus([
+      { id: "queued-1", status: "queued" as const, ledgerEntries: [] },
+      { id: "failed-1", status: "failed" as const },
+      { id: "candidate-1", status: "candidate_pending" as const, ledgerEntries: [] },
+    ]);
+
+    expect(groups.failed).toHaveLength(2); // failed-1 + candidate-1
+    expect(groups.failed.some((g) => g.sourceDocument.id === "candidate-1")).toBe(true);
+  });
 });

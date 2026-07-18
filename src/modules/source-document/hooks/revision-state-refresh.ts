@@ -55,8 +55,6 @@ export class RevisionStateRefreshCoordinator {
   private wakeQueued = false;
   private backoffStage = 0;
 
-  private consecutiveNoOpRefreshes = 0;
-
   constructor(private readonly environment: RevisionStateRefreshEnvironment | null) {}
 
   /**
@@ -64,7 +62,15 @@ export class RevisionStateRefreshCoordinator {
    */
   resetBackoff() {
     this.backoffStage = 0;
-    this.consecutiveNoOpRefreshes = 0;
+  }
+
+  /**
+   * Notify the coordinator that a new submission was made.
+   * Resets backoff and schedules an immediate refresh.
+   */
+  notifyNewSubmission() {
+    this.resetBackoff();
+    this.schedule();
   }
 
   subscribe(scope: string, refresh: Refresh): () => void {
@@ -86,6 +92,8 @@ export class RevisionStateRefreshCoordinator {
     if (this.environment?.isVisible() === true) {
       this.resetBackoff();
       this.queueImmediateRefresh();
+    } else {
+      this.clearScheduledRefresh();
     }
   };
 
@@ -196,7 +204,6 @@ export class RevisionStateRefreshCoordinator {
     this.clearScheduledRefresh();
     this.detachListeners();
     this.backoffStage = 0;
-    this.consecutiveNoOpRefreshes = 0;
   }
 }
 
@@ -204,6 +211,14 @@ const revisionStateRefreshCoordinator = new RevisionStateRefreshCoordinator(brow
 
 export function isRefreshableRevisionState(status: SourceDocumentStatusType): boolean {
   return status === "queued" || status === "processing";
+}
+
+/**
+ * Notify the refresh coordinator that a new source document has been submitted.
+ * This resets the backoff timer so the next polling cycle happens sooner.
+ */
+export function notifyNewSubmission() {
+  revisionStateRefreshCoordinator.notifyNewSubmission();
 }
 
 interface UseRevisionStateRefreshOptions {

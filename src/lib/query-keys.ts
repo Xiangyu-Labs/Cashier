@@ -24,8 +24,25 @@ export const queryKeys = {
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
   sourceDocumentAttention: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "attention"] as const,
-  sourceDocumentCompletedPage: (ledgerId: string) =>
-    ["sourceDocuments", ledgerId, "completed", "page"] as const,
+  sourceDocumentCompletedPage: (
+    ledgerId: string,
+    params?: {
+      startDate?: string | null | undefined;
+      endDate?: string | null | undefined;
+      minAmount?: number | null | undefined;
+      maxAmount?: number | null | undefined;
+    }
+  ) =>
+    [
+      "sourceDocuments",
+      ledgerId,
+      "completed",
+      "page",
+      params?.startDate ?? null,
+      params?.endDate ?? null,
+      params?.minAmount ?? null,
+      params?.maxAmount ?? null,
+    ] as const,
   sourceDocumentCounts: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "counts"] as const,
   sourceDocumentCollectionPrefix: (ledgerId: string) =>

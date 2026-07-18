@@ -175,6 +175,8 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
+  minAmount: optionalQueryNumberSchema,
+  maxAmount: optionalQueryNumberSchema,
   cursor: sourceDocumentCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   includeEntries: z.coerce.boolean().default(false),

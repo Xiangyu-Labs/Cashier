@@ -1,4 +1,4 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { createListSnapshots, type MutationSnapshot } from "@/lib/mutations/use-ledger-mutation";
 import { round } from "@/lib/money/decimal";
@@ -92,17 +92,20 @@ export function updateSourceDocumentCollectionLists(
     }
   );
 
-  // Update completed page caches (prefix match for all pages)
-  queryClient.setQueriesData<SourceDocumentCompletedPageDto>(
+  // Update completed page caches (InfiniteData shape — C3)
+  queryClient.setQueriesData<InfiniteData<SourceDocumentCompletedPageDto>>(
     { queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId) },
     (old) => {
       if (!old) return old;
-      const nextItems = old.items
-        .map((doc) => updater(doc))
-        .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null);
       return {
         ...old,
-        items: nextItems,
+        pages: old.pages.map((page) => ({
+          ...page,
+          items: page.items
+            .map((doc) => updater(doc))
+            .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null),
+        })),
+        pageParams: old.pageParams,
       };
     }
   );

@@ -51,6 +51,7 @@ export const sharedProjectTestConfig = {
 
 export const dbUnitFiles = [
   "tests/unit/application/adapters/postgres/api-rate-limit.test.ts",
+  "tests/unit/application/adapters/postgres/read-models.test.ts",
   "tests/unit/auth/application/queries/get-session-user.test.ts",
   "tests/unit/auth/application/use-cases/registration-policy.test.ts",
   "tests/unit/auth/repositories/otp-repository.test.ts",

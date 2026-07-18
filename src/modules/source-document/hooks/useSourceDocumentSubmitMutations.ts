@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   invalidateSourceDocumentAttention,
@@ -13,6 +14,7 @@ import {
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentAttentionDto, SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { fireAndForget } from "@/lib/safe-async";
 import { toast } from "sonner";
 import type {
@@ -23,6 +25,7 @@ import {
   SourceDocumentSubmissionUploadError,
   uploadSourceDocumentSubmissionImages,
 } from "./source-document-submission-upload";
+import { notifyNewSubmission } from "./revision-state-refresh";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -109,7 +112,7 @@ function insertPlaceholderIntoAttention(
     updatedAt: now,
     deletedAt: null,
     hasImages: false,
-    supportedActions: ["delete"],
+    supportedActions: [],
     errorCode: null,
     pendingRevisionId: null,
     ledgerEntries: [],
@@ -167,6 +170,9 @@ export function useSourceDocumentSubmitMutations({
     toast.error(fallbackMessage);
   };
 
+  // Ref to track the current placeholder's clientSubmissionId for use in onSettledExtra
+  const clientSubmissionIdRef = useRef<string | null>(null);
+
   const createMutation = useLedgerMutation<
     unknown,
     SourceDocumentSubmitPayload,
@@ -189,6 +195,8 @@ export function useSourceDocumentSubmitMutations({
       // Insert placeholder into attention cache
       const { clientSubmissionId, snapshots: attentionSnapshots } =
         insertPlaceholderIntoAttention(queryClient, ledgerId);
+
+      clientSubmissionIdRef.current = clientSubmissionId;
 
       return {
         previousAttention: attentionSnapshots,
@@ -213,7 +221,40 @@ export function useSourceDocumentSubmitMutations({
         );
       }
     },
-    onSettledExtra: (queryClient) => {
+    onSettledExtra: (queryClient, _variables, data, error) => {
+      const submissionId = clientSubmissionIdRef.current;
+      clientSubmissionIdRef.current = null;
+
+      if (error != null && submissionId != null) {
+        // Error path: remove placeholder immediately
+        removePlaceholderFromAttention(queryClient, ledgerId, submissionId);
+      } else if (!error && data != null && submissionId != null) {
+        // Success path: replace placeholder id with server-returned id
+        const response = data as CreateSourceDocumentResponseDto;
+        if (response.sourceDocumentId != null) {
+          queryClient.setQueryData<SourceDocumentAttentionDto>(
+            queryKeys.sourceDocumentAttention(ledgerId),
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                items: old.items.map((item) =>
+                  item.id === submissionId
+                    ? { ...item, id: response.sourceDocumentId }
+                    : item
+                ),
+              };
+            }
+          );
+        } else {
+          // No returned sourceDocumentId; remove placeholder
+          removePlaceholderFromAttention(queryClient, ledgerId, submissionId);
+        }
+
+        // Notify the refresh coordinator so it resets backoff for faster polling
+        notifyNewSubmission();
+      }
+
       invalidateSubmitQueries(queryClient, ledgerId);
     },
     ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),

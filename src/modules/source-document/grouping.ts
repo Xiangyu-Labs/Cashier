@@ -52,6 +52,9 @@ export function groupSourceDocumentsByStatus<
       case "failed":
         groups.failed.push(group);
         break;
+      case "candidate_pending":
+        groups.failed.push(group);
+        break;
       case "completed":
         if (includeCompleted) {
           groups.completed.push(group);

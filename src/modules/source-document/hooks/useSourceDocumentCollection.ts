@@ -46,6 +46,22 @@ function groupAndSummarize(docs: SourceDocumentListItemDto[]): {
   return { groups, stats };
 }
 
+/**
+ * Deduplicate a merged list of source documents by id.
+ * Items earlier in the array (attention items) take priority.
+ */
+function deduplicate(docs: SourceDocumentListItemDto[]): SourceDocumentListItemDto[] {
+  const seen = new Set<string>();
+  const result: SourceDocumentListItemDto[] = [];
+  for (const doc of docs) {
+    if (!seen.has(doc.id)) {
+      seen.add(doc.id);
+      result.push(doc);
+    }
+  }
+  return result;
+}
+
 export function useSourceDocumentCollection(
   ledgerId: string,
   options: UseSourceDocumentCollectionOptions = {}
@@ -55,6 +71,14 @@ export function useSourceDocumentCollection(
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
+
+  // Build completed page key that includes filter params (C1)
+  const completedPageKey = queryKeys.sourceDocumentCompletedPage(ledgerId, {
+    startDate,
+    endDate,
+    minAmount,
+    maxAmount,
+  });
 
   // 1. Attention query — bounded, independent of date/amount filters
   const {
@@ -75,7 +99,7 @@ export function useSourceDocumentCollection(
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery({
-    queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId),
+    queryKey: completedPageKey,
     queryFn: ({ pageParam }) =>
       getSourceDocumentsAction(ledgerId, {
         status: "completed",
@@ -93,12 +117,12 @@ export function useSourceDocumentCollection(
     refetchOnReconnect: false,
   });
 
-  // 3. Merge: attention items first (status priority), then completed items
+  // 3. Merge: attention items first (status priority), then completed items, deduplicated (I6)
   const rawData = useMemo(() => {
     const attentionItems = attentionData?.items ?? [];
     const completedPages = completedData?.pages ?? [];
     const completedItems = completedPages.flatMap((page) => page.items);
-    return [...attentionItems, ...completedItems];
+    return deduplicate([...attentionItems, ...completedItems]);
   }, [attentionData, completedData]);
 
   // 4. Check if there are refreshable states among attention items
@@ -107,7 +131,7 @@ export function useSourceDocumentCollection(
     isRefreshableRevisionState(doc.status)
   );
 
-  // 5. Refresh coordinator — uses backoff strategy
+  // 5. Refresh coordinator — uses backoff strategy (I9: add counts invalidation)
   const refreshAll = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({
@@ -115,6 +139,9 @@ export function useSourceDocumentCollection(
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.sourceDocumentCounts(ledgerId),
       }),
     ]);
   }, [queryClient, ledgerId]);
