@@ -142,10 +142,10 @@ async function verify(pool) {
     if (row.key != null && row.token_prefix != null && row.token_suffix != null) {
       const { prefix, suffix } = prefixSuffix(row.key);
       if (prefix !== row.token_prefix) {
-        issues.push(`prefix mismatch: expected "${prefix}", got "${row.token_prefix}"`);
+        issues.push("prefix mismatch");
       }
       if (suffix !== row.token_suffix) {
-        issues.push(`suffix mismatch: expected "${suffix}", got "${row.token_suffix}"`);
+        issues.push("suffix mismatch");
       }
     }
 
@@ -183,59 +183,74 @@ async function verify(pool) {
 async function clearPlaintext(pool) {
   console.log("[clear-plaintext] Verifying all active credentials before clearing plaintext...");
 
-  // First verify all active rows have valid hash/prefix/suffix
-  const { rows: verifyRows } = await pool.query(
-    `SELECT id, key, token_hash, token_prefix, token_suffix
-     FROM service_credentials
-     WHERE deleted_at IS NULL
-     ORDER BY created_at ASC`
-  );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
-  for (const row of verifyRows) {
-    if (row.token_hash == null) {
-      console.error(`[clear-plaintext] REFUSING: credential ${row.id} has no token_hash. Run backfill first.`);
-      process.exit(1);
-    }
-    if (row.token_prefix == null || row.token_suffix == null) {
-      console.error(`[clear-plaintext] REFUSING: credential ${row.id} is missing prefix or suffix. Run backfill first.`);
-      process.exit(1);
-    }
-    // If key exists, verify hash matches
-    if (row.key != null) {
-      const expectedHash = computeHash(row.key);
-      if (expectedHash !== row.token_hash) {
-        console.error(`[clear-plaintext] REFUSING: credential ${row.id} hash mismatch. Run backfill first.`);
+    // First verify all active rows have valid hash/prefix/suffix
+    const { rows: verifyRows } = await client.query(
+      `SELECT id, key, token_hash, token_prefix, token_suffix
+       FROM service_credentials
+       WHERE deleted_at IS NULL
+       ORDER BY created_at ASC`
+    );
+
+    for (const row of verifyRows) {
+      if (row.token_hash == null) {
+        console.error(`[clear-plaintext] REFUSING: credential ${row.id} has no token_hash. Run backfill first.`);
+        await client.query("ROLLBACK");
         process.exit(1);
       }
+      if (row.token_prefix == null || row.token_suffix == null) {
+        console.error(`[clear-plaintext] REFUSING: credential ${row.id} is missing prefix or suffix. Run backfill first.`);
+        await client.query("ROLLBACK");
+        process.exit(1);
+      }
+      // If key exists, verify hash matches
+      if (row.key != null) {
+        const expectedHash = computeHash(row.key);
+        if (expectedHash !== row.token_hash) {
+          console.error(`[clear-plaintext] REFUSING: credential ${row.id} hash mismatch. Run backfill first.`);
+          await client.query("ROLLBACK");
+          process.exit(1);
+        }
+      }
     }
+
+    console.log("[clear-plaintext] All active credentials validated. Clearing plaintext key column...");
+
+    // Clear key on active rows with valid hash
+    const activeResult = await client.query(
+      `UPDATE service_credentials
+       SET key = NULL
+       WHERE key IS NOT NULL
+         AND token_hash IS NOT NULL
+         AND deleted_at IS NULL`
+    );
+    const activeCleared = activeResult.rowCount ?? 0;
+
+    // Clear key on all deleted rows unconditionally
+    const deletedResult = await client.query(
+      `UPDATE service_credentials
+       SET key = NULL
+       WHERE key IS NOT NULL
+         AND deleted_at IS NOT NULL`
+    );
+    const deletedCleared = deletedResult.rowCount ?? 0;
+
+    await client.query("COMMIT");
+
+    const totalCleared = activeCleared + deletedCleared;
+    const parts = [];
+    if (activeCleared > 0) parts.push(`${activeCleared} active`);
+    if (deletedCleared > 0) parts.push(`${deletedCleared} deleted`);
+    console.log(`[clear-plaintext] Cleared ${parts.join(" + ")} credential(s) (${totalCleared} total).`);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  console.log("[clear-plaintext] All active credentials validated. Clearing plaintext key column...");
-
-  // Clear key on active rows with valid hash
-  const activeResult = await pool.query(
-    `UPDATE service_credentials
-     SET key = NULL
-     WHERE key IS NOT NULL
-       AND token_hash IS NOT NULL
-       AND deleted_at IS NULL`
-  );
-  const activeCleared = activeResult.rowCount ?? 0;
-
-  // Clear key on all deleted rows unconditionally
-  const deletedResult = await pool.query(
-    `UPDATE service_credentials
-     SET key = NULL
-     WHERE key IS NOT NULL
-       AND deleted_at IS NOT NULL`
-  );
-  const deletedCleared = deletedResult.rowCount ?? 0;
-
-  const totalCleared = activeCleared + deletedCleared;
-  const parts = [];
-  if (activeCleared > 0) parts.push(`${activeCleared} active`);
-  if (deletedCleared > 0) parts.push(`${deletedCleared} deleted`);
-  console.log(`[clear-plaintext] Cleared ${parts.join(" + ")} credential(s) (${totalCleared} total).`);
 }
 
 async function main() {
