@@ -244,9 +244,10 @@ export function invalidateSourceDocumentAttention(ledgerId: string): QueryPredic
 
 /**
  * Helper to match all completed page queries for a ledger.
+ * Uses a short 4-element prefix so it matches any completed page regardless of filter params.
  */
 export function invalidateSourceDocumentCompleted(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(queryKeys.sourceDocumentCompletedPage(ledgerId));
+  return createPrefixPredicate(["sourceDocuments", ledgerId, "completed", "page"] as const);
 }
 
 /**

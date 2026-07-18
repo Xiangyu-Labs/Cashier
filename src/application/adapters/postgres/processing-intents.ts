@@ -357,7 +357,13 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .where(
           and(
             eq(processingOutbox.id, intentId),
-            eq(processingOutbox.status, "pending")
+            or(
+              eq(processingOutbox.status, "pending"),
+              and(
+                eq(processingOutbox.status, "claimed"),
+                lte(processingOutbox.claimExpiresAt, now)
+              )
+            )
           )
         )
         .returning({ id: processingOutbox.id })
@@ -375,7 +381,10 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .where(
           and(
             eq(sourceDocumentRevisions.id, row.revisionId),
-            eq(sourceDocumentRevisions.outcome, "queued")
+            or(
+              eq(sourceDocumentRevisions.outcome, "queued"),
+              eq(sourceDocumentRevisions.outcome, "processing")
+            )
           )
         )
         .then();

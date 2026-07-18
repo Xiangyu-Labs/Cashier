@@ -7,6 +7,7 @@ import type {
   SourceDocumentStatusType,
 } from "@/modules/source-document/contracts";
 import {
+  PROCESSING_FAILURE_CODES,
   supportedSourceDocumentActions,
   type ApplicationErrorCode,
   type RevisionOutcome,
@@ -303,9 +304,16 @@ function sanitizedErrorCode(
     "STORAGE_UNAVAILABLE",
     "INTERNAL",
   ];
-  return allowed.includes(failureCode as ApplicationErrorCode)
-    ? (failureCode as ApplicationErrorCode)
-    : "PROCESSING_UNAVAILABLE";
+  if (allowed.includes(failureCode as ApplicationErrorCode)) {
+    return failureCode as ApplicationErrorCode;
+  }
+  if (
+    failureCode != null &&
+    (PROCESSING_FAILURE_CODES as readonly string[]).includes(failureCode)
+  ) {
+    return failureCode as ApplicationErrorCode;
+  }
+  return "PROCESSING_UNAVAILABLE";
 }
 
 async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: boolean) {

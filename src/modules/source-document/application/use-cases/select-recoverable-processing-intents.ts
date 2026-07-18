@@ -51,12 +51,18 @@ export async function selectRecoverableProcessingIntents(
   );
 
   // Mark intents as exhausted if they've reached the maxBatch limit
-  // after this scheduling cycle (scheduleRecovery incremented the count)
+  // after this scheduling cycle (scheduleRecovery incremented the count).
+  // Exclude exhausted intents from the returned array so executors don't
+  // attempt to claim them (they've already been marked as failed).
+  const result: RecoverableProcessingIntentContract[] = [];
+
   for (const candidate of scheduled) {
     if (candidate.scheduleAttemptCount + 1 >= config.maxBatch) {
       await intentsAdapter.markExhausted(candidate.id);
+    } else {
+      result.push(candidate);
     }
   }
 
-  return scheduled;
+  return result;
 }

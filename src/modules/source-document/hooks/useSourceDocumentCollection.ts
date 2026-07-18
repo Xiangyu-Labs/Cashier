@@ -138,7 +138,7 @@ export function useSourceDocumentCollection(
         queryKey: queryKeys.sourceDocumentAttention(ledgerId),
       }),
       queryClient.invalidateQueries({
-        queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId),
+        queryKey: ["sourceDocuments", ledgerId, "completed", "page"],
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.sourceDocumentCounts(ledgerId),

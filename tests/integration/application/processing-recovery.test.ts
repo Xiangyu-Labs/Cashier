@@ -193,8 +193,8 @@ describe("Processing Recovery", () => {
 
     const recoverable = await selectRecoverableProcessingIntents(ledgerId, config, adapter);
 
-    // The intent should still be recoverable (scheduleAttemptCount < maxBatch)
-    expect(recoverable).toHaveLength(1);
+    // The intent reached maxBatch — it is exhausted and should not be returned for execution
+    expect(recoverable).toHaveLength(0);
 
     // After recovery increments to maxBatch and markExhausted fires,
     // the outbox should be marked as failed

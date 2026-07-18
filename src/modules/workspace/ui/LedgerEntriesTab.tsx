@@ -13,6 +13,9 @@ import {
   invalidateSourceDocumentAttention,
   invalidateSourceDocumentCompleted,
   invalidateSourceDocumentCounts,
+  invalidateSourceDocuments,
+  invalidateLedgerEntries,
+  invalidateEntryCategories,
   queryKeys,
 } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -24,6 +27,7 @@ import { useGroupedEntries, useLedgerEntriesMutations } from "@/modules/ledger/h
 import { useBatchSourceDocumentActions,
   useSourceDocumentCollection,
 } from "@/modules/source-document/hooks";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   retrySourceDocumentAction,
   createManualCorrectionAction,
@@ -64,6 +68,7 @@ export function LedgerEntriesTab({
   const tDetails = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
+  const tActions = useTranslations("CandidateAction");
   const locale = useLocale();
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
@@ -98,6 +103,55 @@ export function LedgerEntriesTab({
   } = useLedgerEntriesTabState();
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
+
+  // Mutations for stream card actions with proper cache invalidation, toast, and loading state
+  const streamInvalidationPredicates = [
+    invalidateSourceDocuments(ledgerId),
+    invalidateLedgerEntries(ledgerId),
+    invalidateLedgerStats(ledgerId),
+    invalidateEntryCategories(ledgerId),
+    invalidateSourceDocumentAttention(ledgerId),
+    invalidateSourceDocumentCompleted(ledgerId),
+    invalidateSourceDocumentCounts(ledgerId),
+  ];
+
+  const retryMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+    mutationFn: async (doc) => {
+      await retrySourceDocumentAction(ledgerId, doc.id);
+    },
+    successMessage: null,
+    errorMessage: null,
+    invalidatePredicates: streamInvalidationPredicates,
+  });
+
+  const manualCorrectionMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+    mutationFn: async (doc) => {
+      await createManualCorrectionAction(ledgerId, doc.id);
+    },
+    successMessage: tActions("manualCorrectionSuccess"),
+    errorMessage: tActions("manualCorrectionError"),
+    invalidatePredicates: streamInvalidationPredicates,
+  });
+
+  const acceptCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+    mutationFn: async (doc) => {
+      if (doc.pendingRevisionId == null) throw new Error("No pending revision");
+      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+    },
+    successMessage: tActions("acceptSuccess"),
+    errorMessage: tActions("acceptError"),
+    invalidatePredicates: streamInvalidationPredicates,
+  });
+
+  const abandonCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+    mutationFn: async (doc) => {
+      if (doc.pendingRevisionId == null) throw new Error("No pending revision");
+      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+    },
+    successMessage: tActions("abandonSuccess"),
+    errorMessage: tActions("abandonError"),
+    invalidatePredicates: streamInvalidationPredicates,
+  });
 
   // Use the new collection hook with attention + paginated completed
   const {
@@ -176,33 +230,32 @@ export function LedgerEntriesTab({
 
   const handleDirectRetry = useCallback(
     async (doc: SourceDocument) => {
-      await retrySourceDocumentAction(ledgerId, doc.id);
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocumentAttention(ledgerId) });
+      await retryMutation.mutateAsync(doc);
     },
-    [ledgerId, queryClient]
+    [retryMutation]
   );
 
   const handleManualCorrection = useCallback(
     async (doc: SourceDocument) => {
-      await createManualCorrectionAction(ledgerId, doc.id);
+      await manualCorrectionMutation.mutateAsync(doc);
     },
-    [ledgerId]
+    [manualCorrectionMutation]
   );
 
   const handleAcceptCandidate = useCallback(
     async (doc: SourceDocument) => {
       if (doc.pendingRevisionId == null) return;
-      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+      await acceptCandidateMutation.mutateAsync(doc);
     },
-    [ledgerId]
+    [acceptCandidateMutation]
   );
 
   const handleAbandonCandidate = useCallback(
     async (doc: SourceDocument) => {
       if (doc.pendingRevisionId == null) return;
-      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+      await abandonCandidateMutation.mutateAsync(doc);
     },
-    [ledgerId]
+    [abandonCandidateMutation]
   );
 
   const handleDeleteConfirmAction = useCallback(() => {

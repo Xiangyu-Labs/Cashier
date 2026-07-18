@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, max } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, max } from "drizzle-orm";
 import type { LedgerProjectionEntryContract, LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -260,15 +260,24 @@ export async function acceptCandidateRevision(
       )
       ;
 
-    // Update document to point activeRevisionId to the candidate and clear pending
-    await tx.update(sourceDocuments)
+    // Update document to point activeRevisionId to the candidate and clear pending.
+    // Re-verify CAS conditions at write time to prevent race with concurrent accept/abandon.
+    const updated = await tx.update(sourceDocuments)
       .set({
         activeRevisionId: candidateRevisionId,
         pendingRevisionId: null,
         updatedAt: now,
       })
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      ;
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, candidateRevisionId),
+          isNotNull(sourceDocuments.activeRevisionId)
+        )
+      )
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (updated == null) return false;
     return true;
   });
 }
@@ -325,15 +334,29 @@ export async function abandonCandidateRevision(
     if (revision == null) return false;
 
     const now = new Date();
-    await tx.update(sourceDocumentRevisions)
+    const revisionUpdated = await tx.update(sourceDocumentRevisions)
       .set({ outcome: "abandoned", finalizedAt: now })
-      .where(eq(sourceDocumentRevisions.id, candidateRevisionId))
-      ;
-    await tx.update(sourceDocuments)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.id, candidateRevisionId),
+          eq(sourceDocumentRevisions.outcome, "completed")
+        )
+      )
+      .returning({ id: sourceDocumentRevisions.id })
+      .then((rows) => rows[0]);
+    if (revisionUpdated == null) return false;
+
+    const documentUpdated = await tx.update(sourceDocuments)
       .set({ pendingRevisionId: null, updatedAt: now })
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      ;
-    return true;
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, candidateRevisionId)
+        )
+      )
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (documentUpdated == null) return false;    return true;
   });
 }
 
