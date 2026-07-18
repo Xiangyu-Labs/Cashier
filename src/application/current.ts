@@ -24,7 +24,10 @@ import {
 } from "@/application/adapters/postgres/mutate-ledger-entries";
 import { deleteLedgerEntry } from "@/application/adapters/postgres/delete-ledger-entry";
 import { resendEmailAdapter } from "@/application/adapters/email/resend";
-import { triggerRevisionProcessingIntent } from "@/application/adapters/in-process";
+import {
+  executeSingleProcessingIntent,
+  triggerRevisionProcessingIntent,
+} from "@/application/adapters/in-process";
 import { storedFileAdapter } from "@/application/adapters/storage";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
 import { getLedgerEntryDetail } from "@/application/adapters/postgres/ledger-reads/get-ledger-entry-detail";
@@ -81,6 +84,7 @@ export const currentApplication = {
     getAccessContext: getTargetSourceDocumentAccessContext,
     list: listTargetSourceDocuments,
   },
+  executeSingleProcessingIntent,
   triggerRevisionProcessingIntent,
   userAccounts: postgresUserAccountAdapter,
 } as const;
