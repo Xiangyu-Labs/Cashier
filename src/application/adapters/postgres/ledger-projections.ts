@@ -559,12 +559,9 @@ export async function ensureTargetLedgerProjection(
     // Lock the ledger row to serialise with concurrent main-currency changes.
     await lockLedgerForUpdate(tx, ledgerId);
 
-    const document = await tx
-      .select()
-      .from(sourceDocuments)
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      .then((rows) => rows[0]);
-    if (document == null) throw new NotFoundError("Source document");
+    // Also lock the source document row to serialise with concurrent soft-delete.
+    // Lock order: ledger → source document (prevents deadlocks).
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
     if (document.activeRevisionId != null) return document.activeRevisionId;
     if (document.status !== "completed") {
       throw new ConflictError("Source document has no completed active projection");
@@ -637,12 +634,16 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       // main-currency change from interleaving with entry creation.
       await lockLedgerForUpdate(tx, input.ledgerId);
 
-      const document = await tx
-        .select()
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (document == null || document.pendingRevisionId !== input.revisionId) return false;
+      // Also lock the source document row to serialise with concurrent soft-delete.
+      // Lock order: ledger → source document (prevents deadlocks).
+      let document: typeof sourceDocuments.$inferSelect;
+      try {
+        document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+      if (document.pendingRevisionId !== input.revisionId) return false;
       const revision = await tx
         .select()
         .from(sourceDocumentRevisions)

@@ -548,4 +548,74 @@ describe("candidate concurrency invariants", () => {
       });
     }
   });
+
+  it("concurrent Abandon and Retry produce a single consistent outcome", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-abandon-retry");
+
+    for (let i = 0; i < 5; i++) {
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+        await setupDocumentWithCandidate(db, ledgerId);
+
+      // Run abandon and retry (createPendingRevisionInTransaction) concurrently.
+      // Both acquire the source-document lock, so they serialise.
+      await Promise.allSettled([
+        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        db.transaction(async (tx) => {
+          return createPendingRevisionInTransaction(tx, {
+            ledgerId,
+            sourceDocumentId,
+            submittedText: "Retry attempt",
+          });
+        }),
+      ]);
+
+      // Verify consistent state.
+      const doc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      });
+      if (!doc) throw new Error("Document not found after concurrent abandon+retry");
+
+      // Invariant: activeRevisionId must always remain the original (neither operation changes it).
+      expect(doc.activeRevisionId).toBe(originalActiveRevisionId);
+
+      // Invariant: original active entries must always be preserved.
+      const oldEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          eq(ledgerEntries.sourceDocumentRevisionId, originalActiveRevisionId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+      expect(oldEntries).toHaveLength(1);
+
+      // Invariant: candidate revision must be abandoned regardless of which operation won.
+      const candidateRev = await db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, candidateRevisionId),
+      });
+      expect(candidateRev?.outcome).toBe("abandoned");
+
+      // If the retry succeeded (abandon cleared the pending first), the new pending
+      // must point to a fresh queued revision, not the old candidate.
+      if (doc.pendingRevisionId != null) {
+        expect(doc.pendingRevisionId).not.toBe(candidateRevisionId);
+        const newPending = await db.query.sourceDocumentRevisions.findFirst({
+          where: eq(sourceDocumentRevisions.id, doc.pendingRevisionId),
+        });
+        expect(newPending?.outcome).toBe("queued");
+      }
+
+      // Clean up for next iteration
+      await db.transaction(async (tx) => {
+        await tx
+          .update(sourceDocuments)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(sourceDocuments.id, sourceDocumentId));
+        await tx
+          .update(ledgerEntries)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(ledgerEntries.ledgerId, ledgerId));
+      });
+    }
+  });
 });

@@ -159,8 +159,33 @@ describe("settings concurrency invariants", () => {
       // In either case, the ledger row is intact and readable.
       expect(ledger).not.toBeNull();
 
-      // Clean up for next iteration
+      // Verify main-currency/entry consistency invariant.
       const [settingsResult, createResult] = results;
+      const mainCurrency = ledger?.metadata?.settings?.mainCurrency;
+
+      if (createResult.status === "fulfilled") {
+        // Entries were created — either settings ran first (changed currency) and entries
+        // followed, or entries ran first and settings was rejected.
+        if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+          // Settings succeeded: must have run before entries, so mainCurrency is "USD"
+          expect(mainCurrency).toBe("USD");
+          // Entries use the currency they were created with (CNY), which may differ from
+          // the new main currency — this is an expected edge-case when settings changes
+          // before the first entry is created.
+          expect(activeEntries.length).toBeGreaterThan(0);
+          expect(activeEntries.every((e) => e.currency === "CNY")).toBe(true);
+        } else {
+          // Settings was rejected: entries existed first, so mainCurrency must be unchanged.
+          expect(mainCurrency).toBeUndefined();
+          expect(activeEntries.length).toBeGreaterThan(0);
+        }
+      } else if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+        // Only settings succeeded, no entries created — mainCurrency is "USD".
+        expect(mainCurrency).toBe("USD");
+        expect(activeEntries).toHaveLength(0);
+      }
+
+      // Clean up for next iteration
       if (createResult.status === "fulfilled") {
         await db.transaction(async (tx) => {
           await tx
@@ -232,10 +257,37 @@ describe("settings concurrency invariants", () => {
       const ledger = await db.query.ledgers.findFirst({
         where: eq(ledgers.id, ledgerId),
       });
+      const activeEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.ledgerId, ledgerId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
       expect(ledger).not.toBeNull();
 
-      // Clean up
+      // Verify main-currency/entry consistency invariant.
       const [settingsResult, activateResult] = results;
+      const mainCurrency = ledger?.metadata?.settings?.mainCurrency;
+
+      if (activateResult.status === "fulfilled" && activateResult.value === true) {
+        // activateRevision succeeded — entries were created.
+        if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+          // Settings succeeded: must have run before activate, so mainCurrency is "USD"
+          expect(mainCurrency).toBe("USD");
+          expect(activeEntries.length).toBeGreaterThan(0);
+          expect(activeEntries.every((e) => e.currency === "CNY")).toBe(true);
+        } else {
+          // Settings was rejected: entries existed first, mainCurrency unchanged.
+          expect(mainCurrency).toBeUndefined();
+          expect(activeEntries.length).toBeGreaterThan(0);
+        }
+      } else if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+        // Only settings succeeded — no entries created.
+        expect(mainCurrency).toBe("USD");
+        expect(activeEntries).toHaveLength(0);
+      }
+
+      // Clean up
       if (activateResult.status === "fulfilled" && activateResult.value === true) {
         await db.transaction(async (tx) => {
           await tx
