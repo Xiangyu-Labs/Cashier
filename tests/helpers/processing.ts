@@ -1,21 +1,21 @@
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/persistence";
+import { processingOutbox } from "@/persistence";
 import { eq, or } from "drizzle-orm";
 
 /**
  * Polls for all pending task runs to complete.
  * Tasks run asynchronously in-process.
- * We wait for the database to reflect completion.
+ * We wait for the processing outbox to have no pending/claimed rows.
  */
 export async function processAllPendingTasks(timeoutMs: number = 10000) {
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
-    const pendingDocs = await db.query.sourceDocuments.findMany({
-      where: or(eq(sourceDocuments.status, "queued"), eq(sourceDocuments.status, "processing")),
+    const pendingJobs = await db.query.processingOutbox.findMany({
+      where: or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed")),
     });
 
-    if (pendingDocs.length === 0) {
+    if (pendingJobs.length === 0) {
       return;
     }
 

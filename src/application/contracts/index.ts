@@ -53,9 +53,7 @@ export function supportedSourceDocumentActions(input: {
   }
 
   if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
-    return input.activeRevisionId == null
-      ? ["retry", "edit_retry", "manual_correction", "delete"]
-      : ["retry", "edit_retry", "manual_correction", "delete"];
+    return ["retry", "edit_retry", "manual_correction", "delete"];
   }
 
   return ["retry", "edit_retry", "delete"];

@@ -1,4 +1,4 @@
-import { eq, isNull, and } from "drizzle-orm";
+import { asc, eq, isNull, and } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSourceDocumentAction,
@@ -109,5 +109,89 @@ describe("source-document retry action", () => {
         images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
       })
     ).rejects.toThrow("Images must be finalized");
+  });
+
+  it("retry succeeds despite a previous failed revision, preserving the original active revision", async () => {
+    const db = getTestDb();
+
+    // Step 1: Create a document and process it successfully
+    const created = await createSourceDocumentAction(ledgerId, { text: "午餐 25元" });
+    await processAllPendingTasks();
+
+    const before = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+    expect(before?.activeRevisionId).not.toBeNull();
+    const originalActiveRevisionId = before!.activeRevisionId;
+
+    // Step 2: Retry with a broken AI mock that causes processing failure
+    vi.mocked(getOpenAIClient).mockReturnValue({
+      generateContent: vi.fn().mockRejectedValue(new Error("AI service failure")),
+    } as unknown as ReturnType<typeof getOpenAIClient>);
+
+    await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+      text: "修改 50元",
+    });
+    await processAllPendingTasks();
+
+    // Step 3: Verify the previous active revision is preserved despite the failed retry
+    const afterFail = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+    expect(afterFail?.activeRevisionId).toBe(originalActiveRevisionId);
+
+    const revisions1 = await db.query.sourceDocumentRevisions.findMany({
+      where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
+      orderBy: asc(sourceDocumentRevisions.revisionNumber),
+    });
+    expect(revisions1).toHaveLength(2);
+    expect(revisions1[0]?.outcome).toBe("completed");
+    expect(revisions1[1]?.outcome).toBe("failed");
+
+    // Step 4: Retry a second time with a working AI mock
+    vi.mocked(getOpenAIClient).mockReturnValue(
+      createMultiStageMock({
+        title: "晚餐费用",
+        entries: [
+          {
+            item_name: "晚餐",
+            amount: 50,
+            currency: "CNY",
+            category_index: 1,
+            entry_date: "2026-07-15",
+          },
+        ],
+      }) as unknown as ReturnType<typeof getOpenAIClient>
+    );
+
+    const retried = await retrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
+      text: "晚餐 50元",
+    });
+    expect(retried.status).toBe("queued");
+    await processAllPendingTasks();
+
+    // Step 5: Verify final state — 3 revisions, latest completed, no pending
+    const afterRetry = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, created.sourceDocumentId),
+    });
+    expect(afterRetry?.pendingRevisionId).toBeNull();
+    expect(afterRetry?.activeRevisionId).not.toBe(originalActiveRevisionId);
+
+    const revisions2 = await db.query.sourceDocumentRevisions.findMany({
+      where: eq(sourceDocumentRevisions.sourceDocumentId, created.sourceDocumentId),
+      orderBy: asc(sourceDocumentRevisions.revisionNumber),
+    });
+    expect(revisions2).toHaveLength(3);
+    expect(revisions2[0]?.outcome).toBe("completed"); // original
+    expect(revisions2[1]?.outcome).toBe("failed"); // failed retry
+    expect(revisions2[2]?.outcome).toBe("completed"); // successful retry
+
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.sourceDocumentId, created.sourceDocumentId),
+        isNull(ledgerEntries.deletedAt)
+      ),
+    });
+    expect(activeEntries).toMatchObject([{ itemName: "晚餐", amount: "50.00" }]);
   });
 });
