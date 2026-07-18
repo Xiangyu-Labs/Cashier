@@ -1,12 +1,25 @@
 # Application Contract Handoff
 
 Date: 2026-07-17
+Updated: 2026-07-18
 
 Frozen baseline: `cashier-application-contracts@1.0.0`.
 
-This handoff is the only application-layer baseline for later Neon, R2, Queue/Worker, and
+## Follow-up: Vercel-compatible processing (2026-07-18)
+
+The execution boundary changed from Queue/Worker to Next.js `after()` for request-bound
+processing. The global drain loop was removed in favor of scheduling via `after()` on the same
+request. See `docs/formless/plans/2026-07-18-vercel-compatible-ai-processing.md` for the full plan.
+
+- Queue/Worker replacement adapters are **deferred** pending measured Vercel `maxDuration` limits.
+- The `after()` seam is the current accepted schedule boundary; it requires no external queue.
+- A startup dispatcher and `MAX_TASK_WORKER` are no longer needed.
+- Retry-after-failure tests verify the new scheduling path.
+
+This handoff is the only application-layer baseline for later Neon, R2, and
 Vercel work. The current implementation remains Docker, SQLite, local storage, and in-process
-target processing. No managed provider was provisioned, connected, or written by this change.
+target processing -- now scheduled via Next.js after() rather than a global drain loop.
+No managed provider was provisioned, connected, or written by this change.
 
 ## Versioned Contracts
 
@@ -59,7 +72,7 @@ processing. Their automated suites are the reference behavior, not their provide
 | ------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Neon         | revision, ledger projection/read, settings, authentication, service credential, idempotency | revision state, authorization, bookkeeping, concurrent idempotency, error sanitation, bounded reads                          |
 | R2           | stored file, upload plan, upload target, finalization, authorized read                      | upload/finalization, limits/expiry, ownership denial, ordered identity, authorized file read, error sanitation               |
-| Queue/Worker | processing intent, dispatch, claim, retry classification, completion, deduplication         | restart recovery, duplicate/stale dispatch, lease/claim, terminal outcome, active-result preservation, sanitized diagnostics |
+| Queue/Worker [DEFERRED] | processing intent, dispatch, claim, retry classification, completion, deduplication         | restart recovery, duplicate/stale dispatch, lease/claim, terminal outcome, active-result preservation, sanitized diagnostics |
 | Vercel       | host the existing Next.js upper layer and compose replacement adapters                      | API v1 fixture, retained behavior suites, bounded/sensitive responses, authentication and runtime startup checks             |
 
 Vercel does not own a business port and must not alter upper business contracts. If any provider
