@@ -7,7 +7,13 @@ export async function listServiceCredentials(
   credentials: ServiceCredentialPort = currentApplication.serviceCredentials
 ): Promise<ServiceCredentialDto[]> {
   return (await credentials.list(ledgerId)).map((credential) => ({
-    ...credential,
+    id: credential.id,
+    tokenPrefix: credential.tokenPrefix,
+    tokenSuffix: credential.tokenSuffix,
+    ledgerId: credential.ledgerId,
+    name: credential.name,
+    createdAt: credential.createdAt,
+    lastUsedAt: credential.lastUsedAt,
     deletedAt: null,
   }));
 }

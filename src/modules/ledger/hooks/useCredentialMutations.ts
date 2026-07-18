@@ -8,7 +8,7 @@ import {
   createServiceCredentialAction,
   deleteServiceCredentialAction,
 } from "@/modules/ledger/actions";
-import type { ServiceCredential } from "@/modules/ledger/contracts";
+import type { ServiceCredential, CreatedServiceCredential } from "@/modules/ledger/contracts";
 
 interface CreateCredentialContext {
   prevData: { uncategorizedCount: number; credentials: ServiceCredential[] } | undefined;
@@ -25,7 +25,7 @@ export function useCredentialMutations(ledgerId: string) {
   const queryKey = queryKeys.ledgerSettings(ledgerId);
   const tempIdSequence = useRef(0);
 
-  const createCredential = useLedgerMutation<ServiceCredential, string, CreateCredentialContext>(
+  const createCredential = useLedgerMutation<CreatedServiceCredential, string, CreateCredentialContext>(
     ledgerId,
     {
       mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
@@ -38,7 +38,8 @@ export function useCredentialMutations(ledgerId: string) {
           id: `temp-credential-${ledgerId}-${++tempIdSequence.current}`,
           name,
           ledgerId,
-          key: "••••••••",
+          tokenPrefix: "••••••••",
+          tokenSuffix: "••••",
           createdAt: new Date().toISOString(),
           deletedAt: null,
           lastUsedAt: null,

@@ -27,7 +27,8 @@ export type Ledger = LedgerDto;
 
 export type ServiceCredentialDto = {
   id: string;
-  key: string;
+  tokenPrefix: string;
+  tokenSuffix: string;
   ledgerId: string;
   name: string;
   createdAt: string;
@@ -35,6 +36,9 @@ export type ServiceCredentialDto = {
   deletedAt: string | null;
 };
 export type ServiceCredential = ServiceCredentialDto;
+
+export type CreatedServiceCredentialDto = ServiceCredentialDto & { token: string };
+export type CreatedServiceCredential = CreatedServiceCredentialDto;
 
 export type EntryCategoryDto = {
   id: string;

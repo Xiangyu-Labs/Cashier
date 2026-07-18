@@ -1,6 +1,6 @@
 "use server";
 import { withLedgerAccess } from "../access";
-import type { ServiceCredentialDto } from "@/modules/ledger/contracts";
+import type { CreatedServiceCredentialDto, ServiceCredentialDto } from "@/modules/ledger/contracts";
 import {
   parseCreateServiceCredentialInput,
   parseServiceCredentialId,
@@ -18,7 +18,7 @@ export const createServiceCredentialAction = withLedgerAccess(
   async (
     ledgerId: string,
     data: CreateServiceCredentialInput
-  ): Promise<ServiceCredentialDto> => {
+  ): Promise<CreatedServiceCredentialDto> => {
     const validated = parseCreateServiceCredentialInput(data);
     return createServiceCredential(ledgerId, validated);
   }

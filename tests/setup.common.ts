@@ -7,6 +7,7 @@ process.env.DATABASE_URL =
 process.env.AI_MODEL_TEXT = process.env.AI_MODEL_TEXT ?? "test-text-model";
 process.env.AI_MODEL_VISION = process.env.AI_MODEL_VISION ?? "test-vision-model";
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
+process.env.API_KEY_PEPPER = process.env.API_KEY_PEPPER ?? "test-pepper-for-testing-only";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-auth-secret";
 process.env.AUTH_URL = process.env.AUTH_URL ?? "http://localhost:3000";
 process.env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -18,6 +18,7 @@ import {
 } from "@/modules/ledger/actions";
 import { getDateInTimezone } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
+import { createToken, authenticateToken } from "@/lib/security/service-credential-token";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -74,14 +75,28 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
   });
 
   it("should create and list service credentials via Actions", async () => {
-    // Create Credential - new format returns data directly
+    // Create Credential - returns data with one-time token
     const createRes = await createServiceCredentialAction(testLedgerId, {
       name: "Test Credential",
     });
 
     expect(createRes).toBeDefined();
-    expect(createRes.key).toBeDefined();
+    expect(createRes.token).toBeDefined();
+    expect(createRes.tokenPrefix).toBeDefined();
+    expect(createRes.tokenSuffix).toBeDefined();
     expect(createRes.name).toBe("Test Credential");
+
+    // The token should match the expected format
+    expect(createRes.token).toMatch(/^sk_live_[0-9a-f]{48}$/);
+
+    // Verify hash is stored, not plaintext
+    const db = getTestDb();
+    const stored = await db.query.serviceCredentials.findFirst({
+      where: eq(serviceCredentials.id, createRes.id),
+    });
+    expect(stored?.tokenHash).toBeDefined();
+    expect(stored?.key).toBeNull(); // New credentials only store hash
+    expect(authenticateToken(createRes.token, stored?.tokenHash ?? "")).toBe(true);
 
     // List Credentials
     const listRes = await getServiceCredentialsAction(testLedgerId);
@@ -89,6 +104,12 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
     expect(listRes).toHaveLength(1);
     expect(listedCredential.id).toBe(createRes.id);
+    // List should not include the full token
+    expect((listedCredential as Record<string, unknown>).key).toBeUndefined();
+    expect((listedCredential as Record<string, unknown>).token).toBeUndefined();
+    // List should include prefix/suffix
+    expect(listedCredential.tokenPrefix).toBe(createRes.tokenPrefix);
+    expect(listedCredential.tokenSuffix).toBe(createRes.tokenSuffix);
   });
 
   it("rejects blank credential name with ValidationError", async () => {
@@ -104,14 +125,21 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
   });
 
   it("should ingest ledger entry with valid service credential", async () => {
-    // Setup: create a credential first
+    // Setup: create a credential with a known key via direct DB insert (simulating legacy)
     const db = getTestDb();
+    const knownToken = "sk_test_123";
+    const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
+    const hash = computeHash(knownToken);
+    const { prefix, suffix } = prefixSuffix(knownToken);
     const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
         name: "Ingest Credential",
-        key: "sk_test_123",
+        key: knownToken,
+        tokenHash: hash,
+        tokenPrefix: prefix,
+        tokenSuffix: suffix,
       })
       .returning();
     const c = requireFirst(createdCredentials, "service credential");
@@ -157,12 +185,19 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should reject invalid JSON body", async () => {
     const db = getTestDb();
+    const knownToken = "sk_invalid_json";
+    const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
+    const hash = computeHash(knownToken);
+    const { prefix, suffix } = prefixSuffix(knownToken);
     const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
         name: "Broken Body Credential",
-        key: "sk_invalid_json",
+        key: knownToken,
+        tokenHash: hash,
+        tokenPrefix: prefix,
+        tokenSuffix: suffix,
       })
       .returning();
     const credential = requireFirst(createdCredentials, "service credential");
@@ -170,7 +205,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${credential.key}`,
+        Authorization: `Bearer ${knownToken}`,
         "Content-Type": "application/json",
       },
       body: "{",
@@ -185,12 +220,19 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should derive entryDate from timezone when entryDate is omitted", async () => {
     const db = getTestDb();
+    const knownToken = "sk_timezone";
+    const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
+    const hash = computeHash(knownToken);
+    const { prefix, suffix } = prefixSuffix(knownToken);
     const createdCredentials = await db
       .insert(serviceCredentials)
       .values({
         ledgerId: testLedgerId,
         name: "Timezone Credential",
-        key: "sk_timezone",
+        key: knownToken,
+        tokenHash: hash,
+        tokenPrefix: prefix,
+        tokenSuffix: suffix,
       })
       .returning();
     const credential = requireFirst(createdCredentials, "service credential");
@@ -198,7 +240,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${credential.key}`,
+        Authorization: `Bearer ${knownToken}`,
       },
       body: JSON.stringify({ text: "Timezone Entry", timezone: "UTC" }),
     });
@@ -216,21 +258,16 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
 
   it("should delete service credential via Action", async () => {
     const db = getTestDb();
-    const createdCredentials = await db
-      .insert(serviceCredentials)
-      .values({
-        ledgerId: testLedgerId,
-        name: "Delete Credential",
-        key: "sk_delete_123",
-      })
-      .returning();
-    const c = requireFirst(createdCredentials, "service credential");
+    // Create credential via action to get proper hash
+    const createRes = await createServiceCredentialAction(testLedgerId, {
+      name: "Delete Credential",
+    });
 
-    // deleteServiceCredentialAction returns void in new format
-    await deleteServiceCredentialAction(testLedgerId, c.id);
+    // deleteServiceCredentialAction returns void
+    await deleteServiceCredentialAction(testLedgerId, createRes.id);
 
     const check = await db.query.serviceCredentials.findFirst({
-      where: eq(serviceCredentials.id, c.id),
+      where: eq(serviceCredentials.id, createRes.id),
     });
     expect(check).toBeDefined();
     expect(check?.deletedAt).not.toBeNull();
@@ -245,7 +282,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${credential.key}`,
+          Authorization: `Bearer ${credential.token}`,
           "Idempotency-Key": "credential-lifecycle-record",
         },
         body: JSON.stringify({ text: "Persist before revoke" }),
@@ -262,7 +299,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const revokedResponse = await ledgerEntryPOST(
       new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
-        headers: { Authorization: `Bearer ${credential.key}` },
+        headers: { Authorization: `Bearer ${credential.token}` },
         body: JSON.stringify({ text: "Must be rejected" }),
       })
     );
@@ -274,25 +311,22 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     ).toBeDefined();
   });
 
-  it("should return credentials with key via getLedgerSettingsAction", async () => {
+  it("should return credentials with prefix/suffix via getLedgerSettingsAction", async () => {
     const db = getTestDb();
-    // Insert an existing credential (simulating old credential)
-    await db
-      .insert(serviceCredentials)
-      .values({
-        ledgerId: testLedgerId,
-        name: "Old Existing Credential",
-        key: "sk_live_existing_key_for_testing",
-      })
-      .returning();
+    // Create a credential via action to get proper hash-based credential
+    const created = await createServiceCredentialAction(testLedgerId, {
+      name: "New Credential",
+    });
 
     // Get settings via getLedgerSettingsAction
     const settings = await getLedgerSettingsAction(testLedgerId);
     const settingsCredential = requireFirst(settings.credentials, "settings credential");
 
     expect(settings.credentials).toHaveLength(1);
-    expect(settingsCredential.name).toBe("Old Existing Credential");
-    // This is the critical test - the key must be returned
-    expect(settingsCredential.key).toBe("sk_live_existing_key_for_testing");
+    expect(settingsCredential.name).toBe("New Credential");
+    // The credential should have prefix/suffix, not full key
+    expect(settingsCredential.tokenPrefix).toBe(created.tokenPrefix);
+    expect(settingsCredential.tokenSuffix).toBe(created.tokenSuffix);
+    expect((settingsCredential as Record<string, unknown>).key).toBeUndefined();
   });
 });

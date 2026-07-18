@@ -2,6 +2,7 @@ import { getStartupEnvValue } from "./startup";
 
 export interface RuntimeEnv {
   readonly databaseUrl: string;
+  readonly apiKeyPepper: string;
   readonly openaiApiKey: string;
   readonly openaiBaseUrl: string;
   readonly hasOpenaiBaseUrl: boolean;
@@ -47,6 +48,9 @@ function hasExplicitValue(name: string): boolean {
 export const runtimeEnv: RuntimeEnv = {
   get databaseUrl() {
     return getStartupEnvValue("DATABASE_URL");
+  },
+  get apiKeyPepper() {
+    return getStartupEnvValue("API_KEY_PEPPER");
   },
   get openaiApiKey() {
     return getStartupEnvValue("OPENAI_API_KEY");

@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import type {
   AuthenticationPort,
@@ -26,6 +25,7 @@ import {
   sourceDocuments,
   users,
 } from "@/persistence";
+import { createToken, authenticateToken, computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
 
 function toIso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
@@ -488,27 +488,56 @@ export function createPostgresAuthenticationAdapter(
 
 export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
   async authenticate(key) {
-    const match = await db
+    // Hash-based lookup: compute hash and match in DB
+    const computedHash = computeHash(key);
+
+    const hashMatch = await db
       .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
       .from(serviceCredentials)
       .innerJoin(
         ledgers,
         and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
       )
-      .where(and(eq(serviceCredentials.key, key), isNull(serviceCredentials.deletedAt)))
+      .where(and(eq(serviceCredentials.tokenHash, computedHash), isNull(serviceCredentials.deletedAt)))
       .then((rows) => rows[0]);
-    if (match == null) return null;
+
+    if (hashMatch) {
+      try {
+        await db
+          .update(serviceCredentials)
+          .set({ lastUsedAt: new Date() })
+          .where(and(eq(serviceCredentials.id, hashMatch.id), isNull(serviceCredentials.deletedAt)))
+          .returning({ id: serviceCredentials.id });
+      } catch (error) {
+        logError("modules/ledger:authenticate-service-credential:update-last-used", error);
+      }
+      return hashMatch;
+    }
+
+    // Fallback: legacy plaintext key lookup for rows without tokenHash
+    const legacyMatch = await db
+      .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
+      .from(serviceCredentials)
+      .innerJoin(
+        ledgers,
+        and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
+      )
+      .where(and(eq(serviceCredentials.key, key), isNull(serviceCredentials.tokenHash), isNull(serviceCredentials.deletedAt)))
+      .then((rows) => rows[0]);
+
+    if (legacyMatch == null) return null;
+
     try {
-      const updated = await db
+      await db
         .update(serviceCredentials)
         .set({ lastUsedAt: new Date() })
-        .where(and(eq(serviceCredentials.id, match.id), isNull(serviceCredentials.deletedAt)))
+        .where(and(eq(serviceCredentials.id, legacyMatch.id), isNull(serviceCredentials.deletedAt)))
         .returning({ id: serviceCredentials.id });
-      return updated.length === 1 ? match : null;
     } catch (error) {
       logError("modules/ledger:authenticate-service-credential:update-last-used", error);
-      return match;
     }
+
+    return legacyMatch;
   },
 
   async list(ledgerId) {
@@ -519,7 +548,8 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
       .orderBy(desc(serviceCredentials.createdAt));
     return rows.map((row) => ({
       id: row.id,
-      key: row.key,
+      tokenPrefix: row.tokenPrefix ?? "",
+      tokenSuffix: row.tokenSuffix ?? "",
       ledgerId: row.ledgerId,
       name: row.name,
       createdAt: row.createdAt.toISOString(),
@@ -528,15 +558,18 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
   },
 
   async create(ledgerId, name) {
+    const { token, hash, prefix, suffix } = createToken();
     const row = await db
       .insert(serviceCredentials)
-      .values({ ledgerId, name, key: `sk_live_${crypto.randomBytes(24).toString("hex")}` })
+      .values({ ledgerId, name, tokenHash: hash, tokenPrefix: prefix, tokenSuffix: suffix })
       .returning()
       .then((rows) => rows[0]);
     if (row == null) throw new ConflictError("Failed to create service credential");
     return {
       id: row.id,
-      key: row.key,
+      token: token,
+      tokenPrefix: row.tokenPrefix ?? "",
+      tokenSuffix: row.tokenSuffix ?? "",
       ledgerId: row.ledgerId,
       name: row.name,
       createdAt: row.createdAt.toISOString(),

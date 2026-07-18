@@ -288,7 +288,7 @@ export interface AuthenticationPort {
 export interface ServiceCredentialPort {
   authenticate(key: string): Promise<AuthenticatedServiceCredentialContract | null>;
   list(ledgerId: LedgerId): Promise<readonly ServiceCredentialContract[]>;
-  create(ledgerId: LedgerId, name: string): Promise<ServiceCredentialContract>;
+  create(ledgerId: LedgerId, name: string): Promise<CreatedServiceCredentialContract>;
   revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
 }
 export interface IdempotencyPort {
@@ -390,10 +390,15 @@ export interface AuthenticatedServiceCredentialContract {
 }
 
 export interface ServiceCredentialContract extends AuthenticatedServiceCredentialContract {
-  key: string;
+  tokenPrefix: string;
+  tokenSuffix: string;
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
+}
+
+export interface CreatedServiceCredentialContract extends ServiceCredentialContract {
+  token: string;
 }
 
 export interface StoredFilePort {

@@ -60,6 +60,7 @@ export const dbUnitFiles = [
   "tests/unit/ledger/application/queries/list-service-credentials.test.ts",
   "tests/unit/ledger/application/services/authenticate-service-credential.test.ts",
   "tests/unit/ledger/application/services/resolve-ledger-for-service-credential.test.ts",
+  "tests/unit/scripts/hash-service-credentials.test.ts",
   "tests/unit/ledger/application/use-cases/create-default-ledger.test.ts",
   "tests/unit/ledger/server/actions/delete.test.ts",
   "tests/unit/lib/auth-actions.test.ts",

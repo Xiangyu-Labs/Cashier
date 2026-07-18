@@ -1,9 +1,11 @@
 /**
  * Rate Limiting Utilities
  *
- * Provides in-memory rate limiting for API endpoints.
- * For production use with multiple instances, consider using Redis-based solution
- * like @upstash/ratelimit.
+ * Provides in-memory rate limiting for non-API-v1 endpoints (auth, OTP).
+ *
+ * NOTE: API v1 uses the Postgres rate limiter (`postgresRateLimiter` from
+ * `@/application/adapters/postgres/api-rate-limit`) for cross-instance limiting.
+ * This in-memory store is legacy for API v1 and still used for auth/OTP rate limiting.
  */
 
 import { memoryStore } from "@/lib/memory-store";

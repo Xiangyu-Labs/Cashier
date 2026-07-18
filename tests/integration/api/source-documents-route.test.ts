@@ -113,7 +113,7 @@ describe("API v1 source-documents route", () => {
       })
       .returning();
 
-    credentialKey = requireFirst(createdCredentials, "service credential").key;
+    credentialKey = requireFirst(createdCredentials, "service credential").key!;
   });
 
   it("POST /api/v1/source-documents returns 201 for valid credential request", async () => {

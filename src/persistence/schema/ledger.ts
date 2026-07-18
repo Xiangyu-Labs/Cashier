@@ -136,7 +136,10 @@ export const serviceCredentials = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    key: text("key").notNull().unique(),
+    key: text("key").unique(),
+    tokenHash: text("token_hash"),
+    tokenPrefix: text("token_prefix"),
+    tokenSuffix: text("token_suffix"),
     ledgerId: text("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),

@@ -294,6 +294,16 @@ export const uploadSessionFiles = pgTable(
   ]
 );
 
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    bucketKey: text("bucket_key").primaryKey(),
+    count: integer("count").notNull().default(0),
+    windowStart: requiredTimestamp("window_start"),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+  }
+);
+
 export const idempotencyRecords = pgTable(
   "idempotency_records",
   {

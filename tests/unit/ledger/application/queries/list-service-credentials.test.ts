@@ -21,6 +21,9 @@ describe("listServiceCredentials", () => {
         ledgerId,
         name: "older",
         key: "sk_older",
+        tokenHash: "a".repeat(64),
+        tokenPrefix: "sk_older",
+        tokenSuffix: "lder",
         createdAt: new Date("2026-03-01T00:00:00.000Z"),
         lastUsedAt: new Date("2026-03-05T00:00:00.000Z"),
       },
@@ -29,6 +32,9 @@ describe("listServiceCredentials", () => {
         ledgerId,
         name: "deleted",
         key: "sk_deleted",
+        tokenHash: "b".repeat(64),
+        tokenPrefix: "sk_delet",
+        tokenSuffix: "eted",
         createdAt: new Date("2026-03-02T00:00:00.000Z"),
         deletedAt: new Date("2026-03-06T00:00:00.000Z"),
       },
@@ -37,9 +43,15 @@ describe("listServiceCredentials", () => {
         ledgerId,
         name: "newest",
         key: "sk_newest",
+        tokenHash: "c".repeat(64),
+        tokenPrefix: "sk_newes",
+        tokenSuffix: "west",
         createdAt: new Date("2026-03-03T00:00:00.000Z"),
       },
     ]);
+    // Note: token_prefix/token_suffix are set for the test, but the adapter
+    // returns them from the DB - these are just for valid DB state.
+    // The adapter's list method returns tokenPrefix/tokenSuffix from the row.
 
     const result = await listServiceCredentials(ledgerId);
 

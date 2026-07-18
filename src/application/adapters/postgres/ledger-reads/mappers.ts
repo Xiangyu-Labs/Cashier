@@ -66,7 +66,8 @@ export function mapEntryCategoryDto(category: EntryCategoryRow): EntryCategoryDt
 export function mapServiceCredentialDto(credential: ServiceCredentialRow): ServiceCredentialDto {
   return {
     id: credential.id,
-    key: credential.key,
+    tokenPrefix: credential.tokenPrefix ?? "",
+    tokenSuffix: credential.tokenSuffix ?? "",
     ledgerId: credential.ledgerId,
     name: credential.name,
     createdAt: toIso(credential.createdAt)!,

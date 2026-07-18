@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Trash2, Copy, Plus, Key, Check } from "lucide-react";
-import type { ServiceCredential } from "@/modules/ledger/contracts";
+import type { ServiceCredential, CreatedServiceCredentialDto } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { UI } from "@/lib/constants";
 
 interface ServiceCredentialSectionProps {
   credentials: ServiceCredential[];
-  onCreateCredential: (name: string) => Promise<ServiceCredential>;
+  onCreateCredential: (name: string) => Promise<CreatedServiceCredentialDto>;
   onDeleteCredential: (id: string) => void;
 }
 
@@ -33,7 +33,7 @@ export function ServiceCredentialSection({
   const [newCredName, setNewCredName] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
-  const [createdCredential, setCreatedCredential] = useState<ServiceCredential | null>(null);
+  const [createdCredential, setCreatedCredential] = useState<CreatedServiceCredentialDto | null>(null);
   const [hasCopied, setHasCopied] = useState(false);
 
   useEffect(() => {
@@ -100,7 +100,9 @@ export function ServiceCredentialSection({
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{credential.name}</div>
                   <div className="truncate font-mono text-xs text-muted">
-                    {credential.key ?? "******"}
+                    {credential.tokenPrefix && credential.tokenSuffix
+                      ? `${credential.tokenPrefix}...${credential.tokenSuffix}`
+                      : "******"}
                   </div>
                   <div className="mt-1 text-[10px] text-muted">
                     {t("createdAt", { date: new Date(credential.createdAt).toLocaleDateString() })}
@@ -156,12 +158,12 @@ export function ServiceCredentialSection({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="group relative break-all rounded border bg-surface p-4 font-mono text-sm">
-              {createdCredential?.key}
+              {createdCredential?.token}
               <Button
                 size="sm"
                 variant="outline"
                 className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
-                onClick={() => handleCopy(createdCredential?.key ?? "")}
+                onClick={() => handleCopy(createdCredential?.token ?? "")}
               >
                 {hasCopied ? (
                   <Check size={14} className="mr-1" />
@@ -173,7 +175,7 @@ export function ServiceCredentialSection({
             </div>
             <Button
               className="w-full gap-2"
-              onClick={() => handleCopy(createdCredential?.key ?? "")}
+              onClick={() => handleCopy(createdCredential?.token ?? "")}
               variant={hasCopied ? "outline" : "default"}
             >
               {hasCopied ? <Check size={16} /> : <Copy size={16} />}
