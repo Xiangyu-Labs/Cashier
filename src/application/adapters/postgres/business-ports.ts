@@ -26,6 +26,7 @@ import {
   users,
 } from "@/persistence";
 import { createToken, authenticateToken, computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
+import { lockLedgerForUpdate } from "./transaction-locks";
 
 function toIso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
@@ -409,6 +410,8 @@ export const postgresSettingsAdapter: SettingsPort = {
 
   async update(input) {
     return db.transaction(async (tx) => {
+      // Lock the ledger row to serialise with concurrent first-entry creation.
+      // This prevents a main-currency change from interleaving with activateRevision / createManual.
       const ledger = await tx
         .select()
         .from(ledgers)
@@ -419,12 +422,14 @@ export const postgresSettingsAdapter: SettingsPort = {
             isNull(ledgers.deletedAt)
           )
         )
+        .for("update")
         .then((rows) => rows[0]);
       if (ledger == null) return null;
       const settings = { ...(ledger.metadata?.settings ?? {}), ...input.settings };
       const previousMainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
       const nextMainCurrency = settings.mainCurrency ?? "CNY";
       if (previousMainCurrency !== nextMainCurrency) {
+        // Re-count active entries inside the lock to prevent race with first-entry creation.
         const [activeRow] = await tx
           .select({ count: sql<number>`count(*)` })
           .from(ledgerEntries)
@@ -485,7 +490,11 @@ export const postgresCurrencyAdapter: CurrencyPort = {
     return decimalRound(multiply(amount, rateRatio), 6);
   },
   async recalculateLedger(ledgerId, mainCurrency) {
-    return db.transaction(async (tx) => recalculateActiveEntries(tx, ledgerId, mainCurrency));
+    return db.transaction(async (tx) => {
+      // Lock the ledger to serialise with concurrent settings changes.
+      await lockLedgerForUpdate(tx, ledgerId);
+      return recalculateActiveEntries(tx, ledgerId, mainCurrency);
+    });
   },
 };
 

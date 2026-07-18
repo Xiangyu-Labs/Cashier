@@ -19,10 +19,11 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
+import { lockSourceDocumentForUpdate } from "./transaction-locks";
+import type { PostgresTransaction } from "./transaction-locks";
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
-export type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface CreatePendingRevisionInput {
   ledgerId: string;
@@ -121,27 +122,31 @@ export async function createPendingRevisionInTransaction(
   if (ledger == null) throw new NotFoundError("Ledger");
 
   const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
-  let document = await tx
+  const existingDocument = await tx
     .select()
     .from(sourceDocuments)
     .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
     .then((rows) => rows[0]);
 
-  if (document == null && input.sourceDocumentId != null) {
+  if (existingDocument == null && input.sourceDocumentId != null) {
     throw new NotFoundError("Source document");
   }
-  if (document == null) {
-    document = await tx
-      .insert(sourceDocuments)
-      .values({
-        id: sourceDocumentId,
-        ledgerId: input.ledgerId,
-        type: "ai_parsed",
-        ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
-      })
-      .returning()
-      .then((rows) => rows[0]);
-  } else if (document.pendingRevisionId != null) {
+
+  // Acquire a lock on existing documents or create a new one.
+  const document = existingDocument == null
+    ? await tx
+        .insert(sourceDocuments)
+        .values({
+          id: sourceDocumentId,
+          ledgerId: input.ledgerId,
+          type: "ai_parsed",
+          ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+        })
+        .returning()
+        .then((rows) => rows[0]!)
+    : await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
+
+  if (document.pendingRevisionId != null) {
     const currentPending = await tx
       .select({ outcome: sourceDocumentRevisions.outcome })
       .from(sourceDocumentRevisions)
@@ -220,7 +225,7 @@ export async function createPendingRevisionInTransaction(
       ;
   }
 
-  document = await tx
+  const updatedDocument = await tx
     .update(sourceDocuments)
     .set({
       pendingRevisionId: revision.id,
@@ -230,8 +235,8 @@ export async function createPendingRevisionInTransaction(
     .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
     .returning()
     .then((rows) => rows[0]);
-  if (document == null) throw new ConflictError("Failed to update source document revision pointer");
-  return { document: mapDocument(document, "queued"), revision: mapRevision(revision) };
+  if (updatedDocument == null) throw new ConflictError("Failed to update source document revision pointer");
+  return { document: mapDocument(updatedDocument, "queued"), revision: mapRevision(revision) };
 }
 
 export const postgresRevisionAdapter: SourceDocumentPort = {
@@ -285,12 +290,14 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
 
   async markProcessing(input) {
     return db.transaction(async (tx) => {
-      const document = await tx
-        .select({ pendingRevisionId: sourceDocuments.pendingRevisionId })
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (document?.pendingRevisionId !== input.revisionId) return false;
+      let document;
+      try {
+        document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+      if (document.pendingRevisionId !== input.revisionId) return false;
       const updated = await tx
         .update(sourceDocumentRevisions)
         .set({ outcome: "processing" })
@@ -310,12 +317,14 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
 
   async preserveTerminalOutcome(input) {
     return db.transaction(async (tx) => {
-      const document = await tx
-        .select({ pendingRevisionId: sourceDocuments.pendingRevisionId })
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (document?.pendingRevisionId !== input.revisionId) return false;
+      let document;
+      try {
+        document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+      if (document.pendingRevisionId !== input.revisionId) return false;
       const updated = await tx
         .update(sourceDocumentRevisions)
         .set({
@@ -343,6 +352,16 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
 
   async softDelete(ledgerId, sourceDocumentId) {
     return db.transaction(async (tx) => {
+      // Lock the source document to serialise with concurrent operations.
+      // Return false (not throw) when the document does not exist.
+      let locked: typeof sourceDocuments.$inferSelect;
+      try {
+        locked = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+
       const deleted = await tx
         .update(sourceDocuments)
         .set({ deletedAt: new Date(), updatedAt: new Date() })

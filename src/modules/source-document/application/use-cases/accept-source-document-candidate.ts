@@ -1,4 +1,3 @@
-import { ConflictError } from "@/lib/errors";
 import { acceptCandidateRevision } from "@/application/adapters/postgres";
 import type { AcceptCandidateResponseDto } from "@/modules/source-document/contracts";
 
@@ -15,23 +14,18 @@ interface AcceptCandidateInput {
  * revision pointer. Idempotent when the candidate revision has already been accepted
  * (activeRevisionId on the document already matches the candidate).
  *
- * Throws ConflictError when:
- * - The document does not exist or is deleted
+ * The adapter acquires a source-document row lock and throws {@link ConflictError} when:
  * - The pending revision does not match
  * - The candidate revision is not completed
  * - The document has no active revision to replace
+ * - A concurrent operation mutated the document
+ *
+ * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
 export async function acceptSourceDocumentCandidate(
   { ledgerId, sourceDocumentId, revisionId }: AcceptCandidateInput
 ): Promise<AcceptCandidateResponseDto> {
-  const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, revisionId);
-
-  if (!accepted) {
-    throw new ConflictError(
-      "Cannot accept candidate: either the document was modified concurrently, " +
-      "the candidate revision does not match, or the candidate is not in the expected state"
-    );
-  }
+  await acceptCandidateRevision(ledgerId, sourceDocumentId, revisionId);
 
   return {
     sourceDocumentId,

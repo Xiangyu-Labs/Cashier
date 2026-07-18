@@ -10,6 +10,7 @@ import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
 } from "@/modules/source-document/contract-schemas";
+import { lockSourceDocumentForUpdate } from "./transaction-locks";
 
 function whereSourceDocumentNotDeleted(ledgerId: string) {
   return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
@@ -39,7 +40,11 @@ export async function updateSourceDocument({
   const document = await db.query.sourceDocuments.findFirst({
     where: whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId),
   });
-  if (document?.type === "manual" && document.activeRevisionId != null) {
+  if (document == null) {
+    return { sourceDocumentId, updated: false };
+  }
+
+  if (document.type === "manual" && document.activeRevisionId != null) {
     const activeEntries = await db.query.ledgerEntries.findMany({
       where: and(
         eq(ledgerEntries.ledgerId, ledgerId),
@@ -76,11 +81,15 @@ export async function updateSourceDocument({
     ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
   };
 
-  const updatedDocuments = await db
-    .update(sourceDocuments)
-    .set(updatePatch)
-    .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
-    .returning({ id: sourceDocuments.id });
+  // Use a source-document lock to serialise with concurrent delete / retry / accept / abandon.
+  const updatedDocuments = await db.transaction(async (tx) => {
+    await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    return tx
+      .update(sourceDocuments)
+      .set(updatePatch)
+      .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
+      .returning({ id: sourceDocuments.id });
+  });
 
   return {
     sourceDocumentId,

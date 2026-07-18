@@ -12,8 +12,11 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-
-type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+import {
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+} from "./transaction-locks";
+import type { PostgresTransaction } from "./transaction-locks";
 
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(
@@ -161,12 +164,11 @@ export async function storeCandidateRevision(
   entries: readonly LedgerProjectionEntryContract[]
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    const document = await tx
-      .select()
-      .from(sourceDocuments)
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      .then((rows) => rows[0]);
-    if (document == null || document.pendingRevisionId !== revisionId) return false;
+    // Lock the source document to serialize concurrent operations.
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+
+    // Re-verify pointer ownership inside the lock.
+    if (document.pendingRevisionId !== revisionId) return false;
 
     const revision = await tx
       .select()
@@ -208,6 +210,10 @@ export async function storeCandidateRevision(
 /**
  * Accept a candidate revision: replace the active projection with the candidate's entries
  * and update document pointers.
+ *
+ * Acquires a source-document row lock to serialise concurrent operations on the same document.
+ * Throws {@link ConflictError} when pointer ownership or CAS checks fail so the entire
+ * transaction (including soft-deletes) rolls back.
  */
 export async function acceptCandidateRevision(
   ledgerId: string,
@@ -215,21 +221,19 @@ export async function acceptCandidateRevision(
   candidateRevisionId: string
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    const document = await tx
-      .select()
-      .from(sourceDocuments)
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      .then((rows) => rows[0]);
-    if (document == null) return false;
+    // Lock the source document to serialise concurrent operations.
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Idempotent: candidate is already active
     if (document.activeRevisionId === candidateRevisionId && document.pendingRevisionId == null) {
       return true;
     }
 
-    // CAS: verify the pending revision matches exactly
+    // Re-read pointers inside the lock — reject stale CAS on the spot.
     if (document.pendingRevisionId !== candidateRevisionId || document.activeRevisionId == null) {
-      return false;
+      throw new ConflictError(
+        "Cannot accept candidate: pending revision does not match or no active revision exists"
+      );
     }
 
     const revision = await tx
@@ -244,10 +248,12 @@ export async function acceptCandidateRevision(
         )
       )
       .then((rows) => rows[0]);
-    if (revision == null) return false;
+    if (revision == null) {
+      throw new ConflictError("Candidate revision is not completed");
+    }
 
     const now = new Date();
-    // Soft-delete the old active revision's entries
+    // Soft-delete the old active revision's entries (safe: lock guards against concurrent mutation)
     await tx.update(ledgerEntries)
       .set({ deletedAt: now, updatedAt: now })
       .where(
@@ -260,8 +266,9 @@ export async function acceptCandidateRevision(
       )
       ;
 
-    // Update document to point activeRevisionId to the candidate and clear pending.
-    // Re-verify CAS conditions at write time to prevent race with concurrent accept/abandon.
+    // Update document pointers with a final CAS check.
+    // With the source-document lock this should always succeed, but the guard catches
+    // programming errors and ensures the transaction rolls back on failure.
     const updated = await tx.update(sourceDocuments)
       .set({
         activeRevisionId: candidateRevisionId,
@@ -277,7 +284,9 @@ export async function acceptCandidateRevision(
       )
       .returning({ id: sourceDocuments.id })
       .then((rows) => rows[0]);
-    if (updated == null) return false;
+    if (updated == null) {
+      throw new ConflictError("Source document was modified concurrently during accept");
+    }
     return true;
   });
 }
@@ -285,6 +294,10 @@ export async function acceptCandidateRevision(
 /**
  * Abandon a candidate revision: mark the revision as abandoned and clear pendingRevisionId
  * without touching the active projection.
+ *
+ * Acquires a source-document row lock to serialise concurrent operations on the same document.
+ * Throws {@link ConflictError} when pointer ownership or CAS checks fail so the entire
+ * transaction (including the revision outcome change) rolls back.
  */
 export async function abandonCandidateRevision(
   ledgerId: string,
@@ -292,12 +305,8 @@ export async function abandonCandidateRevision(
   candidateRevisionId: string
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    const document = await tx
-      .select()
-      .from(sourceDocuments)
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      .then((rows) => rows[0]);
-    if (document == null) return false;
+    // Lock the source document to serialise concurrent operations.
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Idempotent: candidate revision is already abandoned (pendingRevisionId cleared)
     if (document.pendingRevisionId == null) {
@@ -316,8 +325,12 @@ export async function abandonCandidateRevision(
       if (revision != null) return true;
     }
 
-    // CAS: verify the pending revision matches exactly
-    if (document.pendingRevisionId !== candidateRevisionId) return false;
+    // Re-read pointers inside the lock — reject stale CAS on the spot.
+    if (document.pendingRevisionId !== candidateRevisionId) {
+      throw new ConflictError(
+        "Cannot abandon candidate: pending revision does not match"
+      );
+    }
 
     const revision = await tx
       .select()
@@ -331,9 +344,13 @@ export async function abandonCandidateRevision(
         )
       )
       .then((rows) => rows[0]);
-    if (revision == null) return false;
+    if (revision == null) {
+      throw new ConflictError("Candidate revision is not completed");
+    }
 
     const now = new Date();
+    // Mark the revision as abandoned (safe: lock guards against concurrent mutation).
+    // CAS: only update if outcome is still "completed".
     const revisionUpdated = await tx.update(sourceDocumentRevisions)
       .set({ outcome: "abandoned", finalizedAt: now })
       .where(
@@ -344,8 +361,12 @@ export async function abandonCandidateRevision(
       )
       .returning({ id: sourceDocumentRevisions.id })
       .then((rows) => rows[0]);
-    if (revisionUpdated == null) return false;
+    if (revisionUpdated == null) {
+      throw new ConflictError("Revision outcome changed during abandon");
+    }
 
+    // Clear the pending pointer. With the source-document lock this should always succeed,
+    // but the WHERE guard catches programming errors and ensures rollback.
     const documentUpdated = await tx.update(sourceDocuments)
       .set({ pendingRevisionId: null, updatedAt: now })
       .where(
@@ -356,7 +377,10 @@ export async function abandonCandidateRevision(
       )
       .returning({ id: sourceDocuments.id })
       .then((rows) => rows[0]);
-    if (documentUpdated == null) return false;    return true;
+    if (documentUpdated == null) {
+      throw new ConflictError("Source document was modified concurrently during abandon");
+    }
+    return true;
   });
 }
 
@@ -532,6 +556,9 @@ export async function ensureTargetLedgerProjection(
   sourceDocumentId: string
 ): Promise<string> {
   return db.transaction(async (tx) => {
+    // Lock the ledger row to serialise with concurrent main-currency changes.
+    await lockLedgerForUpdate(tx, ledgerId);
+
     const document = await tx
       .select()
       .from(sourceDocuments)
@@ -605,6 +632,11 @@ async function copyRevisionFiles(
 export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   async activateRevision(input) {
     return db.transaction(async (tx) => {
+      // Lock the ledger row to serialise with concurrent main-currency changes.
+      // This is the first-active-projection path; the lock prevents a settings
+      // main-currency change from interleaving with entry creation.
+      await lockLedgerForUpdate(tx, input.ledgerId);
+
       const document = await tx
         .select()
         .from(sourceDocuments)
@@ -650,12 +682,11 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async createManual(input) {
     return db.transaction(async (tx) => {
-      const ledger = await tx
-        .select({ id: ledgers.id })
-        .from(ledgers)
-        .where(and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)))
-        .then((rows) => rows[0]);
-      if (ledger == null) throw new NotFoundError("Ledger");
+      // Lock the ledger row to serialise with concurrent main-currency changes.
+      // This is the first-active-projection path; the lock prevents a settings
+      // main-currency change from interleaving with entry creation.
+      await lockLedgerForUpdate(tx, input.ledgerId);
+
       const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
       const existing = await tx
         .select({ id: sourceDocuments.id })
@@ -693,12 +724,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async replaceManual(input) {
     return db.transaction(async (tx) => {
-      const document = await tx
-        .select()
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (document == null) throw new NotFoundError("Source document");
+      const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
       if (document.type !== "manual" || document.activeRevisionId == null) {
         throw new ConflictError("Source document is not an active manual entry");
       }
@@ -742,12 +768,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async replaceActive(input) {
     return db.transaction(async (tx) => {
-      const document = await tx
-        .select()
-        .from(sourceDocuments)
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (document == null) throw new NotFoundError("Source document");
+      const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
       if (
         document.activeRevisionId == null ||
         document.activeRevisionId !== input.expectedActiveRevisionId
@@ -865,6 +886,15 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async softDelete(ledgerId, sourceDocumentId) {
     return db.transaction(async (tx) => {
+      // Lock the source document to serialise with other concurrent operations.
+      // Return false (not throw) when the document does not exist.
+      try {
+        await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+
       const now = new Date();
       const deleted = await tx
         .update(sourceDocuments)
@@ -905,12 +935,9 @@ export async function createManualCorrectionInTransaction(
   sourceDocumentId: string
 ): Promise<{ revisionId: string } | null> {
   return db.transaction(async (tx) => {
-    const document = await tx
-      .select()
-      .from(sourceDocuments)
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      .then((rows) => rows[0]);
-    if (document == null) return null;
+    // Lock the source document to serialise with concurrent operations
+    // (retry, delete, accept, abandon).
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Must have a pending revision to inherit evidence
     if (document.pendingRevisionId == null) return null;

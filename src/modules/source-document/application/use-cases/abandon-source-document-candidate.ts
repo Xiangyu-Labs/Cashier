@@ -1,4 +1,3 @@
-import { ConflictError } from "@/lib/errors";
 import { abandonCandidateRevision } from "@/application/adapters/postgres";
 import type { AbandonCandidateResponseDto } from "@/modules/source-document/contracts";
 
@@ -15,22 +14,17 @@ interface AbandonCandidateInput {
  * without affecting the active projection. Idempotent when the candidate revision
  * is already abandoned.
  *
- * Throws ConflictError when:
- * - The document does not exist or is deleted
+ * The adapter acquires a source-document row lock and throws {@link ConflictError} when:
  * - The pending revision does not match
  * - The candidate revision is not completed
+ * - A concurrent operation mutated the document or revision
+ *
+ * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
 export async function abandonSourceDocumentCandidate(
   { ledgerId, sourceDocumentId, revisionId }: AbandonCandidateInput
 ): Promise<AbandonCandidateResponseDto> {
-  const abandoned = await abandonCandidateRevision(ledgerId, sourceDocumentId, revisionId);
-
-  if (!abandoned) {
-    throw new ConflictError(
-      "Cannot abandon candidate: either the document was modified concurrently, " +
-      "the candidate revision does not match, or the candidate is not in the expected state"
-    );
-  }
+  await abandonCandidateRevision(ledgerId, sourceDocumentId, revisionId);
 
   return {
     sourceDocumentId,

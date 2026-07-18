@@ -5,5 +5,6 @@ export * from "./read-models";
 export * from "./revisions";
 export * from "./submissions";
 export * from "./source-document-updates";
+export * from "./transaction-locks";
 export * from "./mutate-ledger-entries";
 export * from "./delete-ledger-entry";

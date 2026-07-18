@@ -308,3 +308,68 @@ describe("create manual correction", () => {
     expect(detail?.supportedActions).toContain("edit_retry");
   });
 });
+
+describe("manual-correction concurrency invariants", () => {
+  it("concurrent ManualCorrection and Retry produce a single consistent outcome", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(
+      db,
+      "manual-correction-race-retry"
+    );
+
+    for (let i = 0; i < 5; i++) {
+      const { sourceDocumentId, anomalyRevisionId } = await createAnomalyDocument(db, ledgerId);
+
+      // Run manual correction and retry (new pending revision) concurrently.
+      await Promise.allSettled([
+        createManualCorrectionInTransaction(ledgerId, sourceDocumentId),
+        (async () => {
+          try {
+            await db.transaction(async (tx) => {
+              await createPendingRevisionInTransaction(tx, {
+                ledgerId,
+                sourceDocumentId,
+                submittedText: "Retry attempt",
+              });
+            });
+          } catch {
+            // Retry may fail due to lock contention — that's expected.
+          }
+        })(),
+      ]);
+
+      // Verify consistent state: both operations serialized without deadlock.
+      const doc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      });
+      expect(doc).not.toBeNull();
+
+      // Old active entries must NOT be soft-deleted (neither operation deletes them)
+      const oldEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+      expect(oldEntries.length).toBeGreaterThanOrEqual(1);
+
+      // Verify anomaly revision was not left in a contradictory state.
+      const anomalyRev = await db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, anomalyRevisionId),
+      });
+      expect(anomalyRev?.outcome).toBe("anomaly");
+
+      // Clean up for next iteration
+      await db.transaction(async (tx) => {
+        await tx
+          .update(sourceDocuments)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(sourceDocuments.id, sourceDocumentId));
+        await tx
+          .update(ledgerEntries)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(ledgerEntries.ledgerId, ledgerId));
+      });
+    }
+  });
+});

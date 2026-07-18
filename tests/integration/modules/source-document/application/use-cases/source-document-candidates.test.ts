@@ -245,34 +245,28 @@ describe("source document candidates", () => {
     expect(abandoned).toBe(true);
   });
 
-  it("rejects accept with stale candidate revision ID", async () => {
+  it("throws ConflictError on accept with stale candidate revision ID", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-stale-accept");
 
     const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
 
-    // Try to accept with a wrong revision ID
-    const accepted = await acceptCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      crypto.randomUUID()
-    );
-    expect(accepted).toBe(false);
+    // Try to accept with a wrong revision ID — now throws ConflictError under the lock.
+    await expect(
+      acceptCandidateRevision(ledgerId, sourceDocumentId, crypto.randomUUID())
+    ).rejects.toThrow("Cannot accept candidate");
   });
 
-  it("rejects abandon with stale candidate revision ID", async () => {
+  it("throws ConflictError on abandon with stale candidate revision ID", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-stale-abandon");
 
     const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
 
-    // Try to abandon with a wrong revision ID
-    const abandoned = await abandonCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      crypto.randomUUID()
-    );
-    expect(abandoned).toBe(false);
+    // Try to abandon with a wrong revision ID — now throws ConflictError under the lock.
+    await expect(
+      abandonCandidateRevision(ledgerId, sourceDocumentId, crypto.randomUUID())
+    ).rejects.toThrow("Cannot abandon candidate");
   });
 
   it("read model derives candidate_pending status", async () => {
@@ -299,7 +293,7 @@ describe("source document candidates", () => {
     expect(found?.supportedActions).toContain("accept_candidate");
   });
 
-  it("accept then abandon is rejected (candidate already resolved)", async () => {
+  it("accept then abandon throws ConflictError (candidate already resolved)", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept-then-abandon");
 
@@ -311,13 +305,10 @@ describe("source document candidates", () => {
     // Accept first
     await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
 
-    // Try to abandon after accept should fail (pendingRevisionId already cleared)
-    const abandoned = await abandonCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      candidateRevisionId
-    );
-    expect(abandoned).toBe(false);
+    // Try to abandon after accept — throws ConflictError because pendingRevisionId is already cleared.
+    await expect(
+      abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId)
+    ).rejects.toThrow("Cannot abandon candidate");
   });
 
   it("soft-delete removes document and all candidate entries", async () => {
@@ -344,5 +335,217 @@ describe("source document candidates", () => {
       ),
     });
     expect(activeEntries).toHaveLength(0);
+  });
+});
+
+describe("candidate concurrency invariants", () => {
+  /**
+   * Helper: verify that after a concurrent Accept/Abandon race, the document state
+   * is fully consistent — no partial commits or mixed pointer/revision/entry states.
+   */
+  async function assertDocumentConsistency(
+    db: ReturnType<typeof getTestDb>,
+    sourceDocumentId: string,
+    originalActiveRevisionId: string,
+    candidateRevisionId: string
+  ) {
+    const doc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    if (!doc) throw new Error("Document not found after concurrent operation");
+
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, candidateRevisionId),
+    });
+
+    if (doc.activeRevisionId === candidateRevisionId) {
+      // Accept won
+      // pendingRevisionId must be null
+      expect(doc.pendingRevisionId).toBeNull();
+      // Revision outcome must NOT be "abandoned" (accept doesn't change the
+      // completed outcome)
+      expect(revision?.outcome).toBe("completed");
+      // Old active entries must be soft-deleted
+      const oldEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          eq(ledgerEntries.sourceDocumentRevisionId, originalActiveRevisionId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+      expect(oldEntries).toHaveLength(0);
+      // Candidate entries must be active
+      const candidateEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          eq(ledgerEntries.sourceDocumentRevisionId, candidateRevisionId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+      expect(candidateEntries).toHaveLength(1);
+    } else if (doc.activeRevisionId === originalActiveRevisionId) {
+      // Abandon won (or accept failed and nothing changed)
+      // pendingRevisionId must be null regardless
+      expect(doc.pendingRevisionId).toBeNull();
+      // If abandon won, revision must be abandoned; if accept failed, it stays completed.
+      // Either way: no soft-deleted original entries (abandon preserves them).
+      const oldEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+          eq(ledgerEntries.sourceDocumentRevisionId, originalActiveRevisionId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+      expect(oldEntries).toHaveLength(1);
+    } else {
+      // Neither won — unexpected
+      throw new Error(`Unexpected document state: activeRevisionId=${doc.activeRevisionId}`);
+    }
+  }
+
+  it("concurrent Accept and Abandon produce a single consistent outcome", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-accept-abandon");
+
+    // Run 5 iterations to increase the chance of catching a timing issue.
+    for (let i = 0; i < 5; i++) {
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+        await setupDocumentWithCandidate(db, ledgerId);
+
+      await Promise.allSettled([
+        acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+      ]);
+
+      await assertDocumentConsistency(
+        db,
+        sourceDocumentId,
+        originalActiveRevisionId,
+        candidateRevisionId
+      );
+
+      // Clean up for next iteration
+      await db.transaction(async (tx) => {
+        await tx
+          .update(sourceDocuments)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(sourceDocuments.id, sourceDocumentId));
+        await tx
+          .update(ledgerEntries)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(ledgerEntries.ledgerId, ledgerId));
+      });
+    }
+  });
+
+  it("concurrent Accept and Delete produce a single consistent outcome", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-accept-delete");
+
+    for (let i = 0; i < 5; i++) {
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+        await setupDocumentWithCandidate(db, ledgerId);
+
+      await Promise.allSettled([
+        acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        postgresLedgerProjectionAdapter.softDelete(ledgerId, sourceDocumentId),
+      ]);
+
+      // Verify: the document is either deleted or accepted, never in a mixed state.
+      const doc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      });
+      if (doc?.deletedAt != null) {
+        // Delete won — all entries should be soft-deleted
+        const activeEntries = await db.query.ledgerEntries.findMany({
+          where: and(
+            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+            isNull(ledgerEntries.deletedAt)
+          ),
+        });
+        expect(activeEntries).toHaveLength(0);
+      } else if (doc != null) {
+        // Accept won — document should have consistent pointers
+        const oldEntries = await db.query.ledgerEntries.findMany({
+          where: and(
+            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+            eq(ledgerEntries.sourceDocumentRevisionId, originalActiveRevisionId),
+            isNull(ledgerEntries.deletedAt)
+          ),
+        });
+        if (doc.activeRevisionId === candidateRevisionId) {
+          expect(oldEntries).toHaveLength(0);
+        } else {
+          expect(oldEntries).toHaveLength(1);
+        }
+        // pendingRevisionId should be cleared if accept succeeded
+        expect(
+          doc.pendingRevisionId == null || doc.activeRevisionId === originalActiveRevisionId
+        ).toBe(true);
+      }
+
+      // Clean up
+      await db.transaction(async (tx) => {
+        await tx
+          .update(sourceDocuments)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(sourceDocuments.id, sourceDocumentId));
+        await tx
+          .update(ledgerEntries)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(ledgerEntries.ledgerId, ledgerId));
+      });
+    }
+  });
+
+  it("concurrent Abandon and Delete produce a single consistent outcome", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-race-abandon-delete");
+
+    for (let i = 0; i < 5; i++) {
+      const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+        await setupDocumentWithCandidate(db, ledgerId);
+
+      await Promise.allSettled([
+        abandonCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId),
+        postgresLedgerProjectionAdapter.softDelete(ledgerId, sourceDocumentId),
+      ]);
+
+      const doc = await db.query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, sourceDocumentId),
+      });
+      if (doc?.deletedAt != null) {
+        // Delete won
+        const activeEntries = await db.query.ledgerEntries.findMany({
+          where: and(
+            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+            isNull(ledgerEntries.deletedAt)
+          ),
+        });
+        expect(activeEntries).toHaveLength(0);
+      } else if (doc != null) {
+        // Abandon won — original entries preserved
+        const oldEntries = await db.query.ledgerEntries.findMany({
+          where: and(
+            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
+            eq(ledgerEntries.sourceDocumentRevisionId, originalActiveRevisionId),
+            isNull(ledgerEntries.deletedAt)
+          ),
+        });
+        expect(oldEntries).toHaveLength(1);
+        expect(doc.pendingRevisionId).toBeNull();
+      }
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(sourceDocuments)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(sourceDocuments.id, sourceDocumentId));
+        await tx
+          .update(ledgerEntries)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(ledgerEntries.ledgerId, ledgerId));
+      });
+    }
   });
 });

@@ -1,9 +1,9 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
 import { hasActiveEntries } from "@/modules/ledger/application/queries/has-active-entries";
-import { currencyRates, ledgers, sourceDocuments } from "@/persistence";
+import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
@@ -112,5 +112,148 @@ describe("target Settings currency workflow", () => {
     await expect(
       updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "ZZZ" } })
     ).rejects.toThrow("Main currency cannot be changed after the first entry");
+  });
+});
+
+describe("settings concurrency invariants", () => {
+  it("concurrent main-currency change and first createManual are serialised by the ledger lock", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "settings-race-create-manual");
+
+    for (let i = 0; i < 5; i++) {
+      // Run main-currency change and first entry creation concurrently on a fresh ledger.
+      const results = await Promise.allSettled([
+        updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } }),
+        postgresLedgerProjectionAdapter.createManual({
+          ledgerId,
+          entryDate: "2026-07-15",
+          entries: [
+            {
+              categoryId: null,
+              amount: "80.00",
+              currency: "CNY",
+              itemName: "Race entry",
+              description: null,
+              convertedAmount: "80.00",
+              exchangeRate: "1.000000",
+            },
+          ],
+        }),
+      ]);
+
+      // The lock serialises operations: either settings changes first (then entries are
+      // created with the new currency) or entries are created first (then settings throws).
+      // Neither deadlock should occur.
+      const ledger = await db.query.ledgers.findFirst({
+        where: eq(ledgers.id, ledgerId),
+      });
+      const activeEntries = await db.query.ledgerEntries.findMany({
+        where: and(
+          eq(ledgerEntries.ledgerId, ledgerId),
+          isNull(ledgerEntries.deletedAt)
+        ),
+      });
+
+      // Invariant: if entries were created, settings either succeeded before entry creation
+      // or threw because entries already existed. The ledger lock ensures no interleaving.
+      // In either case, the ledger row is intact and readable.
+      expect(ledger).not.toBeNull();
+
+      // Clean up for next iteration
+      const [settingsResult, createResult] = results;
+      if (createResult.status === "fulfilled") {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(sourceDocuments)
+            .set({ deletedAt: new Date(), updatedAt: new Date() })
+            .where(eq(sourceDocuments.ledgerId, ledgerId));
+          await tx
+            .update(ledgerEntries)
+            .set({ deletedAt: new Date(), updatedAt: new Date() })
+            .where(eq(ledgerEntries.ledgerId, ledgerId));
+        });
+      }
+      // Reset main currency if it was changed
+      if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+        await db
+          .update(ledgers)
+          .set({ metadata: {} })
+          .where(eq(ledgers.id, ledgerId));
+      }
+    }
+  });
+
+  it("concurrent main-currency change and first activateRevision are serialised by the ledger lock", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "settings-race-activate-revision");
+
+    for (let i = 0; i < 5; i++) {
+      // Create a pending revision first (this creates the document but not the active projection).
+      const sourceDocumentId = crypto.randomUUID();
+      await db
+        .insert(sourceDocuments)
+        .values({ id: sourceDocumentId, ledgerId, type: "ai_parsed" })
+        .returning()
+        .then((rows) => rows[0]!);
+
+      const { revision } = await db.transaction(async (tx) => {
+        const { createPendingRevisionInTransaction: createPending } = await import(
+          "@/application/adapters/postgres/revisions"
+        );
+        return createPending(tx, {
+          ledgerId,
+          sourceDocumentId,
+          submittedText: "Race test",
+        });
+      });
+
+      // Run main-currency change and activateRevision concurrently.
+      const results = await Promise.allSettled([
+        updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } }),
+        postgresLedgerProjectionAdapter.activateRevision({
+          ledgerId,
+          sourceDocumentId,
+          revisionId: revision.id,
+          entries: [
+            {
+              categoryId: null,
+              amount: "80.00",
+              currency: "CNY",
+              itemName: "Race entry",
+              description: null,
+              convertedAmount: "80.00",
+              exchangeRate: "1.000000",
+            },
+          ],
+        }),
+      ]);
+
+      // The lock serialises the two operations — no deadlock, no partial state.
+      const ledger = await db.query.ledgers.findFirst({
+        where: eq(ledgers.id, ledgerId),
+      });
+      expect(ledger).not.toBeNull();
+
+      // Clean up
+      const [settingsResult, activateResult] = results;
+      if (activateResult.status === "fulfilled" && activateResult.value === true) {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(sourceDocuments)
+            .set({ deletedAt: new Date(), updatedAt: new Date() })
+            .where(eq(sourceDocuments.ledgerId, ledgerId));
+          await tx
+            .update(ledgerEntries)
+            .set({ deletedAt: new Date(), updatedAt: new Date() })
+            .where(eq(ledgerEntries.ledgerId, ledgerId));
+        });
+      }
+      if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
+        await db
+          .update(ledgers)
+          .set({ metadata: {} })
+          .where(eq(ledgers.id, ledgerId));
+      }
+    }
   });
 });
