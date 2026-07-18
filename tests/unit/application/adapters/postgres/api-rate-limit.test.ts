@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
@@ -107,5 +107,20 @@ describe("PostgresRateLimiter", () => {
   it("returns a resetTime in the future", async () => {
     const result = await postgresRateLimiter.increment("test-reset-time", 10, 60);
     expect(result.resetTime).toBeGreaterThan(Date.now());
+  });
+
+  it("enforces shared limit across concurrent callers", async () => {
+    const bucketKey = "test-concurrent";
+    const limit = 10;
+
+    // Fire limit+5 concurrent increments and count how many succeed
+    const promises = Array.from({ length: limit + 5 }, () =>
+      postgresRateLimiter.increment(bucketKey, limit, 60)
+    );
+    const results = await Promise.all(promises);
+
+    const successes = results.filter((r) => r.success).length;
+    expect(successes).toBe(limit);
+    expect(results.filter((r) => !r.success).length).toBe(5);
   });
 });

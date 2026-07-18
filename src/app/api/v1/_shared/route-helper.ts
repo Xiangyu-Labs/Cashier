@@ -73,13 +73,17 @@ export async function handleApiV1Route(
     const clientIp = getClientIPFromHeaders(request.headers);
 
     if (credential == null) {
-      // Only increment invalid-bearer bucket when authentication actually fails
+      // Only increment invalid-bearer bucket when authentication actually fails.
+      // Successful auth never consumes the invalid-attempt budget.
       const invalidBucketKey = invalidBearerBucketKey(clientIp, key);
-      await postgresRateLimiter.increment(
+      const invalidRateResult = await postgresRateLimiter.increment(
         invalidBucketKey,
         RATE_LIMIT_INVALID_PER_MINUTE,
         RATE_LIMIT_WINDOW_SECONDS
       );
+      if (!invalidRateResult.success) {
+        throw new RateLimitError("Rate limit exceeded");
+      }
       throw new UnauthorizedError("Invalid Service Credential");
     }
 
