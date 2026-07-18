@@ -15,6 +15,10 @@ import { logger } from "@/lib/logger";
  * if all rows were claimed).
  *
  * Returns only the intents whose scheduling metadata was successfully updated.
+ *
+ * Intents whose scheduleAttemptCount reaches config.maxAttempts on this
+ * request are still returned for execution — exhaustion only happens on a
+ * subsequent request after the cooldown expires.
  */
 export async function selectRecoverableProcessingIntents(
   ledgerId: string,
@@ -23,12 +27,22 @@ export async function selectRecoverableProcessingIntents(
 ): Promise<readonly RecoverableProcessingIntentContract[]> {
   const intentsAdapter = adapter ?? new PostgresProcessingIntentAdapter();
 
-  // Only select intents whose scheduleAttemptCount is below the maxBatch limit
-  const candidates = await intentsAdapter.selectRecoverable(ledgerId, config.maxBatch, config.maxBatch);
+  // Step 1: Exhaust intents whose scheduleAttemptCount already reached
+  // maxAttempts on a previous request and are still non-terminal.
+  // These would not be selected by selectRecoverable because the filter
+  // is scheduleAttemptCount < maxAttempts.
+  await intentsAdapter.exhaustStaleIntents(ledgerId, config.maxAttempts, config.maxBatch);
+
+  // Step 2: Select recoverable intents (scheduleAttemptCount < maxAttempts)
+  const candidates = await intentsAdapter.selectRecoverable(
+    ledgerId,
+    config.maxAttempts,
+    config.maxBatch
+  );
   if (candidates.length === 0) return [];
 
+  // Step 3: Atomically schedule each candidate
   const scheduled: RecoverableProcessingIntentContract[] = [];
-
   for (const candidate of candidates) {
     const success = await intentsAdapter.scheduleRecovery(
       candidate.revisionId,
@@ -50,19 +64,9 @@ export async function selectRecoverableProcessingIntents(
     "selectRecoverableProcessingIntents completed"
   );
 
-  // Mark intents as exhausted if they've reached the maxBatch limit
-  // after this scheduling cycle (scheduleRecovery incremented the count).
-  // Exclude exhausted intents from the returned array so executors don't
-  // attempt to claim them (they've already been marked as failed).
-  const result: RecoverableProcessingIntentContract[] = [];
-
-  for (const candidate of scheduled) {
-    if (candidate.scheduleAttemptCount + 1 >= config.maxBatch) {
-      await intentsAdapter.markExhausted(candidate.id);
-    } else {
-      result.push(candidate);
-    }
-  }
-
-  return result;
+  // Step 4: Return ALL successfully scheduled intents for execution.
+  // Even intents whose scheduleAttemptCount now equals maxAttempts
+  // are returned — this is their last allowed execution attempt.
+  // Exhaustion only occurs on the next request.
+  return scheduled;
 }

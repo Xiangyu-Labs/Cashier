@@ -598,6 +598,7 @@ export interface RecoverableProcessingIntentContract extends ProcessingIntentCon
 
 export interface ProcessingRecoveryConfig {
   maxBatch: number;
+  maxAttempts: number;
   cooldownSeconds: number;
 }
 

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type {
   ProcessingClaimContract,
   ProcessingCompletionContract,
@@ -272,13 +272,13 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
    * Selects recoverable processing intents for the given ledger.
    * Returns intents that are pending or have an expired claim,
    * whose next_available_at <= NOW, whose schedule_attempt_count
-   * is below maxCount, and whose revision is still the current
+   * is below maxAttempts, and whose revision is still the current
    * pending revision for the source document.
    * Ordered by next_available_at ASC, limited by `limit`.
    */
   async selectRecoverable(
     ledgerId: string,
-    maxCount: number,
+    maxAttempts: number,
     limit: number
   ): Promise<readonly RecoverableProcessingIntentContract[]> {
     const now = this.now();
@@ -305,7 +305,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       .where(
         and(
           eq(processingOutbox.ledgerId, ledgerId),
-          lte(processingOutbox.scheduleAttemptCount, maxCount - 1),
+          lt(processingOutbox.scheduleAttemptCount, maxAttempts),
           lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
@@ -330,29 +330,124 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
   }
 
   /**
+   * Finds and exhausts intents whose scheduleAttemptCount >= maxAttempts
+   * but whose outbox is still non-terminal (pending or expired-claimed)
+   * and whose revision is still the current pending revision.
+   * Returns the number of intents exhausted.
+   */
+  async exhaustStaleIntents(
+    ledgerId: string,
+    maxAttempts: number,
+    limit: number
+  ): Promise<number> {
+    const now = this.now();
+    const rows = await db
+      .select({
+        id: processingOutbox.id,
+      })
+      .from(processingOutbox)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`),
+          eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .where(
+        and(
+          eq(processingOutbox.ledgerId, ledgerId),
+          gte(processingOutbox.scheduleAttemptCount, maxAttempts),
+          lte(processingOutbox.nextAvailableAt, now),
+          or(
+            eq(processingOutbox.status, "pending"),
+            and(
+              eq(processingOutbox.status, "claimed"),
+              lte(processingOutbox.claimExpiresAt, now)
+            )
+          )
+        )
+      )
+      .limit(limit);
+
+    let exhausted = 0;
+    for (const row of rows) {
+      const success = await this.markExhausted(row.id);
+      if (success) exhausted++;
+    }
+    return exhausted;
+  }
+
+  /**
    * Marks an outbox intent as exhausted (failed with request_bound_retry_exhausted).
-   * Only applies if the revision is still the current pending revision for the source document.
+   *
+   * CAS verification: joins the source document to ensure the revision is still
+   * the current pending revision (document not deleted, exact pendingRevisionId,
+   * revision outcome is queued/processing). The outbox must be pending or
+   * expired-claimed to be actionable.
+   *
+   * If CAS passes: updates the outbox, attempt record, and revision diagnostic
+   * atomically within the transaction.
+   *
+   * If CAS fails (stale revision or newer pending exists): only closes the stale
+   * outbox without touching the revision.
    */
   async markExhausted(intentId: string): Promise<boolean> {
     const now = this.now();
     return db.transaction(async (tx) => {
+      // JOIN outbox with source documents and revisions to CAS-verify
+      // that the revision is still the current pending revision
       const row = await tx
         .select({
           revisionId: processingOutbox.revisionId,
-          ledgerId: processingOutbox.ledgerId,
-          payloadSourceDocumentId: sql<string>`${processingOutbox.payload}->>'sourceDocumentId'`,
+          outboxStatus: processingOutbox.status,
+          claimExpiresAt: processingOutbox.claimExpiresAt,
           attemptNumber: processingOutbox.attemptNumber,
+          documentDeletedAt: sourceDocuments.deletedAt,
+          documentPendingRevisionId: sourceDocuments.pendingRevisionId,
+          revisionOutcome: sourceDocumentRevisions.outcome,
         })
         .from(processingOutbox)
+        .innerJoin(
+          sourceDocuments,
+          and(
+            eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
+            eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`)
+          )
+        )
+        .innerJoin(
+          sourceDocumentRevisions,
+          and(
+            eq(sourceDocumentRevisions.ledgerId, processingOutbox.ledgerId),
+            eq(sourceDocumentRevisions.id, processingOutbox.revisionId)
+          )
+        )
         .where(eq(processingOutbox.id, intentId))
         .then((rows) => rows[0]);
       if (row == null) return false;
 
+      // Prerequisite: outbox must be pending or expired-claimed
+      const isActionable =
+        row.outboxStatus === "pending" ||
+        (row.outboxStatus === "claimed" && row.claimExpiresAt != null && row.claimExpiresAt <= now);
+
+      if (!isActionable) return false;
+
+      // CAS: verify the revision is still the current pending revision
+      const isCurrentPending =
+        row.documentDeletedAt == null &&
+        row.documentPendingRevisionId === row.revisionId &&
+        (row.revisionOutcome === "queued" || row.revisionOutcome === "processing");
+
+      // Update outbox to failed (common to both paths)
       const updated = await tx
         .update(processingOutbox)
         .set({
           status: "failed",
           completedAt: now,
+          claimToken: null,
+          claimExpiresAt: null,
         })
         .where(
           and(
@@ -370,25 +465,44 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .then((rows) => rows[0]);
       if (updated == null) return false;
 
-      // Only preserve failure code if this is still the current pending revision
-      await tx
-        .update(sourceDocumentRevisions)
-        .set({
-          outcome: "failed",
-          failureCode: "request_bound_retry_exhausted",
-          finalizedAt: now,
-        })
-        .where(
-          and(
-            eq(sourceDocumentRevisions.id, row.revisionId),
-            or(
-              eq(sourceDocumentRevisions.outcome, "queued"),
-              eq(sourceDocumentRevisions.outcome, "processing")
+      if (isCurrentPending) {
+        // CAS passed — full exhaustion: update attempt record and revision
+        await tx
+          .update(processingAttempts)
+          .set({
+            status: "failed",
+            completedAt: now,
+            retryClassification: "permanent",
+            diagnosticCode: "request_bound_retry_exhausted",
+          })
+          .where(
+            and(
+              eq(processingAttempts.revisionId, row.revisionId),
+              eq(processingAttempts.attemptNumber, row.attemptNumber)
             )
-          )
-        )
-        .then();
+          );
 
+        await tx
+          .update(sourceDocumentRevisions)
+          .set({
+            outcome: "failed",
+            failureCode: "request_bound_retry_exhausted",
+            finalizedAt: now,
+          })
+          .where(
+            and(
+              eq(sourceDocumentRevisions.id, row.revisionId),
+              or(
+                eq(sourceDocumentRevisions.outcome, "queued"),
+                eq(sourceDocumentRevisions.outcome, "processing")
+              )
+            )
+          );
+
+        return true;
+      }
+
+      // CAS failed — only closed the stale outbox, did not touch the revision
       return true;
     });
   }

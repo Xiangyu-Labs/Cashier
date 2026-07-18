@@ -38,6 +38,7 @@ export interface RuntimeEnv {
   readonly logLevel: string;
   readonly devAuthBypass: boolean;
   readonly processingRecoveryMaxBatch: number;
+  readonly processingRecoveryMaxAttempts: number;
   readonly processingRecoveryCooldownSeconds: number;
 }
 
@@ -158,6 +159,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get processingRecoveryMaxBatch() {
     return getStartupEnvValue("PROCESSING_RECOVERY_MAX_BATCH");
+  },
+  get processingRecoveryMaxAttempts() {
+    return getStartupEnvValue("PROCESSING_RECOVERY_MAX_ATTEMPTS");
   },
   get processingRecoveryCooldownSeconds() {
     return getStartupEnvValue("PROCESSING_RECOVERY_COOLDOWN_SECONDS");

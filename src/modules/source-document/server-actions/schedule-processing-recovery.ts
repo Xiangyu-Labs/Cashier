@@ -18,6 +18,7 @@ import { selectRecoverableProcessingIntents } from "@/modules/source-document/ap
 export async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
   const config = {
     maxBatch: runtimeEnv.processingRecoveryMaxBatch,
+    maxAttempts: runtimeEnv.processingRecoveryMaxAttempts,
     cooldownSeconds: runtimeEnv.processingRecoveryCooldownSeconds,
   };
 
