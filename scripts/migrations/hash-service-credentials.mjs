@@ -7,9 +7,12 @@
  * their HMAC-SHA-256 hashes, verify correctness, and clear plaintext columns.
  *
  * Modes:
- *   backfill         - Hash all active credentials that have key but no token_hash
- *   verify           - Verify all active credentials have valid hash/prefix/suffix
- *   clear-plaintext  - Set key column to NULL for all rows with valid hash
+ *   backfill         - Hash all active credentials that have key but no token_hash,
+ *                       then clear key on deleted rows.
+ *   verify           - Verify all active credentials have valid hash/prefix/suffix,
+ *                       and report total plaintext key count across all rows.
+ *   clear-plaintext  - Set key column to NULL for all rows (active with valid hash,
+ *                       and all deleted rows).
  *
  * Usage:
  *   API_KEY_PEPPER=<pepper> DATABASE_URL=<url> node scripts/migrations/hash-service-credentials.mjs <mode>
@@ -61,29 +64,41 @@ async function backfill(pool) {
   );
 
   if (rows.length === 0) {
-    console.log("[backfill] No credentials to migrate.");
-    return;
+    console.log("[backfill] No active credentials to migrate.");
+  } else {
+    console.log(`[backfill] Found ${rows.length} active credential(s) to migrate.`);
+
+    let migrated = 0;
+    for (const row of rows) {
+      const hash = computeHash(row.key);
+      const { prefix, suffix } = prefixSuffix(row.key);
+
+      await pool.query(
+        `UPDATE service_credentials
+         SET token_hash = $1, token_prefix = $2, token_suffix = $3
+         WHERE id = $4 AND token_hash IS NULL`,
+        [hash, prefix, suffix, row.id]
+      );
+
+      migrated++;
+      console.log(`[backfill] Migrated credential ${row.id}`);
+    }
+
+    console.log(`[backfill] Done. Migrated ${migrated} active credential(s).`);
   }
 
-  console.log(`[backfill] Found ${rows.length} credential(s) to migrate.`);
+  // Clear plaintext key from deleted rows (they don't need hashing)
+  const deletedResult = await pool.query(
+    `UPDATE service_credentials
+     SET key = NULL
+     WHERE deleted_at IS NOT NULL AND key IS NOT NULL`
+  );
 
-  let migrated = 0;
-  for (const row of rows) {
-    const hash = computeHash(row.key);
-    const { prefix, suffix } = prefixSuffix(row.key);
-
-    await pool.query(
-      `UPDATE service_credentials
-       SET token_hash = $1, token_prefix = $2, token_suffix = $3
-       WHERE id = $4 AND token_hash IS NULL`,
-      [hash, prefix, suffix, row.id]
-    );
-
-    migrated++;
-    console.log(`[backfill] Migrated credential ${row.id}`);
+  if (deletedResult.rowCount > 0) {
+    console.log(`[backfill] Cleared plaintext from ${deletedResult.rowCount} deleted credential(s).`);
+  } else {
+    console.log("[backfill] No deleted credentials with plaintext key to clear.");
   }
-
-  console.log(`[backfill] Done. Migrated ${migrated} credential(s).`);
 }
 
 async function verify(pool) {
@@ -96,18 +111,15 @@ async function verify(pool) {
      ORDER BY created_at ASC`
   );
 
-  if (rows.length === 0) {
-    console.log("[verify] No active credentials to verify.");
-    return;
-  }
-
-  let allValid = true;
+  let activeTotal = rows.length;
+  let missingHashCount = 0;
 
   for (const row of rows) {
     const issues = [];
 
     if (row.token_hash == null) {
       issues.push("missing token_hash");
+      missingHashCount++;
     }
 
     if (row.token_prefix == null) {
@@ -138,17 +150,34 @@ async function verify(pool) {
     }
 
     if (issues.length > 0) {
-      allValid = false;
       console.log(`[verify] FAIL: credential ${row.id}: ${issues.join("; ")}`);
     }
   }
 
-  if (allValid) {
-    console.log(`[verify] All ${rows.length} credential(s) valid.`);
-  } else {
-    console.error("[verify] Verification FAILED. Some credentials have issues.");
+  // Count plaintext keys across ALL rows (active + deleted)
+  const { rows: plaintextRows } = await pool.query(
+    `SELECT COUNT(*) as cnt FROM service_credentials WHERE key IS NOT NULL`
+  );
+  const plaintextCount = parseInt(plaintextRows[0]?.cnt ?? "0", 10);
+
+  const hasActiveMissing = missingHashCount > 0;
+  const hasPlaintext = plaintextCount > 0;
+
+  console.log(
+    `[verify] ${activeTotal} active credential(s) checked, ` +
+    `${missingHashCount} active missing token_hash, ` +
+    `${plaintextCount} row(s) still have plaintext key.`
+  );
+
+  if (hasActiveMissing || hasPlaintext) {
+    console.error("[verify] Verification FAILED. " +
+      (hasActiveMissing ? `${missingHashCount} active credential(s) missing token_hash. ` : "") +
+      (hasPlaintext ? `${plaintextCount} row(s) still have plaintext key.` : "")
+    );
     process.exit(1);
   }
+
+  console.log("[verify] All credentials valid, no plaintext keys remaining.");
 }
 
 async function clearPlaintext(pool) {
@@ -183,15 +212,30 @@ async function clearPlaintext(pool) {
 
   console.log("[clear-plaintext] All active credentials validated. Clearing plaintext key column...");
 
-  const result = await pool.query(
+  // Clear key on active rows with valid hash
+  const activeResult = await pool.query(
     `UPDATE service_credentials
      SET key = NULL
      WHERE key IS NOT NULL
        AND token_hash IS NOT NULL
        AND deleted_at IS NULL`
   );
+  const activeCleared = activeResult.rowCount ?? 0;
 
-  console.log(`[clear-plaintext] Cleared ${result.rowCount} credential(s).`);
+  // Clear key on all deleted rows unconditionally
+  const deletedResult = await pool.query(
+    `UPDATE service_credentials
+     SET key = NULL
+     WHERE key IS NOT NULL
+       AND deleted_at IS NOT NULL`
+  );
+  const deletedCleared = deletedResult.rowCount ?? 0;
+
+  const totalCleared = activeCleared + deletedCleared;
+  const parts = [];
+  if (activeCleared > 0) parts.push(`${activeCleared} active`);
+  if (deletedCleared > 0) parts.push(`${deletedCleared} deleted`);
+  console.log(`[clear-plaintext] Cleared ${parts.join(" + ")} credential(s) (${totalCleared} total).`);
 }
 
 async function main() {

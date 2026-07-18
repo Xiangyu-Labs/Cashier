@@ -8,7 +8,7 @@ import {
   sourceDocuments,
   ledgers,
 } from "@/persistence";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import {
   createServiceCredentialAction,
@@ -271,6 +271,50 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     });
     expect(check).toBeDefined();
     expect(check?.deletedAt).not.toBeNull();
+  });
+
+  it("deleted legacy credential has its key cleared after migration backfill", async () => {
+    const db = getTestDb();
+    // Simulate a legacy credential with plaintext key (pre-hash era)
+    const knownToken = "sk_live_deleted_migration_12345678901234567890123456789012";
+    const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
+    const [createdRow] = await db
+      .insert(serviceCredentials)
+      .values({
+        ledgerId: testLedgerId,
+        name: "Legacy To Delete",
+        key: knownToken,
+        tokenHash: null,
+        tokenPrefix: null,
+        tokenSuffix: null,
+      })
+      .returning();
+    expect(createdRow?.key).toBe(knownToken);
+
+    // Soft-delete the credential
+    await db
+      .update(serviceCredentials)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(eq(serviceCredentials.id, createdRow!.id), isNull(serviceCredentials.deletedAt))
+      );
+
+    // Simulate backfill: clear plaintext on deleted rows (not hash them)
+    await db
+      .update(serviceCredentials)
+      .set({ key: null })
+      .where(
+        and(sql`deleted_at IS NOT NULL`, sql`key IS NOT NULL`)
+      );
+
+    // Verify key is cleared
+    const deleted = await db.query.serviceCredentials.findFirst({
+      where: eq(serviceCredentials.id, createdRow!.id),
+    });
+    expect(deleted?.deletedAt).not.toBeNull();
+    expect(deleted?.key).toBeNull();
+    // Deleted rows should not get hashed
+    expect(deleted?.tokenHash).toBeNull();
   });
 
   it("tracks last use and rejects authentication immediately after revoke", async () => {
