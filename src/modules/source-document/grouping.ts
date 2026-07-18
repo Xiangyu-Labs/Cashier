@@ -2,7 +2,7 @@ import type { SourceDocumentStatusType } from "./types";
 
 export interface SourceDocumentGroup<T> {
   sourceDocument: T;
-  ledgerEntries: T extends { ledgerEntries?: infer E } ? E : never;
+  ledgerEntries: T extends { ledgerEntries?: infer E } ? Exclude<E, null | undefined> : never[];
 }
 
 export interface GroupedSourceDocuments<T> {
@@ -36,7 +36,9 @@ export function groupSourceDocumentsByStatus<
   for (const doc of docs) {
     const group: SourceDocumentGroup<T> = {
       sourceDocument: doc,
-      ledgerEntries: doc.ledgerEntries as T extends { ledgerEntries?: infer E } ? E : never,
+      ledgerEntries: (doc.ledgerEntries ?? []) as T extends { ledgerEntries?: infer E }
+        ? Exclude<E, null | undefined>
+        : never[],
     };
 
     switch (doc.status as SourceDocumentStatusType) {

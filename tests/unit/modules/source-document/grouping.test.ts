@@ -23,6 +23,7 @@ describe("grouping helpers", () => {
     expect(groups.queued[0]?.sourceDocument.id).toBe("queued-1");
     expect(groups.queued[0]?.ledgerEntries).toEqual([{ id: "entry-1" }]);
     expect(groups.completed).toHaveLength(1);
+    expect(groups.completed[0]?.ledgerEntries).toEqual([]);
     expect(
       groups.queued.concat(groups.processing, groups.anomaly, groups.failed, groups.completed)
     ).not.toContainEqual(
