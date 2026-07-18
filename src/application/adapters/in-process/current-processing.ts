@@ -12,7 +12,6 @@ import {
 import type { ProcessingFailureCode, ProcessingIntentContract } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { CurrentRevisionProcessor } from "./revision-processor";
-import { InProcessProcessingDispatcher } from "./dispatcher";
 
 function toFailureCode(error: unknown): ProcessingFailureCode {
   if (error instanceof AppError) {
@@ -52,48 +51,6 @@ function toFailureCode(error: unknown): ProcessingFailureCode {
     }
   }
   return "processing_unavailable";
-}
-
-let dispatcher: InProcessProcessingDispatcher | null = null;
-let initialization: Promise<InProcessProcessingDispatcher> | null = null;
-
-function createDispatcher(): InProcessProcessingDispatcher {
-  const intents = new PostgresProcessingIntentAdapter();
-  const processor = new CurrentRevisionProcessor({
-    createAIContext: (signal) =>
-      createAIContext({
-        signal,
-        reportTokens: () => {},
-        getClient: getOpenAIClient,
-        modelConfig: {
-          text: runtimeEnv.aiModelText,
-          vision: runtimeEnv.aiModelVision,
-        },
-      }),
-  });
-  return new InProcessProcessingDispatcher(intents, async (claim) => {
-    const row = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, claim.intent.id),
-      columns: { ledgerId: true },
-    });
-    if (row == null) throw new Error("Processing intent disappeared after claim");
-    try {
-      return await processor.process({
-        ledgerId: row.ledgerId,
-        sourceDocumentId: claim.intent.sourceDocumentId,
-        revisionId: claim.intent.revisionId,
-      });
-    } catch (error) {
-      await postgresRevisionAdapter.preserveTerminalOutcome({
-        ledgerId: row.ledgerId,
-        sourceDocumentId: claim.intent.sourceDocumentId,
-        revisionId: claim.intent.revisionId,
-        outcome: "failed",
-        failureCode: toFailureCode(error),
-      });
-      throw error;
-    }
-  });
 }
 
 /**
@@ -162,38 +119,6 @@ export async function executeSingleProcessingIntent(
 }
 
 /**
- * @deprecated Legacy startup path (will be removed in Task 3).
- * Use executeSingleProcessingIntent for new code.
- */
-export async function initializeCurrentProcessingDispatcher(): Promise<void> {
-  if (dispatcher != null) return;
-  if (initialization == null) {
-    initialization = (async () => {
-      const next = createDispatcher();
-      await next.start();
-      dispatcher = next;
-      return next;
-    })();
-  }
-  try {
-    await initialization;
-  } finally {
-    initialization = null;
-  }
-}
-
-/**
- * @deprecated Legacy — dispatches intent and drains all pending rows via singleton dispatcher.
- * Use executeSingleProcessingIntent for new code.
- */
-export async function dispatchRevisionProcessingIntent(
-  intent: ProcessingIntentContract
-): Promise<void> {
-  await initializeCurrentProcessingDispatcher();
-  await dispatcher!.dispatch(intent);
-}
-
-/**
  * Fires revision processing for the given intent asynchronously.
  *
  * Note: previously this dispatched via the legacy drain-loop; it now delegates
@@ -206,12 +131,4 @@ export function triggerRevisionProcessingIntent(intent: ProcessingIntentContract
       "Failed to execute single processing intent"
     );
   });
-}
-
-/**
- * @deprecated Legacy — only used for testing backward compat.
- */
-export function resetCurrentProcessingDispatcher(): void {
-  dispatcher = null;
-  initialization = null;
 }

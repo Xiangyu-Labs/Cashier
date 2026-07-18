@@ -5,11 +5,9 @@ import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
   CurrentRevisionProcessor,
   executeSingleProcessingIntent,
-  InProcessProcessingDispatcher,
 } from "@/application/adapters/in-process";
 import {
   PostgresProcessingIntentAdapter,
-  postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
 import type { ProcessingIntentContract } from "@/application/contracts";
@@ -53,7 +51,7 @@ async function pendingIntent(
   };
 }
 
-describe("SQLite processing intents and in-process dispatcher", () => {
+describe("PostgresProcessingIntentAdapter", () => {
   it("processes parser, reconciliation, exchange-rate facts, and result writes by revision identity", async () => {
     const db = getTestDb();
     const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
@@ -149,214 +147,37 @@ describe("SQLite processing intents and in-process dispatcher", () => {
     ).resolves.toBe(true);
   });
 
-  it("recovers after dispatcher restart and projects the ledger exactly once", async () => {
-    const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const durableStore = new PostgresProcessingIntentAdapter();
-    await durableStore.dispatch(intent);
-    const execute = vi.fn(async () => {
-      const activated = await postgresLedgerProjectionAdapter.activateRevision({
-        ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
-        title: "Lunch",
-        entries: [
-          {
-            categoryId: null,
-            amount: "12.50",
-            currency: "CNY",
-            itemName: "Lunch",
-            description: null,
-            convertedAmount: "12.50",
-            exchangeRate: "1",
-          },
-        ],
-      });
-      expect(activated).toBe(true);
-      return { outcome: "completed" as const };
-    });
-
-    await new InProcessProcessingDispatcher(
-      new PostgresProcessingIntentAdapter(),
-      execute
-    ).start();
-    await new InProcessProcessingDispatcher(
-      new PostgresProcessingIntentAdapter(),
-      execute
-    ).start();
-
-    expect(execute).toHaveBeenCalledTimes(1);
-    expect(await db.select().from(ledgerEntries)).toHaveLength(1);
-    expect(
-      await db.query.processingOutbox.findFirst({
-        where: eq(processingOutbox.id, intent.id),
-      })
-    ).toMatchObject({ status: "completed" });
-  });
-});
-
-describe("executeSingleIntent — request-bound processing seam", () => {
-  it("processes only its supplied intent, not unrelated pending rows", async () => {
-    const db = getTestDb();
-    const entity1 = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const entity2 = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(entity1.intent);
-    await adapter.dispatch(entity2.intent);
-
-    const processed: string[] = [];
-    const execute = vi.fn(async (claim) => {
-      processed.push(claim.intent.id);
-      return { outcome: "completed" as const };
-    });
-
-    const dispatcher = new InProcessProcessingDispatcher(adapter, execute);
-    const result = await dispatcher.executeSingleIntent(entity1.intent);
-
-    // Only intent1 was claimed and processed
-    expect(result).toBe(true);
-    expect(processed).toEqual([entity1.intent.id]);
-
-    const row1 = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, entity1.intent.id),
-    });
-    expect(row1?.status).toBe("completed");
-
-    // intent2 remains pending — executeSingleIntent did NOT drain unrelated rows
-    const row2 = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, entity2.intent.id),
-    });
-    expect(row2?.status).toBe("pending");
-  });
-
-  it("returns false on duplicate execution (second call is a no-op)", async () => {
+  it("returns false on duplicate claim", async () => {
     const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
-    const execute = vi.fn(async () => ({ outcome: "completed" as const }));
-    const dispatcher = new InProcessProcessingDispatcher(adapter, execute);
+    // First claim succeeds
+    const first = await adapter.claim(intent.id);
+    expect(first).not.toBeNull();
 
-    // First call processes the intent
-    const first = await dispatcher.executeSingleIntent(intent);
-    expect(first).toBe(true);
-    expect(execute).toHaveBeenCalledTimes(1);
-
-    // Second call — intent already completed — returns false
-    const second = await dispatcher.executeSingleIntent(intent);
-    expect(second).toBe(false);
-    expect(execute).toHaveBeenCalledTimes(1);
+    // Second claim (same adapter, same DB) returns null since intent is claimed
+    const second = await adapter.claim(intent.id);
+    expect(second).toBeNull();
   });
 
-  it("returns false on duplicate execution when already claimed by another dispatcher instance", async () => {
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const adapter = new PostgresProcessingIntentAdapter();
-    await adapter.dispatch(intent);
-
-    const executeFirst = vi.fn(async () => ({ outcome: "completed" as const }));
-    const dispatcher1 = new InProcessProcessingDispatcher(adapter, executeFirst);
-    await dispatcher1.executeSingleIntent(intent);
-
-    // Second dispatcher (fresh adapter sharing same DB) tries to claim it
-    const adapter2 = new PostgresProcessingIntentAdapter();
-    const executeSecond = vi.fn(async () => ({ outcome: "completed" as const }));
-    const dispatcher2 = new InProcessProcessingDispatcher(adapter2, executeSecond);
-    const result = await dispatcher2.executeSingleIntent(intent);
-
-    expect(result).toBe(false);
-    expect(executeSecond).not.toHaveBeenCalled();
-  });
-
-  it("records failed outcome when processing throws", async () => {
+  it("records failed outcome on processing error via executeSingleProcessingIntent", async () => {
     const db = getTestDb();
     const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
+    vi.mocked(createAIContext).mockReturnValue({ generate });
+
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
-    const execute = vi.fn(async () => {
-      throw new Error("AI service unavailable");
-    });
-    const dispatcher = new InProcessProcessingDispatcher(adapter, execute);
-    const result = await dispatcher.executeSingleIntent(intent);
-
-    // Intent was claimed and attempted — returns true even though processing failed
+    const result = await executeSingleProcessingIntent(intent);
     expect(result).toBe(true);
 
     const row = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
     expect(row?.status).toBe("failed");
-
-    // Verify execution was called
-    expect(execute).toHaveBeenCalledTimes(1);
-  });
-
-  it("preserves terminal outcome when processor rejects a stale revision", async () => {
-    const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
-    const adapter = new PostgresProcessingIntentAdapter();
-
-    // Dispatch the intent
-    await adapter.dispatch(intent);
-
-    // At this point the document has pendingRevisionId = intent.revisionId.
-    // We simulate a race: while this intent is pending (in the outbox), another
-    // process updates the pendingRevisionId to a different value.
-    // We do this by manually setting pendingRevisionId before the executor runs.
-    const staleRevisionId = crypto.randomUUID();
-    await db
-      .update(sourceDocuments)
-      .set({ pendingRevisionId: staleRevisionId })
-      .where(eq(sourceDocuments.id, intent.sourceDocumentId));
-
-    // Verify staleness is in place
-    const doc = await db.query.sourceDocuments.findFirst({
-      where: eq(sourceDocuments.id, intent.sourceDocumentId),
-    });
-    expect(doc?.pendingRevisionId).toBe(staleRevisionId);
-
-    // Now executeSingleIntent claims the intent by ID (succeeds — outbox is pending)
-    // and the executor calls processor.process(). The processor checks
-    // document.pendingRevisionId !== request.revisionId and throws.
-    const generate = vi.fn();
-    const staleExecutor = vi.fn(async (claim) => {
-      const processor = new CurrentRevisionProcessor({
-        createAIContext: () => ({ generate }),
-      });
-      return processor.process({
-        ledgerId,
-        sourceDocumentId: intent.sourceDocumentId,
-        revisionId: intent.revisionId,
-      });
-    });
-
-    const dispatcher = new InProcessProcessingDispatcher(adapter, staleExecutor);
-    const result = await dispatcher.executeSingleIntent(intent);
-
-    // The intent was claimed and the processor threw.
-    // executeSingleIntent catches the error and completes with "failed".
-    expect(result).toBe(true);
-
-    // The outbox row should be marked as failed
-    const row = await db.query.processingOutbox.findFirst({
-      where: eq(processingOutbox.id, intent.id),
-    });
-    expect(row?.status).toBe("failed");
-
-    // The original revision stays as "processing" because after the claim updated it
-    // to "processing", preserveTerminalOutcome's guard (pendingRevisionId check)
-    // prevents further updates — the revision is no longer the document's pending one.
-    // This orphaned status is harmless: the document points to a different pending
-    // revision, and the outbox is already marked failed.
-    const r1 = await db.query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
-    });
-    expect(r1?.outcome).toBe("processing");
-
-    // activateRevision was never called — verify no ledger entries
-    expect(await db.select().from(ledgerEntries)).toHaveLength(0);
-    expect(generate).not.toHaveBeenCalled();
   });
 });
 

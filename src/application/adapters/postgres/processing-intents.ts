@@ -253,6 +253,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           eq(processingOutbox.id, intentId),
           eq(processingOutbox.ledgerId, ledgerId),
           eq(processingOutbox.revisionId, revisionId),
+          lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
             and(
@@ -270,12 +271,14 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
   /**
    * Selects recoverable processing intents for the given ledger.
    * Returns intents that are pending or have an expired claim,
-   * whose next_available_at <= NOW, and whose revision is still the
-   * current pending revision for the source document.
+   * whose next_available_at <= NOW, whose schedule_attempt_count
+   * is below maxCount, and whose revision is still the current
+   * pending revision for the source document.
    * Ordered by next_available_at ASC, limited by `limit`.
    */
   async selectRecoverable(
     ledgerId: string,
+    maxCount: number,
     limit: number
   ): Promise<readonly RecoverableProcessingIntentContract[]> {
     const now = this.now();
@@ -302,6 +305,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       .where(
         and(
           eq(processingOutbox.ledgerId, ledgerId),
+          lte(processingOutbox.scheduleAttemptCount, maxCount - 1),
           lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
@@ -353,7 +357,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .where(
           and(
             eq(processingOutbox.id, intentId),
-            or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed"))
+            eq(processingOutbox.status, "pending")
           )
         )
         .returning({ id: processingOutbox.id })

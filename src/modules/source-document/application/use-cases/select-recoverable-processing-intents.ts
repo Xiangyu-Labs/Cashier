@@ -23,7 +23,8 @@ export async function selectRecoverableProcessingIntents(
 ): Promise<readonly RecoverableProcessingIntentContract[]> {
   const intentsAdapter = adapter ?? new PostgresProcessingIntentAdapter();
 
-  const candidates = await intentsAdapter.selectRecoverable(ledgerId, config.maxBatch);
+  // Only select intents whose scheduleAttemptCount is below the maxBatch limit
+  const candidates = await intentsAdapter.selectRecoverable(ledgerId, config.maxBatch, config.maxBatch);
   if (candidates.length === 0) return [];
 
   const scheduled: RecoverableProcessingIntentContract[] = [];
@@ -49,13 +50,10 @@ export async function selectRecoverableProcessingIntents(
     "selectRecoverableProcessingIntents completed"
   );
 
-  // If any candidate's schedule attempt count has reached the limit,
-  // mark them as exhausted so they don't keep being retried
-  for (const candidate of candidates) {
-    if (
-      candidate.scheduleAttemptCount >= config.maxBatch &&
-      !scheduled.some((s) => s.id === candidate.id)
-    ) {
+  // Mark intents as exhausted if they've reached the maxBatch limit
+  // after this scheduling cycle (scheduleRecovery incremented the count)
+  for (const candidate of scheduled) {
+    if (candidate.scheduleAttemptCount + 1 >= config.maxBatch) {
       await intentsAdapter.markExhausted(candidate.id);
     }
   }
