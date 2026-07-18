@@ -91,6 +91,20 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
         message: "Content (text or images) is required",
       });
     }
+
+    // Enforce aggregate file count (storedFileIds + images + originalImages)
+    // at the schema boundary. Although originalImages are rejected by the
+    // use case, they are still counted here as defense in depth.
+    const storedCount = value.storedFileIds?.length ?? 0;
+    const imageCount = value.images?.length ?? 0;
+    const originalCount = value.originalImages?.length ?? 0;
+    const totalFiles = storedCount + imageCount + originalCount;
+    if (totalFiles > MAX_FILES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Total file count ${totalFiles} exceeds maximum of ${MAX_FILES}`,
+      });
+    }
   }
 );
 

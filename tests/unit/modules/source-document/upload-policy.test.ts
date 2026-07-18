@@ -16,6 +16,7 @@ import {
   validateImageProcessing,
   validateRevisionUpload,
   validateFileCount,
+  validateAggregateFileCount,
   sanitizeMimeType,
 } from "@/modules/source-document/upload-policy";
 
@@ -161,6 +162,31 @@ describe("validateFileCount", () => {
 
   it("rejects counts above MAX_FILES", () => {
     expect(() => validateFileCount(MAX_FILES + 1)).toThrow("must be between 1 and");
+  });
+});
+
+describe("validateAggregateFileCount", () => {
+  it("accepts valid combined counts within MAX_FILES", () => {
+    expect(() => validateAggregateFileCount(0, 10, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(10, 0, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(5, 5, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(3, 3, 4)).not.toThrow();
+    expect(() => validateAggregateFileCount(10, 0, 0)).not.toThrow();
+  });
+
+  it("rejects combined counts exceeding MAX_FILES", () => {
+    expect(() => validateAggregateFileCount(10, 1, 0)).toThrow("exceeds maximum of 10 files");
+    expect(() => validateAggregateFileCount(6, 5, 0)).toThrow("exceeds maximum of 10 files");
+    expect(() => validateAggregateFileCount(5, 5, 1)).toThrow("exceeds maximum of 10 files");
+    expect(() => validateAggregateFileCount(0, 0, 11)).toThrow("exceeds maximum of 10 files");
+  });
+
+  it("accepts zero counts across all categories", () => {
+    expect(() => validateAggregateFileCount(0, 0, 0)).not.toThrow();
+  });
+
+  it("rejects count just above MAX_FILES", () => {
+    expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow("exceeds maximum of 10 files");
   });
 });
 

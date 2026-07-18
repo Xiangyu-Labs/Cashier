@@ -244,6 +244,77 @@ describe("upload policy integration", () => {
     });
   });
 
+  describe("aggregate file count at revision boundary", () => {
+    it("rejects revision attachment when file count exceeds MAX_FILES", async () => {
+      const db = getTestDb();
+      const { ledgerId } = await createTestUserWithLedger(db);
+      const adapter = new StoredFileAdapter(new MemoryFileStore());
+
+      // Create MAX_FILES + 1 finalized stored files
+      const body = Buffer.from("tiny");
+      const files = await Promise.all(
+        Array.from({ length: MAX_FILES + 1 }, () => finalizedFile(adapter, ledgerId, body))
+      );
+
+      await expect(
+        db.transaction(async (tx) =>
+          createPendingRevisionInTransaction(tx, {
+            ledgerId,
+            storedFileIds: files.map((f) => f.id),
+            entryDate: "2026-07-15",
+          })
+        )
+      ).rejects.toThrow(ValidationError);
+
+      // No revision was created
+      const revisions = await db.select().from(sourceDocumentRevisions);
+      expect(revisions).toHaveLength(0);
+    });
+
+    it("accepts revision attachment at exactly MAX_FILES", async () => {
+      const db = getTestDb();
+      const { ledgerId } = await createTestUserWithLedger(db);
+      const adapter = new StoredFileAdapter(new MemoryFileStore());
+
+      const body = Buffer.from("tiny");
+      const files = await Promise.all(
+        Array.from({ length: MAX_FILES }, () => finalizedFile(adapter, ledgerId, body))
+      );
+
+      const result = await db.transaction(async (tx) =>
+        createPendingRevisionInTransaction(tx, {
+          ledgerId,
+          storedFileIds: files.map((f) => f.id),
+          entryDate: "2026-07-15",
+        })
+      );
+
+      expect(result.document).toBeDefined();
+      expect(result.revision).toBeDefined();
+    });
+
+    it("rejects revision with duplicate stored-file IDs", async () => {
+      const db = getTestDb();
+      const { ledgerId } = await createTestUserWithLedger(db);
+      const adapter = new StoredFileAdapter(new MemoryFileStore());
+
+      const file = await finalizedFile(adapter, ledgerId, Buffer.from("tiny"));
+
+      await expect(
+        db.transaction(async (tx) =>
+          createPendingRevisionInTransaction(tx, {
+            ledgerId,
+            storedFileIds: [file.id, file.id],
+            entryDate: "2026-07-15",
+          })
+        )
+      ).rejects.toThrow(ValidationError);
+
+      const revisions = await db.select().from(sourceDocumentRevisions);
+      expect(revisions).toHaveLength(0);
+    });
+  });
+
   describe("R2 storage keys are never exposed in responses", () => {
     it("does not return storageKey in stored file query results", async () => {
       const db = getTestDb();

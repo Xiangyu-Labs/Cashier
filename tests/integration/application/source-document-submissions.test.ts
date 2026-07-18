@@ -18,6 +18,8 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
+import { ValidationError } from "@/lib/errors";
+import { MAX_FILES } from "@/modules/source-document/upload-policy";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
@@ -256,6 +258,51 @@ describe("target source-document submissions", () => {
     expect(retryFiles.map((file) => file.storedFileId)).toEqual([image.id]);
     expect(await db.select().from(processingOutbox)).toHaveLength(2);
     expect(await db.select().from(processingAttempts)).toHaveLength(2);
+  });
+
+  it("rejects inherited evidence retry when previous revision exceeds MAX_FILES", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new StoredFileAdapter(new MemoryFileStore());
+
+    // Create MAX_FILES + 1 finalized stored files
+    const body = Buffer.from("tiny");
+    const files = await Promise.all(
+      Array.from({ length: MAX_FILES + 1 }, () => finalizedFile(storage, ledgerId, body))
+    );
+
+    // Create a revision with MAX_FILES files via the normal path (this succeeds)
+    const initial = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      ledgerId,
+      submittedText: "initial",
+      storedFileIds: files.slice(0, MAX_FILES).map((f) => f.id),
+    });
+    await postgresRevisionAdapter.preserveTerminalOutcome({
+      ledgerId,
+      sourceDocumentId: initial.document.id,
+      revisionId: initial.revision.id,
+      outcome: "failed",
+    });
+
+    // Directly insert an extra revisionFile record to simulate a pre-existing
+    // overflow that predates the aggregate file-count check.
+    const overflowFileId = files[MAX_FILES]!.id;
+    await db.insert(revisionFiles).values({
+      ledgerId,
+      revisionId: initial.revision.id,
+      storedFileId: overflowFileId,
+      position: MAX_FILES,
+    });
+
+    // Inherited evidence retry should now reject because createPendingRevisionInTransaction
+    // enforces the MAX_FILES limit.
+    await expect(
+      postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+        ledgerId,
+        sourceDocumentId: initial.document.id,
+        inheritEvidence: true,
+      })
+    ).rejects.toThrow(ValidationError);
   });
 
   it("returns ordered stored-file identities and rejects cross-workspace retry evidence", async () => {

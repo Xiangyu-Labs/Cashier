@@ -143,6 +143,25 @@ export function validateFileCount(count: number): void {
 }
 
 /**
+ * Validate that the combined total of stored-file IDs, inline images,
+ * and original images does not exceed the per-revision file limit.
+ *
+ * Called at schema, use-case, and transaction layers for defense in depth.
+ */
+export function validateAggregateFileCount(
+  storedFileIdsCount: number,
+  imageCount: number,
+  originalImageCount: number = 0
+): void {
+  const total = storedFileIdsCount + imageCount + originalImageCount;
+  if (total > MAX_FILES) {
+    throw new ValidationError(
+      `Total file count ${total} exceeds maximum of ${MAX_FILES} files`
+    );
+  }
+}
+
+/**
  * Sanitize and resolve the trusted MIME type.
  *
  * Trusts the detected type (from content inspection, e.g. sharp metadata) over

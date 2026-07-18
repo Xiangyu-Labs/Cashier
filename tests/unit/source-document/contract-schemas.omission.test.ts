@@ -4,6 +4,7 @@ import {
   listSourceDocumentsInputSchema,
   retrySourceDocumentInputSchema,
 } from "@/modules/source-document/contract-schemas";
+import { MAX_FILES } from "@/modules/source-document/upload-policy";
 import {
   ledgerStatsQuerySchema,
   listLedgerEntriesInputSchema,
@@ -63,6 +64,72 @@ describe("contract schema omission semantics", () => {
     expect(parsed.limit).toBe(5);
     expect(parsed.minAmount).toBe(20);
     expect(parsed.maxAmount).toBe(100);
+  });
+
+  it("rejects combined storedFileIds + images + originalImages exceeding MAX_FILES", () => {
+    const uuid = () => crypto.randomUUID();
+
+    // 10+0 success
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        storedFileIds: Array.from({ length: MAX_FILES }, () => uuid()),
+      })
+    ).not.toThrow();
+
+    // 0+10 success
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        images: Array.from({ length: MAX_FILES }, () => ({
+          data: "dGVzdA==",
+          mimeType: "image/jpeg",
+        })),
+      })
+    ).not.toThrow();
+
+    // 5+5 success
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        storedFileIds: Array.from({ length: 5 }, () => uuid()),
+        images: Array.from({ length: 5 }, () => ({
+          data: "dGVzdA==",
+          mimeType: "image/jpeg",
+        })),
+      })
+    ).not.toThrow();
+
+    // 10+1 failure (11 files)
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        storedFileIds: Array.from({ length: MAX_FILES }, () => uuid()),
+        images: [{ data: "dGVzdA==", mimeType: "image/jpeg" }],
+      })
+    ).toThrow();
+
+    // 6+5 failure (11 files)
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        storedFileIds: Array.from({ length: 6 }, () => uuid()),
+        images: Array.from({ length: 5 }, () => ({
+          data: "dGVzdA==",
+          mimeType: "image/jpeg",
+        })),
+      })
+    ).toThrow();
+
+    // originalImages counted in total
+    expect(() =>
+      createSourceDocumentInputSchema.parse({
+        storedFileIds: Array.from({ length: 5 }, () => uuid()),
+        images: Array.from({ length: 3 }, () => ({
+          data: "dGVzdA==",
+          mimeType: "image/jpeg",
+        })),
+        originalImages: Array.from({ length: 3 }, () => ({
+          data: "dGVzdA==",
+          mimeType: "image/jpeg",
+        })),
+      })
+    ).toThrow();
   });
 
   it("rejects blank ledger minAmount and maxAmount query values", () => {

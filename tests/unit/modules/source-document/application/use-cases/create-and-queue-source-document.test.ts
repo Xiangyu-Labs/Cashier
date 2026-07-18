@@ -430,6 +430,69 @@ describe("createAndQueueSourceDocument", () => {
       expect(createUploadPlan).toHaveBeenCalled();
     });
 
+    it("rejects combined storedFileIds + images exceeding MAX_FILES before creating durable state", async () => {
+      // 6 stored files + 5 inline images = 11, exceeds MAX_FILES=10
+      const uploadPlan = {
+        id: "session-overflow",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        targets: Array.from({ length: 5 }, (_, i) => ({
+          id: `target-${i}`,
+          method: "PUT" as const,
+          url: `/upload/target-${i}`,
+          requiredHeaders: {} as Record<string, string>,
+        })),
+        finalizationToken: "token-overflow",
+        maxFiles: 10,
+        maxBytesPerFile: 10 * 1024 * 1024,
+      };
+      createUploadPlan.mockResolvedValue(uploadPlan);
+      for (let i = 0; i < 5; i++) {
+        uploadTarget.mockResolvedValueOnce({
+          id: `stored-${i}`,
+          ownerLedgerId: ledger.id,
+          metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null },
+          createdAt: new Date().toISOString(),
+        });
+      }
+      finalizeUpload.mockResolvedValue(
+        Array.from({ length: 5 }, (_, i) => ({
+          id: `stored-${i}`,
+          ownerLedgerId: ledger.id,
+          metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null },
+          createdAt: new Date().toISOString(),
+        }))
+      );
+
+      // 6 existing stored-file IDs
+      const existingIds = Array.from({ length: 6 }, (_, i) =>
+        `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`
+      );
+
+      await expect(
+        createAndQueueSourceDocument(
+          {
+            ledgerId: ledger.id,
+            ledger,
+            text: "Overflow test",
+            storedFileIds: existingIds,
+            images: Array.from({ length: 5 }, () => ({
+              data: Buffer.from("img-data").toString("base64"),
+              mimeType: "image/jpeg",
+            })),
+          },
+          {
+            submissions: { createPendingWithIntent },
+            storedFiles: mockStoredFiles,
+            processImage,
+            scheduleProcessing,
+          }
+        )
+      ).rejects.toThrow(ValidationError);
+
+      // createPendingWithIntent should not have been called
+      expect(createPendingWithIntent).not.toHaveBeenCalled();
+    });
+
     it("rejects unsupported MIME type in payload validation", async () => {
       await expect(
         createAndQueueSourceDocument(

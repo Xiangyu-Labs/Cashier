@@ -9,6 +9,7 @@ import { supportedSourceDocumentActions } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import {
+  MAX_FILES,
   MAX_NORMALIZED_BYTES_PER_REVISION,
 } from "@/modules/source-document/upload-policy";
 import {
@@ -214,6 +215,15 @@ export async function createPendingRevisionInTransaction(
       `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
     );
   }
+
+  // Enforce per-revision file count limit (authoritative boundary).
+  // fileIds is already deduplicated above, so this checks the final unique count.
+  if (fileIds.length > MAX_FILES) {
+    throw new ValidationError(
+      `Total file count ${fileIds.length} exceeds revision limit of ${MAX_FILES}`
+    );
+  }
+
   for (const [position, storedFileRow] of storedFileRows.entries()) {
     await tx.insert(revisionFiles)
       .values({

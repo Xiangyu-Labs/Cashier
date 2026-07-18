@@ -8,6 +8,7 @@ import type {
 import { toSourceDocumentSubmissionContract } from "@/application/contracts";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { parseCreateSourceDocumentInput } from "@/modules/source-document/contract-schemas";
+import { validateAggregateFileCount } from "@/modules/source-document/upload-policy";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { prepareInlineImages } from "./prepare-inline-images";
 import type { InlineImageUploader } from "./prepare-inline-images";
@@ -69,6 +70,11 @@ export async function createAndQueueSourceDocument(
         input.maxDecodedImageBytes
       )
     : [];
+
+  // Enforce aggregate file count after inline images are converted to stored-file IDs.
+  // Protects against dependency/mock bypass of the schema-level check.
+  const totalFileCount = (validated.storedFileIds?.length ?? 0) + processedImageIds.length;
+  validateAggregateFileCount(totalFileCount, 0);
 
   // Combine in input order: existing storedFileIds, then processed images
   const allStoredFileIds = [
