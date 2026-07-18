@@ -30,7 +30,7 @@ describe("convertCurrency", () => {
   });
 
   it("returns a raw decimal string without rounding to cents", async () => {
-    const convertSpy = vi.spyOn(ExchangeRateService, "convert").mockResolvedValue("681.8181818181818");
+    vi.spyOn(ExchangeRateService, "convert").mockResolvedValue("681.8181818181818");
 
     const result = await convertCurrency({
       amount: 100,

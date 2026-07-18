@@ -364,9 +364,8 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
     return db.transaction(async (tx) => {
       // Lock the source document to serialise with concurrent operations.
       // Return false (not throw) when the document does not exist.
-      let locked: typeof sourceDocuments.$inferSelect;
       try {
-        locked = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+        await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
       } catch (error) {
         if (error instanceof NotFoundError) return false;
         throw error;

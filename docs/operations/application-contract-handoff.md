@@ -3,7 +3,7 @@
 Date: 2026-07-17
 Updated: 2026-07-18
 
-Frozen baseline: `cashier-application-contracts@1.0.0`.
+Frozen baseline: `cashier-application-contracts@2.0.0` (upgraded from 1.0.0 on 2026-07-18).
 
 ## Follow-up: Vercel-compatible processing (2026-07-18)
 
@@ -21,19 +21,46 @@ Vercel work. The current implementation remains Docker, SQLite, local storage, a
 target processing -- now scheduled via Next.js after() rather than a global drain loop.
 No managed provider was provisioned, connected, or written by this change.
 
+## What Changed From 1.0.0 to 2.0.0
+
+The application contract was bumped to 2.0.0 on 2026-07-18 as part of the remaining-product-review
+remediation (`fix/review-remediation-tasks` branch). Breaking changes:
+
+- **Credential DTO**: `ServiceCredentialContract` and `CreatedServiceCredentialContract` gained
+  `tokenPrefix` and `tokenSuffix` fields. The raw `key` is no longer exposed through the application
+  contract; only the prefix/suffix identifier pair is returned in list/create responses.
+- **Money DTO**: `LedgerProjectionEntryContract.amount`, `convertedAmount`, and `exchangeRate`
+  changed from `number` to `string` (canonical decimal representation). All application-layer
+  money values are now decimal strings; JavaScript number is only used at display boundaries.
+- **Revision outcomes**: The `REVISION_OUTCOMES` tuple added `"abandoned"` as an explicit terminal
+  state for candidate revisions that were explicitly abandoned via the Abandon action.
+- **Supported actions**: `SupportedSourceDocumentAction` added `"accept_candidate"` and
+  `"abandon_candidate"` for the candidate lifecycle. The `supportedSourceDocumentActions` function
+  now returns these when a completed pending revision exists alongside an active revision.
+- **Processing recovery config**: `ProcessingRecoveryConfig` was introduced with `maxBatch`,
+  `maxAttempts`, and `cooldownSeconds`. `RecoverableProcessingIntentContract` added
+  `scheduleAttemptCount` and `nextAvailableAt` for bounded request-triggered recovery.
+- **Stable diagnostic codes**: `ANOMALY_CODES` and `PROCESSING_FAILURE_CODES` were added as
+  stable, user-facing error taxonomies. `AnomalyCode`, `ProcessingFailureCode`,
+  `toStableFailureCode`, and `toStableAnomalyCode` provide mapping from legacy values.
+
+API v1 remains behaviorally unchanged and continues returning its original format through the
+deprecated sunset date (2026-10-13). The `APPLICATION_CONTRACT_VERSION` constant reflects the
+internal application contract only; API v1 has separate versioning.
+
 ## Versioned Contracts
 
 | Contract        | Version | Authoritative implementation                                            |
 | --------------- | ------- | ----------------------------------------------------------------------- |
-| Source document | 1.0.0   | `src/application/contracts/index.ts` and `SourceDocumentPort`           |
-| Revision        | 1.0.0   | `SourceDocumentRevisionContract` and revision state suites              |
-| Stored file     | 1.0.0   | `StoredFilePort`, trusted metadata, and authorized reads                |
-| Upload plan     | 1.0.0   | upload plan, target, finalization, expiry, and limits contracts         |
-| Processing      | 1.0.0   | intent, claim, retry, completion, recovery, and deduplication contracts |
-| Authorization   | 1.0.0   | ledger ownership and cross-workspace denial suites                      |
-| Idempotency     | 1.0.0   | concurrent API/application idempotency contracts                        |
-| Errors          | 1.0.0   | sanitized `ApplicationErrorContract` and stable codes                   |
-| Read DTOs       | 1.0.0   | bounded source-document and ledger read models                          |
+| Source document | 2.0.0   | `src/application/contracts/index.ts` and `SourceDocumentPort`           |
+| Revision        | 2.0.0   | `SourceDocumentRevisionContract` and revision state suites              |
+| Stored file     | 2.0.0   | `StoredFilePort`, trusted metadata, and authorized reads                |
+| Upload plan     | 2.0.0   | upload plan, target, finalization, expiry, and limits contracts         |
+| Processing      | 2.0.0   | intent, claim, retry, completion, recovery, and deduplication contracts |
+| Authorization   | 2.0.0   | ledger ownership and cross-workspace denial suites                      |
+| Idempotency     | 2.0.0   | concurrent API/application idempotency contracts                        |
+| Errors          | 2.0.0   | sanitized `ApplicationErrorContract` and stable codes                   |
+| Read DTOs       | 2.0.0   | bounded source-document and ledger read models                          |
 
 Stable error codes are `VALIDATION_FAILED`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`,
 `CONFLICT`, `RATE_LIMITED`, `PROCESSING_UNAVAILABLE`, `STORAGE_UNAVAILABLE`, and `INTERNAL`.

@@ -18,7 +18,7 @@ import {
 } from "@/modules/ledger/actions";
 import { getDateInTimezone } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
-import { createToken, authenticateToken } from "@/lib/security/service-credential-token";
+import { authenticateToken } from "@/lib/security/service-credential-token";
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -200,7 +200,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         tokenSuffix: suffix,
       })
       .returning();
-    const credential = requireFirst(createdCredentials, "service credential");
+    requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
@@ -235,7 +235,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
         tokenSuffix: suffix,
       })
       .returning();
-    const credential = requireFirst(createdCredentials, "service credential");
+    requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
@@ -277,7 +277,6 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const db = getTestDb();
     // Simulate a legacy credential with plaintext key (pre-hash era)
     const knownToken = "sk_live_deleted_migration_12345678901234567890123456789012";
-    const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
     const [createdRow] = await db
       .insert(serviceCredentials)
       .values({
@@ -356,7 +355,6 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
   });
 
   it("should return credentials with prefix/suffix via getLedgerSettingsAction", async () => {
-    const db = getTestDb();
     // Create a credential via action to get proper hash-based credential
     const created = await createServiceCredentialAction(testLedgerId, {
       name: "New Credential",

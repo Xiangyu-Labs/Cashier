@@ -179,7 +179,7 @@ describe("Processing Recovery", () => {
   });
 
   it("does not recover intents from other ledgers", async () => {
-    const { ledgerId: ledgerA, intent: intentA } = await pendingIntent(
+    const { intent: intentA } = await pendingIntent(
       "2026-07-15T00:00:00.000Z",
       crypto.randomUUID()
     );
@@ -191,7 +191,7 @@ describe("Processing Recovery", () => {
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intentA);
 
-    // Recover for ledgerB — should not pick up ledgerA's intent
+    // Recover for ledgerB — should not pick up intentA
     const recoverable = await selectRecoverableProcessingIntents(ledgerB, config, adapter);
     expect(recoverable).toHaveLength(0);
   });
@@ -351,7 +351,7 @@ describe("Processing Recovery", () => {
     // The revision is no longer the current pending — exhaustStaleIntents won't
     // find it (join filters by pendingRevisionId). Call markExhausted directly
     // to test the CAS within it.
-    const exhausted = await adapter.markExhausted(intent.id);
+    await adapter.markExhausted(intent.id);
 
     // The outbox should be closed (status = failed)
     const outboxRow = await db.query.processingOutbox.findFirst({
@@ -368,12 +368,12 @@ describe("Processing Recovery", () => {
   });
 
   it("exhaustion CAS: full exhaustion when revision is still current pending", async () => {
-    const { ledgerId, intent } = await pendingIntent();
+    const { intent } = await pendingIntent();
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
     // The revision IS still the current pending — exhaustion should fully update
-    const exhausted = await adapter.markExhausted(intent.id);
+    await adapter.markExhausted(intent.id);
 
     const db = getTestDb();
 
@@ -402,7 +402,7 @@ describe("Processing Recovery", () => {
   });
 
   it("exhaustion CAS: does not modify completed revision's outcome", async () => {
-    const { ledgerId, intent } = await pendingIntent();
+    const { intent } = await pendingIntent();
     const adapter = new PostgresProcessingIntentAdapter();
     await adapter.dispatch(intent);
 
@@ -413,7 +413,7 @@ describe("Processing Recovery", () => {
       .set({ outcome: "completed", finalizedAt: new Date() })
       .where(eq(sourceDocumentRevisions.id, intent.revisionId));
 
-    const exhausted = await adapter.markExhausted(intent.id);
+    await adapter.markExhausted(intent.id);
 
     // Outbox should be closed (stale)
     const outboxRow = await db.query.processingOutbox.findFirst({

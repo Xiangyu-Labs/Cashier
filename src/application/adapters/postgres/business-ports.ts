@@ -13,7 +13,7 @@ import type {
 import { db } from "@/lib/db";
 import { ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
-import { parse, add, subtract, multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/money/decimal";
+import { multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/money/decimal";
 import {
   currencyRates,
   entryCategories,
@@ -25,7 +25,7 @@ import {
   sourceDocuments,
   users,
 } from "@/persistence";
-import { createToken, authenticateToken, computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
+import { createToken, computeHash } from "@/lib/security/service-credential-token";
 import { lockLedgerForUpdate } from "./transaction-locks";
 
 function toIso(value: Date | null): string | null {

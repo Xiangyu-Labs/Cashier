@@ -184,7 +184,7 @@ describe("PostgresProcessingIntentAdapter", () => {
 describe("executeSingleProcessingIntent — standalone function with real adapter/processor", () => {
   it("processes successfully, setting outbox and revision outcomes to completed", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
@@ -236,7 +236,7 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
 
   it("handles processing failure: preserveTerminalOutcome guard on stale revision", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
 
     const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
     vi.mocked(createAIContext).mockReturnValue({ generate });

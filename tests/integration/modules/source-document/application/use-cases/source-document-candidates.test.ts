@@ -1,4 +1,4 @@
-import { asc, eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   acceptCandidateRevision,
@@ -13,7 +13,6 @@ import {
 } from "@/application/adapters/postgres/read-models";
 import {
   ledgerEntries,
-  revisionEntries,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";

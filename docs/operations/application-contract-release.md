@@ -1,8 +1,17 @@
 # Local Application Contract Release
 
 Date: 2026-07-17
+Updated: 2026-07-18
 
-Contract: `cashier-application-contracts@1.0.0`
+Contract: `cashier-application-contracts@2.0.0` (upgraded from 1.0.0 on 2026-07-18).
+
+This is a follow-up contract release for the remaining-product-completion remediation
+(`fix/review-remediation-tasks`). The 2.0.0 upgrade records breaking changes in credential DTO
+(prefix/suffix), money DTO (decimal strings), revision outcomes (abandoned), supported actions
+(accept/abandon candidate), processing recovery config, and stable diagnostic codes. See
+`docs/operations/application-contract-handoff.md` for the full change inventory.
+
+The original 1.0.0 contract-release evidence below remains valid for the initial release gate.
 
 This document records the local-only contract-release evidence for task group 10. The run uses a
 verified copy of the coordinated task 9 SQLite/WAL/upload snapshot. It does not contact production,

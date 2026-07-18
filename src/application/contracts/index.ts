@@ -3,7 +3,7 @@
  * describe business values only; persistence and provider details stay in adapters.
  */
 
-export const APPLICATION_CONTRACT_VERSION = "1.0.0" as const;
+export const APPLICATION_CONTRACT_VERSION = "2.0.0" as const;
 
 export type SourceDocumentId = string;
 export type RevisionId = string;

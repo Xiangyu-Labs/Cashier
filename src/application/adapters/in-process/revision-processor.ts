@@ -5,7 +5,6 @@ import type {
   RevisionProcessorPort,
 } from "@/application/contracts";
 import {
-  acceptCandidateRevision,
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
   storeCandidateRevision,
