@@ -5,8 +5,11 @@ import { calculateLedgerStats } from "@/modules/ledger/application/queries/calcu
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
-import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
+import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
 import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
+import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,
@@ -23,7 +26,7 @@ interface LedgerPageBootstrapResult {
   initialStatsDate: Date;
 }
 
-const STREAM_COLLECTION_LIMIT = 1000;
+const COMPLETED_PAGE_LIMIT = 20;
 
 export async function getLedgerPageBootstrap(input: {
   ledgerId: string;
@@ -66,25 +69,24 @@ export async function getLedgerPageBootstrap(input: {
     }),
     ...(input.initialTab === "stream"
       ? [
+          // Attention items (bounded, no date/amount filters)
           queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocuments(input.ledgerId, "pending"),
-            queryFn: () => getPendingSourceDocuments(input.ledgerId),
+            queryKey: queryKeys.sourceDocumentAttention(input.ledgerId),
+            queryFn: () => getSourceDocumentAttentionQuery(input.ledgerId),
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
+          // Counts (lightweight aggregation)
           queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocumentCollection(input.ledgerId, {
-              startDate: detailsState.startDateStr,
-              endDate: detailsState.endDateStr,
-              ...(input.advancedFilters?.minAmount != null
-                ? { minAmount: input.advancedFilters.minAmount }
-                : {}),
-              ...(input.advancedFilters?.maxAmount != null
-                ? { maxAmount: input.advancedFilters.maxAmount }
-                : {}),
-              limit: STREAM_COLLECTION_LIMIT,
-            }),
-            queryFn: () =>
-              getSourceDocumentCollection(input.ledgerId, {
+            queryKey: queryKeys.sourceDocumentCounts(input.ledgerId),
+            queryFn: () => getSourceDocumentCountsQuery(input.ledgerId),
+            staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
+          }),
+          // First completed page (paginated)
+          queryClient.prefetchInfiniteQuery({
+            queryKey: queryKeys.sourceDocumentCompletedPage(input.ledgerId),
+            queryFn: ({ pageParam }) =>
+              listSourceDocuments(input.ledgerId, {
+                status: "completed",
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
@@ -95,8 +97,13 @@ export async function getLedgerPageBootstrap(input: {
                 ...(input.advancedFilters?.maxAmount != null
                   ? { maxAmount: input.advancedFilters.maxAmount }
                   : {}),
-                limit: STREAM_COLLECTION_LIMIT,
+                cursor: pageParam,
+                limit: COMPLETED_PAGE_LIMIT,
+                includeEntries: true,
               }),
+            initialPageParam: undefined as string | undefined,
+            getNextPageParam: (lastPage: Awaited<ReturnType<typeof listSourceDocuments>>) =>
+              lastPage.nextCursor,
             staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
           }),
           queryClient.prefetchQuery({

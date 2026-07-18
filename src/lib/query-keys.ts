@@ -22,6 +22,12 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
+  sourceDocumentAttention: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "attention"] as const,
+  sourceDocumentCompletedPage: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "completed", "page"] as const,
+  sourceDocumentCounts: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "counts"] as const,
   sourceDocumentCollectionPrefix: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "collection"] as const,
   sourceDocumentCollection: (
@@ -210,4 +216,25 @@ export function matchSourceDocumentCollection(ledgerId: string): QueryPredicate 
  */
 export function matchLedgerEntries(ledgerId: string): QueryPredicate {
   return invalidateLedgerEntries(ledgerId);
+}
+
+/**
+ * Helper to match the attention query for a ledger.
+ */
+export function invalidateSourceDocumentAttention(ledgerId: string): QueryPredicate {
+  return matchExactQueryKey(queryKeys.sourceDocumentAttention(ledgerId));
+}
+
+/**
+ * Helper to match all completed page queries for a ledger.
+ */
+export function invalidateSourceDocumentCompleted(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocumentCompletedPage(ledgerId));
+}
+
+/**
+ * Helper to match the counts query for a ledger.
+ */
+export function invalidateSourceDocumentCounts(ledgerId: string): QueryPredicate {
+  return matchExactQueryKey(queryKeys.sourceDocumentCounts(ledgerId));
 }

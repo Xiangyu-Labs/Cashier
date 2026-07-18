@@ -5,6 +5,13 @@ import type { SourceDocumentStatusType } from "@/modules/source-document/contrac
 
 export const REVISION_STATE_REFRESH_INTERVAL_MS = 3000;
 
+/**
+ * Backoff stages for the refresh coordinator.
+ * Starts at 3s and backs off through each stage to at most 15s.
+ */
+const BACKOFF_STAGES = [3000, 5000, 8000, 12000, 15000] as const;
+const MAX_BACKOFF_STAGE = BACKOFF_STAGES.length - 1;
+
 type Refresh = () => Promise<unknown>;
 
 interface RefreshRegistration {
@@ -46,8 +53,19 @@ export class RevisionStateRefreshCoordinator {
   private inFlight: Promise<void> | null = null;
   private listenersAttached = false;
   private wakeQueued = false;
+  private backoffStage = 0;
+
+  private consecutiveNoOpRefreshes = 0;
 
   constructor(private readonly environment: RevisionStateRefreshEnvironment | null) {}
+
+  /**
+   * Reset backoff to initial stage. Called on new submission, window focus, or reconnect.
+   */
+  resetBackoff() {
+    this.backoffStage = 0;
+    this.consecutiveNoOpRefreshes = 0;
+  }
 
   subscribe(scope: string, refresh: Refresh): () => void {
     const registration = this.registrations.get(scope) ?? { callbacks: new Set<Refresh>() };
@@ -65,12 +83,21 @@ export class RevisionStateRefreshCoordinator {
   }
 
   private readonly handleVisibility = () => {
-    if (this.environment?.isVisible() === true) this.queueImmediateRefresh();
+    if (this.environment?.isVisible() === true) {
+      this.resetBackoff();
+      this.queueImmediateRefresh();
+    }
   };
 
-  private readonly handleFocus = () => this.queueImmediateRefresh();
+  private readonly handleFocus = () => {
+    this.resetBackoff();
+    this.queueImmediateRefresh();
+  };
 
-  private readonly handleOnline = () => this.queueImmediateRefresh();
+  private readonly handleOnline = () => {
+    this.resetBackoff();
+    this.queueImmediateRefresh();
+  };
 
   private readonly handleOffline = () => this.clearScheduledRefresh();
 
@@ -112,10 +139,12 @@ export class RevisionStateRefreshCoordinator {
       return;
     }
 
+    const delay = BACKOFF_STAGES[Math.min(this.backoffStage, MAX_BACKOFF_STAGE)] ?? BACKOFF_STAGES[0];
+
     this.timer = this.environment.setTimer(() => {
       this.timer = null;
       void this.refreshNow();
-    }, REVISION_STATE_REFRESH_INTERVAL_MS);
+    }, delay);
   }
 
   private clearScheduledRefresh() {
@@ -132,15 +161,32 @@ export class RevisionStateRefreshCoordinator {
     if (this.inFlight != null) return this.inFlight;
 
     this.clearScheduledRefresh();
+
+    // Collect unique refresh callbacks (one per registration)
     const refreshes = [...this.registrations.values()].flatMap((registration) => {
       const first = registration.callbacks.values().next().value as Refresh | undefined;
       return first == null ? [] : [first];
     });
     if (refreshes.length === 0) return Promise.resolve();
 
-    this.inFlight = Promise.allSettled(refreshes.map((refresh) => refresh())).then(() => undefined);
+    this.inFlight = Promise.allSettled(refreshes.map((refresh) => refresh())).then(
+      () => undefined
+    );
     void this.inFlight.finally(() => {
       this.inFlight = null;
+
+      // After a successful refresh cycle, advance backoff stage
+      // (will be reset by focus/online/submission events)
+      if (this.backoffStage < MAX_BACKOFF_STAGE) {
+        this.backoffStage++;
+      }
+
+      // Check if there are still pending registrations; if not, stop
+      if (this.registrations.size === 0) {
+        this.stop();
+        return;
+      }
+
       this.schedule();
     });
     return this.inFlight;
@@ -149,6 +195,8 @@ export class RevisionStateRefreshCoordinator {
   private stop() {
     this.clearScheduledRefresh();
     this.detachListeners();
+    this.backoffStage = 0;
+    this.consecutiveNoOpRefreshes = 0;
   }
 }
 

@@ -9,7 +9,10 @@ export type {
   EntryEditData,
 } from "./types";
 export type {
+  SourceDocumentAttentionDto,
   SourceDocumentCollectionDto,
+  SourceDocumentCompletedPageDto,
+  SourceDocumentCountsDto,
   SourceDocumentDto,
   SourceDocumentEntryCategoryDto,
   SourceDocumentFullDto,

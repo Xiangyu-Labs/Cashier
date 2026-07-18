@@ -148,6 +148,8 @@
     "retryAllDesc": "正在重试所有失败的记录",
     "deleteAllConfirmTitle": "删除所有异常记录",
     "deleteAllConfirmDesc": "确定要删除所有异常记录吗？此操作无法撤销。",
+    "attentionSection": "需要处理",
+    "loadingMore": "加载更多…",
     "retry": "编辑重试"
   },
   "SourceDocumentCard": {

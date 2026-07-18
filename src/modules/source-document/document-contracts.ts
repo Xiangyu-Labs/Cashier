@@ -116,6 +116,21 @@ export interface SourceDocumentCollectionDto {
   total: number;
 }
 
+export interface SourceDocumentAttentionDto {
+  items: SourceDocumentListItemDto[];
+  total: number;
+}
+
+export interface SourceDocumentCountsDto {
+  processingCount: number;
+  attentionCount: number;
+}
+
+export interface SourceDocumentCompletedPageDto {
+  items: SourceDocumentListItemDto[];
+  nextCursor: string | null;
+}
+
 export interface SourceDocumentFullDto {
   id: string;
   text: string | null;

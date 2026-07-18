@@ -1,7 +1,12 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getSourceDocumentCollectionAction } from "@/modules/source-document/actions";
-import type { SourceDocumentListItemDto as SourceDocumentListItemWithEntries } from "@/modules/source-document/contracts";
+"use client";
+
+import { useMemo, useCallback } from "react";
+import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getSourceDocumentAttentionAction,
+  getSourceDocumentsAction,
+} from "@/modules/source-document/actions";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -11,9 +16,9 @@ import {
   type GroupedSourceDocuments,
 } from "@/modules/source-document/grouping";
 
-export type { SourceDocumentListItemWithEntries as SourceDocumentWithEntries };
+export type { SourceDocumentListItemDto as SourceDocumentWithEntries };
 
-const STREAM_COLLECTION_LIMIT = 1000;
+const COMPLETED_PAGE_LIMIT = 20;
 
 interface SourceDocumentsStats {
   queuedCount: number;
@@ -31,8 +36,8 @@ export interface UseSourceDocumentCollectionOptions {
   maxAmount?: number;
 }
 
-function groupAndSummarize(docs: SourceDocumentListItemWithEntries[]): {
-  groups: GroupedSourceDocuments<SourceDocumentListItemWithEntries>;
+function groupAndSummarize(docs: SourceDocumentListItemDto[]): {
+  groups: GroupedSourceDocuments<SourceDocumentListItemDto>;
   stats: SourceDocumentsStats;
 } {
   const groups = groupSourceDocumentsByStatus(docs);
@@ -45,43 +50,85 @@ export function useSourceDocumentCollection(
   ledgerId: string,
   options: UseSourceDocumentCollectionOptions = {}
 ) {
+  const queryClient = useQueryClient();
   const { dateRange, minAmount, maxAmount } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
-  const collectionScope = `${ledgerId}:${startDate ?? ""}:${endDate ?? ""}:${minAmount ?? ""}:${maxAmount ?? ""}`;
-  const { data: response, isLoading, refetch } = useQuery({
-    queryKey: queryKeys.sourceDocumentCollection(ledgerId, {
-      startDate,
-      endDate,
-      ...(minAmount != null ? { minAmount } : {}),
-      ...(maxAmount != null ? { maxAmount } : {}),
-      limit: STREAM_COLLECTION_LIMIT,
-    }),
-    queryFn: () =>
-      getSourceDocumentCollectionAction(ledgerId, {
-        ...(startDate !== null ? { startDate } : {}),
-        ...(endDate !== null ? { endDate } : {}),
-        ...(minAmount != null ? { minAmount } : {}),
-        ...(maxAmount != null ? { maxAmount } : {}),
-        limit: STREAM_COLLECTION_LIMIT,
-      }),
+
+  // 1. Attention query — bounded, independent of date/amount filters
+  const {
+    data: attentionData,
+    isLoading: attentionLoading,
+  } = useQuery({
+    queryKey: queryKeys.sourceDocumentAttention(ledgerId),
+    queryFn: () => getSourceDocumentAttentionAction(ledgerId),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
 
-  const rawData = response?.items;
-  const hasPendingRevision =
-    rawData?.some((document) => isRefreshableRevisionState(document.status)) === true;
-  useRevisionStateRefresh({
-    scope: `source-document-collection:${collectionScope}`,
-    enabled: true,
-    pending: hasPendingRevision,
-    refresh: refetch,
+  // 2. Completed history — cursor-based pagination, respects date/amount filters
+  const {
+    data: completedData,
+    isLoading: completedLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId),
+    queryFn: ({ pageParam }) =>
+      getSourceDocumentsAction(ledgerId, {
+        status: "completed",
+        ...(startDate !== null ? { startDate } : {}),
+        ...(endDate !== null ? { endDate } : {}),
+        ...(minAmount != null ? { minAmount } : {}),
+        ...(maxAmount != null ? { maxAmount } : {}),
+        cursor: pageParam,
+        limit: COMPLETED_PAGE_LIMIT,
+        includeEntries: true,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
+  // 3. Merge: attention items first (status priority), then completed items
+  const rawData = useMemo(() => {
+    const attentionItems = attentionData?.items ?? [];
+    const completedPages = completedData?.pages ?? [];
+    const completedItems = completedPages.flatMap((page) => page.items);
+    return [...attentionItems, ...completedItems];
+  }, [attentionData, completedData]);
+
+  // 4. Check if there are refreshable states among attention items
+  const attentionItems = attentionData?.items ?? [];
+  const hasRefreshableStates = attentionItems.some((doc) =>
+    isRefreshableRevisionState(doc.status)
+  );
+
+  // 5. Refresh coordinator — uses backoff strategy
+  const refreshAll = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.sourceDocumentAttention(ledgerId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId),
+      }),
+    ]);
+  }, [queryClient, ledgerId]);
+
+  useRevisionStateRefresh({
+    scope: `source-document-collection:${ledgerId}`,
+    enabled: true,
+    pending: hasRefreshableStates,
+    refresh: refreshAll,
+  });
+
+  // 6. Group by status for backwards compatibility
   const { groups, stats } = useMemo(() => {
-    if (!rawData) {
+    if (!rawData || rawData.length === 0) {
       return {
         groups: {
           queued: [],
@@ -102,10 +149,17 @@ export function useSourceDocumentCollection(
     return groupAndSummarize(rawData);
   }, [rawData]);
 
+  const isLoading = attentionLoading || completedLoading;
+
   return {
     groups,
     stats,
     rawData,
     isLoading,
+    attentionItems,
+    completedData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

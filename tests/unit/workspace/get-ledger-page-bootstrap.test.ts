@@ -6,8 +6,9 @@ const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
 const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
-const getPendingSourceDocumentsMock = vi.hoisted(() => vi.fn());
-const getSourceDocumentCollectionMock = vi.hoisted(() => vi.fn());
+const getSourceDocumentAttentionQueryMock = vi.hoisted(() => vi.fn());
+const getSourceDocumentCountsQueryMock = vi.hoisted(() => vi.fn());
+const listSourceDocumentsMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/ledger/access", () => ({
@@ -24,11 +25,14 @@ vi.mock("@/modules/ledger/application/queries/list-ledger-entries", () => ({
   listLedgerEntries: listLedgerEntriesMock,
 }));
 
-vi.mock("@/modules/source-document/application/queries/get-pending-source-documents", () => ({
-  getPendingSourceDocuments: getPendingSourceDocumentsMock,
+vi.mock("@/modules/source-document/application/queries/get-source-document-attention", () => ({
+  getSourceDocumentAttentionQuery: getSourceDocumentAttentionQueryMock,
 }));
-vi.mock("@/modules/source-document/application/queries/list-source-document-collection", () => ({
-  getSourceDocumentCollection: getSourceDocumentCollectionMock,
+vi.mock("@/modules/source-document/application/queries/get-source-document-counts", () => ({
+  getSourceDocumentCountsQuery: getSourceDocumentCountsQueryMock,
+}));
+vi.mock("@/modules/source-document/application/queries/list-source-document-page", () => ({
+  listSourceDocuments: listSourceDocumentsMock,
 }));
 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
@@ -56,8 +60,9 @@ describe("getLedgerPageBootstrap", () => {
     listEntryCategoriesMock.mockResolvedValue([]);
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
-    getPendingSourceDocumentsMock.mockResolvedValue([]);
-    getSourceDocumentCollectionMock.mockResolvedValue({ items: [], hasMore: false, total: 0 });
+    getSourceDocumentAttentionQueryMock.mockResolvedValue({ items: [], total: 0 });
+    getSourceDocumentCountsQueryMock.mockResolvedValue({ processingCount: 0, attentionCount: 0 });
+    listSourceDocumentsMock.mockResolvedValue({ items: [], nextCursor: null });
     getEnhancedStatsMock.mockResolvedValue({});
   });
 
@@ -90,7 +95,7 @@ describe("getLedgerPageBootstrap", () => {
     ).rejects.toThrow("db unavailable");
   });
 
-  it("prefetches stream tab sources and summary with period-bound dates", async () => {
+  it("prefetches stream tab attention, counts, and first completed page with period-bound dates", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
@@ -102,12 +107,9 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(getPendingSourceDocumentsMock).toHaveBeenCalledWith("ledger-1");
-    expect(getSourceDocumentCollectionMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      limit: 1000,
-    });
+    expect(getSourceDocumentAttentionQueryMock).toHaveBeenCalledWith("ledger-1");
+    expect(getSourceDocumentCountsQueryMock).toHaveBeenCalledWith("ledger-1");
+    expect(listSourceDocumentsMock).toHaveBeenCalled();
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
       "2026-03-01",
@@ -118,7 +120,7 @@ describe("getLedgerPageBootstrap", () => {
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
 
-  it("passes min/max amount filters into stream source-document bootstrap queries", async () => {
+  it("passes min/max amount filters into completed page prefetch", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
@@ -134,12 +136,16 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(getSourceDocumentCollectionMock).toHaveBeenCalledWith("ledger-1", {
+    // listSourceDocuments should be called with completed status and filters
+    expect(listSourceDocumentsMock).toHaveBeenCalledWith("ledger-1", {
+      status: "completed",
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       minAmount: 20,
       maxAmount: 100,
-      limit: 1000,
+      cursor: undefined,
+      limit: 20,
+      includeEntries: true,
     });
   });
 
@@ -152,7 +158,7 @@ describe("getLedgerPageBootstrap", () => {
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledOnce();
     expect(listLedgerEntriesMock).toHaveBeenCalledOnce();
-    expect(getPendingSourceDocumentsMock).not.toHaveBeenCalled();
+    expect(getSourceDocumentAttentionQueryMock).not.toHaveBeenCalled();
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
 
@@ -214,7 +220,7 @@ describe("getLedgerPageBootstrap", () => {
 
     expect(getEnhancedStatsMock).toHaveBeenCalledOnce();
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
-    expect(getPendingSourceDocumentsMock).not.toHaveBeenCalled();
+    expect(getSourceDocumentAttentionQueryMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
   });
 

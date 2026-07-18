@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use getSourceDocumentAttentionQuery + paginated listSourceDocuments instead.
+ * The 1000-item collection is no longer used by the bootstrap or the stream hook.
+ * Retained for backward compat with any external callers.
+ */
 import { currentApplication } from "@/application/current";
 import { ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";

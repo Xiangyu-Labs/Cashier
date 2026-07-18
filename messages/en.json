@@ -148,7 +148,9 @@
     "retrySubmitted": "Retry submitted",
     "retryAllDesc": "Retrying all failed records",
     "deleteAllConfirmTitle": "Delete All Abnormal Records",
-    "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal records? This action cannot be undone."
+    "deleteAllConfirmDesc": "Are you sure you want to delete all abnormal records? This action cannot be undone.",
+    "attentionSection": "Attention",
+    "loadingMore": "Loading more…"
   },
   "SourceDocumentCard": {
     "expand": "Expand",

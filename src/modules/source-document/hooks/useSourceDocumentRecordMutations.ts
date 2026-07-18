@@ -12,6 +12,7 @@ import {
   type SourceDocumentQueryData,
   updateSourceDocumentCollectionLists,
 } from "./source-document-detail-cache";
+import type { SourceDocumentAttentionDto } from "@/modules/source-document/contracts";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -91,6 +92,18 @@ export function useSourceDocumentRecordMutations({
         queryClient.setQueriesData(
           { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
           (old: { items: Array<{ id: string }>; total: number } | undefined) => {
+            if (!old) return old;
+            return {
+              ...old,
+              items: old.items.filter((doc) => doc.id !== id),
+              total: Math.max(0, old.total - 1),
+            };
+          }
+        );
+
+        queryClient.setQueryData<SourceDocumentAttentionDto>(
+          queryKeys.sourceDocumentAttention(ledgerId),
+          (old) => {
             if (!old) return old;
             return {
               ...old,

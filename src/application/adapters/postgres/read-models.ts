@@ -361,6 +361,38 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
   };
 }
 
+/**
+ * Lightweight aggregation that returns processing count (queued + processing)
+ * and attention count (candidate_pending + anomaly + failed) for a ledger.
+ * Uses the same derived status expression as list/collect queries but
+ * performs a single-pass aggregate without fetching rows.
+ */
+export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
+  processingCount: number;
+  attentionCount: number;
+}> {
+  const derivedStatus = derivedStatusExpression();
+  const result = await db
+    .select({
+      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} IN ('queued', 'processing'))`,
+      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} IN ('candidate_pending', 'anomaly', 'failed'))`,
+    })
+    .from(sourceDocuments)
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt),
+        sql`${derivedStatus} IS NOT NULL`
+      )
+    )
+    .then((rows) => rows[0] ?? { processingCount: 0, attentionCount: 0 });
+
+  return {
+    processingCount: Number(result.processingCount ?? 0),
+    attentionCount: Number(result.attentionCount ?? 0),
+  };
+}
+
 export async function getTargetSourceDocument(
   ledgerId: string,
   sourceDocumentId: string
