@@ -22,6 +22,7 @@ const SOURCE_LIST_KEYS = [
   "id",
   "ledgerId",
   "metadata",
+  "pendingRevisionId",
   "status",
   "supportedActions",
   "text",

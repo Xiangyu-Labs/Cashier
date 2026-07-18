@@ -59,6 +59,7 @@ export interface SourceDocumentDto {
   hasImages?: boolean;
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
+  pendingRevisionId: string | null;
 }
 
 export interface SourceDocumentListItemDto {
@@ -79,6 +80,7 @@ export interface SourceDocumentListItemDto {
   hasImages: boolean;
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
+  pendingRevisionId: string | null;
 }
 
 export interface SourceDocumentLightDto {
@@ -95,6 +97,7 @@ export interface SourceDocumentLightDto {
   hasImages: boolean;
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
+  pendingRevisionId: string | null;
 }
 
 export interface SourceDocumentGroupDto {

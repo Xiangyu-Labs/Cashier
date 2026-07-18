@@ -111,6 +111,7 @@ export function useQuickEntryFormController({
         anomalyReason: null,
         supportedActions: ["retry", "edit_retry", "delete"],
         errorCode: null,
+        pendingRevisionId: null,
         ledgerEntries: [
           {
             id: tempEntryId,

@@ -20,6 +20,11 @@ interface LedgerEntriesCompletedGroupsProps {
     ledgerEntries: LedgerEntry[];
   }) => void;
   onRetry: (doc: SourceDocument) => void;
+  onDirectRetry?: (doc: SourceDocument) => void;
+  onEditRetry?: (doc: SourceDocument) => void;
+  onManualCorrection?: (doc: SourceDocument) => void;
+  onAcceptCandidate?: (doc: SourceDocument) => void;
+  onAbandonCandidate?: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
   selectedIds: string[];
@@ -36,6 +41,11 @@ export function LedgerEntriesCompletedGroups({
   onViewLedgerEntry,
   onViewSourceDetail,
   onRetry,
+  onDirectRetry,
+  onEditRetry,
+  onManualCorrection,
+  onAcceptCandidate,
+  onAbandonCandidate,
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
@@ -92,6 +102,11 @@ export function LedgerEntriesCompletedGroups({
                       onViewLedgerEntry={onViewLedgerEntry}
                       onViewDetails={() => onViewSourceDetail(group)}
                       onRetry={() => onRetry(group.sourceDocument)}
+                      {...(onDirectRetry != null ? { onDirectRetry: () => { onDirectRetry(group.sourceDocument); } } : {})}
+                      {...(onEditRetry != null ? { onEditRetry: () => { onEditRetry(group.sourceDocument); } } : {})}
+                      {...(onManualCorrection != null ? { onManualCorrection: () => { onManualCorrection(group.sourceDocument); } } : {})}
+                      {...(onAcceptCandidate != null ? { onAcceptCandidate: () => { onAcceptCandidate(group.sourceDocument); } } : {})}
+                      {...(onAbandonCandidate != null ? { onAbandonCandidate: () => { onAbandonCandidate(group.sourceDocument); } } : {})}
                       onDelete={() => onDeleteSourceConfirm(group.sourceDocument)}
                       status={
                         (group.sourceDocument.status ?? "completed") as SourceDocumentStatusType

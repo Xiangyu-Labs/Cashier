@@ -39,6 +39,7 @@ function createSourceDocument(overrides: Partial<SourceDocument> = {}): SourceDo
     hasImages: false,
     supportedActions: ["retry", "edit_retry", "delete"],
     errorCode: null,
+    pendingRevisionId: null,
     ...overrides,
   };
 }
@@ -60,6 +61,7 @@ function createSourceDocumentLight(
     hasImages: false,
     supportedActions: ["delete"],
     errorCode: null,
+    pendingRevisionId: null,
     ...overrides,
   };
 }

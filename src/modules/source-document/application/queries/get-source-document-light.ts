@@ -22,6 +22,7 @@ function toLightDto(
     hasImages,
     supportedActions: document.supportedActions,
     errorCode: document.errorCode,
+    pendingRevisionId: document.pendingRevisionId,
     ledgerEntries,
   };
 }

@@ -1,6 +1,6 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
@@ -17,10 +17,15 @@ import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useSelection } from "@/hooks/use-selection";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { useGroupedEntries, useLedgerEntriesMutations } from "@/modules/ledger/hooks";
-import {
-  useBatchSourceDocumentActions,
+import { useBatchSourceDocumentActions,
   useSourceDocumentCollection,
 } from "@/modules/source-document/hooks";
+import {
+  retrySourceDocumentAction,
+  createManualCorrectionAction,
+  acceptSourceDocumentCandidateAction,
+  abandonSourceDocumentCandidateAction,
+} from "@/modules/source-document/actions";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
@@ -139,6 +144,36 @@ export function LedgerEntriesTab({
       openSourceDocumentDeleteConfirm(doc.id, t("deleteConfirmTitle"), t("deleteConfirmDesc")),
     [openSourceDocumentDeleteConfirm, t]
   );
+  const handleDirectRetry = useCallback(
+    async (doc: SourceDocument) => {
+      await retrySourceDocumentAction(ledgerId, doc.id);
+      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    },
+    [ledgerId, queryClient]
+  );
+
+  const handleManualCorrection = useCallback(
+    async (doc: SourceDocument) => {
+      await createManualCorrectionAction(ledgerId, doc.id);
+    },
+    [ledgerId]
+  );
+
+  const handleAcceptCandidate = useCallback(
+    async (doc: SourceDocument) => {
+      if (doc.pendingRevisionId == null) return;
+      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+    },
+    [ledgerId]
+  );
+
+  const handleAbandonCandidate = useCallback(
+    async (doc: SourceDocument) => {
+      if (doc.pendingRevisionId == null) return;
+      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+    },
+    [ledgerId]
+  );
   const handleDeleteConfirmAction = useCallback(() => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
     if (deleteConfirm.type === "sourceDocument") deleteSourceDocument.mutate(deleteConfirm.id);
@@ -184,6 +219,11 @@ export function LedgerEntriesTab({
               onViewLedgerEntry={handleViewLedgerEntry}
               onViewSourceDetail={handleViewSourceDetail}
               onRetry={setRetrySourceDocument}
+              onDirectRetry={handleDirectRetry}
+              onEditRetry={setRetrySourceDocument}
+              onManualCorrection={handleManualCorrection}
+              onAcceptCandidate={handleAcceptCandidate}
+              onAbandonCandidate={handleAbandonCandidate}
               onDeleteSourceConfirm={handleDeleteSourceConfirm}
               isSelectionMode={isSelectionMode}
               selectedIds={selectedIds}

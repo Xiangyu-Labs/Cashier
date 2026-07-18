@@ -948,31 +948,25 @@ export async function createManualCorrectionInTransaction(
         ;
     }
 
-    // If there is an active revision, soft-delete its entries
-    if (document.activeRevisionId != null) {
-      await tx.update(ledgerEntries)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(ledgerEntries.ledgerId, ledgerId),
-            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
-            eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
-            isNull(ledgerEntries.deletedAt)
-          )
-        )
-        ;
-    }
-
     // Update document: set type to manual, activeRevisionId to new revision, clear pendingRevisionId
-    await tx.update(sourceDocuments)
+    // CAS: ensure no concurrent retry changed pendingRevisionId while we were working
+    const updated = await tx.update(sourceDocuments)
       .set({
         type: "manual",
         activeRevisionId: newRevision.id,
         pendingRevisionId: null,
         updatedAt: now,
       })
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      ;
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, document.pendingRevisionId)
+        )
+      )
+      .returning({ id: sourceDocuments.id });
+    if (updated.length === 0) {
+      throw new ConflictError("Source document was modified concurrently during manual correction");
+    }
     return { revisionId: newRevision.id };
   });
 }

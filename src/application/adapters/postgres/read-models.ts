@@ -282,6 +282,7 @@ function mapListItem(
       }),
     ],
     errorCode: sanitizedErrorCode(revision?.outcome, revision?.failureCode),
+    pendingRevisionId: row.pendingRevisionId,
   };
 }
 
@@ -412,5 +413,6 @@ export async function getTargetSourceDocument(
       }),
     ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
+    pendingRevisionId: row.pendingRevisionId,
   };
 }

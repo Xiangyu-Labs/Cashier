@@ -178,9 +178,11 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         {shouldShowProcessingStatus && (
           <ProcessingStatus
             status={processingStatus}
-            {...(status === "anomaly" && anomalyReason != null && anomalyReason !== ""
-              ? { label: anomalyReason }
-              : {})}
+            {...(stableErrorCode != null
+              ? { label: tDiag(stableErrorCode as string) }
+              : status === "anomaly" && anomalyReason != null && anomalyReason !== ""
+                ? { label: anomalyReason }
+                : {})}
             stableErrorCode={stableErrorCode}
           />
         )}

@@ -55,6 +55,9 @@ export function SourceDocumentDetailWrapper({
     onClose,
   });
 
+  const candidateRevisionId: string | undefined =
+    sourceDocument?.status === "candidate_pending" ? (sourceDocument.pendingRevisionId ?? undefined) : undefined;
+
   const {
     acceptCandidate,
     abandonCandidate,
@@ -65,6 +68,7 @@ export function SourceDocumentDetailWrapper({
   } = useSourceDocumentRecoveryMutations({
     ledgerId: detailLedgerId ?? ledgerId,
     sourceDocumentId: id,
+    ...(candidateRevisionId !== undefined ? { revisionId: candidateRevisionId } : {}),
     onSuccess: onClose,
   });
 

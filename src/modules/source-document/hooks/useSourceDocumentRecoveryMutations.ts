@@ -1,6 +1,11 @@
 "use client";
 
-import { invalidateSourceDocuments } from "@/lib/query-keys";
+import {
+  invalidateSourceDocuments,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateEntryCategories,
+} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   acceptSourceDocumentCandidateAction,
@@ -32,7 +37,12 @@ export function useSourceDocumentRecoveryMutations({
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const tActions = useTranslations("CandidateAction");
 
-  const invalidationPredicates = [invalidateSourceDocuments(ledgerId)];
+  const invalidationPredicates = [
+    invalidateSourceDocuments(ledgerId),
+    invalidateLedgerEntries(ledgerId),
+    invalidateLedgerStats(ledgerId),
+    invalidateEntryCategories(ledgerId),
+  ];
 
   const acceptMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {

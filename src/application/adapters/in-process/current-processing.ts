@@ -9,9 +9,50 @@ import {
   postgresRevisionAdapter,
   PostgresProcessingIntentAdapter,
 } from "@/application/adapters/postgres";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import type { ProcessingFailureCode, ProcessingIntentContract } from "@/application/contracts";
+import { AppError } from "@/lib/errors";
 import { CurrentRevisionProcessor } from "./revision-processor";
 import { InProcessProcessingDispatcher } from "./dispatcher";
+
+function toFailureCode(error: unknown): ProcessingFailureCode {
+  if (error instanceof AppError) {
+    switch (error.code) {
+      case "RATE_LIMIT":
+        return "ai_provider_unavailable";
+      case "EXCHANGE_RATES_UNAVAILABLE":
+      case "EXCHANGE_RATES_FETCH_FAILED":
+      case "CURRENCY_NOT_FOUND":
+        return "exchange_rate_failure";
+      case "FILE_NOT_FOUND":
+      case "LOCAL_STORAGE_UPLOAD_FAILED":
+      case "LOCAL_STORAGE_DOWNLOAD_FAILED":
+        return "storage_failure";
+      case "TASK_RUNTIME_EDGE_UNSUPPORTED":
+      case "TASK_RUNTIME_NOT_INITIALIZED":
+        return "processing_unavailable";
+    }
+  }
+  // Check for network/HTTP errors from the AI client
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("rate limit") || msg.includes("429") || msg.includes("too many requests")) {
+      return "ai_provider_unavailable";
+    }
+    if (msg.includes("exchange rate") || msg.includes("currency conversion")) {
+      return "exchange_rate_failure";
+    }
+    if (msg.includes("storage") || msg.includes("upload") || msg.includes("file")) {
+      return "storage_failure";
+    }
+    if (msg.includes("database") || msg.includes("db") || msg.includes("connection")) {
+      return "database_unavailable";
+    }
+    if (msg.includes("ai") || msg.includes("openai") || msg.includes("provider") || msg.includes("model")) {
+      return "ai_provider_unavailable";
+    }
+  }
+  return "processing_unavailable";
+}
 
 let dispatcher: InProcessProcessingDispatcher | null = null;
 let initialization: Promise<InProcessProcessingDispatcher> | null = null;
@@ -48,7 +89,7 @@ function createDispatcher(): InProcessProcessingDispatcher {
         sourceDocumentId: claim.intent.sourceDocumentId,
         revisionId: claim.intent.revisionId,
         outcome: "failed",
-        failureCode: "PROCESSING_UNAVAILABLE",
+        failureCode: toFailureCode(error),
       });
       throw error;
     }
@@ -108,7 +149,7 @@ export async function executeSingleProcessingIntent(
       sourceDocumentId: claim.intent.sourceDocumentId,
       revisionId: claim.intent.revisionId,
       outcome: "failed",
-      failureCode: "PROCESSING_UNAVAILABLE",
+      failureCode: toFailureCode(error),
     });
     await adapter.complete({
       intentId: claim.intent.id,
