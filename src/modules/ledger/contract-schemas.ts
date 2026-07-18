@@ -69,7 +69,15 @@ export const createLedgerEntryInputSchema = strictObjectSchema({
 
 export const updateLedgerEntryInputSchema = strictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
-  amount: z.number().positive().optional(),
+  amount: z
+    .union([
+      z.number().positive(),
+      z.string().refine(
+        (val) => !isNaN(Number(val)) && Number(val) > 0,
+        { message: "Amount must be a positive number" }
+      ),
+    ])
+    .optional(),
   currency: nullableCurrencyCodeSchema,
   itemName: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),

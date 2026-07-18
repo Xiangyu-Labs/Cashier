@@ -44,10 +44,10 @@ export function useSourceDocumentEntryMutations({
         ...(data.currency !== undefined ? { currency: data.currency } : {}),
         ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.amount !== undefined ? { amount: Number(round(data.amount, 2)) } : {}),
+        ...(data.amount !== undefined ? { amount: round(data.amount, 2) } : {}),
       };
-      // Note: round() ensures canonical decimal precision before converting to Number
-      // for the server action boundary. The server action will re-round to 2 decimals.
+      // Note: round() ensures canonical decimal precision. The string is sent directly
+      // across the server action boundary to avoid lossy JavaScript number conversion.
       await updateLedgerEntryAction(ledgerId, entryId, mutationData);
     },
     errorMessage: tCommon("saveFailed"),
