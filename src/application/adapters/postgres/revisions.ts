@@ -150,7 +150,11 @@ export async function createPendingRevisionInTransaction(
         )
       )
       .then((rows) => rows[0]);
-    if (currentPending?.outcome === "queued" || currentPending?.outcome === "processing") {
+    if (
+      currentPending?.outcome === "queued" ||
+      currentPending?.outcome === "processing" ||
+      (currentPending?.outcome === "completed" && document.activeRevisionId != null)
+    ) {
       throw new ConflictError("Source document already has a pending revision");
     }
   }
