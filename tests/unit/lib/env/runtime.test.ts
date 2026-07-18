@@ -37,7 +37,6 @@ describe("runtimeEnv", () => {
       LOG_LEVEL: "warn",
       MAX_IMAGE_QUALITY: "72",
       MAX_INPUT_PIXELS: "123456",
-      MAX_TASK_WORKER: "8",
       OTP_EXPIRES_SECONDS: "420",
       OTP_LOCKOUT_MINUTES: "20",
       OTP_MAX_ATTEMPTS: "7",
@@ -87,7 +86,6 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.apiRateLimitPerMinute).toBe(75);
     expect(runtimeEnv.sessionMaxAgeDays).toBe(21);
     expect(runtimeEnv.disableRegistration).toBe(true);
-    expect(runtimeEnv.maxTaskWorker).toBe(8);
     expect(runtimeEnv.maxInputPixels).toBe(123456);
     expect(runtimeEnv.maxImageQuality).toBe(72);
     expect(runtimeEnv.logLevel).toBe("warn");

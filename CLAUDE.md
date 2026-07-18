@@ -74,7 +74,7 @@ src/modules/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**In-process task runtime** (`src/lib/tasks/`): Background tasks (source-document parsing only) run as in-process Promises via `taskRuntime.submit()`. No Redis or external queue. Task handlers are registered centrally in `src/lib/tasks/task-registry.ts` and initialized from `src/instrumentation.ts`.
+**In-process task runtime** (`src/lib/tasks/`): Background tasks (source-document parsing only) run as in-process Promises via `taskRuntime.submit()`. No Redis or external queue. Task processing intents are scheduled with `after()` at request boundaries rather than a process-wide dispatcher loop. Task handlers are registered centrally in `src/lib/tasks/task-registry.ts`.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
 

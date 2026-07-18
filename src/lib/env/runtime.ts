@@ -32,7 +32,6 @@ export interface RuntimeEnv {
   readonly apiRateLimitPerMinute: number;
   readonly sessionMaxAgeDays: number;
   readonly disableRegistration: boolean;
-  readonly maxTaskWorker: number;
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
   readonly logLevel: string;
@@ -138,9 +137,6 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get disableRegistration() {
     return getStartupEnvValue("DISABLE_REGISTRATION") === "true";
-  },
-  get maxTaskWorker() {
-    return getStartupEnvValue("MAX_TASK_WORKER");
   },
   get maxInputPixels() {
     return getStartupEnvValue("MAX_INPUT_PIXELS");

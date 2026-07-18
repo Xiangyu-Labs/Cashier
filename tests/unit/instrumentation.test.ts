@@ -5,7 +5,6 @@ const logger = {
   error: vi.fn(),
 };
 
-const initializeCurrentProcessingDispatcher = vi.fn();
 const initializeExchangeRateLedgerRecalculationOrchestration = vi.fn();
 const validateStartupEnv = vi.fn(() => ({
   DATABASE_URL: "file:./data/sqlite.db",
@@ -14,10 +13,6 @@ const validateStartupEnv = vi.fn(() => ({
 
 vi.mock("@/lib/logger", () => ({
   logger,
-}));
-
-vi.mock("@/application/adapters/in-process", () => ({
-  initializeCurrentProcessingDispatcher,
 }));
 
 vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
@@ -34,34 +29,13 @@ describe("instrumentation.register", () => {
     process.env.NEXT_RUNTIME = "nodejs";
   });
 
-  it("validates startup env before initializing target processing", async () => {
+  it("validates startup env and initializes orchestration without a global processing dispatcher", async () => {
     const { register } = await import("@/instrumentation");
 
     await register();
 
     expect(validateStartupEnv).toHaveBeenCalledTimes(1);
-    const validateOrder = validateStartupEnv.mock.invocationCallOrder.at(0);
-    const initializeOrder = initializeCurrentProcessingDispatcher.mock.invocationCallOrder.at(0);
-
-    expect(validateOrder).toBeDefined();
-    expect(initializeOrder).toBeDefined();
-    expect(validateOrder!).toBeLessThan(initializeOrder!);
     expect(initializeExchangeRateLedgerRecalculationOrchestration).toHaveBeenCalledTimes(1);
-    expect(initializeCurrentProcessingDispatcher).toHaveBeenCalledTimes(1);
-
-    const orchestrationOrder =
-      initializeExchangeRateLedgerRecalculationOrchestration.mock.invocationCallOrder.at(0);
-    expect(orchestrationOrder).toBeDefined();
-    expect(initializeOrder!).toBeLessThan(orchestrationOrder!);
-  });
-
-  it("rethrows when target processing initialization fails", async () => {
-    initializeCurrentProcessingDispatcher.mockRejectedValueOnce(new Error("runtime failed"));
-    const { register } = await import("@/instrumentation");
-
-    await expect(register()).rejects.toThrow("runtime failed");
-    expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalled();
   });
 
   it("rethrows startup env validation failures without initializing the runtime", async () => {
@@ -72,7 +46,6 @@ describe("instrumentation.register", () => {
     const { register } = await import("@/instrumentation");
 
     await expect(register()).rejects.toThrow("invalid env");
-    expect(initializeCurrentProcessingDispatcher).not.toHaveBeenCalled();
     expect(initializeExchangeRateLedgerRecalculationOrchestration).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });

@@ -22,15 +22,9 @@ export async function register() {
       "Service configuration status"
     );
 
-    const { initializeCurrentProcessingDispatcher } =
-      await import("@/application/adapters/in-process");
-    await initializeCurrentProcessingDispatcher();
-
     const { initializeExchangeRateLedgerRecalculationOrchestration } =
       await import("@/lib/orchestration/exchange-rate-ledger-recalculation");
     initializeExchangeRateLedgerRecalculationOrchestration();
-
-    logger.info("Target processing runtime initialized successfully");
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
     throw error;

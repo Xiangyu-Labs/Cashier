@@ -109,7 +109,6 @@ describe("validateStartupEnv", () => {
       "LOG_LEVEL",
       "MAX_IMAGE_QUALITY",
       "MAX_INPUT_PIXELS",
-      "MAX_TASK_WORKER",
       "NEXT_PUBLIC_APP_URL",
       "NEXT_PUBLIC_DEV_AUTH_BYPASS",
       "OPENAI_BASE_URL",
