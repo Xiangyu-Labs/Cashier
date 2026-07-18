@@ -8,7 +8,7 @@ import {
   sourceDocuments,
   ledgers,
 } from "@/persistence";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import {
   createServiceCredentialAction,
@@ -95,7 +95,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       where: eq(serviceCredentials.id, createRes.id),
     });
     expect(stored?.tokenHash).toBeDefined();
-    expect(stored?.key).toBeNull(); // New credentials only store hash
+    expect(stored).not.toHaveProperty("key");
     expect(authenticateToken(createRes.token, stored?.tokenHash ?? "")).toBe(true);
 
     // List Credentials
@@ -125,7 +125,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
   });
 
   it("should ingest ledger entry with valid service credential", async () => {
-    // Setup: create a credential with a known key via direct DB insert (simulating legacy)
+    // Setup: create a hash-only credential with a known bearer token.
     const db = getTestDb();
     const knownToken = "sk_test_123";
     const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
@@ -136,18 +136,17 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       .values({
         ledgerId: testLedgerId,
         name: "Ingest Credential",
-        key: knownToken,
         tokenHash: hash,
         tokenPrefix: prefix,
         tokenSuffix: suffix,
       })
       .returning();
-    const c = requireFirst(createdCredentials, "service credential");
+    requireFirst(createdCredentials, "service credential");
 
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${c.key}`,
+        Authorization: `Bearer ${knownToken}`,
       },
       body: JSON.stringify({ text: "API Ledger Entry" }),
     });
@@ -194,7 +193,6 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       .values({
         ledgerId: testLedgerId,
         name: "Broken Body Credential",
-        key: knownToken,
         tokenHash: hash,
         tokenPrefix: prefix,
         tokenSuffix: suffix,
@@ -229,7 +227,6 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       .values({
         ledgerId: testLedgerId,
         name: "Timezone Credential",
-        key: knownToken,
         tokenHash: hash,
         tokenPrefix: prefix,
         tokenSuffix: suffix,
@@ -271,49 +268,6 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     });
     expect(check).toBeDefined();
     expect(check?.deletedAt).not.toBeNull();
-  });
-
-  it("deleted legacy credential has its key cleared after migration backfill", async () => {
-    const db = getTestDb();
-    // Simulate a legacy credential with plaintext key (pre-hash era)
-    const knownToken = "sk_live_deleted_migration_12345678901234567890123456789012";
-    const [createdRow] = await db
-      .insert(serviceCredentials)
-      .values({
-        ledgerId: testLedgerId,
-        name: "Legacy To Delete",
-        key: knownToken,
-        tokenHash: null,
-        tokenPrefix: null,
-        tokenSuffix: null,
-      })
-      .returning();
-    expect(createdRow?.key).toBe(knownToken);
-
-    // Soft-delete the credential
-    await db
-      .update(serviceCredentials)
-      .set({ deletedAt: new Date() })
-      .where(
-        and(eq(serviceCredentials.id, createdRow!.id), isNull(serviceCredentials.deletedAt))
-      );
-
-    // Simulate backfill: clear plaintext on deleted rows (not hash them)
-    await db
-      .update(serviceCredentials)
-      .set({ key: null })
-      .where(
-        and(sql`deleted_at IS NOT NULL`, sql`key IS NOT NULL`)
-      );
-
-    // Verify key is cleared
-    const deleted = await db.query.serviceCredentials.findFirst({
-      where: eq(serviceCredentials.id, createdRow!.id),
-    });
-    expect(deleted?.deletedAt).not.toBeNull();
-    expect(deleted?.key).toBeNull();
-    // Deleted rows should not get hashed
-    expect(deleted?.tokenHash).toBeNull();
   });
 
   it("tracks last use and rejects authentication immediately after revoke", async () => {

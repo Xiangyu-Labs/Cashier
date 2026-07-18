@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   boolean,
+  check,
   numeric,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
@@ -136,7 +137,6 @@ export const serviceCredentials = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    key: text("key").unique(),
     tokenHash: text("token_hash"),
     tokenPrefix: text("token_prefix"),
     tokenSuffix: text("token_suffix"),
@@ -155,6 +155,10 @@ export const serviceCredentials = pgTable(
     uniqueIndex("uniq_service_credentials_token_hash")
       .on(table.tokenHash)
       .where(sql`${table.tokenHash} IS NOT NULL`),
+    check(
+      "ck_active_service_credentials_hashed",
+      sql`${table.deletedAt} IS NOT NULL OR (${table.tokenHash} IS NOT NULL AND ${table.tokenPrefix} IS NOT NULL AND ${table.tokenSuffix} IS NOT NULL)`
+    ),
   ]
 );
 

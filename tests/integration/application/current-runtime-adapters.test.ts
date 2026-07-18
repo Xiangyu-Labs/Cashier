@@ -35,6 +35,7 @@ import {
   uploadSessions,
 } from "@/persistence";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
+import { computeHash } from "@/lib/security/service-credential-token";
 
 class MemoryObjectStore {
   readonly files = new Map<string, Buffer>();
@@ -378,7 +379,9 @@ describe("current-runtime target adapters", () => {
     await db.insert(serviceCredentials).values({
       id: "credential-1",
       ledgerId,
-      key: "secret-key",
+      tokenHash: computeHash("secret-key"),
+      tokenPrefix: "secret-k",
+      tokenSuffix: "-key",
       name: "API",
     });
 

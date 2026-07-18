@@ -13,9 +13,9 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
-  uploadSessionFiles,
   uploadSessions,
 } from "@/persistence";
+import { computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
 
 async function validJpegBase64(): Promise<string> {
   const buffer = await sharp({
@@ -94,14 +94,6 @@ vi.mock("@/lib/storage/r2", () => ({
   getR2Storage: mockR2.getStorage,
 }));
 
-function requireFirst<T>(rows: readonly T[], label: string): T {
-  const first = rows[0];
-  if (first === undefined) {
-    throw new Error(`Expected at least one ${label}`);
-  }
-  return first;
-}
-
 describe("API v1 source-documents route", () => {
   let ledgerId: string;
   let credentialKey: string;
@@ -114,16 +106,18 @@ describe("API v1 source-documents route", () => {
     const setup = await createTestUserWithLedger(db, undefined, "Route Test Ledger", TEST_USER_ID);
     ledgerId = setup.ledgerId;
 
-    const createdCredentials = await db
+    credentialKey = `sk_route_${crypto.randomUUID().replace(/-/g, "")}`;
+    const { prefix, suffix } = prefixSuffix(credentialKey);
+    await db
       .insert(serviceCredentials)
       .values({
         ledgerId,
         name: "Route Credential",
-        key: `sk_route_${crypto.randomUUID().replace(/-/g, "")}`,
+        tokenHash: computeHash(credentialKey),
+        tokenPrefix: prefix,
+        tokenSuffix: suffix,
       })
       .returning();
-
-    credentialKey = requireFirst(createdCredentials, "service credential").key!;
   });
 
   it("POST /api/v1/source-documents returns 201 for valid credential request", async () => {

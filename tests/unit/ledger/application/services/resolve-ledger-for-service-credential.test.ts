@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { ledgers, serviceCredentials } from "@/persistence";
+import { createToken } from "@/lib/security/service-credential-token";
 
 const logErrorMock = vi.hoisted(() => vi.fn());
 
@@ -27,7 +28,9 @@ describe("resolveLedgerForServiceCredential", () => {
       id: "deleted-credential",
       ledgerId,
       name: "deleted",
-      key: "sk_deleted",
+      tokenHash: createToken().hash,
+      tokenPrefix: "sk_live_",
+      tokenSuffix: "dead",
       deletedAt: new Date(),
     });
 
@@ -41,7 +44,9 @@ describe("resolveLedgerForServiceCredential", () => {
       id: "credential-1",
       ledgerId,
       name: "active",
-      key: "sk_active",
+      tokenHash: createToken().hash,
+      tokenPrefix: "sk_live_",
+      tokenSuffix: "live",
       lastUsedAt: null,
     });
 
@@ -60,7 +65,9 @@ describe("resolveLedgerForServiceCredential", () => {
       id: "credential-2",
       ledgerId,
       name: "soft-deleted-ledger",
-      key: "sk_soft_deleted",
+      tokenHash: createToken().hash,
+      tokenPrefix: "sk_live_",
+      tokenSuffix: "soft",
     });
     await db.update(ledgers).set({ deletedAt: new Date() }).where(eq(ledgers.id, ledgerId));
 

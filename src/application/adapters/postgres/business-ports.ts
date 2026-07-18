@@ -546,35 +546,7 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
       return hashMatch;
     }
 
-    // TODO: Remove this legacy plaintext fallback once
-    //   scripts/migrations/hash-service-credentials.mjs backfill && verify && clear-plaintext
-    // has been run in production and all active credentials have tokenHash populated.
-    // The `key` column will be dropped after the fallback is removed.
-    // Fallback: legacy plaintext key lookup for rows without tokenHash
-    const legacyMatch = await db
-      .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
-      .from(serviceCredentials)
-      .innerJoin(
-        ledgers,
-        and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
-      )
-      .where(and(eq(serviceCredentials.key, key), isNull(serviceCredentials.tokenHash), isNull(serviceCredentials.deletedAt)))
-      .then((rows) => rows[0]);
-
-    if (legacyMatch == null) return null;
-
-    try {
-      const [updated] = await db
-        .update(serviceCredentials)
-        .set({ lastUsedAt: new Date() })
-        .where(and(eq(serviceCredentials.id, legacyMatch.id), isNull(serviceCredentials.deletedAt)))
-        .returning({ id: serviceCredentials.id });
-      if (!updated) return null;
-    } catch (error) {
-      logError("modules/ledger:authenticate-service-credential:update-last-used", error);
-    }
-
-    return legacyMatch;
+    return null;
   },
 
   async list(ledgerId) {

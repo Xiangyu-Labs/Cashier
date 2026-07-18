@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { serviceCredentials } from "@/persistence";
+import { computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
 
 const logErrorMock = vi.hoisted(() => vi.fn());
 
@@ -10,6 +11,11 @@ vi.mock("@/lib/error-handlers", () => ({
 }));
 
 import { authenticateServiceCredential } from "@/modules/ledger/application/services/authenticate-service-credential";
+
+function hashFields(token: string) {
+  const { prefix, suffix } = prefixSuffix(token);
+  return { tokenHash: computeHash(token), tokenPrefix: prefix, tokenSuffix: suffix };
+}
 
 describe("authenticateServiceCredential", () => {
   let ledgerId = "";
@@ -26,7 +32,7 @@ describe("authenticateServiceCredential", () => {
       id: crypto.randomUUID(),
       ledgerId,
       name: "deleted",
-      key: "sk_deleted",
+      ...hashFields("sk_deleted"),
       deletedAt: new Date(),
     });
 
@@ -40,7 +46,7 @@ describe("authenticateServiceCredential", () => {
       id: "credential-1",
       ledgerId,
       name: "primary",
-      key: "sk_primary",
+      ...hashFields("sk_primary"),
       lastUsedAt: null,
     });
 
@@ -59,7 +65,7 @@ describe("authenticateServiceCredential", () => {
       id: "credential-2",
       ledgerId,
       name: "broken",
-      key: "sk_broken",
+      ...hashFields("sk_broken"),
     });
 
     const updateSpy = vi.spyOn(db, "update").mockImplementationOnce(() => {
