@@ -39,4 +39,12 @@ describe("retrySourceDocumentAction omission semantics", () => {
     expect(callInput.sourceDocumentId).toBe("old-doc");
     expect(Object.prototype.hasOwnProperty.call(callInput, "input")).toBe(false);
   });
+
+  it("injects scheduleProcessing into use case dependencies", async () => {
+    await retrySourceDocumentAction("ledger-1", "old-doc");
+
+    const deps = retrySourceDocumentMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(deps).toBeDefined();
+    expect(typeof deps.scheduleProcessing).toBe("function");
+  });
 });

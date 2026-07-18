@@ -18,6 +18,8 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
 
 describe("createSourceDocumentFromCredential omission semantics", () => {
+  const scheduleProcessing = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
     resolveLedgerForServiceCredentialMock.mockResolvedValue({ id: "ledger-1" });
@@ -28,10 +30,13 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
   });
 
   it("omits absent optional payload fields when forwarding to create-and-queue", async () => {
-    await createSourceDocumentFromCredential({
-      credentialId: "cred-1",
-      payload: { text: "Lunch 12.50" },
-    });
+    await createSourceDocumentFromCredential(
+      {
+        credentialId: "cred-1",
+        payload: { text: "Lunch 12.50" },
+      },
+      scheduleProcessing
+    );
 
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<
       string,

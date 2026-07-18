@@ -1,4 +1,8 @@
 "use server";
+import { after } from "next/server";
+import type { ProcessingIntentContract } from "@/application/contracts";
+import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
+import { currentApplication } from "@/application/current";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
@@ -7,6 +11,8 @@ import {
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
+
+export const maxDuration = 120;
 
 /**
  * Retry an existing source document with optional new data
@@ -22,10 +28,20 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     const validatedInput =
       input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
 
-    return retrySourceDocument({
-      ledgerId,
-      sourceDocumentId,
-      ...(validatedInput == null ? {} : { input: validatedInput }),
-    });
+    const scheduleProcessing = (intent: ProcessingIntentContract) => {
+      after(() => executeSingleProcessingIntent(intent));
+    };
+
+    return retrySourceDocument(
+      {
+        ledgerId,
+        sourceDocumentId,
+        ...(validatedInput == null ? {} : { input: validatedInput }),
+      },
+      {
+        submissions: currentApplication.sourceDocumentSubmissions,
+        scheduleProcessing,
+      }
+    );
   }
 );

@@ -14,7 +14,7 @@ const ledger = {
 
 describe("createAndQueueSourceDocument", () => {
   const createPendingWithIntent = vi.fn();
-  const triggerProcessing = vi.fn();
+  const scheduleProcessing = vi.fn();
 
   // Inline image uploader mocks
   const createUploadPlan = vi.fn();
@@ -48,7 +48,7 @@ describe("createAndQueueSourceDocument", () => {
           submissions: { createPendingWithIntent },
           storedFiles: mockStoredFiles,
           processImage,
-          triggerProcessing,
+          scheduleProcessing,
         }
       )
     ).rejects.toThrow(ValidationError);
@@ -62,7 +62,7 @@ describe("createAndQueueSourceDocument", () => {
         submissions: { createPendingWithIntent },
         storedFiles: mockStoredFiles,
         processImage,
-        triggerProcessing,
+        scheduleProcessing,
       }
     );
 
@@ -72,9 +72,9 @@ describe("createAndQueueSourceDocument", () => {
       storedFileIds: [],
       entryDate: "2026-07-15",
     });
-    expect(triggerProcessing).toHaveBeenCalledWith({ id: "intent-1" });
+    expect(scheduleProcessing).toHaveBeenCalledWith({ id: "intent-1" });
     expect(createPendingWithIntent.mock.invocationCallOrder[0]).toBeLessThan(
-      triggerProcessing.mock.invocationCallOrder[0]!
+      scheduleProcessing.mock.invocationCallOrder[0]!
     );
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
@@ -95,7 +95,7 @@ describe("createAndQueueSourceDocument", () => {
         submissions: { createPendingWithIntent },
         storedFiles: mockStoredFiles,
         processImage,
-        triggerProcessing,
+        scheduleProcessing,
       }
     );
     expect(createPendingWithIntent).toHaveBeenCalledWith(
@@ -131,7 +131,7 @@ describe("createAndQueueSourceDocument", () => {
           submissions: { createPendingWithIntent },
           storedFiles: mockStoredFiles,
           processImage,
-          triggerProcessing,
+          scheduleProcessing,
         }
       );
 
@@ -194,7 +194,7 @@ describe("createAndQueueSourceDocument", () => {
           submissions: { createPendingWithIntent },
           storedFiles: mockStoredFiles,
           processImage,
-          triggerProcessing,
+          scheduleProcessing,
         }
       );
 
@@ -243,7 +243,7 @@ describe("createAndQueueSourceDocument", () => {
           submissions: { createPendingWithIntent },
           storedFiles: mockStoredFiles,
           processImage,
-          triggerProcessing,
+          scheduleProcessing,
         }
       );
 
@@ -268,7 +268,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);
@@ -290,7 +290,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);
@@ -321,7 +321,7 @@ describe("createAndQueueSourceDocument", () => {
           submissions: { createPendingWithIntent },
           storedFiles: mockStoredFiles,
           processImage,
-          triggerProcessing,
+          scheduleProcessing,
         }
       );
 
@@ -346,7 +346,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);
@@ -367,7 +367,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);
@@ -388,7 +388,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);
@@ -423,7 +423,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).resolves.not.toThrow();
@@ -443,7 +443,7 @@ describe("createAndQueueSourceDocument", () => {
             submissions: { createPendingWithIntent },
             storedFiles: mockStoredFiles,
             processImage,
-            triggerProcessing,
+            scheduleProcessing,
           }
         )
       ).rejects.toThrow(ValidationError);

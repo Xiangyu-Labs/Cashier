@@ -44,4 +44,12 @@ describe("createSourceDocumentAction omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(callInput, "entryDate")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "timezone")).toBe(false);
   });
+
+  it("injects scheduleProcessing into use case dependencies", async () => {
+    await createSourceDocumentAction("ledger-1", { text: "Lunch" });
+
+    const deps = createAndQueueSourceDocumentMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(deps).toBeDefined();
+    expect(typeof deps.scheduleProcessing).toBe("function");
+  });
 });

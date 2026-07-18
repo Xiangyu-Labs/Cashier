@@ -13,7 +13,7 @@ const ledger = {
 
 describe("retrySourceDocument", () => {
   const createPendingWithIntent = vi.fn();
-  const triggerProcessing = vi.fn();
+  const scheduleProcessing = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,23 +29,27 @@ describe("retrySourceDocument", () => {
     await expect(
       retrySourceDocument(
         { ledgerId: ledger.id, ledger, sourceDocumentId: "missing" },
-        { submissions: { createPendingWithIntent }, triggerProcessing }
+        { submissions: { createPendingWithIntent }, scheduleProcessing }
       )
     ).rejects.toThrow(NotFoundError);
-    expect(triggerProcessing).not.toHaveBeenCalled();
+    expect(scheduleProcessing).not.toHaveBeenCalled();
   });
 
   it("creates a new revision under the stable document identity and inherits evidence", async () => {
     const result = await retrySourceDocument(
       { ledgerId: ledger.id, ledger, sourceDocumentId: "doc-1" },
-      { submissions: { createPendingWithIntent }, triggerProcessing }
+      { submissions: { createPendingWithIntent }, scheduleProcessing }
     );
     expect(createPendingWithIntent).toHaveBeenCalledWith({
       ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
       inheritEvidence: true,
     });
-    expect(triggerProcessing).toHaveBeenCalledWith({ id: "intent-2" });
+    expect(scheduleProcessing).toHaveBeenCalledWith({ id: "intent-2" });
+    // ordering: scheduleProcessing must be called AFTER createPendingWithIntent completes
+    expect(createPendingWithIntent.mock.invocationCallOrder[0]).toBeLessThan(
+      scheduleProcessing.mock.invocationCallOrder[0]!
+    );
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
       previousSourceDocumentId: "doc-1",
@@ -65,7 +69,7 @@ describe("retrySourceDocument", () => {
           storedFileIds: ["00000000-0000-4000-8000-000000000001"],
         },
       },
-      { submissions: { createPendingWithIntent }, triggerProcessing }
+      { submissions: { createPendingWithIntent }, scheduleProcessing }
     );
     expect(createPendingWithIntent).toHaveBeenCalledWith({
       ledgerId: ledger.id,
@@ -77,7 +81,7 @@ describe("retrySourceDocument", () => {
     });
   });
 
-  it("rejects raw image retry payloads", async () => {
+  it("rejects raw image retry payloads without scheduling processing", async () => {
     await expect(
       retrySourceDocument(
         {
@@ -86,8 +90,9 @@ describe("retrySourceDocument", () => {
           sourceDocumentId: "doc-1",
           input: { images: [{ data: "raw", mimeType: "image/jpeg" }] },
         },
-        { submissions: { createPendingWithIntent }, triggerProcessing }
+        { submissions: { createPendingWithIntent }, scheduleProcessing }
       )
     ).rejects.toThrow("Images must be finalized");
+    expect(scheduleProcessing).not.toHaveBeenCalled();
   });
 });

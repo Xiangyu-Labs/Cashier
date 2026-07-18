@@ -1,5 +1,8 @@
 "use server";
 
+import { after } from "next/server";
+import type { ProcessingIntentContract } from "@/application/contracts";
+import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { ValidationError } from "@/lib/errors";
 import type {
   CreateSourceDocumentInput,
@@ -7,6 +10,8 @@ import type {
 } from "@/modules/source-document/contracts";
 import { createSourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
+
+export const maxDuration = 120;
 
 export async function createSourceDocumentFromCredentialAction(input: {
   credentialId: string;
@@ -19,10 +24,17 @@ export async function createSourceDocumentFromCredentialAction(input: {
     throw new ValidationError("Validation failed", { issues: parsed.error.issues });
   }
 
-  return createSourceDocumentFromCredential({
-    credentialId: input.credentialId,
-    ledgerId: input.ledgerId,
-    ...(input.idempotencyKey == null ? {} : { idempotencyKey: input.idempotencyKey }),
-    payload: parsed.data as CreateSourceDocumentInput,
-  });
+  const scheduleProcessing = (intent: ProcessingIntentContract) => {
+    after(() => executeSingleProcessingIntent(intent));
+  };
+
+  return createSourceDocumentFromCredential(
+    {
+      credentialId: input.credentialId,
+      ledgerId: input.ledgerId,
+      ...(input.idempotencyKey == null ? {} : { idempotencyKey: input.idempotencyKey }),
+      payload: parsed.data as CreateSourceDocumentInput,
+    },
+    scheduleProcessing
+  );
 }

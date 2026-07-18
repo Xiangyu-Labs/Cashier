@@ -104,3 +104,17 @@ vi.mock("@/i18n/routing", () => ({
     [key: string]: unknown;
   }) => React.createElement("a", { href, ...rest }, children),
 }));
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    // Suppress rejections so that teardown failures don't pollute test output.
+    // Wraps fn() in try/catch for sync throws and .catch() for async rejections.
+    after: (fn: () => void) => {
+      try {
+        void Promise.resolve(fn()).catch(() => {});
+      } catch {}
+    },
+  };
+});
