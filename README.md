@@ -101,6 +101,16 @@ npm run test:coverage  # With coverage
 - [docs/architecture/coding-patterns.md](./docs/architecture/coding-patterns.md) - Durable engineering rules
 - [docs/operations/runbook.md](./docs/operations/runbook.md) - Operations runbook for local running, migrations, backup, and deployment
 
+## Processing
+
+Source document parsing (AI-powered receipt/expense extraction) uses the following architecture:
+
+- **Hosting**: Currently Docker. The runtime is Vercel-compatible and will migrate when production-ready.
+- **Scheduling**: Processing is scheduled via Next.js `after()` at request boundaries — runs after the HTTP response is sent, no blocking.
+- **No global drain loop**: Each submission creates a processing intent and executes it directly. No background worker or external queue drains pending rows.
+- **Idempotency**: Processing intents support idempotent dispatch, claim-based concurrency control, and lease expiry to handle restarts.
+- **Vercel-compatible**: The `after()`-based scheduling works within Vercel's serverless runtime without modification. If `maxDuration` limits are insufficient, a Queue/Worker path is designed but deferred until measured.
+
 ## License
 
 Private

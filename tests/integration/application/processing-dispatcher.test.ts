@@ -4,6 +4,7 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
   CurrentRevisionProcessor,
+  executeSingleProcessingIntent,
   InProcessProcessingDispatcher,
 } from "@/application/adapters/in-process";
 import {
@@ -19,6 +20,11 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
+
+vi.mock("@/lib/tasks/ai-context", () => ({
+  createAIContext: vi.fn(),
+}));
+import { createAIContext } from "@/lib/tasks/ai-context";
 
 /**
  * Creates a pending revision + intent for a single source document.
@@ -351,5 +357,93 @@ describe("executeSingleIntent — request-bound processing seam", () => {
     // activateRevision was never called — verify no ledger entries
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
     expect(generate).not.toHaveBeenCalled();
+  });
+});
+
+describe("executeSingleProcessingIntent — standalone function with real adapter/processor", () => {
+  it("processes successfully, setting outbox and revision outcomes to completed", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    const generate = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: 12.5, currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: 12.5,
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+    vi.mocked(createAIContext).mockReturnValue({ generate });
+
+    const adapter = new PostgresProcessingIntentAdapter();
+    await adapter.dispatch(intent);
+
+    const result = await executeSingleProcessingIntent(intent);
+    expect(result).toBe(true);
+
+    const row = await db.query.processingOutbox.findFirst({
+      where: eq(processingOutbox.id, intent.id),
+    });
+    expect(row?.status).toBe("completed");
+
+    const doc = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+    });
+    expect(doc?.activeRevisionId).toBe(intent.revisionId);
+    expect(doc?.pendingRevisionId).toBeNull();
+
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    expect(revision?.outcome).toBe("completed");
+
+    expect(await db.select().from(ledgerEntries)).toHaveLength(1);
+  });
+
+  it("handles processing failure: preserveTerminalOutcome guard on stale revision", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
+    vi.mocked(createAIContext).mockReturnValue({ generate });
+
+    const adapter = new PostgresProcessingIntentAdapter();
+    await adapter.dispatch(intent);
+
+    // Simulate stale revision: change pendingRevisionId so preserveTerminalOutcome guard fails
+    const staleRevisionId = crypto.randomUUID();
+    await db
+      .update(sourceDocuments)
+      .set({ pendingRevisionId: staleRevisionId })
+      .where(eq(sourceDocuments.id, intent.sourceDocumentId));
+
+    const result = await executeSingleProcessingIntent(intent);
+    expect(result).toBe(true);
+
+    const row = await db.query.processingOutbox.findFirst({
+      where: eq(processingOutbox.id, intent.id),
+    });
+    expect(row?.status).toBe("failed");
+
+    // preserveTerminalOutcome guard prevented update — revision stays at "processing"
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    expect(revision?.outcome).toBe("processing");
+
+    expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 });
