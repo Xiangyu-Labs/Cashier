@@ -192,6 +192,7 @@ function CandidatePanel({
       </div>
     </div>
   );
+}
 
 
 function FailedPanel({

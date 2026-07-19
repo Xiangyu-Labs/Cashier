@@ -187,7 +187,7 @@ describe("buildUnifiedStreamGroups", () => {
     expect(groups[0]!.total).toBe(0);
   });
 
-  it("orders items within a group by status priority", () => {
+  it("orders items within a group by createdAt descending, with status priority as tertiary sort", () => {
     const candidate = makeItem("cand", {
       status: "candidate_pending",
       entryDate: "2026-07-01",
@@ -215,6 +215,7 @@ describe("buildUnifiedStreamGroups", () => {
       [completed]
     );
     const statuses = groups[0]!.items.map((i) => i.sourceDocument.status);
+    // Primary: createdAt descending (10:00 → 09:00 → 08:00 → 07:00)
     expect(statuses).toEqual([
       "candidate_pending",
       "anomaly",
@@ -223,7 +224,29 @@ describe("buildUnifiedStreamGroups", () => {
     ]);
   });
 
-  it("uses createdAt then id as tie breakers within the same status", () => {
+  it("places a newer completed card before an older attention card", () => {
+    const recentCompleted = makeItem("rc", {
+      status: "completed",
+      entryDate: "2026-07-01",
+      createdAt: "2026-07-01T12:00:00.000Z",
+      ledgerEntries: [makeEntry()],
+    });
+    const olderAnomaly = makeItem("oa", {
+      status: "anomaly",
+      entryDate: "2026-07-01",
+      createdAt: "2026-07-01T10:00:00.000Z",
+    });
+
+    const groups = buildUnifiedStreamGroups(
+      [olderAnomaly],
+      [recentCompleted]
+    );
+    const ids = groups[0]!.items.map((i) => i.sourceDocument.id);
+    // Newest first: recentCompleted (12:00) before olderAnomaly (10:00)
+    expect(ids).toEqual(["rc", "oa"]);
+  });
+
+  it("uses createdAt descending then id descending as the primary intra-group sort", () => {
     const a1 = makeItem("a1", {
       status: "completed",
       entryDate: "2026-07-01",
@@ -238,8 +261,27 @@ describe("buildUnifiedStreamGroups", () => {
     });
 
     const groups = buildUnifiedStreamGroups([], [a1, a2]);
-    // Both are completed — tie-break by createdAt (a2 is older, but sort is within status priority, then createdAt string comparison)
-    // Actually they're sorted ascending within groups, so older first (a2, then a1)
+    // Newest first: a1 (10:00) before a2 (09:00)
+    const ids = groups[0]!.items.map((i) => i.sourceDocument.id);
+    expect(ids).toEqual(["a1", "a2"]);
+  });
+
+  it("uses descending id as tie-breaker for equal createdAt timestamps", () => {
+    const a1 = makeItem("a1", {
+      status: "completed",
+      entryDate: "2026-07-01",
+      createdAt: "2026-07-01T10:00:00.000Z",
+      ledgerEntries: [makeEntry()],
+    });
+    const a2 = makeItem("a2", {
+      status: "completed",
+      entryDate: "2026-07-01",
+      createdAt: "2026-07-01T10:00:00.000Z",
+      ledgerEntries: [makeEntry()],
+    });
+
+    const groups = buildUnifiedStreamGroups([], [a1, a2]);
+    // Equal timestamps — tie-break by id descending: a2 before a1
     const ids = groups[0]!.items.map((i) => i.sourceDocument.id);
     expect(ids).toEqual(["a2", "a1"]);
   });

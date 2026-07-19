@@ -1,5 +1,5 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { parseAmount } from "@/lib/formatters";
@@ -29,8 +29,19 @@ export function useDetailsTabGrouping(entries: LedgerEntry[]): UseDetailsTabGrou
     return formatDateTimeForApi(new Date(entry.createdAt)) ?? formatDateTimeForApi(new Date())!;
   }, []);
 
+  const sortedEntries = useMemo(
+    () =>
+      [...entries].sort((a, b) => {
+        if (a.createdAt !== b.createdAt) {
+          return b.createdAt.localeCompare(a.createdAt);
+        }
+        return b.id.localeCompare(a.id);
+      }),
+    [entries]
+  );
+
   const { groupedItems } = useDateGrouping({
-    items: entries,
+    items: sortedEntries,
     getDateStr,
     getAmount: (entry) =>
       entry.convertedAmount != null

@@ -217,20 +217,22 @@ export function buildUnifiedStreamGroups(
     groupMap.set(item.effectiveDate, group);
   }
 
-  // 5. Sort items within each group by status priority, then createdAt, then id
+  // 5. Sort items within each group by createdAt descending, id descending, then status priority
   for (const [, items] of groupMap) {
     items.sort((a, b) => {
+      if (a.sourceDocument.createdAt !== b.sourceDocument.createdAt) {
+        return b.sourceDocument.createdAt.localeCompare(
+          a.sourceDocument.createdAt
+        );
+      }
+      if (a.sourceDocument.id !== b.sourceDocument.id) {
+        return b.sourceDocument.id.localeCompare(a.sourceDocument.id);
+      }
       const pa =
         STATUS_PRIORITY[a.sourceDocument.status] ?? FALLBACK_PRIORITY;
       const pb =
         STATUS_PRIORITY[b.sourceDocument.status] ?? FALLBACK_PRIORITY;
-      if (pa !== pb) return pa - pb;
-      if (a.sourceDocument.createdAt !== b.sourceDocument.createdAt) {
-        return a.sourceDocument.createdAt.localeCompare(
-          b.sourceDocument.createdAt
-        );
-      }
-      return a.sourceDocument.id.localeCompare(b.sourceDocument.id);
+      return pa - pb;
     });
   }
 
