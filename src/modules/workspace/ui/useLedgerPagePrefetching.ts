@@ -16,6 +16,23 @@ interface UseLedgerPagePrefetchingOptions {
   queryClient: QueryClient;
 }
 
+export function preloadTab(tab: LedgerTab): void {
+  switch (tab) {
+    case "stream":
+      fireAndForget(import("@/modules/workspace/ui/LedgerEntriesTab"), { context: "LedgerPageClient.preload" });
+      break;
+    case "details":
+      fireAndForget(import("@/modules/workspace/ui/DetailsTab"), { context: "LedgerPageClient.preload" });
+      break;
+    case "stats":
+      fireAndForget(import("@/modules/workspace/ui/StatsTab"), { context: "LedgerPageClient.preload" });
+      break;
+    case "settings":
+      fireAndForget(import("@/modules/ledger/ui"), { context: "LedgerPageClient.preload" });
+      break;
+  }
+}
+
 export function useLedgerPagePrefetching({
   activeTab,
   isInputOpen,
@@ -40,33 +57,6 @@ export function useLedgerPagePrefetching({
 
       return () => clearTimeout(timer);
     }
+
   }, [isInputOpen, ledgerId, queryClient]);
-
-  useEffect(() => {
-    const preloadTabs = () => {
-      if (activeTab !== "details") {
-        fireAndForget(import("@/modules/workspace/ui/DetailsTab"), {
-          context: "LedgerPageClient.preload",
-        });
-      }
-      if (activeTab !== "stats") {
-        fireAndForget(import("@/modules/workspace/ui/StatsTab"), {
-          context: "LedgerPageClient.preload",
-        });
-      }
-      if (activeTab !== "settings") {
-        fireAndForget(import("@/modules/ledger/ui"), {
-          context: "LedgerPageClient.preload",
-        });
-      }
-      if (activeTab !== "stream") {
-        fireAndForget(import("@/modules/workspace/ui/LedgerEntriesTab"), {
-          context: "LedgerPageClient.preload",
-        });
-      }
-    };
-
-    const timer = setTimeout(preloadTabs, 500);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
 }

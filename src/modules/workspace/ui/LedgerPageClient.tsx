@@ -21,13 +21,20 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
-import { SourceDocumentInput, QuickEntryForm } from "@/modules/source-document/ui";
+const SourceDocumentInput = dynamic(
+  () => import("@/modules/source-document/ui").then(m => m.SourceDocumentInput),
+  { ssr: false }
+);
+const QuickEntryForm = dynamic(
+  () => import("@/modules/source-document/ui").then(m => m.QuickEntryForm),
+  { ssr: false }
+);
 import { AppShell } from "./AppShell";
 import { TabNavigation } from "./TabNavigation";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
-import { useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
+import { preloadTab, useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
 
 const ModalStackRenderer = dynamic(
   () =>
@@ -181,7 +188,7 @@ export function LedgerPageClient({
     >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} onTabIntent={preloadTab} />
         </div>
 
           <TabsContent value="stream" className="mt-0">
