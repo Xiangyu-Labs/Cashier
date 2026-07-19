@@ -123,4 +123,47 @@ describe("PostgresRateLimiter", () => {
     expect(successes).toBe(limit);
     expect(results.filter((r) => !r.success).length).toBe(5);
   });
+
+  describe("cooldown methods", () => {
+    it("setCooldown activates a cooldown", async () => {
+      const key = "cd-test-activate";
+
+      await postgresRateLimiter.setCooldown(key, 60);
+
+      const remaining = await postgresRateLimiter.getCooldownRemaining(key, 60);
+      expect(remaining).toBeGreaterThan(0);
+      expect(remaining).toBeLessThanOrEqual(60);
+    });
+
+    it("getCooldownRemaining returns 0 for missing key", async () => {
+      const remaining = await postgresRateLimiter.getCooldownRemaining("cd-missing", 60);
+      expect(remaining).toBe(0);
+    });
+
+    it("getCooldownRemaining returns 0 for expired cooldown", async () => {
+      const key = "cd-expired";
+
+      await postgresRateLimiter.setCooldown(key, 1);
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
+      const remaining = await postgresRateLimiter.getCooldownRemaining(key, 1);
+      expect(remaining).toBe(0);
+    });
+
+    it("setCooldown refreshes an existing cooldown window", async () => {
+      const key = "cd-refresh";
+
+      await postgresRateLimiter.setCooldown(key, 60);
+      const before = await postgresRateLimiter.getCooldownRemaining(key, 60);
+      expect(before).toBeGreaterThan(0);
+
+      // Wait briefly, then set cooldown again
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await postgresRateLimiter.setCooldown(key, 60);
+
+      // After refresh, remaining should be closer to 60 than before the wait
+      const after = await postgresRateLimiter.getCooldownRemaining(key, 60);
+      expect(after).toBeGreaterThanOrEqual(before);
+    });
+  });
 });

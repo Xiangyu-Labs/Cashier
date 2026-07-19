@@ -69,6 +69,57 @@ class PostgresRateLimiter {
       resetTime,
     };
   }
+
+  /**
+   * Activate a cooldown for a bucket key.
+   *
+   * Sets count=1 and window_start=NOW, replacing any existing value.
+   * Cooldown duration is measured from the activation time.
+   *
+   * @param bucketKey - Unique key identifying the bucket
+   * @param _cooldownSeconds - Cooldown duration in seconds (used only for
+   *   context; the bucket stores activation time, not the duration)
+   */
+  async setCooldown(
+    bucketKey: string,
+    _cooldownSeconds: number
+  ): Promise<void> {
+    const now = new Date();
+    await db.execute(sql`
+      INSERT INTO rate_limit_buckets (bucket_key, count, window_start, created_at)
+      VALUES (${bucketKey}, 1, ${now}, NOW())
+      ON CONFLICT (bucket_key) DO UPDATE SET
+        count = 1,
+        window_start = ${now}
+    `);
+  }
+
+  /**
+   * Return remaining seconds for an active cooldown.
+   *
+   * Reads the bucket's window_start and computes:
+   *   remaining = max(0, cooldownSeconds - elapsed_seconds)
+   *
+   * @param bucketKey - Unique key identifying the bucket
+   * @param cooldownSeconds - Cooldown duration in seconds
+   * @returns Remaining seconds (0 if expired or no bucket exists)
+   */
+  async getCooldownRemaining(
+    bucketKey: string,
+    cooldownSeconds: number
+  ): Promise<number> {
+    const result = await db.execute<{ window_start: Date }>(sql`
+      SELECT window_start FROM rate_limit_buckets WHERE bucket_key = ${bucketKey}
+    `);
+
+    const row = result.rows?.[0];
+    if (row == null) {
+      return 0;
+    }
+
+    const elapsed = (Date.now() - new Date(row.window_start).getTime()) / 1000;
+    return Math.max(0, Math.ceil(cooldownSeconds - elapsed));
+  }
 }
 
 /** Singleton Postgres-backed rate limiter for API v1 cross-instance limiting. */

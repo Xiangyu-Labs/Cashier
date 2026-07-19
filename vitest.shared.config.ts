@@ -55,6 +55,7 @@ export const dbUnitFiles = [
   "tests/unit/auth/application/queries/get-session-user.test.ts",
   "tests/unit/auth/application/use-cases/registration-policy.test.ts",
   "tests/unit/auth/repositories/otp-repository.test.ts",
+  "tests/unit/auth/services/otp-rate-limit.test.ts",
   "tests/unit/auth/services/otp-verification.test.ts",
   "tests/unit/currency/ExchangeRateService.test.ts",
   "tests/unit/db/ledger-entries.test.ts",

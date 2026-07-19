@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   checkSendRateLimit,
   checkSendRateLimitByIP,
@@ -7,12 +7,17 @@ import {
   getCanResendAt,
   checkVerifyRateLimit,
 } from "@/modules/auth/services/otp-rate-limit";
-import { memoryStore } from "@/lib/memory-store";
+import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
+import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
 
 describe("OTP Rate Limiting", () => {
   beforeEach(async () => {
-    // Clear all rate limit keys before each test
-    await memoryStore.flushall();
+    await db.execute(sql`DELETE FROM rate_limit_buckets`);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("checkSendRateLimit (per email)", () => {
@@ -59,16 +64,11 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      // Mock memoryStore.incr to throw an error
-      const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
+      vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
       const result = await checkSendRateLimit("test@example.com");
       expect(result.allowed).toBe(true);
       expect(result.remainingAttempts).toBe(10); // Default max attempts
-
-      // Restore
-      memoryStore.incr = originalIncr;
     });
   });
 
@@ -100,14 +100,11 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
+      vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
       const result = await checkSendRateLimitByIP("192.168.1.1");
       expect(result.allowed).toBe(true);
       expect(result.remainingAttempts).toBe(10);
-
-      memoryStore.incr = originalIncr;
     });
   });
 
@@ -141,13 +138,10 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      const originalTtl = memoryStore.ttl;
-      memoryStore.ttl = vi.fn().mockRejectedValue(new Error("Store error"));
+      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(new Error("DB error"));
 
       const result = await checkResendCooldown("test@example.com");
       expect(result.allowed).toBe(true);
-
-      memoryStore.ttl = originalTtl;
     });
   });
 
@@ -191,13 +185,10 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      const originalTtl = memoryStore.ttl;
-      memoryStore.ttl = vi.fn().mockRejectedValue(new Error("Store error"));
+      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(new Error("DB error"));
 
       const result = await getCanResendAt("test@example.com");
       expect(result).toBeNull();
-
-      memoryStore.ttl = originalTtl;
     });
   });
 
@@ -225,13 +216,10 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      const originalIncr = memoryStore.incr;
-      memoryStore.incr = vi.fn().mockRejectedValue(new Error("Store error"));
+      vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
       const result = await checkVerifyRateLimit("192.168.1.1");
       expect(result).toBe(true); // Fail open
-
-      memoryStore.incr = originalIncr;
     });
   });
 

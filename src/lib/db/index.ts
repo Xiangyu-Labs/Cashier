@@ -11,15 +11,13 @@ const pool =
   globalForDb.pool ??
   new Pool({
     connectionString: runtimeEnv.databaseUrl,
-    max: 10,
+    max: 2,
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 30_000,
     statement_timeout: 30_000,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.pool = pool;
-}
+globalForDb.pool = pool;
 
 export const db = drizzle(pool, { schema });
 export const databasePool = pool;

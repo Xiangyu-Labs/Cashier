@@ -1,4 +1,4 @@
-import { memoryStore } from "@/lib/memory-store";
+import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { getResendCooldown } from "./otp";
@@ -33,29 +33,25 @@ export async function checkSendRateLimit(email: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const store = memoryStore;
     const key = `${OTP_SEND_PREFIX}${email.toLowerCase()}`;
     const sendWindowSeconds = getSendWindowSeconds();
     const sendMaxAttempts = getSendMaxAttempts();
 
-    const attempts = await store.incr(key);
-    if (attempts === 1) {
-      await store.expire(key, sendWindowSeconds);
-    }
+    const result = await postgresRateLimiter.increment(key, sendMaxAttempts, sendWindowSeconds);
 
-    if (attempts > sendMaxAttempts) {
-      const ttl = await store.ttl(key);
-      logger.warn({ email, attempts }, "OTP send rate limit exceeded for email");
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+      logger.warn({ email, attempts: sendMaxAttempts + 1 }, "OTP send rate limit exceeded for email");
       return {
         allowed: false,
         remainingAttempts: 0,
-        retryAfter: ttl > 0 ? ttl : sendWindowSeconds,
+        retryAfter: retryAfter > 0 ? retryAfter : sendWindowSeconds,
       };
     }
 
     return {
       allowed: true,
-      remainingAttempts: sendMaxAttempts - attempts,
+      remainingAttempts: result.remaining,
     };
   } catch (error) {
     logger.error({ error, email }, "OTP send rate limit check failed");
@@ -69,28 +65,24 @@ export async function checkSendRateLimitByIP(ip: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const store = memoryStore;
     const key = `${OTP_SEND_IP_PREFIX}${ip}`;
     const ipMaxAttempts = getIpMaxAttempts();
 
-    const attempts = await store.incr(key);
-    if (attempts === 1) {
-      await store.expire(key, IP_WINDOW_SECONDS);
-    }
+    const result = await postgresRateLimiter.increment(key, ipMaxAttempts, IP_WINDOW_SECONDS);
 
-    if (attempts > ipMaxAttempts) {
-      const ttl = await store.ttl(key);
-      logger.warn({ ip, attempts }, "OTP send rate limit exceeded for IP");
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+      logger.warn({ ip, attempts: ipMaxAttempts + 1 }, "OTP send rate limit exceeded for IP");
       return {
         allowed: false,
         remainingAttempts: 0,
-        retryAfter: ttl > 0 ? ttl : IP_WINDOW_SECONDS,
+        retryAfter: retryAfter > 0 ? retryAfter : IP_WINDOW_SECONDS,
       };
     }
 
     return {
       allowed: true,
-      remainingAttempts: ipMaxAttempts - attempts,
+      remainingAttempts: result.remaining,
     };
   } catch (error) {
     logger.error({ error, ip }, "OTP send IP rate limit check failed");
@@ -103,19 +95,19 @@ export async function checkResendCooldown(email: string): Promise<{
   retryAfter?: number;
 }> {
   try {
-    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
+    const cooldown = getResendCooldown();
 
-    const ttl = await store.ttl(key);
+    const remaining = await postgresRateLimiter.getCooldownRemaining(key, cooldown);
 
-    if (ttl <= 0) {
+    if (remaining <= 0) {
       return { allowed: true };
     }
 
-    logger.info({ email, ttl }, "OTP resend cooldown active");
+    logger.info({ email, remaining }, "OTP resend cooldown active");
     return {
       allowed: false,
-      retryAfter: ttl,
+      retryAfter: remaining,
     };
   } catch (error) {
     logger.error({ error, email }, "OTP resend cooldown check failed");
@@ -125,11 +117,10 @@ export async function checkResendCooldown(email: string): Promise<{
 
 export async function setResendCooldown(email: string): Promise<void> {
   try {
-    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
     const cooldown = getResendCooldown();
 
-    await store.setex(key, cooldown, "1");
+    await postgresRateLimiter.setCooldown(key, cooldown);
   } catch (error) {
     logger.error({ error, email }, "Failed to set OTP resend cooldown");
   }
@@ -137,15 +128,16 @@ export async function setResendCooldown(email: string): Promise<void> {
 
 export async function getCanResendAt(email: string): Promise<number | null> {
   try {
-    const store = memoryStore;
     const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
-    const ttl = await store.ttl(key);
+    const cooldown = getResendCooldown();
 
-    if (ttl <= 0) {
+    const remaining = await postgresRateLimiter.getCooldownRemaining(key, cooldown);
+
+    if (remaining <= 0) {
       return null;
     }
 
-    return Math.floor(Date.now() / 1000) + ttl;
+    return Math.floor(Date.now() / 1000) + remaining;
   } catch (error) {
     logger.error({ error, email }, "Failed to get canResendAt timestamp");
     return null;
@@ -154,17 +146,13 @@ export async function getCanResendAt(email: string): Promise<number | null> {
 
 export async function checkVerifyRateLimit(ip: string): Promise<boolean> {
   try {
-    const store = memoryStore;
     const key = `${OTP_VERIFY_PREFIX}${ip}`;
     const verifyMaxAttempts = getVerifyMaxAttempts();
 
-    const attempts = await store.incr(key);
-    if (attempts === 1) {
-      await store.expire(key, VERIFY_WINDOW_SECONDS);
-    }
+    const result = await postgresRateLimiter.increment(key, verifyMaxAttempts, VERIFY_WINDOW_SECONDS);
 
-    if (attempts > verifyMaxAttempts) {
-      logger.warn({ ip, attempts }, "OTP verify rate limit exceeded for IP");
+    if (!result.success) {
+      logger.warn({ ip, attempts: verifyMaxAttempts + 1 }, "OTP verify rate limit exceeded for IP");
       return false;
     }
 
