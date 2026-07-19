@@ -12,7 +12,7 @@ describe("SourceDocumentCardStatePanel activeResultSummary", () => {
       />
     );
 
-    const expectedNotice = "当前结果（3 笔 · 150.00）仍有效，重试结果异常需处理。";
+    const expectedNotice = "当前结果（3 笔 · 150.00）仍有效，待重试处理。";
     expect(screen.getByText(expectedNotice)).toBeInTheDocument();
   });
 
@@ -25,7 +25,7 @@ describe("SourceDocumentCardStatePanel activeResultSummary", () => {
       />
     );
 
-    const expectedNotice = "当前结果（1 笔 · 25.00）仍有效，重试结果异常需处理。";
+    const expectedNotice = "当前结果（1 笔 · 25.00）仍有效，待重试处理。";
     expect(screen.getByText(expectedNotice)).toBeInTheDocument();
   });
 
