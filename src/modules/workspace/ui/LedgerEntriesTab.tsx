@@ -5,8 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import {
   invalidateLedgerStats,
@@ -21,6 +20,7 @@ import {
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
@@ -260,11 +260,12 @@ export function LedgerEntriesTab({
     [batchUpdateDates, selectedIds]
   );
 
-  const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const sentinelRef = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    rootMargin: "400px",
+  });
 
   return (
     <LayoutGroup id={layoutGroupId}>
@@ -328,28 +329,15 @@ export function LedgerEntriesTab({
                 </div>
               )}
 
-              {/* Load-more button for completed history */}
+              {/* Load completed history before the user reaches the list end. */}
               {hasNextPage && (
-                <div className="flex justify-center py-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLoadMore}
-                    disabled={isFetchingNextPage}
-                    className="text-xs gap-1.5"
-                  >
-                    {isFetchingNextPage ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        {t("loadingMore")}
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-3.5 w-3.5" />
-                        {t("loadMore")}
-                      </>
-                    )}
-                  </Button>
+                <div ref={sentinelRef} className="flex h-12 justify-center py-4" aria-live="polite">
+                  {isFetchingNextPage && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {t("loadingMore")}
+                    </span>
+                  )}
                 </div>
               )}
 
