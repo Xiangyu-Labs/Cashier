@@ -60,6 +60,7 @@ export interface SourceDocumentDto {
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
   pendingRevisionId: string | null;
+  activeResultSummary?: SourceDocumentCandidateProjectionSummary;
 }
 
 export interface SourceDocumentCandidateProjectionSummary {
@@ -93,6 +94,7 @@ export interface SourceDocumentListItemDto {
   errorCode: ApplicationErrorCode | null;
   pendingRevisionId: string | null;
   candidateComparison?: SourceDocumentCandidateComparisonDto;
+  activeResultSummary?: SourceDocumentCandidateProjectionSummary;
 }
 
 export interface SourceDocumentLightDto {
@@ -110,6 +112,7 @@ export interface SourceDocumentLightDto {
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
   pendingRevisionId: string | null;
+  activeResultSummary?: SourceDocumentCandidateProjectionSummary;
 }
 
 export interface SourceDocumentGroupDto {

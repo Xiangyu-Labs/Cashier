@@ -23,6 +23,9 @@ function toLightDto(
     supportedActions: document.supportedActions,
     errorCode: document.errorCode,
     pendingRevisionId: document.pendingRevisionId,
+    ...(document.activeResultSummary !== undefined
+      ? { activeResultSummary: document.activeResultSummary }
+      : {}),
     ledgerEntries,
   };
 }

@@ -3,6 +3,7 @@ import type {
   SourceDocumentCollectionDto,
   SourceDocMetadata,
   SourceDocumentMetadata,
+  SourceDocumentDto,
   SourceDocumentStatusType,
   SourceDocumentTypeValue,
   SourceDocumentLightDto,
@@ -98,5 +99,51 @@ describe("source-document contract types", () => {
       },
     };
     expect(_item.candidateComparison?.changed).toBe(true);
+  });
+
+  it("exposes activeResultSummary on list items as optional projection summary", () => {
+    expectTypeOf<
+      SourceDocumentListItemDto["activeResultSummary"]
+    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
+  });
+
+  it("exposes activeResultSummary on light DTOs as optional projection summary", () => {
+    expectTypeOf<
+      SourceDocumentLightDto["activeResultSummary"]
+    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
+  });
+
+  it("list item DTO accepts optional activeResultSummary", () => {
+    const _item: SourceDocumentListItemDto = {
+      id: "doc-2",
+      ledgerId: "ledger-1",
+      title: null,
+      text: null,
+      files: [],
+      status: "anomaly",
+      type: "ai_parsed",
+      anomalyReason: null,
+      entryDate: null,
+      metadata: {},
+      createdAt: "2026-07-15T00:00:00.000Z",
+      updatedAt: "2026-07-15T00:00:00.000Z",
+      deletedAt: null,
+      hasImages: false,
+      supportedActions: ["retry", "delete"],
+      errorCode: "VALIDATION_FAILED",
+      pendingRevisionId: "rev-2",
+      activeResultSummary: {
+        entryCount: 1,
+        total: "12.50",
+      },
+    };
+    expect(_item.activeResultSummary?.entryCount).toBe(1);
+    expect(_item.activeResultSummary?.total).toBe("12.50");
+  });
+
+  it("exposes activeResultSummary on full DTOs as optional projection summary", () => {
+    expectTypeOf<
+      SourceDocumentDto["activeResultSummary"]
+    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
   });
 });

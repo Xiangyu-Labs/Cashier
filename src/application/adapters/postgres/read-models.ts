@@ -311,6 +311,61 @@ function summarizeProjection(
   };
 }
 
+async function loadActiveResultSummaryMap(
+  rows: readonly SourceDocumentRow[],
+  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
+): Promise<Map<string, SourceDocumentCandidateProjectionSummary>> {
+  const activeTargetIds = rows
+    .filter((row) => {
+      if (row.activeRevisionId == null) return false;
+      const status = statusForRow(row, revisions);
+      return status === "anomaly" || status === "failed";
+    })
+    .map((row) => row.activeRevisionId!)
+    .filter((id): id is string => id != null);
+
+  if (activeTargetIds.length === 0) return new Map();
+
+  const uniqueIds = [...new Set(activeTargetIds)];
+
+  const entries = await db
+    .select({
+      revisionId: ledgerEntries.sourceDocumentRevisionId,
+      amount: ledgerEntries.amount,
+      currency: ledgerEntries.currency,
+      convertedAmount: ledgerEntries.convertedAmount,
+    })
+    .from(ledgerEntries)
+    .where(
+      and(
+        inArray(ledgerEntries.sourceDocumentRevisionId, uniqueIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+
+  const entriesByRevision = new Map<
+    string,
+    Array<{ amount: string; currency: string | null; convertedAmount: string | null }>
+  >();
+  for (const entry of entries) {
+    if (entry.revisionId == null) continue;
+    const group = entriesByRevision.get(entry.revisionId) ?? [];
+    group.push(entry);
+    entriesByRevision.set(entry.revisionId, group);
+  }
+
+  const result = new Map<string, SourceDocumentCandidateProjectionSummary>();
+  for (const row of rows) {
+    if (row.activeRevisionId == null) continue;
+    const status = statusForRow(row, revisions);
+    if (status !== "anomaly" && status !== "failed") continue;
+    const activeEntries = entriesByRevision.get(row.activeRevisionId) ?? [];
+    result.set(row.id, summarizeProjection(activeEntries));
+  }
+
+  return result;
+}
+
 async function loadCandidateComparisonMap(
   rows: readonly SourceDocumentRow[],
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
@@ -429,7 +484,10 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const hasMore = rows.length > input.limit;
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
   const [revisions, files] = await Promise.all([loadRevisionFacts(pageRows), loadFiles(pageRows)]);
-  const candidateComparisonMap = await loadCandidateComparisonMap(pageRows, revisions);
+  const [candidateComparisonMap, activeResultSummaryMap] = await Promise.all([
+    loadCandidateComparisonMap(pageRows, revisions),
+    loadActiveResultSummaryMap(pageRows, revisions),
+  ]);
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => {
@@ -438,6 +496,12 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
         const comparison = candidateComparisonMap.get(row.id);
         if (comparison !== undefined) {
           item.candidateComparison = comparison;
+        }
+      }
+      if ((item.status === "anomaly" || item.status === "failed") && row.activeRevisionId != null) {
+        const summary = activeResultSummaryMap.get(row.id);
+        if (summary !== undefined) {
+          item.activeResultSummary = summary;
         }
       }
       return item;
@@ -462,7 +526,10 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
     loadRevisionFacts(resultRows),
     loadFiles(resultRows),
   ]);
-  const candidateComparisonMap = await loadCandidateComparisonMap(resultRows, revisions);
+  const [candidateComparisonMap, activeResultSummaryMap] = await Promise.all([
+    loadCandidateComparisonMap(resultRows, revisions),
+    loadActiveResultSummaryMap(resultRows, revisions),
+  ]);
   return {
     items: resultRows.map((row) => {
       const item = mapListItem(row, revisions, files);
@@ -470,6 +537,12 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
         const comparison = candidateComparisonMap.get(row.id);
         if (comparison !== undefined) {
           item.candidateComparison = comparison;
+        }
+      }
+      if ((item.status === "anomaly" || item.status === "failed") && row.activeRevisionId != null) {
+        const summary = activeResultSummaryMap.get(row.id);
+        if (summary !== undefined) {
+          item.activeResultSummary = summary;
         }
       }
       return item;
@@ -538,13 +611,22 @@ export async function getTargetSourceDocument(
     originalImageUrls: _originalImageUrls,
     ...metadata
   } = row.metadata ?? {};
+  const status = statusForRow(row, revisions);
+
+  // Load active result summary for anomaly/failed documents with an active revision
+  let activeResultSummary: SourceDocumentCandidateProjectionSummary | undefined;
+  if ((status === "anomaly" || status === "failed") && row.activeRevisionId != null) {
+    const summaryMap = await loadActiveResultSummaryMap([row], revisions);
+    activeResultSummary = summaryMap.get(row.id);
+  }
+
   return {
     id: row.id,
     ledgerId: row.ledgerId,
     title: row.title,
     text: selectedRevision?.submittedText ?? null,
     files,
-    status: statusForRow(row, revisions),
+    status,
     type: row.type,
     anomalyReason: selectedRevision?.anomalyReason ?? null,
     entryDate: row.entryDate,
@@ -564,5 +646,6 @@ export async function getTargetSourceDocument(
     ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
     pendingRevisionId: row.pendingRevisionId,
+    ...(activeResultSummary !== undefined ? { activeResultSummary } : {}),
   };
 }
