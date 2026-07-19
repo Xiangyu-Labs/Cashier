@@ -39,10 +39,6 @@
     "abandonLoading": "放弃中…",
     "abandonSuccess": "候选已放弃",
     "abandonError": "放弃候选失败",
-    "manualCorrection": "手动修正",
-    "manualCorrectionLoading": "创建中…",
-    "manualCorrectionSuccess": "手动修正已创建",
-    "manualCorrectionError": "创建手动修正失败",
     "retry": "重新处理",
     "editRetry": "编辑重试"
   },
@@ -193,7 +189,6 @@
     "acceptCandidate": "接受",
     "abandonCandidate": "放弃",
     "anomalyNeedsCorrection": "需要手动修正",
-    "manualCorrectionAction": "手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
     "submittedOn": "提交于",

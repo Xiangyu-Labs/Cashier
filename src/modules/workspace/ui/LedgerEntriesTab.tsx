@@ -30,7 +30,6 @@ import { useBatchSourceDocumentActions,
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   retrySourceDocumentAction,
-  createManualCorrectionAction,
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "@/modules/source-document/actions";
@@ -124,15 +123,6 @@ export function LedgerEntriesTab({
     },
     successMessage: null,
     errorMessage: null,
-    invalidatePredicates: streamInvalidationPredicates,
-  });
-
-  const manualCorrectionMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
-    mutationFn: async (doc) => {
-      await createManualCorrectionAction(ledgerId, doc.id);
-    },
-    successMessage: tActions("manualCorrectionSuccess"),
-    errorMessage: tActions("manualCorrectionError"),
     invalidatePredicates: streamInvalidationPredicates,
   });
 
@@ -237,13 +227,6 @@ export function LedgerEntriesTab({
     [retryMutation]
   );
 
-  const handleManualCorrection = useCallback(
-    async (doc: SourceDocument) => {
-      await manualCorrectionMutation.mutateAsync(doc);
-    },
-    [manualCorrectionMutation]
-  );
-
   const handleAcceptCandidate = useCallback(
     async (doc: SourceDocument) => {
       if (doc.pendingRevisionId == null) return;
@@ -321,7 +304,6 @@ export function LedgerEntriesTab({
                   onRetry={setRetrySourceDocument}
                   onDirectRetry={handleDirectRetry}
                   onEditRetry={setRetrySourceDocument}
-                  onManualCorrection={handleManualCorrection}
                   onAcceptCandidate={handleAcceptCandidate}
                   onAbandonCandidate={handleAbandonCandidate}
                   onDeleteSourceConfirm={handleDeleteSourceConfirm}
@@ -334,7 +316,6 @@ export function LedgerEntriesTab({
                   isRetrying={retryMutation.isPending}
                   isAccepting={acceptCandidateMutation.isPending}
                   isAbandoning={abandonCandidateMutation.isPending}
-                  isManualCorrecting={manualCorrectionMutation.isPending}
                 />
               )}
 

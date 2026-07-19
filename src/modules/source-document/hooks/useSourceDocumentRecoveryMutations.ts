@@ -10,7 +10,6 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
-  createManualCorrectionAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
@@ -26,7 +25,6 @@ interface UseSourceDocumentRecoveryMutationsOptions {
  * Provides mutations for source document recovery actions:
  * - Accept candidate
  * - Abandon candidate
- * - Manual correction
  * - Direct retry
  */
 export function useSourceDocumentRecoveryMutations({
@@ -66,16 +64,6 @@ export function useSourceDocumentRecoveryMutations({
     ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
   });
 
-  const manualCorrectionMutation = useLedgerMutation<void, void>(ledgerId, {
-    mutationFn: async () => {
-      await createManualCorrectionAction(ledgerId, sourceDocumentId);
-    },
-    successMessage: tActions("manualCorrectionSuccess"),
-    errorMessage: tActions("manualCorrectionError"),
-    invalidatePredicates: invalidationPredicates,
-    ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
-  });
-
   const retryMutation = useLedgerMutation<void, void>(ledgerId, {
     mutationFn: async () => {
       await retrySourceDocumentAction(ledgerId, sourceDocumentId);
@@ -89,11 +77,9 @@ export function useSourceDocumentRecoveryMutations({
   return {
     acceptCandidate: acceptMutation.mutateAsync,
     abandonCandidate: abandonMutation.mutateAsync,
-    createManualCorrection: manualCorrectionMutation.mutateAsync,
     retry: retryMutation.mutateAsync,
     isAccepting: acceptMutation.isPending,
     isAbandoning: abandonMutation.isPending,
-    isCreatingManualCorrection: manualCorrectionMutation.isPending,
     isRetrying: retryMutation.isPending,
   };
 }

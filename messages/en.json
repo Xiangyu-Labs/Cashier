@@ -39,10 +39,6 @@
     "abandonLoading": "Abandoning…",
     "abandonSuccess": "Candidate abandoned",
     "abandonError": "Failed to abandon candidate",
-    "manualCorrection": "Manual Correction",
-    "manualCorrectionLoading": "Creating…",
-    "manualCorrectionSuccess": "Manual correction created",
-    "manualCorrectionError": "Failed to create manual correction",
     "retry": "Retry",
     "editRetry": "Edit & Retry"
   },
@@ -193,7 +189,6 @@
     "acceptCandidate": "Accept",
     "abandonCandidate": "Abandon",
     "anomalyNeedsCorrection": "Needs manual correction",
-    "manualCorrectionAction": "Manual Correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
     "submittedOn": "Submitted",

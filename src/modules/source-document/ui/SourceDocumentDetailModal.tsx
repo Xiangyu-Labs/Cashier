@@ -48,10 +48,8 @@ interface SourceDocumentDetailModalProps {
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
   onAbandonCandidate?: () => Promise<void>;
-  onManualCorrection?: () => Promise<void>;
   isAccepting?: boolean;
   isAbandoning?: boolean;
-  isCreatingManualCorrection?: boolean;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -72,10 +70,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onDelete,
   onAcceptCandidate,
   onAbandonCandidate,
-  onManualCorrection,
   isAccepting = false,
   isAbandoning = false,
-  isCreatingManualCorrection = false,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -343,20 +339,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   </Button>
                 )}
               </>
-            )}
-
-            {/* Manual correction for anomaly/failed */}
-            {sourceDocument?.supportedActions.includes("manual_correction") && onManualCorrection != null && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 gap-1.5 text-muted-foreground"
-                onClick={onManualCorrection}
-                disabled={isCreatingManualCorrection}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{tActions("manualCorrection")}</span>
-              </Button>
             )}
 
             {/* Edit & Retry */}

@@ -59,7 +59,6 @@ interface SourceDocumentCardHeaderProps {
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onEditRetry?: (() => void | Promise<void>) | undefined;
-  onManualCorrection?: (() => void | Promise<void>) | undefined;
   onAcceptCandidate?: (() => void | Promise<void>) | undefined;
   onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onDelete?: (() => void) | undefined;
@@ -96,7 +95,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   onToggleSelect,
   onDirectRetry,
   onEditRetry,
-  onManualCorrection,
   onAcceptCandidate,
   onAbandonCandidate,
   onDelete,
@@ -248,12 +246,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               )}
 
               {/* Recovery actions for anomaly/failed */}
-              {hasAction("manual_correction") && onManualCorrection != null && (
-                <DropdownMenuItem onClick={onManualCorrection}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {tActions("manualCorrection")}
-                </DropdownMenuItem>
-              )}
               {hasAction("retry") && onDirectRetry != null && (
                 <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
                   <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
@@ -267,7 +259,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                 </DropdownMenuItem>
               )}
 
-              {(hasAction("accept_candidate") || hasAction("manual_correction") || hasAction("retry")) && onDelete != null && (
+              {(hasAction("accept_candidate") || hasAction("retry")) && onDelete != null && (
                 <DropdownMenuSeparator />
               )}
 

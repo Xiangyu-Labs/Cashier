@@ -29,7 +29,6 @@ interface SourceDocumentCardStatePanelProps {
   isAbandoning?: boolean;
   onAccept?: () => void | Promise<void>;
   onAbandon?: () => void | Promise<void>;
-  onManualCorrection?: () => void | Promise<void>;
   onEditRetry?: () => void | Promise<void>;
   onViewDetails?: () => void;
 }
@@ -42,10 +41,10 @@ export const SourceDocumentCardStatePanel = memo(function SourceDocumentCardStat
   isAbandoning = false,
   onAccept,
   onAbandon,
-  onManualCorrection,
   onEditRetry,
   onViewDetails,
 }: SourceDocumentCardStatePanelProps) {
+  const t = useTranslations("SourceDocumentCard");
   if (status === "completed") {
     return null;
   }
@@ -67,10 +66,12 @@ export const SourceDocumentCardStatePanel = memo(function SourceDocumentCardStat
         />
       )}
       {status === "anomaly" && (
-        <AnomalyPanel
-          isMutationPending={isMutationPending}
-          {...(onManualCorrection != null ? { onManualCorrection } : {})}
-        />
+        <div className="space-y-2.5 px-4 py-3 border-b border-border bg-surface2/30">
+          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+            <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            {t("anomalyNeedsCorrection")}
+          </p>
+        </div>
       )}
       {status === "failed" && (
         <FailedPanel
@@ -191,38 +192,7 @@ function CandidatePanel({
       </div>
     </div>
   );
-}
 
-function AnomalyPanel({
-  isMutationPending,
-  onManualCorrection,
-}: {
-  isMutationPending: boolean;
-  onManualCorrection?: () => void | Promise<void>;
-}) {
-  const t = useTranslations("SourceDocumentCard");
-
-  return (
-    <div className="space-y-2.5">
-      <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-        <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
-        {t("anomalyNeedsCorrection")}
-      </p>
-      {onManualCorrection != null && (
-        <Button
-          size="sm"
-          variant="default"
-          disabled={isMutationPending}
-          onClick={onManualCorrection}
-          className="h-9 min-h-[44px] sm:min-h-0 sm:h-8 text-xs gap-1.5"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          {t("manualCorrectionAction")}
-        </Button>
-      )}
-    </div>
-  );
-}
 
 function FailedPanel({
   isMutationPending,

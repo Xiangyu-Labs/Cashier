@@ -24,7 +24,6 @@ interface SourceDocumentCardProps {
   onRetry?: () => void | Promise<void>;
   onDirectRetry?: () => void | Promise<void>;
   onEditRetry?: () => void | Promise<void>;
-  onManualCorrection?: () => void | Promise<void>;
   onAcceptCandidate?: () => void | Promise<void>;
   onAbandonCandidate?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
@@ -61,7 +60,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   onRetry,
   onDirectRetry,
   onEditRetry,
-  onManualCorrection,
   onAcceptCandidate,
   onAbandonCandidate,
   status,
@@ -134,7 +132,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         onToggleSelect={onToggleSelect}
         onDirectRetry={handleDirectRetry}
         onEditRetry={onEditRetry ?? onRetry}
-        onManualCorrection={onManualCorrection}
         onAcceptCandidate={onAcceptCandidate}
         onAbandonCandidate={onAbandonCandidate}
         onDelete={onDelete}
@@ -148,7 +145,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         isAbandoning={isAbandoning}
         {...(onAcceptCandidate !== undefined ? { onAccept: onAcceptCandidate } : {})}
         {...(onAbandonCandidate !== undefined ? { onAbandon: onAbandonCandidate } : {})}
-        {...(onManualCorrection !== undefined ? { onManualCorrection } : {})}
         {...((onEditRetry ?? onRetry) !== undefined ? { onEditRetry: onEditRetry ?? onRetry } : {})}
         {...(_onViewDetails !== undefined ? { onViewDetails: _onViewDetails } : {})}
       />

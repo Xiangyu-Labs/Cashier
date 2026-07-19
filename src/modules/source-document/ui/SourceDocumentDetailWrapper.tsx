@@ -61,10 +61,8 @@ export function SourceDocumentDetailWrapper({
   const {
     acceptCandidate,
     abandonCandidate,
-    createManualCorrection,
     isAccepting,
     isAbandoning,
-    isCreatingManualCorrection,
   } = useSourceDocumentRecoveryMutations({
     ledgerId: detailLedgerId ?? ledgerId,
     sourceDocumentId: id,
@@ -81,11 +79,6 @@ export function SourceDocumentDetailWrapper({
     if (sourceDocument == null) return;
     await abandonCandidate();
   }, [sourceDocument, abandonCandidate]);
-
-  const handleManualCorrection = useCallback(async () => {
-    if (sourceDocument == null) return;
-    await createManualCorrection();
-  }, [sourceDocument, createManualCorrection]);
 
   useEffect(() => {
     if (error != null) {
@@ -117,10 +110,8 @@ export function SourceDocumentDetailWrapper({
       onDelete={deleteDocument}
       onAcceptCandidate={handleAcceptCandidate}
       onAbandonCandidate={handleAbandonCandidate}
-      onManualCorrection={handleManualCorrection}
       isAccepting={isAccepting}
       isAbandoning={isAbandoning}
-      isCreatingManualCorrection={isCreatingManualCorrection}
     />
   );
 }

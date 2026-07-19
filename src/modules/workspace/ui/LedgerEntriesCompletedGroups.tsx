@@ -25,7 +25,6 @@ interface LedgerEntriesCompletedGroupsProps {
   onRetry: (doc: SourceDocument) => void;
   onDirectRetry?: (doc: SourceDocument) => void;
   onEditRetry?: (doc: SourceDocument) => void;
-  onManualCorrection?: (doc: SourceDocument) => void;
   onAcceptCandidate?: (doc: SourceDocument) => void;
   onAbandonCandidate?: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
@@ -45,7 +44,6 @@ export function LedgerEntriesCompletedGroups({
   onRetry,
   onDirectRetry,
   onEditRetry,
-  onManualCorrection,
   onAcceptCandidate,
   onAbandonCandidate,
   onDeleteSourceConfirm,
@@ -105,7 +103,6 @@ export function LedgerEntriesCompletedGroups({
                       onRetry={() => onRetry(group.sourceDocument)}
                       {...(onDirectRetry != null ? { onDirectRetry: () => { onDirectRetry(group.sourceDocument); } } : {})}
                       {...(onEditRetry != null ? { onEditRetry: () => { onEditRetry(group.sourceDocument); } } : {})}
-                      {...(onManualCorrection != null ? { onManualCorrection: () => { onManualCorrection(group.sourceDocument); } } : {})}
                       {...(onAcceptCandidate != null ? { onAcceptCandidate: () => { onAcceptCandidate(group.sourceDocument); } } : {})}
                       {...(onAbandonCandidate != null ? { onAbandonCandidate: () => { onAbandonCandidate(group.sourceDocument); } } : {})}
                       onDelete={() => onDeleteSourceConfirm(group.sourceDocument)}
@@ -144,7 +141,6 @@ export interface UnifiedStreamGroupProps {
   onRetry: (doc: SourceDocument) => void;
   onDirectRetry?: (doc: SourceDocument) => void;
   onEditRetry?: (doc: SourceDocument) => void;
-  onManualCorrection?: (doc: SourceDocument) => void;
   onAcceptCandidate?: (doc: SourceDocument) => void;
   onAbandonCandidate?: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
@@ -158,7 +154,6 @@ export interface UnifiedStreamGroupProps {
   isRetrying?: boolean;
   isAccepting?: boolean;
   isAbandoning?: boolean;
-  isManualCorrecting?: boolean;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -169,7 +164,6 @@ export function LedgerEntriesUnifiedGroups({
   onRetry,
   onDirectRetry,
   onEditRetry,
-  onManualCorrection,
   onAcceptCandidate,
   onAbandonCandidate,
   onDeleteSourceConfirm,
@@ -182,7 +176,6 @@ export function LedgerEntriesUnifiedGroups({
   isRetrying = false,
   isAccepting = false,
   isAbandoning = false,
-  isManualCorrecting = false,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -244,13 +237,6 @@ export function LedgerEntriesUnifiedGroups({
                           },
                         }
                       : {})}
-                    {...(onManualCorrection != null
-                      ? {
-                          onManualCorrection: () => {
-                            onManualCorrection(item.sourceDocument as SourceDocument);
-                          },
-                        }
-                      : {})}
                     {...(onAcceptCandidate != null
                       ? {
                           onAcceptCandidate: () => {
@@ -285,8 +271,7 @@ export function LedgerEntriesUnifiedGroups({
                     isMutationPending={
                       isRetrying ||
                       isAccepting ||
-                      isAbandoning ||
-                      isManualCorrecting
+                      isAbandoning
                     }
                     isAccepting={isAccepting}
                     isAbandoning={isAbandoning}
