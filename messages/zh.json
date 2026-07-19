@@ -60,7 +60,9 @@
     "newRecord": "记一笔",
     "aiParse": "智能记账",
     "quickEntry": "快速记账",
-    "singleBook": "你的个人账本"
+    "singleBook": "你的个人账本",
+    "processingCountLabel": "处理中的单据",
+    "attentionCountLabel": "待确认或修正的单据"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",
@@ -168,7 +170,24 @@
     "quickEntry": "快速记账",
     "queued": "排队中",
     "processing": "处理中",
-    "completed": "已完成"
+    "completed": "已完成",
+    "candidatePendingTitle": "新解析结果待确认",
+    "activeProjection": "当前",
+    "candidateProjection": "候选",
+    "entries": "笔",
+    "candidateNoDifference": "未检测到账目差异。",
+    "candidateReviewDetail": "请在详情中确认后接受。",
+    "acceptCandidate": "接受",
+    "abandonCandidate": "放弃",
+    "anomalyNeedsCorrection": "需要手动修正",
+    "manualCorrectionAction": "手动修正",
+    "failedProcessing": "处理失败",
+    "editRetryAction": "编辑重试",
+    "outsideFilter": "筛选范围外",
+    "submittedOn": "提交于",
+    "dateUnknown": "日期未知",
+    "submittedDateTitle": "提交日期（无交易日期）",
+    "submittedGroupSuffix": "（提交）"
   },
   "QuickEntryForm": {
     "selectCategory": "选择分类",

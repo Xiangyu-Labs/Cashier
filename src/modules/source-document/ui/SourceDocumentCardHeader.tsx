@@ -7,13 +7,13 @@ import type {
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
 import {
-  CheckCheck,
   ChevronDown,
   MoreVertical,
   Pencil,
   RefreshCw,
   Trash2,
   XCircle,
+  CheckCheck,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -30,8 +30,9 @@ import { parseDateString } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
-import type { ApplicationErrorCode, AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
+import type { ApplicationErrorCode } from "@/application/contracts";
 import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
+import type { DateProvenance } from "@/modules/source-document/stream-grouping";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -45,6 +46,16 @@ interface SourceDocumentCardHeaderProps {
   selectionMode: boolean;
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
+  /** Date provenance from the unified stream grouping model. */
+  dateProvenance?: DateProvenance;
+  /** Whether this card is outside the active date/amount filter. */
+  outsideCurrentFilter?: boolean;
+  /** Candidate comparison data (for candidate_pending cards). */
+  candidateComparison?: {
+    active: { entryCount: number; total: string };
+    candidate: { entryCount: number; total: string };
+    changed: boolean;
+  } | null;
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
@@ -80,6 +91,9 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   selectionMode,
   isSelected,
   supportedActions,
+  dateProvenance,
+  outsideCurrentFilter,
+  candidateComparison: _candidateComparison,
   onToggleExpanded,
   onViewDetails,
   onToggleSelect,
@@ -98,8 +112,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
-    processingStatus != null &&
-    (ledgerEntries.length === 0 || status === "anomaly" || status === "failed");
+    processingStatus != null && processingStatus !== "completed" &&
+    (ledgerEntries.length === 0 || status === "anomaly" || status === "failed" || status === "queued" || status === "processing" || status === "candidate_pending");
 
   // Derive stable error code for display
   const stableErrorCode =
@@ -110,6 +124,26 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         : null;
 
   const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
+
+  // Build date label from provenance
+  const dateLabel = (() => {
+    if (dateProvenance === "submitted") {
+      const d = new Date(sourceDocument.createdAt);
+      return `${t("submittedOn")} ${d.toLocaleDateString(locale, { month: "long", day: "numeric" })}`;
+    }
+    if (dateProvenance === "unknown") {
+      return t("dateUnknown");
+    }
+    const entryDate = sourceDocument.entryDate;
+    if (entryDate != null && entryDate !== "") {
+      return parseDateString(entryDate).toLocaleDateString(locale, {
+        month: "long",
+        day: "numeric",
+      });
+    }
+    const d = new Date(sourceDocument.createdAt);
+    return `${t("submittedOn")} ${d.toLocaleDateString(locale, { month: "long", day: "numeric" })}`;
+  })();
 
   return (
     <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
@@ -148,14 +182,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           onViewDetails && !selectionMode && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
         )}
       >
-        <span className="hidden sm:inline text-sm font-medium text-muted-foreground shrink-0">
-          {(sourceDocument.entryDate != null && sourceDocument.entryDate !== ""
-            ? parseDateString(sourceDocument.entryDate)
-            : new Date(sourceDocument.createdAt)
-          ).toLocaleDateString(locale, {
-            month: "long",
-            day: "numeric",
-          })}
+        <span className="hidden sm:inline text-sm font-medium shrink-0">
+          <DateDisplay
+            dateLabel={dateLabel}
+            {...(dateProvenance !== undefined ? { dateProvenance } : {})}
+            t={t}
+          />
         </span>
         {status !== "processing" &&
           status !== "queued" &&
@@ -175,6 +207,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       </button>
 
       <div className="flex items-center gap-2 shrink-0">
+        {outsideCurrentFilter && (
+          <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-sm bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+            {t("outsideFilter")}
+          </span>
+        )}
+
         {shouldShowProcessingStatus && (
           <ProcessingStatus
             status={processingStatus}
@@ -187,7 +225,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         )}
 
-        {!["queued", "processing", "anomaly", "failed"].includes(status) && (
+        {!["queued", "processing", "anomaly", "failed", "candidate_pending"].includes(status) && (
           <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
         )}
 
@@ -255,3 +293,33 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
     </div>
   );
 });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function DateDisplay({
+  dateLabel,
+  dateProvenance,
+  t,
+}: {
+  dateLabel: string;
+  dateProvenance?: DateProvenance;
+  t: ReturnType<typeof useTranslations<"SourceDocumentCard">>;
+}) {
+  if (dateProvenance === "unknown") {
+    return (
+      <span className="text-muted-foreground italic" title={t("dateUnknown")}>
+        {t("dateUnknown")}
+      </span>
+    );
+  }
+  if (dateProvenance === "submitted") {
+    return (
+      <span className="text-muted-foreground" title={t("submittedDateTitle")}>
+        {dateLabel}
+      </span>
+    );
+  }
+  return <span className="text-muted-foreground">{dateLabel}</span>;
+}
