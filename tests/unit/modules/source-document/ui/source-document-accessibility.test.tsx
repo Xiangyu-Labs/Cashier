@@ -35,6 +35,9 @@ describe("source document accessibility", () => {
 
     rerender(<ProcessingStatus status="completed" />);
     expect(screen.getByRole("status")).toHaveTextContent(/completed|完成/i);
+
+    rerender(<ProcessingStatus status="error" label="Parsing failed" />);
+    expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive");
   });
 
   it("supports keyboard image navigation, Escape dismissal, and focus return", async () => {

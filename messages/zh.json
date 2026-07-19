@@ -195,7 +195,7 @@
     "dateUnknown": "日期未知",
     "submittedDateTitle": "提交日期（无交易日期）",
     "submittedGroupSuffix": "（提交）",
-    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，重试结果异常需处理。"
+    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。"
   },
   "QuickEntryForm": {
     "selectCategory": "选择分类",
