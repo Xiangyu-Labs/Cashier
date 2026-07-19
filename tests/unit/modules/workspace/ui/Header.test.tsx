@@ -26,7 +26,6 @@ describe("Header", () => {
     mockGetCounts.mockResolvedValue({
       processingCount: 0,
       attentionCount: 0,
-      totalCount: 0,
     });
   });
 
@@ -52,7 +51,6 @@ describe("Header", () => {
     mockGetCounts.mockResolvedValue({
       processingCount: 3,
       attentionCount: 2,
-      totalCount: 10,
     });
 
     renderWithQuery(
@@ -83,7 +81,6 @@ describe("Header", () => {
     mockGetCounts.mockResolvedValue({
       processingCount: 3,
       attentionCount: 0,
-      totalCount: 10,
     });
 
     renderWithQuery(
@@ -109,7 +106,6 @@ describe("Header", () => {
     mockGetCounts.mockResolvedValue({
       processingCount: 0,
       attentionCount: 2,
-      totalCount: 10,
     });
 
     renderWithQuery(
