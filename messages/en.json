@@ -194,7 +194,8 @@
     "submittedOn": "Submitted",
     "dateUnknown": "Date unknown",
     "submittedDateTitle": "Submission date — no transaction date available",
-    "submittedGroupSuffix": "(submitted)"
+    "submittedGroupSuffix": "(submitted)",
+    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
   },
   "QuickEntryForm": {
     "selectCategory": "Select a category",
@@ -320,7 +321,9 @@
     "batchDeleteError": "Failed to delete entries",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "saveAllError": "Failed to save changes",
-    "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing."
+    "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
+    "activeResultTitle": "Active entries retained",
+    "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved."
   },
   "SourceDocumentImageModal": {
     "title": "View Image",

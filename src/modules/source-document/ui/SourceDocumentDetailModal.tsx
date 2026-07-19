@@ -276,6 +276,24 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   })()}
                 </div>
               )}
+              {/* Retained active result notice */}
+              {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && sourceDocument.activeResultSummary != null && (
+                <div className="mb-3 px-1">
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-medium text-primary">
+                        {t("activeResultTitle")}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground/70">
+                        {t("activeResultDescription")}
+                      </span>
+                      <span className="text-xs font-mono tabular-nums text-text">
+                        {sourceDocument.activeResultSummary.entryCount} · {sourceDocument.activeResultSummary.total}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
               <SourceDocumentViewDetails
                 sourceDocument={sourceDocument}
                 ledgerEntries={ledgerEntries}

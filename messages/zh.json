@@ -194,7 +194,8 @@
     "submittedOn": "提交于",
     "dateUnknown": "日期未知",
     "submittedDateTitle": "提交日期（无交易日期）",
-    "submittedGroupSuffix": "（提交）"
+    "submittedGroupSuffix": "（提交）",
+    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，重试结果异常需处理。"
   },
   "QuickEntryForm": {
     "selectCategory": "选择分类",
@@ -320,7 +321,9 @@
     "batchDeleteError": "删除失败",
     "saveAllSuccess": "已保存 {count} 处修改",
     "saveAllError": "保存失败",
-    "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。"
+    "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。",
+    "activeResultTitle": "保留的当前结果",
+    "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。"
   },
   "SourceDocumentImageModal": {
     "title": "查看图片",

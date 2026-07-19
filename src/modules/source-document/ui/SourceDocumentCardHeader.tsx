@@ -210,7 +210,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               : status === "anomaly" && anomalyReason != null && anomalyReason !== ""
                 ? { label: anomalyReason }
                 : {})}
-            stableErrorCode={stableErrorCode}
           />
         )}
 

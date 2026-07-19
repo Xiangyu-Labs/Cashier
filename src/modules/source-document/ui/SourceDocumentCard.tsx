@@ -139,6 +139,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
       <SourceDocumentCardStatePanel
         status={status}
+        {...(sourceDocument.activeResultSummary !== undefined ? { activeResultSummary: sourceDocument.activeResultSummary } : {})}
         {...(candidateComparison !== undefined ? { candidateComparison: candidateComparison ?? null } : { candidateComparison: null })}
         isMutationPending={isMutationPending}
         isAccepting={isAccepting}

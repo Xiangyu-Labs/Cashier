@@ -1,7 +1,6 @@
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
 
 export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
 
@@ -9,13 +8,11 @@ interface ProcessingStatusProps {
   status: ProcessingStatusType;
   label?: string;
   className?: string;
-  stableErrorCode?: AnomalyCode | ProcessingFailureCode | null;
 }
 
-export function ProcessingStatus({ status, label, className, stableErrorCode }: ProcessingStatusProps) {
+export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
-  const tDiag = useTranslations("DiagnosticCode");
 
   const config = {
     queued: {
@@ -75,17 +72,6 @@ export function ProcessingStatus({ status, label, className, stableErrorCode }: 
       <span className={cn("text-xs font-medium", colorClass)} data-testid="status-label">
         {displayLabel}
       </span>
-      {status === "error" && stableErrorCode != null && (
-        <span
-          className={cn(
-            "text-[10px] px-1.5 py-0.5 rounded-sm font-mono",
-            "bg-danger/10 text-danger/80"
-          )}
-          title={tDiag(`${stableErrorCode}_desc`)}
-        >
-          {tDiag(stableErrorCode as string)}
-        </span>
-      )}
     </div>
   );
 }

@@ -16,11 +16,13 @@ import { Button } from "@/components/ui/button";
 import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type {
   SourceDocumentCandidateComparisonDto,
+  SourceDocumentCandidateProjectionSummary,
 } from "@/modules/source-document/contracts";
 
 interface SourceDocumentCardStatePanelProps {
   status: SourceDocumentStatusType;
   candidateComparison?: SourceDocumentCandidateComparisonDto | null;
+  activeResultSummary?: SourceDocumentCandidateProjectionSummary | null;
   /** Whether a mutation is currently pending for this card. */
   isMutationPending: boolean;
   /** Whether Accept is currently running. */
@@ -36,6 +38,7 @@ interface SourceDocumentCardStatePanelProps {
 export const SourceDocumentCardStatePanel = memo(function SourceDocumentCardStatePanel({
   status,
   candidateComparison,
+  activeResultSummary,
   isMutationPending,
   isAccepting = false,
   isAbandoning = false,
@@ -71,10 +74,14 @@ export const SourceDocumentCardStatePanel = memo(function SourceDocumentCardStat
             <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
             {t("anomalyNeedsCorrection")}
           </p>
+          {activeResultSummary != null && (
+            <ActiveResultNotice summary={activeResultSummary} />
+          )}
         </div>
       )}
       {status === "failed" && (
         <FailedPanel
+          {...(activeResultSummary !== undefined ? { activeResultSummary } : {})}
           isMutationPending={isMutationPending}
           {...(onEditRetry != null ? { onEditRetry } : {})}
         />
@@ -196,9 +203,11 @@ function CandidatePanel({
 
 
 function FailedPanel({
+  activeResultSummary,
   isMutationPending,
   onEditRetry,
 }: {
+  activeResultSummary?: SourceDocumentCandidateProjectionSummary | null;
   isMutationPending: boolean;
   onEditRetry?: () => void | Promise<void>;
 }) {
@@ -210,6 +219,9 @@ function FailedPanel({
         <RefreshCw className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
         {t("failedProcessing")}
       </p>
+      {activeResultSummary != null && (
+        <ActiveResultNotice summary={activeResultSummary} />
+      )}
       {onEditRetry != null && (
         <Button
           size="sm"
@@ -238,5 +250,14 @@ function ProgressPanel({ status }: { status: "queued" | "processing" }) {
       />
       <span>{label}</span>
     </div>
+  );
+}
+
+function ActiveResultNotice({ summary }: { summary: SourceDocumentCandidateProjectionSummary }) {
+  const t = useTranslations("SourceDocumentCard");
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t("activeResultNotice", { count: summary.entryCount, total: summary.total })}
+    </p>
   );
 }
