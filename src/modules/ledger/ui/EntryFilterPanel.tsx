@@ -2,6 +2,7 @@
 import * as React from "react";
 import { Calendar as CalendarIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -18,6 +19,10 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
 import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import {
+  type StreamStatusPreset,
+  STREAM_STATUS_PRESET_VALUES,
+} from "@/modules/workspace/ledger-filter-state";
 
 export interface EntryFilters {
   startDate?: Date;
@@ -39,9 +44,19 @@ interface EntryFilterPanelProps {
   showCategory?: boolean;
   showCurrency?: boolean;
   className?: string;
+  onApplyPreset?: (preset: StreamStatusPreset) => void;
 }
 
 const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "week", "month", "custom"];
+
+const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] = [
+  { status: "queued", labelKey: "statusQueued" },
+  { status: "processing", labelKey: "statusProcessing" },
+  { status: "completed", labelKey: "statusCompleted" },
+  { status: "anomaly", labelKey: "statusAnomaly" },
+  { status: "failed", labelKey: "statusFailed" },
+  { status: "candidate_pending", labelKey: "statusCandidatePending" },
+];
 
 function normalizeAmountRange(filters: EntryFilters): EntryFilters {
   const { minAmount, maxAmount } = filters;
@@ -67,6 +82,7 @@ export function EntryFilterPanel({
   showCategory = true,
   showCurrency = true,
   className,
+  onApplyPreset,
 }: EntryFilterPanelProps) {
   const t = useTranslations("EntryFilterPanel");
   const tDateRange = useTranslations("DateRangeFilter");
@@ -199,6 +215,32 @@ export function EntryFilterPanel({
     };
     setTempFilters(defaultFilters);
     setTempPeriod("thisMonth");
+  };
+
+  const toggleStatus = (status: SourceDocumentStatusType) => {
+    setTempFilters((prev) => {
+      const current = prev.statuses ?? [];
+      const exists = current.includes(status);
+      return {
+        ...prev,
+        statuses: exists ? current.filter((s) => s !== status) : [...current, status],
+      };
+    });
+  };
+
+  const resetStatuses = () => {
+    setTempFilters((prev) => ({ ...prev, statuses: [] }));
+  };
+
+  const handlePreset = (preset: StreamStatusPreset) => {
+    const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
+    if (onApplyPreset) {
+      setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
+      setOpen(false);
+      onApplyPreset(preset);
+    } else {
+      setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
+    }
   };
 
   return (
@@ -372,6 +414,33 @@ export function EntryFilterPanel({
                   className="flex-1 h-8 text-sm"
                   min={0}
                 />
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
+              <div className="space-y-1">
+                {STATUS_OPTIONS.map(({ status, labelKey }) => (
+                  <label key={status} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
+                    <Checkbox
+                      checked={tempFilters.statuses?.includes(status) ?? false}
+                      onCheckedChange={() => toggleStatus(status)}
+                    />
+                    {t(labelKey)}
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1 pt-1">
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={resetStatuses}>
+                  {t("allStatuses")}
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => handlePreset("needs_attention")}>
+                  {t("needsAttention")}
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => handlePreset("in_progress")}>
+                  {t("inProgress")}
+                </Button>
               </div>
             </div>
 

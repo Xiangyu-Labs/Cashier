@@ -110,7 +110,18 @@
     "reset": "重置",
     "apply": "应用筛选",
     "moreFilters": "更多筛选",
-    "filteredTotal": "合计"
+    "filteredTotal": "合计",
+    "status": "状态",
+    "allStatuses": "全部状态",
+    "needsAttention": "待处理",
+    "inProgress": "处理中",
+    "statusQueued": "排队中",
+    "statusProcessing": "处理中",
+    "statusCompleted": "已完成",
+    "statusAnomaly": "异常",
+    "statusFailed": "失败",
+    "statusCandidatePending": "待核准",
+    "statusSummary": "状态：{label}"
   },
   "StatsTab": {
     "expenseTrend": "支出趋势",

@@ -175,6 +175,7 @@ export function LedgerPageClient({
                 onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+                onApplyPreset={applyStreamStatusPreset}
               />
             </Suspense>
           </TabsContent>

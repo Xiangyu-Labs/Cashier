@@ -36,6 +36,7 @@ import {
 } from "@/modules/source-document/actions";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
+import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
@@ -52,6 +53,7 @@ interface LedgerEntriesTabProps {
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
+  onApplyPreset?: (preset: StreamStatusPreset) => void;
 }
 
 export function LedgerEntriesTab({
@@ -63,6 +65,7 @@ export function LedgerEntriesTab({
   onFiltersChange,
   advancedFilters,
   collapseEntriesDefault = false,
+  onApplyPreset,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -298,6 +301,7 @@ export function LedgerEntriesTab({
             filteredTotalLabel={tFilter("filteredTotal")}
             mainCurrency={mainCurrency}
             filteredTotal={filteredTotal}
+            {...(onApplyPreset != null ? { onApplyPreset } : {})}
           />
 
           {isLoading ? (

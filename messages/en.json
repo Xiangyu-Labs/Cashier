@@ -110,7 +110,18 @@
     "reset": "Reset",
     "apply": "Apply Filters",
     "moreFilters": "More Filters",
-    "filteredTotal": "Total"
+    "filteredTotal": "Total",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "needsAttention": "Needs Attention",
+    "inProgress": "In Progress",
+    "statusQueued": "Queued",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "statusAnomaly": "Anomaly",
+    "statusFailed": "Failed",
+    "statusCandidatePending": "Candidate Pending",
+    "statusSummary": "Status: {label}"
   },
   "StatsTab": {
     "expenseTrend": "Expense Trend",
