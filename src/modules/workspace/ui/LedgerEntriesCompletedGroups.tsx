@@ -31,7 +31,6 @@ interface LedgerEntriesCompletedGroupsProps {
   onToggleSelection: (id: string) => void;
   collapseEntriesDefault: boolean;
   noRecordsText: string;
-  noMoreText: string;
   getItemProps: () => Record<string, unknown>;
 }
 
@@ -52,7 +51,6 @@ export function LedgerEntriesCompletedGroups({
   onToggleSelection,
   collapseEntriesDefault,
   noRecordsText,
-  noMoreText,
   getItemProps,
 }: LedgerEntriesCompletedGroupsProps) {
   if (groupedCompletedByDate.length === 0) {
@@ -123,10 +121,6 @@ export function LedgerEntriesCompletedGroups({
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
-
-      <div className="flex justify-center py-4">
-        <span className="text-xs text-muted-foreground/50">- {noMoreText} -</span>
       </div>
     </>
   );

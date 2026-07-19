@@ -1,6 +1,6 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
@@ -346,7 +346,6 @@ export function LedgerEntriesTab({
                     onToggleSelection={toggleSelection}
                     collapseEntriesDefault={collapseEntriesDefault}
                     noRecordsText={tCommon("noRecords")}
-                    noMoreText={t("noMore")}
                     getItemProps={getItemProps}
                   />
                 </div>
@@ -371,7 +370,6 @@ export function LedgerEntriesTab({
                   onToggleSelection={toggleSelection}
                   collapseEntriesDefault={collapseEntriesDefault}
                   noRecordsText={tCommon("noRecords")}
-                  noMoreText={t("noMore")}
                   getItemProps={getItemProps}
                 />
               )}
