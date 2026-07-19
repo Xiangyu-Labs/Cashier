@@ -26,7 +26,6 @@ interface LedgerEntriesToolbarProps {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams: PeriodParams;
-  onPeriodChange: (params: PeriodParams) => void;
   filteredTotalLabel: string;
   mainCurrency: string;
   filteredTotal: number;
@@ -56,7 +55,6 @@ export function LedgerEntriesToolbar({
   filters,
   onFiltersChange,
   periodParams,
-  onPeriodChange,
   filteredTotalLabel,
   mainCurrency,
   filteredTotal,
@@ -141,7 +139,6 @@ export function LedgerEntriesToolbar({
           filters={filters}
           onFiltersChange={onFiltersChange}
           periodParams={periodParams}
-          onPeriodChange={onPeriodChange}
           showCategory={false}
           showCurrency={false}
           className={cn("w-auto", showBatchActions && "sm:ml-auto")}

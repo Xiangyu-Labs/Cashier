@@ -124,7 +124,7 @@ export function LedgerPageClient({
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange, applyStreamStatusPreset } = usePeriodFilter({
+  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset } = usePeriodFilter({
     pathname,
     searchParams,
     initialPeriod,
@@ -198,7 +198,6 @@ export function LedgerPageClient({
                 categories={categories.length > 0 ? categories : []}
                 ledger={ledger}
                 periodParams={periodParams}
-                onPeriodChange={handlePeriodChange}
                 onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
@@ -215,7 +214,6 @@ export function LedgerPageClient({
                 categories={categories.length > 0 ? categories : []}
                 ledger={ledger}
                 periodParams={periodParams}
-                onPeriodChange={handlePeriodChange}
                 onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
               />

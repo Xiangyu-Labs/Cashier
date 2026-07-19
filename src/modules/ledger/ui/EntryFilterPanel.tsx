@@ -38,7 +38,6 @@ interface EntryFilterPanelProps {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams?: PeriodParams;
-  onPeriodChange?: (params: PeriodParams) => void;
   categories?: EntryCategory[];
   preferredCurrencies?: string[];
   showCategory?: boolean;
@@ -76,7 +75,6 @@ export function EntryFilterPanel({
   filters,
   onFiltersChange,
   periodParams,
-  onPeriodChange,
   categories = [],
   preferredCurrencies = [],
   showCategory = true,
@@ -195,9 +193,6 @@ export function EntryFilterPanel({
   const handleApply = () => {
     const normalizedFilters = normalizeAmountRange(tempFilters);
     onFiltersChange(normalizedFilters);
-    if (tempPeriod !== null && tempPeriod !== "custom" && onPeriodChange) {
-      onPeriodChange({ period: tempPeriod });
-    }
     setOpen(false);
   };
 

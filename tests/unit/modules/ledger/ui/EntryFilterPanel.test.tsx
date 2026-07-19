@@ -134,4 +134,27 @@ describe("EntryFilterPanel", () => {
     await user.click(presetButton);
     expect(onApplyPreset).toHaveBeenCalledWith("in_progress");
   });
+
+  it("submits filters only once after selecting a date preset", async () => {
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn();
+
+    render(
+      <EntryFilterPanel
+        filters={{ categoryId: "cat-1" }}
+        onFiltersChange={onFiltersChange}
+        periodParams={{ period: "thisMonth" }}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "本月" }));
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryId: "cat-1" })
+    );
+  });
 });

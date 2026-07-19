@@ -32,7 +32,6 @@ interface DetailsTabProps {
   categories: EntryCategory[];
   ledger?: Ledger;
   periodParams: PeriodParams;
-  onPeriodChange: (params: PeriodParams) => void;
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters: {
     categoryId?: string | null;
@@ -47,7 +46,6 @@ export function DetailsTab({
   categories,
   ledger,
   periodParams,
-  onPeriodChange,
   onFiltersChange,
   advancedFilters,
 }: DetailsTabProps) {
@@ -123,7 +121,6 @@ export function DetailsTab({
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}
-            onPeriodChange={onPeriodChange}
             categories={categories}
             preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
             className="flex-1 sm:flex-none"

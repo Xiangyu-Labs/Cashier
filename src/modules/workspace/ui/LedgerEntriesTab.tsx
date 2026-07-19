@@ -48,7 +48,6 @@ interface LedgerEntriesTabProps {
   categories: EntryCategory[];
   ledger?: Ledger;
   periodParams: PeriodParams;
-  onPeriodChange: (params: PeriodParams) => void;
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
@@ -61,7 +60,6 @@ export function LedgerEntriesTab({
   categories,
   ledger,
   periodParams,
-  onPeriodChange,
   onFiltersChange,
   advancedFilters,
   collapseEntriesDefault = false,
@@ -283,7 +281,6 @@ export function LedgerEntriesTab({
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}
-            onPeriodChange={onPeriodChange}
             filteredTotalLabel={tFilter("filteredTotal")}
             mainCurrency={mainCurrency}
             filteredTotal={filteredTotal}
