@@ -31,6 +31,7 @@ interface LedgerEntriesToolbarProps {
   mainCurrency: string;
   filteredTotal: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
+  statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
 }
 
 function detectActivePreset(statuses: SourceDocumentStatusType[] | undefined): StreamStatusPreset | null {
@@ -60,6 +61,7 @@ export function LedgerEntriesToolbar({
   mainCurrency,
   filteredTotal,
   onApplyPreset,
+  statusSummaryRef,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tBatch = useTranslations("BatchActions");
@@ -148,14 +150,18 @@ export function LedgerEntriesToolbar({
       )}
 
       {!isSelectionMode && filters.statuses != null && filters.statuses.length > 0 && (
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span
+          ref={statusSummaryRef}
+          tabIndex={-1}
+          className="text-xs text-muted-foreground flex items-center gap-1 outline-none"
+        >
           {activeStatusPreset != null
             ? tFilter("statusSummary", { label: tFilter(activeStatusPreset === "needs_attention" ? "needsAttention" : "inProgress") })
             : tFilter("statusSummary", { label: `${filters.statuses.length}` })}
           <button
             type="button"
             onClick={handleClearStatuses}
-            className="inline-flex items-center hover:text-text"
+            className="inline-flex items-center hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             aria-label={tFilter("allStatuses")}
           >
             <X className="h-3 w-3" />

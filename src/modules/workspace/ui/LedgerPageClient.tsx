@@ -1,5 +1,5 @@
 "use client";
-import { Suspense } from "react";
+import { useRef, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -129,6 +129,26 @@ export function LedgerPageClient({
     pathname,
   });
 
+  const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
+
+  const handleNeedsAttention = useCallback(() => {
+    applyStreamStatusPreset("needs_attention");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        statusSummaryRef.current?.focus();
+      });
+    });
+  }, [applyStreamStatusPreset]);
+
+  const handleInProgress = useCallback(() => {
+    applyStreamStatusPreset("in_progress");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        statusSummaryRef.current?.focus();
+      });
+    });
+  }, [applyStreamStatusPreset]);
+
   const {
     isInputOpen,
     setIsInputOpen,
@@ -156,8 +176,8 @@ export function LedgerPageClient({
     <AppShell
       ledgerId={ledgerId}
       onOpenInput={() => setIsInputOpen(true)}
-      onNeedsAttention={() => applyStreamStatusPreset("needs_attention")}
-      onInProgress={() => applyStreamStatusPreset("in_progress")}
+      onNeedsAttention={handleNeedsAttention}
+      onInProgress={handleInProgress}
     >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
@@ -176,6 +196,7 @@ export function LedgerPageClient({
                 advancedFilters={advancedFilters}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
                 onApplyPreset={applyStreamStatusPreset}
+                statusSummaryRef={statusSummaryRef}
               />
             </Suspense>
           </TabsContent>

@@ -114,7 +114,7 @@
     "status": "状态",
     "allStatuses": "全部状态",
     "needsAttention": "待处理",
-    "inProgress": "处理中",
+    "inProgress": "进行中",
     "statusQueued": "排队中",
     "statusProcessing": "处理中",
     "statusCompleted": "已完成",
