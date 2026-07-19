@@ -117,7 +117,7 @@ export function LedgerPageClient({
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange } = usePeriodFilter({
+  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange, applyStreamStatusPreset } = usePeriodFilter({
     pathname,
     searchParams,
     initialPeriod,
@@ -153,7 +153,12 @@ export function LedgerPageClient({
   }
 
   return (
-    <AppShell ledgerId={ledgerId} onOpenInput={() => setIsInputOpen(true)}>
+    <AppShell
+      ledgerId={ledgerId}
+      onOpenInput={() => setIsInputOpen(true)}
+      onNeedsAttention={() => applyStreamStatusPreset("needs_attention")}
+      onInProgress={() => applyStreamStatusPreset("in_progress")}
+    >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />

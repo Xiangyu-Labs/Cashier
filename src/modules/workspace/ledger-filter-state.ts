@@ -1,7 +1,17 @@
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import type { EntryFilters } from "@/modules/ledger/ui";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
+
+export const STREAM_STATUS_PRESETS = ["needs_attention", "in_progress"] as const;
+
+export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
+
+export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
+  needs_attention: ["candidate_pending", "anomaly", "failed"],
+  in_progress: ["queued", "processing"],
+};
 
 type LedgerFilterKeyInput = Pick<
   EntryFilters,
@@ -32,6 +42,9 @@ export function buildLedgerEntryFilters(
   }
   if (advancedFilters.maxAmount !== undefined) {
     nextFilters.maxAmount = advancedFilters.maxAmount;
+  }
+  if (advancedFilters.statuses !== undefined) {
+    nextFilters.statuses = advancedFilters.statuses;
   }
   return nextFilters;
 }
@@ -94,6 +107,9 @@ export function splitLedgerFilterChange(args: {
   }
   if ("maxAmount" in args.nextFilters) {
     advancedFilterUpdate.maxAmount = args.nextFilters.maxAmount;
+  }
+  if ("statuses" in args.nextFilters) {
+    advancedFilterUpdate.statuses = args.nextFilters.statuses;
   }
   return {
     ...(periodUpdate != null ? { periodUpdate } : {}),

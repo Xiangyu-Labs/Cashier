@@ -17,6 +17,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
 import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 
 export interface EntryFilters {
   startDate?: Date;
@@ -25,6 +26,7 @@ export interface EntryFilters {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  statuses?: SourceDocumentStatusType[];
 }
 
 interface EntryFilterPanelProps {
@@ -193,6 +195,7 @@ export function EntryFilterPanel({
       currency: null,
       minAmount: null,
       maxAmount: null,
+      statuses: [],
     };
     setTempFilters(defaultFilters);
     setTempPeriod("thisMonth");

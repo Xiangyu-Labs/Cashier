@@ -62,7 +62,9 @@
     "quickEntry": "Quick Entry",
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
-    "attentionCountLabel": "Documents requiring confirmation or correction"
+    "attentionCountLabel": "Documents requiring confirmation or correction",
+    "inProgressPresetLabel": "{count} processing — click to show in progress",
+    "needsAttentionPresetLabel": "{count} needing attention — click to show needs attention"
   },
   "DetailsTab": {
     "noMore": "No more items",

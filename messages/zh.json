@@ -62,7 +62,9 @@
     "quickEntry": "快速记账",
     "singleBook": "你的个人账本",
     "processingCountLabel": "处理中的单据",
-    "attentionCountLabel": "待确认或修正的单据"
+    "attentionCountLabel": "待确认或修正的单据",
+    "inProgressPresetLabel": "{count} 条处理中 — 点击查看处理中",
+    "needsAttentionPresetLabel": "{count} 条待处理 — 点击查看待处理"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",

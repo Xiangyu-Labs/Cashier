@@ -6,13 +6,19 @@ import {
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
 import type { EntryFilters } from "@/modules/ledger/ui";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
   type LedgerUrlUpdate,
   readLedgerFilterParams,
   updateLedgerSearchParams,
 } from "../ledger-url-params";
 import { replaceLedgerUrl } from "../ledger-url-navigation";
-import { buildLedgerEntryFilters, splitLedgerFilterChange } from "../ledger-filter-state";
+import {
+  buildLedgerEntryFilters,
+  splitLedgerFilterChange,
+  type StreamStatusPreset,
+  STREAM_STATUS_PRESET_VALUES,
+} from "../ledger-filter-state";
 import type { LedgerAdvancedFilters } from "../initial-query-state";
 
 export interface FilterParams {
@@ -20,6 +26,7 @@ export interface FilterParams {
   currency: string | null;
   minAmount: number | null;
   maxAmount: number | null;
+  statuses: SourceDocumentStatusType[];
 }
 
 interface UsePeriodFilterParams {
@@ -33,9 +40,11 @@ interface UsePeriodFilterReturn {
   dateRange: { startDate: string | null; endDate: string | null };
   filters: EntryFilters;
   filterParams: FilterParams;
+  statuses: SourceDocumentStatusType[];
   handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
   handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
   handleFiltersChange: (newFilters: EntryFilters) => void;
+  applyStreamStatusPreset: (preset: StreamStatusPreset) => void;
 }
 
 function buildPeriodUrlUpdate(
@@ -79,6 +88,11 @@ export function usePeriodFilter({
     [filterParams, periodParams]
   );
 
+  const statuses: SourceDocumentStatusType[] = useMemo(
+    () => filterParams.statuses ?? [],
+    [filterParams.statuses]
+  );
+
   const handlePeriodChange = useCallback(
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
       if (options?.skipUrlUpdate) return;
@@ -114,13 +128,30 @@ export function usePeriodFilter({
     [filters, pathname, periodParams, searchParams]
   );
 
+  const applyStreamStatusPreset = useCallback(
+    (preset: StreamStatusPreset) => {
+      const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
+      const params = updateLedgerSearchParams(searchParams, {
+        period: "all",
+        minAmount: null,
+        maxAmount: null,
+        statuses: presetStatuses,
+        tab: "stream",
+      });
+      replaceLedgerUrl(pathname, params);
+    },
+    [pathname, searchParams]
+  );
+
   return {
     periodParams,
     dateRange,
     filters,
     filterParams,
+    statuses,
     handlePeriodChange,
     handleAdvancedFiltersChange,
     handleFiltersChange,
+    applyStreamStatusPreset,
   };
 }
