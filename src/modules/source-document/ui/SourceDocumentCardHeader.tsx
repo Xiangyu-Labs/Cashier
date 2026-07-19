@@ -48,8 +48,6 @@ interface SourceDocumentCardHeaderProps {
   supportedActions: readonly SupportedSourceDocumentAction[];
   /** Date provenance from the unified stream grouping model. */
   dateProvenance?: DateProvenance;
-  /** Whether this card is outside the active date/amount filter. */
-  outsideCurrentFilter?: boolean;
   /** Candidate comparison data (for candidate_pending cards). */
   candidateComparison?: {
     active: { entryCount: number; total: string };
@@ -92,7 +90,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isSelected,
   supportedActions,
   dateProvenance,
-  outsideCurrentFilter,
   candidateComparison: _candidateComparison,
   onToggleExpanded,
   onViewDetails,
@@ -207,12 +204,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       </button>
 
       <div className="flex items-center gap-2 shrink-0">
-        {outsideCurrentFilter && (
-          <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-sm bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
-            {t("outsideFilter")}
-          </span>
-        )}
-
         {shouldShowProcessingStatus && (
           <ProcessingStatus
             status={processingStatus}

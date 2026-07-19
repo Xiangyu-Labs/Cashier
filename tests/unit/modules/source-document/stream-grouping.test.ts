@@ -244,7 +244,7 @@ describe("buildUnifiedStreamGroups", () => {
     expect(ids).toEqual(["a2", "a1"]);
   });
 
-  it("marks attention items outside the date filter", () => {
+  it("excludes attention items that fall outside the date filter (strict intersection)", () => {
     const outsideAtt = makeItem("out", {
       status: "anomaly",
       entryDate: "2026-06-01",
@@ -268,21 +268,15 @@ describe("buildUnifiedStreamGroups", () => {
       { startDate: "2026-07-01", endDate: "2026-07-31" }
     );
 
-    // outsideAtt is in 2026-06-01 group, insideAtt + completed share 2026-07-01
-    const juneGroup = groups.find((g) => g.date === "2026-06-01");
+    // The June anomaly should be excluded entirely — no June group
+    expect(groups.find((g) => g.date === "2026-06-01")).toBeUndefined();
+    // The July group should contain insideAtt + completed
     const julyGroup = groups.find((g) => g.date === "2026-07-01");
-
-    expect(juneGroup!.items[0]!.outsideCurrentFilter).toBe(true);
-    // completed items are never outside the filter
-    const julyItems = julyGroup!.items;
-    for (const item of julyItems) {
-      if (item.sourceDocument.status === "completed") {
-        expect(item.outsideCurrentFilter).toBe(false);
-      }
-    }
+    expect(julyGroup).toBeDefined();
+    expect(julyGroup!.items).toHaveLength(2);
   });
 
-  it("marks attention items outside the amount filter", () => {
+  it("excludes attention items that fall outside the amount filter (strict intersection)", () => {
     const lowAmountAtt = makeItem("low", {
       status: "candidate_pending",
       entryDate: "2026-07-01",
@@ -292,11 +286,171 @@ describe("buildUnifiedStreamGroups", () => {
         changed: true,
       },
     });
+    const highAmountAtt = makeItem("high", {
+      status: "candidate_pending",
+      entryDate: "2026-07-01",
+      candidateComparison: {
+        active: { entryCount: 1, total: "50.00" },
+        candidate: { entryCount: 1, total: "50.00" },
+        changed: false,
+      },
+    });
 
-    const groups = buildUnifiedStreamGroups([lowAmountAtt], [], {
+    const groups = buildUnifiedStreamGroups([lowAmountAtt, highAmountAtt], [], {
       minAmount: 10,
     });
-    expect(groups[0]!.items[0]!.outsideCurrentFilter).toBe(true);
+    // Only the high-amount item should pass
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.items).toHaveLength(1);
+    expect(groups[0]!.items[0]!.sourceDocument.id).toBe("high");
+  });
+
+  it("applies status-only filtering to both attention and completed items", () => {
+    const queuedAtt = makeItem("q1", {
+      status: "queued",
+      entryDate: "2026-07-01",
+    });
+    const failedAtt = makeItem("f1", {
+      status: "failed",
+      entryDate: "2026-07-01",
+    });
+    const completed = makeItem("c1", {
+      status: "completed",
+      entryDate: "2026-07-01",
+      ledgerEntries: [makeEntry()],
+    });
+
+    const groups = buildUnifiedStreamGroups(
+      [queuedAtt, failedAtt],
+      [completed],
+      { statuses: ["queued", "failed"] }
+    );
+
+    // completed should be filtered out
+    expect(groups).toHaveLength(1);
+    const statuses = groups[0]!.items.map((i) => i.sourceDocument.status);
+    expect(statuses).toEqual(
+      expect.arrayContaining(["queued", "failed"])
+    );
+    expect(statuses).not.toContain("completed");
+  });
+
+  it("applies status-plus-date-plus-amount intersection", () => {
+    const match = makeItem("match", {
+      status: "candidate_pending",
+      entryDate: "2026-07-15",
+      candidateComparison: {
+        active: { entryCount: 1, total: "30.00" },
+        candidate: { entryCount: 1, total: "30.00" },
+        changed: false,
+      },
+    });
+    const wrongDate = makeItem("wrongDate", {
+      status: "candidate_pending",
+      entryDate: "2026-06-01",
+      candidateComparison: {
+        active: { entryCount: 1, total: "30.00" },
+        candidate: { entryCount: 1, total: "30.00" },
+        changed: false,
+      },
+    });
+    const wrongStatus = makeItem("wrongStatus", {
+      status: "completed",
+      entryDate: "2026-07-15",
+      ledgerEntries: [makeEntry({ amount: "30.00", convertedAmount: "30.00" })],
+    });
+    const wrongAmount = makeItem("wrongAmount", {
+      status: "candidate_pending",
+      entryDate: "2026-07-15",
+      candidateComparison: {
+        active: { entryCount: 1, total: "5.00" },
+        candidate: { entryCount: 1, total: "5.00" },
+        changed: false,
+      },
+    });
+
+    const groups = buildUnifiedStreamGroups(
+      [match, wrongDate, wrongStatus, wrongAmount],
+      [],
+      {
+        startDate: "2026-07-01",
+        endDate: "2026-07-31",
+        minAmount: 10,
+        maxAmount: 100,
+        statuses: ["candidate_pending"],
+      }
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.items).toHaveLength(1);
+    expect(groups[0]!.items[0]!.sourceDocument.id).toBe("match");
+  });
+
+  it("filters by candidate active amount for candidate_pending items", () => {
+    const candidate = makeItem("cand", {
+      status: "candidate_pending",
+      entryDate: "2026-07-01",
+      candidateComparison: {
+        active: { entryCount: 2, total: "200.00" },
+        candidate: { entryCount: 2, total: "150.00" },
+        changed: true,
+      },
+    });
+    const completed = makeItem("comp", {
+      status: "completed",
+      entryDate: "2026-07-01",
+      ledgerEntries: [makeEntry({ amount: "50.00", convertedAmount: "50.00" })],
+    });
+
+    const groups = buildUnifiedStreamGroups([candidate], [completed], {
+      minAmount: 100,
+      maxAmount: 300,
+    });
+    // candidate_pending uses active total (200), so it passes; completed uses 50, so it fails
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.items).toHaveLength(1);
+    expect(groups[0]!.items[0]!.sourceDocument.id).toBe("cand");
+  });
+
+  it("excludes unknown-date items when any date filter is active", () => {
+    const unknown = makeItem("u1", {
+      status: "queued",
+      entryDate: null,
+      createdAt: "",
+    });
+    const known = makeItem("k1", {
+      status: "queued",
+      entryDate: "2026-07-15",
+    });
+
+    const groups = buildUnifiedStreamGroups([unknown, known], [], {
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+    });
+    // unknown should be excluded
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.items).toHaveLength(1);
+    expect(groups[0]!.items[0]!.sourceDocument.id).toBe("k1");
+  });
+
+  it("keeps unknown-date items when no date filter is active", () => {
+    const unknown = makeItem("u1", {
+      status: "queued",
+      entryDate: null,
+      createdAt: "",
+    });
+    const known = makeItem("k1", {
+      status: "completed",
+      entryDate: "2026-07-15",
+      ledgerEntries: [makeEntry()],
+    });
+
+    const groups = buildUnifiedStreamGroups([unknown], [known], {});
+    // unknown should still appear (no date filter)
+    const allIds = groups.flatMap((g) => g.items.map((i) => i.sourceDocument.id));
+    expect(allIds).toContain("u1");
+    // date_unknown group should be last
+    expect(groups.at(-1)!.date).toBe("date_unknown");
   });
 
   it("places unknown-date attention items in the date_unknown group last", () => {

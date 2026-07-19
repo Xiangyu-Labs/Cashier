@@ -7,6 +7,7 @@ import {
   getSourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -38,6 +39,8 @@ export interface UseSourceDocumentCollectionOptions {
   };
   minAmount?: number;
   maxAmount?: number;
+  /** Canonical selected statuses. Empty/undefined means all statuses. */
+  statuses?: SourceDocumentStatusType[];
 }
 
 function groupAndSummarize(docs: SourceDocumentListItemDto[]): {
@@ -71,7 +74,7 @@ export function useSourceDocumentCollection(
   options: UseSourceDocumentCollectionOptions = {}
 ) {
   const queryClient = useQueryClient();
-  const { dateRange, minAmount, maxAmount } = options;
+  const { dateRange, minAmount, maxAmount, statuses } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
@@ -191,8 +194,9 @@ export function useSourceDocumentCollection(
       endDate,
       ...(minAmount != null ? { minAmount } : {}),
       ...(maxAmount != null ? { maxAmount } : {}),
+      ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     });
-  }, [attentionData, completedData, startDate, endDate, minAmount, maxAmount]);
+  }, [attentionData, completedData, startDate, endDate, minAmount, maxAmount, statuses]);
 
   const isLoading = attentionLoading || completedLoading;
 

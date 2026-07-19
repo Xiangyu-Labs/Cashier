@@ -165,6 +165,7 @@ export function LedgerEntriesTab({
     },
     ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
     ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
+    ...(filters.statuses != null && filters.statuses.length > 0 ? { statuses: filters.statuses } : {}),
   });
 
   // Build groupedItems from completed groups for useGroupedEntries — no longer needed
