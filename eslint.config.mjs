@@ -12,6 +12,9 @@ export default defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    "public/sw.js",
+    "public/workbox-*.js",
+    "public/worker-*.js",
   ]),
   {
     files: ["**/*.ts", "**/*.tsx"],

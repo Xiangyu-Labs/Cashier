@@ -7,21 +7,10 @@ const withNextIntl = createNextIntlPlugin();
 const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = [];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  serverExternalPackages: [],
   // instrumentation.ts is enabled by default in Next.js 16+
   images: {
     unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload
     remotePatterns,
-    // Cache optimized images for 1 year (they include hash in URL)
-    minimumCacheTTL: 31536000,
-    // Device sizes for responsive images
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    // Image formats (prefer WebP, AVIF as alternative)
-    formats: ["image/webp"],
-    // Disable dangerous SVG optimization (security)
-    contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 
