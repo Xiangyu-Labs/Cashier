@@ -1,5 +1,5 @@
 "use client";
-import { Suspense } from "react";
+import { useRef, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -117,7 +117,7 @@ export function LedgerPageClient({
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange } = usePeriodFilter({
+  const { periodParams, filterParams, handlePeriodChange, handleFiltersChange, applyStreamStatusPreset } = usePeriodFilter({
     pathname,
     searchParams,
     initialPeriod,
@@ -128,6 +128,26 @@ export function LedgerPageClient({
     searchParams,
     pathname,
   });
+
+  const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
+
+  const handleNeedsAttention = useCallback(() => {
+    applyStreamStatusPreset("needs_attention");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        statusSummaryRef.current?.focus();
+      });
+    });
+  }, [applyStreamStatusPreset]);
+
+  const handleInProgress = useCallback(() => {
+    applyStreamStatusPreset("in_progress");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        statusSummaryRef.current?.focus();
+      });
+    });
+  }, [applyStreamStatusPreset]);
 
   const {
     isInputOpen,
@@ -153,7 +173,12 @@ export function LedgerPageClient({
   }
 
   return (
-    <AppShell ledgerId={ledgerId} onOpenInput={() => setIsInputOpen(true)}>
+    <AppShell
+      ledgerId={ledgerId}
+      onOpenInput={() => setIsInputOpen(true)}
+      onNeedsAttention={handleNeedsAttention}
+      onInProgress={handleInProgress}
+    >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
@@ -170,6 +195,8 @@ export function LedgerPageClient({
                 onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
                 collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+                onApplyPreset={applyStreamStatusPreset}
+                statusSummaryRef={statusSummaryRef}
               />
             </Suspense>
           </TabsContent>

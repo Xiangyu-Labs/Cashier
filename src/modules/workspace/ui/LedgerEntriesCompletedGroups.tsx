@@ -279,7 +279,6 @@ export function LedgerEntriesUnifiedGroups({
                     }
                     defaultExpanded={!collapseEntriesDefault}
                     dateProvenance={item.dateProvenance}
-                    outsideCurrentFilter={item.outsideCurrentFilter}
                     candidateComparison={
                       item.sourceDocument.candidateComparison ?? null
                     }

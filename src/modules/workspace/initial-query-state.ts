@@ -1,5 +1,6 @@
 import { addPeriod, type DateRangeType, formatDateTimeForApi, getDateRange } from "@/lib/date-utils";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 
 export const DEFAULT_STATS_RANGE_TYPE: DateRangeType = "month";
 
@@ -8,6 +9,7 @@ export interface LedgerAdvancedFilters {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  statuses?: SourceDocumentStatusType[];
 }
 
 export interface DetailsInitialQueryState {

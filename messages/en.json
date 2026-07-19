@@ -62,7 +62,9 @@
     "quickEntry": "Quick Entry",
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
-    "attentionCountLabel": "Documents requiring confirmation or correction"
+    "attentionCountLabel": "Documents requiring confirmation or correction",
+    "inProgressPresetLabel": "{count} processing — click to show in progress",
+    "needsAttentionPresetLabel": "{count} needing attention — click to show needs attention"
   },
   "DetailsTab": {
     "noMore": "No more items",
@@ -108,7 +110,18 @@
     "reset": "Reset",
     "apply": "Apply Filters",
     "moreFilters": "More Filters",
-    "filteredTotal": "Total"
+    "filteredTotal": "Total",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "needsAttention": "Needs Attention",
+    "inProgress": "In Progress",
+    "statusQueued": "Queued",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "statusAnomaly": "Anomaly",
+    "statusFailed": "Failed",
+    "statusCandidatePending": "Candidate Pending",
+    "statusSummary": "Status: {label}"
   },
   "StatsTab": {
     "expenseTrend": "Expense Trend",
@@ -183,7 +196,6 @@
     "manualCorrectionAction": "Manual Correction",
     "failedProcessing": "Processing failed",
     "editRetryAction": "Edit & Retry",
-    "outsideFilter": "Outside filter",
     "submittedOn": "Submitted",
     "dateUnknown": "Date unknown",
     "submittedDateTitle": "Submission date — no transaction date available",

@@ -36,8 +36,6 @@ interface SourceDocumentCardProps {
   onToggleSelect?: () => void;
   /** Date provenance from the unified stream grouping model. */
   dateProvenance?: DateProvenance;
-  /** Whether this card is outside the active date/amount filter. */
-  outsideCurrentFilter?: boolean;
   /** Candidate comparison data (for candidate_pending cards). */
   candidateComparison?: {
     active: { entryCount: number; total: string };
@@ -74,7 +72,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   isSelected = false,
   onToggleSelect,
   dateProvenance,
-  outsideCurrentFilter,
   candidateComparison,
   isMutationPending = false,
   isAccepting = false,
@@ -131,7 +128,6 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         isSelected={isSelected}
         supportedActions={supportedActions}
         {...(dateProvenance !== undefined ? { dateProvenance } : {})}
-        {...(outsideCurrentFilter !== undefined ? { outsideCurrentFilter } : {})}
         {...(candidateComparison !== undefined ? { candidateComparison } : {})}
         onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
         onViewDetails={_onViewDetails}

@@ -5,13 +5,21 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentCountsAction } from "@/modules/source-document/actions";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   ledgerId: string;
   onOpenInput: () => void;
+  onNeedsAttention?: () => void;
+  onInProgress?: () => void;
 }
 
-export function Header({ ledgerId, onOpenInput }: HeaderProps) {
+export function Header({
+  ledgerId,
+  onOpenInput,
+  onNeedsAttention,
+  onInProgress,
+}: HeaderProps) {
   const t = useTranslations("LedgerPage");
 
   const { data: counts } = useQuery({
@@ -33,20 +41,36 @@ export function Header({ ledgerId, onOpenInput }: HeaderProps) {
           {totalBadgeCount > 0 && (
             <div className="flex items-center gap-1.5">
               {processingCount > 0 && (
-                <span
-                  className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  title={t("processingCountLabel")}
+                <button
+                  type="button"
+                  onClick={onInProgress}
+                  disabled={!onInProgress}
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                    onInProgress && "cursor-pointer hover:ring-1 hover:ring-amber-400",
+                    !onInProgress && "cursor-default"
+                  )}
+                  aria-label={t("inProgressPresetLabel", { count: processingCount })}
                 >
                   {processingCount}
-                </span>
+                </button>
               )}
               {attentionCount > 0 && (
-                <span
-                  className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  title={t("attentionCountLabel")}
+                <button
+                  type="button"
+                  onClick={onNeedsAttention}
+                  disabled={!onNeedsAttention}
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                    onNeedsAttention && "cursor-pointer hover:ring-1 hover:ring-red-400",
+                    !onNeedsAttention && "cursor-default"
+                  )}
+                  aria-label={t("needsAttentionPresetLabel", { count: attentionCount })}
                 >
                   {attentionCount}
-                </span>
+                </button>
               )}
             </div>
           )}

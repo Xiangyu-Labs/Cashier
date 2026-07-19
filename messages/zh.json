@@ -62,7 +62,9 @@
     "quickEntry": "快速记账",
     "singleBook": "你的个人账本",
     "processingCountLabel": "处理中的单据",
-    "attentionCountLabel": "待确认或修正的单据"
+    "attentionCountLabel": "待确认或修正的单据",
+    "inProgressPresetLabel": "{count} 条处理中 — 点击查看处理中",
+    "needsAttentionPresetLabel": "{count} 条待处理 — 点击查看待处理"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",
@@ -108,7 +110,18 @@
     "reset": "重置",
     "apply": "应用筛选",
     "moreFilters": "更多筛选",
-    "filteredTotal": "合计"
+    "filteredTotal": "合计",
+    "status": "状态",
+    "allStatuses": "全部状态",
+    "needsAttention": "待处理",
+    "inProgress": "进行中",
+    "statusQueued": "排队中",
+    "statusProcessing": "处理中",
+    "statusCompleted": "已完成",
+    "statusAnomaly": "异常",
+    "statusFailed": "失败",
+    "statusCandidatePending": "待核准",
+    "statusSummary": "状态：{label}"
   },
   "StatsTab": {
     "expenseTrend": "支出趋势",
@@ -183,7 +196,6 @@
     "manualCorrectionAction": "手动修正",
     "failedProcessing": "处理失败",
     "editRetryAction": "编辑重试",
-    "outsideFilter": "筛选范围外",
     "submittedOn": "提交于",
     "dateUnknown": "日期未知",
     "submittedDateTitle": "提交日期（无交易日期）",

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, CheckSquare } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ArrowLeft, CheckSquare, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,6 +8,11 @@ import type { PeriodParams } from "@/lib/period-utils";
 import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import {
+  type StreamStatusPreset,
+  STREAM_STATUS_PRESET_VALUES,
+} from "@/modules/workspace/ledger-filter-state";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -25,6 +30,18 @@ interface LedgerEntriesToolbarProps {
   filteredTotalLabel: string;
   mainCurrency: string;
   filteredTotal: number;
+  onApplyPreset?: (preset: StreamStatusPreset) => void;
+  statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
+}
+
+function detectActivePreset(statuses: SourceDocumentStatusType[] | undefined): StreamStatusPreset | null {
+  if (statuses == null || statuses.length === 0) return null;
+  for (const [preset, values] of Object.entries(STREAM_STATUS_PRESET_VALUES) as [StreamStatusPreset, SourceDocumentStatusType[]][]) {
+    if (values.length === statuses.length && values.every((v) => statuses.includes(v))) {
+      return preset;
+    }
+  }
+  return null;
 }
 
 export function LedgerEntriesToolbar({
@@ -43,9 +60,12 @@ export function LedgerEntriesToolbar({
   filteredTotalLabel,
   mainCurrency,
   filteredTotal,
+  onApplyPreset,
+  statusSummaryRef,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tBatch = useTranslations("BatchActions");
+  const tFilter = useTranslations("EntryFilterPanel");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const showBatchActions = isSelectionMode && selectedCount > 0;
@@ -54,6 +74,15 @@ export function LedgerEntriesToolbar({
   const handleUpdateDates = () => {
     if (!onUpdateDates) return;
     return onUpdateDates(formatDateTimeForApi(selectedDate));
+  };
+
+  const activeStatusPreset = useMemo(
+    () => detectActivePreset(filters.statuses),
+    [filters.statuses]
+  );
+
+  const handleClearStatuses = () => {
+    onFiltersChange({ ...filters, statuses: [] });
   };
 
   return (
@@ -116,7 +145,28 @@ export function LedgerEntriesToolbar({
           showCategory={false}
           showCurrency={false}
           className={cn("w-auto", showBatchActions && "sm:ml-auto")}
+          {...(onApplyPreset != null ? { onApplyPreset } : {})}
         />
+      )}
+
+      {!isSelectionMode && filters.statuses != null && filters.statuses.length > 0 && (
+        <span
+          ref={statusSummaryRef}
+          tabIndex={-1}
+          className="text-xs text-muted-foreground flex items-center gap-1 outline-none"
+        >
+          {activeStatusPreset != null
+            ? tFilter("statusSummary", { label: tFilter(activeStatusPreset === "needs_attention" ? "needsAttention" : "inProgress") })
+            : tFilter("statusSummary", { label: `${filters.statuses.length}` })}
+          <button
+            type="button"
+            onClick={handleClearStatuses}
+            className="inline-flex items-center hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            aria-label={tFilter("allStatuses")}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
       )}
 
       <span className={cn("text-xs text-muted-foreground font-mono ml-auto", showBatchActions && "sm:ml-0")}>

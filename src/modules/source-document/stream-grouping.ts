@@ -1,6 +1,7 @@
 import type {
   SourceDocumentListItemDto,
   SourceDocumentLedgerEntryDto,
+  SourceDocumentStatusType,
 } from "./contracts";
 
 /**
@@ -19,8 +20,6 @@ export interface UnifiedStreamItem {
   effectiveDate: string;
   /** Where `effectiveDate` came from — the UI must use this to label the date. */
   dateProvenance: DateProvenance;
-  /** `true` only for attention items excluded by the active date or amount filter. */
-  outsideCurrentFilter: boolean;
 }
 
 export interface UnifiedStreamGroup {
@@ -38,6 +37,8 @@ export interface StreamGroupingFilters {
   endDate?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  /** Selected source-document statuses. Empty/undefined accepts every known status. */
+  statuses?: SourceDocumentStatusType[];
 }
 
 // ---------------------------------------------------------------------------
@@ -116,40 +117,51 @@ export function getEffectiveDate(sourceDocument: {
 }
 
 // ---------------------------------------------------------------------------
-// Filter exceptions
+// Strict filter predicate
 // ---------------------------------------------------------------------------
 
-function isOutsideDateFilter(
+/** Returns `true` when the item passes all active date, amount, and status filters. */
+function passesFilter(
   item: SourceDocumentListItemDto,
   filters: StreamGroupingFilters
 ): boolean {
-  if (filters.startDate == null && filters.endDate == null) return false;
+  // Date filter — unknown dates fail an active date range
   const { date } = getEffectiveDate(item);
-  if (date === DATE_UNKNOWN) return false;
-  if (
-    filters.startDate != null &&
-    filters.startDate !== "" &&
-    date < filters.startDate
-  )
-    return true;
-  if (
-    filters.endDate != null &&
-    filters.endDate !== "" &&
-    date > filters.endDate
-  )
-    return true;
-  return false;
-}
+  if (date === DATE_UNKNOWN) {
+    if (
+      (filters.startDate != null && filters.startDate !== "") ||
+      (filters.endDate != null && filters.endDate !== "")
+    ) {
+      return false;
+    }
+  } else {
+    if (
+      filters.startDate != null &&
+      filters.startDate !== "" &&
+      date < filters.startDate
+    )
+      return false;
+    if (
+      filters.endDate != null &&
+      filters.endDate !== "" &&
+      date > filters.endDate
+    )
+      return false;
+  }
 
-function isOutsideAmountFilter(
-  item: SourceDocumentListItemDto,
-  filters: StreamGroupingFilters
-): boolean {
-  if (filters.minAmount == null && filters.maxAmount == null) return false;
+  // Amount filter — uses candidate active total for non-completed items
   const total = computeActiveTotal(item);
-  if (filters.minAmount != null && total < filters.minAmount) return true;
-  if (filters.maxAmount != null && total > filters.maxAmount) return true;
-  return false;
+  if (filters.minAmount != null && total < filters.minAmount) return false;
+  if (filters.maxAmount != null && total > filters.maxAmount) return false;
+
+  // Status filter — empty/undefined means "all statuses"
+  if (filters.statuses != null && filters.statuses.length > 0) {
+    if (!(filters.statuses as readonly string[]).includes(item.status)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,34 +179,37 @@ export function buildUnifiedStreamGroups(
     (item) => !attentionIds.has(item.id)
   );
 
-  // 2. Map to presentation items
+  // 2. Apply strict predicate to both attention and completed after dedup
+  const filteredAttention = attentionItems.filter((item) =>
+    passesFilter(item, filters)
+  );
+  const filteredCompleted = dedupedCompleted.filter((item) =>
+    passesFilter(item, filters)
+  );
+
+  // 3. Map to presentation items
   const allItems: UnifiedStreamItem[] = [
-    ...attentionItems.map((item) => {
+    ...filteredAttention.map((item) => {
       const { date, provenance } = getEffectiveDate(item);
-      const outsideFilter =
-        isOutsideDateFilter(item, filters) ||
-        isOutsideAmountFilter(item, filters);
       return {
         sourceDocument: item,
         ledgerEntries: item.ledgerEntries ?? [],
         effectiveDate: date,
         dateProvenance: provenance,
-        outsideCurrentFilter: outsideFilter,
       };
     }),
-    ...dedupedCompleted.map((item) => {
+    ...filteredCompleted.map((item) => {
       const { date, provenance } = getEffectiveDate(item);
       return {
         sourceDocument: item,
         ledgerEntries: item.ledgerEntries ?? [],
         effectiveDate: date,
         dateProvenance: provenance,
-        outsideCurrentFilter: false,
       };
     }),
   ];
 
-  // 3. Group by effective date
+  // 4. Group by effective date
   const groupMap = new Map<string, UnifiedStreamItem[]>();
   for (const item of allItems) {
     const group = groupMap.get(item.effectiveDate) ?? [];
@@ -202,7 +217,7 @@ export function buildUnifiedStreamGroups(
     groupMap.set(item.effectiveDate, group);
   }
 
-  // 4. Sort items within each group by status priority, then createdAt, then id
+  // 5. Sort items within each group by status priority, then createdAt, then id
   for (const [, items] of groupMap) {
     items.sort((a, b) => {
       const pa =
@@ -219,14 +234,14 @@ export function buildUnifiedStreamGroups(
     });
   }
 
-  // 5. Sort groups: known dates descending, unknown last
+  // 6. Sort groups: known dates descending, unknown last
   const sortedDates = [...groupMap.keys()].sort((a, b) => {
     if (a === DATE_UNKNOWN) return 1;
     if (b === DATE_UNKNOWN) return -1;
     return b.localeCompare(a);
   });
 
-  // 6. Build group objects with active-only totals
+  // 7. Build group objects with active-only totals
   return sortedDates.map((date) => {
     const items = groupMap.get(date)!;
     const provenance = items[0]?.dateProvenance ?? "unknown";

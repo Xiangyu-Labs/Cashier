@@ -1,8 +1,68 @@
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+
+export const STATUSES_URL_PARAM = "statuses";
+const STATUSES_URL_DELIMITER = ",";
+
+/**
+ * Canonical status order for URL serialization.
+ * Mirrors SOURCE_DOCUMENT_STATUSES order for stable, predictable encoding.
+ */
+const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
+  "queued",
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+  "deleted",
+  "candidate_pending",
+];
+
+/**
+ * Parse a comma-delimited statuses URL parameter into a validated, deduplicated,
+ * canonically ordered array. Invalid tokens are silently ignored.
+ * Returns an empty array when the parameter is absent, empty, or contains no
+ * valid tokens (empty array = all statuses, i.e. no status filtering).
+ */
+export function parseStatusesParam(raw: string | null): SourceDocumentStatusType[] {
+  if (raw == null || raw === "") return [];
+
+  const tokenSet = new Set<SourceDocumentStatusType>();
+  const rawTokens = raw.split(STATUSES_URL_DELIMITER);
+
+  for (const token of rawTokens) {
+    const trimmed = token.trim();
+    if (trimmed === "") continue;
+    if ((CANONICAL_STATUS_ORDER as readonly string[]).includes(trimmed)) {
+      tokenSet.add(trimmed as SourceDocumentStatusType);
+    }
+  }
+
+  // Return in canonical order, preserving only known valid tokens
+  return CANONICAL_STATUS_ORDER.filter((s) => tokenSet.has(s));
+}
+
+/**
+ * Serialize a statuses array to a comma-delimited string suitable for URL use.
+ * Returns null when the array is empty (parameter should be omitted).
+ * The input is already assumed to be canonical; duplicates are removed defensively.
+ */
+export function formatStatusesParam(statuses: SourceDocumentStatusType[]): string | null {
+  if (statuses.length === 0) return null;
+
+  // Deduplicate while preserving canonical order
+  const unique = CANONICAL_STATUS_ORDER.filter((s) => statuses.includes(s));
+
+  if (unique.length === 0) return null;
+
+  return unique.join(STATUSES_URL_DELIMITER);
+}
+
 export interface LedgerFilterParams {
   categoryId: string | null;
   currency: string | null;
   minAmount: number | null;
   maxAmount: number | null;
+  statuses: SourceDocumentStatusType[];
 }
 
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
@@ -17,6 +77,7 @@ export interface LedgerUrlUpdate {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  statuses?: SourceDocumentStatusType[] | null;
 }
 
 function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchParams {
@@ -65,6 +126,7 @@ export function readLedgerFilterParams(searchParams: SearchParamsLike): LedgerFi
     currency: searchParams.get("currency") ?? null,
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
+    statuses: parseStatusesParam(searchParams.get(STATUSES_URL_PARAM)),
   };
 }
 
@@ -96,6 +158,15 @@ export function updateLedgerSearchParams(
   if ("currency" in updates) setOrDeleteStringParam(params, "currency", updates.currency);
   if ("minAmount" in updates) setOrDeleteNumberParam(params, "minAmount", updates.minAmount);
   if ("maxAmount" in updates) setOrDeleteNumberParam(params, "maxAmount", updates.maxAmount);
+
+  if ("statuses" in updates) {
+    const formatted = updates.statuses != null ? formatStatusesParam(updates.statuses) : null;
+    if (formatted != null) {
+      params.set(STATUSES_URL_PARAM, formatted);
+    } else {
+      params.delete(STATUSES_URL_PARAM);
+    }
+  }
 
   params.delete("search");
 

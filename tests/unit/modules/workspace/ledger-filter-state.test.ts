@@ -3,6 +3,8 @@ import {
   buildLedgerEntryFilters,
   buildLedgerFilterKey,
   splitLedgerFilterChange,
+  STREAM_STATUS_PRESETS,
+  STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/workspace/ledger-filter-state";
 
 describe("ledger-filter-state", () => {
@@ -14,6 +16,24 @@ describe("ledger-filter-state", () => {
 
     expect(filters.categoryId).toBe("cat-1");
     expect(buildLedgerFilterKey(filters)).toBe("cat:cat-1|min:20|max:100");
+  });
+
+  it("includes statuses from advanced filters in entry filters", () => {
+    const filters = buildLedgerEntryFilters(
+      { period: "thisMonth" },
+      { statuses: ["failed", "anomaly"] }
+    );
+
+    expect(filters.statuses).toEqual(["failed", "anomaly"]);
+  });
+
+  it("omits statuses from entry filters when advanced filters has no statuses", () => {
+    const filters = buildLedgerEntryFilters(
+      { period: "thisMonth" },
+      { categoryId: "cat-1" }
+    );
+
+    expect(filters.statuses).toBeUndefined();
   });
 
   it("splits a filter edit into period and advanced updates", () => {
@@ -34,6 +54,54 @@ describe("ledger-filter-state", () => {
     });
     expect(result.advancedFilterUpdate).toEqual({
       currency: "USD",
+    });
+  });
+
+  it("splits statuses change into advanced filter update without period change", () => {
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "thisMonth" },
+      currentFilters: {},
+      nextFilters: {
+        statuses: ["queued", "processing"],
+      },
+    });
+
+    expect(result.periodUpdate).toBeUndefined();
+    expect(result.advancedFilterUpdate).toEqual({
+      statuses: ["queued", "processing"],
+    });
+  });
+
+  it("clears statuses through advanced filter update", () => {
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "thisMonth" },
+      currentFilters: { statuses: ["failed"] },
+      nextFilters: {
+        statuses: [],
+      },
+    });
+
+    expect(result.periodUpdate).toBeUndefined();
+    expect(result.advancedFilterUpdate).toEqual({
+      statuses: [],
+    });
+  });
+
+  describe("STREAM_STATUS_PRESETS", () => {
+    it("defines exactly two presets", () => {
+      expect(STREAM_STATUS_PRESETS).toEqual(["needs_attention", "in_progress"]);
+    });
+
+    it("needs_attention includes candidate_pending, anomaly, and failed", () => {
+      expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual([
+        "candidate_pending",
+        "anomaly",
+        "failed",
+      ]);
+    });
+
+    it("in_progress includes queued and processing", () => {
+      expect(STREAM_STATUS_PRESET_VALUES.in_progress).toEqual(["queued", "processing"]);
     });
   });
 });
