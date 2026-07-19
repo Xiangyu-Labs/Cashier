@@ -154,7 +154,7 @@ describe("target source-document submissions", () => {
       expect(document).toMatchObject({
         activeRevisionId: null,
         pendingRevisionId: pending.revision.id,
-        supportedActions: ["retry", "edit_retry", "manual_correction", "delete"],
+        supportedActions: ["retry", "edit_retry", "delete"],
       });
       expect(await db.select().from(revisionEntries)).toHaveLength(0);
       expect(await db.select().from(ledgerEntries)).toHaveLength(0);

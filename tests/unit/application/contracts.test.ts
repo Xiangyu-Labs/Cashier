@@ -15,7 +15,7 @@ import {
 describe("target application contracts", () => {
   it("preserves an active result while a retry is anomalous or failed", () => {
     expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
-      .toEqual(["retry", "edit_retry", "manual_correction", "delete"]);
+      .toEqual(["retry", "edit_retry", "delete"]);
     expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
       .toEqual(["delete"]);
   });

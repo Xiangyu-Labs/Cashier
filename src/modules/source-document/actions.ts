@@ -28,4 +28,3 @@ export {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "./server-actions/candidates";
-export { createManualCorrectionAction } from "./server-actions/manual-correction";

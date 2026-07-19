@@ -25,7 +25,6 @@ export type RevisionOutcome = (typeof REVISION_OUTCOMES)[number];
 export type SupportedSourceDocumentAction =
   | "retry"
   | "edit_retry"
-  | "manual_correction"
   | "delete"
   | "accept_candidate"
   | "abandon_candidate";
@@ -60,7 +59,7 @@ export function supportedSourceDocumentActions(input: {
   }
 
   if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
-    return ["retry", "edit_retry", "manual_correction", "delete"];
+    return ["retry", "edit_retry", "delete"];
   }
 
   // Document has an existing active projection and a completed pending revision -> candidate pending

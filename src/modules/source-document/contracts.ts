@@ -100,9 +100,3 @@ export interface AbandonCandidateResponseDto {
   revisionId: string;
   status: "abandoned";
 }
-
-export interface ManualCorrectionResponseDto {
-  sourceDocumentId: string;
-  revisionId: string;
-  status: "completed";
-}
