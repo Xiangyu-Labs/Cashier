@@ -8,6 +8,7 @@ export interface SourceDocumentGroup<T> {
 export interface GroupedSourceDocuments<T> {
   queued: SourceDocumentGroup<T>[];
   processing: SourceDocumentGroup<T>[];
+  candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
   completed: SourceDocumentGroup<T>[];
@@ -16,6 +17,7 @@ export interface GroupedSourceDocuments<T> {
 export interface PendingGroups<T> {
   queued: SourceDocumentGroup<T>[];
   processing: SourceDocumentGroup<T>[];
+  candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
 }
@@ -28,6 +30,7 @@ export function groupSourceDocumentsByStatus<
   const groups: GroupedSourceDocuments<T> = {
     queued: [],
     processing: [],
+    candidate_pending: [],
     anomaly: [],
     failed: [],
     completed: [],
@@ -48,13 +51,13 @@ export function groupSourceDocumentsByStatus<
       case "processing":
         groups.processing.push(group);
         break;
+      case "candidate_pending":
+        groups.candidate_pending.push(group);
+        break;
       case "anomaly":
         groups.anomaly.push(group);
         break;
       case "failed":
-        groups.failed.push(group);
-        break;
-      case "candidate_pending":
         groups.failed.push(group);
         break;
       case "completed":
@@ -78,13 +81,17 @@ export function groupPendingSourceDocuments<
   return {
     queued: groups.queued,
     processing: groups.processing,
+    candidate_pending: groups.candidate_pending,
     anomaly: groups.anomaly,
     failed: groups.failed,
   };
 }
 
 export function calculateSourceDocumentStats<T>(
-  groups: Pick<GroupedSourceDocuments<T>, "queued" | "processing" | "anomaly" | "failed">
+  groups: Pick<
+    GroupedSourceDocuments<T>,
+    "queued" | "processing" | "candidate_pending" | "anomaly" | "failed"
+  >
 ) {
   return {
     queuedCount: groups.queued.length,
@@ -96,6 +103,10 @@ export function calculateSourceDocumentStats<T>(
 
 export function calculatePendingTotal<T>(groups: PendingGroups<T>): number {
   return (
-    groups.queued.length + groups.processing.length + groups.anomaly.length + groups.failed.length
+    groups.queued.length +
+    groups.processing.length +
+    groups.candidate_pending.length +
+    groups.anomaly.length +
+    groups.failed.length
   );
 }
