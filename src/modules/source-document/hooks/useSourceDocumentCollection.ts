@@ -15,6 +15,10 @@ import {
   calculateSourceDocumentStats,
   type GroupedSourceDocuments,
 } from "@/modules/source-document/grouping";
+import {
+  buildUnifiedStreamGroups,
+  type UnifiedStreamGroup,
+} from "@/modules/source-document/stream-grouping";
 
 export type { SourceDocumentListItemDto as SourceDocumentWithEntries };
 
@@ -160,6 +164,7 @@ export function useSourceDocumentCollection(
         groups: {
           queued: [],
           processing: [],
+          candidate_pending: [],
           anomaly: [],
           failed: [],
           completed: [],
@@ -176,11 +181,25 @@ export function useSourceDocumentCollection(
     return groupAndSummarize(rawData);
   }, [rawData]);
 
+  // 7. Unified stream groups (Task 2/3: replaces status-bucket grouping)
+  const streamGroups: UnifiedStreamGroup[] = useMemo(() => {
+    const attentionItemsData = attentionData?.items ?? [];
+    const completedPagesData = completedData?.pages ?? [];
+    const completedItemsData = completedPagesData.flatMap((page) => page.items);
+    return buildUnifiedStreamGroups(attentionItemsData, completedItemsData, {
+      startDate,
+      endDate,
+      ...(minAmount != null ? { minAmount } : {}),
+      ...(maxAmount != null ? { maxAmount } : {}),
+    });
+  }, [attentionData, completedData, startDate, endDate, minAmount, maxAmount]);
+
   const isLoading = attentionLoading || completedLoading;
 
   return {
     groups,
     stats,
+    streamGroups,
     rawData,
     isLoading,
     attentionItems,

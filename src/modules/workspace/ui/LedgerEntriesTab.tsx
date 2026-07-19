@@ -1,9 +1,9 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutGroup } from "framer-motion";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Loader2 } from "lucide-react";
@@ -23,7 +23,7 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useSelection } from "@/hooks/use-selection";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
-import { useGroupedEntries, useLedgerEntriesMutations } from "@/modules/ledger/hooks";
+import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
 import { useBatchSourceDocumentActions,
   useSourceDocumentCollection,
 } from "@/modules/source-document/hooks";
@@ -38,7 +38,7 @@ import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
-import { LedgerEntriesCompletedGroups } from "./LedgerEntriesCompletedGroups";
+import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
@@ -65,11 +65,9 @@ export function LedgerEntriesTab({
   collapseEntriesDefault = false,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
-  const tDetails = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const tActions = useTranslations("CandidateAction");
-  const locale = useLocale();
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
@@ -155,8 +153,7 @@ export function LedgerEntriesTab({
 
   // Use the new collection hook with attention + paginated completed
   const {
-    groups,
-    attentionItems,
+    streamGroups,
     isLoading,
     fetchNextPage,
     hasNextPage,
@@ -170,13 +167,12 @@ export function LedgerEntriesTab({
     ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
   });
 
-  // Build groupedItems from completed groups for useGroupedEntries
-  const { groupedCompletedByDate, allSourceDocumentIds } = useGroupedEntries({
-    completedGroups: groups.completed,
-    locale,
-    _mainCurrency: mainCurrency,
-    tDetails,
-  });
+  // Build groupedItems from completed groups for useGroupedEntries — no longer needed
+  // Selection uses unified stream groups
+  const allSourceDocumentIds = useMemo(
+    () => streamGroups.flatMap((g) => g.items.map((i) => i.sourceDocument.id)),
+    [streamGroups]
+  );
 
   const {
     isSelectionMode,
@@ -281,9 +277,6 @@ export function LedgerEntriesTab({
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Render attention document items inline
-  const showAttentionSection = attentionItems.length > 0;
-
   return (
     <LayoutGroup id={layoutGroupId}>
       <PullToRefresh onRefresh={handleRefresh}>
@@ -310,51 +303,10 @@ export function LedgerEntriesTab({
             <LedgerEntriesLoading />
           ) : (
             <>
-              {/* Attention section — items needing user action or processing */}
-              {showAttentionSection && (
-                <div className="space-y-2 px-2">
-                  <div className="py-1 px-2">
-                    <h3 className="text-[10px] sm:text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                      {t("attentionSection")}
-                    </h3>
-                  </div>
-                  {/* Render attention items using same card pattern as completed */}
-                  <LedgerEntriesCompletedGroups
-                    groupedCompletedByDate={[
-                      {
-                        title: t("attentionSection"),
-                        total: 0,
-                        items: groups.queued
-                          .concat(groups.processing)
-                          .concat(groups.anomaly)
-                          .concat(groups.failed),
-                      },
-                    ]}
-                    mainCurrency={mainCurrency}
-                    onViewLedgerEntry={handleViewLedgerEntry}
-                    onViewSourceDetail={handleViewSourceDetail}
-                    onRetry={setRetrySourceDocument}
-                    onDirectRetry={handleDirectRetry}
-                    onEditRetry={setRetrySourceDocument}
-                    onManualCorrection={handleManualCorrection}
-                    onAcceptCandidate={handleAcceptCandidate}
-                    onAbandonCandidate={handleAbandonCandidate}
-                    onDeleteSourceConfirm={handleDeleteSourceConfirm}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelection={toggleSelection}
-                    collapseEntriesDefault={collapseEntriesDefault}
-                    noRecordsText={tCommon("noRecords")}
-                    getItemProps={getItemProps}
-                  />
-                </div>
-              )}
-
-              {/* Completed section with date grouping */}
-              {groupedCompletedByDate.length > 0 && (
-                <LedgerEntriesCompletedGroups
-                  groupedCompletedByDate={groupedCompletedByDate}
+              {/* Unified stream groups — all states in a single chronological sequence */}
+              {streamGroups.length > 0 && (
+                <LedgerEntriesUnifiedGroups
+                  streamGroups={streamGroups}
                   mainCurrency={mainCurrency}
                   onViewLedgerEntry={handleViewLedgerEntry}
                   onViewSourceDetail={handleViewSourceDetail}
@@ -371,11 +323,15 @@ export function LedgerEntriesTab({
                   collapseEntriesDefault={collapseEntriesDefault}
                   noRecordsText={tCommon("noRecords")}
                   getItemProps={getItemProps}
+                  isRetrying={retryMutation.isPending}
+                  isAccepting={acceptCandidateMutation.isPending}
+                  isAbandoning={abandonCandidateMutation.isPending}
+                  isManualCorrecting={manualCorrectionMutation.isPending}
                 />
               )}
 
-              {/* No records state - only when both attention and completed are empty */}
-              {!showAttentionSection && groupedCompletedByDate.length === 0 && (
+              {/* No records state */}
+              {!isLoading && streamGroups.length === 0 && (
                 <div className="space-y-6 px-2 pt-2">
                   <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
                     <span>{tCommon("noRecords")}</span>
@@ -409,7 +365,7 @@ export function LedgerEntriesTab({
               )}
 
               {/* End of list indicator when no more pages */}
-              {!hasNextPage && groupedCompletedByDate.length > 0 && (
+              {!hasNextPage && streamGroups.length > 0 && (
                 <div className="flex justify-center py-4">
                   <span className="text-xs text-muted-foreground/50">- {t("noMore")} -</span>
                 </div>

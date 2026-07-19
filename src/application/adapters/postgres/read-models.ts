@@ -5,6 +5,8 @@ import type {
   SourceDocumentDto,
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
+  SourceDocumentCandidateComparisonDto,
+  SourceDocumentCandidateProjectionSummary,
 } from "@/modules/source-document/contracts";
 import {
   PROCESSING_FAILURE_CODES,
@@ -12,7 +14,9 @@ import {
   type ApplicationErrorCode,
   type RevisionOutcome,
 } from "@/application/contracts";
+import { parseAmount } from "@/lib/formatters";
 import {
+  ledgerEntries,
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
@@ -287,6 +291,92 @@ function mapListItem(
   };
 }
 
+function summarizeProjection(
+  entries: Array<{
+    amount: string;
+    currency: string | null;
+    convertedAmount: string | null;
+  }>
+): SourceDocumentCandidateProjectionSummary {
+  const total = entries.reduce((sum, entry) => {
+    const amt =
+      entry.convertedAmount != null && entry.convertedAmount !== ""
+        ? parseAmount(entry.convertedAmount)
+        : parseAmount(entry.amount);
+    return sum + amt;
+  }, 0);
+  return {
+    entryCount: entries.length,
+    total: total.toFixed(2),
+  };
+}
+
+async function loadCandidateComparisonMap(
+  rows: readonly SourceDocumentRow[],
+  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
+): Promise<Map<string, SourceDocumentCandidateComparisonDto>> {
+  const candidatePairs = rows
+    .filter((row) => {
+      if (row.activeRevisionId == null || row.pendingRevisionId == null) return false;
+      const pendingOutcome = revisions.get(row.pendingRevisionId)?.outcome;
+      return pendingOutcome === "completed";
+    })
+    .map((row) => ({
+      sourceDocumentId: row.id,
+      activeRevisionId: row.activeRevisionId!,
+      pendingRevisionId: row.pendingRevisionId!,
+    }));
+
+  if (candidatePairs.length === 0) return new Map();
+
+  const allRevisionIds = [
+    ...new Set(
+      candidatePairs.flatMap((p) => [p.activeRevisionId, p.pendingRevisionId])
+    ),
+  ];
+
+  const entries = await db
+    .select({
+      revisionId: ledgerEntries.sourceDocumentRevisionId,
+      amount: ledgerEntries.amount,
+      currency: ledgerEntries.currency,
+      convertedAmount: ledgerEntries.convertedAmount,
+    })
+    .from(ledgerEntries)
+    .where(
+      and(
+        inArray(ledgerEntries.sourceDocumentRevisionId, allRevisionIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+
+  const entriesByRevision = new Map<
+    string,
+    Array<{ amount: string; currency: string | null; convertedAmount: string | null }>
+  >();
+  for (const entry of entries) {
+    if (entry.revisionId == null) continue;
+    const group = entriesByRevision.get(entry.revisionId) ?? [];
+    group.push(entry);
+    entriesByRevision.set(entry.revisionId, group);
+  }
+
+  const result = new Map<string, SourceDocumentCandidateComparisonDto>();
+  for (const pair of candidatePairs) {
+    const activeEntries = entriesByRevision.get(pair.activeRevisionId) ?? [];
+    const candidateEntries = entriesByRevision.get(pair.pendingRevisionId) ?? [];
+    const active = summarizeProjection(activeEntries);
+    const candidate = summarizeProjection(candidateEntries);
+    result.set(pair.sourceDocumentId, {
+      active,
+      candidate,
+      changed: active.total !== candidate.total || active.entryCount !== candidate.entryCount,
+    });
+  }
+
+  return result;
+}
+
 function sanitizedErrorCode(
   outcome: string | undefined,
   failureCode: string | null | undefined
@@ -339,9 +429,19 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const hasMore = rows.length > input.limit;
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
   const [revisions, files] = await Promise.all([loadRevisionFacts(pageRows), loadFiles(pageRows)]);
+  const candidateComparisonMap = await loadCandidateComparisonMap(pageRows, revisions);
   const last = pageRows.at(-1);
   return {
-    items: pageRows.map((row) => mapListItem(row, revisions, files)),
+    items: pageRows.map((row) => {
+      const item = mapListItem(row, revisions, files);
+      if (item.status === "candidate_pending") {
+        const comparison = candidateComparisonMap.get(row.id);
+        if (comparison !== undefined) {
+          item.candidateComparison = comparison;
+        }
+      }
+      return item;
+    }),
     nextCursor: hasMore && last != null ? encodeCursor(last) : null,
   };
 }
@@ -362,8 +462,18 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
     loadRevisionFacts(resultRows),
     loadFiles(resultRows),
   ]);
+  const candidateComparisonMap = await loadCandidateComparisonMap(resultRows, revisions);
   return {
-    items: resultRows.map((row) => mapListItem(row, revisions, files)),
+    items: resultRows.map((row) => {
+      const item = mapListItem(row, revisions, files);
+      if (item.status === "candidate_pending") {
+        const comparison = candidateComparisonMap.get(row.id);
+        if (comparison !== undefined) {
+          item.candidateComparison = comparison;
+        }
+      }
+      return item;
+    }),
     hasMore,
     total: Number(countRow?.count ?? 0),
   };

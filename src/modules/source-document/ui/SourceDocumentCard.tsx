@@ -10,6 +10,8 @@ import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-do
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
+import { SourceDocumentCardStatePanel } from "./SourceDocumentCardStatePanel";
+import type { DateProvenance } from "@/modules/source-document/stream-grouping";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -32,6 +34,22 @@ interface SourceDocumentCardProps {
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  /** Date provenance from the unified stream grouping model. */
+  dateProvenance?: DateProvenance;
+  /** Whether this card is outside the active date/amount filter. */
+  outsideCurrentFilter?: boolean;
+  /** Candidate comparison data (for candidate_pending cards). */
+  candidateComparison?: {
+    active: { entryCount: number; total: string };
+    candidate: { entryCount: number; total: string };
+    changed: boolean;
+  } | null;
+  /** Whether a recovery mutation is pending. */
+  isMutationPending?: boolean;
+  /** Whether Accept is currently running. */
+  isAccepting?: boolean;
+  /** Whether Abandon is currently running. */
+  isAbandoning?: boolean;
 }
 
 export const SourceDocumentCard = memo(function SourceDocumentCard({
@@ -55,6 +73,12 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
+  dateProvenance,
+  outsideCurrentFilter,
+  candidateComparison,
+  isMutationPending = false,
+  isAccepting = false,
+  isAbandoning = false,
 }: SourceDocumentCardProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
@@ -106,6 +130,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         selectionMode={selectionMode}
         isSelected={isSelected}
         supportedActions={supportedActions}
+        {...(dateProvenance !== undefined ? { dateProvenance } : {})}
+        {...(outsideCurrentFilter !== undefined ? { outsideCurrentFilter } : {})}
+        {...(candidateComparison !== undefined ? { candidateComparison } : {})}
         onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
         onViewDetails={_onViewDetails}
         onToggleSelect={onToggleSelect}
@@ -115,6 +142,19 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         onAcceptCandidate={onAcceptCandidate}
         onAbandonCandidate={onAbandonCandidate}
         onDelete={onDelete}
+      />
+
+      <SourceDocumentCardStatePanel
+        status={status}
+        {...(candidateComparison !== undefined ? { candidateComparison: candidateComparison ?? null } : { candidateComparison: null })}
+        isMutationPending={isMutationPending}
+        isAccepting={isAccepting}
+        isAbandoning={isAbandoning}
+        {...(onAcceptCandidate !== undefined ? { onAccept: onAcceptCandidate } : {})}
+        {...(onAbandonCandidate !== undefined ? { onAbandon: onAbandonCandidate } : {})}
+        {...(onManualCorrection !== undefined ? { onManualCorrection } : {})}
+        {...((onEditRetry ?? onRetry) !== undefined ? { onEditRetry: onEditRetry ?? onRetry } : {})}
+        {...(_onViewDetails !== undefined ? { onViewDetails: _onViewDetails } : {})}
       />
 
       <AnimatePresence initial={false}>

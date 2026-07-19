@@ -62,6 +62,17 @@ export interface SourceDocumentDto {
   pendingRevisionId: string | null;
 }
 
+export interface SourceDocumentCandidateProjectionSummary {
+  entryCount: number;
+  total: string;
+}
+
+export interface SourceDocumentCandidateComparisonDto {
+  active: SourceDocumentCandidateProjectionSummary;
+  candidate: SourceDocumentCandidateProjectionSummary;
+  changed: boolean;
+}
+
 export interface SourceDocumentListItemDto {
   id: string;
   ledgerId: string;
@@ -81,6 +92,7 @@ export interface SourceDocumentListItemDto {
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | null;
   pendingRevisionId: string | null;
+  candidateComparison?: SourceDocumentCandidateComparisonDto;
 }
 
 export interface SourceDocumentLightDto {
