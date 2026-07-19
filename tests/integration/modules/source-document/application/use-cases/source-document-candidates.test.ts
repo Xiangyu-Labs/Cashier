@@ -292,6 +292,54 @@ describe("source document candidates", () => {
     expect(found?.supportedActions).toContain("accept_candidate");
   });
 
+  it("list read model attaches candidate comparison with active and pending summaries", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-comparison");
+
+    const { sourceDocumentId } = await setupDocumentWithCandidate(db, ledgerId);
+
+    const listed = await listTargetSourceDocuments({
+      ledgerId,
+      limit: 10,
+    });
+    const candidate = listed.items.find((item) => item.id === sourceDocumentId);
+    expect(candidate).not.toBeUndefined();
+    expect(candidate?.status).toBe("candidate_pending");
+
+    // Candidate comparison must be present
+    const comparison = candidate?.candidateComparison;
+    expect(comparison).toBeDefined();
+
+    // Active projection: 1 entry (Lunch, CNY 12.50)
+    expect(comparison?.active.entryCount).toBe(1);
+    expect(comparison?.active.total).toBe("12.50");
+
+    // Candidate projection: 1 entry (Dinner, CNY 25.00)
+    expect(comparison?.candidate.entryCount).toBe(1);
+    expect(comparison?.candidate.total).toBe("25.00");
+
+    // Totals differ, so changed must be true
+    expect(comparison?.changed).toBe(true);
+  });
+
+  it("list read model omits candidate comparison for non-candidate items", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-no-comparison");
+
+    await setupDocumentWithCandidate(db, ledgerId);
+
+    const listed = await listTargetSourceDocuments({
+      ledgerId,
+      limit: 10,
+    });
+    // Completed and non-candidate items must not carry comparison data
+    for (const item of listed.items) {
+      if (item.status !== "candidate_pending") {
+        expect(item.candidateComparison).toBeUndefined();
+      }
+    }
+  });
+
   it("accept then abandon throws ConflictError (candidate already resolved)", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-accept-then-abandon");

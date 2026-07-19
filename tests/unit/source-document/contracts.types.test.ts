@@ -8,6 +8,8 @@ import type {
   SourceDocumentLightDto,
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
+  SourceDocumentCandidateComparisonDto,
+  SourceDocumentCandidateProjectionSummary,
   PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
 import { SourceDocumentStatus, SourceDocumentType } from "@/modules/source-document/contracts";
@@ -60,5 +62,41 @@ describe("source-document contract types", () => {
   it("keeps ledger source-document reference status/type aligned", () => {
     expectTypeOf<SourceDocumentReferenceDto["status"]>().toEqualTypeOf<SourceDocumentStatusType>();
     expectTypeOf<SourceDocumentReferenceDto["type"]>().toEqualTypeOf<SourceDocumentTypeValue>();
+  });
+
+  it("candidate comparison DTO uses compact projection summaries", () => {
+    expectTypeOf<SourceDocumentCandidateComparisonDto["active"]>().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
+    expectTypeOf<SourceDocumentCandidateComparisonDto["candidate"]>().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
+    expectTypeOf<SourceDocumentCandidateComparisonDto["changed"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<SourceDocumentCandidateProjectionSummary["entryCount"]>().toEqualTypeOf<number>();
+    expectTypeOf<SourceDocumentCandidateProjectionSummary["total"]>().toEqualTypeOf<string>();
+  });
+
+  it("list item DTO accepts optional candidate comparison", () => {
+    const _item: SourceDocumentListItemDto = {
+      id: "doc-1",
+      ledgerId: "ledger-1",
+      title: null,
+      text: null,
+      files: [],
+      status: "candidate_pending",
+      type: "ai_parsed",
+      anomalyReason: null,
+      entryDate: null,
+      metadata: {},
+      createdAt: "2026-07-15T00:00:00.000Z",
+      updatedAt: "2026-07-15T00:00:00.000Z",
+      deletedAt: null,
+      hasImages: false,
+      supportedActions: ["accept_candidate", "abandon_candidate", "delete"],
+      errorCode: null,
+      pendingRevisionId: "rev-1",
+      candidateComparison: {
+        active: { entryCount: 2, total: "12.50" },
+        candidate: { entryCount: 2, total: "25.00" },
+        changed: true,
+      },
+    };
+    expect(_item.candidateComparison?.changed).toBe(true);
   });
 });
