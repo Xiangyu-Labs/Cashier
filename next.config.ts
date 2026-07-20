@@ -7,6 +7,8 @@ const withNextIntl = createNextIntlPlugin();
 const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = [];
 
 const nextConfig: NextConfig = {
+  // Browser performance smoke tests use a disposable development build directory.
+  distDir: process.env.BROWSER_WORKFLOW_DIST_DIR ?? ".next",
   // instrumentation.ts is enabled by default in Next.js 16+
   images: {
     unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload

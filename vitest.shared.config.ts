@@ -151,3 +151,41 @@ export const integrationProjects = [
     },
   }),
 ];
+
+export const performanceProjects = [
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "performance-node",
+      include: [
+        "tests/performance/server-boundaries.test.ts",
+        "tests/performance/r2-contract-boundaries.test.ts",
+      ],
+      exclude: defaultProjectExcludes,
+      environment: "node",
+      setupFiles: ["./tests/setup.ts"],
+      pool: "forks",
+      fileParallelism: false,
+      maxWorkers: 1,
+      testTimeout: 30000,
+    },
+  }),
+  defineProject({
+    resolve: {
+      alias: resolveAliases,
+    },
+    test: {
+      ...sharedProjectTestConfig,
+      name: "performance-dom",
+      include: ["tests/performance/client-boundaries.test.tsx"],
+      exclude: defaultProjectExcludes,
+      environment: "happy-dom",
+      setupFiles: ["./tests/setup.dom.ts"],
+      maxWorkers: 1,
+      testTimeout: 10000,
+    },
+  }),
+];
