@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ValidationError } from "@/lib/errors";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
 import { createAndQueueSourceDocument } from "@/modules/source-document/application/use-cases/create-and-queue-source-document";
 import type { InlineImageUploader } from "@/modules/source-document/application/use-cases/prepare-inline-images";
 
@@ -277,7 +278,7 @@ describe("createAndQueueSourceDocument", () => {
     });
 
     it("rejects decoded image data exceeding MAX_ORIGINAL_BYTES_PER_FILE before creating any upload plan or durable state", async () => {
-      const oversizedBase64 = Buffer.alloc(4 * 1024 * 1024 + 1, "a").toString("base64");
+      const oversizedBase64 = Buffer.alloc(MAX_ORIGINAL_BYTES_PER_FILE + 1, "a").toString("base64");
       await expect(
         createAndQueueSourceDocument(
           {
