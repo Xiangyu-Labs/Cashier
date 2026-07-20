@@ -1,14 +1,14 @@
 # Performance Validation Baseline
 
-Generated: 2026-07-20T04:01:02.790Z
+Generated: 2026-07-20T04:06:09.784Z
 
 ## Reproducibility
 
-- Commit: c9710febcbe555a216b85495cd4b6a0b04d38579
+- Commit: e3913833c4b6bb1d3b7c055e5c2b97bfea6287e8
 - Node: v26.5.0
 - Package manager command: `npm run performance:baseline`
 - Client route: /[locale]/(protected)/page
-- Build ID: rS9RDEnUIHqqZDuHEjmIZ
+- Build ID: 8a_TOeU4wHyh0PtNgqWb4
 
 ## Evidence Taxonomy
 
