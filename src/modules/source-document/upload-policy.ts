@@ -27,7 +27,7 @@ import { ValidationError } from "@/lib/errors";
 export const MAX_FILES = 10;
 
 /** Maximum original (raw uploaded) bytes per individual file. */
-export const MAX_ORIGINAL_BYTES_PER_FILE = 20 * 1024 * 1024; // 20 MB
+export const MAX_ORIGINAL_BYTES_PER_FILE = 4 * 1024 * 1024; // 4 MB
 
 /** Maximum normalized (post-processing) bytes per individual file. */
 export const MAX_NORMALIZED_BYTES_PER_FILE = 4 * 1024 * 1024; // 4 MB

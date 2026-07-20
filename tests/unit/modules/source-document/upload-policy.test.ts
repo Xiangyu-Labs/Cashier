@@ -23,7 +23,7 @@ import {
 describe("upload-policy constants", () => {
   it("has the designed Web defaults", () => {
     expect(MAX_FILES).toBe(10);
-    expect(MAX_ORIGINAL_BYTES_PER_FILE).toBe(20 * 1024 * 1024);
+    expect(MAX_ORIGINAL_BYTES_PER_FILE).toBe(4 * 1024 * 1024);
     expect(MAX_NORMALIZED_BYTES_PER_FILE).toBe(4 * 1024 * 1024);
     expect(MAX_NORMALIZED_BYTES_PER_REVISION).toBe(20 * 1024 * 1024);
     expect(MAX_MEGAPIXELS_PER_FILE).toBe(16);

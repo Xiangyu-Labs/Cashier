@@ -276,8 +276,8 @@ describe("createAndQueueSourceDocument", () => {
       expect(createPendingWithIntent).not.toHaveBeenCalled();
     });
 
-    it("rejects decoded image data exceeding 20 MB before creating any upload plan or durable state", async () => {
-      const oversizedBase64 = Buffer.alloc(20 * 1024 * 1024 + 1, "a").toString("base64");
+    it("rejects decoded image data exceeding MAX_ORIGINAL_BYTES_PER_FILE before creating any upload plan or durable state", async () => {
+      const oversizedBase64 = Buffer.alloc(4 * 1024 * 1024 + 1, "a").toString("base64");
       await expect(
         createAndQueueSourceDocument(
           {
