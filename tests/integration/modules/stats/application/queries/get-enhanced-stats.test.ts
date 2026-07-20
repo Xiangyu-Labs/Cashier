@@ -332,4 +332,70 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.heatmap.stats.p80Amount).toBe(40);
   });
+
+  it("aggregates multiple entries with the same date, category, and currency", async () => {
+    const db = getTestDb();
+
+    const [doc] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        text: "multiple entries same group",
+        status: "completed",
+        imageUrls: [],
+        entryDate: "2024-07-01",
+      })
+      .returning();
+
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: "100",
+        currency: "CNY",
+        itemName: "item 1",
+        categoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: "200",
+        currency: "CNY",
+        itemName: "item 2",
+        categoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: "300",
+        currency: "CNY",
+        itemName: "item 3",
+        categoryId,
+      },
+    ]);
+
+    const result = await getTargetEnhancedStatsQuery({
+      ledgerId,
+      queryRange: { from: "2024-07-01", to: "2024-07-31" },
+      compareRange: { from: "2024-06-01", to: "2024-06-30" },
+    });
+
+    expect(result.summary.total).toBe("600");
+
+    expect(result.categories).toHaveLength(1);
+    expect(result.categories[0]?.count).toBe(3);
+    expect(result.categories[0]?.totalConverted).toBe("600");
+
+    expect(result.chart).toHaveLength(1);
+    expect(result.chart[0]?.date).toBe("2024-07-01");
+    expect(result.chart[0]?.total).toBe(600);
+
+    expect(result.heatmap.days).toHaveLength(1);
+    expect(result.heatmap.days[0]?.entryCount).toBe(3);
+    expect(result.heatmap.days[0]?.totalAmount).toBe(600);
+    expect(result.heatmap.days[0]?.currencies).toEqual(["CNY"]);
+
+    expect(result.heatmap.stats.minAmount).toBe(600);
+    expect(result.heatmap.stats.maxAmount).toBe(600);
+  });
 });
