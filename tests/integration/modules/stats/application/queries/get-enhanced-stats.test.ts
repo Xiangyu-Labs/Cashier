@@ -336,6 +336,17 @@ describe("getEnhancedStatsQuery", () => {
   it("aggregates multiple entries with the same date, category, and currency", async () => {
     const db = getTestDb();
 
+    // Create a second category to exercise multiple aggregate groups on the same date
+    const insertedSecondCategory = await db
+      .insert(entryCategories)
+      .values({
+        ledgerId,
+        name: "交通",
+        sortOrder: 2,
+      })
+      .returning();
+    const secondCategoryId = requireFirst(insertedSecondCategory, "second category").id;
+
     const [doc] = await db
       .insert(sourceDocuments)
       .values({
@@ -348,6 +359,7 @@ describe("getEnhancedStatsQuery", () => {
       .returning();
 
     await db.insert(ledgerEntries).values([
+      // 3 entries with first category
       {
         ledgerId,
         sourceDocumentId: doc!.id,
@@ -372,6 +384,23 @@ describe("getEnhancedStatsQuery", () => {
         itemName: "item 3",
         categoryId,
       },
+      // 2 entries with second category (different aggregate group, same date)
+      {
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: "50",
+        currency: "CNY",
+        itemName: "item 4",
+        categoryId: secondCategoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: doc!.id,
+        amount: "150",
+        currency: "CNY",
+        itemName: "item 5",
+        categoryId: secondCategoryId,
+      },
     ]);
 
     const result = await getTargetEnhancedStatsQuery({
@@ -380,22 +409,39 @@ describe("getEnhancedStatsQuery", () => {
       compareRange: { from: "2024-06-01", to: "2024-06-30" },
     });
 
-    expect(result.summary.total).toBe("600");
+    expect(result.summary.total).toBe("800");
 
-    expect(result.categories).toHaveLength(1);
-    expect(result.categories[0]?.count).toBe(3);
-    expect(result.categories[0]?.totalConverted).toBe("600");
+    expect(result.categories).toHaveLength(2);
+
+    const primaryCategory = result.categories.find((c) => c.id === categoryId);
+    const secondaryCategory = result.categories.find(
+      (c) => c.id === secondCategoryId
+    );
+    expect(primaryCategory).toBeDefined();
+    expect(secondaryCategory).toBeDefined();
+
+    // Strict numeric type assertions on category counts
+    expect(typeof primaryCategory!.count).toBe("number");
+    expect(primaryCategory!.count).toBe(3);
+    expect(primaryCategory!.totalConverted).toBe("600");
+
+    expect(typeof secondaryCategory!.count).toBe("number");
+    expect(secondaryCategory!.count).toBe(2);
+    expect(secondaryCategory!.totalConverted).toBe("200");
 
     expect(result.chart).toHaveLength(1);
     expect(result.chart[0]?.date).toBe("2024-07-01");
-    expect(result.chart[0]?.total).toBe(600);
+    expect(result.chart[0]?.total).toBe(800);
 
     expect(result.heatmap.days).toHaveLength(1);
-    expect(result.heatmap.days[0]?.entryCount).toBe(3);
-    expect(result.heatmap.days[0]?.totalAmount).toBe(600);
+
+    // Strict numeric type assertion on heatmap entry count
+    expect(typeof result.heatmap.days[0]!.entryCount).toBe("number");
+    expect(result.heatmap.days[0]?.entryCount).toBe(5); // 3 + 2 across aggregate groups
+    expect(result.heatmap.days[0]?.totalAmount).toBe(800);
     expect(result.heatmap.days[0]?.currencies).toEqual(["CNY"]);
 
-    expect(result.heatmap.stats.minAmount).toBe(600);
-    expect(result.heatmap.stats.maxAmount).toBe(600);
+    expect(result.heatmap.stats.minAmount).toBe(800);
+    expect(result.heatmap.stats.maxAmount).toBe(800);
   });
 });

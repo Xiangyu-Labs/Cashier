@@ -50,7 +50,7 @@ async function fetchAggregatedRows(
   startStr: string,
   endStr: string
 ): Promise<AggregatedRow[]> {
-  return db
+  const rows = await db
     .select({
       entryDate: sourceDocuments.entryDate,
       currency: ledgerEntries.currency,
@@ -83,6 +83,13 @@ async function fetchAggregatedRows(
       entryCategories.icon
     )
     .orderBy(sourceDocuments.entryDate);
+
+  // pg returns COUNT(*) (int8) as a string by default; normalize to number
+  // so that processBatch does numeric addition, not string concatenation.
+  return rows.map((row) => ({
+    ...row,
+    entryCount: Number(row.entryCount),
+  }));
 }
 
 async function fetchRatesForDates(
@@ -199,21 +206,25 @@ export async function getEnhancedStatsQuery({
   queryRange,
   compareRange,
 }: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
-  const ledger = await db.query.ledgers.findFirst({
+  // Start ledger metadata and both aggregate queries in parallel --
+  // mainCurrency is only needed after rows arrive, in processBatch.
+  const ledgerPromise = db.query.ledgers.findFirst({
     where: eq(ledgers.id, ledgerId),
     columns: {
       metadata: true,
     },
   });
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const currentStart = parseDateString(queryRange.from);
   const currentEnd = parseDateString(queryRange.to);
 
-  const [currentRows, prevRows] = await Promise.all([
+  const [ledger, currentRows, prevRows] = await Promise.all([
+    ledgerPromise,
     fetchAggregatedRows(ledgerId, queryRange.from, queryRange.to),
     fetchAggregatedRows(ledgerId, compareRange.from, compareRange.to),
   ]);
+
+  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   const allDates = [
     ...(await collectUniqueDates(currentRows)),
