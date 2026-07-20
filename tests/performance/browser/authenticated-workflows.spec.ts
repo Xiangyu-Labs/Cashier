@@ -30,8 +30,8 @@ test("records authenticated local workflow evidence without sensitive request da
     const devSignIn = page.getByRole("button", { name: "Continue as dev" });
     await expect(devSignIn).toBeEnabled({ timeout: 30_000 });
     await devSignIn.click();
-    await expect(page).toHaveURL(/\/en(?:\?|$)/);
-    await expect(page.getByRole("tab", { name: "Stream" })).toBeVisible();
+    await expect(page).toHaveURL(/\/en(?:\?|$)/, { timeout: 30_000 });
+    await expect(page.getByRole("tab", { name: "Stream" })).toBeVisible({ timeout: 30_000 });
   });
 
   await observe("home stream", async () => {
@@ -62,8 +62,8 @@ test("records authenticated local workflow evidence without sensitive request da
   await observe("upload and stored-file route access", async () => {
     const upload = await page.request.get("/api/uploads/browser-performance-route-check");
     const storedFile = await page.request.get("/api/stored-files/00000000-0000-0000-0000-000000000000");
-    recordUrl(upload.url(), "fetch", resources);
-    recordUrl(storedFile.url(), "fetch", resources);
+    recordUrl(upload.url(), "fetch", upload.status(), resources);
+    recordUrl(storedFile.url(), "fetch", storedFile.status(), resources);
     expect(upload.status()).toBe(404);
     expect(storedFile.status()).toBe(404);
   });

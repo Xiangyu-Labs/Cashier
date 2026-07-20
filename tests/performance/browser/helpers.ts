@@ -58,11 +58,16 @@ export function observeResources(page: Page): BrowserResourceObservation[] {
   return resources;
 }
 
-export function recordUrl(url: string, resourceType: string, resources: BrowserResourceObservation[]): void {
+export function recordUrl(
+  url: string,
+  resourceType: string,
+  status: number | null,
+  resources: BrowserResourceObservation[]
+): void {
   const observation: BrowserResourceObservation = {
     url: redactRequestUrl(url),
     resourceType,
-    status: null,
+    status,
     transferSize: null,
   };
   if (!resources.some((item) => item.url === observation.url && item.resourceType === observation.resourceType)) {
