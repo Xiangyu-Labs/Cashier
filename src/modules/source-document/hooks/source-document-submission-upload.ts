@@ -6,7 +6,6 @@ import {
 } from "@/modules/source-document/actions";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
 import {
-  MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
   SUPPORTED_MIME_TYPES,
 } from "@/modules/source-document/upload-policy";

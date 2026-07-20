@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import {
   createToken,
   authenticateToken,
   prefixSuffix,
   computeHash,
   DOMAIN_PREFIX,
-  TOKEN_PREFIX,
   DISPLAY_PREFIX_LENGTH,
   DISPLAY_SUFFIX_LENGTH,
 } from "@/lib/security/service-credential-token";

@@ -165,7 +165,6 @@ export function LedgerPageClient({
   } = useLedgerDialogState();
 
   useLedgerPagePrefetching({
-    activeTab,
     isInputOpen,
     ledgerId,
     queryClient,

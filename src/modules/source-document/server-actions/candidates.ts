@@ -1,6 +1,5 @@
 "use server";
 
-import { currentApplication } from "@/application/current";
 import { acceptSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/accept-source-document-candidate";
 import { abandonSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/abandon-source-document-candidate";
 import type {

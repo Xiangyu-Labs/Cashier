@@ -13,7 +13,6 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { fireAndForget } from "@/lib/safe-async";
 import {
   deleteSourceDocumentAction,
   batchUpdateSourceDocumentsAction,

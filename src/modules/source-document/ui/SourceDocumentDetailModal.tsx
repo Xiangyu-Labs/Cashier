@@ -1,12 +1,12 @@
 "use client";
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocumentLight } from "@/modules/source-document/contracts";
-import { useState, useEffect, memo, useCallback, useRef, type ReactNode } from "react";
+import { useState, useEffect, memo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { AlertCircle, CheckCheck, Pencil, RefreshCw, Trash2, FileText, X, Save, XCircle } from "lucide-react";
+import { AlertCircle, CheckCheck, RefreshCw, Trash2, FileText, X, Save, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";

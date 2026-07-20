@@ -10,7 +10,6 @@ import type { LedgerTab } from "@/modules/workspace/tabs";
 const INPUT_PREFETCH_DELAY = 2000;
 
 interface UseLedgerPagePrefetchingOptions {
-  activeTab: LedgerTab;
   isInputOpen: boolean;
   ledgerId: string;
   queryClient: QueryClient;
@@ -34,7 +33,6 @@ export function preloadTab(tab: LedgerTab): void {
 }
 
 export function useLedgerPagePrefetching({
-  activeTab,
   isInputOpen,
   ledgerId,
   queryClient,
