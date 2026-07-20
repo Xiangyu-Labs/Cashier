@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER, QUERY } from "@/lib/constants";
 import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
@@ -75,13 +76,13 @@ export async function getLedgerPageBootstrap(input: {
           queryClient.prefetchQuery({
             queryKey: queryKeys.sourceDocumentAttention(input.ledgerId),
             queryFn: () => getSourceDocumentAttentionQuery(input.ledgerId),
-            staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
+            staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           // Counts (lightweight aggregation)
           queryClient.prefetchQuery({
             queryKey: queryKeys.sourceDocumentCounts(input.ledgerId),
             queryFn: () => getSourceDocumentCountsQuery(input.ledgerId),
-            staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
+            staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           // First completed page (paginated)
           queryClient.prefetchInfiniteQuery({
@@ -111,7 +112,7 @@ export async function getLedgerPageBootstrap(input: {
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: Awaited<ReturnType<typeof listSourceDocuments>>) =>
               lastPage.nextCursor,
-            staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
+            staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           queryClient.prefetchQuery({
             queryKey: queryKeys.summary(

@@ -11,4 +11,12 @@ describe("public env source", () => {
     expect(source).not.toContain("runtimeEnv");
     expect(source).not.toContain("./defaults");
   });
+
+  it("keeps src/lib/constants.ts free of runtimeEnv, startup, and zod imports", () => {
+    const source = readFileSync(path.resolve(process.cwd(), "src/lib/constants.ts"), "utf8");
+    expect(source).not.toContain("runtimeEnv");
+    expect(source).not.toContain("./env/runtime");
+    expect(source).not.toContain("./startup");
+    expect(source).not.toContain("zod");
+  });
 });
