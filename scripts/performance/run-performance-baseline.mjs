@@ -18,13 +18,19 @@ function runVitest(project) {
 }
 
 const structuralPath = ".tmp/performance/structural-analysis.json";
+const browserPath = ".tmp/performance/browser-workflows.json";
 
 try {
   await run("scripts/performance/analyze-client-bundle.mjs", ["--build"]);
   await rm(path.join(projectRoot, structuralPath), { force: true });
   await runVitest("performance-node");
   await runVitest("performance-dom");
-  await run("scripts/performance/write-performance-report.mjs", ["--structural", structuralPath]);
+  try {
+    await run("scripts/performance/run-browser-workflows.mjs");
+  } catch (error) {
+    console.warn(`Browser workflow runner failed: ${error.message}`);
+  }
+  await run("scripts/performance/write-performance-report.mjs", ["--structural", structuralPath, "--browser", browserPath]);
 } catch (error) {
   console.error(`Performance baseline failed: ${error.message}`);
   process.exitCode = 1;

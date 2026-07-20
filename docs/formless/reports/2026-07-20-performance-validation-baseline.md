@@ -1,12 +1,13 @@
 # Performance Validation Baseline
 
-Generated: 2026-07-20T04:06:09.784Z
+Generated: 2026-07-20T04:22:51.761Z
 
 ## Reproducibility
 
-- Commit: e3913833c4b6bb1d3b7c055e5c2b97bfea6287e8
+- Commit: dc11aed3c5be09f89521be7439cb8bcb8235e868
 - Node: v26.5.0
-- Package manager command: `npm run performance:baseline`
+- Aggregate command: `npm run report:performance`
+- Browser prerequisite: `npx playwright install chromium`
 - Client route: /[locale]/(protected)/page
 - Build ID: 8a_TOeU4wHyh0PtNgqWb4
 
@@ -21,7 +22,7 @@ Generated: 2026-07-20T04:06:09.784Z
 
 - Bundle analysis: completed
 - Structural checks: completed
-- Browser workflow: skipped (artifact not supplied)
+- Browser workflow: blocked
 
 ## Client Graph Metrics
 
@@ -42,7 +43,8 @@ Generated: 2026-07-20T04:06:09.784Z
 | --- | --- | --- | --- |
 | Default stream client graph | confirmed-build | Fresh completed webpack manifest metric | Compare after feature-boundary changes |
 | Inactive tabs and forms | confirmed-build | Completed loadable-manifest metrics | Verify they remain outside the default stream |
-| Browser workflow duration | external-validation-needed | No local browser artifact | Preview deployment, same seeded dataset, three-run median |
+| Local browser workflow shape | not-observed | The local browser workflow did not complete; failure screenshots and traces are in ignored .tmp/performance/playwright output. | npm run test:performance:browser |
+| Browser workflow duration | external-validation-needed | Local durations are never cloud latency evidence | Preview deployment, same seeded dataset, three-run median |
 | Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |
 
 ## Deterministic Structural Findings
@@ -61,6 +63,23 @@ Generated: 2026-07-20T04:06:09.784Z
 | R2 geographic transfer latency | external-validation-needed | These tests use a local storage double and do not measure real bucket latency, bandwidth, or location. | tests/performance/r2-contract-boundaries.test.ts |
 | Stored-file route authorizes before object download | confirmed-structural | A different authenticated user receives 404 and the mocked R2 download is not invoked; an authorized read returns trusted bytes without exposing the storage key. | tests/performance/r2-contract-boundaries.test.ts |
 | Upload-plan creation persists scoped targets before object upload | confirmed-structural | A local upload plan creates one session and one scoped PUT target without calling object storage. | tests/performance/r2-contract-boundaries.test.ts |
+
+## Local Browser Workflow Observations
+
+| Workflow | Classification | Local evidence | Next validation |
+| --- | --- | --- | --- |
+| No browser workflow recorded | blocked | The local browser workflow did not complete; failure screenshots and traces are in ignored .tmp/performance/playwright output. | npm run test:performance:browser |
+
+Resource observations retain URL paths, query parameter names, resource type, response status, and exposed transfer size only. Query values, cookies, tokens, user/ledger IDs, document content, and file bytes are never written. Failure screenshots and traces remain in ignored local output.
+
+## Prioritized Confirmed Candidates
+
+| Priority | Candidate | Affected workflow | Evidence | Boundary | Expected impact | Complexity | Risk | Recommended next action |
+| ---: | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Default stream client graph | Authenticated home stream | confirmed-build client graph metric | Client JavaScript delivery | Lower initial client bytes | Medium | Medium | Compare a focused feature-boundary change against a fresh webpack analysis |
+| 2 | Inactive tabs and forms | Tab intent and record entry | confirmed-build loadable-manifest metrics | Deferred feature loading | Avoid inactive feature cost before intent | Low | Low | Verify deferred boundaries remain outside the default stream |
+
+Cloud database, R2, and network latency are intentionally not ranked because this harness has no production-like timing evidence.
 
 ## External Validation Checklist
 

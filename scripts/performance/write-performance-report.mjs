@@ -94,6 +94,27 @@ function metricRows(metrics) {
     .join("\n");
 }
 
+function browserWorkflowRows(browser) {
+  if (browser?.status !== "completed" || !Array.isArray(browser.workflows) || browser.workflows.length === 0) {
+    const reason = browser?.reason ?? "No local browser artifact";
+    const remediation = browser?.remediation ?? "Install Chromium and run npm run test:performance:browser";
+    return `| No browser workflow recorded | ${browser?.status ?? "skipped"} | ${reason} | ${remediation} |`;
+  }
+  return browser.workflows
+    .map(
+      (workflow) =>
+        `| ${workflow.name} | local-observation | ${workflow.durationMs} ms (local development only) | Compare only in a preview deployment |`
+    )
+    .join("\n");
+}
+
+function browserCandidateRow(browser) {
+  if (browser?.status === "completed") {
+    return "| Local browser workflow shape | local-observation | Authenticated local route, request/resource, and duration observations | Validate with preview deployment and representative data |";
+  }
+  return `| Local browser workflow shape | not-observed | ${browser?.reason ?? "No local browser artifact"} | ${browser?.remediation ?? "Install Chromium and run npm run test:performance:browser"} |`;
+}
+
 export async function writePerformanceReport({
   projectRoot = PROJECT_ROOT,
   bundlePath = DEFAULT_BUNDLE,
@@ -111,7 +132,8 @@ export async function writePerformanceReport({
     `## Reproducibility\n\n` +
     `- Commit: ${command("git", ["rev-parse", "HEAD"])}\n` +
     `- Node: ${process.version}\n` +
-    `- Package manager command: \`npm run performance:baseline\`\n` +
+    `- Aggregate command: \`npm run report:performance\`\n` +
+    `- Browser prerequisite: \`npx playwright install chromium\`\n` +
     `- Client route: ${bundle?.route ?? "not analyzed"}\n` +
     `- Build ID: ${bundle?.buildId ?? "not analyzed"}\n\n` +
     `## Evidence Taxonomy\n\n` +
@@ -130,7 +152,8 @@ export async function writePerformanceReport({
     `\n## Candidate Classification\n\n` +
     `| Candidate | Classification | Evidence | Next validation |\n| --- | --- | --- | --- |\n` +
     `${bundleCandidateRows(bundle)}\n` +
-    `| Browser workflow duration | external-validation-needed | ${browser == null ? "No local browser artifact" : "Local-only artifact"} | Preview deployment, same seeded dataset, three-run median |\n` +
+    `${browserCandidateRow(browser)}\n` +
+    `| Browser workflow duration | external-validation-needed | Local durations are never cloud latency evidence | Preview deployment, same seeded dataset, three-run median |\n` +
     `| Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |\n\n` +
     `## Deterministic Structural Findings\n\n` +
     `| Finding | Classification | Evidence | Test location |\n| --- | --- | --- | --- |\n` +
@@ -138,6 +161,15 @@ export async function writePerformanceReport({
     `## R2 Contract Findings\n\n` +
     `| Finding | Classification | Evidence | Test location |\n| --- | --- | --- | --- |\n` +
     `${findingRows(structural, "r2-contract")}\n\n` +
+    `## Local Browser Workflow Observations\n\n` +
+    `| Workflow | Classification | Local evidence | Next validation |\n| --- | --- | --- | --- |\n` +
+    `${browserWorkflowRows(browser)}\n\n` +
+    `Resource observations retain URL paths, query parameter names, resource type, response status, and exposed transfer size only. Query values, cookies, tokens, user/ledger IDs, document content, and file bytes are never written. Failure screenshots and traces remain in ignored local output.\n\n` +
+    `## Prioritized Confirmed Candidates\n\n` +
+    `| Priority | Candidate | Affected workflow | Evidence | Boundary | Expected impact | Complexity | Risk | Recommended next action |\n| ---: | --- | --- | --- | --- | --- | --- | --- | --- |\n` +
+    `| 1 | Default stream client graph | Authenticated home stream | confirmed-build client graph metric | Client JavaScript delivery | Lower initial client bytes | Medium | Medium | Compare a focused feature-boundary change against a fresh webpack analysis |\n` +
+    `| 2 | Inactive tabs and forms | Tab intent and record entry | confirmed-build loadable-manifest metrics | Deferred feature loading | Avoid inactive feature cost before intent | Low | Low | Verify deferred boundaries remain outside the default stream |\n\n` +
+    `Cloud database, R2, and network latency are intentionally not ranked because this harness has no production-like timing evidence.\n\n` +
     `## External Validation Checklist\n\n` +
     `- Use a preview or production-like deployment in the intended Vercel, Neon, R2, and user regions.\n` +
     `- Use the same seeded account, representative data volume, browser profile, and network profile before and after a change.\n` +

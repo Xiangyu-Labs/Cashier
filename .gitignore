@@ -23,6 +23,8 @@ test_output*.txt
 
 # misc
 .tmp/
+/test-results/
+/playwright-report/
 .DS_Store
 *.pem
 /data/

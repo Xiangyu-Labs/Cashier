@@ -28,7 +28,11 @@
     "format:check": "prettier --check .",
     "performance:analyze": "node scripts/performance/analyze-client-bundle.mjs --build",
     "performance:report": "node scripts/performance/write-performance-report.mjs",
-    "performance:baseline": "node scripts/performance/run-performance-baseline.mjs"
+    "performance:baseline": "node scripts/performance/run-performance-baseline.mjs",
+    "test:performance:build": "npm run performance:analyze",
+    "test:performance:structural": "npm run test:prepare && vitest run --config vitest.config.ts --project performance-node --project performance-dom",
+    "test:performance:browser": "node scripts/performance/run-browser-workflows.mjs",
+    "report:performance": "npm run performance:baseline"
   },
   "dependencies": {
     "@auth/core": "0.41.1",
@@ -89,6 +93,7 @@
     "esbuild": ">=0.25.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
