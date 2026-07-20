@@ -72,6 +72,19 @@ function bundleCandidateRows(bundle) {
   ].join("\n");
 }
 
+function findingRows(structural, category) {
+  const findings = structural?.findings?.filter((finding) => finding.category === category) ?? [];
+  if (findings.length === 0) {
+    return "| No finding recorded | not-observed | No completed structural artifact for this category | Re-run the deterministic performance project |";
+  }
+  return findings
+    .map(
+      (finding) =>
+        `| ${finding.title} | ${finding.evidenceClass} | ${finding.summary} | ${finding.location} |`
+    )
+    .join("\n");
+}
+
 function metricRows(metrics) {
   return Object.entries(metrics)
     .map(([key, metric]) => {
@@ -119,6 +132,12 @@ export async function writePerformanceReport({
     `${bundleCandidateRows(bundle)}\n` +
     `| Browser workflow duration | external-validation-needed | ${browser == null ? "No local browser artifact" : "Local-only artifact"} | Preview deployment, same seeded dataset, three-run median |\n` +
     `| Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |\n\n` +
+    `## Deterministic Structural Findings\n\n` +
+    `| Finding | Classification | Evidence | Test location |\n| --- | --- | --- | --- |\n` +
+    `${findingRows(structural, "structural")}\n\n` +
+    `## R2 Contract Findings\n\n` +
+    `| Finding | Classification | Evidence | Test location |\n| --- | --- | --- | --- |\n` +
+    `${findingRows(structural, "r2-contract")}\n\n` +
     `## External Validation Checklist\n\n` +
     `- Use a preview or production-like deployment in the intended Vercel, Neon, R2, and user regions.\n` +
     `- Use the same seeded account, representative data volume, browser profile, and network profile before and after a change.\n` +

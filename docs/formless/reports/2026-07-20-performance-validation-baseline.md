@@ -1,14 +1,14 @@
 # Performance Validation Baseline
 
-Generated: 2026-07-20T03:50:33.563Z
+Generated: 2026-07-20T04:01:02.790Z
 
 ## Reproducibility
 
-- Commit: 5b3c3b2cd001f46eee569f624b6ddacb05595a4e
+- Commit: c9710febcbe555a216b85495cd4b6a0b04d38579
 - Node: v26.5.0
 - Package manager command: `npm run performance:baseline`
 - Client route: /[locale]/(protected)/page
-- Build ID: wMKBlF0fr3A6DThVj9wwe
+- Build ID: rS9RDEnUIHqqZDuHEjmIZ
 
 ## Evidence Taxonomy
 
@@ -20,7 +20,7 @@ Generated: 2026-07-20T03:50:33.563Z
 ## Collection Status
 
 - Bundle analysis: completed
-- Structural checks: skipped (artifact not supplied)
+- Structural checks: completed
 - Browser workflow: skipped (artifact not supplied)
 
 ## Client Graph Metrics
@@ -44,6 +44,23 @@ Generated: 2026-07-20T03:50:33.563Z
 | Inactive tabs and forms | confirmed-build | Completed loadable-manifest metrics | Verify they remain outside the default stream |
 | Browser workflow duration | external-validation-needed | No local browser artifact | Preview deployment, same seeded dataset, three-run median |
 | Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |
+
+## Deterministic Structural Findings
+
+| Finding | Classification | Evidence | Test location |
+| --- | --- | --- | --- |
+| Deferred workspace features use dynamic import boundaries | confirmed-structural | Tabs, source-document forms, and the modal renderer are declared through dynamic imports; this confirms a module boundary, not browser download timing or cache behavior. | tests/performance/client-boundaries.test.tsx |
+| Hydrated ledger and category query keys have client query functions | confirmed-structural | Server bootstrap hydrates ledger/category keys and the client declares matching useQuery functions; duplicate network invocation is not asserted without a browser request trace. | tests/performance/server-boundaries.test.ts |
+| Page source has one direct auth call | confirmed-structural | The protected page invokes auth() once; deeper current-user and ledger-context duplication is not observed through this source-level seam. | tests/performance/server-boundaries.test.ts |
+| Active stream bootstrap operations start in parallel | confirmed-structural | Categories, attention, counts, first completed page, and summary queries are invoked before any deferred query resolves. | tests/performance/server-boundaries.test.ts |
+
+## R2 Contract Findings
+
+| Finding | Classification | Evidence | Test location |
+| --- | --- | --- | --- |
+| R2 geographic transfer latency | external-validation-needed | These tests use a local storage double and do not measure real bucket latency, bandwidth, or location. | tests/performance/r2-contract-boundaries.test.ts |
+| Stored-file route authorizes before object download | confirmed-structural | A different authenticated user receives 404 and the mocked R2 download is not invoked; an authorized read returns trusted bytes without exposing the storage key. | tests/performance/r2-contract-boundaries.test.ts |
+| Upload-plan creation persists scoped targets before object upload | confirmed-structural | A local upload plan creates one session and one scoped PUT target without calling object storage. | tests/performance/r2-contract-boundaries.test.ts |
 
 ## External Validation Checklist
 
