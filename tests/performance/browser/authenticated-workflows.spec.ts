@@ -48,9 +48,17 @@ test("records authenticated local workflow evidence without sensitive request da
   await observe("filter action", async () => {
     await page.getByRole("tab", { name: "Stream" }).click();
     await page.getByRole("button", { name: "More Filters" }).click();
-    await page.getByRole("button", { name: "Past week" }).click();
+    const pastSevenDays = page.getByRole("button", { name: "Past 7 Days", exact: true });
+    await expect(pastSevenDays).toBeVisible();
+    await pastSevenDays.click();
     await page.getByRole("button", { name: "Apply Filters" }).click();
-    await expect(page).toHaveURL(/period=week/);
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get("tab") === "stream" &&
+        url.searchParams.get("period") === "custom" &&
+        url.searchParams.has("startDate") &&
+        url.searchParams.has("endDate")
+    );
   });
 
   await observe("deferred entry feature opening", async () => {
