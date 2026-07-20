@@ -24,10 +24,10 @@ describe("writePerformanceReport", () => {
     const report = await readFile(reportPath, "utf8");
 
     expect(report).toContain(
-      "| Default stream client graph | skipped | Bundle analysis artifact not supplied; no fresh webpack manifest metric is available"
+      "| Default stream client graph | not-observed | Bundle analysis artifact not supplied; no fresh webpack manifest metric is available"
     );
     expect(report).toContain(
-      "| Inactive tabs and forms | skipped | Bundle analysis artifact not supplied; no fresh webpack manifest metric is available"
+      "| Inactive tabs and forms | not-observed | Bundle analysis artifact not supplied; no fresh webpack manifest metric is available"
     );
     expect(report).not.toContain("Default stream client graph | confirmed-build");
     expect(report).not.toContain("Inactive tabs and forms | confirmed-build");

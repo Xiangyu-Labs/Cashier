@@ -1,10 +1,10 @@
 # Performance Validation Baseline
 
-Generated: 2026-07-20T03:37:33.549Z
+Generated: 2026-07-20T03:50:33.563Z
 
 ## Reproducibility
 
-- Commit: 8a2a7b5e0349851c0c5114605a3165fe80cf6e66
+- Commit: 5b3c3b2cd001f46eee569f624b6ddacb05595a4e
 - Node: v26.5.0
 - Package manager command: `npm run performance:baseline`
 - Client route: /[locale]/(protected)/page
@@ -40,10 +40,10 @@ Generated: 2026-07-20T03:37:33.549Z
 
 | Candidate | Classification | Evidence | Next validation |
 | --- | --- | --- | --- |
-| Default stream client graph | confirmed baseline | Fresh webpack manifest metric | Compare after feature-boundary changes |
-| Inactive tabs and forms | confirmed baseline | Loadable-manifest metrics | Verify they remain outside the default stream |
-| Browser workflow duration | external validation needed | No local browser artifact | Preview deployment, same seeded dataset, three-run median |
-| Database and R2 latency | external validation needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |
+| Default stream client graph | confirmed-build | Fresh completed webpack manifest metric | Compare after feature-boundary changes |
+| Inactive tabs and forms | confirmed-build | Completed loadable-manifest metrics | Verify they remain outside the default stream |
+| Browser workflow duration | external-validation-needed | No local browser artifact | Preview deployment, same seeded dataset, three-run median |
+| Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |
 
 ## External Validation Checklist
 

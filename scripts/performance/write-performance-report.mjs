@@ -49,10 +49,10 @@ function hasCompletedBundle(bundle) {
 function unavailableBundleCandidateRows(bundle) {
   const classification =
     bundle == null || bundle.status === "skipped"
-      ? "skipped"
+      ? "not-observed"
       : bundle.status === "blocked"
-        ? "blocked"
-        : "external validation needed";
+        ? "not-observed"
+        : "external-validation-needed";
   const status = bundle?.status ?? "artifact not supplied";
   const evidence = `Bundle analysis ${status}; no fresh webpack manifest metric is available`;
   const nextValidation =
@@ -117,8 +117,8 @@ export async function writePerformanceReport({
     `\n## Candidate Classification\n\n` +
     `| Candidate | Classification | Evidence | Next validation |\n| --- | --- | --- | --- |\n` +
     `${bundleCandidateRows(bundle)}\n` +
-    `| Browser workflow duration | external validation needed | ${browser == null ? "No local browser artifact" : "Local-only artifact"} | Preview deployment, same seeded dataset, three-run median |\n` +
-    `| Database and R2 latency | external validation needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |\n\n` +
+    `| Browser workflow duration | external-validation-needed | ${browser == null ? "No local browser artifact" : "Local-only artifact"} | Preview deployment, same seeded dataset, three-run median |\n` +
+    `| Database and R2 latency | external-validation-needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |\n\n` +
     `## External Validation Checklist\n\n` +
     `- Use a preview or production-like deployment in the intended Vercel, Neon, R2, and user regions.\n` +
     `- Use the same seeded account, representative data volume, browser profile, and network profile before and after a change.\n` +
