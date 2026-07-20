@@ -189,6 +189,20 @@ async function buildMetric({ definition, projectRoot, clientModules, loadableMan
   }
 
   const files = matches.flatMap(([, value]) => value.files ?? value.chunks ?? []).filter(isJavaScriptChunk);
+  if (files.length === 0) {
+    const reason = `Matched ${definition.label.toLowerCase()} manifest entries do not reference JavaScript client chunks; no byte metric was inferred.`;
+    if (definition.required) {
+      throw new ManifestAnalysisError(`Required ${reason}`);
+    }
+    return {
+      label: definition.label,
+      status: "not-observed",
+      source: definition.source,
+      markers: definition.moduleMarkers ?? definition.loadableMarkers,
+      matchedModules: matches.map(([key]) => key),
+      reason,
+    };
+  }
   const chunks = await measureFiles(projectRoot, files);
   return {
     label: definition.label,

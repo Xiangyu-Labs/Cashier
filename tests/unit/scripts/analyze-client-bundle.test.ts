@@ -74,4 +74,18 @@ describe("analyzeClientBundle", () => {
     await expect(analyzeClientBundle({ projectRoot: root })).rejects.toBeInstanceOf(ManifestAnalysisError);
     await expect(analyzeClientBundle({ projectRoot: root })).rejects.toThrow("Missing client-reference manifest");
   });
+
+  it("fails instead of reporting zero bytes when a required marker has no JavaScript chunks", async () => {
+    const root = await fixture();
+    const manifestPath = path.join(root, ".next/react-loadable-manifest.json");
+    const manifest = JSON.parse(await (await import("node:fs/promises")).readFile(manifestPath, "utf8"));
+    manifest["LedgerPageClient -> @/modules/workspace/ui/DetailsTab"] = { files: ["static/chunks/details.css"] };
+    manifest["LedgerPageClient -> @/modules/workspace/ui/StatsTab"] = { files: ["static/chunks/stats.css"] };
+    manifest["LedgerPageClient -> @/modules/ledger/ui"] = { files: ["static/chunks/settings.css"] };
+    await writeFile(manifestPath, JSON.stringify(manifest));
+
+    await expect(analyzeClientBundle({ projectRoot: root })).rejects.toThrow(
+      "Matched inactive tabs manifest entries do not reference JavaScript client chunks"
+    );
+  });
 });

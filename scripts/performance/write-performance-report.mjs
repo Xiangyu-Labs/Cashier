@@ -40,6 +40,38 @@ function layerStatus(value, name) {
   return `${name}: ${value.status ?? "recorded"}`;
 }
 
+function hasCompletedBundle(bundle) {
+  return (
+    bundle?.status === "completed" && bundle.metrics != null && typeof bundle.metrics === "object"
+  );
+}
+
+function unavailableBundleCandidateRows(bundle) {
+  const classification =
+    bundle == null || bundle.status === "skipped"
+      ? "skipped"
+      : bundle.status === "blocked"
+        ? "blocked"
+        : "external validation needed";
+  const status = bundle?.status ?? "artifact not supplied";
+  const evidence = `Bundle analysis ${status}; no fresh webpack manifest metric is available`;
+  const nextValidation =
+    "Complete a fresh production webpack bundle analysis before classifying this candidate";
+
+  return [
+    `| Default stream client graph | ${classification} | ${evidence} | ${nextValidation} |`,
+    `| Inactive tabs and forms | ${classification} | ${evidence} | ${nextValidation} |`,
+  ].join("\n");
+}
+
+function bundleCandidateRows(bundle) {
+  if (!hasCompletedBundle(bundle)) return unavailableBundleCandidateRows(bundle);
+  return [
+    "| Default stream client graph | confirmed-build | Fresh completed webpack manifest metric | Compare after feature-boundary changes |",
+    "| Inactive tabs and forms | confirmed-build | Completed loadable-manifest metrics | Verify they remain outside the default stream |",
+  ].join("\n");
+}
+
 function metricRows(metrics) {
   return Object.entries(metrics)
     .map(([key, metric]) => {
@@ -79,13 +111,12 @@ export async function writePerformanceReport({
     `- ${layerStatus(structural, "Structural checks")}\n` +
     `- ${layerStatus(browser, "Browser workflow")}\n\n` +
     `## Client Graph Metrics\n\n` +
-    (bundle == null
-      ? "Bundle analysis is skipped; no client byte metric is available.\n"
+    (!hasCompletedBundle(bundle)
+      ? `Bundle analysis is ${bundle?.status ?? "skipped"}; no client byte metric is available.\n`
       : `| Graph | Status | Raw | Gzip | Detail |\n| --- | --- | ---: | ---: | --- |\n${metricRows(bundle.metrics)}\n`) +
     `\n## Candidate Classification\n\n` +
     `| Candidate | Classification | Evidence | Next validation |\n| --- | --- | --- | --- |\n` +
-    `| Default stream client graph | confirmed baseline | Fresh webpack manifest metric | Compare after feature-boundary changes |\n` +
-    `| Inactive tabs and forms | confirmed baseline | Loadable-manifest metrics | Verify they remain outside the default stream |\n` +
+    `${bundleCandidateRows(bundle)}\n` +
     `| Browser workflow duration | external validation needed | ${browser == null ? "No local browser artifact" : "Local-only artifact"} | Preview deployment, same seeded dataset, three-run median |\n` +
     `| Database and R2 latency | external validation needed | Not collected by this harness | Instrument preview/production-like requests without sensitive data |\n\n` +
     `## External Validation Checklist\n\n` +
