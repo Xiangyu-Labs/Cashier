@@ -90,6 +90,9 @@ chant.sh
 !/docs/formless/plans/2026-07-18-remaining-product-completion.md
 !/docs/formless/specs/
 !/docs/formless/specs/**
+!/docs/formless/reports/
+!/docs/formless/reports/.gitkeep
+!/docs/formless/reports/2026-07-20-performance-validation-baseline.md
 
 # SDD task artifacts
 .superpowers/

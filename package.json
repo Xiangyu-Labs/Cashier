@@ -25,7 +25,10 @@
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "performance:analyze": "node scripts/performance/analyze-client-bundle.mjs --build",
+    "performance:report": "node scripts/performance/write-performance-report.mjs",
+    "performance:baseline": "node scripts/performance/run-performance-baseline.mjs"
   },
   "dependencies": {
     "@auth/core": "0.41.1",
