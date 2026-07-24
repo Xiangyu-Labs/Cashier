@@ -1,148 +1,189 @@
 "use client";
+import { useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
-  invalidateLedgerEntries,
   invalidateLedgerStats,
-  invalidateSourceDocumentAttention,
-  invalidateSourceDocumentCompleted,
-  invalidateSourceDocumentCounts,
-  invalidateSourceDocuments,
-  matchSourceDocumentCollection,
   queryKeys,
 } from "@/lib/query-keys";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { CacheTransactionManager } from "@/lib/mutations/cache-transaction";
 import {
   deleteSourceDocumentAction,
   batchUpdateSourceDocumentsAction,
 } from "@/modules/source-document/actions";
-import type { SourceDocumentAttentionDto, SourceDocumentCollectionDto } from "@/modules/source-document/contracts";
+import {
+  applyOptimisticDelete,
+  applyOptimisticUpsert,
+  getStreamQueryMatches,
+} from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
+import type { InfiniteData } from "@tanstack/react-query";
+
+type DeleteContext = { operationId: string };
+type BatchDatesContext = { operationId: string; ids: string[] };
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
+  const queryClient = useQueryClient();
+  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
 
-  const deleteSourceDocument = useLedgerMutation(ledgerId, {
+  const deleteSourceDocument = useMutation<void, Error, string, DeleteContext>({
     mutationFn: async (id: string) => {
-      await deleteSourceDocumentAction(ledgerId, id);
+      const operationId = crypto.randomUUID();
+      await deleteSourceDocumentAction(ledgerId, id, operationId);
     },
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onOptimisticUpdate: (queryClient, id) => {
-      // Snapshot and update legacy collection caches
-      const collectionSnapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchSourceDocumentCollection(ledgerId),
+    onMutate: async (id) => {
+      const op = transactionRef.current.startOperation(ledgerId);
+
+      // Capture the current entity from stream cache for rollback
+      const matches = getStreamQueryMatches(queryClient, ledgerId);
+      let prevEntity: SourceDocumentListItemDto | null = null;
+
+      for (const [, data] of matches) {
+        if (!data) continue;
+        for (const page of data.pages) {
+          const found = page.items.find((item) => item.id === id);
+          if (found) {
+            prevEntity = found;
+            break;
+          }
+        }
+        if (prevEntity) break;
+      }
+
+      op.patches.push({
+        type: "delete",
+        entityId: id,
+        entity: prevEntity ?? {
+          id,
+          ledgerId,
+          title: null,
+          text: null,
+          files: [],
+          status: "completed",
+          type: "ai_parsed",
+          anomalyReason: null,
+          entryDate: null,
+          metadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          deletedAt: null,
+          hasImages: false,
+          supportedActions: [],
+          errorCode: null,
+          pendingRevisionId: null,
+          ledgerEntries: [],
+        } as SourceDocumentListItemDto,
+        prevEntity,
       });
 
-      queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old) => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.filter((doc) => doc.id !== id),
-            total: Math.max(0, old.total - 1),
-          };
-        }
-      );
+      // Apply optimistic delete to stream cache
+      applyOptimisticDelete(queryClient, ledgerId, id);
 
-      // Snapshot and update attention cache
-      const attentionSnapshots = queryClient.getQueriesData<SourceDocumentAttentionDto>({
-        queryKey: queryKeys.sourceDocumentAttention(ledgerId),
-      });
-
-      queryClient.setQueryData<SourceDocumentAttentionDto>(
-        queryKeys.sourceDocumentAttention(ledgerId),
-        (old) => {
-          if (old === undefined) return old;
-          return {
-            ...old,
-            items: old.items.filter((doc) => doc.id !== id),
-            total: Math.max(0, old.total - 1),
-          };
-        }
-      );
-
-      return { snapshots: [...collectionSnapshots, ...attentionSnapshots] };
+      return { operationId: op.operationId };
     },
-    onSettledExtra: (queryClient) => {
-      // Invalidate new caches after mutation settles
+    onSuccess: (_data, _variables, context) => {
+      if (context == null) return;
+      transactionRef.current.commitOperation(context.operationId, null, queryClient);
+      clearSelection();
+    },
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
+      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      toast.error(tCommon("deleteFailed"));
+    },
+    onSettled: () => {
+      // Targeted invalidation for derived data
       queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentAttention(ledgerId),
+        predicate: invalidateLedgerStats(ledgerId),
       });
       queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCompleted(ledgerId),
-      });
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
+        predicate: invalidateCalendar(ledgerId),
       });
     },
   });
 
-  const batchUpdateDates = useLedgerMutation(ledgerId, {
-    mutationFn: async ({ ids, entryDate }: { ids: string[]; entryDate: string }) => {
+  const batchUpdateDates = useMutation<void, Error, { ids: string[]; entryDate: string }, BatchDatesContext>({
+    mutationFn: async ({ ids, entryDate }) => {
+      const operationId = crypto.randomUUID();
       await batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate });
     },
-    successMessage: "",
-    errorMessage: tCommon("error"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onSuccessExtra: (_data, { ids }) => {
+    onMutate: async ({ ids, entryDate }) => {
+      const op = transactionRef.current.startOperation(ledgerId);
+
+      // Apply optimistic date updates to all affected source docs in stream cache
+      const matches = getStreamQueryMatches(queryClient, ledgerId);
+
+      for (const [queryKey, data] of matches) {
+        if (!data) continue;
+        const { pages, pageParams } = data;
+        if (!pages || pages.length === 0) continue;
+
+        const updatedPages = pages.map((page) => ({
+          ...page,
+          items: page.items.map((item) =>
+            ids.includes(item.id) ? { ...item, entryDate } : item
+          ),
+        }));
+
+        // Capture previous items for rollback
+        for (const id of ids) {
+          const prevItem = data.pages
+            .flatMap((p) => p.items)
+            .find((item) => item.id === id);
+          if (prevItem != null) {
+            op.patches.push({
+              type: "upsert",
+              entityId: id,
+              entity: { ...prevItem, entryDate } as SourceDocumentListItemDto,
+              prevEntity: prevItem,
+            });
+          }
+        }
+
+        // Apply optimistic update to stream cache
+        queryClient.setQueryData<InfiniteData<StreamPage>>(queryKey, {
+          pages: updatedPages,
+          pageParams,
+        });
+      }
+
+      // Also update detail caches
+      for (const id of ids) {
+        const lightKey = queryKeys.sourceDocumentLight(id);
+        const existingLight = queryClient.getQueryData(lightKey);
+        if (existingLight) {
+          queryClient.setQueryData(lightKey, {
+            ...(existingLight as Record<string, unknown>),
+            entryDate,
+          });
+        }
+      }
+
+      return { operationId: op.operationId, ids };
+    },
+    onSuccess: (_data, { ids, entryDate }, context) => {
+      if (context == null) return;
+      // Commit the operation — optimistic data is trusted
+      transactionRef.current.commitOperation(context.operationId, null, queryClient);
       toast.success(tBatch("datesUpdated", { count: ids.length }));
       clearSelection();
     },
-    onOptimisticUpdate: (queryClient, { ids, entryDate }) => {
-      const collectionSnapshots = queryClient.getQueriesData<SourceDocumentCollectionDto>({
-        predicate: matchSourceDocumentCollection(ledgerId),
-      });
-
-      // Update legacy collection caches
-      queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old) => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.map((doc) => (ids.includes(doc.id) ? { ...doc, entryDate } : doc)),
-          };
-        }
-      );
-
-      // Snapshot and update attention cache
-      const attentionSnapshots = queryClient.getQueriesData<SourceDocumentAttentionDto>({
-        queryKey: queryKeys.sourceDocumentAttention(ledgerId),
-      });
-
-      queryClient.setQueryData<SourceDocumentAttentionDto>(
-        queryKeys.sourceDocumentAttention(ledgerId),
-        (old) => {
-          if (old === undefined) return old;
-          return {
-            ...old,
-            items: old.items.map((doc) => (ids.includes(doc.id) ? { ...doc, entryDate } : doc)),
-          };
-        }
-      );
-
-      return { snapshots: [...collectionSnapshots, ...attentionSnapshots] };
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
+      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      toast.error(tCommon("error"));
     },
-    onSettledExtra: (queryClient) => {
+    onSettled: () => {
+      // Targeted invalidation for derived data
       queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentAttention(ledgerId),
+        predicate: invalidateLedgerStats(ledgerId),
       });
       queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
+        predicate: invalidateCalendar(ledgerId),
       });
     },
   });

@@ -14,10 +14,7 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
-import type {
-  SourceDocumentCollectionDto,
-  SourceDocumentListItemDto as SourceDocumentListItemWithEntries,
-} from "@/modules/source-document/contracts";
+import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
 import type { EntryCategory, LedgerEntry } from "@/modules/ledger/contracts";
 
 interface UseQuickEntryFormControllerParams {
@@ -94,7 +91,7 @@ export function useQuickEntryFormController({
         sourceDocument: null,
       };
 
-      const tempDoc: SourceDocumentListItemWithEntries = {
+      const tempDoc: SourceDocumentListItemDto = {
         id: tempDocId,
         ledgerId,
         type: "manual",
@@ -146,19 +143,31 @@ export function useQuickEntryFormController({
         ],
       };
 
-      const collectionQueryKey = queryKeys.sourceDocumentCollectionPrefix(ledgerId);
-      const docSnapshots = createListSnapshots<SourceDocumentCollectionDto>(
+      const streamPrefix = queryKeys.sourceDocumentStreamPrefix(ledgerId);
+      const docSnapshots = createListSnapshots<InfiniteData<StreamPage>>(
         queryClient,
-        collectionQueryKey
+        streamPrefix
       );
-      queryClient.setQueriesData<SourceDocumentCollectionDto>(
-        { queryKey: collectionQueryKey },
+      queryClient.setQueriesData<InfiniteData<StreamPage>>(
+        { queryKey: streamPrefix },
         (old) => {
-          if (!old) return old;
+          if (!old?.pages) return old;
           return {
             ...old,
-            items: [tempDoc, ...old.items],
-            total: old.total + 1,
+            pages: old.pages.map((page, index) => {
+              if (index === 0) {
+                return {
+                  ...page,
+                  items: [tempDoc, ...page.items],
+                };
+              }
+              return {
+                ...page,
+                // Ensure no duplicate temp entry in other pages
+                items: page.items.filter((item) => !item.id.startsWith("temp-doc-")),
+              };
+            }),
+            pageParams: old.pageParams,
           };
         }
       );

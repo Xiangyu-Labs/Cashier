@@ -90,24 +90,31 @@ describe("queryKeys", () => {
       ]);
     });
 
-    it("应该生成显式bounded collection query key", () => {
+    it("应该生成正确的sourceDocumentStream query key with filters", () => {
       expect(
-        queryKeys.sourceDocumentCollection(ledgerId, {
+        queryKeys.sourceDocumentStream(ledgerId, {
           startDate: "2026-03-01",
           endDate: "2026-03-31",
           minAmount: 20,
           maxAmount: 100,
-          limit: 1000,
         })
       ).toEqual([
         "sourceDocuments",
         ledgerId,
-        "collection",
+        "stream",
         "2026-03-01",
         "2026-03-31",
         20,
         100,
-        1000,
+        null,
+      ]);
+    });
+
+    it("应该生成正确的sourceDocumentStreamPrefix query key", () => {
+      expect(queryKeys.sourceDocumentStreamPrefix(ledgerId)).toEqual([
+        "sourceDocuments",
+        ledgerId,
+        "stream",
       ]);
     });
   });
@@ -282,7 +289,7 @@ describe("query invalidation helpers", () => {
   it("matches source document queries only", () => {
     expect(
       invalidateSourceDocuments(ledgerId)({
-        queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
+        queryKey: queryKeys.sourceDocumentStream(ledgerId),
       })
     ).toBe(true);
     expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(

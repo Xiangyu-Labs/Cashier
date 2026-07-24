@@ -143,7 +143,11 @@ export function revertOptimisticDelete(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function getStreamQueryMatches(
+/**
+ * Get all stream cache query matches for a ledger.
+ * Exported for use by ledger-entry mutation hooks.
+ */
+export function getStreamQueryMatches(
   queryClient: QueryClient,
   ledgerId: string
 ): Array<[readonly unknown[], InfiniteData<StreamPage> | undefined]> {
@@ -151,6 +155,38 @@ function getStreamQueryMatches(
   return queryClient.getQueriesData<InfiniteData<StreamPage>>({
     queryKey: streamPrefix,
   });
+}
+
+/**
+ * Find a source document item by its entry ID in the Stream cache.
+ * Returns the source document list item and its stream page, or null if not found.
+ */
+export function findSourceDocByEntryId(
+  queryClient: QueryClient,
+  ledgerId: string,
+  entryId: string
+): { sourceDoc: SourceDocumentListItemDto; pageIndex: number; itemIndex: number } | null {
+  const matches = getStreamQueryMatches(queryClient, ledgerId);
+
+  for (const [, data] of matches) {
+    if (!data) continue;
+    const { pages } = data;
+    if (!pages || pages.length === 0) continue;
+
+    for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
+      const page = pages[pageIdx];
+      if (page == null) continue;
+      for (let itemIdx = 0; itemIdx < page.items.length; itemIdx++) {
+        const item = page.items[itemIdx];
+        if (item == null) continue;
+        if (item.ledgerEntries?.some((entry) => entry.id === entryId)) {
+          return { sourceDoc: item, pageIndex: pageIdx, itemIndex: itemIdx };
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 function upsertDetailCache(

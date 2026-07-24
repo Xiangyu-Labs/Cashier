@@ -12,24 +12,31 @@ describe("queryKeys enhanced stats and source documents", () => {
     ).toEqual(["enhanced-stats", "ledger-1", "2026-03-01", "month", "USD"]);
   });
 
-  it("builds source document collection key with amount filters and explicit limit", () => {
+  it("builds source document counts key", () => {
+    expect(queryKeys.sourceDocumentCounts("ledger-1")).toEqual([
+      "sourceDocuments",
+      "ledger-1",
+      "counts",
+    ]);
+  });
+
+  it("builds source document stream key with filters", () => {
     expect(
-      queryKeys.sourceDocumentCollection("ledger-1", {
+      queryKeys.sourceDocumentStream("ledger-1", {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
         minAmount: 20,
         maxAmount: 100,
-        limit: 1000,
       })
     ).toEqual([
       "sourceDocuments",
       "ledger-1",
-      "collection",
+      "stream",
       "2026-03-01",
       "2026-03-31",
       20,
       100,
-      1000,
+      null,
     ]);
   });
 

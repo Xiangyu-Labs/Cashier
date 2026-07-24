@@ -6,7 +6,6 @@ import {
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import {
-  invalidateSourceDocumentCompleted,
   invalidateSourceDocumentCounts,
 } from "@/lib/query-keys";
 import { useTranslations } from "next-intl";
@@ -161,9 +160,6 @@ export function useSourceDocumentRecordMutations({
     },
     onSettled: () => {
       if (ledgerId != null && ledgerId !== "") {
-        queryClient.invalidateQueries({
-          predicate: invalidateSourceDocumentCompleted(ledgerId),
-        });
         queryClient.invalidateQueries({
           predicate: invalidateSourceDocumentCounts(ledgerId),
         });

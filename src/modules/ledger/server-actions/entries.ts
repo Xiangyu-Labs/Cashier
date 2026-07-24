@@ -21,6 +21,11 @@ import {
   type CreateLedgerEntryInput,
   type UpdateLedgerEntryInput,
 } from "@/modules/ledger/contract-schemas";
+import type {
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
+import { buildEntityReconciliation } from "@/modules/source-document/server-actions/reconciliation";
+import type { MutationReconciliation } from "@/modules/source-document/contracts";
 
 export const createLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
@@ -42,8 +47,12 @@ export const updateLedgerEntryAction = withLedgerAccess(
   async (
     ledgerId: string,
     ledgerEntryId: string,
-    data: UpdateLedgerEntryInput
-  ): Promise<LedgerEntryDto> => {
+    data: UpdateLedgerEntryInput,
+    operationId?: string
+  ): Promise<
+    LedgerEntryDto &
+      Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>
+  > => {
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
     const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
@@ -55,14 +64,67 @@ export const updateLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     if (validated.description !== undefined) payload.description = validated.description;
-    return updateLedgerEntryWithConversion(payload);
+    const result = await updateLedgerEntryWithConversion(payload);
+
+    if (operationId != null && result.sourceDocumentId != null) {
+      const entity = buildEntityReconciliation(
+        operationId,
+        {
+          id: result.sourceDocumentId,
+          ledgerId,
+          title: null,
+          text: null,
+          files: [],
+          status: "completed",
+          type: "ai_parsed",
+          anomalyReason: null,
+          entryDate: null,
+          metadata: {},
+          createdAt: result.updatedAt,
+          updatedAt: result.updatedAt,
+          deletedAt: null,
+          hasImages: false,
+          supportedActions: [],
+          errorCode: null,
+          pendingRevisionId: null,
+          ledgerEntries: [],
+        } as SourceDocumentListItemDto,
+        result.updatedAt,
+        false,
+        false
+      );
+      return { ...result, reconciliation: entity };
+    }
+
+    return result;
   }
 );
 
 export const deleteLedgerEntryAction = withLedgerAccess(
-  async (ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto> => {
+  async (
+    ledgerId: string,
+    ledgerEntryId: string,
+    operationId?: string
+  ): Promise<
+    DeleteLedgerEntryResultDto &
+      Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>
+  > => {
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
-    return deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
+    const result = await deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
+
+    if (operationId != null && result.deleted) {
+      const now = new Date().toISOString();
+      const entity = buildEntityReconciliation(
+        operationId,
+        null,
+        now,
+        false,
+        false
+      );
+      return { ...result, reconciliation: entity };
+    }
+
+    return result;
   }
 );
 
