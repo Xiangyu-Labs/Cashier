@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { TabsContent } from "@/components/ui/tabs";
@@ -126,9 +126,10 @@ export function LedgerPageClient({
 
   // Initialize the refresh coordinator for this ledger
   // This enables cross-tab leadership, bounded polling, and cache patches.
+  const queryClient = useQueryClient();
   const coordinatorRef = useRef<ReturnType<typeof initRefreshCoordinator> | null>(null);
   useEffect(() => {
-    coordinatorRef.current = initRefreshCoordinator(ledgerId);
+    coordinatorRef.current = initRefreshCoordinator(ledgerId, queryClient);
     return () => {
       coordinatorRef.current?.destroy();
       coordinatorRef.current = null;

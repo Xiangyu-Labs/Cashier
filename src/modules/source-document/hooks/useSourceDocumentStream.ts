@@ -12,6 +12,7 @@ import {
 } from "@/modules/source-document/stream-grouping";
 import { getStreamRefreshAction } from "@/modules/source-document/actions";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { useRevisionStateRefresh } from "./revision-state-refresh";
 
 const STREAM_PAGE_LIMIT = 20;
@@ -105,9 +106,8 @@ export function useSourceDocumentStream(
 
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<number | null>(null);
-  // Track first page fingerprint for refresh comparison
+  // C3: Persist first page fingerprint from server for refresh comparison
   const firstPageFingerprintRef = useRef<string | null>(null);
-  const firstPageFingerprint = useRef<string>("");
 
   const {
     data,
@@ -167,30 +167,36 @@ export function useSourceDocumentStream(
     }
 
     // Update first page fingerprint whenever data changes
-    firstPageFingerprint.current = data?.pages?.[0]?.items
+    firstPageFingerprintRef.current = data?.pages?.[0]?.items
       ? data.pages[0].items.map((i) => `${i.id}:${i.updatedAt}`).join(",")
-      : "";
+      : null;
   }, [data, queryClient, streamPageKey]);
 
-  // Refresh function — calls the bounded refresh endpoint
-  const refresh = useCallback(async (): Promise<{ changed: boolean }> => {
+  // C3: Refresh function — calls the bounded refresh endpoint with persisted fingerprints
+  const refresh = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
     try {
-      // Counts refresh is handled by the coordinator separately
+      const firstPageFp = firstPageFingerprintRef.current;
+
+      // Counts refresh is handled by the coordinator separately via Header
       const result = await getStreamRefreshAction(ledgerId, {
         ledgerId,
         protocolVersion: 1,
         signatures: [
           {
             filterSignature,
-            firstPageFingerprint: firstPageFingerprint.current || null,
+            firstPageFingerprint: firstPageFp,
           },
         ],
         watchedIds: [],
-        countFingerprint: null, // counts are managed by Header
+        countFingerprint: null,
       });
 
       applyStreamRefreshToCache(queryClient, ledgerId, result);
-      return { changed: result.changed };
+      // C3: Update persisted fingerprint from server response
+      if (result.firstPages.length > 0 && result.firstPages[0] != null) {
+        firstPageFingerprintRef.current = result.firstPages[0].fingerprint;
+      }
+      return { changed: result.changed, result };
     } catch {
       return { changed: false };
     }

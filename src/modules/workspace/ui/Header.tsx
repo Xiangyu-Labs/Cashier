@@ -1,12 +1,13 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentCountsAction, getStreamRefreshAction } from "@/modules/source-document/actions";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { useRevisionStateRefresh, notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
 import { cn } from "@/lib/utils";
 
@@ -33,19 +34,26 @@ export function Header({
     refetchOnReconnect: false,
   });
 
+  // C3: Persist count fingerprint for refresh comparison
+  const countFingerprintRef = useRef<string | null>(null);
+
   // Register counts refresh with the coordinator
-  const refreshCounts = useCallback(async (): Promise<{ changed: boolean }> => {
+  const refreshCounts = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
     try {
       const result = await getStreamRefreshAction(ledgerId, {
         ledgerId,
         protocolVersion: 1,
         signatures: [],
         watchedIds: [],
-        countFingerprint: null,
+        countFingerprint: countFingerprintRef.current,
       });
 
       applyStreamRefreshToCache(queryClient, ledgerId, result);
-      return { changed: result.changed };
+      // C3: Update persisted count fingerprint from server response
+      if (result.counts?.fingerprint) {
+        countFingerprintRef.current = result.counts.fingerprint;
+      }
+      return { changed: result.changed, result };
     } catch {
       return { changed: false };
     }

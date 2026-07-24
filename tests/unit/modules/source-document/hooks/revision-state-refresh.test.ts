@@ -87,6 +87,9 @@ describe("revision state refresh", () => {
     vi.useRealTimers();
   });
 
+  // Shared no-op refresh callback for tests
+  const noopRefresh = async (): Promise<{ changed: boolean }> => ({ changed: false });
+
   // -----------------------------------------------------------------------
   // Legacy API — isRefreshableRevisionState
   // -----------------------------------------------------------------------
@@ -111,7 +114,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     // Should have a timer scheduled
@@ -123,7 +126,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     expect(coordinator.getIsLeader()).toBe(true);
@@ -138,7 +141,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     coordinator.notifyChange();
@@ -155,7 +158,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     const stateBefore = coordinator.getState();
@@ -175,7 +178,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     env.hide();
@@ -200,7 +203,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
     coordinator.destroy();
@@ -221,7 +224,7 @@ describe("revision state refresh", () => {
     const doRefreshSpy = vi.spyOn(coordinator as any, "doRefresh");
     doRefreshSpy.mockResolvedValue(false);
 
-    coordinator.subscribe("test");
+    coordinator.subscribe("test", noopRefresh);
     await flushTimers();
     doRefreshSpy.mockClear();
 

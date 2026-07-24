@@ -63,9 +63,11 @@ export function computeCountFingerprint(counts: {
 
 async function loadWatchedDocuments(
   ledgerId: string,
-  watchedIds: string[]
+  watchedIds: Array<{ id: string; fingerprint: string }>
 ): Promise<Map<string, SourceDocumentListItemDto | null>> {
   if (watchedIds.length === 0) return new Map();
+
+  const idList = watchedIds.map((w) => w.id);
 
   // Load in a single bounded batch using the raw read model
   const docs = await currentApplication.sourceDocumentReads.list({
@@ -75,7 +77,7 @@ async function loadWatchedDocuments(
 
   // Build a map from the loaded items
   const docMap = new Map<string, SourceDocumentListItemDto | null>();
-  for (const id of watchedIds) {
+  for (const { id } of watchedIds) {
     if (!docMap.has(id)) {
       // Not pre-loaded; mark as potentially deleted
       docMap.set(id, null);
@@ -84,14 +86,14 @@ async function loadWatchedDocuments(
 
   // Check loaded items
   for (const doc of docs.items) {
-    if (watchedIds.includes(doc.id)) {
+    if (idList.includes(doc.id)) {
       docMap.set(doc.id, doc);
     }
   }
 
   // For watched IDs not in the loaded batch, try to load individually
   // (this is bounded by MAX_WATCHED_IDS)
-  const missingIds = watchedIds.filter((id) => !docs.items.some((d) => d.id === id));
+  const missingIds = idList.filter((id) => !docs.items.some((d) => d.id === id));
   for (const id of missingIds) {
     const fullDoc = await currentApplication.sourceDocumentReads.get(ledgerId, id);
     if (fullDoc != null) {
@@ -144,6 +146,10 @@ export async function getStreamRefresh(
   const boundedSignatures = signatures.slice(0, MAX_FILTER_SIGNATURES);
   const boundedWatchedIds = watchedIds.slice(0, MAX_WATCHED_IDS);
 
+  // C3: Normalize empty string to null for fingerprint comparisons
+  const normalizedCountFingerprint =
+    countFingerprint === "" ? null : countFingerprint;
+
   // ---------------------------------------------------------------
   // 1. Refresh first pages for each active filter signature
   // ---------------------------------------------------------------
@@ -154,6 +160,9 @@ export async function getStreamRefresh(
   }> = [];
 
   for (const sig of boundedSignatures) {
+    // C3: Normalize empty string to null for fingerprint comparison
+    const sigFP = sig.firstPageFingerprint === "" ? null : sig.firstPageFingerprint;
+
     try {
       // Decode signature — currently format is "startDate|endDate|minAmount|maxAmount|statuses"
       // We need to reconstruct the listStreamPage input from it
@@ -172,7 +181,7 @@ export async function getStreamRefresh(
       const currentFingerprint = computeItemFingerprint(page.items);
 
       // Omit page data if unchanged
-      if (currentFingerprint === sig.firstPageFingerprint) {
+      if (currentFingerprint === sigFP) {
         firstPages.push({
           filterSignature: sig.filterSignature,
           fingerprint: currentFingerprint,
@@ -206,7 +215,7 @@ export async function getStreamRefresh(
     fingerprint: string;
   }> = [];
 
-  for (const id of boundedWatchedIds) {
+  for (const { id } of boundedWatchedIds) {
     const doc = docMap.get(id);
     if (doc == null) {
       // Tombstone — document deleted
@@ -225,7 +234,7 @@ export async function getStreamRefresh(
   // ---------------------------------------------------------------
   let counts: StreamRefreshResult["counts"] = null;
 
-  if (countFingerprint == null) {
+  if (normalizedCountFingerprint == null) {
     // Client has no counts yet — always include
     const rawCounts = await getSourceDocumentCountsQuery(ledgerId);
     counts = {
@@ -235,7 +244,7 @@ export async function getStreamRefresh(
   } else {
     const rawCounts = await getSourceDocumentCountsQuery(ledgerId);
     const currentCF = computeCountFingerprint(rawCounts);
-    if (currentCF !== countFingerprint) {
+    if (currentCF !== normalizedCountFingerprint) {
       counts = {
         ...rawCounts,
         fingerprint: currentCF,

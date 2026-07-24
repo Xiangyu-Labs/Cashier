@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useCallback } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
+import { STREAM_REFRESH_PROTOCOL_VERSION } from "@/modules/source-document/contract-refresh";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 
 // ---------------------------------------------------------------------------
 // Public API — backward-compatible exports
@@ -18,12 +22,6 @@ export function isRefreshableRevisionState(status: SourceDocumentStatusType): bo
 // ---------------------------------------------------------------------------
 
 export type RefreshResult = "changed" | "unchanged" | "error";
-
-export interface RefreshCoordinatorOptions {
-  environment: RefreshEnvironment;
-  refresh: () => Promise<{ changed: boolean }>;
-  onResult: (result: RefreshResult) => void;
-}
 
 export interface RefreshEnvironment {
   now(): number;
@@ -53,11 +51,15 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
   let broadcastHandlers = new Set<(data: unknown) => void>();
   let onExpired: (() => void) | null = null;
   let leadershipTimer: ReturnType<typeof setTimeout> | null = null;
+  let expiryCheckTimer: ReturnType<typeof setInterval> | null = null;
 
   const STORAGE_KEY_LEADER = `cashier-refresh-leader-${ledgerId}`;
   const STORAGE_KEY_LEASE = `cashier-refresh-lease-${ledgerId}`;
   const LEADER_HEARTBEAT_MS = 2000;
   const MISSED_HEARTBEATS = 3;
+
+  // I2: Stable per-tab token — generated once when the environment is created
+  const myId = `tab-${Math.random().toString(36).slice(2, 10)}`;
 
   try {
     broadcastChannel = new BroadcastChannel(`cashier-refresh-${ledgerId}`);
@@ -83,6 +85,17 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
     const ts = getLeaderTimestamp();
     if (ts === 0) return true;
     return Date.now() > ts;
+  }
+
+  function cleanupIntervals(): void {
+    if (leadershipTimer) {
+      clearInterval(leadershipTimer);
+      leadershipTimer = null;
+    }
+    if (expiryCheckTimer) {
+      clearInterval(expiryCheckTimer);
+      expiryCheckTimer = null;
+    }
   }
 
   return {
@@ -126,8 +139,6 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
       };
     },
     acquireLeadership: async (leaseMs) => {
-      // Simple localStorage-based leader election
-      const myId = `tab-${Math.random().toString(36).slice(2, 10)}`;
       const leaderKey = `cashier-refresh-leader-${ledgerId}`;
       const leaseKey = `cashier-refresh-lease-${ledgerId}`;
 
@@ -141,7 +152,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
           return false;
         }
 
-        // Acquire leadership
+        // Acquire leadership with stable per-tab token
         localStorage.setItem(leaderKey, myId);
         localStorage.setItem(leaseKey, String(now + leaseMs));
 
@@ -152,7 +163,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         }
 
         // Start heartbeat to renew lease
-        if (leadershipTimer) clearInterval(leadershipTimer);
+        cleanupIntervals();
         leadershipTimer = setInterval(() => {
           try {
             localStorage.setItem(
@@ -177,27 +188,25 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
     },
     releaseLeadership: () => {
       try {
-        localStorage.removeItem(STORAGE_KEY_LEADER);
-        localStorage.removeItem(STORAGE_KEY_LEASE);
+        // I2: Only release lease if our token matches
+        const currentLeader = localStorage.getItem(STORAGE_KEY_LEADER);
+        if (currentLeader === myId) {
+          localStorage.removeItem(STORAGE_KEY_LEADER);
+          localStorage.removeItem(STORAGE_KEY_LEASE);
+        }
       } catch {
         // Ignore storage errors
       }
-      if (leadershipTimer) {
-        clearInterval(leadershipTimer);
-        leadershipTimer = null;
-      }
+      cleanupIntervals();
     },
     onLeadershipExpired: (cb) => {
       onExpired = cb;
       // Check lease expiry periodically
-      const expiryCheck = setInterval(() => {
+      expiryCheckTimer = setInterval(() => {
         if (isLeaderExpired()) {
           onExpired?.();
         }
       }, LEADER_HEARTBEAT_MS * MISSED_HEARTBEATS);
-      // Store cleanup on the timer
-      (expiryCheck as unknown as { _cleanup?: () => void })._cleanup = () =>
-        clearInterval(expiryCheck);
     },
   };
 }
@@ -226,7 +235,11 @@ export class RefreshCoordinator {
   private unsubscribeBroadcast: (() => void) | null = null;
   private cleanupExpiry: (() => void) | null = null;
   private running = false;
-  private subscribers = new Set<string>();
+  private subscribers = new Map<
+    string,
+    { refresh: () => Promise<{ changed: boolean; result?: StreamRefreshResult }> }
+  >();
+  private applyCacheFromRefresh: ((result: StreamRefreshResult) => void) | null = null;
 
   // Backoff stages for unchanged success
   static readonly SUCCESS_BACKOFFS = [3000, 5000, 8000, 12000, 15000] as const;
@@ -234,10 +247,20 @@ export class RefreshCoordinator {
   constructor(private readonly env: RefreshEnvironment) {}
 
   /**
-   * Register a subscriber scope. Returns an unsubscribe function.
+   * Register a callback that applies refresh results to the TanStack cache.
    */
-  subscribe(scope: string): () => void {
-    this.subscribers.add(scope);
+  setApplyCacheCallback(cb: (result: StreamRefreshResult) => void): void {
+    this.applyCacheFromRefresh = cb;
+  }
+
+  /**
+   * Register a subscriber scope with its refresh callback. Returns an unsubscribe function.
+   */
+  subscribe(
+    scope: string,
+    refreshFn: () => Promise<{ changed: boolean; result?: StreamRefreshResult }>
+  ): () => void {
+    this.subscribers.set(scope, { refresh: refreshFn });
     if (!this.running) {
       this.start();
     }
@@ -362,9 +385,12 @@ export class RefreshCoordinator {
 
   private handleBroadcast(data: unknown): void {
     const msg = data as Record<string, unknown>;
-    if (msg?.type === "refresh_result" && msg.ledgerId != null) {
-      // A leader tab broadcast refresh results — process them
-      // If we're a follower, we might update our local state here
+    if (msg?.type === "refresh_result" && msg.result != null) {
+      const result = msg.result as StreamRefreshResult;
+      // Reject mismatched protocol version
+      if (result.protocolVersion !== STREAM_REFRESH_PROTOCOL_VERSION) return;
+      // Apply to local cache via registered callback
+      this.applyCacheFromRefresh?.(result);
     }
   }
 
@@ -408,30 +434,48 @@ export class RefreshCoordinator {
   }
 
   private async doRefresh(): Promise<boolean> {
+    // C2: Only the current leader should do network refreshes
+    if (!this.isLeader) return false;
     if (!this.env.isOnline()) return false;
 
-    try {
-      // Delegate to the registered refresh function
-      // The actual refresh logic is injected via the hook
-      const result = await this.refreshFromSubscriber();
-      return result;
-    } catch {
-      // Error backoff
-      if (this.lastErrorBackoff < 30000) {
-        this.lastErrorBackoff = Math.min(this.lastErrorBackoff * 2, 30000);
-      }
-      this.backoffStage = 0;
-      return false;
-    }
-  }
+    let anyChanged = false;
+    let lastResult: StreamRefreshResult | undefined;
 
-  /**
-   * Calls the registered refresh functions and returns whether anything changed.
-   * Subclasses/extensions should override this by providing a callback.
-   */
-  protected async refreshFromSubscriber(): Promise<boolean> {
-    // Default no-op — actual implementation is in the hook
-    return false;
+    for (const [, entry] of this.subscribers) {
+      try {
+        const { changed, result } = await entry.refresh();
+        if (changed) {
+          anyChanged = true;
+          if (result) lastResult = result;
+        }
+      } catch {
+        // Error backoff
+        if (this.lastErrorBackoff < 30000) {
+          this.lastErrorBackoff = Math.min(this.lastErrorBackoff * 2, 30000);
+        }
+        this.backoffStage = 0;
+      }
+    }
+
+    // C2: After leader refresh, broadcast results to followers
+    if (anyChanged && lastResult) {
+      this.env.broadcast({
+        type: "refresh_result",
+        protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
+        result: lastResult,
+      });
+
+      // I3: Reset backoff on success/changed
+      this.backoffStage = 0;
+    } else if (!anyChanged) {
+      // I3: Advance backoff stage on unchanged
+      this.backoffStage = Math.min(
+        this.backoffStage + 1,
+        RefreshCoordinator.SUCCESS_BACKOFFS.length - 1
+      );
+    }
+
+    return anyChanged;
   }
 
   getState(): CoordinatorState {
@@ -440,6 +484,10 @@ export class RefreshCoordinator {
 
   getIsLeader(): boolean {
     return this.isLeader;
+  }
+
+  getEnv(): RefreshEnvironment {
+    return this.env;
   }
 }
 
@@ -474,7 +522,10 @@ interface UseRevisionStateRefreshOptions {
  * callback with the global coordinator.
  *
  * The `refresh` callback should call the bounded refresh action and apply
- * cache patches.
+ * cache patches. It should return `{ changed, result? }`.
+ *
+ * The hook passes the refresh callback to subscribe() so the coordinator
+ * can call it during leader-driven polling cycles.
  */
 export function useRevisionStateRefresh({
   scope,
@@ -493,12 +544,21 @@ export function useRevisionStateRefresh({
     if (subscribedRef.current) return;
 
     subscribedRef.current = true;
-    const unsubscribe = getGlobalCoordinator()?.subscribe(scope);
+    const coordinator = getGlobalCoordinator();
+    // C1: Pass the refresh callback to subscribe
+    const unsubscribe = coordinator?.subscribe(scope, async () => {
+      const r = await refreshEvent();
+      return {
+        changed: (r as { changed: boolean }).changed,
+        result: (r as { result?: StreamRefreshResult }).result,
+      } as { changed: boolean; result?: StreamRefreshResult };
+    });
+
     return () => {
       subscribedRef.current = false;
       unsubscribe?.();
     };
-  }, [enabled, pending, scope]);
+  }, [enabled, pending, scope, refreshEvent]);
 }
 
 /**
@@ -513,7 +573,7 @@ export function notifyNewSubmission(): void {
 // Browser singleton initialization (client-side only)
 // ---------------------------------------------------------------------------
 
-export function initRefreshCoordinator(ledgerId: string): RefreshCoordinator {
+export function initRefreshCoordinator(ledgerId: string, queryClient?: QueryClient): RefreshCoordinator {
   const env = browserEnvironment(ledgerId);
   if (env == null) {
     // SSR — return a no-op coordinator
@@ -537,6 +597,11 @@ export function initRefreshCoordinator(ledgerId: string): RefreshCoordinator {
   }
 
   const coordinator = new RefreshCoordinator(env);
+  if (queryClient) {
+    coordinator.setApplyCacheCallback((result) =>
+      applyStreamRefreshToCache(queryClient, ledgerId, result)
+    );
+  }
   setGlobalCoordinator(coordinator);
   return coordinator;
 }

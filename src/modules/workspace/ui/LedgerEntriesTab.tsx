@@ -176,13 +176,15 @@ export function LedgerEntriesTab({
   const { deleteSourceDocument, batchUpdateDates } =
     useBatchSourceDocumentActions(ledgerId, clearSelection);
 
-  // Targeted refresh: uses the bounded refresh path instead of broad invalidation
+  // C1: Targeted refresh — uses the bounded refresh path via coordinator
   const handleRefresh = useCallback(async () => {
-    // Notify the coordinator of a change — triggers immediate refresh
+    // Notify the coordinator of a change — triggers immediate refresh cycle
     notifyNewSubmission();
-    // Also refresh the live ledger stats
-    await queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
-  }, [queryClient, ledgerId]);
+    // Also refresh the live ledger stats via the actual stream refresh
+    if (refresh) {
+      await refresh();
+    }
+  }, [refresh]);
 
   const handleToggleSelectionMode = useCallback(() => {
     toggleSelectionMode();

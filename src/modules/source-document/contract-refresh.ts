@@ -16,7 +16,10 @@ export interface StreamRefreshRequest {
     filterSignature: string;
     firstPageFingerprint: string | null;
   }>;
-  watchedIds: string[];
+  watchedIds: Array<{
+    id: string;
+    fingerprint: string;
+  }>;
   countFingerprint: string | null;
 }
 
