@@ -1,10 +1,13 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
-import { getSourceDocumentCountsAction } from "@/modules/source-document/actions";
+import { getSourceDocumentCountsAction, getStreamRefreshAction } from "@/modules/source-document/actions";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import { useRevisionStateRefresh, notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -21,12 +24,39 @@ export function Header({
   onInProgress,
 }: HeaderProps) {
   const t = useTranslations("LedgerPage");
+  const queryClient = useQueryClient();
 
   const { data: counts } = useQuery({
     queryKey: queryKeys.sourceDocumentCounts(ledgerId),
     queryFn: () => getSourceDocumentCountsAction(ledgerId),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+
+  // Register counts refresh with the coordinator
+  const refreshCounts = useCallback(async (): Promise<{ changed: boolean }> => {
+    try {
+      const result = await getStreamRefreshAction(ledgerId, {
+        ledgerId,
+        protocolVersion: 1,
+        signatures: [],
+        watchedIds: [],
+        countFingerprint: null,
+      });
+
+      applyStreamRefreshToCache(queryClient, ledgerId, result);
+      return { changed: result.changed };
+    } catch {
+      return { changed: false };
+    }
+  }, [ledgerId, queryClient]);
+
+  // Register counts refresh — always pending to keep counts updated
+  useRevisionStateRefresh({
+    scope: `counts:${ledgerId}`,
+    enabled: true,
+    pending: true,
+    refresh: refreshCounts,
   });
 
   const processingCount = counts?.processingCount ?? 0;

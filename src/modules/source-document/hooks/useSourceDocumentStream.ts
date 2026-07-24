@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto, SourceDocumentStatusType } from "@/modules/source-document/contracts";
@@ -10,6 +10,9 @@ import {
   buildUnifiedStreamGroups,
   type UnifiedStreamGroup,
 } from "@/modules/source-document/stream-grouping";
+import { getStreamRefreshAction } from "@/modules/source-document/actions";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import { useRevisionStateRefresh } from "./revision-state-refresh";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -22,6 +25,8 @@ export interface UseSourceDocumentStreamOptions {
   maxAmount?: number;
   /** Canonical selected statuses. Empty/undefined means all statuses. */
   statuses?: SourceDocumentStatusType[];
+  /** Enable refresh polling for this stream. */
+  enableRefresh?: boolean;
 }
 
 /**
@@ -40,26 +45,48 @@ function deduplicate(docs: SourceDocumentListItemDto[]): SourceDocumentListItemD
   return result;
 }
 
+/**
+ * Encode filter params into a stable signature string.
+ * This is used as the filter signature in refresh requests.
+ */
+function encodeFilterSignature(params: {
+  startDate: string | null;
+  endDate: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+  statusesKey: string | null;
+}): string {
+  const statusParts = params.statusesKey != null ? params.statusesKey.split(",").sort() : [];
+  const parts = [
+    params.startDate ?? "",
+    params.endDate ?? "",
+    params.minAmount?.toString() ?? "",
+    params.maxAmount?.toString() ?? "",
+    ...statusParts,
+  ];
+  return parts.join("|");
+}
+
 export function useSourceDocumentStream(
   ledgerId: string,
   options: UseSourceDocumentStreamOptions = {}
 ) {
   const queryClient = useQueryClient();
-  const { dateRange, minAmount, maxAmount, statuses: rawStatuses } = options;
+  const { dateRange, minAmount, maxAmount, statuses: rawStatuses, enableRefresh = true } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
 
   // Normalize statuses: sort and deduplicate for stable cache keys and
   // consistent filter fingerprints (Fix 6).
-  const statuses = useMemo(
+  const stableStatuses = useMemo(
     () =>
       rawStatuses != null && rawStatuses.length > 0
         ? [...new Set(rawStatuses)].sort()
         : undefined,
     [rawStatuses]
   );
-  const statusesKey = statuses != null && statuses.length > 0 ? statuses.join(",") : null;
+  const statusesKey = stableStatuses != null && stableStatuses.length > 0 ? stableStatuses.join(",") : null;
 
   // Build stream page key that includes all filter params
   const streamPageKey = queryKeys.sourceDocumentStream(ledgerId, {
@@ -70,8 +97,17 @@ export function useSourceDocumentStream(
     statuses: statusesKey,
   });
 
+  // Compute filter signature for refresh coordination
+  const filterSignature = useMemo(
+    () => encodeFilterSignature({ startDate, endDate, minAmount: minAmount ?? null, maxAmount: maxAmount ?? null, statusesKey }),
+    [startDate, endDate, minAmount, maxAmount, statusesKey]
+  );
+
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<number | null>(null);
+  // Track first page fingerprint for refresh comparison
+  const firstPageFingerprintRef = useRef<string | null>(null);
+  const firstPageFingerprint = useRef<string>("");
 
   const {
     data,
@@ -87,7 +123,7 @@ export function useSourceDocumentStream(
         ...(endDate !== null ? { endDate } : {}),
         ...(minAmount != null ? { minAmount } : {}),
         ...(maxAmount != null ? { maxAmount } : {}),
-        ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
+        ...(stableStatuses != null && stableStatuses.length > 0 ? { statuses: stableStatuses } : {}),
         cursor: pageParam,
         limit: STREAM_PAGE_LIMIT,
       }),
@@ -129,7 +165,44 @@ export function useSourceDocumentStream(
         queryClient.resetQueries({ queryKey: streamPageKey });
       }
     }
+
+    // Update first page fingerprint whenever data changes
+    firstPageFingerprint.current = data?.pages?.[0]?.items
+      ? data.pages[0].items.map((i) => `${i.id}:${i.updatedAt}`).join(",")
+      : "";
   }, [data, queryClient, streamPageKey]);
+
+  // Refresh function — calls the bounded refresh endpoint
+  const refresh = useCallback(async (): Promise<{ changed: boolean }> => {
+    try {
+      // Counts refresh is handled by the coordinator separately
+      const result = await getStreamRefreshAction(ledgerId, {
+        ledgerId,
+        protocolVersion: 1,
+        signatures: [
+          {
+            filterSignature,
+            firstPageFingerprint: firstPageFingerprint.current || null,
+          },
+        ],
+        watchedIds: [],
+        countFingerprint: null, // counts are managed by Header
+      });
+
+      applyStreamRefreshToCache(queryClient, ledgerId, result);
+      return { changed: result.changed };
+    } catch {
+      return { changed: false };
+    }
+  }, [ledgerId, filterSignature, queryClient]);
+
+  // Register with the refresh coordinator for polling
+  useRevisionStateRefresh({
+    scope: `stream:${ledgerId}:${filterSignature}`,
+    enabled: enableRefresh,
+    pending: true, // Always pending for stream refresh
+    refresh,
+  });
 
   // Flatten pages and deduplicate by ID preserving server order
   const items = useMemo(() => {
@@ -149,5 +222,7 @@ export function useSourceDocumentStream(
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    /** Call the bounded refresh path (pull-to-refresh, etc.) */
+    refresh,
   };
 }

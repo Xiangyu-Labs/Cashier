@@ -8,8 +8,6 @@ import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import {
   invalidateLedgerStats,
-  invalidateSourceDocumentStream,
-  invalidateSourceDocumentCounts,
   invalidateSourceDocuments,
   invalidateLedgerEntries,
   invalidateEntryCategories,
@@ -31,6 +29,7 @@ import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "@/modules/source-document/actions";
+import { notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
@@ -108,8 +107,6 @@ export function LedgerEntriesTab({
     invalidateLedgerEntries(ledgerId),
     invalidateLedgerStats(ledgerId),
     invalidateEntryCategories(ledgerId),
-    invalidateSourceDocumentStream(ledgerId),
-    invalidateSourceDocumentCounts(ledgerId),
   ];
 
   const retryMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
@@ -148,6 +145,7 @@ export function LedgerEntriesTab({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refresh,
   } = useSourceDocumentStream(ledgerId, {
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
@@ -178,12 +176,12 @@ export function LedgerEntriesTab({
   const { deleteSourceDocument, batchUpdateDates } =
     useBatchSourceDocumentActions(ledgerId, clearSelection);
 
+  // Targeted refresh: uses the bounded refresh path instead of broad invalidation
   const handleRefresh = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-    ]);
+    // Notify the coordinator of a change — triggers immediate refresh
+    notifyNewSubmission();
+    // Also refresh the live ledger stats
+    await queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
   }, [queryClient, ledgerId]);
 
   const handleToggleSelectionMode = useCallback(() => {

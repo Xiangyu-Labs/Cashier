@@ -29,3 +29,4 @@ export {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "./server-actions/candidates";
+export { getStreamRefreshAction } from "./server-actions/refresh";

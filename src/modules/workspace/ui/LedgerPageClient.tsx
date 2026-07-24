@@ -26,6 +26,7 @@ import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
+import { initRefreshCoordinator } from "@/modules/source-document/hooks/revision-state-refresh";
 
 // Dynamic imports for inactive tabs — keeps their dependencies
 // (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
@@ -122,6 +123,17 @@ export function LedgerPageClient({
   });
 
   const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
+
+  // Initialize the refresh coordinator for this ledger
+  // This enables cross-tab leadership, bounded polling, and cache patches.
+  const coordinatorRef = useRef<ReturnType<typeof initRefreshCoordinator> | null>(null);
+  useEffect(() => {
+    coordinatorRef.current = initRefreshCoordinator(ledgerId);
+    return () => {
+      coordinatorRef.current?.destroy();
+      coordinatorRef.current = null;
+    };
+  }, [ledgerId]);
 
   const {
     isInputOpen,
