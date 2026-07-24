@@ -129,6 +129,9 @@ export interface StreamPage {
   items: SourceDocumentListItemDto[];
   nextCursor: string | null;
   generation: number;
+  /** When true, indicates the cursor was invalid — the client should discard
+   *  all cached pages and restart the stream from page one. */
+  restartRequired?: boolean;
 }
 
 export interface SourceDocumentCollectionDto {

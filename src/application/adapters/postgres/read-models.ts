@@ -29,7 +29,7 @@ import {
  * comparison, cursor encoding, and grouping — everything that needs the
  * canonical business-date value.
  */
-const EFFECTIVE_DATE = sql<string>`COALESCE(${sourceDocuments.entryDate}, CAST(${sourceDocuments.createdAt} AS DATE)::text)`;
+const EFFECTIVE_DATE = sql<string>`COALESCE(${sourceDocuments.entryDate}, to_char(${sourceDocuments.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD'))`;
 
 export interface TargetSourceDocumentListInput {
   ledgerId: string;

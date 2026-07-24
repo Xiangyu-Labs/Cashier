@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { currentApplication } from "@/application/current";
+import { ValidationError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
@@ -90,7 +91,10 @@ function encodeStreamCursor(
 
 /**
  * Validate that a cursor is compatible with the current ledger and filter inputs.
- * Returns the decoded cursor data on success, or null (client restarts from page one).
+ * Returns the decoded inner cursor string for a valid cursor, or null when no
+ * cursor was provided (first-page fetch).
+ * Throws ValidationError for malformed, incompatible, or stale cursors so the
+ * caller can signal the client to restart from page one.
  */
 function validateCursor(
   cursor: string | null | undefined,
@@ -99,9 +103,15 @@ function validateCursor(
 ): string | null {
   if (cursor == null || cursor === "") return null;
   const decoded = decodeStreamCursor(cursor);
-  if (decoded == null) return null;
-  if (decoded.ledgerId !== ledgerId) return null;
-  if (decoded.filterFingerprint !== filterFingerprint) return null;
+  if (decoded == null) {
+    throw new ValidationError("Invalid cursor format, restart required");
+  }
+  if (decoded.ledgerId !== ledgerId) {
+    throw new ValidationError("Cross-ledger cursor, restart required");
+  }
+  if (decoded.filterFingerprint !== filterFingerprint) {
+    throw new ValidationError("Incompatible cursor filters, restart required");
+  }
   return decoded.innerCursor;
 }
 
@@ -119,8 +129,18 @@ export async function listStreamPage(
   // Compute filter fingerprint before cursor validation
   const filterFingerprint = computeFilterFingerprint(input);
 
-  // Validate cursor against ledger identity and filter compatibility
-  const innerCursor = validateCursor(input.cursor, ledgerId, filterFingerprint);
+  // Validate cursor against ledger identity and filter compatibility.
+  // Throws ValidationError for malformed/incompatible cursors so the client
+  // can discard stale pages and restart from page one.
+  let innerCursor: string | null;
+  try {
+    innerCursor = validateCursor(input.cursor, ledgerId, filterFingerprint);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return { items: [], nextCursor: null, generation: 1, restartRequired: true };
+    }
+    throw error;
+  }
 
   const page = await currentApplication.sourceDocumentReads.list({
     ledgerId,

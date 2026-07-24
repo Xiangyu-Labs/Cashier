@@ -100,9 +100,18 @@ export function useSourceDocumentStream(
   // Check generation consistency across pages (Fix 3).
   // If a subsequent page has a different generation than the first page,
   // reset the query so it restarts from page 1 with the new ordering/schema.
+  // Also check for restartRequired (Fix 2) — invalid cursor / stale data
+  // requiring the client to discard pages and restart from page one.
   useEffect(() => {
     const pages = data?.pages;
     if (!pages || pages.length === 0) return;
+
+    // Fix 2: Detect restartRequired from cursor validation failure
+    const anyRestart = pages.some((p) => p.restartRequired);
+    if (anyRestart) {
+      queryClient.resetQueries({ queryKey: streamPageKey });
+      return;
+    }
 
     const firstGen = pages[0]?.generation;
     if (firstGen == null) return;
