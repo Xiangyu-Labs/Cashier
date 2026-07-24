@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
+import { Providers } from "@/components/providers";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -10,5 +11,5 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(`/${locale}/login`);
   }
 
-  return <>{children}</>;
+  return <Providers>{children}</Providers>;
 }

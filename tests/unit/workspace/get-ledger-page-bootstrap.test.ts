@@ -52,6 +52,17 @@ function createAuthorizedLedger() {
   };
 }
 
+function createPreAuthorizedLedgerDto() {
+  return {
+    id: "ledger-1",
+    userId: "user-1",
+    metadata: { settings: { mainCurrency: "USD" } },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    deletedAt: null as string | null,
+  };
+}
+
 describe("getLedgerPageBootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,6 +106,26 @@ describe("getLedgerPageBootstrap", () => {
     ).rejects.toThrow("db unavailable");
   });
 
+  it("accepts a pre-authorized ledger DTO and skips re-authorization", async () => {
+    const preAuthDto = createPreAuthorizedLedgerDto();
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: preAuthDto,
+    });
+
+    expect(result).not.toBeNull();
+    // requireLedgerAccess should NOT have been called when ledgerDto is provided
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
+    // The DTO should be seeded into the dehydrated state
+    const ledgersQuery = result?.dehydratedState.queries.find(
+      (q) => q.queryKey[0] === "ledger"
+    );
+    expect(ledgersQuery).toBeDefined();
+    expect(ledgersQuery?.state.data).toEqual(preAuthDto);
+  });
+
   it("prefetches stream tab attention, counts, and first completed page with period-bound dates", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
@@ -104,12 +135,15 @@ describe("getLedgerPageBootstrap", () => {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
       },
+      // Use pre-authorized DTO to test the path without re-authorization
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(result).not.toBeNull();
     expect(getSourceDocumentAttentionQueryMock).toHaveBeenCalledWith("ledger-1");
     expect(getSourceDocumentCountsQueryMock).toHaveBeenCalledWith("ledger-1");
     expect(listSourceDocumentsMock).toHaveBeenCalled();
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
       "2026-03-01",
@@ -133,6 +167,7 @@ describe("getLedgerPageBootstrap", () => {
         minAmount: 20,
         maxAmount: 100,
       },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(result).not.toBeNull();
@@ -154,6 +189,7 @@ describe("getLedgerPageBootstrap", () => {
       ledgerId: "ledger-1",
       initialTab: "details",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledOnce();
@@ -177,6 +213,7 @@ describe("getLedgerPageBootstrap", () => {
         minAmount: 20,
         maxAmount: 100,
       },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
@@ -204,18 +241,11 @@ describe("getLedgerPageBootstrap", () => {
   });
 
   it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {
-    requireLedgerAccessMock.mockResolvedValueOnce({
-      userId: "user-1",
-      ledger: {
-        ...createAuthorizedLedger().ledger,
-        metadata: {},
-      },
-    });
-
     await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stats",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(getEnhancedStatsMock).toHaveBeenCalledOnce();
@@ -224,15 +254,32 @@ describe("getLedgerPageBootstrap", () => {
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
   });
 
+  it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {
+    const dto = {
+      ...createPreAuthorizedLedgerDto(),
+      metadata: { settings: {} },
+    };
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: dto,
+    });
+
+    expect(result).not.toBeNull();
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
+  });
+
   it("does not prefetch a multi-ledger list for the single-ledger workspace", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(result).not.toBeNull();
-    expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(result?.dehydratedState.queries.some((query) => query.queryKey[0] === "ledgers")).toBe(
       false
     );

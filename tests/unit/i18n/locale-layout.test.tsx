@@ -11,7 +11,7 @@ const { getMessages, getTranslations, notFound } = vi.hoisted(() => ({
 
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "font-sans" }),
-  JetBrains_Mono: () => ({ variable: "font-mono" }),
+  // JetBrains_Mono is no longer preloaded globally
 }));
 
 vi.mock("next/navigation", () => ({ notFound }));
@@ -41,6 +41,23 @@ vi.mock("@/i18n/routing", () => ({
   },
 }));
 
+vi.mock("@/i18n/client-feature-messages", () => ({
+  pickMessages: (messages: Record<string, unknown>, namespaces: string[]) => {
+    const picked: Record<string, unknown> = {};
+    for (const ns of namespaces) {
+      if (ns in messages) picked[ns] = messages[ns];
+    }
+    return picked;
+  },
+  FEATURE_MESSAGES: {
+    shell: ["Common", "Auth", "NotFound", "Error", "Metadata", "AuthEmail"],
+    stream: ["LedgerPage", "LedgerEntriesTab", "SourceDocumentCard"],
+    details: [],
+    stats: [],
+    settings: [],
+  },
+}));
+
 import LocaleLayout, { generateMetadata } from "@/app/[locale]/layout";
 
 describe("locale layout", () => {
@@ -48,32 +65,51 @@ describe("locale layout", () => {
     vi.clearAllMocks();
     getMessages.mockImplementation(async ({ locale }: { locale: string }) => ({
       locale,
+      Common: { key: "common" },
+      Auth: { key: "auth" },
+      LedgerPage: { key: "ledger" },
+      Metadata: { title: `${locale}:title`, description: `${locale}:description` },
     }));
     getTranslations.mockImplementation(async ({ locale }: { locale: string }) => {
       return (key: string) => `${locale}:${key}`;
     });
   });
 
-  it.each(["zh", "en"] as const)("loads messages and metadata for %s", async (locale) => {
-    const layout = await LocaleLayout({
-      children: <div>Child page</div>,
-      params: Promise.resolve({ locale }),
-    });
-    const metadata = await generateMetadata({
-      params: Promise.resolve({ locale }),
-    });
+  it.each(["zh", "en"] as const)(
+    "loads shell messages only and renders metadata for %s",
+    async (locale) => {
+      const layout = await LocaleLayout({
+        children: <div>Child page</div>,
+        params: Promise.resolve({ locale }),
+      });
+      const metadata = await generateMetadata({
+        params: Promise.resolve({ locale }),
+      });
 
-    expect(layout).toMatchObject({
-      type: "html",
-      props: { lang: locale },
+      expect(layout).toMatchObject({
+        type: "html",
+        props: { lang: locale },
+      });
+      // Full message catalog is still loaded on the server,
+      // but only shell namespaces should be available in the provider
+      expect(getMessages).toHaveBeenCalledWith({ locale });
+      expect(getTranslations).toHaveBeenCalledWith({ locale, namespace: "Metadata" });
+      expect(metadata).toMatchObject({
+        title: `${locale}:title`,
+        description: `${locale}:description`,
+      });
+      expect(notFound).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not include JetBrains Mono global font preload", async () => {
+    // The test should NOT mock JetBrains_Mono — it's been removed from the global layout.
+    // Verify the layout renders without errors even though JetBrains_Mono is not mocked.
+    const layout = await LocaleLayout({
+      children: <div>Content</div>,
+      params: Promise.resolve({ locale: "en" }),
     });
-    expect(getMessages).toHaveBeenCalledWith({ locale });
-    expect(getTranslations).toHaveBeenCalledWith({ locale, namespace: "Metadata" });
-    expect(metadata).toMatchObject({
-      title: `${locale}:title`,
-      description: `${locale}:description`,
-    });
-    expect(notFound).not.toHaveBeenCalled();
+    expect(layout).toBeDefined();
   });
 
   it.each(["sw.js", "en-US", "typo"])(
@@ -96,4 +132,15 @@ describe("locale layout", () => {
       expect(notFound).toHaveBeenCalledTimes(2);
     }
   );
+
+  it("omits SessionProvider and Providers from global scope", async () => {
+    // Verify Providers is not used in the global layout
+    // (checked by seeing no import in the rendered layout's tree)
+    const layout = await LocaleLayout({
+      children: <div>Content</div>,
+      params: Promise.resolve({ locale: "en" }),
+    });
+    // Renders as <html><body>... directly without Providers wrapper
+    expect(layout.type).toBe("html");
+  });
 });

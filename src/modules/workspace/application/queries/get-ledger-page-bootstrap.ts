@@ -29,29 +29,41 @@ interface LedgerPageBootstrapResult {
 
 const COMPLETED_PAGE_LIMIT = 20;
 
-export async function getLedgerPageBootstrap(input: {
+export interface GetLedgerPageBootstrapInput {
   ledgerId: string;
   initialTab: LedgerTab;
   periodParams: PeriodParams;
   advancedFilters?: LedgerAdvancedFilters;
-}): Promise<LedgerPageBootstrapResult | null> {
+  /** Optional pre-authorized ledger DTO to skip re-authorization. */
+  ledgerDto?: LedgerDto;
+}
+
+export async function getLedgerPageBootstrap(
+  input: GetLedgerPageBootstrapInput
+): Promise<LedgerPageBootstrapResult | null> {
   let ledgerDto: LedgerDto;
 
-  try {
-    const { ledger } = await requireLedgerAccess(input.ledgerId);
-    ledgerDto = {
-      id: ledger.id,
-      userId: ledger.userId,
-      metadata: { settings: ledger.settings },
-      createdAt: ledger.createdAt,
-      updatedAt: ledger.updatedAt,
-      deletedAt: null,
-    };
-  } catch (error) {
-    if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
-      return null;
+  if (input.ledgerDto != null) {
+    // Use pre-authorized DTO — skip re-authorization
+    ledgerDto = input.ledgerDto;
+  } else {
+    // Legacy path: authorize inline
+    try {
+      const { ledger } = await requireLedgerAccess(input.ledgerId);
+      ledgerDto = {
+        id: ledger.id,
+        userId: ledger.userId,
+        metadata: { settings: ledger.settings },
+        createdAt: ledger.createdAt,
+        updatedAt: ledger.updatedAt,
+        deletedAt: null,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+        return null;
+      }
+      throw error;
     }
-    throw error;
   }
 
   const queryClient = new QueryClient();

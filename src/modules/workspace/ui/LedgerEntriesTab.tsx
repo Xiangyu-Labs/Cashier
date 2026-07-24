@@ -2,7 +2,6 @@ import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutGroup } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
@@ -266,12 +265,11 @@ export function LedgerEntriesTab({
   });
 
   return (
-    <LayoutGroup id={layoutGroupId}>
-      <PullToRefresh onRefresh={handleRefresh}>
-        <div className="space-y-4" {...containerProps}>
-          <LedgerEntriesToolbar
-            isSelectionMode={isSelectionMode}
-            isAllSelected={isAllSelected}
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="space-y-4" {...containerProps}>
+        <LedgerEntriesToolbar
+          isSelectionMode={isSelectionMode}
+          isAllSelected={isAllSelected}
             selectedCount={selectedIds.length}
             onToggleSelectionMode={handleToggleSelectionMode}
             onSelectAll={selectAll}
@@ -358,6 +356,5 @@ export function LedgerEntriesTab({
           ledgerId={ledgerId}
         />
       </PullToRefresh>
-    </LayoutGroup>
   );
 }
