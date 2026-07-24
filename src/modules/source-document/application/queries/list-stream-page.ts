@@ -70,6 +70,11 @@ function decodeStreamCursor(
   ) {
     return null;
   }
+  // Validate effectiveDate format (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) return null;
+  // Validate createdAt is a parseable ISO date string
+  const createdAtMs = Date.parse(createdAt);
+  if (Number.isNaN(createdAtMs)) return null;
   return {
     ledgerId: decodedLedgerId,
     filterFingerprint,
