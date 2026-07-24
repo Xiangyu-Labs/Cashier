@@ -1,9 +1,9 @@
 "use client";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,6 +21,7 @@ import {
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
+import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
@@ -29,41 +30,21 @@ import { useLedgerDialogState } from "./useLedgerDialogState";
 // Dynamic imports for inactive tabs — keeps their dependencies
 // (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
 // out of the initial Stream bundle.
-// Each inactive tab is wrapped in a DeferredFeatureMessages provider
-// that loads the tab's locale messages lazily from a separate chunk.
+// Each inactive tab is lazily loaded by next/dynamic; its locale messages
+// are loaded separately via DeferredFeatureMessages at the usage site
+// so that the locale prop is available from the parent component scope.
 const DetailsTab = dynamic(
-  () =>
-    import("@/modules/workspace/ui/DetailsTab").then((m) => ({
-      default: (props: React.ComponentProps<typeof m.DetailsTab>) => (
-        <DeferredFeatureMessages feature="details" fallback={<DetailsTabSkeleton />}>
-          <m.DetailsTab {...props} />
-        </DeferredFeatureMessages>
-      ),
-    })),
+  () => import("@/modules/workspace/ui/DetailsTab").then((m) => m.DetailsTab),
   { loading: () => <DetailsTabSkeleton /> }
 );
 
 const StatsTab = dynamic(
-  () =>
-    import("@/modules/workspace/ui/StatsTab").then((m) => ({
-      default: (props: React.ComponentProps<typeof m.StatsTab>) => (
-        <DeferredFeatureMessages feature="stats" fallback={<StatsTabSkeleton />}>
-          <m.StatsTab {...props} />
-        </DeferredFeatureMessages>
-      ),
-    })),
+  () => import("@/modules/workspace/ui/StatsTab").then((m) => m.StatsTab),
   { loading: () => <StatsTabSkeleton /> }
 );
 
 const SettingsTab = dynamic(
-  () =>
-    import("@/modules/ledger/ui/SettingsTab").then((m) => ({
-      default: (props: React.ComponentProps<typeof m.SettingsTab>) => (
-        <DeferredFeatureMessages feature="settings" fallback={<SettingsTabSkeleton />}>
-          <m.SettingsTab {...props} />
-        </DeferredFeatureMessages>
-      ),
-    })),
+  () => import("@/modules/ledger/ui/SettingsTab").then((m) => m.SettingsTab),
   { loading: () => <SettingsTabSkeleton /> }
 );
 
@@ -104,6 +85,7 @@ export function LedgerPageClient({
   userEmail,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
+  const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -149,6 +131,27 @@ export function LedgerPageClient({
     handleInputDialogChange,
   } = useLedgerDialogState();
 
+  // Wire real handlers into the ShellController so the shell's header
+  // buttons (open input, needs-attention preset, in-progress preset) work
+  // once this component mounts.
+  const { setOpenInput, setNeedsAttention, setInProgress } = useShellController();
+
+  const handleNeedsAttention = useCallback(
+    () => applyStreamStatusPreset("needs_attention"),
+    [applyStreamStatusPreset]
+  );
+
+  const handleInProgress = useCallback(
+    () => applyStreamStatusPreset("in_progress"),
+    [applyStreamStatusPreset]
+  );
+
+  useEffect(() => {
+    setOpenInput(() => () => setIsInputOpen(true));
+    setNeedsAttention(handleNeedsAttention);
+    setInProgress(handleInProgress);
+  }, [setOpenInput, setNeedsAttention, setInProgress, setIsInputOpen, handleNeedsAttention, handleInProgress]);
+
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -178,37 +181,43 @@ export function LedgerPageClient({
 
       {activeTab === "details" && (
         <TabsContent value="details" className="mt-0">
-          <DetailsTab
-            ledgerId={ledgerId}
-            categories={categories.length > 0 ? categories : []}
-            ledger={ledger}
-            periodParams={periodParams}
-            onFiltersChange={handleFiltersChange}
-            advancedFilters={advancedFilters}
-          />
+          <DeferredFeatureMessages feature="details" locale={locale} fallback={<DetailsTabSkeleton />}>
+            <DetailsTab
+              ledgerId={ledgerId}
+              categories={categories.length > 0 ? categories : []}
+              ledger={ledger}
+              periodParams={periodParams}
+              onFiltersChange={handleFiltersChange}
+              advancedFilters={advancedFilters}
+            />
+          </DeferredFeatureMessages>
         </TabsContent>
       )}
 
       {activeTab === "stats" && (
         <TabsContent value="stats" className="mt-0">
-          <StatsTab
-            ledgerId={ledgerId}
-            ledger={ledger}
-            onCategoryDrilldown={handleCategoryDrilldown}
-            onDateDrilldown={handleDateDrilldown}
-            {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
-          />
+          <DeferredFeatureMessages feature="stats" locale={locale} fallback={<StatsTabSkeleton />}>
+            <StatsTab
+              ledgerId={ledgerId}
+              ledger={ledger}
+              onCategoryDrilldown={handleCategoryDrilldown}
+              onDateDrilldown={handleDateDrilldown}
+              {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+            />
+          </DeferredFeatureMessages>
         </TabsContent>
       )}
 
       {activeTab === "settings" && (
         <TabsContent value="settings" className="mt-0">
-          <SettingsTab
-            ledgerId={ledgerId}
-            ledger={ledger}
-            initialCategories={categories}
-            {...(userEmail !== undefined ? { userEmail } : {})}
-          />
+          <DeferredFeatureMessages feature="settings" locale={locale} fallback={<SettingsTabSkeleton />}>
+            <SettingsTab
+              ledgerId={ledgerId}
+              ledger={ledger}
+              initialCategories={categories}
+              {...(userEmail !== undefined ? { userEmail } : {})}
+            />
+          </DeferredFeatureMessages>
         </TabsContent>
       )}
 

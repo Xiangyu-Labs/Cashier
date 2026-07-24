@@ -5,6 +5,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { useLedgerTabs } from "@/modules/workspace/hooks";
+import { ShellControllerProvider, useShellController } from "./shell-controller";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 
 interface ActiveShellProps {
@@ -18,14 +19,24 @@ interface ActiveShellProps {
  * Suspense boundary) so the user sees the header and tabs while the tab
  * content loads behind a nested Suspense.
  *
- * Tab-change and header-interaction callbacks are fully wired here.
- * The header's "+" button and status-preset buttons are no-ops until
- * LedgerPageClient mounts behind the bootstrap Suspense; after that they
- * are patched via React state lifts in the BootstrapContext.
+ * ShellControllerProvider is placed here so both the AppShell (child of
+ * the provider) and the LedgerPageClient (deep in children) can access
+ * the same context. The header's "+" button and status-preset buttons
+ * start as no-ops; LedgerPageClient registers the real handlers via
+ * setOpenInput/setNeedsAttention/setInProgress once it mounts.
  */
 export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
+  return (
+    <ShellControllerProvider>
+      <ActiveShellInner ledgerId={ledgerId}>{children}</ActiveShellInner>
+    </ShellControllerProvider>
+  );
+}
+
+function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { onOpenInput, onNeedsAttention, onInProgress } = useShellController();
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.
@@ -45,16 +56,12 @@ export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
     }
   }, []);
 
-  // No-op callbacks — the real handlers are wired in LedgerPageClient
-  // which mounts behind the bootstrap Suspense boundary.
-  const noop = useCallback(() => {}, []);
-
   return (
     <AppShell
       ledgerId={ledgerId}
-      onOpenInput={noop}
-      onNeedsAttention={noop}
-      onInProgress={noop}
+      onOpenInput={onOpenInput}
+      onNeedsAttention={onNeedsAttention}
+      onInProgress={onInProgress}
     >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
