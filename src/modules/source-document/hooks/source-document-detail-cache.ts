@@ -10,6 +10,7 @@ import type {
   SourceDocumentDto,
   SourceDocumentLightWithEntriesDto,
   SourceDocumentListItemDto,
+  StreamPage,
 } from "@/modules/source-document/contracts";
 
 export type SourceDocumentQueryData = SourceDocumentDto;
@@ -95,6 +96,24 @@ export function updateSourceDocumentCollectionLists(
   // Update completed page caches (InfiniteData shape — C3)
   queryClient.setQueriesData<InfiniteData<SourceDocumentCompletedPageDto>>(
     { queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId) },
+    (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          items: page.items
+            .map((doc) => updater(doc))
+            .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null),
+        })),
+        pageParams: old.pageParams,
+      };
+    }
+  );
+
+  // Update stream cache (canonical unified paginated cache)
+  queryClient.setQueriesData<InfiniteData<StreamPage>>(
+    { queryKey: queryKeys.sourceDocumentStreamPrefix(ledgerId) },
     (old) => {
       if (!old) return old;
       return {

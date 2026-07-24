@@ -123,6 +123,12 @@ function hasSnapshots(context: unknown): context is SnapshotContext {
  * 1. Standard: onOptimisticUpdate returns { snapshots: MutationSnapshot } - automatic rollback
  * 2. Custom: onOptimisticUpdate returns any context + provide onRollback function
  *
+ * NOTE: Stream-facing source-document mutations (create, retry, update, delete,
+ * accept, abandon) must use CacheTransactionManager-based hooks instead of
+ * this generic hook. This hook is retained for non-Stream settings workflows
+ * (batch operations, calendar mutations, etc.) until they are intentionally
+ * migrated to the transaction model.
+ *
  * @param ledgerId - The ledger ID for scoped cache invalidation
  * @param options - Mutation configuration
  */

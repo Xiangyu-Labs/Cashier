@@ -101,27 +101,33 @@ export function LedgerEntriesTab({
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
 
-  // Mutations for stream card actions with proper cache invalidation, toast, and loading state
+  // Mutations for stream card actions with targeted cache patching
+  // NOTE: These use the generic useLedgerMutation for simplicity. For full
+  // transaction-scoped optimistic updates, use useSourceDocumentRecoveryMutations
+  // or useSourceDocumentRecordMutations from the source-document hooks.
   const streamInvalidationPredicates = [
-    invalidateSourceDocuments(ledgerId),
-    invalidateLedgerEntries(ledgerId),
     invalidateLedgerStats(ledgerId),
     invalidateEntryCategories(ledgerId),
   ];
 
   const retryMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
     mutationFn: async (doc) => {
-      await retrySourceDocumentAction(ledgerId, doc.id);
+      const operationId = crypto.randomUUID();
+      await retrySourceDocumentAction(ledgerId, doc.id, operationId);
     },
     successMessage: null,
     errorMessage: null,
     invalidatePredicates: streamInvalidationPredicates,
+    onSuccessExtra: () => {
+      notifyNewSubmission();
+    },
   });
 
   const acceptCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
     mutationFn: async (doc) => {
       if (doc.pendingRevisionId == null) throw new Error("No pending revision");
-      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+      const operationId = crypto.randomUUID();
+      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
     },
     successMessage: tActions("acceptSuccess"),
     errorMessage: tActions("acceptError"),
@@ -131,7 +137,8 @@ export function LedgerEntriesTab({
   const abandonCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
     mutationFn: async (doc) => {
       if (doc.pendingRevisionId == null) throw new Error("No pending revision");
-      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId);
+      const operationId = crypto.randomUUID();
+      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
     },
     successMessage: tActions("abandonSuccess"),
     errorMessage: tActions("abandonError"),

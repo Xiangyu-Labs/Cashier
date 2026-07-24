@@ -2,21 +2,24 @@
 
 import { useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  invalidateSourceDocumentAttention,
-  invalidateSourceDocumentCompleted,
-  invalidateSourceDocumentCounts,
   queryKeys,
+  invalidateSourceDocumentCounts,
 } from "@/lib/query-keys";
-import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
 import {
   createSourceDocumentAction,
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type { SourceDocumentAttentionDto, SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { fireAndForget } from "@/lib/safe-async";
-import { toast } from "sonner";
+import {
+  CacheTransactionManager,
+} from "@/lib/mutations/cache-transaction";
+import type {
+  CreateSourceDocumentResponseDto,
+  SourceDocumentListItemDto,
+  MutationReconciliation,
+} from "@/modules/source-document/contracts";
 import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
@@ -26,17 +29,25 @@ import {
   uploadSourceDocumentSubmissionImages,
 } from "./source-document-submission-upload";
 import { notifyNewSubmission } from "./revision-state-refresh";
+import {
+  applyOptimisticUpsert,
+  applyOptimisticDelete,
+} from "./source-document-optimistic-cache";
+import { toast } from "sonner";
 
-type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-interface CreateRollbackContext {
-  previousAttention?: [readonly unknown[], unknown][];
-  previousPending?: unknown;
+interface CreateVariables {
+  payload: SourceDocumentSubmitPayload;
+  operationId: string;
   clientSubmissionId: string;
 }
 
-interface RetryRollbackContext {
-  previousDocument?: unknown;
+interface RetryVariables {
+  payload: SourceDocumentSubmitPayload;
+  operationId: string;
 }
 
 interface UseSourceDocumentSubmitMutationsOptions {
@@ -47,57 +58,17 @@ interface UseSourceDocumentSubmitMutationsOptions {
   onSuccess?: () => void;
 }
 
-function createExactPredicate(target: readonly unknown[]): QueryPredicate {
-  return (query) =>
-    Array.isArray(query.queryKey) &&
-    query.queryKey.length === target.length &&
-    target.every((value, index) => query.queryKey[index] === value);
-}
+// ---------------------------------------------------------------------------
+// Placeholder builder
+// ---------------------------------------------------------------------------
 
-function invalidateSubmitQueries(
-  queryClient: {
-    invalidateQueries: (options: { predicate: QueryPredicate }) => Promise<unknown>;
-  },
-  ledgerId: string
-) {
-  // Selective invalidation: attention, completed pages, counts (not the entire sourceDocuments prefix)
-  fireAndForget(
-    queryClient.invalidateQueries({
-      predicate: invalidateSourceDocumentAttention(ledgerId),
-    }),
-    { context: "SourceDocumentInput" }
-  );
-  fireAndForget(
-    queryClient.invalidateQueries({
-      predicate: invalidateSourceDocumentCompleted(ledgerId),
-    }),
-    { context: "SourceDocumentInput" }
-  );
-  fireAndForget(
-    queryClient.invalidateQueries({
-      predicate: invalidateSourceDocumentCounts(ledgerId),
-    }),
-    { context: "SourceDocumentInput" }
-  );
-}
-
-/**
- * Insert a placeholder source document into the attention query cache.
- * Returns the generated client-side submission id and snapshots for rollback.
- */
-function insertPlaceholderIntoAttention(
-  queryClient: QueryClient,
-  ledgerId: string
-): { clientSubmissionId: string; snapshots: [readonly unknown[], unknown][] } {
-  const clientSubmissionId = crypto.randomUUID();
+function buildPlaceholder(
+  ledgerId: string,
+  clientSubmissionId: string,
+  payload: SourceDocumentSubmitPayload
+): SourceDocumentListItemDto {
   const now = new Date().toISOString();
-
-  const snapshots = createListSnapshots<SourceDocumentAttentionDto>(
-    queryClient,
-    queryKeys.sourceDocumentAttention(ledgerId)
-  );
-
-  const placeholder: SourceDocumentListItemDto = {
+  const entity = {
     id: clientSubmissionId,
     ledgerId,
     title: null,
@@ -106,53 +77,23 @@ function insertPlaceholderIntoAttention(
     status: "queued",
     type: "ai_parsed",
     anomalyReason: null,
-    entryDate: null,
+    entryDate: payload.entryDate ?? null,
     metadata: {},
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
-    hasImages: false,
+    hasImages: (payload.images?.length ?? 0) > 0 || (payload.storedFileIds?.length ?? 0) > 0,
     supportedActions: [],
     errorCode: null,
     pendingRevisionId: null,
     ledgerEntries: [],
   };
-
-  queryClient.setQueryData<SourceDocumentAttentionDto>(
-    queryKeys.sourceDocumentAttention(ledgerId),
-    (old) => {
-      if (!old) return { items: [placeholder], total: 1 };
-      return {
-        ...old,
-        items: [placeholder, ...old.items],
-        total: old.total + 1,
-      };
-    }
-  );
-
-  return { clientSubmissionId, snapshots };
+  return entity as unknown as SourceDocumentListItemDto;
 }
 
-/**
- * Remove a placeholder from the attention cache by client submission id.
- */
-function removePlaceholderFromAttention(
-  queryClient: QueryClient,
-  ledgerId: string,
-  clientSubmissionId: string
-) {
-  queryClient.setQueryData<SourceDocumentAttentionDto>(
-    queryKeys.sourceDocumentAttention(ledgerId),
-    (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        items: old.items.filter((item) => item.id !== clientSubmissionId),
-        total: Math.max(0, old.total - 1),
-      };
-    }
-  );
-}
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
 
 export function useSourceDocumentSubmitMutations({
   ledgerId,
@@ -161,6 +102,9 @@ export function useSourceDocumentSubmitMutations({
   messages,
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
+  const queryClient = useQueryClient();
+  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+
   const handleSubmitError = (error: Error, fallbackMessage: string) => {
     console.error("Source document submission failed:", error);
     if (error instanceof SourceDocumentSubmissionUploadError) {
@@ -170,162 +114,195 @@ export function useSourceDocumentSubmitMutations({
     toast.error(fallbackMessage);
   };
 
-  // Ref to track the current placeholder's clientSubmissionId for use in onSettledExtra
-  const clientSubmissionIdRef = useRef<string | null>(null);
+  // -----------------------------------------------------------------------
+  // Create mutation
+  // -----------------------------------------------------------------------
 
-  const createMutation = useLedgerMutation<
-    unknown,
-    SourceDocumentSubmitPayload,
-    CreateRollbackContext
-  >(ledgerId, {
-    mutationFn: async (payload) =>
-      createSourceDocumentAction(
+  const createMutation = useMutation({
+    mutationFn: async (variables: CreateVariables) => {
+      const { payload, clientSubmissionId } = variables;
+      const uploadedPayload = await uploadSourceDocumentSubmissionImages(ledgerId, payload);
+      return createSourceDocumentAction(
         ledgerId,
-        await uploadSourceDocumentSubmissionImages(ledgerId, payload)
-      ),
-    successMessage: messages.uploadSuccess,
-    errorMessage: null,
-    cancelPredicates: [createExactPredicate(queryKeys.sourceDocumentAttention(ledgerId))],
-    skipInvalidation: true,
-    onOptimisticUpdate: async (queryClient) => {
-      const previousPending = queryClient.getQueryData(
-        queryKeys.sourceDocuments(ledgerId, "pending")
+        uploadedPayload,
+        variables.operationId,
+        clientSubmissionId
       );
-
-      // Insert placeholder into attention cache
-      const { clientSubmissionId, snapshots: attentionSnapshots } =
-        insertPlaceholderIntoAttention(queryClient, ledgerId);
-
-      clientSubmissionIdRef.current = clientSubmissionId;
-
-      return {
-        previousAttention: attentionSnapshots,
-        previousPending,
-        clientSubmissionId,
-      };
     },
-    onRollback: (queryClient, context) => {
-      if (!context) return;
+    onMutate: async (variables: CreateVariables) => {
+      const { payload, operationId, clientSubmissionId } = variables;
 
-      // Restore attention cache from snapshot
-      if (context.previousAttention) {
-        context.previousAttention.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
+      // Start transaction operation
+      const op = transactionRef.current.startOperation(ledgerId);
 
-      if (context.previousPending !== undefined) {
-        queryClient.setQueryData(
-          queryKeys.sourceDocuments(ledgerId, "pending"),
-          context.previousPending
-        );
-      }
+      // Build a queued placeholder entity
+      const placeholder = buildPlaceholder(ledgerId, clientSubmissionId, payload);
+
+      // Record the patch for rollback
+      const streamKey = queryKeys.sourceDocumentStreamPrefix(ledgerId);
+      const snapshot = queryClient.getQueriesData({ queryKey: streamKey });
+      op.patches.push({
+        type: "upsert",
+        entityId: clientSubmissionId,
+        entity: placeholder,
+        prevEntity: null, // Entity is new
+      });
+
+      // Apply optimistic upsert to stream cache
+      applyOptimisticUpsert(queryClient, ledgerId, placeholder);
+
+      return { clientSubmissionId: variables.clientSubmissionId, operationId };
     },
-    onSettledExtra: (queryClient, _variables, data, error) => {
-      const submissionId = clientSubmissionIdRef.current;
-      clientSubmissionIdRef.current = null;
+    onSuccess: (data, variables) => {
+      const opId = variables.operationId;
 
-      if (error != null && submissionId != null) {
-        // Error path: remove placeholder immediately
-        removePlaceholderFromAttention(queryClient, ledgerId, submissionId);
-      } else if (!error && data != null && submissionId != null) {
-        // Success path: replace placeholder id with server-returned id
-        const response = data as CreateSourceDocumentResponseDto;
-        if (response.sourceDocumentId != null) {
-          queryClient.setQueryData<SourceDocumentAttentionDto>(
-            queryKeys.sourceDocumentAttention(ledgerId),
-            (old) => {
-              if (!old) return old;
-              return {
-                ...old,
-                items: old.items.map((item) =>
-                  item.id === submissionId
-                    ? { ...item, id: response.sourceDocumentId }
-                    : item
-                ),
-              };
-            }
+      if (data != null) {
+        const response = data as CreateSourceDocumentResponseDto &
+          Partial<{
+            reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
+          }>;
+
+        if (response.reconciliation?.entity != null) {
+          transactionRef.current.commitOperation(
+            opId,
+            response.reconciliation.entity,
+            queryClient
           );
         } else {
-          // No returned sourceDocumentId; remove placeholder
-          removePlaceholderFromAttention(queryClient, ledgerId, submissionId);
+          transactionRef.current.commitOperation(opId, null, queryClient);
         }
-
-        // Notify the refresh coordinator so it resets backoff for faster polling
-        notifyNewSubmission();
+      } else {
+        transactionRef.current.commitOperation(opId, null, queryClient);
       }
 
-      invalidateSubmitQueries(queryClient, ledgerId);
+      toast.success(messages.uploadSuccess);
+      notifyNewSubmission();
+      onSuccess?.();
     },
-    ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
-    onErrorExtra: (error) => handleSubmitError(error, messages.uploadError),
+    onError: (error, variables) => {
+      // Roll back the operation
+      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      handleSubmitError(error, messages.uploadError);
+    },
+    onSettled: () => {
+      // Minimal invalidation for counts only (stream cache is patched)
+      queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentCounts(ledgerId),
+      });
+    },
   });
 
-  const retryMutation = useLedgerMutation<
-    unknown,
-    SourceDocumentSubmitPayload,
-    RetryRollbackContext
-  >(ledgerId, {
-    mutationFn: async (payload) => {
-      if (sourceDocumentId == null) return;
-      await editRetrySourceDocumentAction(
+  // -----------------------------------------------------------------------
+  // Retry mutation
+  // -----------------------------------------------------------------------
+
+  const retryMutation = useMutation({
+    mutationFn: async (variables: RetryVariables) => {
+      if (sourceDocumentId == null) throw new Error("No source document ID for retry");
+      const { payload } = variables;
+      const uploadedPayload = await uploadSourceDocumentSubmissionImages(ledgerId, payload);
+      return editRetrySourceDocumentAction(
         ledgerId,
         sourceDocumentId,
-        await uploadSourceDocumentSubmissionImages(ledgerId, payload)
+        uploadedPayload,
+        variables.operationId
       );
     },
-    successMessage: messages.retrySuccess,
-    errorMessage: null,
-    cancelPredicates: [invalidateSourceDocumentAttention(ledgerId)],
-    skipInvalidation: true,
-    onOptimisticUpdate: async (queryClient, payload) => {
-      const previousDocument =
-        sourceDocumentId != null
-          ? queryClient.getQueryData(queryKeys.sourceDocument(sourceDocumentId))
-          : undefined;
+    onMutate: async (variables: RetryVariables) => {
+      const { operationId } = variables;
 
+      // Start transaction operation
+      const op = transactionRef.current.startOperation(ledgerId);
+
+      // Capture current entity from stream cache for rollback
+      const placeholder: SourceDocumentListItemDto = {
+        id: sourceDocumentId ?? "",
+        ledgerId,
+        title: null,
+        text: null,
+        files: [],
+        status: "queued",
+        type: "ai_parsed",
+        anomalyReason: null,
+        entryDate: null,
+        metadata: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deletedAt: null,
+        hasImages: false,
+        supportedActions: [],
+        errorCode: null,
+        pendingRevisionId: null,
+        ledgerEntries: [],
+      };
+
+      op.patches.push({
+        type: "upsert",
+        entityId: sourceDocumentId ?? "",
+        entity: placeholder,
+        prevEntity: null, // We don't have the previous entity from stream cache
+      });
+
+      // Apply optimistic update to stream cache
       if (sourceDocumentId != null) {
-        queryClient.setQueryData(
-          queryKeys.sourceDocument(sourceDocumentId),
-          (current: unknown | undefined) => {
-            if (current == null) return current;
-
-            return {
-              ...(current as Record<string, unknown>),
-              status: "processing",
-              ...(payload.text !== undefined && payload.text !== "" ? { text: payload.text } : {}),
-            };
-          }
-        );
+        applyOptimisticUpsert(queryClient, ledgerId, placeholder);
       }
 
-      return { previousDocument };
+      return { operationId };
     },
-    onRollback: (queryClient, context) => {
-      if (sourceDocumentId == null || context?.previousDocument === undefined) return;
+    onSuccess: (data, variables) => {
+      const opId = variables.operationId;
 
-      queryClient.setQueryData(
-        queryKeys.sourceDocument(sourceDocumentId),
-        context.previousDocument
-      );
+      if (data != null) {
+        const response = data as Partial<{
+          reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
+        }>;
+
+        if (response.reconciliation?.entity != null) {
+          transactionRef.current.commitOperation(
+            opId,
+            response.reconciliation.entity,
+            queryClient
+          );
+        } else {
+          transactionRef.current.commitOperation(opId, null, queryClient);
+        }
+      } else {
+        transactionRef.current.commitOperation(opId, null, queryClient);
+      }
+
+      toast.success(messages.retrySuccess);
+      notifyNewSubmission();
+      onSuccess?.();
     },
-    onSettledExtra: (queryClient) => {
-      invalidateSubmitQueries(queryClient, ledgerId);
+    onError: (error, variables) => {
+      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      handleSubmitError(error, messages.retryError);
     },
-    ...(onSuccess == null ? {} : { onSuccessExtra: onSuccess }),
-    onErrorExtra: (error) => handleSubmitError(error, messages.retryError),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentCounts(ledgerId),
+      });
+    },
   });
+
+  // -----------------------------------------------------------------------
+  // Public API
+  // -----------------------------------------------------------------------
 
   const activeMutation = mode === "retry" ? retryMutation : createMutation;
 
   const submit = (payload: SourceDocumentSubmitPayload) => {
     if (mode === "retry") {
       if (sourceDocumentId == null) return false;
-      retryMutation.mutate(payload);
+      const operationId = crypto.randomUUID();
+      retryMutation.mutate({ payload, operationId });
       return true;
     }
 
-    createMutation.mutate(payload);
+    const operationId = crypto.randomUUID();
+    const clientSubmissionId = crypto.randomUUID();
+    createMutation.mutate({ payload, operationId, clientSubmissionId });
     return true;
   };
 
