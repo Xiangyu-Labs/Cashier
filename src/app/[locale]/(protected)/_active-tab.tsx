@@ -1,28 +1,81 @@
 import { Suspense } from "react";
-import { HydrationBoundary } from "@tanstack/react-query";
-import { getLocale, getMessages } from "next-intl/server";
+import { getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
-import { auth } from "@/auth";
 import { redirect } from "@/i18n/routing";
-import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
-import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
-import { resolveHome } from "@/modules/workspace/application/use-cases/resolve-home";
+import { resolveAuthenticatedHome } from "@/lib/request-cache";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
-import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
-import type { LedgerTab } from "@/modules/workspace/tabs";
-import { LedgerPageSkeleton } from "@/components/skeletons";
+import { EntriesTabSkeleton } from "@/components/skeletons/TabSkeletons";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
+import { ActiveContent } from "./_active-content";
 
 interface ActiveTabProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
 
-function getSingleSearchParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
+export async function ActiveTab({ searchParams }: ActiveTabProps) {
+  let context;
+  try {
+    context = await resolveAuthenticatedHome();
+  } catch {
+    // Auth failure — redirect to login.
+    // resolveAuthenticatedHome throws UnauthorizedError; the layout's
+    // own auth() check should catch this first, but handle it here
+    // for safety.
+    redirect({ href: "/login", locale: "en" });
+    return null;
+  }
+
+  const { ledgerId, ledgerDto, session, locale } = context;
+
+  const initialTab = parseLedgerTab(searchParams);
+  const periodParams = parsePeriodFromSearchParams(searchParams);
+  const advancedFilters = readAdvancedFilters(searchParams);
+
+  const allMessages = await getMessages({ locale });
+  const streamMessages = pickMessages(allMessages, [
+    ...FEATURE_MESSAGES.shell,
+    ...FEATURE_MESSAGES.stream,
+  ]);
+
+  return (
+    <NextIntlClientProvider messages={streamMessages} locale={locale}>
+      {/*
+       * Render a minimal page frame (background) immediately after
+       * auth/home resolve, so the outer Suspense in page.tsx can
+       * stream this HTML to the browser before the heavy bootstrap
+       * queries complete.
+       *
+       * The full AppShell (with navigation header) is rendered by
+       * LedgerPageClient once ActiveContent resolves inside the
+       * inner Suspense.
+       */}
+      <div className="min-h-dvh bg-bg text-text">
+        <main className="mx-auto w-full max-w-6xl px-3 py-4 pb-24 sm:px-4 md:px-6">
+          <Suspense fallback={<EntriesTabSkeleton />}>
+            <ActiveContent
+              ledgerId={ledgerId}
+              ledgerDto={ledgerDto}
+              initialTab={initialTab}
+              periodParams={periodParams}
+              advancedFilters={advancedFilters}
+              {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
+              locale={locale}
+            />
+          </Suspense>
+        </main>
+      </div>
+    </NextIntlClientProvider>
+  );
 }
 
 function readAdvancedFilters(searchParams: Record<string, string | string[] | undefined>) {
+  const getSingleSearchParam = (
+    value: string | string[] | undefined
+  ): string | undefined => {
+    return Array.isArray(value) ? value[0] : value;
+  };
+
   const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
     const raw = getSingleSearchParam(searchParams[key]);
     if (raw == null) return null;
@@ -36,59 +89,4 @@ function readAdvancedFilters(searchParams: Record<string, string | string[] | un
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
   };
-}
-
-export async function ActiveTab({ searchParams }: ActiveTabProps) {
-  const [session, locale] = await Promise.all([auth(), getLocale()]);
-
-  if (session?.user?.id == null) {
-    redirect({ href: "/login", locale });
-    // Unreachable — redirect either navigates away or throws.
-    // This null return satisfies TypeScript control flow analysis.
-    return null;
-  }
-
-  const initialTab = parseLedgerTab(searchParams);
-  const periodParams = parsePeriodFromSearchParams(searchParams);
-  const advancedFilters = readAdvancedFilters(searchParams);
-
-  const home = await resolveHome({
-    userId: session.user.id,
-    locale,
-  });
-
-  const pageData = await getLedgerPageBootstrap({
-    ledgerId: home.ledgerId,
-    initialTab,
-    periodParams,
-    advancedFilters,
-  });
-
-  if (pageData == null) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-bg">
-        <p className="text-muted">Failed to load ledger data.</p>
-      </div>
-    );
-  }
-
-  // Load Stream-related messages on top of the shell messages from the global layout
-  const allMessages = await getMessages({ locale });
-  const streamMessages = pickMessages(allMessages, [
-    ...FEATURE_MESSAGES.shell,
-    ...FEATURE_MESSAGES.stream,
-  ]);
-
-  return (
-    <NextIntlClientProvider messages={streamMessages} locale={locale}>
-      <HydrationBoundary state={pageData.dehydratedState}>
-        <LedgerPageClient
-          ledgerId={home.ledgerId}
-          initialTab={initialTab}
-          initialPeriod={periodParams}
-          initialStatsDate={pageData.initialStatsDate}
-        />
-      </HydrationBoundary>
-    </NextIntlClientProvider>
-  );
 }

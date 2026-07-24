@@ -4,16 +4,6 @@ import type { Ledger } from "@/modules/ledger/contracts";
 
 vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
-  useSession: () => ({
-    data: {
-      user: {
-        id: "user-1",
-        email: "person@example.com",
-        name: "User",
-        image: null,
-      },
-    },
-  }),
 }));
 
 vi.mock("@/i18n/routing", () => ({
@@ -105,7 +95,7 @@ describe("SettingsTab account authentication controls", () => {
       metadata: { settings: {} },
     } as unknown as Ledger;
 
-    render(<SettingsTab ledger={ledger} initialCategories={[]} ledgerId="ledger-1" />);
+    render(<SettingsTab ledger={ledger} initialCategories={[]} ledgerId="ledger-1" userEmail="person@example.com" />);
 
     // Required: email and sign-out command
     expect(screen.getAllByText("person@example.com").length).toBeGreaterThanOrEqual(1);

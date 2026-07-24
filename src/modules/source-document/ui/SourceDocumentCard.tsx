@@ -5,7 +5,6 @@ import { type SourceDocumentStatusType } from "@/modules/source-document/contrac
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import type { ApplicationErrorCode } from "@/application/contracts";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
@@ -150,31 +149,26 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         {...(_onViewDetails !== undefined ? { onViewDetails: _onViewDetails } : {})}
       />
 
-      <AnimatePresence initial={false}>
-        {isItemsExpanded && (
-          <motion.div
-            data-testid="source-document-card-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
-          >
-            {status !== "completed" && (
-              <SourceDocumentCardPreview text={text} images={images} onViewDetails={_onViewDetails} />
-            )}
+      {/* Content body — conditionally rendered, no Framer Motion */}
+      {isItemsExpanded && (
+        <div
+          data-testid="source-document-card-body"
+          className="overflow-hidden animate-fade-in"
+        >
+          {status !== "completed" && (
+            <SourceDocumentCardPreview text={text} images={images} onViewDetails={_onViewDetails} />
+          )}
 
-            {status === "completed" && sortedEntries.length > 0 && (
-              <SourceDocumentCardEntries
-                entries={sortedEntries}
-                mainCurrency={mainCurrency}
-                sourceDocumentEntryDate={sourceDocument.entryDate}
-                onViewLedgerEntry={onViewLedgerEntry}
-              />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {status === "completed" && sortedEntries.length > 0 && (
+            <SourceDocumentCardEntries
+              entries={sortedEntries}
+              mainCurrency={mainCurrency}
+              sourceDocumentEntryDate={sourceDocument.entryDate}
+              onViewLedgerEntry={onViewLedgerEntry}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 });

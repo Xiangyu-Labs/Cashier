@@ -71,7 +71,7 @@ export function LedgerEntriesTab({
   const tActions = useTranslations("CandidateAction");
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
-  const { containerProps, getItemProps, layoutGroupId } = useLayoutTransition();
+  const { containerProps, getItemProps, layoutGroupId: _layoutGroupId } = useLayoutTransition();
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams, advancedFilters);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 

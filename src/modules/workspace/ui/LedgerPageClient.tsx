@@ -2,13 +2,12 @@
 import { useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  EntriesTabSkeleton,
   DetailsTabSkeleton,
   StatsTabSkeleton,
   SettingsTabSkeleton,
@@ -22,13 +21,39 @@ import {
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
-import { DetailsTab } from "@/modules/workspace/ui/DetailsTab";
-import { StatsTab } from "@/modules/workspace/ui/StatsTab";
 import { AppShell } from "./AppShell";
 import { TabNavigation } from "./TabNavigation";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
+
+// Dynamic imports for inactive tabs — keeps their dependencies
+// (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
+// out of the initial Stream bundle. Pointer-intent preload via
+// onTabIntent starts loading the chunk on hover/focus.
+const DetailsTab = dynamic(
+  () =>
+    import("@/modules/workspace/ui/DetailsTab").then((m) => ({
+      default: m.DetailsTab,
+    })),
+  { loading: () => <DetailsTabSkeleton /> }
+);
+
+const StatsTab = dynamic(
+  () =>
+    import("@/modules/workspace/ui/StatsTab").then((m) => ({
+      default: m.StatsTab,
+    })),
+  { loading: () => <StatsTabSkeleton /> }
+);
+
+const SettingsTab = dynamic(
+  () =>
+    import("@/modules/ledger/ui/SettingsTab").then((m) => ({
+      default: m.SettingsTab,
+    })),
+  { loading: () => <SettingsTabSkeleton /> }
+);
 
 // Keep dynamic imports for dialog-only components that aren't on the default path
 const SourceDocumentInput = dynamic(
@@ -48,21 +73,13 @@ const ModalStackRenderer = dynamic(
   { ssr: false }
 );
 
-const SettingsTab = dynamic(
-  () =>
-    import("@/modules/ledger/ui").then((module) => ({
-      default: module.SettingsTab,
-    })),
-  {
-    loading: () => <SettingsTabSkeleton />,
-  }
-);
-
 interface LedgerPageClientProps {
   ledgerId: string;
   initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
+  /** Server-derived user email for the Settings tab (avoids useSession). */
+  userEmail?: string;
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -72,11 +89,11 @@ export function LedgerPageClient({
   initialTab,
   initialPeriod,
   initialStatsDate,
+  userEmail,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
@@ -138,6 +155,17 @@ export function LedgerPageClient({
     handleInputDialogChange,
   } = useLedgerDialogState();
 
+  // Preload inactive tab chunks on pointer intent (hover/focus)
+  const preloadTab = useCallback((tab: LedgerTab) => {
+    if (tab === "details") {
+      import("@/modules/workspace/ui/DetailsTab");
+    } else if (tab === "stats") {
+      import("@/modules/workspace/ui/StatsTab");
+    } else if (tab === "settings") {
+      import("@/modules/ledger/ui/SettingsTab");
+    }
+  }, []);
+
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -155,7 +183,11 @@ export function LedgerPageClient({
     >
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
         <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+          <TabNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            onTabIntent={preloadTab}
+          />
         </div>
 
         {/* Only mount the active tab — inactive tabs load lazily */}
@@ -206,6 +238,7 @@ export function LedgerPageClient({
               ledgerId={ledgerId}
               ledger={ledger}
               initialCategories={categories}
+              {...(userEmail !== undefined ? { userEmail } : {})}
             />
           </TabsContent>
         )}
