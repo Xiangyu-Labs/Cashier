@@ -118,7 +118,7 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("flattens pages and deduplicates by ID preserving server order", async () => {
-    // Return duplicate doc-1 on second page to test dedup
+    // Return doc-1 on both pages to test dedup across pages
     listStreamPageActionMock
       .mockResolvedValueOnce({
         items: [
@@ -126,6 +126,14 @@ describe("useSourceDocumentStream", () => {
           makeItem("doc-2", { entryDate: "2026-07-10" }),
         ],
         nextCursor: "cursor-2",
+        generation: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeItem("doc-1", { entryDate: "2026-07-05" }), // Duplicate from first page
+          makeItem("doc-3", { entryDate: "2026-07-01" }),
+        ],
+        nextCursor: null,
         generation: 1,
       });
 
@@ -145,11 +153,12 @@ describe("useSourceDocumentStream", () => {
       expect(result.current.isFetchingNextPage).toBe(false);
     });
 
-    // Since first page has doc-1 and doc-2, and second page also has doc-1,
-    // the first occurrence should win, leaving 3 unique items
+    // doc-1 appears on both pages; first occurrence (page 1) wins,
+    // leaving doc-1, doc-2, doc-3 in server order
     const allIds = result.current.streamGroups.flatMap((g) =>
       g.items.map((i) => i.sourceDocument.id)
     );
+    expect(allIds).toEqual(["doc-1", "doc-2", "doc-3"]);
     expect(allIds.filter((id) => id === "doc-1")).toHaveLength(1);
   });
 
@@ -225,7 +234,7 @@ describe("useSourceDocumentStream", () => {
 
     await waitFor(() => {
       expect(listStreamPageActionMock).toHaveBeenCalledWith("ledger-1", {
-        statuses: ["queued", "processing"],
+        statuses: ["processing", "queued"], // Hook normalizes (sorts) for stable cache keys
         cursor: undefined,
         limit: 20,
       });
