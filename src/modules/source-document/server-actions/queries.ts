@@ -5,14 +5,12 @@ import { withLedgerAccess } from "@/modules/ledger/access";
 import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
 import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
 import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
-import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import {
   PendingSourceDocumentsResponseDto,
   SourceDocumentAttentionDto,
-  SourceDocumentCollectionDto,
   SourceDocumentCountsDto,
   SourceDocumentFullDto,
   SourceDocumentPageDto,
@@ -21,7 +19,6 @@ import {
 import {
   sourceDocumentIdSchema,
   streamPageInputSchema,
-  type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
@@ -31,20 +28,6 @@ export const getSourceDocumentsAction = withLedgerAccess(
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return listSourceDocuments(ledgerId, params);
-  }
-);
-
-/**
- * Get the bounded source document collection used by the workspace stream.
- */
-export const getSourceDocumentCollectionAction = withLedgerAccess(
-  async (
-    ledgerId: string,
-    params: ListSourceDocumentCollectionInput
-  ): Promise<SourceDocumentCollectionDto> => {
-    // Schedule processing recovery alongside data reads
-    after(() => scheduleProcessingRecovery(ledgerId));
-    return getSourceDocumentCollection(ledgerId, params);
   }
 );
 

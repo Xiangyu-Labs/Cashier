@@ -13,7 +13,6 @@ export type {
   SourceDocumentAttentionDto,
   SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateProjectionSummary,
-  SourceDocumentCollectionDto,
   SourceDocumentCompletedPageDto,
   SourceDocumentCountsDto,
   SourceDocumentDto,
