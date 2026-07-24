@@ -148,8 +148,8 @@ export function LedgerPageClient({
 
   useEffect(() => {
     setOpenInput(() => () => setIsInputOpen(true));
-    setNeedsAttention(handleNeedsAttention);
-    setInProgress(handleInProgress);
+    setNeedsAttention(() => handleNeedsAttention);
+    setInProgress(() => handleInProgress);
   }, [setOpenInput, setNeedsAttention, setInProgress, setIsInputOpen, handleNeedsAttention, handleInProgress]);
 
   if (ledger == null) {
