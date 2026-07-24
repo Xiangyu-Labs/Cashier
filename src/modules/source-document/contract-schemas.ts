@@ -204,6 +204,20 @@ export const sourceDocumentCollectionInputSchema = strictObjectSchema({
   limit: z.coerce.number().int().min(1).max(1000),
 });
 
+const streamPageCursorSchema = z
+  .string()
+  .regex(/^v\d+\|/, "Invalid stream cursor format")
+  .or(z.literal(""));
+export const streamPageInputSchema = strictObjectSchema({
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
+  minAmount: optionalQueryNumberSchema,
+  maxAmount: optionalQueryNumberSchema,
+  statuses: z.array(sourceDocumentStatusSchema).optional(),
+  cursor: streamPageCursorSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(20).default(20),
+});
+
 export const updateSourceDocumentInputSchema = strictObjectSchema({
   title: z.string().max(200).optional(),
   entryDate: optionalDateStringSchema,

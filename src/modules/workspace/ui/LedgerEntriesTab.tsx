@@ -8,8 +8,7 @@ import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import {
   invalidateLedgerStats,
-  invalidateSourceDocumentAttention,
-  invalidateSourceDocumentCompleted,
+  invalidateSourceDocumentStream,
   invalidateSourceDocumentCounts,
   invalidateSourceDocuments,
   invalidateLedgerEntries,
@@ -24,7 +23,7 @@ import { useSelection } from "@/hooks/use-selection";
 import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
 import { useBatchSourceDocumentActions,
-  useSourceDocumentCollection,
+  useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
@@ -109,8 +108,7 @@ export function LedgerEntriesTab({
     invalidateLedgerEntries(ledgerId),
     invalidateLedgerStats(ledgerId),
     invalidateEntryCategories(ledgerId),
-    invalidateSourceDocumentAttention(ledgerId),
-    invalidateSourceDocumentCompleted(ledgerId),
+    invalidateSourceDocumentStream(ledgerId),
     invalidateSourceDocumentCounts(ledgerId),
   ];
 
@@ -143,14 +141,14 @@ export function LedgerEntriesTab({
     invalidatePredicates: streamInvalidationPredicates,
   });
 
-  // Use the new collection hook with attention + paginated completed
+  // Use the unified stream hook with paginated all-statuses results
   const {
     streamGroups,
     isLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useSourceDocumentCollection(ledgerId, {
+  } = useSourceDocumentStream(ledgerId, {
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
       ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
@@ -182,8 +180,7 @@ export function LedgerEntriesTab({
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentAttention(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCompleted(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
     ]);

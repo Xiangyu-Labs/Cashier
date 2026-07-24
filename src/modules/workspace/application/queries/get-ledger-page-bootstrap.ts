@@ -7,9 +7,9 @@ import { calculateLedgerStats } from "@/modules/ledger/application/queries/calcu
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
-import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
 import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
-import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
+import type { StreamPage } from "@/modules/source-document/contracts";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,
@@ -26,8 +26,6 @@ interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
   initialStatsDate: Date;
 }
-
-const COMPLETED_PAGE_LIMIT = 20;
 
 export interface GetLedgerPageBootstrapInput {
   ledgerId: string;
@@ -82,46 +80,46 @@ export async function getLedgerPageBootstrap(
     }),
     ...(input.initialTab === "stream"
       ? [
-          // Attention items (bounded, no date/amount filters)
-          queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocumentAttention(input.ledgerId),
-            queryFn: () => getSourceDocumentAttentionQuery(input.ledgerId),
-            staleTime: runtimeEnv.sourceDocStaleTimeMs,
-          }),
-          // Counts (lightweight aggregation)
+          // Counts (lightweight aggregation, unfiltered)
           queryClient.prefetchQuery({
             queryKey: queryKeys.sourceDocumentCounts(input.ledgerId),
             queryFn: () => getSourceDocumentCountsQuery(input.ledgerId),
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
-          // First completed page (paginated)
+          // First stream page (all-statuses, filtered by period+amount, paginated)
           queryClient.prefetchInfiniteQuery({
-            queryKey: queryKeys.sourceDocumentCompletedPage(input.ledgerId, {
+            queryKey: queryKeys.sourceDocumentStream(input.ledgerId, {
               startDate: detailsState.startDateStr,
               endDate: detailsState.endDateStr,
               minAmount: input.advancedFilters?.minAmount,
               maxAmount: input.advancedFilters?.maxAmount,
+              statuses: input.advancedFilters?.statuses?.join?.(',') ??
+                (input.advancedFilters?.statuses != null
+                  ? (input.advancedFilters.statuses as string[]).join(',')
+                  : null),
             }),
             queryFn: ({ pageParam }) =>
-              listSourceDocuments(input.ledgerId, {
-                status: "completed",
+              listStreamPage(input.ledgerId, {
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
-                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
+                ...(detailsState.endDateStr !== null
+                  ? { endDate: detailsState.endDateStr }
+                  : {}),
                 ...(input.advancedFilters?.minAmount != null
                   ? { minAmount: input.advancedFilters.minAmount }
                   : {}),
                 ...(input.advancedFilters?.maxAmount != null
                   ? { maxAmount: input.advancedFilters.maxAmount }
                   : {}),
-                cursor: pageParam,
-                limit: COMPLETED_PAGE_LIMIT,
-                includeEntries: true,
+                ...(input.advancedFilters?.statuses != null
+                  ? { statuses: input.advancedFilters.statuses }
+                  : {}),
+                cursor: pageParam as string | undefined,
+                limit: 20,
               }),
             initialPageParam: undefined as string | undefined,
-            getNextPageParam: (lastPage: Awaited<ReturnType<typeof listSourceDocuments>>) =>
-              lastPage.nextCursor,
+            getNextPageParam: (lastPage: StreamPage) => lastPage.nextCursor,
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           queryClient.prefetchQuery({

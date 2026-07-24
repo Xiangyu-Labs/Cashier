@@ -45,6 +45,28 @@ export const queryKeys = {
     ] as const,
   sourceDocumentCounts: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "counts"] as const,
+  sourceDocumentStream: (
+    ledgerId: string,
+    filters?: {
+      startDate?: string | null | undefined;
+      endDate?: string | null | undefined;
+      minAmount?: number | null | undefined;
+      maxAmount?: number | null | undefined;
+      statuses?: string | null | undefined;
+    }
+  ) =>
+    [
+      "sourceDocuments",
+      ledgerId,
+      "stream",
+      filters?.startDate ?? null,
+      filters?.endDate ?? null,
+      filters?.minAmount ?? null,
+      filters?.maxAmount ?? null,
+      filters?.statuses ?? null,
+    ] as const,
+  sourceDocumentStreamPrefix: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "stream"] as const,
   sourceDocumentCollectionPrefix: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "collection"] as const,
   sourceDocumentCollection: (
@@ -255,4 +277,11 @@ export function invalidateSourceDocumentCompleted(ledgerId: string): QueryPredic
  */
 export function invalidateSourceDocumentCounts(ledgerId: string): QueryPredicate {
   return matchExactQueryKey(queryKeys.sourceDocumentCounts(ledgerId));
+}
+
+/**
+ * Helper to match all stream queries for a ledger.
+ */
+export function invalidateSourceDocumentStream(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocumentStreamPrefix(ledgerId));
 }

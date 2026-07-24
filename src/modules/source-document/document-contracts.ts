@@ -125,6 +125,12 @@ export interface SourceDocumentPageDto {
   nextCursor: string | null;
 }
 
+export interface StreamPage {
+  items: SourceDocumentListItemDto[];
+  nextCursor: string | null;
+  generation: number;
+}
+
 export interface SourceDocumentCollectionDto {
   items: SourceDocumentListItemDto[];
   hasMore: boolean;

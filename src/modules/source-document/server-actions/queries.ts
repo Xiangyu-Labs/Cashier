@@ -8,6 +8,7 @@ import { getPendingSourceDocuments } from "@/modules/source-document/application
 import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import {
   PendingSourceDocumentsResponseDto,
   SourceDocumentAttentionDto,
@@ -15,9 +16,11 @@ import {
   SourceDocumentCountsDto,
   SourceDocumentFullDto,
   SourceDocumentPageDto,
+  StreamPage,
 } from "@/modules/source-document/contracts";
 import {
   sourceDocumentIdSchema,
+  streamPageInputSchema,
   type ListSourceDocumentCollectionInput,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
@@ -93,5 +96,35 @@ export const getSourceDocumentFullAction = withLedgerAccess(
     // Schedule processing recovery alongside detail reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return getSourceDocumentFullQuery(ledgerId, parsed.data);
+  }
+);
+
+/**
+ * Get a single all-status stream page.
+ * Uses the unified keyset cursor format v1|entryDate|createdAt|id.
+ */
+export const listStreamPageAction = withLedgerAccess(
+  async (
+    ledgerId: string,
+    params: unknown
+  ): Promise<StreamPage> => {
+    const parsed = streamPageInputSchema.safeParse(params);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+
+    const { startDate, endDate, minAmount, maxAmount, statuses, cursor, limit } = parsed.data;
+
+    // Schedule processing recovery alongside data reads
+    after(() => scheduleProcessingRecovery(ledgerId));
+    return listStreamPage(ledgerId, {
+      ...(startDate != null ? { startDate } : {}),
+      ...(endDate != null ? { endDate } : {}),
+      ...(minAmount != null ? { minAmount } : {}),
+      ...(maxAmount != null ? { maxAmount } : {}),
+      ...(statuses != null && statuses.length > 0 ? { statuses: statuses as string[] } : {}),
+      ...(cursor != null && cursor !== "" ? { cursor } : {}),
+      limit,
+    });
   }
 );

@@ -1,9 +1,9 @@
 export { useBatchSourceDocumentActions } from "./useBatchSourceDocumentActions";
 export { usePendingChanges } from "./usePendingChanges";
-export { useSourceDocumentCollection } from "./useSourceDocumentCollection";
 export { useSourceDocumentDetailData } from "./useSourceDocumentDetailData";
 export { useSourceDocumentDetailMutations } from "./useSourceDocumentDetailMutations";
 export { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 export { useSourceDocumentInputController } from "./useSourceDocumentInputController";
 export { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
 export { useSourceDocumentRecoveryMutations } from "./useSourceDocumentRecoveryMutations";
+export { useSourceDocumentStream } from "./useSourceDocumentStream";

@@ -5,6 +5,7 @@ export {
   getSourceDocumentCollectionAction,
   getSourceDocumentCountsAction,
   getPendingSourceDocumentsAction,
+  listStreamPageAction,
 } from "./server-actions/queries";
 export { getSourceDocumentByIdAction } from "./server-actions/get-document";
 export { getSourceDocumentLightAction } from "./server-actions/get-document-light";
