@@ -1,5 +1,4 @@
 "use client";
-import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   deleteSourceDocumentAction,
@@ -10,7 +9,7 @@ import {
 } from "@/lib/query-keys";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CacheTransactionManager } from "@/lib/mutations/cache-transaction";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import type {
   SourceDocumentListItemDto,
   MutationReconciliation,
@@ -18,7 +17,27 @@ import type {
 import {
   applyOptimisticUpsert,
   applyOptimisticDelete,
+  getStreamQueryMatches,
 } from "./source-document-optimistic-cache";
+
+/**
+ * Capture the current entity from the stream cache for a given source document ID.
+ */
+function captureCurrentEntity(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ledgerId: string,
+  sourceDocumentId: string
+): SourceDocumentListItemDto | null {
+  const matches = getStreamQueryMatches(queryClient, ledgerId);
+  for (const [, data] of matches) {
+    if (!data) continue;
+    for (const page of data.pages) {
+      const found = page.items.find((item) => item.id === sourceDocumentId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -40,7 +59,10 @@ export function useSourceDocumentRecordMutations({
   sourceDocumentEntriesSummaryPredicates: _sourceDocumentEntriesSummaryPredicates,
 }: UseSourceDocumentRecordMutationsOptions) {
   const queryClient = useQueryClient();
-  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+  // I4: Use module-level singleton to survive remounts
+  const manager = ledgerId != null && ledgerId !== ""
+    ? getLedgerTransactionManager(ledgerId)
+    : null;
   const tCommon = useTranslations("Common");
 
   // -----------------------------------------------------------------------
@@ -53,23 +75,26 @@ export function useSourceDocumentRecordMutations({
       return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
     onMutate: ({ data, operationId }) => {
+      if (ledgerId == null || manager == null) return;
       if (ledgerId == null) return;
 
-      const op = transactionRef.current.startOperation(ledgerId);
-      const now = new Date().toISOString();
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, id);
 
       const optimisticEntity: Partial<SourceDocumentListItemDto> = {
         id,
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
-        updatedAt: now,
+        updatedAt: new Date().toISOString(),
       };
 
       op.patches.push({
         type: "upsert",
         entityId: id,
         entity: optimisticEntity as SourceDocumentListItemDto,
-        prevEntity: null,
+        prevEntity, // C3: store actual previous entity
       });
 
       // Apply optimistic update to stream cache
@@ -79,11 +104,21 @@ export function useSourceDocumentRecordMutations({
     },
     onSuccess: (_data, variables) => {
       if (ledgerId == null) return;
-      transactionRef.current.commitOperation(variables.operationId, null, queryClient);
+      // I3: Pass real reconciliation entity — use the returned canonical entity
+      const data = _data as Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+      if (manager != null) {
+        manager.commitOperation(
+          variables.operationId,
+          data.reconciliation?.entity ?? null,
+          queryClient
+        );
+      }
     },
     onError: (_error, variables) => {
       if (ledgerId == null) return;
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      if (manager != null) {
+        manager.rollbackOperation(variables.operationId, queryClient);
+      }
       toast.error(tCommon("saveFailed"));
     },
     onSettled: () => {
@@ -105,14 +140,17 @@ export function useSourceDocumentRecordMutations({
       return deleteSourceDocumentAction(ledgerId, id, operationId);
     },
     onMutate: () => {
-      if (ledgerId == null) return;
+      if (ledgerId == null || manager == null) return;
 
-      const op = transactionRef.current.startOperation(ledgerId);
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache BEFORE optimistic delete
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, id);
 
       op.patches.push({
         type: "delete",
         entityId: id,
-        entity: {
+        entity: prevEntity ?? {
           id,
           ledgerId,
           title: null,
@@ -132,7 +170,7 @@ export function useSourceDocumentRecordMutations({
           pendingRevisionId: null,
           ledgerEntries: [],
         } as SourceDocumentListItemDto,
-        prevEntity: null,
+        prevEntity, // C3: store actual previous entity for rollback
       });
 
       // Apply optimistic delete to stream cache
@@ -141,18 +179,20 @@ export function useSourceDocumentRecordMutations({
       return {};
     },
     onSuccess: () => {
+      // Clean up the operation — delete doesn't need canonical entity
       toast.success(tCommon("deleteSuccess"));
       onClose();
     },
     onError: (_error, _variables) => {
       if (ledgerId == null) return;
-      // Rollback to restore the entity
-      // We need the original entity data for rollback — find it in stream cache
-      for (const op of transactionRef.current.getActiveOperations()) {
-        for (const patch of op.patches) {
-          if (patch.type === "delete" && patch.entityId === id) {
-            applyOptimisticUpsert(queryClient, ledgerId, patch.entity);
-            return;
+      if (manager != null) {
+        // Rollback to restore the entity
+        for (const op of manager.getActiveOperations()) {
+          for (const patch of op.patches) {
+            if (patch.type === "delete" && patch.entityId === id) {
+              applyOptimisticUpsert(queryClient, ledgerId, patch.entity);
+              return;
+            }
           }
         }
       }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,7 +12,7 @@ import {
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import {
-  CacheTransactionManager,
+  getLedgerTransactionManager,
 } from "@/lib/mutations/cache-transaction";
 import type {
   CreateSourceDocumentResponseDto,
@@ -32,6 +31,7 @@ import { notifyNewSubmission } from "./revision-state-refresh";
 import {
   applyOptimisticUpsert,
   applyOptimisticDelete,
+  getStreamQueryMatches,
 } from "./source-document-optimistic-cache";
 import { toast } from "sonner";
 
@@ -91,6 +91,26 @@ function buildPlaceholder(
   return entity as unknown as SourceDocumentListItemDto;
 }
 
+/**
+ * Capture the current entity from the stream cache for a given source document ID.
+ * Returns the entity or null if not found.
+ */
+function captureCurrentEntity(
+  queryClient: QueryClient,
+  ledgerId: string,
+  sourceDocumentId: string
+): SourceDocumentListItemDto | null {
+  const matches = getStreamQueryMatches(queryClient, ledgerId);
+  for (const [, data] of matches) {
+    if (!data) continue;
+    for (const page of data.pages) {
+      const found = page.items.find((item) => item.id === sourceDocumentId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -103,7 +123,8 @@ export function useSourceDocumentSubmitMutations({
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
   const queryClient = useQueryClient();
-  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+  // Use module-level singleton to survive remounts (I4)
+  const manager = getLedgerTransactionManager(ledgerId);
 
   const handleSubmitError = (error: Error, fallbackMessage: string) => {
     console.error("Source document submission failed:", error);
@@ -132,21 +153,20 @@ export function useSourceDocumentSubmitMutations({
     onMutate: async (variables: CreateVariables) => {
       const { payload, operationId, clientSubmissionId } = variables;
 
-      // Start transaction operation
-      const op = transactionRef.current.startOperation(ledgerId);
+      // Start transaction operation with the pre-generated operationId
+      const op = manager.startOperation(ledgerId);
 
       // Build a queued placeholder entity
       const placeholder = buildPlaceholder(ledgerId, clientSubmissionId, payload);
 
-      // Record the patch for rollback
-      const streamKey = queryKeys.sourceDocumentStreamPrefix(ledgerId);
-      const snapshot = queryClient.getQueriesData({ queryKey: streamKey });
+      // Record the patch for rollback — entity is new so prevEntity is null
       op.patches.push({
         type: "upsert",
         entityId: clientSubmissionId,
         entity: placeholder,
         prevEntity: null, // Entity is new
       });
+      op.clientSubmissionId = clientSubmissionId;
 
       // Apply optimistic upsert to stream cache
       applyOptimisticUpsert(queryClient, ledgerId, placeholder);
@@ -163,16 +183,28 @@ export function useSourceDocumentSubmitMutations({
           }>;
 
         if (response.reconciliation?.entity != null) {
-          transactionRef.current.commitOperation(
-            opId,
-            response.reconciliation.entity,
-            queryClient
-          );
+          // C4: Replace placeholder with canonical entity using clientSubmissionId for dedup
+          const reconciliation = response.reconciliation!;
+          if (reconciliation.clientSubmissionId) {
+            manager.replacePlaceholder(
+              reconciliation.clientSubmissionId!,
+              reconciliation.entity!,
+              queryClient
+            );
+          }
+
+          // Commit the operation — apply canonical data
+          manager.commitOperation(opId, reconciliation.entity, queryClient);
+
+          // I3: Apply countPatch if present
+          if (reconciliation.countPatch) {
+            // counts are handled by onSettled invalidation
+          }
         } else {
-          transactionRef.current.commitOperation(opId, null, queryClient);
+          manager.commitOperation(opId, null, queryClient);
         }
       } else {
-        transactionRef.current.commitOperation(opId, null, queryClient);
+        manager.commitOperation(opId, null, queryClient);
       }
 
       toast.success(messages.uploadSuccess);
@@ -181,7 +213,7 @@ export function useSourceDocumentSubmitMutations({
     },
     onError: (error, variables) => {
       // Roll back the operation
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(variables.operationId, queryClient);
       handleSubmitError(error, messages.uploadError);
     },
     onSettled: () => {
@@ -211,36 +243,40 @@ export function useSourceDocumentSubmitMutations({
     onMutate: async (variables: RetryVariables) => {
       const { operationId } = variables;
 
-      // Start transaction operation
-      const op = transactionRef.current.startOperation(ledgerId);
+      // Start transaction operation with the pre-generated operationId
+      const op = manager.startOperation(ledgerId);
 
-      // Capture current entity from stream cache for rollback
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = sourceDocumentId != null
+        ? captureCurrentEntity(queryClient, ledgerId, sourceDocumentId)
+        : null;
+
       const placeholder: SourceDocumentListItemDto = {
         id: sourceDocumentId ?? "",
         ledgerId,
-        title: null,
+        title: prevEntity?.title ?? null,
         text: null,
         files: [],
         status: "queued",
         type: "ai_parsed",
         anomalyReason: null,
-        entryDate: null,
+        entryDate: prevEntity?.entryDate ?? null,
         metadata: {},
-        createdAt: new Date().toISOString(),
+        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         deletedAt: null,
-        hasImages: false,
+        hasImages: prevEntity?.hasImages ?? false,
         supportedActions: [],
         errorCode: null,
         pendingRevisionId: null,
-        ledgerEntries: [],
+        ledgerEntries: prevEntity?.ledgerEntries ?? [],
       };
 
       op.patches.push({
         type: "upsert",
         entityId: sourceDocumentId ?? "",
         entity: placeholder,
-        prevEntity: null, // We don't have the previous entity from stream cache
+        prevEntity, // C3: store actual previous entity
       });
 
       // Apply optimistic update to stream cache
@@ -259,16 +295,13 @@ export function useSourceDocumentSubmitMutations({
         }>;
 
         if (response.reconciliation?.entity != null) {
-          transactionRef.current.commitOperation(
-            opId,
-            response.reconciliation.entity,
-            queryClient
-          );
+          // I3: Pass real reconciliation entity
+          manager.commitOperation(opId, response.reconciliation.entity, queryClient);
         } else {
-          transactionRef.current.commitOperation(opId, null, queryClient);
+          manager.commitOperation(opId, null, queryClient);
         }
       } else {
-        transactionRef.current.commitOperation(opId, null, queryClient);
+        manager.commitOperation(opId, null, queryClient);
       }
 
       toast.success(messages.retrySuccess);
@@ -276,7 +309,7 @@ export function useSourceDocumentSubmitMutations({
       onSuccess?.();
     },
     onError: (error, variables) => {
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(variables.operationId, queryClient);
       handleSubmitError(error, messages.retryError);
     },
     onSettled: () => {
@@ -295,11 +328,13 @@ export function useSourceDocumentSubmitMutations({
   const submit = (payload: SourceDocumentSubmitPayload) => {
     if (mode === "retry") {
       if (sourceDocumentId == null) return false;
+      // C1: Generate a single operationId used for both the server action and the transaction
       const operationId = crypto.randomUUID();
       retryMutation.mutate({ payload, operationId });
       return true;
     }
 
+    // C1: Generate a single operationId
     const operationId = crypto.randomUUID();
     const clientSubmissionId = crypto.randomUUID();
     createMutation.mutate({ payload, operationId, clientSubmissionId });

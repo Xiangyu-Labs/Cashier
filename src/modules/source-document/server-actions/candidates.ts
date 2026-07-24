@@ -10,7 +10,7 @@ import type {
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation } from "./reconciliation";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Accept a completed candidate revision for a source document.
@@ -31,7 +31,12 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
     const result = await acceptSourceDocumentCandidate({ ledgerId, sourceDocumentId, revisionId });
 
     if (operationId != null) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         {
@@ -85,7 +90,12 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
     const result = await abandonSourceDocumentCandidate({ ledgerId, sourceDocumentId, revisionId });
 
     if (operationId != null) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         {

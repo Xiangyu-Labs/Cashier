@@ -9,9 +9,76 @@ import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-doc
 // ---------------------------------------------------------------------------
 
 /**
+ * Extract filter parameters from a stream query key.
+ * The query key structure is:
+ *   ["sourceDocuments", ledgerId, "stream", startDate, endDate, minAmount, maxAmount, statuses]
+ */
+function extractFiltersFromQueryKey(
+  queryKey: readonly unknown[]
+): {
+  startDate: string | null;
+  endDate: string | null;
+  minAmount: number | null;
+  maxAmount: number | null;
+  statuses: string | null;
+} | null {
+  if (
+    !Array.isArray(queryKey) ||
+    queryKey.length < 8 ||
+    queryKey[0] !== "sourceDocuments" ||
+    queryKey[2] !== "stream"
+  ) {
+    return null;
+  }
+  return {
+    startDate: (queryKey[3] as string) ?? null,
+    endDate: (queryKey[4] as string) ?? null,
+    minAmount: (queryKey[5] as number) ?? null,
+    maxAmount: (queryKey[6] as number) ?? null,
+    statuses: (queryKey[7] as string) ?? null,
+  };
+}
+
+/**
+ * Check whether a source document item matches a specific filter window.
+ * If the query has no filters, the item always belongs.
+ * Returns false if the item should be excluded from this query's results.
+ */
+function itemMatchesFilters(
+  item: SourceDocumentListItemDto,
+  filters: {
+    startDate: string | null;
+    endDate: string | null;
+    statuses: string | null;
+  }
+): boolean {
+  // Check status filter
+  if (filters.statuses != null && filters.statuses !== "") {
+    const statusList = filters.statuses.split(",").map((s) => s.trim());
+    if (!statusList.includes(item.status)) {
+      return false;
+    }
+  }
+
+  // Check date range
+  if (filters.startDate != null && item.entryDate != null) {
+    if (item.entryDate < filters.startDate) return false;
+  }
+  if (filters.endDate != null && item.entryDate != null) {
+    if (item.entryDate > filters.endDate) return false;
+  }
+
+  return true;
+}
+
+/**
  * Apply an optimistic upsert of a source document item to the Stream cache.
  * If the entity already exists (by ID), it is updated in-place. Otherwise it
  * is prepended to the first page.
+ *
+ * I1: Only patches queries where the entity matches the query's filter
+ * criteria (status, date range). Filters out non-matching queries to prevent
+ * corrupting filtered/paginated views.
  */
 export function applyOptimisticUpsert(
   queryClient: QueryClient,
@@ -24,6 +91,13 @@ export function applyOptimisticUpsert(
     if (!data) continue;
     const { pages, pageParams } = data;
     if (!pages || pages.length === 0) continue;
+
+    // I1: Check if the item belongs in this filter window
+    const filters = extractFiltersFromQueryKey(queryKey);
+    if (filters != null && !itemMatchesFilters(item, filters)) {
+      // Item doesn't belong in this filtered view — skip
+      continue;
+    }
 
     const updatedPages = pages.map((page, pageIndex) => {
       const existingIdx = page.items.findIndex((i) => i.id === item.id);
@@ -44,7 +118,7 @@ export function applyOptimisticUpsert(
       if (firstPage) {
         updatedPages[0] = {
           ...firstPage,
-          items: [item, ...firstPage.items],
+          items: [item, ...firstPage.items].slice(0, 20), // I1: Maintain page limit
         };
       }
     }

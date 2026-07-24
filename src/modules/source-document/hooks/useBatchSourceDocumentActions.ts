@@ -1,5 +1,4 @@
 "use client";
-import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -8,7 +7,7 @@ import {
   invalidateLedgerStats,
   queryKeys,
 } from "@/lib/query-keys";
-import { CacheTransactionManager } from "@/lib/mutations/cache-transaction";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import {
   deleteSourceDocumentAction,
   batchUpdateSourceDocumentsAction,
@@ -26,7 +25,8 @@ type BatchDatesContext = { operationId: string; ids: string[] };
 
 export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: () => void) {
   const queryClient = useQueryClient();
-  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+  // I4: Use module-level singleton to survive remounts
+  const manager = getLedgerTransactionManager(ledgerId);
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
 
@@ -36,9 +36,9 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       await deleteSourceDocumentAction(ledgerId, id, operationId);
     },
     onMutate: async (id) => {
-      const op = transactionRef.current.startOperation(ledgerId);
+      const op = manager.startOperation(ledgerId);
 
-      // Capture the current entity from stream cache for rollback
+      // C3: Capture the current entity from stream cache for rollback
       const matches = getStreamQueryMatches(queryClient, ledgerId);
       let prevEntity: SourceDocumentListItemDto | null = null;
 
@@ -77,7 +77,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
           pendingRevisionId: null,
           ledgerEntries: [],
         } as SourceDocumentListItemDto,
-        prevEntity,
+        prevEntity, // C3: store actual previous entity for rollback
       });
 
       // Apply optimistic delete to stream cache
@@ -87,12 +87,12 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
     onSuccess: (_data, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.commitOperation(context.operationId, null, queryClient);
+      manager.commitOperation(context.operationId, null, queryClient);
       clearSelection();
     },
     onError: (_error, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      manager.rollbackOperation(context.operationId, queryClient);
       toast.error(tCommon("deleteFailed"));
     },
     onSettled: () => {
@@ -112,7 +112,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       await batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate });
     },
     onMutate: async ({ ids, entryDate }) => {
-      const op = transactionRef.current.startOperation(ledgerId);
+      const op = manager.startOperation(ledgerId);
 
       // Apply optimistic date updates to all affected source docs in stream cache
       const matches = getStreamQueryMatches(queryClient, ledgerId);
@@ -129,7 +129,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
           ),
         }));
 
-        // Capture previous items for rollback
+        // C3: Capture previous items for rollback
         for (const id of ids) {
           const prevItem = data.pages
             .flatMap((p) => p.items)
@@ -168,13 +168,13 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     onSuccess: (_data, { ids, entryDate }, context) => {
       if (context == null) return;
       // Commit the operation — optimistic data is trusted
-      transactionRef.current.commitOperation(context.operationId, null, queryClient);
+      manager.commitOperation(context.operationId, null, queryClient);
       toast.success(tBatch("datesUpdated", { count: ids.length }));
       clearSelection();
     },
     onError: (_error, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      manager.rollbackOperation(context.operationId, queryClient);
       toast.error(tCommon("error"));
     },
     onSettled: () => {

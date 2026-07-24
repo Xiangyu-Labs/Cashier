@@ -1,5 +1,4 @@
 "use client";
-import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
@@ -10,7 +9,7 @@ import {
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
-import { CacheTransactionManager } from "@/lib/mutations/cache-transaction";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import {
   applyOptimisticUpsert,
   findSourceDocByEntryId,
@@ -100,7 +99,8 @@ function removeEntryFromSourceDoc(
 
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
   const queryClient = useQueryClient();
-  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+  // I4: Use module-level singleton to survive remounts
+  const manager = getLedgerTransactionManager(ledgerId);
   const tCommon = useTranslations("Common");
 
   const updateEntry = useMutation<UpdateEntryResult, Error, UpdateVariables, MutationContext>({
@@ -109,7 +109,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
       return updateLedgerEntryAction(ledgerId, ledgerEntryId, data, operationId) as Promise<UpdateEntryResult>;
     },
     onMutate: async ({ ledgerEntryId, data }) => {
-      const op = transactionRef.current.startOperation(ledgerId);
+      const op = manager.startOperation(ledgerId);
 
       // Find the parent source doc in the stream cache and capture previous state
       const found = findSourceDocByEntryId(queryClient, ledgerId, ledgerEntryId);
@@ -124,12 +124,12 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
           categories
         );
 
-        // Record the patch for rollback
+        // Record the patch for rollback with actual previous entity
         op.patches.push({
           type: "upsert",
           entityId: sourceDoc.id,
           entity: updatedSourceDoc,
-          prevEntity: sourceDoc,
+          prevEntity: sourceDoc, // C3: store actual previous entity
         });
 
         // Apply optimistic update to stream cache
@@ -140,11 +140,17 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     },
     onSuccess: (_data, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.commitOperation(context.operationId, null, queryClient);
+      // I3: Pass real reconciliation data
+      const data = _data as UpdateEntryResult;
+      manager.commitOperation(
+        context.operationId,
+        data.reconciliation?.entity ?? null,
+        queryClient
+      );
     },
     onError: (_error, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      manager.rollbackOperation(context.operationId, queryClient);
       toast.error(tCommon("saveFailed"));
     },
     onSettled: (_data, _error, _variables) => {
@@ -165,7 +171,7 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
       return deleteLedgerEntryAction(ledgerId, ledgerEntryId, operationId) as Promise<DeleteEntryResult>;
     },
     onMutate: async (ledgerEntryId) => {
-      const op = transactionRef.current.startOperation(ledgerId);
+      const op = manager.startOperation(ledgerId);
 
       // Find the parent source doc in the stream cache and capture previous state
       const found = findSourceDocByEntryId(queryClient, ledgerId, ledgerEntryId);
@@ -175,12 +181,12 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         // Build the updated source doc with entry removed
         const updatedSourceDoc = removeEntryFromSourceDoc(sourceDoc, ledgerEntryId);
 
-        // Record the patch for rollback
+        // Record the patch for rollback with actual previous entity
         op.patches.push({
           type: "upsert",
           entityId: sourceDoc.id,
           entity: updatedSourceDoc,
-          prevEntity: sourceDoc,
+          prevEntity: sourceDoc, // C3: store actual previous entity
         });
 
         // Apply optimistic update to stream cache
@@ -191,12 +197,12 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     },
     onSuccess: (_data, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.commitOperation(context.operationId, null, queryClient);
+      manager.commitOperation(context.operationId, null, queryClient);
       toast.success(tCommon("deleteSuccess"));
     },
     onError: (_error, _variables, context) => {
       if (context == null) return;
-      transactionRef.current.rollbackOperation(context.operationId, queryClient);
+      manager.rollbackOperation(context.operationId, queryClient);
       toast.error(tCommon("deleteFailed"));
     },
     onSettled: (_data, _error, _variables) => {

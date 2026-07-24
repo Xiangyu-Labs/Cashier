@@ -5,7 +5,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import { deleteSourceDocument } from "../application/use-cases/delete-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation } from "./reconciliation";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Delete a single source document (soft delete with cascade).
@@ -22,13 +22,19 @@ export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
     DeleteSourceDocumentResultDto &
       Partial<{ reconciliation: DeleteSourceDocumentReconciliationDto["reconciliation"] }>
   > => {
+    // Read authoritative updatedAt BEFORE soft-delete sets deletedAt
+    const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+      ledgerId,
+      sourceId
+    );
+
     const result = await deleteSourceDocument({
       ledgerId,
       sourceDocumentId: sourceId,
     });
 
     if (operationId != null && result.deleted) {
-      const now = new Date().toISOString();
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         null, // Tombstone for delete

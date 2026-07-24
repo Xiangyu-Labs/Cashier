@@ -39,6 +39,11 @@ export type CachePatch = UpsertPatch | DeletePatch | CountsPatch;
 
 export interface CacheOperation {
   operationId: string;
+  /** Monotonically increasing insertion-order counter. Operations created later
+   *  have a higher order. Used to determine which pending ops to replay after
+   *  a commit/rollback — only ops with order > the committed op's order are
+   *  replayed, preserving the canonical base from earlier ops. */
+  order: number;
   clientSubmissionId?: string;
   baseVersion: string | null;
   patches: CachePatch[];
@@ -54,12 +59,17 @@ export interface CacheOperation {
 /**
  * Manages a stack of pending optimistic cache operations for source-document
  * mutations. Operations are ordered by creation time. On commit, the
- * operation record is removed and later operations are replayed over the
- * canonical data. On rollback, the failed operation is inverted and removed;
- * surviving later ops are replayed.
+ * operation record is removed and only operations created after it are
+ * replayed over the canonical data. On rollback, the failed operation is
+ * inverted and removed; surviving later ops are replayed.
+ *
+ * Canonical base invariant: operations created before a committed op are
+ * considered part of the canonical base and are NOT replayed. This prevents
+ * stale optimistic patches from overwriting authoritative server data.
  */
 export class CacheTransactionManager {
   private operations: CacheOperation[] = [];
+  private nextOrder = 0;
 
   /**
    * Start a new operation. Returns the operation object with a unique ID.
@@ -70,6 +80,7 @@ export class CacheTransactionManager {
   ): CacheOperation {
     const operation: CacheOperation = {
       operationId: crypto.randomUUID(),
+      order: this.nextOrder++,
       baseVersion,
       patches: [],
       projections: [],
@@ -83,7 +94,10 @@ export class CacheTransactionManager {
   /**
    * Commit an acknowledged operation: remove it from the pending stack, apply
    * the canonical entity to the cache if provided, and replay any later
-   * operations over the new canonical base.
+   * operations (created after this one) over the new canonical base.
+   *
+   * Operations created before the committed one are NOT replayed — they are
+   * already accounted for in the canonical base.
    */
   commitOperation(
     operationId: string,
@@ -100,7 +114,7 @@ export class CacheTransactionManager {
 
     op.status = "committed";
 
-    // Apply canonical entity to stream cache
+    // Apply canonical entity to stream cache — authoritative server state
     if (canonicalEntity != null) {
       applyOptimisticUpsert(queryClient, op.ledgerId, canonicalEntity);
     }
@@ -108,13 +122,31 @@ export class CacheTransactionManager {
     // Remove the operation
     this.operations.splice(idx, 1);
 
-    // Replay later operations over the new base
-    this.replayAll(queryClient);
+    // Replay only operations created AFTER this one (higher order number).
+    // Earlier operations are already reflected in the canonical base and must
+    // NOT be replayed over authoritative data.
+    this.replayAll(queryClient, op.order);
+  }
+
+  /**
+   * Replace a placeholder entity with the canonical entity from the server.
+   * Used during create reconciliation to swap the clientSubmissionId-tagged
+   * placeholder with the real server entity (keyed by sourceDocumentId).
+   */
+  replacePlaceholder(
+    placeholderId: string,
+    canonicalEntity: SourceDocumentListItemDto,
+    queryClient: QueryClient
+  ): void {
+    // Apply canonical entity — this will either overwrite the placeholder
+    // (if found by id) or add alongside it. Then remove the placeholder.
+    applyOptimisticUpsert(queryClient, canonicalEntity.ledgerId, canonicalEntity);
+    applyOptimisticDelete(queryClient, canonicalEntity.ledgerId, placeholderId);
   }
 
   /**
    * Roll back a failed operation: invert its patches, remove it, and replay
-   * later operations over the restored base.
+   * only operations created after it over the restored base.
    */
   rollbackOperation(
     operationId: string,
@@ -138,8 +170,8 @@ export class CacheTransactionManager {
     // Remove the operation
     this.operations.splice(idx, 1);
 
-    // Replay later operations over the restored base
-    this.replayAll(queryClient);
+    // Replay only operations created AFTER this one
+    this.replayAll(queryClient, op.order);
   }
 
   /**
@@ -174,13 +206,16 @@ export class CacheTransactionManager {
   }
 
   /**
-   * Replay all pending operations. Called after commit/rollback to reapply
-   * surviving operations over the (potentially changed) canonical base.
+   * Replay pending operations created after the given order threshold.
+   * Operations at or before the threshold are NOT replayed — they are
+   * considered part of the canonical base.
    */
-  private replayAll(queryClient: QueryClient): void {
+  private replayAll(queryClient: QueryClient, afterOrder = -1): void {
     for (const op of this.operations) {
-      for (const patch of op.patches) {
-        this.applyPatch(patch, queryClient, op.ledgerId);
+      if (op.order > afterOrder) {
+        for (const patch of op.patches) {
+          this.applyPatch(patch, queryClient, op.ledgerId);
+        }
       }
     }
   }
@@ -229,6 +264,35 @@ export class CacheTransactionManager {
   clear(): void {
     this.operations = [];
   }
+}
+
+// ---------------------------------------------------------------------------
+// Module-level transaction manager registry (I4: survive remounts)
+// ---------------------------------------------------------------------------
+
+const globalManagers = new Map<string, CacheTransactionManager>();
+
+/**
+ * Get or create a CacheTransactionManager scoped to a ledger.
+ * Uses a module-level singleton so in-flight operation state is not lost
+ * when the calling component remounts.
+ */
+export function getLedgerTransactionManager(
+  ledgerId: string
+): CacheTransactionManager {
+  let manager = globalManagers.get(ledgerId);
+  if (manager == null) {
+    manager = new CacheTransactionManager();
+    globalManagers.set(ledgerId, manager);
+  }
+  return manager;
+}
+
+/**
+ * Remove a ledger-scoped transaction manager (for cleanup).
+ */
+export function removeLedgerTransactionManager(ledgerId: string): void {
+  globalManagers.delete(ledgerId);
 }
 
 // Re-export cache operation type for convenience

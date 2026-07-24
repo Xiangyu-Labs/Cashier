@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
-import { CacheTransactionManager } from "@/lib/mutations/cache-transaction";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import {
   applyOptimisticUpsert,
   applyOptimisticDelete,
+  getStreamQueryMatches,
 } from "./source-document-optimistic-cache";
 import { notifyNewSubmission } from "./revision-state-refresh";
 
@@ -26,6 +27,25 @@ interface UseSourceDocumentRecoveryMutationsOptions {
   sourceDocumentId: string;
   revisionId?: string;
   onSuccess?: () => void;
+}
+
+/**
+ * Capture the current entity from the stream cache for a given source document ID.
+ */
+function captureCurrentEntity(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ledgerId: string,
+  sourceDocumentId: string
+): SourceDocumentListItemDto | null {
+  const matches = getStreamQueryMatches(queryClient, ledgerId);
+  for (const [, data] of matches) {
+    if (!data) continue;
+    for (const page of data.pages) {
+      const found = page.items.find((item) => item.id === sourceDocumentId);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**
@@ -43,7 +63,8 @@ export function useSourceDocumentRecoveryMutations({
   onSuccess,
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const queryClient = useQueryClient();
-  const transactionRef = useRef<CacheTransactionManager>(new CacheTransactionManager());
+  // I4: Use module-level singleton to survive remounts
+  const manager = getLedgerTransactionManager(ledgerId);
   const tActions = useTranslations("CandidateAction");
 
   // -----------------------------------------------------------------------
@@ -61,35 +82,37 @@ export function useSourceDocumentRecoveryMutations({
       );
     },
     onMutate: () => {
-      const op = transactionRef.current.startOperation(ledgerId);
-      const now = new Date().toISOString();
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, sourceDocumentId);
 
       const optimisticEntity: SourceDocumentListItemDto = {
         id: sourceDocumentId,
         ledgerId,
-        title: null,
+        title: prevEntity?.title ?? null,
         text: null,
         files: [],
         status: "completed",
         type: "ai_parsed",
         anomalyReason: null,
-        entryDate: null,
+        entryDate: prevEntity?.entryDate ?? null,
         metadata: {},
-        createdAt: now,
-        updatedAt: now,
+        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         deletedAt: null,
-        hasImages: false,
+        hasImages: prevEntity?.hasImages ?? false,
         supportedActions: [],
         errorCode: null,
         pendingRevisionId: null,
-        ledgerEntries: [],
+        ledgerEntries: prevEntity?.ledgerEntries ?? [],
       };
 
       op.patches.push({
         type: "upsert",
         entityId: sourceDocumentId,
         entity: optimisticEntity,
-        prevEntity: null,
+        prevEntity, // C3: store actual previous entity
       });
 
       applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity);
@@ -97,12 +120,14 @@ export function useSourceDocumentRecoveryMutations({
       return { operationId: op.operationId };
     },
     onSuccess: (_data, variables) => {
-      transactionRef.current.commitOperation(variables.operationId, null, queryClient);
+      // I3: Pass reconciliation — we don't have the canonical entity here,
+      // but the commit clears the operation from the pending stack
+      manager.commitOperation(variables.operationId, null, queryClient);
       toast.success(tActions("acceptSuccess"));
       onSuccess?.();
     },
     onError: (_error, variables) => {
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(variables.operationId, queryClient);
       toast.error(tActions("acceptError"));
     },
     onSettled: () => {
@@ -127,47 +152,49 @@ export function useSourceDocumentRecoveryMutations({
       );
     },
     onMutate: () => {
-      const op = transactionRef.current.startOperation(ledgerId);
-      const now = new Date().toISOString();
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, sourceDocumentId);
 
       const optimisticEntity: SourceDocumentListItemDto = {
         id: sourceDocumentId,
         ledgerId,
-        title: null,
+        title: prevEntity?.title ?? null,
         text: null,
         files: [],
         status: "completed",
         type: "ai_parsed",
         anomalyReason: null,
-        entryDate: null,
+        entryDate: prevEntity?.entryDate ?? null,
         metadata: {},
-        createdAt: now,
-        updatedAt: now,
+        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         deletedAt: null,
-        hasImages: false,
+        hasImages: prevEntity?.hasImages ?? false,
         supportedActions: [],
         errorCode: null,
         pendingRevisionId: null,
-        ledgerEntries: [],
+        ledgerEntries: prevEntity?.ledgerEntries ?? [],
       };
 
       op.patches.push({
         type: "upsert",
         entityId: sourceDocumentId,
         entity: optimisticEntity,
-        prevEntity: null,
+        prevEntity, // C3: store actual previous entity
       });
 
       applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity);
       return { operationId: op.operationId };
     },
     onSuccess: (_data, variables) => {
-      transactionRef.current.commitOperation(variables.operationId, null, queryClient);
+      manager.commitOperation(variables.operationId, null, queryClient);
       toast.success(tActions("abandonSuccess"));
       onSuccess?.();
     },
     onError: (_error, variables) => {
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(variables.operationId, queryClient);
       toast.error(tActions("abandonError"));
     },
     onSettled: () => {
@@ -186,35 +213,37 @@ export function useSourceDocumentRecoveryMutations({
       return retrySourceDocumentAction(ledgerId, sourceDocumentId, "retry-" + crypto.randomUUID());
     },
     onMutate: () => {
-      const op = transactionRef.current.startOperation(ledgerId);
-      const now = new Date().toISOString();
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, sourceDocumentId);
 
       const optimisticEntity: SourceDocumentListItemDto = {
         id: sourceDocumentId,
         ledgerId,
-        title: null,
+        title: prevEntity?.title ?? null,
         text: null,
         files: [],
         status: "queued",
         type: "ai_parsed",
         anomalyReason: null,
-        entryDate: null,
+        entryDate: prevEntity?.entryDate ?? null,
         metadata: {},
-        createdAt: now,
-        updatedAt: now,
+        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         deletedAt: null,
-        hasImages: false,
+        hasImages: prevEntity?.hasImages ?? false,
         supportedActions: [],
         errorCode: null,
         pendingRevisionId: null,
-        ledgerEntries: [],
+        ledgerEntries: prevEntity?.ledgerEntries ?? [],
       };
 
       op.patches.push({
         type: "upsert",
         entityId: sourceDocumentId,
         entity: optimisticEntity,
-        prevEntity: null,
+        prevEntity, // C3: store actual previous entity
       });
 
       applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity);
@@ -222,11 +251,11 @@ export function useSourceDocumentRecoveryMutations({
       return { operationId: op.operationId };
     },
     onSuccess: (_data, variables) => {
-      transactionRef.current.commitOperation(variables.operationId, null, queryClient);
+      manager.commitOperation(variables.operationId, null, queryClient);
       onSuccess?.();
     },
     onError: (_error, variables) => {
-      transactionRef.current.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(variables.operationId, queryClient);
     },
     onSettled: () => {
       queryClient.invalidateQueries({
@@ -240,17 +269,17 @@ export function useSourceDocumentRecoveryMutations({
   // -----------------------------------------------------------------------
 
   const acceptCandidate = useCallback(async () => {
-    const op = transactionRef.current.startOperation(ledgerId);
+    const op = manager.startOperation(ledgerId);
     await acceptMutation.mutateAsync({ operationId: op.operationId });
   }, [ledgerId, acceptMutation]);
 
   const abandonCandidate = useCallback(async () => {
-    const op = transactionRef.current.startOperation(ledgerId);
+    const op = manager.startOperation(ledgerId);
     await abandonMutation.mutateAsync({ operationId: op.operationId });
   }, [ledgerId, abandonMutation]);
 
   const retry = useCallback(async () => {
-    const op = transactionRef.current.startOperation(ledgerId);
+    const op = manager.startOperation(ledgerId);
     await retryMutation.mutateAsync({ operationId: op.operationId });
   }, [ledgerId, retryMutation]);
 

@@ -16,7 +16,7 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
-import { buildEntityReconciliation } from "./reconciliation";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -52,7 +52,12 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         {
@@ -127,7 +132,12 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         {

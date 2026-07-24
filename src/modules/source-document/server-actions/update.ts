@@ -16,7 +16,7 @@ import {
   updateSourceDocument,
 } from "../application/use-cases/update-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation } from "./reconciliation";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Update source document metadata (e.g. title, entryDate).
@@ -42,7 +42,12 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
     });
 
     if (operationId != null && result.updated) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
         {

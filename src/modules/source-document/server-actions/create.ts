@@ -16,7 +16,7 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
-import { buildCreateReconciliation } from "./reconciliation";
+import { buildCreateReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Create a new source document and trigger processing.
@@ -55,7 +55,12 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      const now = new Date().toISOString();
+      // Read authoritative updatedAt from DB (the row was just committed)
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        result.sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       return {
         ...result,
         reconciliation: buildCreateReconciliation(

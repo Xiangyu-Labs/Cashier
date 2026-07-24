@@ -24,7 +24,7 @@ import {
 import type {
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
-import { buildEntityReconciliation } from "@/modules/source-document/server-actions/reconciliation";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "@/modules/source-document/server-actions/reconciliation";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
 
 export const createLedgerEntryAction = withLedgerAccess(
@@ -67,6 +67,12 @@ export const updateLedgerEntryAction = withLedgerAccess(
     const result = await updateLedgerEntryWithConversion(payload);
 
     if (operationId != null && result.sourceDocumentId != null) {
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        result.sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? result.updatedAt;
       const entity = buildEntityReconciliation(
         operationId,
         {

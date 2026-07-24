@@ -2,6 +2,7 @@ import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
@@ -23,13 +24,19 @@ import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
 import { useBatchSourceDocumentActions,
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   retrySourceDocumentAction,
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "@/modules/source-document/actions";
 import { notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
+import {
+  applyOptimisticUpsert,
+  getStreamQueryMatches,
+} from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import { toast } from "sonner";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
@@ -101,48 +108,123 @@ export function LedgerEntriesTab({
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
 
-  // Mutations for stream card actions with targeted cache patching
-  // NOTE: These use the generic useLedgerMutation for simplicity. For full
-  // transaction-scoped optimistic updates, use useSourceDocumentRecoveryMutations
-  // or useSourceDocumentRecordMutations from the source-document hooks.
-  const streamInvalidationPredicates = [
-    invalidateLedgerStats(ledgerId),
-    invalidateEntryCategories(ledgerId),
-  ];
+  // Transaction-scoped mutations for stream card actions
+  const txnManager = getLedgerTransactionManager(ledgerId);
 
-  const retryMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+  const retryMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
     mutationFn: async (doc) => {
       const operationId = crypto.randomUUID();
       await retrySourceDocumentAction(ledgerId, doc.id, operationId);
     },
-    successMessage: null,
-    errorMessage: null,
-    invalidatePredicates: streamInvalidationPredicates,
-    onSuccessExtra: () => {
+    onMutate: (doc) => {
+      // Capture current entity from stream cache for rollback
+      const matches = getStreamQueryMatches(queryClient, ledgerId);
+      let prevEntity: SourceDocumentListItemDto | null = null;
+      for (const [, data] of matches) {
+        if (!data) continue;
+        for (const page of data.pages) {
+          const found = page.items.find((item) => item.id === doc.id);
+          if (found) { prevEntity = found; break; }
+        }
+        if (prevEntity) break;
+      }
+
+      const op = txnManager.startOperation(ledgerId);
+      op.patches.push({
+        type: "upsert",
+        entityId: doc.id,
+        entity: { ...doc, status: "queued" } as unknown as SourceDocumentListItemDto,
+        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
+      });
+
+      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "queued" } as unknown as SourceDocumentListItemDto);
       notifyNewSubmission();
+      return { operationId: op.operationId };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
     },
   });
 
-  const acceptCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+  const acceptCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
     mutationFn: async (doc) => {
       if (doc.pendingRevisionId == null) throw new Error("No pending revision");
       const operationId = crypto.randomUUID();
       await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
     },
-    successMessage: tActions("acceptSuccess"),
-    errorMessage: tActions("acceptError"),
-    invalidatePredicates: streamInvalidationPredicates,
+    onMutate: (doc) => {
+      const matches = getStreamQueryMatches(queryClient, ledgerId);
+      let prevEntity: SourceDocumentListItemDto | null = null;
+      for (const [, data] of matches) {
+        if (!data) continue;
+        for (const page of data.pages) {
+          const found = page.items.find((item) => item.id === doc.id);
+          if (found) { prevEntity = found; break; }
+        }
+        if (prevEntity) break;
+      }
+
+      const op = txnManager.startOperation(ledgerId);
+      op.patches.push({
+        type: "upsert",
+        entityId: doc.id,
+        entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
+        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
+      });
+
+      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto);
+      return { operationId: op.operationId };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+      toast.success(tActions("acceptSuccess"));
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
+      toast.error(tActions("acceptError"));
+    },
   });
 
-  const abandonCandidateMutation = useLedgerMutation<void, SourceDocument>(ledgerId, {
+  const abandonCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
     mutationFn: async (doc) => {
       if (doc.pendingRevisionId == null) throw new Error("No pending revision");
       const operationId = crypto.randomUUID();
       await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
     },
-    successMessage: tActions("abandonSuccess"),
-    errorMessage: tActions("abandonError"),
-    invalidatePredicates: streamInvalidationPredicates,
+    onMutate: (doc) => {
+      const matches = getStreamQueryMatches(queryClient, ledgerId);
+      let prevEntity: SourceDocumentListItemDto | null = null;
+      for (const [, data] of matches) {
+        if (!data) continue;
+        for (const page of data.pages) {
+          const found = page.items.find((item) => item.id === doc.id);
+          if (found) { prevEntity = found; break; }
+        }
+        if (prevEntity) break;
+      }
+
+      const op = txnManager.startOperation(ledgerId);
+      op.patches.push({
+        type: "upsert",
+        entityId: doc.id,
+        entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
+        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
+      });
+
+      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto);
+      return { operationId: op.operationId };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+      toast.success(tActions("abandonSuccess"));
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
+      toast.error(tActions("abandonError"));
+    },
   });
 
   // Use the unified stream hook with paginated all-statuses results
