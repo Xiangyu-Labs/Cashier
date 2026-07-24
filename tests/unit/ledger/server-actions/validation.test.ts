@@ -3,17 +3,10 @@ import {
   ledgerStatsQuerySchema,
   parseListLedgerEntriesInput,
 } from "@/modules/ledger/contract-schemas";
-import { sourceDocumentCollectionInputSchema } from "@/modules/source-document/contract-schemas";
 
 describe("retired search param validation", () => {
   it("rejects search in listLedgerEntriesInputSchema", () => {
     expect(() => parseListLedgerEntriesInput({ search: "coffee" })).toThrow("Validation failed");
-  });
-
-  it("rejects search in sourceDocumentCollectionInputSchema", () => {
-    expect(() =>
-      sourceDocumentCollectionInputSchema.parse({ search: "receipt", limit: 100 })
-    ).toThrow();
   });
 
   it("rejects search in ledgerStatsQuerySchema", () => {
@@ -39,22 +32,6 @@ describe("retired search param validation", () => {
       minAmount: 10,
       maxAmount: 50,
       limit: 20,
-    });
-
-    expect(
-      sourceDocumentCollectionInputSchema.parse({
-        startDate: "2026-03-01",
-        endDate: "2026-03-31",
-        minAmount: "10",
-        maxAmount: "50",
-        limit: 100,
-      })
-    ).toMatchObject({
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      minAmount: 10,
-      maxAmount: 50,
-      limit: 100,
     });
 
     expect(

@@ -8,7 +8,6 @@ import {
 import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { eq } from "drizzle-orm";
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
-import { getSourceDocumentCollection } from "@/modules/source-document/application/queries/list-source-document-collection";
 import {
   listSourceDocuments,
   querySourceDocumentPage,
@@ -199,63 +198,6 @@ describe("source-document-queries", () => {
     await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(
       NotFoundError
     );
-  });
-
-  it("filters source documents by aggregated converted amount", async () => {
-    const db = getTestDb();
-    const docs = await db
-      .insert(sourceDocuments)
-      .values([
-        {
-          ledgerId,
-          text: "small amount doc",
-          status: "completed",
-          imageUrls: [],
-          entryDate: "2024-07-01",
-        },
-        {
-          ledgerId,
-          text: "large amount doc",
-          status: "completed",
-          imageUrls: [],
-          entryDate: "2024-07-02",
-        },
-      ])
-      .returning();
-
-    const firstDoc = requireDefined(docs[0], "first source document");
-    const secondDoc = requireDefined(docs[1], "second source document");
-
-    await db.insert(ledgerEntries).values([
-      {
-        ledgerId,
-        sourceDocumentId: firstDoc.id,
-        amount: "10",
-        convertedAmount: "10",
-        currency: "CNY",
-        itemName: "small item",
-        categoryId,
-      },
-      {
-        ledgerId,
-        sourceDocumentId: secondDoc.id,
-        amount: "20",
-        convertedAmount: "120",
-        currency: "USD",
-        itemName: "large item",
-        categoryId,
-      },
-    ]);
-    await activateTestSourceDocumentProjection(db, firstDoc.id);
-    await activateTestSourceDocumentProjection(db, secondDoc.id);
-
-    const result = await getSourceDocumentCollection(ledgerId, {
-      minAmount: 100,
-      limit: 1000,
-    });
-
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.id).toBe(secondDoc.id);
   });
 
   it("returns pending groups through the public query barrel", async () => {

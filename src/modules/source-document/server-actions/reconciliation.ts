@@ -1,5 +1,3 @@
-"use server";
-
 import { db } from "@/lib/db";
 import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
