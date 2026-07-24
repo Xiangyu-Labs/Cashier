@@ -1,34 +1,35 @@
 import { Suspense } from "react";
-import { getMessages } from "next-intl/server";
+import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { redirect } from "@/i18n/routing";
 import { resolveAuthenticatedHome } from "@/lib/request-cache";
+import { UnauthorizedError } from "@/lib/errors";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
 import { EntriesTabSkeleton } from "@/components/skeletons/TabSkeletons";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { ActiveContent } from "./_active-content";
+import { ActiveShell } from "./_active-shell";
 
 interface ActiveTabProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
 
 export async function ActiveTab({ searchParams }: ActiveTabProps) {
+  const locale = await getLocale();
   let context;
   try {
     context = await resolveAuthenticatedHome();
-  } catch {
-    // Auth failure — redirect to login.
-    // resolveAuthenticatedHome throws UnauthorizedError; the layout's
-    // own auth() check should catch this first, but handle it here
-    // for safety.
-    redirect({ href: "/login", locale: "en" });
-    return null;
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      redirect({ href: "/login", locale });
+      return null;
+    }
+    throw error;
   }
 
-  const { ledgerId, ledgerDto, session, locale } = context;
+  const { ledgerId, ledgerDto, session } = context;
 
-  const initialTab = parseLedgerTab(searchParams);
   const periodParams = parsePeriodFromSearchParams(searchParams);
   const advancedFilters = readAdvancedFilters(searchParams);
 
@@ -40,31 +41,24 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
 
   return (
     <NextIntlClientProvider messages={streamMessages} locale={locale}>
-      {/*
-       * Render a minimal page frame (background) immediately after
-       * auth/home resolve, so the outer Suspense in page.tsx can
-       * stream this HTML to the browser before the heavy bootstrap
-       * queries complete.
-       *
-       * The full AppShell (with navigation header) is rendered by
-       * LedgerPageClient once ActiveContent resolves inside the
-       * inner Suspense.
-       */}
-      <div className="min-h-dvh bg-bg text-text">
-        <main className="mx-auto w-full max-w-6xl px-3 py-4 pb-24 sm:px-4 md:px-6">
-          <Suspense fallback={<EntriesTabSkeleton />}>
-            <ActiveContent
-              ledgerId={ledgerId}
-              ledgerDto={ledgerDto}
-              initialTab={initialTab}
-              periodParams={periodParams}
-              advancedFilters={advancedFilters}
-              {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
-              locale={locale}
-            />
-          </Suspense>
-        </main>
-      </div>
+      <ActiveShell ledgerId={ledgerId}>
+        {/*
+         * Inner Suspense wraps only the tab content that depends on
+         * getLedgerPageBootstrap. The shell (AppShell, Header,
+         * TabNavigation) is inside ActiveShell and renders immediately.
+         */}
+        <Suspense fallback={<EntriesTabSkeleton />}>
+          <ActiveContent
+            ledgerId={ledgerId}
+            ledgerDto={ledgerDto}
+            initialTab={parseLedgerTab(searchParams)}
+            periodParams={periodParams}
+            advancedFilters={advancedFilters}
+            {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
+            locale={locale}
+          />
+        </Suspense>
+      </ActiveShell>
     </NextIntlClientProvider>
   );
 }

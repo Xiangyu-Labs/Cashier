@@ -1,11 +1,11 @@
 "use client";
-import { useRef, useCallback } from "react";
+import { useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DetailsTabSkeleton,
@@ -20,21 +20,25 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
+import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
-import { AppShell } from "./AppShell";
-import { TabNavigation } from "./TabNavigation";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 
 // Dynamic imports for inactive tabs — keeps their dependencies
 // (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
-// out of the initial Stream bundle. Pointer-intent preload via
-// onTabIntent starts loading the chunk on hover/focus.
+// out of the initial Stream bundle.
+// Each inactive tab is wrapped in a DeferredFeatureMessages provider
+// that loads the tab's locale messages lazily from a separate chunk.
 const DetailsTab = dynamic(
   () =>
     import("@/modules/workspace/ui/DetailsTab").then((m) => ({
-      default: m.DetailsTab,
+      default: (props: React.ComponentProps<typeof m.DetailsTab>) => (
+        <DeferredFeatureMessages feature="details" fallback={<DetailsTabSkeleton />}>
+          <m.DetailsTab {...props} />
+        </DeferredFeatureMessages>
+      ),
     })),
   { loading: () => <DetailsTabSkeleton /> }
 );
@@ -42,7 +46,11 @@ const DetailsTab = dynamic(
 const StatsTab = dynamic(
   () =>
     import("@/modules/workspace/ui/StatsTab").then((m) => ({
-      default: m.StatsTab,
+      default: (props: React.ComponentProps<typeof m.StatsTab>) => (
+        <DeferredFeatureMessages feature="stats" fallback={<StatsTabSkeleton />}>
+          <m.StatsTab {...props} />
+        </DeferredFeatureMessages>
+      ),
     })),
   { loading: () => <StatsTabSkeleton /> }
 );
@@ -50,7 +58,11 @@ const StatsTab = dynamic(
 const SettingsTab = dynamic(
   () =>
     import("@/modules/ledger/ui/SettingsTab").then((m) => ({
-      default: m.SettingsTab,
+      default: (props: React.ComponentProps<typeof m.SettingsTab>) => (
+        <DeferredFeatureMessages feature="settings" fallback={<SettingsTabSkeleton />}>
+          <m.SettingsTab {...props} />
+        </DeferredFeatureMessages>
+      ),
     })),
   { loading: () => <SettingsTabSkeleton /> }
 );
@@ -107,7 +119,7 @@ export function LedgerPageClient({
     staleTime: STALE_TIME,
   });
 
-  const { activeTab, handleTabChange } = useLedgerTabs({
+  const { activeTab, handleTabChange: _handleTabChange } = useLedgerTabs({
     initialTab,
     searchParams,
     pathname,
@@ -129,24 +141,6 @@ export function LedgerPageClient({
 
   const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
 
-  const handleNeedsAttention = useCallback(() => {
-    applyStreamStatusPreset("needs_attention");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        statusSummaryRef.current?.focus();
-      });
-    });
-  }, [applyStreamStatusPreset]);
-
-  const handleInProgress = useCallback(() => {
-    applyStreamStatusPreset("in_progress");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        statusSummaryRef.current?.focus();
-      });
-    });
-  }, [applyStreamStatusPreset]);
-
   const {
     isInputOpen,
     setIsInputOpen,
@@ -154,17 +148,6 @@ export function LedgerPageClient({
     setInputMode,
     handleInputDialogChange,
   } = useLedgerDialogState();
-
-  // Preload inactive tab chunks on pointer intent (hover/focus)
-  const preloadTab = useCallback((tab: LedgerTab) => {
-    if (tab === "details") {
-      import("@/modules/workspace/ui/DetailsTab");
-    } else if (tab === "stats") {
-      import("@/modules/workspace/ui/StatsTab");
-    } else if (tab === "settings") {
-      import("@/modules/ledger/ui/SettingsTab");
-    }
-  }, []);
 
   if (ledger == null) {
     return (
@@ -175,74 +158,59 @@ export function LedgerPageClient({
   }
 
   return (
-    <AppShell
-      ledgerId={ledgerId}
-      onOpenInput={() => setIsInputOpen(true)}
-      onNeedsAttention={handleNeedsAttention}
-      onInProgress={handleInProgress}
-    >
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
-          <TabNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            onTabIntent={preloadTab}
+    <>
+      {/* Only mount the active tab — inactive tabs load lazily */}
+      {activeTab === "stream" && (
+        <TabsContent value="stream" className="mt-0">
+          <LedgerEntriesTab
+            ledgerId={ledgerId}
+            categories={categories.length > 0 ? categories : []}
+            ledger={ledger}
+            periodParams={periodParams}
+            onFiltersChange={handleFiltersChange}
+            advancedFilters={advancedFilters}
+            collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+            onApplyPreset={applyStreamStatusPreset}
+            statusSummaryRef={statusSummaryRef}
           />
-        </div>
+        </TabsContent>
+      )}
 
-        {/* Only mount the active tab — inactive tabs load lazily */}
-        {activeTab === "stream" && (
-          <TabsContent value="stream" className="mt-0">
-            <LedgerEntriesTab
-              ledgerId={ledgerId}
-              categories={categories.length > 0 ? categories : []}
-              ledger={ledger}
-              periodParams={periodParams}
-              onFiltersChange={handleFiltersChange}
-              advancedFilters={advancedFilters}
-              collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
-              onApplyPreset={applyStreamStatusPreset}
-              statusSummaryRef={statusSummaryRef}
-            />
-          </TabsContent>
-        )}
+      {activeTab === "details" && (
+        <TabsContent value="details" className="mt-0">
+          <DetailsTab
+            ledgerId={ledgerId}
+            categories={categories.length > 0 ? categories : []}
+            ledger={ledger}
+            periodParams={periodParams}
+            onFiltersChange={handleFiltersChange}
+            advancedFilters={advancedFilters}
+          />
+        </TabsContent>
+      )}
 
-        {activeTab === "details" && (
-          <TabsContent value="details" className="mt-0">
-            <DetailsTab
-              ledgerId={ledgerId}
-              categories={categories.length > 0 ? categories : []}
-              ledger={ledger}
-              periodParams={periodParams}
-              onFiltersChange={handleFiltersChange}
-              advancedFilters={advancedFilters}
-            />
-          </TabsContent>
-        )}
+      {activeTab === "stats" && (
+        <TabsContent value="stats" className="mt-0">
+          <StatsTab
+            ledgerId={ledgerId}
+            ledger={ledger}
+            onCategoryDrilldown={handleCategoryDrilldown}
+            onDateDrilldown={handleDateDrilldown}
+            {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+          />
+        </TabsContent>
+      )}
 
-        {activeTab === "stats" && (
-          <TabsContent value="stats" className="mt-0">
-            <StatsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              onCategoryDrilldown={handleCategoryDrilldown}
-              onDateDrilldown={handleDateDrilldown}
-              {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
-            />
-          </TabsContent>
-        )}
-
-        {activeTab === "settings" && (
-          <TabsContent value="settings" className="mt-0">
-            <SettingsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              initialCategories={categories}
-              {...(userEmail !== undefined ? { userEmail } : {})}
-            />
-          </TabsContent>
-        )}
-      </Tabs>
+      {activeTab === "settings" && (
+        <TabsContent value="settings" className="mt-0">
+          <SettingsTab
+            ledgerId={ledgerId}
+            ledger={ledger}
+            initialCategories={categories}
+            {...(userEmail !== undefined ? { userEmail } : {})}
+          />
+        </TabsContent>
+      )}
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
         <DialogContent
@@ -293,6 +261,6 @@ export function LedgerPageClient({
       </Dialog>
 
       <ModalStackRenderer categories={categories} />
-    </AppShell>
+    </>
   );
 }

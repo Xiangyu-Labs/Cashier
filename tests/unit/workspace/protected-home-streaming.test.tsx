@@ -46,6 +46,7 @@ vi.mock("next-intl", async (importOriginal) => {
     NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     useTranslations: () => (key: string) => key,
+    useLocale: () => "en",
   };
 });
 
@@ -64,6 +65,12 @@ vi.mock("@/i18n/client-feature-messages", () => ({
     stats: [],
     settings: [],
   },
+}));
+
+// Mock ActiveShell so we don't need client-side hook mocks (usePathname, useSearchParams, etc.)
+vi.mock("@/app/[locale]/(protected)/_active-shell", () => ({
+  ActiveShell: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("div", { "data-testid": "active-shell" }, children),
 }));
 
 // Mock the LedgerPageClient with a simple placeholder
@@ -98,6 +105,7 @@ import { Suspense } from "react";
 import HomePage from "@/app/[locale]/(protected)/page";
 import { ActiveTab } from "@/app/[locale]/(protected)/_active-tab";
 import { ActiveContent } from "@/app/[locale]/(protected)/_active-content";
+import { UnauthorizedError } from "@/lib/errors";
 
 describe("protected home streaming boundary", () => {
   beforeEach(() => {
@@ -138,6 +146,9 @@ describe("protected home streaming boundary", () => {
     // The top-level element should be a Suspense boundary
     expect(pageElement.type).toBe(Suspense);
 
+    // Fallback should be the LedgerPageSkeleton
+    expect(pageElement.props.fallback).toBeDefined();
+
     // Children should be defined (the ActiveTab component)
     expect(pageElement.props.children).toBeDefined();
     expect(typeof pageElement.props.children.type).toBe("function");
@@ -175,26 +186,24 @@ describe("protected home streaming boundary", () => {
     });
 
     // ActiveTab awaits resolveAuthenticatedHome before returning JSX.
-    // The returned element is wrapped in the mocked NextIntlClientProvider
-    // (which renders as Fragment), so element.props.children is the
-    // shell div with bg-bg className and the inner Suspense.
+    // The returned element is a Fragment (mocked NextIntlClientProvider),
+    // whose child is the ActiveShell component element.
     const element = await ActiveTab({ searchParams: {} });
 
     // resolveAuthenticatedHome should have been called
     expect(resolveAuthenticatedHomeMock).toHaveBeenCalled();
 
     // The element is a Fragment (mocked NextIntlClientProvider).
-    // Its child is the shell div with bg-bg class.
-    const shellDiv = element.props.children;
-    expect(shellDiv.type).toBe("div");
-    expect(shellDiv.props.className).toContain("bg-bg");
+    // Its child is a React element for ActiveShell, not a DOM element.
+    const shellElement = element.props.children;
+    expect(shellElement).toBeDefined();
 
-    // Inside the shell div, we have a main > Suspense(fallback=EntriesTabSkeleton)
-    const mainElement = shellDiv.props.children;
-    expect(mainElement.type).toBe("main");
-
-    const innerSuspense = mainElement.props.children;
-    expect(innerSuspense.type).toBe(Suspense);
+    // The ActiveShell receives the inner content as children. Since ActiveShell
+    // is a client component, the element tree has it as a component reference.
+    // The children of ActiveShell should be the inner Suspense boundary.
+    const innerContent = shellElement.props.children;
+    expect(innerContent.type).toBe(Suspense);
+    expect(innerContent.props.fallback).toBeDefined();
   });
 
   it("ActiveContent calls getLedgerPageBootstrap with ledgerDto and renders client", async () => {
@@ -271,5 +280,22 @@ describe("protected home streaming boundary", () => {
     expect(element).toBeDefined();
     // The element should be a not-found message div
     expect(element.type).toBe("div");
+  });
+
+  it("throws non-UnauthorizedError from resolveAuthenticatedHome", async () => {
+    // Simulate a non-auth error (e.g., database failure)
+    const dbError = new Error("Database connection failed");
+    resolveAuthenticatedHomeMock.mockRejectedValue(dbError);
+
+    // ActiveTab should rethrow the error, not swallow it
+    await expect(ActiveTab({ searchParams: {} })).rejects.toThrow("Database connection failed");
+  });
+
+  it("redirects on UnauthorizedError from resolveAuthenticatedHome", async () => {
+    resolveAuthenticatedHomeMock.mockRejectedValue(new UnauthorizedError());
+
+    // The redirect mock throws "REDIRECT" — ActiveTab should let it propagate
+    // since redirect() throws internally.
+    await expect(ActiveTab({ searchParams: {} })).rejects.toThrow("REDIRECT");
   });
 });
