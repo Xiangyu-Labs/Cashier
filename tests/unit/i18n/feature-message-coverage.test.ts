@@ -27,8 +27,11 @@ const CATALOGS = [
  *   because the SettingsTab renders it and the standalone page does not
  *   inherit the Stream provider.
  *
- * NOTE: Calculator is listed in Stream but does not exist in the catalogs yet.
- * Task 2 (localize fixed interface copy) will add it.
+ * Additional audited boundary contracts (not in FEATURE_MESSAGES):
+ * - standaloneSettings: effective provider for the standalone settings
+ *   page, which merges Shell + Settings manifests (see page.tsx).
+ * - ledgerError: effective provider for the ledger error boundary,
+ *   which inherits only the Shell manifest.
  */
 const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
   shell: [
@@ -96,6 +99,34 @@ describe("feature message coverage", () => {
         }
       });
     }
+
+    it("standaloneSettings boundary merges Shell + Settings manifest namespaces", () => {
+      // The standalone settings page merges shell and settings manifests
+      // (see src/app/[locale]/(protected)/ledger/[id]/settings/page.tsx)
+      const allExpected = [
+        ...new Set([
+          ...FEATURE_MESSAGES.shell,
+          ...FEATURE_MESSAGES.settings,
+        ]),
+      ];
+      // Assert every namespace in the merged union exists in both catalogs
+      for (const catalog of CATALOGS) {
+        for (const ns of allExpected) {
+          expect(catalog.messages).toHaveProperty(ns);
+        }
+      }
+    });
+
+    it("ledgerError boundary inherits only Shell manifest namespaces", () => {
+      // The ledger error boundary has no provider between it and the
+      // locale layout, so it inherits only shell namespaces.
+      // Assert every shell namespace exists in both catalogs
+      for (const catalog of CATALOGS) {
+        for (const ns of FEATURE_MESSAGES.shell) {
+          expect(catalog.messages).toHaveProperty(ns);
+        }
+      }
+    });
   });
 
   describe("every namespace in each manifest exists in both catalogs", () => {

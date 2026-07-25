@@ -483,6 +483,9 @@
     "clear": "Clear",
     "apply": "Apply"
   },
+  "Calculator": {
+    "title": "Calculator"
+  },
   "Calendar": {
     "today": "Today",
     "yesterday": "Yesterday",

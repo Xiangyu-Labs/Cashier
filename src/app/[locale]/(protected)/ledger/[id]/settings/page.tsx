@@ -49,7 +49,10 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   });
 
   const allMessages = await getMessages({ locale });
-  const settingsMessages = pickMessages(allMessages, FEATURE_MESSAGES.settings);
+  const settingsMessages = pickMessages(allMessages, [
+    ...FEATURE_MESSAGES.shell,
+    ...FEATURE_MESSAGES.settings,
+  ]);
 
   return (
     <NextIntlClientProvider messages={settingsMessages} locale={locale}>

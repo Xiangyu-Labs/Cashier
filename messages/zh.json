@@ -483,6 +483,9 @@
     "clear": "清除",
     "apply": "确定"
   },
+  "Calculator": {
+    "title": "计算器"
+  },
   "Calendar": {
     "today": "今天",
     "yesterday": "昨天",
