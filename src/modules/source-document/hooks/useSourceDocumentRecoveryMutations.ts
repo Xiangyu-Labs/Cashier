@@ -271,17 +271,17 @@ export function useSourceDocumentRecoveryMutations({
   const acceptCandidate = useCallback(async () => {
     const op = manager.startOperation(ledgerId);
     await acceptMutation.mutateAsync({ operationId: op.operationId });
-  }, [ledgerId, acceptMutation]);
+  }, [ledgerId, acceptMutation, manager]);
 
   const abandonCandidate = useCallback(async () => {
     const op = manager.startOperation(ledgerId);
     await abandonMutation.mutateAsync({ operationId: op.operationId });
-  }, [ledgerId, abandonMutation]);
+  }, [ledgerId, abandonMutation, manager]);
 
   const retry = useCallback(async () => {
     const op = manager.startOperation(ledgerId);
     await retryMutation.mutateAsync({ operationId: op.operationId });
-  }, [ledgerId, retryMutation]);
+  }, [ledgerId, retryMutation, manager]);
 
   return {
     acceptCandidate,

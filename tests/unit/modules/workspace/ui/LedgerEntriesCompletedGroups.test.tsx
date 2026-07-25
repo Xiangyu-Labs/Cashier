@@ -19,6 +19,7 @@ describe("LedgerEntriesUnifiedGroups", () => {
             id: "document-1",
             ledgerId: "ledger-1",
             status: "completed",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
           ledgerEntries: [],
           effectiveDate: "2026-07-15",

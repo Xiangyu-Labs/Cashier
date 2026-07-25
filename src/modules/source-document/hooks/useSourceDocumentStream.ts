@@ -80,12 +80,15 @@ export function useSourceDocumentStream(
 
   // Normalize statuses: sort and deduplicate for stable cache keys and
   // consistent filter fingerprints (Fix 6).
+  // Take a snapshot to satisfy React Compiler stability analysis
+  // (the caller may pass a mutable array reference).
+  const statusesSnapshot = rawStatuses?.slice() ?? null;
   const stableStatuses = useMemo(
     () =>
-      rawStatuses != null && rawStatuses.length > 0
-        ? [...new Set(rawStatuses)].sort()
+      statusesSnapshot != null && statusesSnapshot.length > 0
+        ? [...new Set(statusesSnapshot)].sort()
         : undefined,
-    [rawStatuses]
+    [statusesSnapshot]
   );
   const statusesKey = stableStatuses != null && stableStatuses.length > 0 ? stableStatuses.join(",") : null;
 

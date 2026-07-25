@@ -27,7 +27,7 @@ export function useFeatureMessages(
     let cancelled = false;
     const loader = MESSAGE_LOADERS[locale] ?? MESSAGE_LOADERS["en"];
     if (!loader) {
-      setMessages({});
+      Promise.resolve().then(() => setMessages({}));
       return;
     }
     loader().then((full) => {

@@ -48,7 +48,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
   if (typeof window === "undefined" || typeof document === "undefined") return null;
 
   let broadcastChannel: BroadcastChannel | null = null;
-  let broadcastHandlers = new Set<(data: unknown) => void>();
+  const broadcastHandlers = new Set<(data: unknown) => void>();
   let onExpired: (() => void) | null = null;
   let leadershipTimer: ReturnType<typeof setTimeout> | null = null;
   let expiryCheckTimer: ReturnType<typeof setInterval> | null = null;
@@ -535,9 +535,6 @@ export function useRevisionStateRefresh({
   pending,
   refresh,
 }: UseRevisionStateRefreshOptions) {
-  const scopeRef = useRef(scope);
-  scopeRef.current = scope;
-
   const refreshEvent = useEffectEvent(() => refresh());
   const subscribedRef = useRef(false);
 
@@ -560,7 +557,7 @@ export function useRevisionStateRefresh({
       subscribedRef.current = false;
       unsubscribe?.();
     };
-  }, [enabled, pending, scope, refreshEvent]);
+  }, [enabled, pending, scope]);
 }
 
 /**

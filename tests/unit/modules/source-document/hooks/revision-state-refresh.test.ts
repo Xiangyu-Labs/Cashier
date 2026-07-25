@@ -221,6 +221,7 @@ describe("revision state refresh", () => {
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doRefreshSpy = vi.spyOn(coordinator as any, "doRefresh");
     doRefreshSpy.mockResolvedValue(false);
 
@@ -230,6 +231,7 @@ describe("revision state refresh", () => {
 
     // While one refresh is in flight (inFlight is set), try to start another
     // Set inFlight to simulate an active refresh
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (coordinator as any).inFlight = Promise.resolve(false);
 
     // Attempt to wake — should be blocked by inFlight
@@ -242,6 +244,7 @@ describe("revision state refresh", () => {
 
     // Clear inFlight to simulate refresh completion
     // A completed refresh calls schedule(), which schedules the next cycle
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (coordinator as any).inFlight = null;
   });
 });
