@@ -72,15 +72,22 @@ export function getHeatmapLegend() {
 }
 
 /**
- * Format amount for display in cell (abbreviated)
+ * Format amount for display in cell (abbreviated, localized currency symbol)
  */
 export function formatCellAmount(amount: number, currency = "CNY", locale = "zh-CN"): string {
-  if (amount >= 1000) {
+  try {
     return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
       notation: "compact",
       maximumFractionDigits: 1,
-    }).format(amount).replace(/^/, `${currency} `);
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  } catch {
+    // Fallback: if currency is invalid/unsupported, format with ISO code prefix
+    return `${currency} ${new Intl.NumberFormat(locale, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount)}`;
   }
-
-  return `${currency} ${Math.round(amount)}`;
 }

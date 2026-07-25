@@ -11,7 +11,7 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { type DateRangeType } from "@/lib/date-utils";
 import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations, useFormatter, useLocale } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
@@ -37,6 +37,7 @@ export function StatsTab({
 }: StatsTabProps) {
   const t = useTranslations("StatsTab");
   const format = useFormatter();
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
   // Use initialDate from props to avoid hydration mismatch between server and client
@@ -172,6 +173,8 @@ export function StatsTab({
                 stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }
               }
               {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
+              currency={currencySymbol}
+              locale={locale}
               queryRange={{
                 startDate: startDateStr,
                 endDate: endDateStr,

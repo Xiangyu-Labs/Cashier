@@ -15,9 +15,11 @@ interface DayCellLargeProps {
   amount: number;
   level: HeatmapLevel;
   onClick?: () => void;
+  currency?: string;
+  locale?: string;
 }
 
-export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCellLargeProps) {
+export function DayCellLarge({ date, dayNumber, amount, level, onClick, currency = "CNY", locale = "zh-CN" }: DayCellLargeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const t = useTranslations("Calendar");
 
@@ -55,7 +57,7 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
               level >= 4 ? "text-white" : "text-foreground"
             )}
           >
-            {formatCellAmount(amount)}
+            {formatCellAmount(amount, currency, locale)}
           </span>
         )}
       </button>
@@ -66,7 +68,7 @@ export function DayCellLarge({ date, dayNumber, amount, level, onClick }: DayCel
           <div className="font-medium">{date}</div>
           {amount > 0 ? (
             <div>
-              {t("expense")}: {formatCellAmount(amount)}
+              {t("expense")}: {formatCellAmount(amount, currency, locale)}
             </div>
           ) : (
             <div className="text-muted-foreground">{t("noConsumption")}</div>

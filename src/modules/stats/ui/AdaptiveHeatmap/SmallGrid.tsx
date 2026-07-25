@@ -17,6 +17,8 @@ interface SmallGridHeatmapProps {
   onDayClick?: (date: string) => void;
   className?: string;
   queryRange?: { startDate: string; endDate: string };
+  currency?: string;
+  locale?: string;
 }
 
 export function SmallGridHeatmap({
@@ -25,6 +27,8 @@ export function SmallGridHeatmap({
   onDayClick,
   className,
   queryRange,
+  currency = "CNY",
+  locale = "zh-CN",
 }: SmallGridHeatmapProps) {
   // Create a map for quick lookup
   const dayMap = useMemo(() => {
@@ -113,6 +117,8 @@ export function SmallGridHeatmap({
                   amount={amount}
                   count={count}
                   level={level}
+                  currency={currency}
+                  locale={locale}
                   onClick={() => onDayClick?.(date)}
                 />
               );

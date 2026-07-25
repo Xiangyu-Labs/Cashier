@@ -22,6 +22,8 @@ interface CalendarHeatmapSectionProps {
   stats: CalendarHeatmapStats;
   onDateDrilldown?: (date: string) => void;
   className?: string;
+  currency?: string;
+  locale?: string;
   /**
    * Query range for the heatmap display.
    * If not provided, falls back to data-driven range.
@@ -38,6 +40,8 @@ export function CalendarHeatmapSection({
   onDateDrilldown,
   className,
   queryRange,
+  currency = "CNY",
+  locale = "zh-CN",
 }: CalendarHeatmapSectionProps) {
   const t = useTranslations("Calendar");
 
@@ -75,6 +79,8 @@ export function CalendarHeatmapSection({
         days={days}
         stats={stats}
         onDayClick={handleDayClick}
+        currency={currency}
+        locale={locale}
         {...(queryRange !== undefined ? { queryRange } : {})}
       />
 
