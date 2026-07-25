@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { getSourceDocumentCountsAction, getStreamRefreshAction } from "@/modules/source-document/actions";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
-import { useRevisionStateRefresh, notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
+import { useRevisionStateRefresh } from "@/modules/source-document/hooks/revision-state-refresh";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {

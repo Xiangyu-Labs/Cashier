@@ -3,7 +3,6 @@ import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
-import { SourceDocumentStatus } from "@/modules/source-document/types";
 
 // ---------------------------------------------------------------------------
 // Authoritative DB-backed read
@@ -159,8 +158,8 @@ export async function buildAuthoritativeReconciliation(
  */
 export async function buildDeleteReconciliation(
   operationId: string,
-  ledgerId: string,
-  sourceDocumentId: string,
+  _ledgerId: string,
+  _sourceDocumentId: string,
 ): Promise<MutationReconciliation<SourceDocumentListItemDto>> {
   return {
     operationId,

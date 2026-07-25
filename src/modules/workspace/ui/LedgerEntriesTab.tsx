@@ -8,10 +8,6 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import {
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  invalidateLedgerEntries,
-  invalidateEntryCategories,
   queryKeys,
 } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";

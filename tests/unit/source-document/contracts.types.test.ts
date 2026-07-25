@@ -1,6 +1,5 @@
 import { describe, it, expectTypeOf } from "vitest";
 import type {
-  SourceDocumentCollectionDto,
   SourceDocMetadata,
   SourceDocumentMetadata,
   SourceDocumentDto,
@@ -13,6 +12,7 @@ import type {
   SourceDocumentCandidateProjectionSummary,
   PendingSourceDocumentsResponseDto,
 } from "@/modules/source-document/contracts";
+import type { SourceDocumentCollectionDto } from "@/modules/source-document/document-contracts";
 import { SourceDocumentStatus, SourceDocumentType } from "@/modules/source-document/contracts";
 import type { SourceDocumentReferenceDto } from "@/modules/ledger/contracts";
 

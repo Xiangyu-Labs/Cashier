@@ -73,7 +73,7 @@ function patchSourceDocEntries(
   sourceDoc: SourceDocumentListItemDto,
   entryId: string,
   updater: (entry: SourceDocumentCacheEntry) => SourceDocumentCacheEntry,
-  categories: EntryCategory[]
+  _categories: EntryCategory[]
 ): SourceDocumentListItemDto {
   if (!sourceDoc.ledgerEntries) return sourceDoc;
   return {

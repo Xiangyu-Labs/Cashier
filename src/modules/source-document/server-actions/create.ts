@@ -5,7 +5,6 @@ import { executeSingleProcessingIntent } from "@/application/adapters/in-process
 import { currentApplication } from "@/application/current";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type {
-  CreateSourceDocumentReconciliationDto,
   CreateSourceDocumentResponseDto,
 } from "@/modules/source-document/contracts";
 import {

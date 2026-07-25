@@ -1,6 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type { StreamPage } from "@/modules/source-document/contracts";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 
 /**

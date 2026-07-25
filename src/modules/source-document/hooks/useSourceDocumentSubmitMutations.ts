@@ -4,7 +4,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  queryKeys,
   invalidateSourceDocumentCounts,
 } from "@/lib/query-keys";
 import {
@@ -30,7 +29,6 @@ import {
 import { notifyNewSubmission } from "./revision-state-refresh";
 import {
   applyOptimisticUpsert,
-  applyOptimisticDelete,
   getStreamQueryMatches,
 } from "./source-document-optimistic-cache";
 import { toast } from "sonner";

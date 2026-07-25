@@ -141,6 +141,6 @@ describe("locale layout", () => {
       params: Promise.resolve({ locale: "en" }),
     });
     // Renders as <html><body>... directly without Providers wrapper
-    expect(layout.type).toBe("html");
+    expect((layout! as React.ReactElement).type).toBe("html");
   });
 });

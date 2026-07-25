@@ -195,7 +195,7 @@ describe("protected home streaming boundary", () => {
 
     // The element is a Fragment (mocked NextIntlClientProvider).
     // Its child is a React element for ActiveShell, not a DOM element.
-    const shellElement = element.props.children;
+    const shellElement = element!.props.children;
     expect(shellElement).toBeDefined();
 
     // The ActiveShell receives the inner content as children. Since ActiveShell

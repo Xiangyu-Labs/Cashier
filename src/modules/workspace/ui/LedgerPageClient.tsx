@@ -134,7 +134,7 @@ export function LedgerPageClient({
       coordinatorRef.current?.destroy();
       coordinatorRef.current = null;
     };
-  }, [ledgerId]);
+  }, [ledgerId, queryClient]);
 
   const {
     isInputOpen,

@@ -161,7 +161,6 @@ describe("revision state refresh", () => {
     coordinator.subscribe("test", noopRefresh);
     await flushTimers();
 
-    const stateBefore = coordinator.getState();
     coordinator.wake();
     await flushTimers();
 

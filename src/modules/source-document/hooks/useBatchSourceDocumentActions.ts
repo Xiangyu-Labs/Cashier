@@ -14,7 +14,6 @@ import {
 } from "@/modules/source-document/actions";
 import {
   applyOptimisticDelete,
-  applyOptimisticUpsert,
   getStreamQueryMatches,
 } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
@@ -108,7 +107,6 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
 
   const batchUpdateDates = useMutation<void, Error, { ids: string[]; entryDate: string }, BatchDatesContext>({
     mutationFn: async ({ ids, entryDate }) => {
-      const operationId = crypto.randomUUID();
       await batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate });
     },
     onMutate: async ({ ids, entryDate }) => {
@@ -165,7 +163,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
 
       return { operationId: op.operationId, ids };
     },
-    onSuccess: (_data, { ids, entryDate }, context) => {
+    onSuccess: (_data, { ids }, context) => {
       if (context == null) return;
       // Commit the operation — optimistic data is trusted
       manager.commitOperation(context.operationId, null, queryClient);

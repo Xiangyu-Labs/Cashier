@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createQueryClient } from "tests/fixtures/query-client";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
@@ -100,9 +100,9 @@ describe("stream-refresh-cache", () => {
     expect(data).toBeDefined();
     const d = data!;
     expect(d.pages.length).toBe(2);
-    expect(d.pages[0].items).toHaveLength(2);
-    expect(d.pages[0].items[0]!.updatedAt).toBe("2026-07-24T12:00:00.000Z");
-    expect(d.pages[0].items[1]!.id).toBe("5");
+    expect(d.pages[0]!.items).toHaveLength(2);
+    expect(d.pages[0]!.items[0]!.updatedAt).toBe("2026-07-24T12:00:00.000Z");
+    expect(d.pages[0]!.items[1]!.id).toBe("5");
   });
 
   // -----------------------------------------------------------------------
@@ -157,8 +157,8 @@ describe("stream-refresh-cache", () => {
 
     const queryData = queryClient.getQueryData<{ pages: StreamPage[]; pageParams: unknown[] }>(streamKey);
     expect(queryData).toBeDefined();
-    expect(queryData!.pages[1].items).toHaveLength(1);
-    expect(queryData!.pages[1].items[0]!.id).toBe("3");
+    expect(queryData!.pages[1]!.items).toHaveLength(1);
+    expect(queryData!.pages[1]!.items[0]!.id).toBe("3");
   });
 
   // -----------------------------------------------------------------------

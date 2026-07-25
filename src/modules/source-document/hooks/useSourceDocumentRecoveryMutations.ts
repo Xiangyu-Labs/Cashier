@@ -11,13 +11,11 @@ import {
 } from "@/modules/source-document/actions";
 import type {
   SourceDocumentListItemDto,
-  MutationReconciliation,
 } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   applyOptimisticUpsert,
-  applyOptimisticDelete,
   getStreamQueryMatches,
 } from "./source-document-optimistic-cache";
 import { notifyNewSubmission } from "./revision-state-refresh";

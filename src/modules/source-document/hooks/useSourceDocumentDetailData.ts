@@ -27,7 +27,6 @@ export function useSourceDocumentDetailData({
     data: sourceDocument,
     isLoading,
     error,
-    refetch,
   } = useQuery({
     queryKey: queryKeys.sourceDocument(id),
     queryFn: () => getSourceDocumentLightAction(ledgerId, id),

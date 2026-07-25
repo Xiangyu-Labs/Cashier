@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
-import type { StreamRefreshResult, StreamRefreshRequest } from "@/modules/source-document/contract-refresh";
+import { describe, expect, it, vi } from "vitest";
+import type { StreamRefreshRequest } from "@/modules/source-document/contract-refresh";
 import {
   STREAM_REFRESH_PROTOCOL_VERSION,
 } from "@/modules/source-document/contract-refresh";
