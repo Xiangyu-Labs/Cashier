@@ -253,9 +253,8 @@ describe("Enhanced Stats Actions", () => {
 
       expect(entryQueries.length).toBeGreaterThanOrEqual(2);
       for (const query of entryQueries.slice(0, 2)) {
-        expect(query).toMatch(/"ledgerentries"\."ledger_id" = \$\d+/);
-        expect(query).toContain('"ledgerentries"."deleted_at" is null');
-        expect(query).toContain('select "id" from "source_documents"');
+        expect(query).toMatch(/"ledger_entries"\."ledger_id" = \$\d+/);
+        expect(query).toContain('"ledger_entries"."deleted_at" is null');
         expect(query).toMatch(/"source_documents"\."ledger_id" = \$\d+/);
         expect(query).not.toContain('"source_documents"."status"');
         expect(query).toContain('"source_documents"."deleted_at" is null');

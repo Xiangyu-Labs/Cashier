@@ -198,13 +198,19 @@ describe("upload policy integration", () => {
       const adapter = new StoredFileAdapter(new MemoryFileStore());
 
       // Create enough finalized stored files to overflow the revision aggregate limit.
-      // Use two files each at 60% of the limit so their sum exceeds it.
-      const halfPlus = Math.ceil(MAX_NORMALIZED_BYTES_PER_REVISION * 0.6);
-      const totalBytes = halfPlus * 2;
+      // Each file must be below MAX_ORIGINAL_BYTES_PER_FILE (4 MB), but their sum
+      // must exceed MAX_NORMALIZED_BYTES_PER_REVISION (20 MB).
+      const fileSize = Math.floor(MAX_ORIGINAL_BYTES_PER_FILE * 0.9); // ~3.6 MB per file
+      const fileCount = Math.ceil(MAX_NORMALIZED_BYTES_PER_REVISION / fileSize) + 1; // enough to exceed
+      const totalBytes = fileSize * fileCount;
       expect(totalBytes).toBeGreaterThan(MAX_NORMALIZED_BYTES_PER_REVISION);
+      expect(fileSize).toBeLessThanOrEqual(MAX_ORIGINAL_BYTES_PER_FILE);
 
-      const file1 = await finalizedFile(adapter, ledgerId, Buffer.alloc(halfPlus, 0xff));
-      const file2 = await finalizedFile(adapter, ledgerId, Buffer.alloc(halfPlus, 0xff));
+      const files = await Promise.all(
+        Array.from({ length: fileCount }, () =>
+          finalizedFile(adapter, ledgerId, Buffer.alloc(fileSize, 0xff))
+        )
+      );
 
       // Try to create a pending revision linking both files — must run inside a
       // db.transaction since createPendingRevisionInTransaction expects a tx handle.
@@ -212,7 +218,7 @@ describe("upload policy integration", () => {
         db.transaction(async (tx) =>
           createPendingRevisionInTransaction(tx, {
             ledgerId,
-            storedFileIds: [file1.id, file2.id],
+            storedFileIds: files.map((f) => f.id),
             entryDate: "2026-07-15",
           })
         )

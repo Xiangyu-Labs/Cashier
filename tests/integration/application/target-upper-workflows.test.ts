@@ -416,6 +416,7 @@ describe("target upper workflows", () => {
     await expect(deleteLedgerEntry(ledgerId, original!.id)).resolves.toEqual({
       ledgerEntryId: original!.id,
       deleted: true,
+      sourceDocumentId: expect.any(String),
     });
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
     await expect(getLedgerEntryDetail(original!.id, ledgerId)).resolves.toBeNull();
