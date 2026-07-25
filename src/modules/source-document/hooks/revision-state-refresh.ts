@@ -436,8 +436,6 @@ export class RefreshCoordinator {
   }
 
   private async doRefresh(): Promise<boolean> {
-    // C2: Only the current leader should do network refreshes
-    if (!this.isLeader) return false;
     if (!this.env.isOnline()) return false;
 
     let anyChanged = false;
@@ -459,8 +457,8 @@ export class RefreshCoordinator {
       }
     }
 
-    // C2: After leader refresh, broadcast results to followers
-    if (anyChanged && lastResult) {
+    // Only the leader broadcasts results to other tabs
+    if (this.isLeader && anyChanged && lastResult) {
       this.env.broadcast({
         type: "refresh_result",
         protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,

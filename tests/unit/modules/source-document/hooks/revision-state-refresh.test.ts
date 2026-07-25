@@ -194,6 +194,70 @@ describe("revision state refresh", () => {
   });
 
   // -----------------------------------------------------------------------
+  // Coordinator — fallback when leadership fails
+  // -----------------------------------------------------------------------
+
+  it("refresh proceeds in fallback mode when leadership fails", async () => {
+    const env = createEnvironment();
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let refreshCalled = false;
+    coordinator.subscribe("test", async () => {
+      refreshCalled = true;
+      return { changed: false };
+    });
+    await flushTimers();
+
+    // Should schedule (not remain idle) despite not being leader
+    expect(coordinator.getState()).not.toBe("IDLE");
+    expect(coordinator.getIsLeader()).toBe(false);
+
+    // Advance timers to trigger the refresh cycle
+    await vi.advanceTimersByTimeAsync(20000);
+    await flushTimers();
+
+    // Refresh should have been called even though we're not leader
+    expect(refreshCalled).toBe(true);
+  });
+
+  it("hidden tabs do not refresh in fallback mode", async () => {
+    const env = createEnvironment();
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let refreshCalled = false;
+    coordinator.subscribe("test", async () => {
+      refreshCalled = true;
+      return { changed: false };
+    });
+    await flushTimers();
+
+    // Consume the immediate timer from subscribe's wake() call
+    await vi.advanceTimersByTimeAsync(100);
+    await flushTimers();
+    refreshCalled = false;
+
+    // Hide the tab — this should cancel any scheduled timer
+    env.hide();
+    await vi.advanceTimersByTimeAsync(60000);
+    await flushTimers();
+
+    // Refresh should NOT be called while hidden (no new scheduling)
+    expect(refreshCalled).toBe(false);
+
+    // Show again — refresh is scheduled and fires
+    env.show();
+    await vi.advanceTimersByTimeAsync(100);
+    await flushTimers();
+
+    // After show, should have scheduled a refresh
+    expect(coordinator.getState()).not.toBe("IDLE");
+  });
+
+  // -----------------------------------------------------------------------
   // Coordinator — cleanup on destroy
   // -----------------------------------------------------------------------
 
