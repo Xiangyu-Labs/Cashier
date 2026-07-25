@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseInfiniteScrollOptions {
   hasNextPage?: boolean;
@@ -23,24 +23,71 @@ export function useInfiniteScroll({
   fetchNextPage,
   rootMargin = "200px",
 }: UseInfiniteScrollOptions) {
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const loadRequestedRef = useRef(false);
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    setSentinel(node);
+  }, []);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
+    if (!hasNextPage || !isFetchingNextPage) loadRequestedRef.current = false;
+  }, [hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
     if (!sentinel) return;
+
+    const loadNextPage = () => {
+      if (hasNextPage && !isFetchingNextPage && !loadRequestedRef.current) {
+        loadRequestedRef.current = true;
+        fetchNextPage();
+      }
+    };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry != null && entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
+        if (entry?.isIntersecting === true) loadNextPage();
       },
       { rootMargin }
     );
 
+    // WebKit in standalone PWA mode can miss implicit-viewport intersection
+    // updates. Checking the sentinel on scroll also covers that case.
+    const preloadDistance = Number.parseFloat(rootMargin) || 0;
+    const checkSentinelPosition = () => {
+      frameRef.current = null;
+      const viewportHeight = Math.max(
+        window.innerHeight,
+        document.documentElement.clientHeight,
+        window.visualViewport?.height ?? 0
+      );
+      if (sentinel.getBoundingClientRect().top <= viewportHeight + preloadDistance) {
+        loadNextPage();
+      }
+    };
+    const schedulePositionCheck = () => {
+      if (frameRef.current == null) {
+        frameRef.current = window.requestAnimationFrame(checkSentinelPosition);
+      }
+    };
+
     observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, rootMargin]);
+    document.addEventListener("scroll", schedulePositionCheck, true);
+    window.addEventListener("resize", schedulePositionCheck);
+    window.visualViewport?.addEventListener("resize", schedulePositionCheck);
+    window.visualViewport?.addEventListener("scroll", schedulePositionCheck);
+    schedulePositionCheck();
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("scroll", schedulePositionCheck, true);
+      window.removeEventListener("resize", schedulePositionCheck);
+      window.visualViewport?.removeEventListener("resize", schedulePositionCheck);
+      window.visualViewport?.removeEventListener("scroll", schedulePositionCheck);
+      if (frameRef.current != null) window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    };
+  }, [sentinel, hasNextPage, isFetchingNextPage, fetchNextPage, rootMargin]);
 
   return sentinelRef;
 }
