@@ -4,7 +4,11 @@ import type { ProcessingIntentContract } from "@/application/contracts";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { currentApplication } from "@/application/current";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
-import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type {
+  RetrySourceDocumentReconciliationDto,
+  RetrySourceDocumentResponseDto,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 import {
   retrySourceDocumentInputSchema,
   type RetrySourceDocumentInputContract,
@@ -12,6 +16,7 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -25,8 +30,12 @@ import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
-    sourceDocumentId: string
-  ): Promise<RetrySourceDocumentResponseDto> => {
+    sourceDocumentId: string,
+    operationId?: string
+  ): Promise<
+    RetrySourceDocumentResponseDto &
+      Partial<{ reconciliation: RetrySourceDocumentReconciliationDto["reconciliation"] }>
+  > => {
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       after(() => executeSingleProcessingIntent(intent));
     };
@@ -41,6 +50,42 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
 
     // Also recover any missed processing intents
     after(() => scheduleProcessingRecovery(ledgerId));
+
+    if (operationId != null) {
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
+      const entity = buildEntityReconciliation(
+        operationId,
+        {
+          id: sourceDocumentId,
+          ledgerId,
+          title: null,
+          text: null,
+          files: [],
+          status: "queued",
+          type: "ai_parsed",
+          anomalyReason: null,
+          entryDate: null,
+          metadata: {},
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+          hasImages: false,
+          supportedActions: [],
+          errorCode: null,
+          pendingRevisionId: null,
+          ledgerEntries: [],
+        } as SourceDocumentListItemDto,
+        now,
+        true,
+        true
+      );
+      return { ...result, reconciliation: entity };
+    }
 
     return result;
   }
@@ -58,8 +103,12 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
     sourceDocumentId: string,
-    input?: RetrySourceDocumentInputContract
-  ): Promise<RetrySourceDocumentResponseDto> => {
+    input?: RetrySourceDocumentInputContract,
+    operationId?: string
+  ): Promise<
+    RetrySourceDocumentResponseDto &
+      Partial<{ reconciliation: RetrySourceDocumentReconciliationDto["reconciliation"] }>
+  > => {
     const validatedInput =
       input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
 
@@ -81,6 +130,42 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
 
     // Also recover any missed processing intents
     after(() => scheduleProcessingRecovery(ledgerId));
+
+    if (operationId != null) {
+      // Read authoritative updatedAt from DB
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
+      const entity = buildEntityReconciliation(
+        operationId,
+        {
+          id: sourceDocumentId,
+          ledgerId,
+          title: null,
+          text: null,
+          files: [],
+          status: "queued",
+          type: "ai_parsed",
+          anomalyReason: null,
+          entryDate: null,
+          metadata: {},
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+          hasImages: false,
+          supportedActions: [],
+          errorCode: null,
+          pendingRevisionId: null,
+          ledgerEntries: [],
+        } as SourceDocumentListItemDto,
+        now,
+        true,
+        true
+      );
+      return { ...result, reconciliation: entity };
+    }
 
     return result;
   }

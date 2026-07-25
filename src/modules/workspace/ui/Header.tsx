@@ -1,10 +1,14 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { queryKeys } from "@/lib/query-keys";
-import { getSourceDocumentCountsAction } from "@/modules/source-document/actions";
+import { getSourceDocumentCountsAction, getStreamRefreshAction } from "@/modules/source-document/actions";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
+import { useRevisionStateRefresh, notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -21,12 +25,42 @@ export function Header({
   onInProgress,
 }: HeaderProps) {
   const t = useTranslations("LedgerPage");
+  const queryClient = useQueryClient();
 
   const { data: counts } = useQuery({
     queryKey: queryKeys.sourceDocumentCounts(ledgerId),
     queryFn: () => getSourceDocumentCountsAction(ledgerId),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+
+  // C3: Persist count fingerprint for refresh comparison
+  const countFingerprintRef = useRef<string | null>(null);
+
+  // Register counts refresh with the coordinator
+  const refreshCounts = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
+    const result = await getStreamRefreshAction(ledgerId, {
+      ledgerId,
+      protocolVersion: 1,
+      signatures: [],
+      watchedIds: [],
+      countFingerprint: countFingerprintRef.current,
+    });
+
+    applyStreamRefreshToCache(queryClient, ledgerId, result);
+    // C3: Update persisted count fingerprint from server response
+    if (result.counts?.fingerprint) {
+      countFingerprintRef.current = result.counts.fingerprint;
+    }
+    return { changed: result.changed, result };
+  }, [ledgerId, queryClient]);
+
+  // Register counts refresh — always pending to keep counts updated
+  useRevisionStateRefresh({
+    scope: `counts:${ledgerId}`,
+    enabled: true,
+    pending: true,
+    refresh: refreshCounts,
   });
 
   const processingCount = counts?.processingCount ?? 0;

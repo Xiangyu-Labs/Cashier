@@ -1,14 +1,19 @@
-import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
+import { Providers } from "@/components/providers";
+import { resolveAuthenticatedHome } from "@/lib/request-cache";
+import { UnauthorizedError } from "@/lib/errors";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
   const locale = await getLocale();
-
-  if (!session) {
-    redirect(`/${locale}/login`);
+  try {
+    await resolveAuthenticatedHome();
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      redirect(`/${locale}/login`);
+    }
+    throw error;
   }
 
-  return <>{children}</>;
+  return <Providers>{children}</Providers>;
 }

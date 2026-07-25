@@ -39,7 +39,7 @@ describe("calendar and module invalidation helpers", () => {
     ).toBe(true);
     expect(
       invalidateSourceDocuments(ledgerId)({
-        queryKey: queryKeys.sourceDocumentCollection(ledgerId, { limit: 1000 }),
+        queryKey: queryKeys.sourceDocumentStream(ledgerId, { startDate: "2026-03-01" }),
       })
     ).toBe(true);
     expect(

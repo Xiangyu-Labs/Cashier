@@ -4,7 +4,10 @@ import type { ProcessingIntentContract } from "@/application/contracts";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { currentApplication } from "@/application/current";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
-import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
+import type {
+  CreateSourceDocumentReconciliationDto,
+  CreateSourceDocumentResponseDto,
+} from "@/modules/source-document/contracts";
 import {
   createSourceDocumentInputSchema,
   type CreateSourceDocumentInputContract,
@@ -13,15 +16,24 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { buildCreateReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 
 /**
- * Create a new source document and trigger processing
+ * Create a new source document and trigger processing.
+ *
+ * Returns the existing DTO with additional reconciliation data for the
+ * optimistic transaction system.
  */
 export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
     { ledgerId },
-    input: CreateSourceDocumentInputContract
-  ): Promise<CreateSourceDocumentResponseDto> => {
+    input: CreateSourceDocumentInputContract,
+    operationId?: string,
+    clientSubmissionId?: string
+  ): Promise<
+    CreateSourceDocumentResponseDto &
+      Partial<{ reconciliation: ReturnType<typeof buildCreateReconciliation> }>
+  > => {
     const validated = createSourceDocumentInputSchema.parse(input);
     const payload = omitUndefinedProperties(validated);
 
@@ -41,6 +53,26 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
 
     // Also recover any missed processing intents
     after(() => scheduleProcessingRecovery(ledgerId));
+
+    if (operationId != null) {
+      // Read authoritative updatedAt from DB (the row was just committed)
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+        ledgerId,
+        result.sourceDocumentId
+      );
+      const now = authoritativeUpdatedAt ?? new Date().toISOString();
+      return {
+        ...result,
+        reconciliation: buildCreateReconciliation(
+          operationId,
+          clientSubmissionId,
+          ledgerId,
+          result.sourceDocumentId,
+          payload.entryDate ?? null,
+          now
+        ),
+      };
+    }
 
     return result;
   }

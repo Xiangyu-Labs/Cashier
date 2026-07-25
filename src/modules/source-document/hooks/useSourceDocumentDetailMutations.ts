@@ -76,14 +76,19 @@ export function useSourceDocumentDetailMutations({
     });
 
   return {
-    updateSourceDoc: async (data: { title?: string; entryDate?: string }) =>
-      updateSourceDocMutation.mutateAsync(data),
+    updateSourceDoc: async (data: { title?: string; entryDate?: string }) => {
+      const operationId = crypto.randomUUID();
+      await updateSourceDocMutation.mutateAsync({ data, operationId });
+    },
     updateEntry: async (entryId: string, data: Partial<EntryEditData>) =>
       updateEntryMutation.mutateAsync({ entryId, data }),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     deleteEntry: async (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
-    deleteDocument: async () => deleteDocumentMutation.mutateAsync(),
+    deleteDocument: async () => {
+      const operationId = crypto.randomUUID();
+      await deleteDocumentMutation.mutateAsync({ operationId });
+    },
   };
 }
 

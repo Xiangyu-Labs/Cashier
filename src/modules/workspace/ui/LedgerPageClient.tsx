@@ -1,14 +1,13 @@
 "use client";
-import { useRef, useCallback, Suspense } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  EntriesTabSkeleton,
   DetailsTabSkeleton,
   StatsTabSkeleton,
   SettingsTabSkeleton,
@@ -21,20 +20,44 @@ import {
   getLedgerAction,
   getEntryCategoriesAction,
 } from "@/modules/ledger/actions";
-const SourceDocumentInput = dynamic(
-  () => import("@/modules/source-document/ui").then(m => m.SourceDocumentInput),
-  { ssr: false }
-);
-const QuickEntryForm = dynamic(
-  () => import("@/modules/source-document/ui").then(m => m.QuickEntryForm),
-  { ssr: false }
-);
-import { AppShell } from "./AppShell";
-import { TabNavigation } from "./TabNavigation";
+import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
+import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
+import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
-import { preloadTab, useLedgerPagePrefetching } from "./useLedgerPagePrefetching";
+import { initRefreshCoordinator } from "@/modules/source-document/hooks/revision-state-refresh";
+
+// Dynamic imports for inactive tabs — keeps their dependencies
+// (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
+// out of the initial Stream bundle.
+// Each inactive tab is lazily loaded by next/dynamic; its locale messages
+// are loaded separately via DeferredFeatureMessages at the usage site
+// so that the locale prop is available from the parent component scope.
+const DetailsTab = dynamic(
+  () => import("@/modules/workspace/ui/DetailsTab").then((m) => m.DetailsTab),
+  { loading: () => <DetailsTabSkeleton /> }
+);
+
+const StatsTab = dynamic(
+  () => import("@/modules/workspace/ui/StatsTab").then((m) => m.StatsTab),
+  { loading: () => <StatsTabSkeleton /> }
+);
+
+const SettingsTab = dynamic(
+  () => import("@/modules/ledger/ui/SettingsTab").then((m) => m.SettingsTab),
+  { loading: () => <SettingsTabSkeleton /> }
+);
+
+// Keep dynamic imports for dialog-only components that aren't on the default path
+const SourceDocumentInput = dynamic(
+  () => import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({ default: m.SourceDocumentInput })),
+  { ssr: false }
+);
+const QuickEntryForm = dynamic(
+  () => import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({ default: m.QuickEntryForm })),
+  { ssr: false }
+);
 
 const ModalStackRenderer = dynamic(
   () =>
@@ -44,51 +67,13 @@ const ModalStackRenderer = dynamic(
   { ssr: false }
 );
 
-const LedgerEntriesTab = dynamic(
-  () =>
-    import("@/modules/workspace/ui/LedgerEntriesTab").then((module) => ({
-      default: module.LedgerEntriesTab,
-    })),
-  {
-    loading: () => <EntriesTabSkeleton />,
-  }
-);
-
-const DetailsTab = dynamic(
-  () =>
-    import("@/modules/workspace/ui/DetailsTab").then((module) => ({
-      default: module.DetailsTab,
-    })),
-  {
-    loading: () => <DetailsTabSkeleton />,
-  }
-);
-
-const StatsTab = dynamic(
-  () =>
-    import("@/modules/workspace/ui/StatsTab").then((module) => ({
-      default: module.StatsTab,
-    })),
-  {
-    loading: () => <StatsTabSkeleton />,
-  }
-);
-
-const SettingsTab = dynamic(
-  () =>
-    import("@/modules/ledger/ui").then((module) => ({
-      default: module.SettingsTab,
-    })),
-  {
-    loading: () => <SettingsTabSkeleton />,
-  }
-);
-
 interface LedgerPageClientProps {
   ledgerId: string;
   initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
+  /** Server-derived user email for the Settings tab (avoids useSession). */
+  userEmail?: string;
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -98,11 +83,12 @@ export function LedgerPageClient({
   initialTab,
   initialPeriod,
   initialStatsDate,
+  userEmail,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
+  const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
@@ -116,7 +102,7 @@ export function LedgerPageClient({
     staleTime: STALE_TIME,
   });
 
-  const { activeTab, handleTabChange } = useLedgerTabs({
+  const { activeTab, handleTabChange: _handleTabChange } = useLedgerTabs({
     initialTab,
     searchParams,
     pathname,
@@ -138,23 +124,17 @@ export function LedgerPageClient({
 
   const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
 
-  const handleNeedsAttention = useCallback(() => {
-    applyStreamStatusPreset("needs_attention");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        statusSummaryRef.current?.focus();
-      });
-    });
-  }, [applyStreamStatusPreset]);
-
-  const handleInProgress = useCallback(() => {
-    applyStreamStatusPreset("in_progress");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        statusSummaryRef.current?.focus();
-      });
-    });
-  }, [applyStreamStatusPreset]);
+  // Initialize the refresh coordinator for this ledger
+  // This enables cross-tab leadership, bounded polling, and cache patches.
+  const queryClient = useQueryClient();
+  const coordinatorRef = useRef<ReturnType<typeof initRefreshCoordinator> | null>(null);
+  useEffect(() => {
+    coordinatorRef.current = initRefreshCoordinator(ledgerId, queryClient);
+    return () => {
+      coordinatorRef.current?.destroy();
+      coordinatorRef.current = null;
+    };
+  }, [ledgerId]);
 
   const {
     isInputOpen,
@@ -164,11 +144,26 @@ export function LedgerPageClient({
     handleInputDialogChange,
   } = useLedgerDialogState();
 
-  useLedgerPagePrefetching({
-    isInputOpen,
-    ledgerId,
-    queryClient,
-  });
+  // Wire real handlers into the ShellController so the shell's header
+  // buttons (open input, needs-attention preset, in-progress preset) work
+  // once this component mounts.
+  const { setOpenInput, setNeedsAttention, setInProgress } = useShellController();
+
+  const handleNeedsAttention = useCallback(
+    () => applyStreamStatusPreset("needs_attention"),
+    [applyStreamStatusPreset]
+  );
+
+  const handleInProgress = useCallback(
+    () => applyStreamStatusPreset("in_progress"),
+    [applyStreamStatusPreset]
+  );
+
+  useEffect(() => {
+    setOpenInput(() => () => setIsInputOpen(true));
+    setNeedsAttention(() => handleNeedsAttention);
+    setInProgress(() => handleInProgress);
+  }, [setOpenInput, setNeedsAttention, setInProgress, setIsInputOpen, handleNeedsAttention, handleInProgress]);
 
   if (ledger == null) {
     return (
@@ -179,68 +174,65 @@ export function LedgerPageClient({
   }
 
   return (
-    <AppShell
-      ledgerId={ledgerId}
-      onOpenInput={() => setIsInputOpen(true)}
-      onNeedsAttention={handleNeedsAttention}
-      onInProgress={handleInProgress}
-    >
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} onTabIntent={preloadTab} />
-        </div>
+    <>
+      {/* Only mount the active tab — inactive tabs load lazily */}
+      {activeTab === "stream" && (
+        <TabsContent value="stream" className="mt-0">
+          <LedgerEntriesTab
+            ledgerId={ledgerId}
+            categories={categories.length > 0 ? categories : []}
+            ledger={ledger}
+            periodParams={periodParams}
+            onFiltersChange={handleFiltersChange}
+            advancedFilters={advancedFilters}
+            collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+            onApplyPreset={applyStreamStatusPreset}
+            statusSummaryRef={statusSummaryRef}
+          />
+        </TabsContent>
+      )}
 
-          <TabsContent value="stream" className="mt-0">
-            <Suspense fallback={<EntriesTabSkeleton />}>
-              <LedgerEntriesTab
-                ledgerId={ledgerId}
-                categories={categories.length > 0 ? categories : []}
-                ledger={ledger}
-                periodParams={periodParams}
-                onFiltersChange={handleFiltersChange}
-                advancedFilters={advancedFilters}
-                collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
-                onApplyPreset={applyStreamStatusPreset}
-                statusSummaryRef={statusSummaryRef}
-              />
-            </Suspense>
-          </TabsContent>
+      {activeTab === "details" && (
+        <TabsContent value="details" className="mt-0">
+          <DeferredFeatureMessages feature="details" locale={locale} fallback={<DetailsTabSkeleton />}>
+            <DetailsTab
+              ledgerId={ledgerId}
+              categories={categories.length > 0 ? categories : []}
+              ledger={ledger}
+              periodParams={periodParams}
+              onFiltersChange={handleFiltersChange}
+              advancedFilters={advancedFilters}
+            />
+          </DeferredFeatureMessages>
+        </TabsContent>
+      )}
 
-          <TabsContent value="details" className="mt-0">
-            <Suspense fallback={<DetailsTabSkeleton />}>
-              <DetailsTab
-                ledgerId={ledgerId}
-                categories={categories.length > 0 ? categories : []}
-                ledger={ledger}
-                periodParams={periodParams}
-                onFiltersChange={handleFiltersChange}
-                advancedFilters={advancedFilters}
-              />
-            </Suspense>
-          </TabsContent>
+      {activeTab === "stats" && (
+        <TabsContent value="stats" className="mt-0">
+          <DeferredFeatureMessages feature="stats" locale={locale} fallback={<StatsTabSkeleton />}>
+            <StatsTab
+              ledgerId={ledgerId}
+              ledger={ledger}
+              onCategoryDrilldown={handleCategoryDrilldown}
+              onDateDrilldown={handleDateDrilldown}
+              {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+            />
+          </DeferredFeatureMessages>
+        </TabsContent>
+      )}
 
-          <TabsContent value="stats" className="mt-0">
-            <Suspense fallback={<StatsTabSkeleton />}>
-              <StatsTab
-                ledgerId={ledgerId}
-                ledger={ledger}
-                onCategoryDrilldown={handleCategoryDrilldown}
-                onDateDrilldown={handleDateDrilldown}
-                {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
-              />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="settings" className="mt-0">
-            <Suspense fallback={<SettingsTabSkeleton />}>
-              <SettingsTab
-                ledgerId={ledgerId}
-                ledger={ledger}
-                initialCategories={categories}
-              />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
+      {activeTab === "settings" && (
+        <TabsContent value="settings" className="mt-0">
+          <DeferredFeatureMessages feature="settings" locale={locale} fallback={<SettingsTabSkeleton />}>
+            <SettingsTab
+              ledgerId={ledgerId}
+              ledger={ledger}
+              initialCategories={categories}
+              {...(userEmail !== undefined ? { userEmail } : {})}
+            />
+          </DeferredFeatureMessages>
+        </TabsContent>
+      )}
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
         <DialogContent
@@ -276,7 +268,6 @@ export function LedgerPageClient({
             </button>
           </div>
 
-          {/* 静态导入的组件，代码已加载，切换时无延迟，无需骨架屏 */}
           {inputMode === "ai" ? (
             <SourceDocumentInput ledgerId={ledgerId} onSuccess={() => setIsInputOpen(false)} />
           ) : (
@@ -292,6 +283,6 @@ export function LedgerPageClient({
       </Dialog>
 
       <ModalStackRenderer categories={categories} />
-    </AppShell>
+    </>
   );
 }

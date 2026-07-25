@@ -8,6 +8,11 @@ import type { LedgerTab } from "@/modules/workspace/tabs";
 interface TabNavigationProps {
   activeTab: LedgerTab;
   onTabChange: (tab: LedgerTab) => void;
+  /**
+   * Called on pointer-enter and focus of an inactive tab trigger.
+   * The parent can use this to trigger dynamic imports (preload)
+   * before the user clicks, reducing perceived latency.
+   */
   onTabIntent?: (tab: LedgerTab) => void;
 }
 
@@ -32,8 +37,16 @@ export function TabNavigation({ activeTab, onTabChange, onTabIntent }: TabNaviga
           key={value}
           value={value}
           onClick={() => onTabChange(value)}
-          onPointerEnter={() => onTabIntent?.(value)}
-          onFocus={() => onTabIntent?.(value)}
+          onPointerEnter={
+            onTabIntent != null && value !== activeTab
+              ? () => onTabIntent(value)
+              : undefined
+          }
+          onFocus={
+            onTabIntent != null && value !== activeTab
+              ? () => onTabIntent(value)
+              : undefined
+          }
           className={cn(
             "min-h-11 gap-1.5 rounded-md px-2 text-xs sm:text-sm",
             "data-[state=active]:bg-surface data-[state=active]:text-text",

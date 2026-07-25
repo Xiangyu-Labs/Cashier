@@ -196,12 +196,18 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   includeEntries: z.coerce.boolean().default(false),
 });
 
-export const sourceDocumentCollectionInputSchema = strictObjectSchema({
+const streamPageCursorSchema = z
+  .string()
+  .regex(/^v\d+\|/, "Invalid stream cursor format")
+  .or(z.literal(""));
+export const streamPageInputSchema = strictObjectSchema({
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
-  limit: z.coerce.number().int().min(1).max(1000),
+  statuses: z.array(sourceDocumentStatusSchema).optional(),
+  cursor: streamPageCursorSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(20).default(20),
 });
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
@@ -257,7 +263,6 @@ export type FinalizeSourceDocumentUploadInput = z.infer<
 >;
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
 export type ListSourceDocumentsValidatedInput = z.infer<typeof listSourceDocumentsInputSchema>;
-export type ListSourceDocumentCollectionInput = z.input<typeof sourceDocumentCollectionInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

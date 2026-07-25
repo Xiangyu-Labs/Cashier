@@ -22,51 +22,30 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
-  sourceDocumentAttention: (ledgerId: string) =>
-    ["sourceDocuments", ledgerId, "attention"] as const,
-  sourceDocumentCompletedPage: (
-    ledgerId: string,
-    params?: {
-      startDate?: string | null | undefined;
-      endDate?: string | null | undefined;
-      minAmount?: number | null | undefined;
-      maxAmount?: number | null | undefined;
-    }
-  ) =>
-    [
-      "sourceDocuments",
-      ledgerId,
-      "completed",
-      "page",
-      params?.startDate ?? null,
-      params?.endDate ?? null,
-      params?.minAmount ?? null,
-      params?.maxAmount ?? null,
-    ] as const,
   sourceDocumentCounts: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "counts"] as const,
-  sourceDocumentCollectionPrefix: (ledgerId: string) =>
-    ["sourceDocuments", ledgerId, "collection"] as const,
-  sourceDocumentCollection: (
+  sourceDocumentStream: (
     ledgerId: string,
-    params?: {
+    filters?: {
       startDate?: string | null | undefined;
       endDate?: string | null | undefined;
       minAmount?: number | null | undefined;
       maxAmount?: number | null | undefined;
-      limit?: number | null | undefined;
+      statuses?: string | null | undefined;
     }
   ) =>
     [
       "sourceDocuments",
       ledgerId,
-      "collection",
-      params?.startDate ?? null,
-      params?.endDate ?? null,
-      params?.minAmount ?? null,
-      params?.maxAmount ?? null,
-      params?.limit ?? null,
+      "stream",
+      filters?.startDate ?? null,
+      filters?.endDate ?? null,
+      filters?.minAmount ?? null,
+      filters?.maxAmount ?? null,
+      filters?.statuses ?? null,
     ] as const,
+  sourceDocumentStreamPrefix: (ledgerId: string) =>
+    ["sourceDocuments", ledgerId, "stream"] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
@@ -222,13 +201,6 @@ export function invalidateCalendar(ledgerId: string): QueryPredicate {
 }
 
 /**
- * Helper to match bounded source document collection queries.
- */
-export function matchSourceDocumentCollection(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(queryKeys.sourceDocumentCollectionPrefix(ledgerId));
-}
-
-/**
  * Helper to match all ledger entries queries for a ledger.
  */
 export function matchLedgerEntries(ledgerId: string): QueryPredicate {
@@ -236,23 +208,15 @@ export function matchLedgerEntries(ledgerId: string): QueryPredicate {
 }
 
 /**
- * Helper to match the attention query for a ledger.
- */
-export function invalidateSourceDocumentAttention(ledgerId: string): QueryPredicate {
-  return matchExactQueryKey(queryKeys.sourceDocumentAttention(ledgerId));
-}
-
-/**
- * Helper to match all completed page queries for a ledger.
- * Uses a short 4-element prefix so it matches any completed page regardless of filter params.
- */
-export function invalidateSourceDocumentCompleted(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(["sourceDocuments", ledgerId, "completed", "page"] as const);
-}
-
-/**
  * Helper to match the counts query for a ledger.
  */
 export function invalidateSourceDocumentCounts(ledgerId: string): QueryPredicate {
   return matchExactQueryKey(queryKeys.sourceDocumentCounts(ledgerId));
+}
+
+/**
+ * Helper to match all stream queries for a ledger.
+ */
+export function invalidateSourceDocumentStream(ledgerId: string): QueryPredicate {
+  return createPrefixPredicate(queryKeys.sourceDocumentStreamPrefix(ledgerId));
 }

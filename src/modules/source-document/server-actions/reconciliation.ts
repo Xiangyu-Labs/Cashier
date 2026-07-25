@@ -1,0 +1,227 @@
+import { db } from "@/lib/db";
+import { sourceDocuments } from "@/persistence";
+import { eq, and, isNull } from "drizzle-orm";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type { MutationReconciliation } from "@/modules/source-document/contracts";
+import { SourceDocumentStatus } from "@/modules/source-document/types";
+
+// ---------------------------------------------------------------------------
+// Authoritative DB-backed read
+// ---------------------------------------------------------------------------
+
+/**
+ * Read a source document directly from DB after a write to obtain authoritative
+ * version data. Returns a minimal list-item DTO suitable for reconciliation.
+ *
+ * This is a lightweight query on the source_documents table only — it does not
+ * load revisions, files, or compute status from revision facts. For full
+ * resolution of derived fields (supportedActions, errorCode, candidate data),
+ * the refresh coordinator overlays missing data during its update cycle.
+ */
+export async function readSourceDocumentListItem(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentListItemDto | null> {
+  const row = await db.query.sourceDocuments.findFirst({
+    where: and(
+      eq(sourceDocuments.id, sourceDocumentId),
+      eq(sourceDocuments.ledgerId, ledgerId),
+      isNull(sourceDocuments.deletedAt)
+    ),
+  });
+  if (row == null) return null;
+
+  const status =
+    row.pendingRevisionId != null
+      ? "pending"
+      : row.activeRevisionId != null
+        ? "completed"
+        : "queued";
+
+  return {
+    id: row.id,
+    ledgerId: row.ledgerId,
+    title: row.title ?? null,
+    text: null,
+    files: [],
+    status: status as SourceDocumentListItemDto["status"],
+    type: row.type as SourceDocumentListItemDto["type"],
+    anomalyReason: row.anomalyReason ?? null,
+    entryDate: row.entryDate ?? null,
+    metadata: {},
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: null,
+    hasImages: false,
+    supportedActions: [],
+    errorCode: null,
+    pendingRevisionId: row.pendingRevisionId,
+    ledgerEntries: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reconciliation builders (use authoritative DB reads where possible)
+// ---------------------------------------------------------------------------
+
+/**
+ * Construct a minimal SourceDocumentListItemDto from creation result data.
+ * Falls back to synthetic data when the entity hasn't been committed yet
+ * (the create transaction is atomic; by the time the client receives the
+ * response the DB row exists, so authoritative reads are preferred).
+ */
+export function buildReconciliationEntity(arg: {
+  ledgerId: string;
+  sourceDocumentId: string;
+  entryDate: string | null;
+  updatedAt: string;
+}): SourceDocumentListItemDto {
+  return {
+    id: arg.sourceDocumentId,
+    ledgerId: arg.ledgerId,
+    title: null,
+    text: null,
+    files: [],
+    status: "queued",
+    type: "ai_parsed",
+    anomalyReason: null,
+    entryDate: arg.entryDate,
+    metadata: {},
+    createdAt: arg.updatedAt,
+    updatedAt: arg.updatedAt,
+    deletedAt: null,
+    hasImages: false,
+    supportedActions: [],
+    errorCode: null,
+    pendingRevisionId: null,
+    ledgerEntries: [],
+  };
+}
+
+/**
+ * Read the authoritative updatedAt from the DB for a source document.
+ * Returns the committed timestamp, or null if the document no longer exists.
+ */
+export async function readSourceDocumentUpdatedAt(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<string | null> {
+  const row = await db
+    .select({ updatedAt: sourceDocuments.updatedAt })
+    .from(sourceDocuments)
+    .where(
+      and(
+        eq(sourceDocuments.id, sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .then((rows) => rows[0] ?? null);
+  return row != null ? row.updatedAt.toISOString() : null;
+}
+
+/**
+ * Build a MutationReconciliation for a create / direct state-change operation
+ * using authoritative DB data where available.
+ *
+ * When readEntity is true (default for post-write operations), the function
+ * re-reads the entity from DB to get the authoritative projection. The caller
+ * should pass readEntity=false only when the DB row is guaranteed not to
+ * contain useful state yet (pre-commit).
+ */
+export async function buildAuthoritativeReconciliation(
+  operationId: string,
+  ledgerId: string,
+  sourceDocumentId: string,
+  clientSubmissionId?: string
+): Promise<MutationReconciliation<SourceDocumentListItemDto>> {
+  const entity = await readSourceDocumentListItem(ledgerId, sourceDocumentId);
+  const entityVersion = entity?.updatedAt ?? new Date().toISOString();
+
+  const base: MutationReconciliation<SourceDocumentListItemDto> = {
+    operationId,
+    entity,
+    entityVersion,
+    countPatch: null,
+    streamMembershipChanged: true,
+    orderingChanged: true,
+  };
+
+  if (clientSubmissionId !== undefined) {
+    return { ...base, clientSubmissionId };
+  }
+
+  return base;
+}
+
+/**
+ * Build a MutationReconciliation for a delete operation.
+ */
+export async function buildDeleteReconciliation(
+  operationId: string,
+  ledgerId: string,
+  sourceDocumentId: string,
+): Promise<MutationReconciliation<SourceDocumentListItemDto>> {
+  return {
+    operationId,
+    entity: null,
+    entityVersion: new Date().toISOString(),
+    countPatch: { processingDelta: 0, attentionDelta: -1 },
+    streamMembershipChanged: true,
+    orderingChanged: false,
+  };
+}
+
+/**
+ * Build a MutationReconciliation from an existing SourceDocumentListItemDto.
+ * Used for update, retry, accept, abandon operations where the caller already
+ * has an entity.
+ */
+export function buildEntityReconciliation<T extends SourceDocumentListItemDto | null>(
+  operationId: string,
+  entity: T,
+  entityVersion: string,
+  streamMembershipChanged: boolean,
+  orderingChanged: boolean
+): MutationReconciliation<SourceDocumentListItemDto> {
+  return {
+    operationId,
+    entity: entity as SourceDocumentListItemDto | null,
+    entityVersion,
+    countPatch: { processingDelta: 0, attentionDelta: 0 },
+    streamMembershipChanged,
+    orderingChanged,
+  };
+}
+
+/**
+ * Build a MutationReconciliation for a create operation.
+ */
+export function buildCreateReconciliation(
+  operationId: string,
+  clientSubmissionId: string | undefined,
+  ledgerId: string,
+  sourceDocumentId: string,
+  entryDate: string | null,
+  updatedAt: string
+): MutationReconciliation<SourceDocumentListItemDto> {
+  const base = {
+    operationId,
+    entity: buildReconciliationEntity({
+      ledgerId,
+      sourceDocumentId,
+      entryDate,
+      updatedAt,
+    }),
+    entityVersion: updatedAt,
+    countPatch: { processingDelta: 1, attentionDelta: 1 } as const,
+    streamMembershipChanged: true as const,
+    orderingChanged: true as const,
+  };
+
+  if (clientSubmissionId !== undefined) {
+    return { ...base, clientSubmissionId };
+  }
+
+  return base;
+}

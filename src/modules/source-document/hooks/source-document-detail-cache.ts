@@ -4,12 +4,10 @@ import { createListSnapshots, type MutationSnapshot } from "@/lib/mutations/use-
 import { round } from "@/lib/money/decimal";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type {
-  SourceDocumentAttentionDto,
-  SourceDocumentCollectionDto,
-  SourceDocumentCompletedPageDto,
   SourceDocumentDto,
   SourceDocumentLightWithEntriesDto,
   SourceDocumentListItemDto,
+  StreamPage,
 } from "@/modules/source-document/contracts";
 
 export type SourceDocumentQueryData = SourceDocumentDto;
@@ -62,39 +60,9 @@ export function updateSourceDocumentCollectionLists(
   ledgerId: string,
   updater: (doc: SourceDocumentListItemWithEntries) => SourceDocumentListItemWithEntries | null
 ) {
-  // Update any legacy collection caches (backward compat)
-  queryClient.setQueriesData<SourceDocumentCollectionDto>(
-    { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
-    (old) => {
-      if (!old) return old;
-      const nextItems = old.items
-        .map((doc) => updater(doc))
-        .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null);
-      return {
-        ...old,
-        items: nextItems,
-      };
-    }
-  );
-
-  // Update attention cache
-  queryClient.setQueryData<SourceDocumentAttentionDto>(
-    queryKeys.sourceDocumentAttention(ledgerId),
-    (old) => {
-      if (!old) return old;
-      const nextItems = old.items
-        .map((doc) => updater(doc))
-        .filter((doc): doc is SourceDocumentListItemWithEntries => doc !== null);
-      return {
-        ...old,
-        items: nextItems,
-      };
-    }
-  );
-
-  // Update completed page caches (InfiniteData shape — C3)
-  queryClient.setQueriesData<InfiniteData<SourceDocumentCompletedPageDto>>(
-    { queryKey: queryKeys.sourceDocumentCompletedPage(ledgerId) },
+  // Update stream cache (canonical unified paginated cache)
+  queryClient.setQueriesData<InfiniteData<StreamPage>>(
+    { queryKey: queryKeys.sourceDocumentStreamPrefix(ledgerId) },
     (old) => {
       if (!old) return old;
       return {
@@ -121,13 +89,7 @@ export function createSourceDocSnapshots(
 
   if (ledgerId != null && ledgerId !== "") {
     snapshots.push(
-      ...createListSnapshots(queryClient, queryKeys.sourceDocumentCollectionPrefix(ledgerId))
-    );
-    snapshots.push(
-      ...createListSnapshots(queryClient, queryKeys.sourceDocumentAttention(ledgerId))
-    );
-    snapshots.push(
-      ...createListSnapshots(queryClient, queryKeys.sourceDocumentCompletedPage(ledgerId))
+      ...createListSnapshots(queryClient, queryKeys.sourceDocumentStreamPrefix(ledgerId))
     );
   }
 

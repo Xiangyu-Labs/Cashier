@@ -2,9 +2,9 @@ export {
   getSourceDocumentFullAction,
   getSourceDocumentsAction,
   getSourceDocumentAttentionAction,
-  getSourceDocumentCollectionAction,
   getSourceDocumentCountsAction,
   getPendingSourceDocumentsAction,
+  listStreamPageAction,
 } from "./server-actions/queries";
 export { getSourceDocumentByIdAction } from "./server-actions/get-document";
 export { getSourceDocumentLightAction } from "./server-actions/get-document-light";
@@ -28,3 +28,4 @@ export {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "./server-actions/candidates";
+export { getStreamRefreshAction } from "./server-actions/refresh";

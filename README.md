@@ -114,3 +114,21 @@ Source document parsing (AI-powered receipt/expense extraction) uses the followi
 ## License
 
 Private
+
+## Architecture Notes
+
+### Unified Stream Page
+
+The ledger home displays a single unified Stream of source documents across all statuses (queued, processing, anomaly, completed). This replaces the earlier split between an "attention" (limited) and "completed" (paginated) collection. A single server-side keyset cursor, ordered by `entryDate DESC, createdAt DESC, id DESC`, drives infinite scrolling with exactly 20 items per page. The browser preserves server order and does not re-sort.
+
+### Refresh Ownership
+
+One visible eligible tab owns network work per ledger via BroadcastChannel-based leadership. The leader runs a bounded refresh cycle for distinct active filter signatures and watched source-document IDs, returning only changed canonical data. Followers receive versioned distribution messages. Polling pauses when hidden/offline, wakes after relevant mutations, and uses jittered backoff.
+
+### Cache Transaction Model
+
+Optimistic mutations are represented as operation-scoped overlays over canonical Stream entities. Each operation has a unique ID, forward/inverse patches, a base version, and affected projections (`stream`, `counts`, `detail`). A `CacheTransactionManager` maintains the pending operation stack. On server acknowledgment (commit), the operation is removed and later operations replay over the new canonical base. On error (rollback), the failed operation's patches are inverted and surviving operations replay. Targeted invalidation (`invalidateLedgerStats`, `invalidateCalendar`) remains for expensive derived data that cannot be safely patched. The canonical Stream is never invalidated on success if reconciliation succeeded.
+
+### Internal-Breaking Compatibility
+
+Ledger-entry update/delete server actions accept an optional `operationId` parameter and return a parent source-document reconciliation DTO (`MutationReconciliation<SourceDocumentListItemDto>`). This is an internal change only; the public API v1 response contracts remain unchanged. Legacy client-side query keys (`sourceDocumentAttention`, `sourceDocumentCompletedPage`, `sourceDocumentCollection`) and their invalidation predicates have been removed.

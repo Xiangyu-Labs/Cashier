@@ -1,6 +1,5 @@
 "use client";
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
 interface PullToRefreshProps {
@@ -140,58 +139,44 @@ export function PullToRefresh({
   const indicatorScale = pullDistance > 30 ? 1 : pullDistance / 30;
   const showText = pullDistance > 20;
   const releaseToRefresh = pullDistance > threshold;
+  const isVisible = pullDistance > 0 || isRefreshing;
 
   return (
     <div ref={containerRef} className={className}>
-      {/* Pull-down indicator */}
-      <AnimatePresence>
-        {(pullDistance > 0 || isRefreshing) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{
-              opacity: 1,
-              height: isRefreshing ? 44 : pullDistance,
-            }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex flex-col items-center justify-end overflow-hidden"
-          >
-            <div className="flex items-center gap-2 pb-2">
-              {/* Spinner indicator */}
-              <motion.div
-                className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary"
-                animate={{
-                  rotate: isRefreshing ? 360 : 0,
-                  scale: indicatorScale,
-                }}
-                transition={{
-                  rotate: {
-                    repeat: isRefreshing ? Infinity : 0,
-                    duration: 1,
-                    ease: "linear",
-                  },
-                  scale: { duration: 0.2 },
-                }}
-              />
+      {/* Pull-down indicator — CSS transitions replace Framer Motion */}
+      <div
+        className="overflow-hidden transition-all duration-200 ease-out"
+        style={{
+          opacity: isVisible ? 1 : 0,
+          height: isVisible ? (isRefreshing ? 44 : pullDistance) : 0,
+        }}
+      >
+        <div className="flex flex-col items-center justify-end overflow-hidden">
+          <div className="flex items-center gap-2 pb-2">
+            {/* Spinner indicator — CSS animation replaces motion.div */}
+            <div
+              className={`w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary ${
+                isRefreshing ? "animate-spin" : ""
+              }`}
+              style={{
+                transform: `scale(${indicatorScale})`,
+                transition: "transform 0.2s ease-out",
+              }}
+            />
 
-              {/* Text hint */}
-              {showText && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-xs text-muted-foreground"
-                >
-                  {isRefreshing
-                    ? t("refreshing")
-                    : releaseToRefresh
-                      ? t("releaseToRefresh")
-                      : t("pullToRefresh")}
-                </motion.span>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {/* Text hint */}
+            {showText && (
+              <span className="transition-opacity duration-200 text-xs text-muted-foreground">
+                {isRefreshing
+                  ? t("refreshing")
+                  : releaseToRefresh
+                    ? t("releaseToRefresh")
+                    : t("pullToRefresh")}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 子内容 */}
       {children}

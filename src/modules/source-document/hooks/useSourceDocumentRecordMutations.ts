@@ -1,18 +1,43 @@
 "use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import { queryKeys, invalidateSourceDocumentCompleted, invalidateSourceDocumentCounts } from "@/lib/query-keys";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { useTranslations } from "next-intl";
 import {
-  createSourceDocSnapshots,
-  type SourceDocumentLightQueryData,
-  type SourceDocumentQueryData,
-  updateSourceDocumentCollectionLists,
-} from "./source-document-detail-cache";
-import type { SourceDocumentAttentionDto } from "@/modules/source-document/contracts";
+  invalidateSourceDocumentCounts,
+} from "@/lib/query-keys";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
+import type {
+  SourceDocumentListItemDto,
+  MutationReconciliation,
+} from "@/modules/source-document/contracts";
+import {
+  applyOptimisticUpsert,
+  applyOptimisticDelete,
+  getStreamQueryMatches,
+} from "./source-document-optimistic-cache";
+
+/**
+ * Capture the current entity from the stream cache for a given source document ID.
+ */
+function captureCurrentEntity(
+  queryClient: ReturnType<typeof useQueryClient>,
+  ledgerId: string,
+  sourceDocumentId: string
+): SourceDocumentListItemDto | null {
+  const matches = getStreamQueryMatches(queryClient, ledgerId);
+  for (const [, data] of matches) {
+    if (!data) continue;
+    for (const page of data.pages) {
+      const found = page.items.find((item) => item.id === sourceDocumentId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -29,98 +54,147 @@ export function useSourceDocumentRecordMutations({
   id,
   ledgerId,
   onClose,
-  sourceDocumentPredicates,
-  sourceDocumentSummaryPredicates,
-  sourceDocumentEntriesSummaryPredicates,
+  sourceDocumentPredicates: _sourceDocumentPredicates,
+  sourceDocumentSummaryPredicates: _sourceDocumentSummaryPredicates,
+  sourceDocumentEntriesSummaryPredicates: _sourceDocumentEntriesSummaryPredicates,
 }: UseSourceDocumentRecordMutationsOptions) {
+  const queryClient = useQueryClient();
+  // I4: Use module-level singleton to survive remounts
+  const manager = ledgerId != null && ledgerId !== ""
+    ? getLedgerTransactionManager(ledgerId)
+    : null;
   const tCommon = useTranslations("Common");
 
-  const updateSourceDocMutation = useLedgerMutation<void, { title?: string; entryDate?: string }>(
-    ledgerId,
-    {
-      mutationFn: async (data) => {
-        if (ledgerId == null || ledgerId === "") return;
-        await updateSourceDocumentAction(ledgerId, id, data);
-      },
-      errorMessage: tCommon("saveFailed"),
-      ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
-      ...(sourceDocumentSummaryPredicates !== null
-        ? { invalidatePredicates: sourceDocumentSummaryPredicates }
-        : {}),
-      onOptimisticUpdate: (queryClient, data) => {
-        const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
+  // -----------------------------------------------------------------------
+  // Update source document (title, entryDate)
+  // -----------------------------------------------------------------------
 
-        queryClient.setQueriesData(
-          { queryKey: queryKeys.sourceDocument(id) },
-          (old: SourceDocumentQueryData | undefined) => (old ? { ...old, ...data } : old)
-        );
-        queryClient.setQueriesData(
-          { queryKey: queryKeys.sourceDocumentLight(id) },
-          (old: SourceDocumentLightQueryData | undefined) => (old ? { ...old, ...data } : old)
-        );
-
-        if (ledgerId != null && ledgerId !== "") {
-          updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) =>
-            doc.id === id ? { ...doc, ...data } : doc
-          );
-        }
-
-        return { snapshots };
-      },
-    }
-  );
-
-  const deleteDocumentMutation = useLedgerMutation<void, void>(ledgerId, {
-    mutationFn: async () => {
-      if (ledgerId == null || ledgerId === "") return;
-      await deleteSourceDocumentAction(ledgerId, id);
+  const updateSourceDocMutation = useMutation({
+    mutationFn: async ({ data, operationId }: { data: { title?: string; entryDate?: string }; operationId: string }) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    ...(sourceDocumentPredicates !== null ? { cancelPredicates: sourceDocumentPredicates } : {}),
-    ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
-      : {}),
-    onSuccessExtra: () => onClose(),
-    onOptimisticUpdate: (queryClient) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
+    onMutate: ({ data }) => {
+      if (ledgerId == null || manager == null) return;
 
-      queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(id) });
-      queryClient.removeQueries({ queryKey: queryKeys.sourceDocumentLight(id) });
+      const op = manager.startOperation(ledgerId);
 
-      if (ledgerId != null && ledgerId !== "") {
-        queryClient.setQueriesData(
-          { queryKey: queryKeys.sourceDocumentCollectionPrefix(ledgerId) },
-          (old: { items: Array<{ id: string }>; total: number } | undefined) => {
-            if (!old) return old;
-            return {
-              ...old,
-              items: old.items.filter((doc) => doc.id !== id),
-              total: Math.max(0, old.total - 1),
-            };
-          }
-        );
+      // C3: Capture current entity from stream cache for rollback
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, id);
 
-        queryClient.setQueryData<SourceDocumentAttentionDto>(
-          queryKeys.sourceDocumentAttention(ledgerId),
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              items: old.items.filter((doc) => doc.id !== id),
-              total: Math.max(0, old.total - 1),
-            };
-          }
+      const optimisticEntity: Partial<SourceDocumentListItemDto> = {
+        id,
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
+        updatedAt: new Date().toISOString(),
+      };
+
+      op.patches.push({
+        type: "upsert",
+        entityId: id,
+        entity: optimisticEntity as SourceDocumentListItemDto,
+        prevEntity, // C3: store actual previous entity
+      });
+
+      // Apply optimistic update to stream cache
+      applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity as SourceDocumentListItemDto);
+
+      return { operationId: op.operationId };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context == null) return;
+      if (ledgerId == null) return;
+      // I3: Pass real reconciliation entity — use the returned canonical entity
+      const data = _data as Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+      if (manager != null) {
+        manager.commitOperation(
+          context.operationId,
+          data.reconciliation?.entity ?? null,
+          queryClient
         );
       }
-
-      return { snapshots };
     },
-    onSettledExtra: (queryClient) => {
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
+      if (ledgerId == null) return;
+      if (manager != null) {
+        manager.rollbackOperation(context.operationId, queryClient);
+      }
+      toast.error(tCommon("saveFailed"));
+    },
+    onSettled: () => {
       if (ledgerId != null && ledgerId !== "") {
         queryClient.invalidateQueries({
-          predicate: invalidateSourceDocumentCompleted(ledgerId),
+          predicate: invalidateSourceDocumentCounts(ledgerId),
         });
+      }
+    },
+  });
+
+  // -----------------------------------------------------------------------
+  // Delete source document
+  // -----------------------------------------------------------------------
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async ({ operationId }: { operationId: string }) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      return deleteSourceDocumentAction(ledgerId, id, operationId);
+    },
+    onMutate: (_variables) => {
+      if (ledgerId == null || manager == null) return;
+
+      const op = manager.startOperation(ledgerId);
+
+      // C3: Capture current entity from stream cache BEFORE optimistic delete
+      const prevEntity = captureCurrentEntity(queryClient, ledgerId, id);
+
+      op.patches.push({
+        type: "delete",
+        entityId: id,
+        entity: prevEntity ?? {
+          id,
+          ledgerId,
+          title: null,
+          text: null,
+          files: [],
+          status: "completed",
+          type: "ai_parsed",
+          anomalyReason: null,
+          entryDate: null,
+          metadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          deletedAt: null,
+          hasImages: false,
+          supportedActions: [],
+          errorCode: null,
+          pendingRevisionId: null,
+          ledgerEntries: [],
+        } as SourceDocumentListItemDto,
+        prevEntity, // C3: store actual previous entity for rollback
+      });
+
+      // Apply optimistic delete to stream cache
+      applyOptimisticDelete(queryClient, ledgerId, id);
+
+      return { operationId: op.operationId };
+    },
+    onSuccess: (_data, _variables, context) => {
+      // C1: Commit the manager operation so it's removed from the pending stack
+      if (context != null && ledgerId != null && manager != null) {
+        manager.commitOperation(context.operationId, null, queryClient);
+      }
+      toast.success(tCommon("deleteSuccess"));
+      onClose();
+    },
+    onError: (_error, _variables, context) => {
+      if (context != null && ledgerId != null && manager != null) {
+        manager.rollbackOperation(context.operationId, queryClient);
+      }
+      toast.error(tCommon("deleteFailed"));
+    },
+    onSettled: () => {
+      if (ledgerId != null && ledgerId !== "") {
         queryClient.invalidateQueries({
           predicate: invalidateSourceDocumentCounts(ledgerId),
         });

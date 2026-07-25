@@ -6,9 +6,8 @@ const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
 const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
-const getSourceDocumentAttentionQueryMock = vi.hoisted(() => vi.fn());
 const getSourceDocumentCountsQueryMock = vi.hoisted(() => vi.fn());
-const listSourceDocumentsMock = vi.hoisted(() => vi.fn());
+const listStreamPageMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/ledger/access", () => ({
@@ -25,14 +24,11 @@ vi.mock("@/modules/ledger/application/queries/list-ledger-entries", () => ({
   listLedgerEntries: listLedgerEntriesMock,
 }));
 
-vi.mock("@/modules/source-document/application/queries/get-source-document-attention", () => ({
-  getSourceDocumentAttentionQuery: getSourceDocumentAttentionQueryMock,
-}));
 vi.mock("@/modules/source-document/application/queries/get-source-document-counts", () => ({
   getSourceDocumentCountsQuery: getSourceDocumentCountsQueryMock,
 }));
-vi.mock("@/modules/source-document/application/queries/list-source-document-page", () => ({
-  listSourceDocuments: listSourceDocumentsMock,
+vi.mock("@/modules/source-document/application/queries/list-stream-page", () => ({
+  listStreamPage: listStreamPageMock,
 }));
 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
@@ -52,6 +48,17 @@ function createAuthorizedLedger() {
   };
 }
 
+function createPreAuthorizedLedgerDto() {
+  return {
+    id: "ledger-1",
+    userId: "user-1",
+    metadata: { settings: { mainCurrency: "USD" } },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    deletedAt: null as string | null,
+  };
+}
+
 describe("getLedgerPageBootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,9 +67,8 @@ describe("getLedgerPageBootstrap", () => {
     listEntryCategoriesMock.mockResolvedValue([]);
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
-    getSourceDocumentAttentionQueryMock.mockResolvedValue({ items: [], total: 0 });
     getSourceDocumentCountsQueryMock.mockResolvedValue({ processingCount: 0, attentionCount: 0 });
-    listSourceDocumentsMock.mockResolvedValue({ items: [], nextCursor: null });
+    listStreamPageMock.mockResolvedValue({ items: [], nextCursor: null, generation: 1 });
     getEnhancedStatsMock.mockResolvedValue({});
   });
 
@@ -95,7 +101,27 @@ describe("getLedgerPageBootstrap", () => {
     ).rejects.toThrow("db unavailable");
   });
 
-  it("prefetches stream tab attention, counts, and first completed page with period-bound dates", async () => {
+  it("accepts a pre-authorized ledger DTO and skips re-authorization", async () => {
+    const preAuthDto = createPreAuthorizedLedgerDto();
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: preAuthDto,
+    });
+
+    expect(result).not.toBeNull();
+    // requireLedgerAccess should NOT have been called when ledgerDto is provided
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
+    // The DTO should be seeded into the dehydrated state
+    const ledgersQuery = result?.dehydratedState.queries.find(
+      (q) => q.queryKey[0] === "ledger"
+    );
+    expect(ledgersQuery).toBeDefined();
+    expect(ledgersQuery?.state.data).toEqual(preAuthDto);
+  });
+
+  it("prefetches stream tab counts and first stream page with period-bound dates", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
@@ -104,12 +130,14 @@ describe("getLedgerPageBootstrap", () => {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
       },
+      // Use pre-authorized DTO to test the path without re-authorization
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(result).not.toBeNull();
-    expect(getSourceDocumentAttentionQueryMock).toHaveBeenCalledWith("ledger-1");
     expect(getSourceDocumentCountsQueryMock).toHaveBeenCalledWith("ledger-1");
-    expect(listSourceDocumentsMock).toHaveBeenCalled();
+    expect(listStreamPageMock).toHaveBeenCalled();
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
       "2026-03-01",
@@ -120,8 +148,8 @@ describe("getLedgerPageBootstrap", () => {
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
 
-  it("passes min/max amount filters into completed page prefetch", async () => {
-    const result = await getLedgerPageBootstrap({
+  it("passes min/max amount filters into stream page prefetch", async () => {
+    await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
       periodParams: {
@@ -133,19 +161,40 @@ describe("getLedgerPageBootstrap", () => {
         minAmount: 20,
         maxAmount: 100,
       },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
-    expect(result).not.toBeNull();
-    // listSourceDocuments should be called with completed status and filters
-    expect(listSourceDocumentsMock).toHaveBeenCalledWith("ledger-1", {
-      status: "completed",
+    expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       minAmount: 20,
       maxAmount: 100,
       cursor: undefined,
       limit: 20,
-      includeEntries: true,
+    });
+  });
+
+  it("passes status filters into stream page prefetch", async () => {
+    await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: {
+        period: "custom",
+        startDate: "2026-07-01",
+        endDate: "2026-07-31",
+      },
+      advancedFilters: {
+        statuses: ["queued", "processing"],
+      },
+      ledgerDto: createPreAuthorizedLedgerDto(),
+    });
+
+    expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+      statuses: ["queued", "processing"],
+      cursor: undefined,
+      limit: 20,
     });
   });
 
@@ -154,11 +203,12 @@ describe("getLedgerPageBootstrap", () => {
       ledgerId: "ledger-1",
       initialTab: "details",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledOnce();
     expect(listLedgerEntriesMock).toHaveBeenCalledOnce();
-    expect(getSourceDocumentAttentionQueryMock).not.toHaveBeenCalled();
+    expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
 
@@ -177,6 +227,7 @@ describe("getLedgerPageBootstrap", () => {
         minAmount: 20,
         maxAmount: 100,
       },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
@@ -204,24 +255,33 @@ describe("getLedgerPageBootstrap", () => {
   });
 
   it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {
-    requireLedgerAccessMock.mockResolvedValueOnce({
-      userId: "user-1",
-      ledger: {
-        ...createAuthorizedLedger().ledger,
-        metadata: {},
-      },
-    });
-
     await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stats",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(getEnhancedStatsMock).toHaveBeenCalledOnce();
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
-    expect(getSourceDocumentAttentionQueryMock).not.toHaveBeenCalled();
+    expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
+  });
+
+  it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {
+    const dto = {
+      ...createPreAuthorizedLedgerDto(),
+      metadata: { settings: {} },
+    };
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: dto,
+    });
+
+    expect(result).not.toBeNull();
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
   });
 
   it("does not prefetch a multi-ledger list for the single-ledger workspace", async () => {
@@ -229,12 +289,38 @@ describe("getLedgerPageBootstrap", () => {
       ledgerId: "ledger-1",
       initialTab: "stream",
       periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
     expect(result).not.toBeNull();
-    expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
+    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(result?.dehydratedState.queries.some((query) => query.queryKey[0] === "ledgers")).toBe(
       false
     );
+  });
+
+  it("prefetches stream query with the correct infinite query key structure", async () => {
+    const result = await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: createPreAuthorizedLedgerDto(),
+    });
+
+    expect(result).not.toBeNull();
+
+    // The stream query should be in the dehydrated state as an infinite query
+    const streamQuery = result?.dehydratedState.queries.find(
+      (q) =>
+        Array.isArray(q.queryKey) &&
+        q.queryKey[0] === "sourceDocuments" &&
+        q.queryKey[1] === "ledger-1" &&
+        q.queryKey[2] === "stream"
+    );
+    expect(streamQuery).toBeDefined();
+    expect(streamQuery?.state.data).toEqual({
+      pages: [{ items: [], nextCursor: null, generation: 1 }],
+      pageParams: [undefined],
+    });
   });
 });

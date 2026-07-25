@@ -23,7 +23,13 @@ import {
   storedFiles,
 } from "@/persistence";
 
-const EMPTY_DATE_SORT_KEY = "0000-00-00";
+/**
+ * Effective date: `entryDate` if present, otherwise the ISO calendar date
+ * derived from `createdAt`.  Used for date filters, ORDER BY, cursor
+ * comparison, cursor encoding, and grouping — everything that needs the
+ * canonical business-date value.
+ */
+const EFFECTIVE_DATE = sql<string>`COALESCE(${sourceDocuments.entryDate}, to_char(${sourceDocuments.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD'))`;
 
 export interface TargetSourceDocumentListInput {
   ledgerId: string;
@@ -98,12 +104,12 @@ function baseConditions(input: TargetSourceDocumentListInput): SQL<unknown>[] {
   }
   if (input.startDate != null && input.startDate !== "") {
     conditions.push(
-      sql`COALESCE(${sourceDocuments.entryDate}, ${EMPTY_DATE_SORT_KEY}) >= ${input.startDate}`
+      sql`${EFFECTIVE_DATE} >= ${input.startDate}`
     );
   }
   if (input.endDate != null && input.endDate !== "") {
     conditions.push(
-      sql`COALESCE(${sourceDocuments.entryDate}, ${EMPTY_DATE_SORT_KEY}) <= ${input.endDate}`
+      sql`${EFFECTIVE_DATE} <= ${input.endDate}`
     );
   }
   if (input.minAmount !== undefined || input.maxAmount !== undefined) {
@@ -146,16 +152,15 @@ function cursorCondition(cursor: string | null | undefined): SQL<unknown> | null
   if (cursor == null || cursor === "") return null;
   const decoded = decodeCursor(cursor);
   if (decoded == null) return null;
-  const entryDate = sql<string>`COALESCE(${sourceDocuments.entryDate}, ${EMPTY_DATE_SORT_KEY})`;
   return (
     or(
-      sql`${entryDate} < ${decoded.entryDate}`,
+      sql`${EFFECTIVE_DATE} < ${decoded.entryDate}`,
       and(
-        sql`${entryDate} = ${decoded.entryDate}`,
+        sql`${EFFECTIVE_DATE} = ${decoded.entryDate}`,
         lt(sourceDocuments.createdAt, decoded.createdAt)
       ),
       and(
-        sql`${entryDate} = ${decoded.entryDate}`,
+        sql`${EFFECTIVE_DATE} = ${decoded.entryDate}`,
         eq(sourceDocuments.createdAt, decoded.createdAt),
         sql`${sourceDocuments.id} < ${decoded.id}`
       )
@@ -164,7 +169,8 @@ function cursorCondition(cursor: string | null | undefined): SQL<unknown> | null
 }
 
 function encodeCursor(row: SourceDocumentRow): string {
-  return `${row.entryDate ?? EMPTY_DATE_SORT_KEY}|${row.createdAt.toISOString()}|${row.id}`;
+  const effectiveDate = row.entryDate ?? row.createdAt.toISOString().slice(0, 10);
+  return `${effectiveDate}|${row.createdAt.toISOString()}|${row.id}`;
 }
 
 async function loadRevisionFacts(rows: readonly SourceDocumentRow[]) {
@@ -472,7 +478,7 @@ async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: bo
     .from(sourceDocuments)
     .where(and(...conditions))
     .orderBy(
-      desc(sql`COALESCE(${sourceDocuments.entryDate}, ${EMPTY_DATE_SORT_KEY})`),
+      desc(EFFECTIVE_DATE),
       desc(sourceDocuments.createdAt),
       desc(sourceDocuments.id)
     )

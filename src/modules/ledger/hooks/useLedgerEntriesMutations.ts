@@ -1,20 +1,27 @@
 "use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
-  invalidateLedgerEntries,
   invalidateLedgerStats,
-  invalidateSourceDocuments,
-  matchSourceDocumentCollection,
 } from "@/lib/query-keys";
-import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
-import type { LedgerEntry } from "@/modules/ledger/contracts";
+import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
+import {
+  applyOptimisticUpsert,
+  findSourceDocByEntryId,
+} from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type {
+  MutationReconciliation,
+} from "@/modules/source-document/contracts";
+import { toast } from "sonner";
 
 type SourceDocumentCacheEntry = Pick<
-  LedgerEntry,
+  LedgerEntryDto,
   | "id"
   | "itemName"
   | "description"
@@ -27,15 +34,10 @@ type SourceDocumentCacheEntry = Pick<
   category?: EntryCategory | null;
 };
 
-interface SourceDocumentCacheItem {
-  ledgerEntries?: SourceDocumentCacheEntry[];
-}
-
-type SourceDocumentsQueryData =
-  | {
-      items?: SourceDocumentCacheItem[];
-    }
-  | undefined;
+type UpdateEntryResult = LedgerEntryDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+type DeleteEntryResult = DeleteLedgerEntryResultDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+type UpdateVariables = { ledgerEntryId: string; data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number } };
+type MutationContext = { operationId: string; found: boolean };
 
 function getUpdatedCacheCategory(
   entry: SourceDocumentCacheEntry,
@@ -51,7 +53,7 @@ function getUpdatedCacheCategory(
 
 function buildOptimisticCacheEntry(
   entry: SourceDocumentCacheEntry,
-  data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number },
+  data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number },
   categories: EntryCategory[]
 ): SourceDocumentCacheEntry {
   const nextCategory = getUpdatedCacheCategory(entry, data.categoryId, categories);
@@ -67,96 +69,149 @@ function buildOptimisticCacheEntry(
   return nextCategory !== undefined ? { ...updatedEntry, category: nextCategory } : updatedEntry;
 }
 
+function patchSourceDocEntries(
+  sourceDoc: SourceDocumentListItemDto,
+  entryId: string,
+  updater: (entry: SourceDocumentCacheEntry) => SourceDocumentCacheEntry,
+  categories: EntryCategory[]
+): SourceDocumentListItemDto {
+  if (!sourceDoc.ledgerEntries) return sourceDoc;
+  return {
+    ...sourceDoc,
+    ledgerEntries: sourceDoc.ledgerEntries.map((entry) =>
+      entry.id === entryId
+        ? { ...entry, ...updater(entry as unknown as SourceDocumentCacheEntry) }
+        : entry
+    ),
+  };
+}
+
+function removeEntryFromSourceDoc(
+  sourceDoc: SourceDocumentListItemDto,
+  entryId: string
+): SourceDocumentListItemDto {
+  if (!sourceDoc.ledgerEntries) return sourceDoc;
+  return {
+    ...sourceDoc,
+    ledgerEntries: sourceDoc.ledgerEntries.filter((entry) => entry.id !== entryId),
+  };
+}
+
 export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCategory[]) {
+  const queryClient = useQueryClient();
+  // I4: Use module-level singleton to survive remounts
+  const manager = getLedgerTransactionManager(ledgerId);
   const tCommon = useTranslations("Common");
 
-  const updateEntry = useLedgerMutation<
-    LedgerEntry,
-    { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number } }
-  >(ledgerId, {
+  const updateEntry = useMutation<UpdateEntryResult, Error, UpdateVariables, MutationContext>({
     mutationFn: async ({ ledgerEntryId, data }) => {
-      const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
-      return result;
+      const operationId = crypto.randomUUID();
+      return updateLedgerEntryAction(ledgerId, ledgerEntryId, data, operationId) as Promise<UpdateEntryResult>;
     },
-    successMessage: tCommon("saveSuccess"),
-    errorMessage: tCommon("saveFailed"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onOptimisticUpdate: (queryClient, { ledgerEntryId, data }) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchSourceDocumentCollection(ledgerId),
-      });
+    onMutate: async ({ ledgerEntryId, data }) => {
+      const op = manager.startOperation(ledgerId);
 
-      queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old): SourceDocumentsQueryData => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.map((doc) => {
-              if (doc.ledgerEntries === undefined) {
-                return doc;
-              }
+      // Find the parent source doc in the stream cache and capture previous state
+      const found = findSourceDocByEntryId(queryClient, ledgerId, ledgerEntryId);
+      if (found != null) {
+        const { sourceDoc } = found;
 
-              return {
-                ...doc,
-                ledgerEntries: doc.ledgerEntries.map((entry) =>
-                  entry.id === ledgerEntryId
-                    ? buildOptimisticCacheEntry(entry, data, categories)
-                    : entry
-                ),
-              };
-            }),
-          };
-        }
+        // Build the updated source doc with modified entry
+        const updatedSourceDoc = patchSourceDocEntries(
+          sourceDoc,
+          ledgerEntryId,
+          (entry) => buildOptimisticCacheEntry(entry, data, categories),
+          categories
+        );
+
+        // Record the patch for rollback with actual previous entity
+        op.patches.push({
+          type: "upsert",
+          entityId: sourceDoc.id,
+          entity: updatedSourceDoc,
+          prevEntity: sourceDoc, // C3: store actual previous entity
+        });
+
+        // Apply optimistic update to stream cache
+        applyOptimisticUpsert(queryClient, ledgerId, updatedSourceDoc);
+      }
+
+      return { operationId: op.operationId, found: found != null };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context == null) return;
+      // I3: Pass real reconciliation data
+      const data = _data as UpdateEntryResult;
+      manager.commitOperation(
+        context.operationId,
+        data.reconciliation?.entity ?? null,
+        queryClient
       );
-
-      return { snapshots };
+    },
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
+      manager.rollbackOperation(context.operationId, queryClient);
+      toast.error(tCommon("saveFailed"));
+    },
+    onSettled: (_data, _error, _variables) => {
+      // Do NOT invalidate the Stream on success — reconciliation already patched it.
+      // Invalidate expensive derived data that the action result cannot patch.
+      queryClient.invalidateQueries({
+        predicate: invalidateLedgerStats(ledgerId),
+      });
+      queryClient.invalidateQueries({
+        predicate: invalidateCalendar(ledgerId),
+      });
     },
   });
 
-  const deleteEntry = useLedgerMutation<DeleteLedgerEntryResultDto, string>(ledgerId, {
-    mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
-    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onOptimisticUpdate: (queryClient, ledgerEntryId) => {
-      const snapshots = queryClient.getQueriesData<SourceDocumentsQueryData>({
-        predicate: matchSourceDocumentCollection(ledgerId),
+  const deleteEntry = useMutation<DeleteEntryResult, Error, string, MutationContext>({
+    mutationFn: async (ledgerEntryId) => {
+      const operationId = crypto.randomUUID();
+      return deleteLedgerEntryAction(ledgerId, ledgerEntryId, operationId) as Promise<DeleteEntryResult>;
+    },
+    onMutate: async (ledgerEntryId) => {
+      const op = manager.startOperation(ledgerId);
+
+      // Find the parent source doc in the stream cache and capture previous state
+      const found = findSourceDocByEntryId(queryClient, ledgerId, ledgerEntryId);
+      if (found != null) {
+        const { sourceDoc } = found;
+
+        // Build the updated source doc with entry removed
+        const updatedSourceDoc = removeEntryFromSourceDoc(sourceDoc, ledgerEntryId);
+
+        // Record the patch for rollback with actual previous entity
+        op.patches.push({
+          type: "upsert",
+          entityId: sourceDoc.id,
+          entity: updatedSourceDoc,
+          prevEntity: sourceDoc, // C3: store actual previous entity
+        });
+
+        // Apply optimistic update to stream cache
+        applyOptimisticUpsert(queryClient, ledgerId, updatedSourceDoc);
+      }
+
+      return { operationId: op.operationId, found: found != null };
+    },
+    onSuccess: (_data, _variables, context) => {
+      if (context == null) return;
+      manager.commitOperation(context.operationId, null, queryClient);
+      toast.success(tCommon("deleteSuccess"));
+    },
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
+      manager.rollbackOperation(context.operationId, queryClient);
+      toast.error(tCommon("deleteFailed"));
+    },
+    onSettled: (_data, _error, _variables) => {
+      queryClient.invalidateQueries({
+        predicate: invalidateLedgerStats(ledgerId),
       });
-
-      queryClient.setQueriesData<SourceDocumentsQueryData>(
-        { predicate: matchSourceDocumentCollection(ledgerId) },
-        (old): SourceDocumentsQueryData => {
-          if (old === undefined || old.items === undefined) return old;
-          return {
-            ...old,
-            items: old.items.map((doc) => {
-              if (doc.ledgerEntries === undefined) {
-                return doc;
-              }
-
-              return {
-                ...doc,
-                ledgerEntries: doc.ledgerEntries.filter((entry) => entry.id !== ledgerEntryId),
-              };
-            }),
-          };
-        }
-      );
-
-      return { snapshots };
+      queryClient.invalidateQueries({
+        predicate: invalidateCalendar(ledgerId),
+      });
     },
   });
 

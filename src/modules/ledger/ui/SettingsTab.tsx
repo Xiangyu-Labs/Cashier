@@ -22,12 +22,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
-import { useSession } from "next-auth/react";
 
 interface SettingsTabProps {
   ledger: Ledger;
   initialCategories: EntryCategoryWithCount[];
   ledgerId: string;
+  /** Server-derived user email (avoids useSession in a SessionProvider). */
+  userEmail?: string;
 }
 
 
@@ -35,13 +36,13 @@ export function SettingsTab({
   ledger,
   initialCategories,
   ledgerId,
+  userEmail,
 }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations("Settings");
   const ta = useTranslations("Settings.Account");
-  const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
 
@@ -212,7 +213,7 @@ export function SettingsTab({
 
         <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
           <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-            <span className="text-sm text-muted-foreground">{session?.user?.email ?? ""}</span>
+            <span className="text-sm text-muted-foreground">{userEmail ?? ""}</span>
           </SettingsField>
           <SettingsField title={t("signOut")} description={t("signOutDesc")}>
             <button
