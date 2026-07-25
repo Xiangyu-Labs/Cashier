@@ -13,6 +13,7 @@ import {
 import type { ProcessingIntentContract } from "@/application/contracts";
 import {
   ledgerEntries,
+  ledgers,
   processingAttempts,
   processingOutbox,
   sourceDocumentRevisions,
@@ -103,6 +104,165 @@ describe("PostgresProcessingIntentAdapter", () => {
         pendingRevisionId: null,
       }
     );
+  });
+
+  it("processes with custom ledger prompt in AI generation request", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    // Update ledger metadata with custom prompt
+    const customPrompt = "Please categorize expenses as food or transport";
+    await db
+      .update(ledgers)
+      .set({
+        metadata: {
+          settings: {
+            aiCustomPrompt: customPrompt,
+            aiLanguage: "en",
+            currencies: ["CNY", "USD"],
+          },
+        },
+      })
+      .where(eq(ledgers.id, ledgerId));
+
+    const generate = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+
+    const processor = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate }),
+    });
+
+    await processor.process({
+      ledgerId,
+      sourceDocumentId: intent.sourceDocumentId,
+      revisionId: intent.revisionId,
+    });
+
+    // Verify the custom prompt reaches the AI call
+    expect(generate).toHaveBeenCalled();
+    const callArgs = (generate.mock.calls as unknown[][]).reduce(
+      (acc, call) => acc + JSON.stringify(call),
+      ""
+    );
+    expect(callArgs).toContain(customPrompt);
+  });
+
+  it("retried revision uses current ledger settings", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    // Process once without custom prompt (successful first parse)
+    const generate1 = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+
+    const processor1 = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate: generate1 }),
+    });
+
+    await processor1.process({
+      ledgerId,
+      sourceDocumentId: intent.sourceDocumentId,
+      revisionId: intent.revisionId,
+    });
+
+    // Now update ledger metadata WITH a custom prompt (simulating user changing settings after first parse)
+    const customPrompt = "Please focus on categorizing dining expenses";
+    await db
+      .update(ledgers)
+      .set({
+        metadata: {
+          settings: {
+            aiCustomPrompt: customPrompt,
+            aiLanguage: "en",
+            currencies: ["CNY", "USD"],
+          },
+        },
+      })
+      .where(eq(ledgers.id, ledgerId));
+
+    // Create a second revision (retry) after the settings change
+    const pending2 = await postgresRevisionAdapter.createPending({
+      ledgerId,
+      submittedText: "Dinner 25.00 USD",
+    });
+
+    const generate2 = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Dinner",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "25.00", currency: "USD" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Dinner",
+            amount: "25.00",
+            currency: "USD",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+
+    const processor2 = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate: generate2 }),
+    });
+
+    await processor2.process({
+      ledgerId,
+      sourceDocumentId: pending2.document.id,
+      revisionId: pending2.revision.id,
+    });
+
+    // Verify the new AI call used the updated custom prompt
+    expect(generate2).toHaveBeenCalled();
+    const callArgs = (generate2.mock.calls as unknown[][]).reduce(
+      (acc, call) => acc + JSON.stringify(call),
+      ""
+    );
+    expect(callArgs).toContain(customPrompt);
   });
 
   it("deduplicates dispatch and permits only one concurrent claim", async () => {
