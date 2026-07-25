@@ -8,6 +8,7 @@ const remotePatterns: Array<{ protocol: "https" | "http"; hostname: string }> = 
 
 const nextConfig: NextConfig = {
   // instrumentation.ts is enabled by default in Next.js 16+
+  output: "standalone",
   images: {
     unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload
     remotePatterns,
