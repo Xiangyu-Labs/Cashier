@@ -1,15 +1,56 @@
 import { render, screen } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
-// zh.json messages are used by the useTranslations mock (see setup.common.ts)
-import zhMessages from "messages/zh.json";
+const { currentLocale } = vi.hoisted(() => {
+  const ref: { value: string } = { value: "zh" };
+  return { currentLocale: ref };
+});
 
-const messages = zhMessages as Record<string, unknown>;
+vi.mock("next-intl", async () => {
+  const en = (await import("messages/en.json")).default as Record<
+    string,
+    Record<string, string>
+  >;
+  const zh = (await import("messages/zh.json")).default as Record<
+    string,
+    Record<string, string>
+  >;
+
+  return {
+    useTranslations: (namespace?: string) => {
+      const msgs = currentLocale.value === "en" ? en : zh;
+      return (key: string, values?: Record<string, string | number>) => {
+        const nsMessages = namespace ? msgs[namespace] : undefined;
+        let msg = nsMessages?.[key];
+        if (msg == null) {
+          for (const ns in msgs) {
+            if (msgs[ns]?.[key] != null) {
+              msg = msgs[ns][key];
+              break;
+            }
+          }
+        }
+        if (msg == null) return key;
+        if (values != null) {
+          Object.entries(values).forEach(([k, v]) => {
+            msg = (msg as string).replace(`{${k}}`, String(v));
+          });
+        }
+        return msg;
+      };
+    },
+    useLocale: () => currentLocale.value,
+    useMessages: () => (currentLocale.value === "en" ? en : zh),
+    useTimeZone: () => "UTC",
+    useNow: () => new Date(),
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
+      children,
+  };
+});
 
 describe("UI Core Components", () => {
   describe("Button", () => {
@@ -74,20 +115,25 @@ describe("UI Core Components", () => {
   });
 
   describe("Dialog", () => {
-    it("renders localized close screen-reader text via Common namespace", () => {
-      render(
-        <NextIntlClientProvider messages={messages} locale="zh">
+    describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
+      beforeEach(() => {
+        currentLocale.value = locale;
+      });
+
+      it("renders localized close screen-reader text via Common namespace", () => {
+        render(
           <Dialog open>
             <DialogTrigger />
             <DialogContent>
               <p>Dialog body</p>
             </DialogContent>
           </Dialog>
-        </NextIntlClientProvider>
-      );
+        );
 
-      const closeButton = screen.getByRole("button", { name: "关闭" });
-      expect(closeButton).toBeDefined();
+        const expected = locale === "en" ? "Close" : "关闭";
+        const closeButton = screen.getByRole("button", { name: expected });
+        expect(closeButton).toBeDefined();
+      });
     });
   });
 });
