@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
-import { Camera, RefreshCw, Send } from "lucide-react";
+import { Camera, RefreshCw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateFilter } from "@/components/ui/date-filter";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,7 +91,7 @@ export function SourceDocumentInputView({
                 title={messages.delete}
                 className={`${imageActionButtonClassName} right-1 top-1 bg-danger text-xs`}
               >
-                ×
+                <X className="h-3 w-3" />
               </button>
             </div>
           ))}

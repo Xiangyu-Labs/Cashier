@@ -391,9 +391,6 @@ export function LedgerEntriesTab({
                   collapseEntriesDefault={collapseEntriesDefault}
                   noRecordsText={tCommon("noRecords")}
                   getItemProps={getItemProps}
-                  isRetrying={retryMutation.isPending}
-                  isAccepting={acceptCandidateMutation.isPending}
-                  isAbandoning={abandonCandidateMutation.isPending}
                 />
               )}
 
