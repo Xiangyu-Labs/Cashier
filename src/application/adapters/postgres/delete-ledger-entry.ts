@@ -72,5 +72,6 @@ export async function deleteLedgerEntry(
   return {
     ledgerEntryId,
     deleted: true,
+    sourceDocumentId: document.id,
   };
 }

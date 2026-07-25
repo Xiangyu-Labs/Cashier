@@ -8,6 +8,7 @@ import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
 import { EntriesTabSkeleton } from "@/components/skeletons/TabSkeletons";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
+import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
 
@@ -77,10 +78,17 @@ function readAdvancedFilters(searchParams: Record<string, string | string[] | un
     return Number.isNaN(parsed) ? null : parsed;
   };
 
+  // I2: Include statuses from searchParams for filter membership coherence
+  const rawStatuses = getSingleSearchParam(searchParams.statuses);
+  const statuses: SourceDocumentStatusType[] | undefined = rawStatuses != null && rawStatuses !== ""
+    ? (rawStatuses.split(",").map((s) => s.trim()).filter(Boolean) as SourceDocumentStatusType[])
+    : undefined;
+
   return {
     categoryId: getSingleSearchParam(searchParams.categoryId) ?? null,
     currency: getSingleSearchParam(searchParams.currency) ?? null,
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
+    ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
   };
 }

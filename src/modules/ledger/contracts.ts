@@ -138,6 +138,7 @@ export interface LedgerSettingsViewDto {
 export interface DeleteLedgerEntryResultDto {
   ledgerEntryId: string;
   deleted: boolean;
+  sourceDocumentId?: string;
 }
 
 export interface BatchLedgerEntriesMutationResultDto {

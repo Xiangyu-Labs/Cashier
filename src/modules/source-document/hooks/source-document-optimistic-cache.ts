@@ -50,6 +50,8 @@ function itemMatchesFilters(
     startDate: string | null;
     endDate: string | null;
     statuses: string | null;
+    minAmount: number | null;
+    maxAmount: number | null;
   }
 ): boolean {
   // Check status filter
@@ -66,6 +68,24 @@ function itemMatchesFilters(
   }
   if (filters.endDate != null && item.entryDate != null) {
     if (item.entryDate > filters.endDate) return false;
+  }
+
+  // I2: Check amount range — if the item has any ledger entries with amounts
+  // outside the filter range, exclude it from this query
+  if (filters.minAmount != null || filters.maxAmount != null) {
+    const amounts = (item.ledgerEntries ?? [])
+      .map((e) => {
+        const n = Number(e.convertedAmount ?? e.amount);
+        return Number.isNaN(n) ? null : n;
+      })
+      .filter((n): n is number => n != null);
+
+    if (amounts.length > 0) {
+      const minAmt = Math.min(...amounts);
+      const maxAmt = Math.max(...amounts);
+      if (filters.minAmount != null && maxAmt < filters.minAmount) return false;
+      if (filters.maxAmount != null && minAmt > filters.maxAmount) return false;
+    }
   }
 
   return true;
@@ -118,7 +138,7 @@ export function applyOptimisticUpsert(
       if (firstPage) {
         updatedPages[0] = {
           ...firstPage,
-          items: [item, ...firstPage.items].slice(0, 20), // I1: Maintain page limit
+          items: [item, ...firstPage.items], // C2: No slice -- TanStack Query flattening dedup handles display limit
         };
       }
     }

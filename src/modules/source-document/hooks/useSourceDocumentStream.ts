@@ -108,6 +108,8 @@ export function useSourceDocumentStream(
   const generationRef = useRef<number | null>(null);
   // C3: Persist first page fingerprint from server for refresh comparison
   const firstPageFingerprintRef = useRef<string | null>(null);
+  // I1: Persist count fingerprint from server for adaptive refresh
+  const countFingerprintRef = useRef<string | null>(null);
 
   const {
     data,
@@ -174,32 +176,32 @@ export function useSourceDocumentStream(
 
   // C3: Refresh function — calls the bounded refresh endpoint with persisted fingerprints
   const refresh = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
-    try {
-      const firstPageFp = firstPageFingerprintRef.current;
+    const firstPageFp = firstPageFingerprintRef.current;
 
-      // Counts refresh is handled by the coordinator separately via Header
-      const result = await getStreamRefreshAction(ledgerId, {
-        ledgerId,
-        protocolVersion: 1,
-        signatures: [
-          {
-            filterSignature,
-            firstPageFingerprint: firstPageFp,
-          },
-        ],
-        watchedIds: [],
-        countFingerprint: null,
-      });
+    // I1: Send countFingerprint from last response for adaptive refresh
+    const result = await getStreamRefreshAction(ledgerId, {
+      ledgerId,
+      protocolVersion: 1,
+      signatures: [
+        {
+          filterSignature,
+          firstPageFingerprint: firstPageFp,
+        },
+      ],
+      watchedIds: [],
+      countFingerprint: countFingerprintRef.current,
+    });
 
-      applyStreamRefreshToCache(queryClient, ledgerId, result);
-      // C3: Update persisted fingerprint from server response
-      if (result.firstPages.length > 0 && result.firstPages[0] != null) {
-        firstPageFingerprintRef.current = result.firstPages[0].fingerprint;
-      }
-      return { changed: result.changed, result };
-    } catch {
-      return { changed: false };
+    applyStreamRefreshToCache(queryClient, ledgerId, result);
+    // C3: Update persisted fingerprint from server response
+    if (result.firstPages.length > 0 && result.firstPages[0] != null) {
+      firstPageFingerprintRef.current = result.firstPages[0].fingerprint;
     }
+    // I1: Update persisted count fingerprint
+    if (result.counts?.fingerprint) {
+      countFingerprintRef.current = result.counts.fingerprint;
+    }
+    return { changed: result.changed, result };
   }, [ledgerId, filterSignature, queryClient]);
 
   // Register with the refresh coordinator for polling

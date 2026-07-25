@@ -74,9 +74,8 @@ export function useSourceDocumentRecordMutations({
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
-    onMutate: ({ data, operationId }) => {
+    onMutate: ({ data }) => {
       if (ledgerId == null || manager == null) return;
-      if (ledgerId == null) return;
 
       const op = manager.startOperation(ledgerId);
 
@@ -100,24 +99,26 @@ export function useSourceDocumentRecordMutations({
       // Apply optimistic update to stream cache
       applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity as SourceDocumentListItemDto);
 
-      return { operationId };
+      return { operationId: op.operationId };
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (_data, _variables, context) => {
+      if (context == null) return;
       if (ledgerId == null) return;
       // I3: Pass real reconciliation entity — use the returned canonical entity
       const data = _data as Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
       if (manager != null) {
         manager.commitOperation(
-          variables.operationId,
+          context.operationId,
           data.reconciliation?.entity ?? null,
           queryClient
         );
       }
     },
-    onError: (_error, variables) => {
+    onError: (_error, _variables, context) => {
+      if (context == null) return;
       if (ledgerId == null) return;
       if (manager != null) {
-        manager.rollbackOperation(variables.operationId, queryClient);
+        manager.rollbackOperation(context.operationId, queryClient);
       }
       toast.error(tCommon("saveFailed"));
     },
@@ -139,7 +140,7 @@ export function useSourceDocumentRecordMutations({
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return deleteSourceDocumentAction(ledgerId, id, operationId);
     },
-    onMutate: () => {
+    onMutate: (_variables) => {
       if (ledgerId == null || manager == null) return;
 
       const op = manager.startOperation(ledgerId);
@@ -176,25 +177,19 @@ export function useSourceDocumentRecordMutations({
       // Apply optimistic delete to stream cache
       applyOptimisticDelete(queryClient, ledgerId, id);
 
-      return {};
+      return { operationId: op.operationId };
     },
-    onSuccess: () => {
-      // Clean up the operation — delete doesn't need canonical entity
+    onSuccess: (_data, _variables, context) => {
+      // C1: Commit the manager operation so it's removed from the pending stack
+      if (context != null && ledgerId != null && manager != null) {
+        manager.commitOperation(context.operationId, null, queryClient);
+      }
       toast.success(tCommon("deleteSuccess"));
       onClose();
     },
-    onError: (_error, _variables) => {
-      if (ledgerId == null) return;
-      if (manager != null) {
-        // Rollback to restore the entity
-        for (const op of manager.getActiveOperations()) {
-          for (const patch of op.patches) {
-            if (patch.type === "delete" && patch.entityId === id) {
-              applyOptimisticUpsert(queryClient, ledgerId, patch.entity);
-              return;
-            }
-          }
-        }
+    onError: (_error, _variables, context) => {
+      if (context != null && ledgerId != null && manager != null) {
+        manager.rollbackOperation(context.operationId, queryClient);
       }
       toast.error(tCommon("deleteFailed"));
     },

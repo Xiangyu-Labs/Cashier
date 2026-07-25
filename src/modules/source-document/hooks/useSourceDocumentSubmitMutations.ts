@@ -151,9 +151,9 @@ export function useSourceDocumentSubmitMutations({
       );
     },
     onMutate: async (variables: CreateVariables) => {
-      const { payload, operationId, clientSubmissionId } = variables;
+      const { payload, clientSubmissionId } = variables;
 
-      // Start transaction operation with the pre-generated operationId
+      // Start transaction operation
       const op = manager.startOperation(ledgerId);
 
       // Build a queued placeholder entity
@@ -171,10 +171,11 @@ export function useSourceDocumentSubmitMutations({
       // Apply optimistic upsert to stream cache
       applyOptimisticUpsert(queryClient, ledgerId, placeholder);
 
-      return { clientSubmissionId: variables.clientSubmissionId, operationId };
+      return { operationId: op.operationId, clientSubmissionId };
     },
-    onSuccess: (data, variables) => {
-      const opId = variables.operationId;
+    onSuccess: (data, variables, context) => {
+      if (context == null) return;
+      const opId = context.operationId;
 
       if (data != null) {
         const response = data as CreateSourceDocumentResponseDto &
@@ -211,9 +212,10 @@ export function useSourceDocumentSubmitMutations({
       notifyNewSubmission();
       onSuccess?.();
     },
-    onError: (error, variables) => {
+    onError: (error, variables, context) => {
+      if (context == null) return;
       // Roll back the operation
-      manager.rollbackOperation(variables.operationId, queryClient);
+      manager.rollbackOperation(context.operationId, queryClient);
       handleSubmitError(error, messages.uploadError);
     },
     onSettled: () => {
@@ -240,10 +242,9 @@ export function useSourceDocumentSubmitMutations({
         variables.operationId
       );
     },
-    onMutate: async (variables: RetryVariables) => {
-      const { operationId } = variables;
+    onMutate: async (_variables: RetryVariables) => {
 
-      // Start transaction operation with the pre-generated operationId
+      // Start transaction operation
       const op = manager.startOperation(ledgerId);
 
       // C3: Capture current entity from stream cache for rollback
@@ -284,10 +285,11 @@ export function useSourceDocumentSubmitMutations({
         applyOptimisticUpsert(queryClient, ledgerId, placeholder);
       }
 
-      return { operationId };
+      return { operationId: op.operationId };
     },
-    onSuccess: (data, variables) => {
-      const opId = variables.operationId;
+    onSuccess: (data, _variables, context) => {
+      if (context == null) return;
+      const opId = context.operationId;
 
       if (data != null) {
         const response = data as Partial<{
@@ -308,8 +310,9 @@ export function useSourceDocumentSubmitMutations({
       notifyNewSubmission();
       onSuccess?.();
     },
-    onError: (error, variables) => {
-      manager.rollbackOperation(variables.operationId, queryClient);
+    onError: (error, _variables, context) => {
+      if (context == null) return;
+      manager.rollbackOperation(context.operationId, queryClient);
       handleSubmitError(error, messages.retryError);
     },
     onSettled: () => {

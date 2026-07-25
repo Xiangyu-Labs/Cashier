@@ -143,10 +143,13 @@ function patchFirstPage(
     // do a partial rebase (drop pages 2+) because ordering changed.
     const secondPage = restPages[0];
     if (secondPage && secondPage.items.length > 0) {
+      const firstOfSecond = secondPage.items[0];
+      const firstOfSecondInNewPage = firstOfSecond != null && newIds.has(firstOfSecond.id);
       const overlapWithSecond = secondPage.items.filter((item) => newIds.has(item.id)).length;
-      // If more than 1 item from the new first page appears in old page 2,
-      // the ordering shifted significantly — drop subsequent pages
-      if (overlapWithSecond > 1) {
+      // C2: If old page 2's first item now appears in new page 1, or more than 1
+      // item from old page 2 appears in new page 1, the ordering shifted
+      // significantly — drop subsequent pages
+      if (firstOfSecondInNewPage || overlapWithSecond > 1) {
         queryClient.setQueryData(queryKey, {
           pages: [page],
           pageParams: data.pageParams.slice(0, 1),

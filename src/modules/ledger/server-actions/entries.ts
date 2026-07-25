@@ -24,7 +24,7 @@ import {
 import type {
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
-import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "@/modules/source-document/server-actions/reconciliation";
+import { buildEntityReconciliation, readSourceDocumentListItem, readSourceDocumentUpdatedAt } from "@/modules/source-document/server-actions/reconciliation";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
 
 export const createLedgerEntryAction = withLedgerAccess(
@@ -67,37 +67,18 @@ export const updateLedgerEntryAction = withLedgerAccess(
     const result = await updateLedgerEntryWithConversion(payload);
 
     if (operationId != null && result.sourceDocumentId != null) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
+      // C3: Read authoritative source document from DB instead of fabricating
+      const authoritativeEntity = await readSourceDocumentListItem(
         ledgerId,
         result.sourceDocumentId
       );
-      const now = authoritativeUpdatedAt ?? result.updatedAt;
+      const now = authoritativeEntity?.updatedAt ?? result.updatedAt;
       const entity = buildEntityReconciliation(
         operationId,
-        {
-          id: result.sourceDocumentId,
-          ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: result.updatedAt,
-          updatedAt: result.updatedAt,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
-        result.updatedAt,
-        false,
-        false
+        authoritativeEntity,
+        now,
+        true,
+        true
       );
       return { ...result, reconciliation: entity };
     }
@@ -119,13 +100,21 @@ export const deleteLedgerEntryAction = withLedgerAccess(
     const result = await deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
 
     if (operationId != null && result.deleted) {
-      const now = new Date().toISOString();
+      // C3: Read authoritative source document from DB if available
+      let canonicalEntity: SourceDocumentListItemDto | null = null;
+      if (result.sourceDocumentId != null) {
+        canonicalEntity = await readSourceDocumentListItem(
+          ledgerId,
+          result.sourceDocumentId
+        );
+      }
+      const now = canonicalEntity?.updatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
-        null,
+        canonicalEntity,
         now,
-        false,
-        false
+        true,
+        true
       );
       return { ...result, reconciliation: entity };
     }

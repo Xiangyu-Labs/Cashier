@@ -39,24 +39,20 @@ export function Header({
 
   // Register counts refresh with the coordinator
   const refreshCounts = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
-    try {
-      const result = await getStreamRefreshAction(ledgerId, {
-        ledgerId,
-        protocolVersion: 1,
-        signatures: [],
-        watchedIds: [],
-        countFingerprint: countFingerprintRef.current,
-      });
+    const result = await getStreamRefreshAction(ledgerId, {
+      ledgerId,
+      protocolVersion: 1,
+      signatures: [],
+      watchedIds: [],
+      countFingerprint: countFingerprintRef.current,
+    });
 
-      applyStreamRefreshToCache(queryClient, ledgerId, result);
-      // C3: Update persisted count fingerprint from server response
-      if (result.counts?.fingerprint) {
-        countFingerprintRef.current = result.counts.fingerprint;
-      }
-      return { changed: result.changed, result };
-    } catch {
-      return { changed: false };
+    applyStreamRefreshToCache(queryClient, ledgerId, result);
+    // C3: Update persisted count fingerprint from server response
+    if (result.counts?.fingerprint) {
+      countFingerprintRef.current = result.counts.fingerprint;
     }
+    return { changed: result.changed, result };
   }, [ledgerId, queryClient]);
 
   // Register counts refresh — always pending to keep counts updated

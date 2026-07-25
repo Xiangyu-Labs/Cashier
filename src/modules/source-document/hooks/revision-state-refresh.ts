@@ -352,8 +352,10 @@ export class RefreshCoordinator {
     this.isLeader = acquired;
     if (acquired) {
       this.backoffStage = 0;
-      this.schedule();
     }
+    // I1: Fallback — when no leader can be acquired (BroadcastChannel fails etc.),
+    // the tab should still schedule independent refreshes rather than staying silent
+    this.schedule();
   }
 
   private cancelTimer(): void {
