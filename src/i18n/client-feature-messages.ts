@@ -25,6 +25,8 @@ export const FEATURE_MESSAGES = {
     "Calculator",
     "Calendar",
     "CandidateAction",
+    "DateFilter",
+    "DateRangeFilter",
     "DiagnosticCode",
     "EntryFilterPanel",
     "LedgerEntriesTab",

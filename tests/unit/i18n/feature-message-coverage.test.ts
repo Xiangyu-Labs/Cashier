@@ -49,6 +49,8 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "Calculator",
     "Calendar",
     "CandidateAction",
+    "DateFilter",
+    "DateRangeFilter",
     "DiagnosticCode",
     "EntryFilterPanel",
     "LedgerEntriesTab",
