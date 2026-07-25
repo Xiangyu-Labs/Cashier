@@ -115,6 +115,15 @@ describe("executeStage0 — single-pass receipt parser", () => {
     expect(result.order_adjustments[0]?.amount).toBe("-5.00");
   });
 
+  it("instructs the model to accept transaction-linked prices and normalize debit display signs", async () => {
+    await executeStage0({ originalCategories: [] }, mockAI);
+
+    const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt;
+    expect(prompt).toContain("Valid evidence is not limited to completed receipts or invoices");
+    expect(prompt).toContain("A displayed minus sign can be a visual convention for a debit");
+    expect(prompt).toContain("balance, available credit, coupon value, price range");
+  });
+
   // === Model selection ===
 
   it("uses vision model when storedFileIds are provided", async () => {
@@ -239,11 +248,11 @@ describe("executeStage0 — single-pass receipt parser", () => {
     );
   });
 
-  it("prompt contains receipt and invoice parser identifier", async () => {
+  it("prompt contains expense evidence parser identifier", async () => {
     await executeStage0({ text: "coffee 10 USD", originalCategories: [] }, mockAI);
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain(
-      "receipt and invoice parser"
+      "expense evidence parser"
     );
   });
 

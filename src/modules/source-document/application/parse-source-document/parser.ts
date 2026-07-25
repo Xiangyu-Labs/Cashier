@@ -71,7 +71,7 @@ function buildPrompt(input: ParserInput, aiLanguage: string): string {
   const textSection =
     input.text != null && input.text !== "" ? `\n### Document Text\n${input.text}\n` : "";
 
-  return `You are a receipt and invoice parser. Extract all expense line items from the provided document(s) and return structured JSON.
+  return `You are an expense evidence parser. Extract all expense line items from the provided document(s) and return structured JSON.
 
 Respond in the user's preferred language for item names (language: ${aiLanguage}), but keep all JSON keys in English.
 ${categorySection}${currencySection}${customSection}${textSection}
@@ -83,7 +83,7 @@ Return a single JSON object:
 {
   "outcome": "success | invalid | anomaly",
   "anomaly_reason": "string or null — only when outcome is anomaly",
-  "title": "merchant or document name",
+  "title": "merchant, service, or document name",
   "receipt_count": 1,
   "receipt_totals": [
     { "receipt_index": 0, "amount": "45.00", "currency": "CNY" }
@@ -112,7 +112,10 @@ Return a single JSON object:
 - Use standard minus sign - for negative values.
 
 ### Rules
-- Set outcome to "invalid" if the document is not a receipt or invoice.
+- Valid evidence is not limited to completed receipts or invoices. It also includes an application or service screen that clearly identifies one expense and its exact payable, fixed, or estimated price. Record that price when it is clearly associated with the user's selected or ongoing transaction.
+- Do not infer an expense from a balance, available credit, coupon value, price range, comparison list, advertisement, or an unrelated number on a status screen. If the screen does not clearly connect one price to one transaction or service, set outcome to "invalid".
+- A displayed minus sign can be a visual convention for a debit, payment, spending, or charge. When it means money leaving the user, record the expense amount and receipt total as positive values. Do not treat the visual sign alone as a refund.
+- Set outcome to "invalid" if the document contains no usable expense evidence.
 - Set outcome to "anomaly" if the document is a receipt but cannot be reliably parsed (e.g. blurry, torn, missing totals). Include anomaly_reason.
 - Core accounting rule:
   - The receipt total should satisfy: sum(ledger_entries.amount) + sum(order_adjustments.amount) = receipt total.
@@ -147,6 +150,8 @@ Return a single JSON object:
   - Two items + item discounts of -10 and -20, plus a separate displayed "Discount -30" summary line: treat -30 as a summary only, not an extra order_adjustment.
   - One item + shipping fee + order-level coupon: keep only the item's own final price in ledger_entries, and put shipping fee / order-level coupon in order_adjustments.
   - Two items + packaging fee + delivery fee shown separately on the receipt: keep the item prices in ledger_entries, and include packaging fee / delivery fee in order_adjustments.
+  - A service screen with a selected ride and an explicitly labelled estimated, fixed, or payable price: record one expense for that service, even if the service is still in progress.
+  - A screen showing a debit of -10.00 for a completed payment: record a 10.00 expense, not a negative ledger entry.
 - Return only the JSON block, no other text.`;
 }
 

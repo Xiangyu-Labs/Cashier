@@ -177,15 +177,18 @@ describe("stage0-schema", () => {
     expect(result.outcome).toBe("anomaly");
   });
 
-  it("normalizeResult returns anomaly when a ledger_entry has a negative amount", () => {
+  it("normalizes a negative ledger entry and receipt total used as debit-display notation", () => {
     const withNegativeEntry = stage0ParseOutputSchema.parse({
       ...simpleSuccess,
+      receipt_totals: [{ receipt_index: 0, amount: "-5", currency: "USD" }],
       ledger_entries: [
         { ...simpleSuccess.ledger_entries[0]!, amount: "-5" },
       ],
     });
     const result = normalizeResult(withNegativeEntry);
-    expect(result.outcome).toBe("anomaly");
+    expect(result.outcome).toBe("success");
+    expect(result.receipt_totals[0]?.amount).toBe("5");
+    expect(result.ledger_entries[0]?.amount).toBe("5");
   });
 
   it("accepts results within 0.01 tolerance as matching", () => {

@@ -99,20 +99,40 @@ function normalizeTitle(output: z.infer<typeof parserOutputSchema>): string {
   return title != null && title !== "" ? title : fallbackTitleForOutcome(output);
 }
 
+function normalizeSuccessfulExpenseAmount(amount: string): string {
+  return compare(amount, "0") < 0 ? new Decimal(amount).abs().toFixed() : amount;
+}
+
 // ===== Normalization =====
 
 export function normalizeResult(
   output: z.infer<typeof parserOutputSchema>
 ): NormalizedParseOutput {
-  // Validate: ledger_entry amounts must be positive (> 0)
-  const invalidEntry = output.ledger_entries.find((e) => compare(e.amount, "0") <= 0);
+  // A debit is frequently rendered with a minus sign in banking and app UIs.
+  // For a successful expense parse the sign is presentation, not an expense direction.
+  const ledgerEntries = output.outcome === "success"
+    ? output.ledger_entries.map((entry) => ({
+        ...entry,
+        amount: normalizeSuccessfulExpenseAmount(entry.amount),
+      }))
+    : output.ledger_entries;
+  const receiptTotals = output.outcome === "success"
+    ? output.receipt_totals.map((total) => ({
+        ...total,
+        amount: normalizeSuccessfulExpenseAmount(total.amount),
+      }))
+    : output.receipt_totals;
+
+  // Zero cannot represent a usable expense. Negative successful entries above
+  // have already been normalized from debit-display notation.
+  const invalidEntry = ledgerEntries.find((entry) => compare(entry.amount, "0") <= 0);
   if (invalidEntry != null) {
     return {
       outcome: "anomaly",
       anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
       title: normalizeTitle(output),
       receipt_count: output.receipt_count,
-      receipt_totals: output.receipt_totals,
+      receipt_totals: receiptTotals,
       ledger_entries: [],
       order_adjustments: output.order_adjustments,
       reasoning: output.reasoning,
@@ -124,8 +144,8 @@ export function normalizeResult(
     ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
     title: normalizeTitle(output),
     receipt_count: output.receipt_count,
-    receipt_totals: output.receipt_totals,
-    ledger_entries: output.ledger_entries.map((e) => ({
+    receipt_totals: receiptTotals,
+    ledger_entries: ledgerEntries.map((e) => ({
       receipt_index: e.receipt_index,
       item_name: e.item_name,
       amount: e.amount,
