@@ -88,6 +88,42 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
   ],
 } as const;
 
+/**
+ * Independently audited namespace requirements for composite boundaries
+ * that are not directly represented as a single FEATURE_MESSAGES key.
+ *
+ * These arrays are defined independently from FEATURE_MESSAGES values so that
+ * manifest regressions are detected: if PullToRefresh is removed from the
+ * Settings manifest, STANDALONE_SETTINGS_REQUIRED still requires it and
+ * the test will fail.
+ */
+const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
+  // From Shell manifest
+  "Auth",
+  "AuthEmail",
+  "Common",
+  "Error",
+  "LedgerError",
+  "Metadata",
+  "NotFound",
+  // From Settings manifest
+  "CategoriesPage",
+  "Devices",
+  "PullToRefresh",
+  "ServiceCredentials",
+  "Settings",
+];
+
+const LEDGER_ERROR_REQUIRED: readonly string[] = [
+  "Auth",
+  "AuthEmail",
+  "Common",
+  "Error",
+  "LedgerError",
+  "Metadata",
+  "NotFound",
+];
+
 describe("feature message coverage", () => {
   describe("each boundary manifest includes all required namespaces", () => {
     for (const [boundary, expectedNamespaces] of Object.entries(REQUIRED_NAMESPACES)) {
@@ -100,29 +136,22 @@ describe("feature message coverage", () => {
       });
     }
 
-    it("standaloneSettings boundary merges Shell + Settings manifest namespaces", () => {
-      // The standalone settings page merges shell and settings manifests
-      // (see src/app/[locale]/(protected)/ledger/[id]/settings/page.tsx)
-      const allExpected = [
-        ...new Set([
-          ...FEATURE_MESSAGES.shell,
-          ...FEATURE_MESSAGES.settings,
-        ]),
+    it("standaloneSettings effective provider includes all independently required namespaces", () => {
+      const effective = [
+        ...new Set([...FEATURE_MESSAGES.shell, ...FEATURE_MESSAGES.settings]),
       ];
-      // Assert every namespace in the merged union exists in both catalogs
-      for (const catalog of CATALOGS) {
-        for (const ns of allExpected) {
+      for (const ns of STANDALONE_SETTINGS_REQUIRED) {
+        expect(effective).toContain(ns);
+        for (const catalog of CATALOGS) {
           expect(catalog.messages).toHaveProperty(ns);
         }
       }
     });
 
-    it("ledgerError boundary inherits only Shell manifest namespaces", () => {
-      // The ledger error boundary has no provider between it and the
-      // locale layout, so it inherits only shell namespaces.
-      // Assert every shell namespace exists in both catalogs
-      for (const catalog of CATALOGS) {
-        for (const ns of FEATURE_MESSAGES.shell) {
+    it("ledgerError effective provider includes all independently required namespaces", () => {
+      for (const ns of LEDGER_ERROR_REQUIRED) {
+        expect(FEATURE_MESSAGES.shell).toContain(ns);
+        for (const catalog of CATALOGS) {
           expect(catalog.messages).toHaveProperty(ns);
         }
       }
