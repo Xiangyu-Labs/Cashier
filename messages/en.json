@@ -212,6 +212,7 @@
     "categoryRequired": "Please select a category"
   },
   "Common": {
+    "close": "Close",
     "deselectAll": "Deselect All",
     "edit": "Edit",
     "delete": "Delete",
@@ -482,6 +483,11 @@
     "today": "Today",
     "clear": "Clear",
     "apply": "Apply"
+  },
+  "Calculator": {
+    "title": "Calculator",
+    "amountAriaLabel": "Amount",
+    "openCalculator": "Open calculator"
   },
   "Calendar": {
     "today": "Today",

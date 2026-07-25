@@ -212,6 +212,7 @@
     "categoryRequired": "请选择分类"
   },
   "Common": {
+    "close": "关闭",
     "confirm": "确认",
     "delete": "删除",
     "retry": "编辑重试",
@@ -482,6 +483,11 @@
     "today": "今天",
     "clear": "清除",
     "apply": "确定"
+  },
+  "Calculator": {
+    "title": "计算器",
+    "amountAriaLabel": "金额",
+    "openCalculator": "打开计算器"
   },
   "Calendar": {
     "today": "今天",

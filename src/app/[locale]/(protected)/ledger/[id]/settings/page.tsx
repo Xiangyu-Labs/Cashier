@@ -1,4 +1,6 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import {
   getLedgerAction,
   getEntryCategoriesAction,
@@ -7,6 +9,7 @@ import {
 import { SettingsPageClient } from "@/modules/ledger/ui";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
+import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +17,7 @@ interface SettingsPageProps {
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
   const { id: ledgerId } = await params;
+  const locale = await getLocale();
   const queryClient = new QueryClient();
 
   const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -26,7 +30,8 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   });
 
   if (!ledger) {
-    return <div>Ledger not found</div>;
+    const t = await getTranslations({ locale, namespace: "LedgerPage" });
+    return <div>{t("notFound")}</div>;
   }
 
   // Prefetch categories
@@ -43,9 +48,17 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     staleTime: STALE_TIME,
   });
 
+  const allMessages = await getMessages({ locale });
+  const settingsMessages = pickMessages(allMessages, [
+    ...FEATURE_MESSAGES.shell,
+    ...FEATURE_MESSAGES.settings,
+  ]);
+
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <SettingsPageClient ledger={ledger} initialCategories={categories} ledgerId={ledgerId} />
-    </HydrationBoundary>
+    <NextIntlClientProvider messages={settingsMessages} locale={locale}>
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <SettingsPageClient ledger={ledger} initialCategories={categories} ledgerId={ledgerId} />
+      </HydrationBoundary>
+    </NextIntlClientProvider>
   );
 }
