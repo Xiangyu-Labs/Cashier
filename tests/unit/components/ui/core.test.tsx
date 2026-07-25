@@ -1,8 +1,15 @@
 import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+
+// zh.json messages are used by the useTranslations mock (see setup.common.ts)
+import zhMessages from "messages/zh.json";
+
+const messages = zhMessages as Record<string, unknown>;
 
 describe("UI Core Components", () => {
   describe("Button", () => {
@@ -63,6 +70,24 @@ describe("UI Core Components", () => {
 
       const title = screen.getByText("Card Title");
       expect(title.closest("div")?.className).toContain("font-semibold");
+    });
+  });
+
+  describe("Dialog", () => {
+    it("renders localized close screen-reader text via Common namespace", () => {
+      render(
+        <NextIntlClientProvider messages={messages} locale="zh">
+          <Dialog open>
+            <DialogTrigger />
+            <DialogContent>
+              <p>Dialog body</p>
+            </DialogContent>
+          </Dialog>
+        </NextIntlClientProvider>
+      );
+
+      const closeButton = screen.getByRole("button", { name: "关闭" });
+      expect(closeButton).toBeDefined();
     });
   });
 });

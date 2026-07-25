@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Delete, Check, Equal, Calculator } from "lucide-react";
@@ -47,10 +48,12 @@ export function CalculatorInput({
   value,
   onChange,
   displayClassName,
-  ariaLabel = "Amount",
+  ariaLabel: externalAriaLabel,
   disabled = false,
   inlineInputMode = "decimal",
 }: CalculatorInputProps) {
+  const t = useTranslations("Calculator");
+  const ariaLabel = externalAriaLabel ?? t("amountAriaLabel");
   const [mode, setMode] = React.useState<EditMode>("display");
   const [inputValue, setInputValue] = React.useState<string>("");
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -341,8 +344,8 @@ export function CalculatorInput({
         <button
           onClick={() => setMode("calculator")}
           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
-          title="Open calculator"
-          aria-label={`Open ${ariaLabel} calculator`}
+          title={t("openCalculator")}
+          aria-label={t("openCalculator")}
         >
           <Calculator className="h-4 w-4" />
         </button>
@@ -358,7 +361,7 @@ export function CalculatorInput({
         aria-describedby={undefined}
       >
         <VisuallyHidden.Root>
-          <DialogTitle>Calculator</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
         </VisuallyHidden.Root>
 
         {/* Expression Display */}
