@@ -235,25 +235,82 @@ describe("revision state refresh", () => {
     });
     await flushTimers();
 
-    // Consume the immediate timer from subscribe's wake() call
+    // Hide before advancing timers — the immediate timer from subscribe's
+    // wake() call is pending but doRefresh() must check visibility
+    env.hide();
     await vi.advanceTimersByTimeAsync(100);
     await flushTimers();
-    refreshCalled = false;
 
-    // Hide the tab — this should cancel any scheduled timer
-    env.hide();
-    await vi.advanceTimersByTimeAsync(60000);
-    await flushTimers();
-
-    // Refresh should NOT be called while hidden (no new scheduling)
+    // Refresh should NOT be called while hidden (execution-time guard)
     expect(refreshCalled).toBe(false);
 
-    // Show again — refresh is scheduled and fires
+    // Show again — refresh resumes
     env.show();
     await vi.advanceTimersByTimeAsync(100);
     await flushTimers();
 
     // After show, should have scheduled a refresh
+    expect(coordinator.getState()).not.toBe("IDLE");
+  });
+
+  it("offline tabs do not refresh in fallback mode", async () => {
+    const env = createEnvironment();
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let refreshCalled = false;
+    coordinator.subscribe("test", async () => {
+      refreshCalled = true;
+      return { changed: false };
+    });
+    await flushTimers();
+
+    // Go offline — this cancels the scheduled timer
+    env.setOnline(false);
+    await vi.advanceTimersByTimeAsync(20000);
+    await flushTimers();
+
+    expect(coordinator.getIsLeader()).toBe(false);
+    expect(refreshCalled).toBe(false);
+
+    // Go back online
+    env.setOnline(true);
+    await flushTimers();
+    expect(coordinator.getState()).not.toBe("IDLE");
+  });
+
+  it("does not overlap refresh cycles in fallback mode", async () => {
+    const env = createEnvironment();
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let callCount = 0;
+    // Use a deferred promise so the first refresh stays in-flight
+    let resolveFirst: (v: { changed: boolean }) => void = () => {};
+    coordinator.subscribe("test", async () => {
+      callCount++;
+      await new Promise<{ changed: boolean }>((resolve) => {
+        resolveFirst = resolve;
+      });
+      return { changed: false };
+    });
+    await flushTimers();
+
+    // The first refresh is deferred (in-flight)
+    // Try to wake — should be blocked by single-flight
+    coordinator.wake();
+    await vi.advanceTimersByTimeAsync(100);
+    await flushTimers();
+
+    expect(callCount).toBe(1); // Only one started
+
+    // Complete the first
+    resolveFirst({ changed: false });
+    await flushTimers();
+
+    // After completion, the coordinator should schedule the next cycle
     expect(coordinator.getState()).not.toBe("IDLE");
   });
 

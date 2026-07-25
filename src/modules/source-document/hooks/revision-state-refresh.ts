@@ -437,6 +437,7 @@ export class RefreshCoordinator {
 
   private async doRefresh(): Promise<boolean> {
     if (!this.env.isOnline()) return false;
+    if (!this.env.isVisible()) return false;
 
     let anyChanged = false;
     let lastResult: StreamRefreshResult | undefined;
@@ -457,17 +458,19 @@ export class RefreshCoordinator {
       }
     }
 
-    // Only the leader broadcasts results to other tabs
-    if (this.isLeader && anyChanged && lastResult) {
-      this.env.broadcast({
-        type: "refresh_result",
-        protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
-        result: lastResult,
-      });
-
+    if (anyChanged) {
       // I3: Reset backoff on success/changed
       this.backoffStage = 0;
-    } else if (!anyChanged) {
+
+      // Only the leader broadcasts results to other tabs
+      if (this.isLeader && lastResult) {
+        this.env.broadcast({
+          type: "refresh_result",
+          protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
+          result: lastResult,
+        });
+      }
+    } else {
       // I3: Advance backoff stage on unchanged
       this.backoffStage = Math.min(
         this.backoffStage + 1,
