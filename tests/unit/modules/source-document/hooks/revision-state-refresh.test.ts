@@ -224,6 +224,41 @@ describe("revision state refresh", () => {
     expect(refreshCalled).toBe(true);
   });
 
+  it("refresh proceeds as fallback when local storage reads work but writes fail", async () => {
+    const env = createEnvironment();
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    // Simulate: getItem works, setItem fails (storage-quota / privacy-restricted)
+    env.environment.isLeadershipAvailable = () => {
+      try {
+        // setItem throws — simulate quota/security restriction
+        const PROBE_KEY = "__cashier_leadership_probe__";
+        localStorage.setItem(PROBE_KEY, "1");
+        localStorage.removeItem(PROBE_KEY);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let refreshCalled = false;
+    coordinator.subscribe("test", async () => {
+      refreshCalled = true;
+      return { changed: false };
+    });
+    await flushTimers();
+
+    expect(coordinator.getIsLeader()).toBe(false);
+
+    // Advance timers to trigger refresh
+    await vi.advanceTimersByTimeAsync(20000);
+    await flushTimers();
+
+    // Should have polled even though not leader, because leadership is unavailable
+    expect(refreshCalled).toBe(true);
+  });
+
   it("hidden tabs do not refresh in fallback mode", async () => {
     const env = createEnvironment();
     env.environment.acquireLeadership = async (_leaseMs) => false;

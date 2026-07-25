@@ -211,8 +211,11 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
     },
     isLeadershipAvailable: () => {
       try {
-        localStorage.getItem("__cashier_probe__");
-        return true;
+        const PROBE_KEY = "__cashier_leadership_probe__";
+        localStorage.setItem(PROBE_KEY, "1");
+        const readBack = localStorage.getItem(PROBE_KEY);
+        localStorage.removeItem(PROBE_KEY);
+        return readBack === "1";
       } catch {
         return false;
       }
