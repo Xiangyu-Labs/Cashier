@@ -80,17 +80,11 @@ export function useSourceDocumentStream(
 
   // Normalize statuses: sort and deduplicate for stable cache keys and
   // consistent filter fingerprints (Fix 6).
-  // Take a snapshot to satisfy React Compiler stability analysis
-  // (the caller may pass a mutable array reference).
-  const statusesSnapshot = rawStatuses?.slice() ?? null;
-  const stableStatuses = useMemo(
-    () =>
-      statusesSnapshot != null && statusesSnapshot.length > 0
-        ? [...new Set(statusesSnapshot)].sort()
-        : undefined,
-    [statusesSnapshot]
-  );
-  const statusesKey = stableStatuses != null && stableStatuses.length > 0 ? stableStatuses.join(",") : null;
+  // Plain const — the array is small, and the string result is a stable
+  // primitive so downstream useMemo/useCallback deps compare correctly.
+  const statusesKey = rawStatuses != null && rawStatuses.length > 0
+    ? [...new Set(rawStatuses)].sort().join(",")
+    : null;
 
   // Build stream page key that includes all filter params
   const streamPageKey = queryKeys.sourceDocumentStream(ledgerId, {
