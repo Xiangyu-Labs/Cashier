@@ -51,6 +51,7 @@ function createEnvironment() {
     acquireLeadership: async (_leaseMs) => true,
     releaseLeadership: () => {},
     onLeadershipExpired: (_cb) => {},
+    isLeadershipAvailable: () => true,
   };
 
   return {
@@ -200,6 +201,7 @@ describe("revision state refresh", () => {
   it("refresh proceeds in fallback mode when leadership fails", async () => {
     const env = createEnvironment();
     env.environment.acquireLeadership = async (_leaseMs) => false;
+    env.environment.isLeadershipAvailable = () => false;
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
@@ -225,6 +227,7 @@ describe("revision state refresh", () => {
   it("hidden tabs do not refresh in fallback mode", async () => {
     const env = createEnvironment();
     env.environment.acquireLeadership = async (_leaseMs) => false;
+    env.environment.isLeadershipAvailable = () => false;
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
@@ -256,6 +259,7 @@ describe("revision state refresh", () => {
   it("offline tabs do not refresh in fallback mode", async () => {
     const env = createEnvironment();
     env.environment.acquireLeadership = async (_leaseMs) => false;
+    env.environment.isLeadershipAvailable = () => false;
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
@@ -283,6 +287,7 @@ describe("revision state refresh", () => {
   it("does not overlap refresh cycles in fallback mode", async () => {
     const env = createEnvironment();
     env.environment.acquireLeadership = async (_leaseMs) => false;
+    env.environment.isLeadershipAvailable = () => false;
     const coordinator = new RefreshCoordinator(env.environment);
     setGlobalCoordinator(coordinator);
 
@@ -312,6 +317,36 @@ describe("revision state refresh", () => {
 
     // After completion, the coordinator should schedule the next cycle
     expect(coordinator.getState()).not.toBe("IDLE");
+  });
+
+  // -----------------------------------------------------------------------
+  // Coordinator — healthy follower (working primitives, not leader)
+  // -----------------------------------------------------------------------
+
+  it("does not refresh as a healthy follower when another tab is leader", async () => {
+    const env = createEnvironment();
+    // acquireLeadership returns false (another tab is leader)
+    env.environment.acquireLeadership = async (_leaseMs) => false;
+    // isLeadershipAvailable returns true (primitives work)
+    env.environment.isLeadershipAvailable = () => true;
+    const coordinator = new RefreshCoordinator(env.environment);
+    setGlobalCoordinator(coordinator);
+
+    let refreshCalled = false;
+    coordinator.subscribe("test", async () => {
+      refreshCalled = true;
+      return { changed: false };
+    });
+    await flushTimers();
+
+    expect(coordinator.getIsLeader()).toBe(false);
+
+    // Advance timers significantly
+    await vi.advanceTimersByTimeAsync(30000);
+    await flushTimers();
+
+    // Follower should NOT have called refresh
+    expect(refreshCalled).toBe(false);
   });
 
   // -----------------------------------------------------------------------
