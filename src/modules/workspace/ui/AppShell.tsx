@@ -25,7 +25,7 @@ export function AppShell({
         {...(onNeedsAttention != null ? { onNeedsAttention } : {})}
         {...(onInProgress != null ? { onInProgress } : {})}
       />
-      <main className="mx-auto w-full max-w-6xl px-3 py-4 pb-24 sm:px-4 md:px-6">
+      <main className="relative z-content mx-auto w-full max-w-6xl px-3 py-4 pb-24 sm:px-4 md:px-6">
         {children}
       </main>
     </div>

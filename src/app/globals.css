@@ -19,6 +19,7 @@
 
   /* z-index 层级 */
   --z-tooltip: 40;
+  --z-content: 1;
   --z-header: 50;
   --z-action-bar: 60;
   --z-modal-overlay: 100;

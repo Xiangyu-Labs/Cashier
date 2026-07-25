@@ -38,6 +38,7 @@ export interface RefreshEnvironment {
   acquireLeadership(leaseMs: number): Promise<boolean>;
   releaseLeadership(): void;
   onLeadershipExpired(cb: () => void): void;
+  isLeadershipAvailable(): boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,6 +209,17 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         }
       }, LEADER_HEARTBEAT_MS * MISSED_HEARTBEATS);
     },
+    isLeadershipAvailable: () => {
+      try {
+        const PROBE_KEY = "__cashier_leadership_probe__";
+        localStorage.setItem(PROBE_KEY, "1");
+        const readBack = localStorage.getItem(PROBE_KEY);
+        localStorage.removeItem(PROBE_KEY);
+        return readBack === "1";
+      } catch {
+        return false;
+      }
+    },
   };
 }
 
@@ -232,6 +244,7 @@ export class RefreshCoordinator {
   private backoffStage = 0;
   private lastErrorBackoff = 5000;
   private isLeader = false;
+  private inFallbackMode = false;
   private unsubscribeBroadcast: (() => void) | null = null;
   private cleanupExpiry: (() => void) | null = null;
   private running = false;
@@ -353,8 +366,8 @@ export class RefreshCoordinator {
     if (acquired) {
       this.backoffStage = 0;
     }
-    // I1: Fallback — when no leader can be acquired (BroadcastChannel fails etc.),
-    // the tab should still schedule independent refreshes rather than staying silent
+    // Determine fallback mode: only when leadership primitives themselves are unavailable
+    this.inFallbackMode = !acquired && !this.env.isLeadershipAvailable();
     this.schedule();
   }
 
@@ -436,9 +449,11 @@ export class RefreshCoordinator {
   }
 
   private async doRefresh(): Promise<boolean> {
-    // C2: Only the current leader should do network refreshes
-    if (!this.isLeader) return false;
     if (!this.env.isOnline()) return false;
+    if (!this.env.isVisible()) return false;
+
+    // Restore the leader guard but allow fallback mode
+    if (!this.isLeader && !this.inFallbackMode) return false;
 
     let anyChanged = false;
     let lastResult: StreamRefreshResult | undefined;
@@ -459,17 +474,19 @@ export class RefreshCoordinator {
       }
     }
 
-    // C2: After leader refresh, broadcast results to followers
-    if (anyChanged && lastResult) {
-      this.env.broadcast({
-        type: "refresh_result",
-        protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
-        result: lastResult,
-      });
-
+    if (anyChanged) {
       // I3: Reset backoff on success/changed
       this.backoffStage = 0;
-    } else if (!anyChanged) {
+
+      // Only the leader broadcasts results to other tabs
+      if (this.isLeader && lastResult) {
+        this.env.broadcast({
+          type: "refresh_result",
+          protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
+          result: lastResult,
+        });
+      }
+    } else {
       // I3: Advance backoff stage on unchanged
       this.backoffStage = Math.min(
         this.backoffStage + 1,
@@ -591,6 +608,7 @@ export function initRefreshCoordinator(ledgerId: string, queryClient?: QueryClie
       acquireLeadership: async () => false,
       releaseLeadership: () => {},
       onLeadershipExpired: () => {},
+      isLeadershipAvailable: () => false,
     };
     return new RefreshCoordinator(noopEnv);
   }

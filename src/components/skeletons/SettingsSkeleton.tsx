@@ -17,7 +17,7 @@ export function SettingsSkeleton() {
         </div>
       </header>
 
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 space-y-6">
+      <main className="relative z-content w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 space-y-6">
         {/* Settings sections skeleton - 4 sections: General, Ledger, AI, Account */}
         {[1, 2, 3, 4].map((sectionIndex) => (
           <div key={sectionIndex} className="space-y-4">

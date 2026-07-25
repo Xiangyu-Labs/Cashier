@@ -30,10 +30,6 @@ export interface UnifiedStreamGroupProps {
   collapseEntriesDefault: boolean;
   noRecordsText: string;
   getItemProps: () => Record<string, unknown>;
-  /** Pending state for recovery mutations. */
-  isRetrying?: boolean;
-  isAccepting?: boolean;
-  isAbandoning?: boolean;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -53,9 +49,6 @@ export function LedgerEntriesUnifiedGroups({
   collapseEntriesDefault,
   noRecordsText,
   getItemProps,
-  isRetrying = false,
-  isAccepting = false,
-  isAbandoning = false,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -139,16 +132,6 @@ export function LedgerEntriesUnifiedGroups({
                   }
                   defaultExpanded={!collapseEntriesDefault}
                   dateProvenance={item.dateProvenance}
-                  candidateComparison={
-                    item.sourceDocument.candidateComparison ?? null
-                  }
-                  isMutationPending={
-                    isRetrying ||
-                    isAccepting ||
-                    isAbandoning
-                  }
-                  isAccepting={isAccepting}
-                  isAbandoning={isAbandoning}
                 />
               </div>
             ))}

@@ -18,6 +18,7 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
+import { currentApplication } from "@/application/current";
 import { getLedgerMainCurrency } from "@/modules/ledger/source-document-queries";
 import { compare } from "@/lib/money/decimal";
 import {
@@ -63,6 +64,9 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       throw new Error("Revision processing request is stale");
     }
 
+    // Load current ledger settings for parser input
+    const ledgerSettings = await currentApplication.settings.get(request.ledgerId);
+
     const [files, categories] = await Promise.all([
       db
         .select({ id: revisionFiles.storedFileId })
@@ -93,7 +97,9 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         ...(revision.submittedText == null ? {} : { text: revision.submittedText }),
         ...(files.length === 0 ? {} : { storedFileIds: files.map((file) => file.id) }),
         categories,
-        settings: {},
+        ...(ledgerSettings?.aiCustomPrompt !== undefined ? { settings: { aiCustomPrompt: ledgerSettings.aiCustomPrompt } } : { settings: {} }),
+        ...(ledgerSettings?.aiLanguage !== undefined ? { aiLanguage: ledgerSettings.aiLanguage } : {}),
+        ...(ledgerSettings?.currencies !== undefined ? { preferredCurrencies: ledgerSettings.currencies } : {}),
       },
       buildStageContext({
         signal: controller.signal,

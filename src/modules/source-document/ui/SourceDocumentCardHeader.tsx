@@ -48,12 +48,6 @@ interface SourceDocumentCardHeaderProps {
   supportedActions: readonly SupportedSourceDocumentAction[];
   /** Date provenance from the unified stream grouping model. */
   dateProvenance?: DateProvenance;
-  /** Candidate comparison data (for candidate_pending cards). */
-  candidateComparison?: {
-    active: { entryCount: number; total: string };
-    candidate: { entryCount: number; total: string };
-    changed: boolean;
-  } | null;
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
@@ -69,7 +63,7 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
     return "error" as const;
   }
 
-  if (status === "queued" || status === "processing" || status === "completed") {
+  if (status === "queued" || status === "processing" || status === "completed" || status === "candidate_pending") {
     return status;
   }
 
@@ -89,7 +83,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isSelected,
   supportedActions,
   dateProvenance,
-  candidateComparison: _candidateComparison,
   onToggleExpanded,
   onViewDetails,
   onToggleSelect,

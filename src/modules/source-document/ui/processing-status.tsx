@@ -2,7 +2,7 @@ import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-export type ProcessingStatusType = "queued" | "processing" | "completed" | "error";
+export type ProcessingStatusType = "queued" | "processing" | "completed" | "error" | "candidate_pending";
 
 interface ProcessingStatusProps {
   status: ProcessingStatusType;
@@ -39,6 +39,12 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       colorClass: "text-danger",
       bgClass: "bg-danger",
     },
+    candidate_pending: {
+      label: t("candidatePendingTitle"),
+      icon: Clock,
+      colorClass: "text-warning",
+      bgClass: "bg-warning",
+    },
   };
 
   if (status === "completed") {
@@ -63,7 +69,7 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       <div className="relative flex items-center justify-center">
         {status === "processing" ? (
           <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />
-        ) : status === "queued" ? (
+        ) : status === "queued" || status === "candidate_pending" ? (
           <Icon className={cn("w-3.5 h-3.5", colorClass)} />
         ) : (
           <div className={cn("w-2 h-2 rounded-full", bgClass)} />

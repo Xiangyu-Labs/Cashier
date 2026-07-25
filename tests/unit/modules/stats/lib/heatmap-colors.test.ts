@@ -35,11 +35,36 @@ describe("heatmap-colors", () => {
     expect(legend[5]?.level).toBe(5);
   });
 
-  it("formats amounts for cell display", () => {
-    expect(formatCellAmount(999)).toBe("CNY 999");
-    expect(formatCellAmount(1250, "USD", "en-US")).toBe("USD 1.3K");
-    expect(formatCellAmount(12500, "USD", "en-US")).toBe("USD 12.5K");
-    expect(formatCellAmount(10000, "USD", "en-US")).toBe("USD 10K");
-    expect(formatCellAmount(15678, "USD", "en-US")).toBe("USD 15.7K");
+  it("formats amounts with currency symbols", () => {
+    // CNY with zh-CN locale produces ¥ symbol
+    const cnyResult = formatCellAmount(1500, "CNY", "zh-CN");
+    expect(cnyResult).toContain("¥");
+    expect(cnyResult).toContain("1500");
+
+    // CNY with zh-CN locale compact at larger values
+    const cnyCompact = formatCellAmount(150000, "CNY", "zh-CN");
+    expect(cnyCompact).toContain("¥");
+    expect(cnyCompact).toContain("15");
+
+    // CNY with en-US locale uses K compact
+    const cnyEnUs = formatCellAmount(12500, "CNY", "en-US");
+    expect(cnyEnUs).toContain("¥");
+    expect(cnyEnUs).toContain("12.5");
+
+    // USD with en-US produces $ compact symbol
+    const usdResult = formatCellAmount(12500, "USD", "en-US");
+    expect(usdResult).toContain("$");
+    expect(usdResult).toContain("12.5");
+
+    // Small amounts (not compact) still get currency symbol
+    const smallUsd = formatCellAmount(500, "USD", "en-US");
+    expect(smallUsd).toContain("$");
+    expect(smallUsd).toContain("500");
+  });
+
+  it("falls back to ISO code for invalid currency", () => {
+    const result = formatCellAmount(1000, "XYZ", "en-US");
+    expect(result).toContain("XYZ");
+    expect(result).toContain("1");
   });
 });

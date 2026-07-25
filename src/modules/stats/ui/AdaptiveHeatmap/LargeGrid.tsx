@@ -17,6 +17,8 @@ interface LargeGridHeatmapProps {
   onDayClick?: (date: string) => void;
   className?: string;
   queryRange?: { startDate: string; endDate: string };
+  currency?: string;
+  locale?: string;
 }
 
 export function LargeGridHeatmap({
@@ -25,6 +27,8 @@ export function LargeGridHeatmap({
   onDayClick,
   className,
   queryRange,
+  currency = "CNY",
+  locale = "zh-CN",
 }: LargeGridHeatmapProps) {
   // Create a map for quick lookup
   const dayMap = useMemo(() => {
@@ -91,6 +95,8 @@ export function LargeGridHeatmap({
               dayNumber={dayNumber}
               amount={amount}
               level={level}
+              currency={currency}
+              locale={locale}
               onClick={() => onDayClick?.(date)}
             />
           );
