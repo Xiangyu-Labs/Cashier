@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
   invalidateLedgerStats,
+  invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
 import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
@@ -160,6 +161,9 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
         predicate: invalidateLedgerStats(ledgerId),
       });
       queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+      });
+      queryClient.invalidateQueries({
         predicate: invalidateCalendar(ledgerId),
       });
     },
@@ -208,6 +212,9 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
     onSettled: (_data, _error, _variables) => {
       queryClient.invalidateQueries({
         predicate: invalidateLedgerStats(ledgerId),
+      });
+      queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
       });
       queryClient.invalidateQueries({
         predicate: invalidateCalendar(ledgerId),

@@ -134,6 +134,10 @@ export interface StreamPage {
   restartRequired?: boolean;
 }
 
+export interface StreamTotalDto {
+  total: string;
+}
+
 export interface SourceDocumentCollectionDto {
   items: SourceDocumentListItemDto[];
   hasMore: boolean;

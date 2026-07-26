@@ -26,6 +26,7 @@ export type {
   SourceDocumentPageDto,
   SourceDocumentStoredFileDto,
   StreamPage,
+  StreamTotalDto,
 } from "./document-contracts";
 export type {
   SourceDocumentDto as SourceDocument,

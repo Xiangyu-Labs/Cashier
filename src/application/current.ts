@@ -11,6 +11,7 @@ import {
   postgresUserAccountAdapter,
   postgresRevisionAdapter,
   collectTargetSourceDocuments,
+  calculateCompletedSourceDocumentTotal,
   countSourceDocumentsByStatus,
   getTargetSourceDocument,
   getTargetSourceDocumentAccessContext,
@@ -79,6 +80,7 @@ export const currentApplication = {
   },
   sourceDocumentRevisions: postgresRevisionAdapter,
   sourceDocumentReads: {
+    calculateCompletedTotal: calculateCompletedSourceDocumentTotal,
     collect: collectTargetSourceDocuments,
     counts: countSourceDocumentsByStatus,
     get: getTargetSourceDocument,

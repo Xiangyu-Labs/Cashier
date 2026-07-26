@@ -8,7 +8,9 @@ import { listEntryCategories } from "@/modules/ledger/application/queries/list-e
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
+import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import type { StreamPage } from "@/modules/source-document/contracts";
+import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { requireLedgerAccess } from "@/modules/ledger/access";
 import {
   type LedgerAdvancedFilters,
@@ -70,6 +72,25 @@ export async function getLedgerPageBootstrap(
   const initialStatsDate = new Date();
   const detailsState = getDetailsInitialQueryState(input.periodParams, input.advancedFilters);
   const statsState = getStatsInitialQueryState(initialStatsDate);
+  const canonicalStreamStatuses = canonicalizeSourceDocumentStatuses(
+    input.advancedFilters?.statuses
+  );
+  const streamStatusesKey = canonicalStreamStatuses?.join(",") ?? null;
+  const streamFilterInput = {
+    ...(detailsState.startDateStr !== null
+      ? { startDate: detailsState.startDateStr }
+      : {}),
+    ...(detailsState.endDateStr !== null
+      ? { endDate: detailsState.endDateStr }
+      : {}),
+    ...(input.advancedFilters?.minAmount != null
+      ? { minAmount: input.advancedFilters.minAmount }
+      : {}),
+    ...(input.advancedFilters?.maxAmount != null
+      ? { maxAmount: input.advancedFilters.maxAmount }
+      : {}),
+    ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
+  };
 
   await Promise.all([
     queryClient.prefetchQuery({
@@ -86,10 +107,7 @@ export async function getLedgerPageBootstrap(
               endDate: detailsState.endDateStr,
               minAmount: input.advancedFilters?.minAmount,
               maxAmount: input.advancedFilters?.maxAmount,
-              statuses: input.advancedFilters?.statuses?.join?.(',') ??
-                (input.advancedFilters?.statuses != null
-                  ? (input.advancedFilters.statuses as string[]).join(',')
-                  : null),
+              statuses: streamStatusesKey,
             }),
             queryFn: ({ pageParam }) =>
               listStreamPage(input.ledgerId, {
@@ -105,8 +123,8 @@ export async function getLedgerPageBootstrap(
                 ...(input.advancedFilters?.maxAmount != null
                   ? { maxAmount: input.advancedFilters.maxAmount }
                   : {}),
-                ...(input.advancedFilters?.statuses != null
-                  ? { statuses: input.advancedFilters.statuses }
+                ...(canonicalStreamStatuses != null
+                  ? { statuses: canonicalStreamStatuses }
                   : {}),
                 cursor: pageParam as string | undefined,
                 limit: 20,
@@ -116,20 +134,14 @@ export async function getLedgerPageBootstrap(
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           queryClient.prefetchQuery({
-            queryKey: queryKeys.summary(
-              input.ledgerId,
-              detailsState.startDateStr,
-              detailsState.endDateStr,
-              mainCurrency,
-              null
-            ),
-            queryFn: () =>
-              calculateLedgerStats(
-                input.ledgerId,
-                detailsState.startDateStr ?? undefined,
-                detailsState.endDateStr ?? undefined,
-                mainCurrency
-              ),
+            queryKey: queryKeys.sourceDocumentStreamTotal(input.ledgerId, {
+              startDate: detailsState.startDateStr,
+              endDate: detailsState.endDateStr,
+              minAmount: input.advancedFilters?.minAmount,
+              maxAmount: input.advancedFilters?.maxAmount,
+              statuses: streamStatusesKey,
+            }),
+            queryFn: () => getStreamTotal(input.ledgerId, streamFilterInput),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
         ]

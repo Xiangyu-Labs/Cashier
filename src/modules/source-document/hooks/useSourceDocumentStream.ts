@@ -4,6 +4,7 @@ import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto, SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
@@ -81,9 +82,8 @@ export function useSourceDocumentStream(
   // Normalize statuses: sort and deduplicate for stable cache keys and
   // consistent filter fingerprints (Fix 6).
   // Kept as primitive string for React Compiler stability analysis.
-  const statusesKey = rawStatuses != null && rawStatuses.length > 0
-    ? [...new Set(rawStatuses)].sort().join(",")
-    : null;
+  const canonicalStatuses = canonicalizeSourceDocumentStatuses(rawStatuses);
+  const statusesKey = canonicalStatuses?.join(",") ?? null;
   // Split back to array for the query function parameter.
   const stableStatuses = statusesKey != null ? statusesKey.split(",") as SourceDocumentStatusType[] : undefined;
 

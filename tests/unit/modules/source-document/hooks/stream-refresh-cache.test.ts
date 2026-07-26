@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createQueryClient } from "tests/fixtures/query-client";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import { queryKeys } from "@/lib/query-keys";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import type { StreamPage, SourceDocumentListItemDto, SourceDocumentCountsDto } from "@/modules/source-document/contracts";
 
@@ -258,6 +259,24 @@ describe("stream-refresh-cache", () => {
       processingCount: 2,
       attentionCount: 1,
     });
+  });
+
+  it("invalidates stream totals when refreshed data changes", () => {
+    const queryClient = createQueryClient();
+    const totalKey = queryKeys.sourceDocumentStreamTotal("ledger-1");
+    queryClient.setQueryData(totalKey, { total: "42.00" });
+
+    applyStreamRefreshToCache(queryClient, "ledger-1", {
+      protocolVersion: 1,
+      generation: 1,
+      changed: true,
+      hasTransitionalWork: false,
+      firstPages: [],
+      changedWatched: [],
+      counts: null,
+    });
+
+    expect(queryClient.getQueryState(totalKey)?.isInvalidated).toBe(true);
   });
 
   // -----------------------------------------------------------------------

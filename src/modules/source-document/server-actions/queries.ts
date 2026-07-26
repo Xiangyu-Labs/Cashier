@@ -8,6 +8,7 @@ import { getPendingSourceDocuments } from "@/modules/source-document/application
 import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
+import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import {
   PendingSourceDocumentsResponseDto,
   SourceDocumentAttentionDto,
@@ -15,10 +16,12 @@ import {
   SourceDocumentFullDto,
   SourceDocumentPageDto,
   StreamPage,
+  StreamTotalDto,
 } from "@/modules/source-document/contracts";
 import {
   sourceDocumentIdSchema,
   streamPageInputSchema,
+  streamTotalInputSchema,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
@@ -108,6 +111,24 @@ export const listStreamPageAction = withLedgerAccess(
       ...(statuses != null && statuses.length > 0 ? { statuses: statuses as string[] } : {}),
       ...(cursor != null && cursor !== "" ? { cursor } : {}),
       limit,
+    });
+  }
+);
+
+export const getStreamTotalAction = withLedgerAccess(
+  async (ledgerId: string, params: unknown): Promise<StreamTotalDto> => {
+    const parsed = streamTotalInputSchema.safeParse(params);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+
+    const { startDate, endDate, minAmount, maxAmount, statuses } = parsed.data;
+    return getStreamTotal(ledgerId, {
+      ...(startDate != null ? { startDate } : {}),
+      ...(endDate != null ? { endDate } : {}),
+      ...(minAmount != null ? { minAmount } : {}),
+      ...(maxAmount != null ? { maxAmount } : {}),
+      ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     });
   }
 );

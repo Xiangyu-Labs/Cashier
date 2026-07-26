@@ -9,18 +9,19 @@ import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import {
   queryKeys,
+  invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
-import { getLedgerStatsAction } from "@/modules/ledger/actions";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
 import { useBatchSourceDocumentActions,
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
 import {
+  getStreamTotalAction,
   retrySourceDocumentAction,
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
@@ -32,6 +33,7 @@ import {
   getStreamQueryMatches,
 } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { toast } from "sonner";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
@@ -76,21 +78,27 @@ export function LedgerEntriesTab({
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams, advancedFilters);
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
-  const { data: summaryData } = useQuery({
-    queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, null),
+  const canonicalStatuses = canonicalizeSourceDocumentStatuses(filters.statuses);
+  const statusesKey = canonicalStatuses?.join(",") ?? null;
+  const streamTotalInput = {
+    ...(startDateStr != null && startDateStr !== "" ? { startDate: startDateStr } : {}),
+    ...(endDateStr != null && endDateStr !== "" ? { endDate: endDateStr } : {}),
+    ...(filters.minAmount !== undefined ? { minAmount: filters.minAmount } : {}),
+    ...(filters.maxAmount !== undefined ? { maxAmount: filters.maxAmount } : {}),
+    ...(canonicalStatuses != null ? { statuses: canonicalStatuses } : {}),
+  };
+  const { data: streamTotalData } = useQuery({
+    queryKey: queryKeys.sourceDocumentStreamTotal(ledgerId, {
+      startDate: startDateStr,
+      endDate: endDateStr,
+      minAmount: filters.minAmount,
+      maxAmount: filters.maxAmount,
+      statuses: statusesKey,
+    }),
     queryFn: () =>
-      getLedgerStatsAction(
-        ledgerId,
-        startDateStr !== "" ? startDateStr : undefined,
-        endDateStr !== "" ? endDateStr : undefined,
-        mainCurrency,
-        {
-          ...(filters.minAmount !== undefined ? { minAmount: filters.minAmount } : {}),
-          ...(filters.maxAmount !== undefined ? { maxAmount: filters.maxAmount } : {}),
-        }
-      ),
+      getStreamTotalAction(ledgerId, streamTotalInput),
   });
-  const filteredTotal = Number(summaryData?.convertedTotal?.total ?? 0);
+  const filteredTotal = Number(streamTotalData?.total ?? 0);
 
   const {
     deleteConfirm,
@@ -139,6 +147,9 @@ export function LedgerEntriesTab({
     },
     onSuccess: (_data, _variables, context) => {
       if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+      void queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+      });
     },
     onError: (_error, _variables, context) => {
       if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
@@ -176,6 +187,9 @@ export function LedgerEntriesTab({
     },
     onSuccess: (_data, _variables, context) => {
       if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+      void queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+      });
       toast.success(tActions("acceptSuccess"));
     },
     onError: (_error, _variables, context) => {
@@ -215,6 +229,9 @@ export function LedgerEntriesTab({
     },
     onSuccess: (_data, _variables, context) => {
       if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+      void queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+      });
       toast.success(tActions("abandonSuccess"));
     },
     onError: (_error, _variables, context) => {

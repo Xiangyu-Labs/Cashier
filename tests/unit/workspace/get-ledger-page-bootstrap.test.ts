@@ -8,6 +8,7 @@ const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
 const getSourceDocumentCountsQueryMock = vi.hoisted(() => vi.fn());
 const listStreamPageMock = vi.hoisted(() => vi.fn());
+const getStreamTotalMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/ledger/access", () => ({
@@ -29,6 +30,9 @@ vi.mock("@/modules/source-document/application/queries/get-source-document-count
 }));
 vi.mock("@/modules/source-document/application/queries/list-stream-page", () => ({
   listStreamPage: listStreamPageMock,
+}));
+vi.mock("@/modules/source-document/application/queries/get-stream-total", () => ({
+  getStreamTotal: getStreamTotalMock,
 }));
 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
@@ -69,6 +73,7 @@ describe("getLedgerPageBootstrap", () => {
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
     getSourceDocumentCountsQueryMock.mockResolvedValue({ processingCount: 0, attentionCount: 0 });
     listStreamPageMock.mockResolvedValue({ items: [], nextCursor: null, generation: 1 });
+    getStreamTotalMock.mockResolvedValue({ total: "0" });
     getEnhancedStatsMock.mockResolvedValue({});
   });
 
@@ -137,13 +142,12 @@ describe("getLedgerPageBootstrap", () => {
     expect(result).not.toBeNull();
     expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listStreamPageMock).toHaveBeenCalled();
+    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+    });
     expect(requireLedgerAccessMock).not.toHaveBeenCalled();
-    expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
-      "ledger-1",
-      "2026-03-01",
-      "2026-03-31",
-      "USD"
-    );
+    expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
   });
@@ -172,6 +176,12 @@ describe("getLedgerPageBootstrap", () => {
       cursor: undefined,
       limit: 20,
     });
+    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      minAmount: 20,
+      maxAmount: 100,
+    });
   });
 
   it("passes status filters into stream page prefetch", async () => {
@@ -192,9 +202,14 @@ describe("getLedgerPageBootstrap", () => {
     expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-07-01",
       endDate: "2026-07-31",
-      statuses: ["queued", "processing"],
+      statuses: ["processing", "queued"],
       cursor: undefined,
       limit: 20,
+    });
+    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+      statuses: ["processing", "queued"],
     });
   });
 

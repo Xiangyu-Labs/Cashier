@@ -200,12 +200,18 @@ const streamPageCursorSchema = z
   .string()
   .regex(/^v\d+\|/, "Invalid stream cursor format")
   .or(z.literal(""));
-export const streamPageInputSchema = strictObjectSchema({
+const streamFilterInputShape = {
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
   statuses: z.array(sourceDocumentStatusSchema).optional(),
+};
+
+export const streamTotalInputSchema = strictObjectSchema(streamFilterInputShape);
+
+export const streamPageInputSchema = strictObjectSchema({
+  ...streamFilterInputShape,
   cursor: streamPageCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(20).default(20),
 });

@@ -8,6 +8,7 @@ import {
   invalidateLedgerSettingsView,
   invalidateLedgerStats,
   invalidateSourceDocuments,
+  invalidateSourceDocumentStreamTotal,
   invalidateUncategorizedCount,
   queryKeys,
 } from "@/lib/query-keys";
@@ -115,6 +116,27 @@ describe("queryKeys", () => {
         "sourceDocuments",
         ledgerId,
         "stream",
+      ]);
+    });
+
+    it("builds a filter-complete stream total query key", () => {
+      expect(
+        queryKeys.sourceDocumentStreamTotal(ledgerId, {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          minAmount: 10,
+          maxAmount: 100,
+          statuses: "completed,failed",
+        })
+      ).toEqual([
+        "sourceDocuments",
+        ledgerId,
+        "streamTotal",
+        "2026-03-01",
+        "2026-03-31",
+        10,
+        100,
+        "completed,failed",
       ]);
     });
   });
@@ -295,6 +317,19 @@ describe("query invalidation helpers", () => {
     expect(invalidateSourceDocuments(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
+  });
+
+  it("matches only stream total queries for the selected ledger", () => {
+    expect(
+      invalidateSourceDocumentStreamTotal(ledgerId)({
+        queryKey: queryKeys.sourceDocumentStreamTotal(ledgerId),
+      })
+    ).toBe(true);
+    expect(
+      invalidateSourceDocumentStreamTotal(ledgerId)({
+        queryKey: queryKeys.sourceDocumentStream(ledgerId),
+      })
+    ).toBe(false);
   });
 
   it("matches summary and enhanced stats queries", () => {

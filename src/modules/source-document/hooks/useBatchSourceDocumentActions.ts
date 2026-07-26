@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
   invalidateLedgerStats,
+  invalidateSourceDocumentStreamTotal,
   queryKeys,
 } from "@/lib/query-keys";
 import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
@@ -100,6 +101,9 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
         predicate: invalidateLedgerStats(ledgerId),
       });
       queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+      });
+      queryClient.invalidateQueries({
         predicate: invalidateCalendar(ledgerId),
       });
     },
@@ -179,6 +183,9 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       // Targeted invalidation for derived data
       queryClient.invalidateQueries({
         predicate: invalidateLedgerStats(ledgerId),
+      });
+      queryClient.invalidateQueries({
+        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
       });
       queryClient.invalidateQueries({
         predicate: invalidateCalendar(ledgerId),

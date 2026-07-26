@@ -1,5 +1,5 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { invalidateSourceDocumentStreamTotal, queryKeys } from "@/lib/query-keys";
 import type { StreamPage } from "@/modules/source-document/contracts";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 
@@ -20,6 +20,10 @@ export function applyStreamRefreshToCache(
   result: StreamRefreshResult
 ): void {
   if (!result.changed) return;
+
+  void queryClient.invalidateQueries({
+    predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+  });
 
   // 1. Apply changed first pages
   for (const fp of result.firstPages) {

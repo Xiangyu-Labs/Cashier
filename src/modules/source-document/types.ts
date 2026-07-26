@@ -29,6 +29,13 @@ export const SourceDocumentStatus = {
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];
 export type ActiveSourceDocumentStatusType = (typeof ACTIVE_SOURCE_DOCUMENT_STATUSES)[number];
 
+export function canonicalizeSourceDocumentStatuses(
+  statuses: readonly SourceDocumentStatusType[] | undefined
+): SourceDocumentStatusType[] | undefined {
+  if (statuses == null || statuses.length === 0) return undefined;
+  return [...new Set(statuses)].sort();
+}
+
 export const SOURCE_DOCUMENT_TYPES = ["ai_parsed", "manual"] as const;
 
 export const SourceDocumentType = {

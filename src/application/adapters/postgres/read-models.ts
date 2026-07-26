@@ -15,6 +15,7 @@ import {
   type RevisionOutcome,
 } from "@/application/contracts";
 import { parseAmount } from "@/lib/formatters";
+import { normalize as decimalNormalize } from "@/lib/money/decimal";
 import {
   ledgerEntries,
   revisionFiles,
@@ -31,13 +32,16 @@ import {
  */
 const EFFECTIVE_DATE = sql<string>`COALESCE(${sourceDocuments.entryDate}, to_char(${sourceDocuments.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD'))`;
 
-export interface TargetSourceDocumentListInput {
+export interface TargetSourceDocumentFilterInput {
   ledgerId: string;
   statuses?: readonly SourceDocumentStatusType[];
   startDate?: string | null;
   endDate?: string | null;
   minAmount?: number;
   maxAmount?: number;
+}
+
+export interface TargetSourceDocumentListInput extends TargetSourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
 }
@@ -92,7 +96,7 @@ function derivedStatusExpression() {
   END`;
 }
 
-function baseConditions(input: TargetSourceDocumentListInput): SQL<unknown>[] {
+function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [
     eq(sourceDocuments.ledgerId, input.ledgerId),
     isNull(sourceDocuments.deletedAt),
@@ -129,6 +133,37 @@ function baseConditions(input: TargetSourceDocumentListInput): SQL<unknown>[] {
     }
   }
   return conditions;
+}
+
+/**
+ * Sum completed active projections across the full filtered Stream result.
+ * Non-completed records may have an older active projection, but those amounts
+ * are intentionally excluded until the document returns to completed.
+ */
+export async function calculateCompletedSourceDocumentTotal(
+  input: TargetSourceDocumentFilterInput
+): Promise<{ total: string }> {
+  const derivedStatus = derivedStatusExpression();
+  const result = await db
+    .select({
+      total: sql<string>`SUM(COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}))`,
+    })
+    .from(sourceDocuments)
+    .innerJoin(
+      ledgerEntries,
+      and(
+        eq(ledgerEntries.ledgerId, sourceDocuments.ledgerId),
+        eq(ledgerEntries.sourceDocumentId, sourceDocuments.id),
+        eq(ledgerEntries.sourceDocumentRevisionId, sourceDocuments.activeRevisionId),
+        isNull(ledgerEntries.deletedAt)
+      )
+    )
+    .where(and(...baseConditions(input), eq(derivedStatus, "completed")))
+    .then((rows) => rows[0]);
+
+  return {
+    total: decimalNormalize(String(result?.total ?? "0")),
+  };
 }
 
 function decodeCursor(cursor: string): { entryDate: string; createdAt: Date; id: string } | null {
