@@ -57,26 +57,28 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
       op.patches.push({
         type: "delete",
         entityId: id,
-        entity: prevEntity ?? {
-          id,
-          ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
+        entity:
+          prevEntity ??
+          ({
+            id,
+            ledgerId,
+            title: null,
+            text: null,
+            files: [],
+            status: "completed",
+            type: "ai_parsed",
+            anomalyReason: null,
+            entryDate: null,
+            metadata: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deletedAt: null,
+            hasImages: false,
+            supportedActions: [],
+            errorCode: null,
+            pendingRevisionId: null,
+            ledgerEntries: [],
+          } as SourceDocumentListItemDto),
         prevEntity, // C3: store actual previous entity for rollback
       });
 
@@ -88,6 +90,7 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     onSuccess: (_data, _variables, context) => {
       if (context == null) return;
       manager.commitOperation(context.operationId, null, queryClient);
+      toast.success(tCommon("deleteSuccess"));
       clearSelection();
     },
     onError: (_error, _variables, context) => {
@@ -109,7 +112,12 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
     },
   });
 
-  const batchUpdateDates = useMutation<void, Error, { ids: string[]; entryDate: string }, BatchDatesContext>({
+  const batchUpdateDates = useMutation<
+    void,
+    Error,
+    { ids: string[]; entryDate: string },
+    BatchDatesContext
+  >({
     mutationFn: async ({ ids, entryDate }) => {
       await batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate });
     },
@@ -126,16 +134,12 @@ export function useBatchSourceDocumentActions(ledgerId: string, clearSelection: 
 
         const updatedPages = pages.map((page) => ({
           ...page,
-          items: page.items.map((item) =>
-            ids.includes(item.id) ? { ...item, entryDate } : item
-          ),
+          items: page.items.map((item) => (ids.includes(item.id) ? { ...item, entryDate } : item)),
         }));
 
         // C3: Capture previous items for rollback
         for (const id of ids) {
-          const prevItem = data.pages
-            .flatMap((p) => p.items)
-            .find((item) => item.id === id);
+          const prevItem = data.pages.flatMap((p) => p.items).find((item) => item.id === id);
           if (prevItem != null) {
             op.patches.push({
               type: "upsert",

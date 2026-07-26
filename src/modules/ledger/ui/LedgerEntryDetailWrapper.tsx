@@ -56,7 +56,7 @@ export function LedgerEntryDetailWrapper({
     mutationFn: async (data) => {
       await updateLedgerEntryAction(ledgerId, id, data);
     },
-    errorMessage: tCommon("saveFailed"),
+    errorMessage: null,
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),
@@ -90,9 +90,6 @@ export function LedgerEntryDetailWrapper({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: () => {
-      onClose();
-    },
     onOptimisticUpdate: (queryClient) => {
       const snapshotKey = queryKeys.ledgerEntry(id);
       const snapshots = createListSnapshots(queryClient, snapshotKey);

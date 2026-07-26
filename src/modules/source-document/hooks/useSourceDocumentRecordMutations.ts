@@ -4,9 +4,7 @@ import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import {
-  invalidateSourceDocumentCounts,
-} from "@/lib/query-keys";
+import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
@@ -60,9 +58,8 @@ export function useSourceDocumentRecordMutations({
 }: UseSourceDocumentRecordMutationsOptions) {
   const queryClient = useQueryClient();
   // I4: Use module-level singleton to survive remounts
-  const manager = ledgerId != null && ledgerId !== ""
-    ? getLedgerTransactionManager(ledgerId)
-    : null;
+  const manager =
+    ledgerId != null && ledgerId !== "" ? getLedgerTransactionManager(ledgerId) : null;
   const tCommon = useTranslations("Common");
 
   // -----------------------------------------------------------------------
@@ -70,7 +67,13 @@ export function useSourceDocumentRecordMutations({
   // -----------------------------------------------------------------------
 
   const updateSourceDocMutation = useMutation({
-    mutationFn: async ({ data, operationId }: { data: { title?: string; entryDate?: string }; operationId: string }) => {
+    mutationFn: async ({
+      data,
+      operationId,
+    }: {
+      data: { title?: string; entryDate?: string };
+      operationId: string;
+    }) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
@@ -105,7 +108,9 @@ export function useSourceDocumentRecordMutations({
       if (context == null) return;
       if (ledgerId == null) return;
       // I3: Pass real reconciliation entity — use the returned canonical entity
-      const data = _data as Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+      const data = _data as Partial<{
+        reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
+      }>;
       if (manager != null) {
         manager.commitOperation(
           context.operationId,
@@ -120,7 +125,6 @@ export function useSourceDocumentRecordMutations({
       if (manager != null) {
         manager.rollbackOperation(context.operationId, queryClient);
       }
-      toast.error(tCommon("saveFailed"));
     },
     onSettled: () => {
       if (ledgerId != null && ledgerId !== "") {
@@ -151,26 +155,28 @@ export function useSourceDocumentRecordMutations({
       op.patches.push({
         type: "delete",
         entityId: id,
-        entity: prevEntity ?? {
-          id,
-          ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
+        entity:
+          prevEntity ??
+          ({
+            id,
+            ledgerId,
+            title: null,
+            text: null,
+            files: [],
+            status: "completed",
+            type: "ai_parsed",
+            anomalyReason: null,
+            entryDate: null,
+            metadata: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deletedAt: null,
+            hasImages: false,
+            supportedActions: [],
+            errorCode: null,
+            pendingRevisionId: null,
+            ledgerEntries: [],
+          } as SourceDocumentListItemDto),
         prevEntity, // C3: store actual previous entity for rollback
       });
 

@@ -23,8 +23,8 @@ interface LedgerEntryDetailModalProps {
     amount?: number;
     currency?: string | null;
     description?: string | null;
-  }) => void;
-  onDelete: () => void;
+  }) => Promise<void>;
+  onDelete: () => Promise<void>;
   onViewSourceDocument?: () => void;
 }
 
@@ -108,8 +108,8 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     [getOriginalValue]
   );
 
-  const handleSave = useCallback(() => {
-    if (!ledgerEntry) return;
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!ledgerEntry) return false;
 
     const updateData: Parameters<typeof onUpdate>[0] = {};
 
@@ -131,9 +131,15 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     }
 
     const changeCount = Object.keys(updateData).length;
-    onUpdate(updateData);
-    toast.success(tCommon("saveAllSuccess", { count: changeCount }));
-    setPendingChanges({});
+    try {
+      await onUpdate(updateData);
+      toast.success(tCommon("saveAllSuccess", { count: changeCount }));
+      setPendingChanges({});
+      return true;
+    } catch {
+      toast.error(tCommon("saveFailed"));
+      return false;
+    }
   }, [ledgerEntry, pendingChanges, onUpdate, tCommon]);
 
   const handleDiscard = useCallback(() => {
@@ -148,8 +154,10 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     }
   }, [hasPendingChanges, onClose]);
 
-  const handleSaveAndClose = useCallback(() => {
-    handleSave();
+  const handleSaveAndClose = useCallback(async () => {
+    const saved = await handleSave();
+    if (!saved) return;
+
     setShowUnsavedConfirm(false);
     onClose();
   }, [handleSave, onClose]);
@@ -160,12 +168,15 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     onClose();
   }, [onClose]);
 
-  const handleDelete = useCallback(() => {
-    onDelete();
-    setShowDeleteConfirm(false);
-    onClose();
-    toast.success(tTab("deleteSuccess"));
-  }, [onDelete, onClose, tTab]);
+  const handleDelete = useCallback(async () => {
+    try {
+      await onDelete();
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch {
+      // The mutation owns delete failure feedback.
+    }
+  }, [onDelete, onClose]);
 
   return (
     <>

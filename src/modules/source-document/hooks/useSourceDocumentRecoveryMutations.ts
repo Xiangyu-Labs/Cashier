@@ -250,10 +250,12 @@ export function useSourceDocumentRecoveryMutations({
     },
     onSuccess: (_data, variables) => {
       manager.commitOperation(variables.operationId, null, queryClient);
+      toast.success(tActions("retrySuccess"));
       onSuccess?.();
     },
     onError: (_error, variables) => {
       manager.rollbackOperation(variables.operationId, queryClient);
+      toast.error(tActions("retryError"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({

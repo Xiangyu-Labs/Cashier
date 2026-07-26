@@ -150,9 +150,11 @@ export function LedgerEntriesTab({
       void queryClient.invalidateQueries({
         predicate: invalidateSourceDocumentStreamTotal(ledgerId),
       });
+      toast.success(tActions("retrySuccess"));
     },
     onError: (_error, _variables, context) => {
       if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
+      toast.error(tActions("retryError"));
     },
   });
 

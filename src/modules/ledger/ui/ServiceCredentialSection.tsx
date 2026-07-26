@@ -33,7 +33,9 @@ export function ServiceCredentialSection({
   const [newCredName, setNewCredName] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
-  const [createdCredential, setCreatedCredential] = useState<CreatedServiceCredentialDto | null>(null);
+  const [createdCredential, setCreatedCredential] = useState<CreatedServiceCredentialDto | null>(
+    null
+  );
   const [hasCopied, setHasCopied] = useState(false);
 
   useEffect(() => {
@@ -53,7 +55,6 @@ export function ServiceCredentialSection({
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Failed to create credential", error);
-      toast.error(t("createFailed"));
     }
   };
 

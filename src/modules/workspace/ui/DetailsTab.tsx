@@ -4,7 +4,6 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
@@ -55,13 +54,9 @@ export function DetailsTab({
 
   // State management
   const {
-    deleteConfirm,
-    setDeleteConfirm,
     selectedLedgerEntry,
     setSelectedLedgerEntry,
     isDetailModalOpen,
-    setIsDetailModalOpen,
-    handleDeleteConfirm,
     handleViewEntry,
     handleCloseDetail,
   } = useDetailsTabState();
@@ -91,7 +86,6 @@ export function DetailsTab({
     categories,
     selectedLedgerEntry,
     setSelectedLedgerEntry,
-    setIsDetailModalOpen,
   });
 
   // Infinite scroll
@@ -205,13 +199,15 @@ export function DetailsTab({
             categories={categories}
             open={isDetailModalOpen}
             onClose={handleCloseDetail}
-            onUpdate={(data) =>
-              updateEntry.mutate({
+            onUpdate={async (data) => {
+              await updateEntry.mutateAsync({
                 ledgerEntryId: selectedLedgerEntry.id,
                 data,
-              })
-            }
-            onDelete={() => setDeleteConfirm({ open: true, id: selectedLedgerEntry.id })}
+              });
+            }}
+            onDelete={async () => {
+              await deleteEntry.mutateAsync(selectedLedgerEntry.id);
+            }}
             {...(selectedSourceDocumentId != null && selectedSourceDocumentId !== ""
               ? {
                   onViewSourceDocument: () =>
@@ -224,17 +220,6 @@ export function DetailsTab({
               : {})}
           />
         )}
-
-        {/* Delete Confirmation */}
-        <ConfirmDialog
-          open={deleteConfirm.open}
-          onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-          title={t("deleteConfirmTitle")}
-          description={t("deleteConfirmDesc")}
-          onConfirm={() => handleDeleteConfirm((id) => deleteEntry.mutate(id))}
-          confirmLabel={tCommon("delete")}
-          variant="destructive"
-        />
       </div>
     </PullToRefresh>
   );

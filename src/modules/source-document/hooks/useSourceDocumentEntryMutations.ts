@@ -50,7 +50,7 @@ export function useSourceDocumentEntryMutations({
       // across the server action boundary to avoid lossy JavaScript number conversion.
       await updateLedgerEntryAction(ledgerId, entryId, mutationData);
     },
-    errorMessage: tCommon("saveFailed"),
+    errorMessage: null,
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),
@@ -72,7 +72,7 @@ export function useSourceDocumentEntryMutations({
       if (ledgerId == null || ledgerId === "") return;
       await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
-    errorMessage: tCommon("saveFailed"),
+    errorMessage: null,
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),

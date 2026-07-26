@@ -19,7 +19,6 @@ interface UseEntryMutationsParams {
   categories: EntryCategory[];
   selectedLedgerEntry: LedgerEntry | null;
   setSelectedLedgerEntry: (entry: LedgerEntry | null) => void;
-  setIsDetailModalOpen: (open: boolean) => void;
 }
 
 interface InfiniteData {
@@ -62,7 +61,6 @@ export function useEntryMutations({
   categories,
   selectedLedgerEntry,
   setSelectedLedgerEntry,
-  setIsDetailModalOpen,
 }: UseEntryMutationsParams) {
   const tCommon = useTranslations("Common");
   const tLedger = useTranslations("LedgerEntriesTab");
@@ -75,7 +73,7 @@ export function useEntryMutations({
       const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
       return result;
     },
-    errorMessage: tCommon("saveFailed"),
+    errorMessage: null,
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),
@@ -133,10 +131,6 @@ export function useEntryMutations({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: () => {
-      setIsDetailModalOpen(false);
-      setSelectedLedgerEntry(null);
-    },
     onOptimisticUpdate: (queryClient, ledgerEntryId) => {
       const snapshots = createListSnapshots<InfiniteData>(
         queryClient,
