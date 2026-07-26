@@ -129,9 +129,7 @@
         "otp_tokens_token_hash_unique": {
           "name": "otp_tokens_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -214,9 +212,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -357,12 +353,8 @@
           "name": "entry_categories_ledger_id_ledgers_id_fk",
           "tableFrom": "entry_categories",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -607,12 +599,8 @@
           "name": "ledger_entries_ledger_id_ledgers_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -620,12 +608,8 @@
           "name": "ledger_entries_category_id_entry_categories_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "entry_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -716,12 +700,8 @@
           "name": "ledgers_user_id_users_id_fk",
           "tableFrom": "ledgers",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -829,12 +809,8 @@
           "name": "service_credentials_ledger_id_ledgers_id_fk",
           "tableFrom": "service_credentials",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1131,12 +1107,8 @@
           "name": "source_documents_ledger_id_ledgers_id_fk",
           "tableFrom": "source_documents",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1339,14 +1311,8 @@
           "name": "fk_processing_attempts_revision_ledger",
           "tableFrom": "processing_attempts",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1585,14 +1551,8 @@
           "name": "fk_processing_outbox_revision_ledger",
           "tableFrom": "processing_outbox",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1734,14 +1694,8 @@
           "name": "fk_revision_entries_revision_ledger",
           "tableFrom": "revision_entries",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1749,14 +1703,8 @@
           "name": "fk_revision_entries_ledger_entry_ledger",
           "tableFrom": "revision_entries",
           "tableTo": "ledger_entries",
-          "columnsFrom": [
-            "ledger_id",
-            "ledger_entry_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "ledger_entry_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1883,14 +1831,8 @@
           "name": "fk_revision_files_revision_ledger",
           "tableFrom": "revision_files",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1898,14 +1840,8 @@
           "name": "fk_revision_files_stored_file_ledger",
           "tableFrom": "revision_files",
           "tableTo": "stored_files",
-          "columnsFrom": [
-            "ledger_id",
-            "stored_file_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "stored_file_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2084,14 +2020,8 @@
           "name": "fk_revisions_source_document_ledger",
           "tableFrom": "source_document_revisions",
           "tableTo": "source_documents",
-          "columnsFrom": [
-            "ledger_id",
-            "source_document_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "source_document_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2252,12 +2182,8 @@
           "name": "stored_files_ledger_id_ledgers_id_fk",
           "tableFrom": "stored_files",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2421,14 +2347,8 @@
           "name": "fk_upload_session_files_session_ledger",
           "tableFrom": "upload_session_files",
           "tableTo": "upload_sessions",
-          "columnsFrom": [
-            "ledger_id",
-            "upload_session_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "upload_session_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2436,14 +2356,8 @@
           "name": "fk_upload_session_files_stored_file_ledger",
           "tableFrom": "upload_session_files",
           "tableTo": "stored_files",
-          "columnsFrom": [
-            "ledger_id",
-            "stored_file_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "stored_file_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2585,12 +2499,8 @@
           "name": "upload_sessions_ledger_id_ledgers_id_fk",
           "tableFrom": "upload_sessions",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

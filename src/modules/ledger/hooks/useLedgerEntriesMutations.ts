@@ -16,9 +16,7 @@ import {
   findSourceDocByEntryId,
 } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import type {
-  MutationReconciliation,
-} from "@/modules/source-document/contracts";
+import type { MutationReconciliation } from "@/modules/source-document/contracts";
 import { toast } from "sonner";
 
 type SourceDocumentCacheEntry = Pick<
@@ -35,9 +33,14 @@ type SourceDocumentCacheEntry = Pick<
   category?: EntryCategory | null;
 };
 
-type UpdateEntryResult = LedgerEntryDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
-type DeleteEntryResult = DeleteLedgerEntryResultDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
-type UpdateVariables = { ledgerEntryId: string; data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number } };
+type UpdateEntryResult = LedgerEntryDto &
+  Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+type DeleteEntryResult = DeleteLedgerEntryResultDto &
+  Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>;
+type UpdateVariables = {
+  ledgerEntryId: string;
+  data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number };
+};
 type MutationContext = { operationId: string; found: boolean };
 
 function getUpdatedCacheCategory(
@@ -107,7 +110,12 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
   const updateEntry = useMutation<UpdateEntryResult, Error, UpdateVariables, MutationContext>({
     mutationFn: async ({ ledgerEntryId, data }) => {
       const operationId = crypto.randomUUID();
-      return updateLedgerEntryAction(ledgerId, ledgerEntryId, data, operationId) as Promise<UpdateEntryResult>;
+      return updateLedgerEntryAction(
+        ledgerId,
+        ledgerEntryId,
+        data,
+        operationId
+      ) as Promise<UpdateEntryResult>;
     },
     onMutate: async ({ ledgerEntryId, data }) => {
       const op = manager.startOperation(ledgerId);
@@ -172,7 +180,11 @@ export function useLedgerEntriesMutations(ledgerId: string, categories: EntryCat
   const deleteEntry = useMutation<DeleteEntryResult, Error, string, MutationContext>({
     mutationFn: async (ledgerEntryId) => {
       const operationId = crypto.randomUUID();
-      return deleteLedgerEntryAction(ledgerId, ledgerEntryId, operationId) as Promise<DeleteEntryResult>;
+      return deleteLedgerEntryAction(
+        ledgerId,
+        ledgerEntryId,
+        operationId
+      ) as Promise<DeleteEntryResult>;
     },
     onMutate: async (ledgerEntryId) => {
       const op = manager.startOperation(ledgerId);

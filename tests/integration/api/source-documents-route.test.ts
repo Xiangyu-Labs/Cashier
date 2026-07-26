@@ -212,9 +212,7 @@ describe("API v1 source-documents route", () => {
           sourceDocumentRevisions,
           eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
         )
-        .where(
-          eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId)
-        );
+        .where(eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId));
       expect(revisionFilesRows).toHaveLength(1);
       expect(revisionFilesRows[0]!.position).toBe(0);
 
@@ -269,9 +267,7 @@ describe("API v1 source-documents route", () => {
           sourceDocumentRevisions,
           eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
         )
-        .where(
-          eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId)
-        );
+        .where(eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId));
       // Should have at least one file linked
       expect(revisionFilesRows.length).toBeGreaterThanOrEqual(1);
     });

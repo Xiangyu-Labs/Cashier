@@ -6,16 +6,10 @@
  * original input, then returns the chosen result as a NormalizedParseOutput.
  */
 
-import type {
-  AiContextContract,
-  AiMessageContentPart as AIMessageContentPart,
-} from "./contracts";
+import type { AiContextContract, AiMessageContentPart as AIMessageContentPart } from "./contracts";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import {
-  isSuccessfulLoadImageResult,
-  loadStoredFilesForAI,
-} from "@/lib/storage/utils";
+import { isSuccessfulLoadImageResult, loadStoredFilesForAI } from "@/lib/storage/utils";
 import { z } from "zod";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";

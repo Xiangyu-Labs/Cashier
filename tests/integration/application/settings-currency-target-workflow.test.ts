@@ -148,10 +148,7 @@ describe("settings concurrency invariants", () => {
         where: eq(ledgers.id, ledgerId),
       });
       const activeEntries = await db.query.ledgerEntries.findMany({
-        where: and(
-          eq(ledgerEntries.ledgerId, ledgerId),
-          isNull(ledgerEntries.deletedAt)
-        ),
+        where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
       });
 
       // Invariant: if entries were created, settings either succeeded before entry creation
@@ -200,10 +197,7 @@ describe("settings concurrency invariants", () => {
       }
       // Reset main currency if it was changed
       if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
-        await db
-          .update(ledgers)
-          .set({ metadata: {} })
-          .where(eq(ledgers.id, ledgerId));
+        await db.update(ledgers).set({ metadata: {} }).where(eq(ledgers.id, ledgerId));
       }
     }
   });
@@ -222,9 +216,8 @@ describe("settings concurrency invariants", () => {
         .then((rows) => rows[0]!);
 
       const { revision } = await db.transaction(async (tx) => {
-        const { createPendingRevisionInTransaction: createPending } = await import(
-          "@/application/adapters/postgres/revisions"
-        );
+        const { createPendingRevisionInTransaction: createPending } =
+          await import("@/application/adapters/postgres/revisions");
         return createPending(tx, {
           ledgerId,
           sourceDocumentId,
@@ -258,10 +251,7 @@ describe("settings concurrency invariants", () => {
         where: eq(ledgers.id, ledgerId),
       });
       const activeEntries = await db.query.ledgerEntries.findMany({
-        where: and(
-          eq(ledgerEntries.ledgerId, ledgerId),
-          isNull(ledgerEntries.deletedAt)
-        ),
+        where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
       });
       expect(ledger).not.toBeNull();
 
@@ -301,10 +291,7 @@ describe("settings concurrency invariants", () => {
         });
       }
       if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
-        await db
-          .update(ledgers)
-          .set({ metadata: {} })
-          .where(eq(ledgers.id, ledgerId));
+        await db.update(ledgers).set({ metadata: {} }).where(eq(ledgers.id, ledgerId));
       }
     }
   });

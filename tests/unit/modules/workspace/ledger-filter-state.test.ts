@@ -28,10 +28,7 @@ describe("ledger-filter-state", () => {
   });
 
   it("omits statuses from entry filters when advanced filters has no statuses", () => {
-    const filters = buildLedgerEntryFilters(
-      { period: "thisMonth" },
-      { categoryId: "cat-1" }
-    );
+    const filters = buildLedgerEntryFilters({ period: "thisMonth" }, { categoryId: "cat-1" });
 
     expect(filters.statuses).toBeUndefined();
   });

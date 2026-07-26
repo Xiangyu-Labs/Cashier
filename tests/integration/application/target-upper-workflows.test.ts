@@ -363,7 +363,10 @@ describe("target upper workflows", () => {
       .insert(entryCategories)
       .values({ ledgerId: otherLedgerId, name: "Other" })
       .returning();
-    const pending = await postgresRevisionAdapter.createPending({ ledgerId, submittedText: "Lunch" });
+    const pending = await postgresRevisionAdapter.createPending({
+      ledgerId,
+      submittedText: "Lunch",
+    });
     await postgresLedgerProjectionAdapter.activateRevision({
       ledgerId,
       sourceDocumentId: pending.document.id,

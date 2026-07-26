@@ -7,10 +7,7 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-export function AppShell({
-  navigation,
-  children,
-}: AppShellProps) {
+export function AppShell({ navigation, children }: AppShellProps) {
   return (
     <div className="min-h-dvh bg-bg text-text">
       <Header navigation={navigation} />

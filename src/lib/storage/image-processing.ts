@@ -223,10 +223,15 @@ export async function processImage(
         "Processed image exceeds max size, retrying with lower quality"
       );
       // Attempt another pass with lower quality
-      return processImage(buffer, mimeType, {
-        ...opts,
-        quality: Math.max(60, opts.quality - 15),
-      }, retryCount + 1);
+      return processImage(
+        buffer,
+        mimeType,
+        {
+          ...opts,
+          quality: Math.max(60, opts.quality - 15),
+        },
+        retryCount + 1
+      );
     }
 
     logger.debug(

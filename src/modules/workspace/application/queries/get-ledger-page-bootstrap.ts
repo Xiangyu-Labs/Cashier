@@ -80,12 +80,8 @@ export async function getLedgerPageBootstrap(
   );
   const streamStatusesKey = canonicalStreamStatuses?.join(",") ?? null;
   const streamFilterInput = {
-    ...(detailsState.startDateStr !== null
-      ? { startDate: detailsState.startDateStr }
-      : {}),
-    ...(detailsState.endDateStr !== null
-      ? { endDate: detailsState.endDateStr }
-      : {}),
+    ...(detailsState.startDateStr !== null ? { startDate: detailsState.startDateStr } : {}),
+    ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
     ...(input.advancedFilters?.minAmount != null
       ? { minAmount: input.advancedFilters.minAmount }
       : {}),
@@ -117,18 +113,14 @@ export async function getLedgerPageBootstrap(
                 ...(detailsState.startDateStr !== null
                   ? { startDate: detailsState.startDateStr }
                   : {}),
-                ...(detailsState.endDateStr !== null
-                  ? { endDate: detailsState.endDateStr }
-                  : {}),
+                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
                 ...(input.advancedFilters?.minAmount != null
                   ? { minAmount: input.advancedFilters.minAmount }
                   : {}),
                 ...(input.advancedFilters?.maxAmount != null
                   ? { maxAmount: input.advancedFilters.maxAmount }
                   : {}),
-                ...(canonicalStreamStatuses != null
-                  ? { statuses: canonicalStreamStatuses }
-                  : {}),
+                ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
                 cursor: pageParam as string | undefined,
                 limit: 20,
               }),

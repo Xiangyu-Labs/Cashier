@@ -53,10 +53,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        sourceDocumentId
-      );
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
       const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
@@ -133,10 +130,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        sourceDocumentId
-      );
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
       const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,

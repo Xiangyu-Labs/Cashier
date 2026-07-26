@@ -6,7 +6,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { AlertCircle, CheckCheck, RefreshCw, Trash2, FileText, X, Save, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCheck,
+  RefreshCw,
+  Trash2,
+  FileText,
+  X,
+  Save,
+  XCircle,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -277,23 +286,25 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 </div>
               )}
               {/* Retained active result notice */}
-              {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && sourceDocument.activeResultSummary != null && (
-                <div className="mb-3 px-1">
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium text-primary">
-                        {t("activeResultTitle")}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground/70">
-                        {t("activeResultDescription")}
-                      </span>
-                      <span className="text-xs font-mono tabular-nums text-text">
-                        {sourceDocument.activeResultSummary.entryCount} · {sourceDocument.activeResultSummary.total}
-                      </span>
+              {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") &&
+                sourceDocument.activeResultSummary != null && (
+                  <div className="mb-3 px-1">
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-medium text-primary">
+                          {t("activeResultTitle")}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground/70">
+                          {t("activeResultDescription")}
+                        </span>
+                        <span className="text-xs font-mono tabular-nums text-text">
+                          {sourceDocument.activeResultSummary.entryCount} ·{" "}
+                          {sourceDocument.activeResultSummary.total}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
               <SourceDocumentViewDetails
                 sourceDocument={sourceDocument}
                 ledgerEntries={ledgerEntries}
@@ -332,32 +343,34 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-modal-footer">
           <div className="flex items-center gap-2">
             {/* Candidate actions: Accept / Abandon */}
-            {sourceDocument?.supportedActions.includes("accept_candidate") && onAcceptCandidate != null && (
-              <>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-9 px-3 gap-1.5"
-                  onClick={onAcceptCandidate}
-                  disabled={isAccepting}
-                >
-                  <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
-                  <span className="hidden sm:inline">{tActions("accept")}</span>
-                </Button>
-                {sourceDocument.supportedActions.includes("abandon_candidate") && onAbandonCandidate != null && (
+            {sourceDocument?.supportedActions.includes("accept_candidate") &&
+              onAcceptCandidate != null && (
+                <>
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
-                    className="h-9 px-3 gap-1.5 text-muted-foreground"
-                    onClick={onAbandonCandidate}
-                    disabled={isAbandoning}
+                    className="h-9 px-3 gap-1.5"
+                    onClick={onAcceptCandidate}
+                    disabled={isAccepting}
                   >
-                    <XCircle className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{tActions("abandon")}</span>
+                    <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
+                    <span className="hidden sm:inline">{tActions("accept")}</span>
                   </Button>
-                )}
-              </>
-            )}
+                  {sourceDocument.supportedActions.includes("abandon_candidate") &&
+                    onAbandonCandidate != null && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-3 gap-1.5 text-muted-foreground"
+                        onClick={onAbandonCandidate}
+                        disabled={isAbandoning}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{tActions("abandon")}</span>
+                      </Button>
+                    )}
+                </>
+              )}
 
             {/* Edit & Retry */}
             {sourceDocument?.supportedActions.includes("edit_retry") && (

@@ -28,53 +28,48 @@ export interface AuthenticatedHomeContext {
  * so callers never need to call auth(), resolveHome(), or
  * requireLedgerAccess() separately within the same render tree.
  */
-export const resolveAuthenticatedHome = cache(
-  async (): Promise<AuthenticatedHomeContext> => {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (userId == null || userId === "") {
-      throw new UnauthorizedError();
-    }
-
-    const validSession = session!;
-
-    const locale = await getLocale();
-    const home = await resolveHome({ userId, locale });
-
-    if (!isValidUuid(home.ledgerId)) {
-      throw new NotFoundError("Ledger");
-    }
-
-    const ledger = await currentApplication.ledgers.getOwned(
-      home.ledgerId,
-      userId
-    );
-    if (ledger == null) {
-      throw new NotFoundError("Ledger");
-    }
-
-    const ledgerDto: LedgerDto = {
-      id: ledger.id,
-      userId: ledger.userId,
-      metadata: { settings: ledger.settings },
-      createdAt: ledger.createdAt,
-      updatedAt: ledger.updatedAt,
-      deletedAt: null,
-    };
-
-    return {
-      userId,
-      ledgerId: home.ledgerId,
-      ledgerDto,
-      session: {
-        user: {
-          id: userId,
-          name: validSession.user?.name ?? null,
-          email: validSession.user?.email ?? null,
-          image: validSession.user?.image ?? null,
-        },
-      },
-      locale,
-    };
+export const resolveAuthenticatedHome = cache(async (): Promise<AuthenticatedHomeContext> => {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (userId == null || userId === "") {
+    throw new UnauthorizedError();
   }
-);
+
+  const validSession = session!;
+
+  const locale = await getLocale();
+  const home = await resolveHome({ userId, locale });
+
+  if (!isValidUuid(home.ledgerId)) {
+    throw new NotFoundError("Ledger");
+  }
+
+  const ledger = await currentApplication.ledgers.getOwned(home.ledgerId, userId);
+  if (ledger == null) {
+    throw new NotFoundError("Ledger");
+  }
+
+  const ledgerDto: LedgerDto = {
+    id: ledger.id,
+    userId: ledger.userId,
+    metadata: { settings: ledger.settings },
+    createdAt: ledger.createdAt,
+    updatedAt: ledger.updatedAt,
+    deletedAt: null,
+  };
+
+  return {
+    userId,
+    ledgerId: home.ledgerId,
+    ledgerDto,
+    session: {
+      user: {
+        id: userId,
+        name: validSession.user?.name ?? null,
+        email: validSession.user?.email ?? null,
+        image: validSession.user?.image ?? null,
+      },
+    },
+    locale,
+  };
+});

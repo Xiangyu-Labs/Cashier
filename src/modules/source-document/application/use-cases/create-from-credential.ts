@@ -23,7 +23,6 @@ export async function createSourceDocumentFromCredential(
   scheduleProcessing: (intent: ProcessingIntentContract) => void,
   dependencies: { idempotency: IdempotencyPort } = currentApplication
 ): Promise<CreateSourceDocumentResponseDto> {
-
   const payload = omitUndefinedProperties(input.payload);
   const ledger =
     input.ledgerId == null

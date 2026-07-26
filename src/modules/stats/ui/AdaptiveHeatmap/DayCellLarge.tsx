@@ -19,7 +19,15 @@ interface DayCellLargeProps {
   locale?: string;
 }
 
-export function DayCellLarge({ date, dayNumber, amount, level, onClick, currency = "CNY", locale = "zh-CN" }: DayCellLargeProps) {
+export function DayCellLarge({
+  date,
+  dayNumber,
+  amount,
+  level,
+  onClick,
+  currency = "CNY",
+  locale = "zh-CN",
+}: DayCellLargeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const t = useTranslations("Calendar");
 

@@ -118,8 +118,7 @@ export async function activateTestSourceDocumentProjection(
             ? document.status
             : "completed",
         anomalyReason: document.anomalyReason,
-        finalizedAt:
-          document.status === "processing" ? null : new Date(),
+        finalizedAt: document.status === "processing" ? null : new Date(),
       })
       .returning();
     const revision = requireDefined(revisions[0], "Expected inserted revision");
@@ -128,16 +127,16 @@ export async function activateTestSourceDocumentProjection(
       .from(schema.ledgerEntries)
       .where(eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId));
     for (const [position, entry] of entries.entries()) {
-      await tx.update(schema.ledgerEntries)
+      await tx
+        .update(schema.ledgerEntries)
         .set({ sourceDocumentRevisionId: revision.id })
         .where(eq(schema.ledgerEntries.id, entry.id));
-      await tx.insert(schema.revisionEntries)
-        .values({
-          ledgerId: document.ledgerId,
-          revisionId: revision.id,
-          ledgerEntryId: entry.id,
-          position,
-        });
+      await tx.insert(schema.revisionEntries).values({
+        ledgerId: document.ledgerId,
+        revisionId: revision.id,
+        ledgerEntryId: entry.id,
+        position,
+      });
     }
     for (const [position, _imageUrl] of (document.imageUrls ?? []).entries()) {
       const storedFileRows = await tx
@@ -152,15 +151,15 @@ export async function activateTestSourceDocumentProjection(
         })
         .returning();
       const storedFile = requireDefined(storedFileRows[0], "Expected inserted stored file");
-      await tx.insert(schema.revisionFiles)
-        .values({
-          ledgerId: document.ledgerId,
-          revisionId: revision.id,
-          storedFileId: storedFile.id,
-          position,
-        });
+      await tx.insert(schema.revisionFiles).values({
+        ledgerId: document.ledgerId,
+        revisionId: revision.id,
+        storedFileId: storedFile.id,
+        position,
+      });
     }
-    await tx.update(schema.sourceDocuments)
+    await tx
+      .update(schema.sourceDocuments)
       .set(
         revision.outcome === "completed"
           ? { activeRevisionId: revision.id, pendingRevisionId: null }

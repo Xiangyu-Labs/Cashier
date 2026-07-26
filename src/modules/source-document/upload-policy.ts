@@ -73,10 +73,7 @@ export type SupportedMimeType = (typeof SUPPORTED_MIME_TYPES)[number];
  * Validate a file upload request against basic policy limits.
  * Throws an Error with a descriptive message if the request violates any constraint.
  */
-export function validateFileUpload(file: {
-  contentType: string;
-  byteSize: number;
-}): void {
+export function validateFileUpload(file: { contentType: string; byteSize: number }): void {
   if (!SUPPORTED_MIME_SET.has(file.contentType)) {
     throw new ValidationError(`Unsupported content type: ${file.contentType}`);
   }
@@ -155,9 +152,7 @@ export function validateAggregateFileCount(
 ): void {
   const total = storedFileIdsCount + imageCount + originalImageCount;
   if (total > MAX_FILES) {
-    throw new ValidationError(
-      `Total file count ${total} exceeds maximum of ${MAX_FILES} files`
-    );
+    throw new ValidationError(`Total file count ${total} exceeds maximum of ${MAX_FILES} files`);
   }
 }
 
@@ -172,10 +167,7 @@ export function validateAggregateFileCount(
  *                   if no detection was possible.
  * @returns The canonical supported MIME type.
  */
-export function sanitizeMimeType(
-  declared: string,
-  detected: string | null
-): string {
+export function sanitizeMimeType(declared: string, detected: string | null): string {
   const detectedClean = detected?.toLowerCase() ?? "";
   const declaredClean = declared.toLowerCase();
 

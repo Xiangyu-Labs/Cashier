@@ -103,6 +103,8 @@ export async function handleApiV1Route(
     return await handler({ request, key, credential });
   } catch (error) {
     logError(logContext, error);
-    return NextResponse.json(toSanitizedErrorResponse(error), { status: getErrorStatusCode(error) });
+    return NextResponse.json(toSanitizedErrorResponse(error), {
+      status: getErrorStatusCode(error),
+    });
   }
 }

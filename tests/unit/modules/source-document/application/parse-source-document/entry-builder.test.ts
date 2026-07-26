@@ -73,7 +73,10 @@ describe("entry-builder", () => {
   });
 
   it("category_index 0 means no category — categoryId is null", async () => {
-    convertEntryAmountMock.mockResolvedValueOnce({ convertedAmount: "10.00", exchangeRate: "10.00" });
+    convertEntryAmountMock.mockResolvedValueOnce({
+      convertedAmount: "10.00",
+      exchangeRate: "10.00",
+    });
 
     const result = await buildEntriesForInsert({
       validEntries: [

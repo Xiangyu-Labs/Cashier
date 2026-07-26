@@ -57,15 +57,14 @@ export function useSourceDocumentDetailMutations({
 }: UseSourceDocumentDetailMutationsOptions) {
   const predicates = buildPredicates(ledgerId);
 
-  const { updateSourceDocMutation, deleteDocumentMutation } =
-    useSourceDocumentRecordMutations({
-      id,
-      ledgerId,
-      onClose,
-      sourceDocumentPredicates: predicates.sourceDocumentPredicates,
-      sourceDocumentSummaryPredicates: predicates.sourceDocumentSummaryPredicates,
-      sourceDocumentEntriesSummaryPredicates: predicates.sourceDocumentEntriesSummaryPredicates,
-    });
+  const { updateSourceDocMutation, deleteDocumentMutation } = useSourceDocumentRecordMutations({
+    id,
+    ledgerId,
+    onClose,
+    sourceDocumentPredicates: predicates.sourceDocumentPredicates,
+    sourceDocumentSummaryPredicates: predicates.sourceDocumentSummaryPredicates,
+    sourceDocumentEntriesSummaryPredicates: predicates.sourceDocumentEntriesSummaryPredicates,
+  });
 
   const { updateEntryMutation, batchUpdateMutation, deleteEntryMutation } =
     useSourceDocumentEntryMutations({

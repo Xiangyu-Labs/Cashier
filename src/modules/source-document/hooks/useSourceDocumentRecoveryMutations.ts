@@ -9,15 +9,10 @@ import {
   abandonSourceDocumentCandidateAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type {
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import {
-  applyOptimisticUpsert,
-  getStreamQueryMatches,
-} from "./source-document-optimistic-cache";
+import { applyOptimisticUpsert, getStreamQueryMatches } from "./source-document-optimistic-cache";
 import { notifyNewSubmission } from "./revision-state-refresh";
 
 interface UseSourceDocumentRecoveryMutationsOptions {

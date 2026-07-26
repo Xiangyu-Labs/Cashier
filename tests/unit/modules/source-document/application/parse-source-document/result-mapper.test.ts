@@ -39,7 +39,14 @@ describe("convertToParsedEntries", () => {
   it("folds a same-currency adjustment into the single matching entry", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 1, item_name: "Meal", amount: "10", currency: "USD", category_index: 1, notes: null },
+        {
+          receipt_index: 1,
+          item_name: "Meal",
+          amount: "10",
+          currency: "USD",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [
         { receipt_index: 1, item_name: "Discount", amount: "-2", currency: "USD" },
@@ -47,15 +54,41 @@ describe("convertToParsedEntries", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Meal", amount: "8.00", currency: "USD", isAdjustment: false });
+    expect(result[0]).toMatchObject({
+      itemName: "Meal",
+      amount: "8.00",
+      currency: "USD",
+      isAdjustment: false,
+    });
   });
 
   it("distributes adjustment proportionally across multiple entries", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "A", amount: "10", currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "B", amount: "20", currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "C", amount: "30", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "A",
+          amount: "10",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
+        {
+          receipt_index: 0,
+          item_name: "B",
+          amount: "20",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
+        {
+          receipt_index: 0,
+          item_name: "C",
+          amount: "30",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [
         { receipt_index: 0, item_name: "Service fee", amount: "-6", currency: "CNY" },
@@ -72,8 +105,22 @@ describe("convertToParsedEntries", () => {
   it("gives rounding remainder to last entry so total is preserved", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "X", amount: "10", currency: "CNY", category_index: 1, notes: null },
-        { receipt_index: 0, item_name: "Y", amount: "20", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "X",
+          amount: "10",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
+        {
+          receipt_index: 0,
+          item_name: "Y",
+          amount: "20",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [
         { receipt_index: 0, item_name: "Rounding", amount: "-0.1", currency: "CNY" },
@@ -81,7 +128,8 @@ describe("convertToParsedEntries", () => {
     });
 
     // Total = 30, adjustment = -0.1. Total should be 29.90
-    const total = Number.parseFloat(result[0]?.amount ?? "0") + Number.parseFloat(result[1]?.amount ?? "0");
+    const total =
+      Number.parseFloat(result[0]?.amount ?? "0") + Number.parseFloat(result[1]?.amount ?? "0");
     // 29.90 in exact decimal: should be 29.9 (both entries after rounding must sum to exactly 29.90)
     expect(total).toBeCloseTo(29.9, 10);
     expect(result).toHaveLength(2);
@@ -93,11 +141,16 @@ describe("convertToParsedEntries", () => {
     // receipt_index 0 has one CNY entry → adjustment folds in regardless of adj.currency value.
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: "10", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "Item",
+          amount: "10",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
-      orderAdjustments: [
-        { receipt_index: 0, item_name: "Fee", amount: "-1", currency: "USD" },
-      ],
+      orderAdjustments: [{ receipt_index: 0, item_name: "Fee", amount: "-1", currency: "USD" }],
     });
 
     expect(result).toHaveLength(1);
@@ -108,7 +161,14 @@ describe("convertToParsedEntries", () => {
     // receipt_index: 1 has no ledger entries → adjustment is silently dropped.
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: "10", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "Item",
+          amount: "10",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [
         { receipt_index: 1, item_name: "Discount", amount: "-2", currency: "CNY" },
@@ -123,7 +183,14 @@ describe("convertToParsedEntries", () => {
   it("returns entries unchanged when there are no adjustments", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Tea", amount: "5", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "Tea",
+          amount: "5",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [],
     });
@@ -135,7 +202,14 @@ describe("convertToParsedEntries", () => {
   it("aggregates multiple adjustments before distributing", () => {
     const result = convertToParsedEntries({
       ledgerEntries: [
-        { receipt_index: 0, item_name: "Item", amount: "100", currency: "CNY", category_index: 1, notes: null },
+        {
+          receipt_index: 0,
+          item_name: "Item",
+          amount: "100",
+          currency: "CNY",
+          category_index: 1,
+          notes: null,
+        },
       ],
       orderAdjustments: [
         { receipt_index: 0, item_name: "Discount", amount: "-10", currency: "CNY" },

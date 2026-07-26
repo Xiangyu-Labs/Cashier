@@ -62,9 +62,7 @@ export function useSourceDocumentInputDraft({
     openImage: (index: number) => setSelectedImageIndex(index),
     closeImage: () => setSelectedImageIndex(null),
     removeImage: (index: number) =>
-      setImages((previousImages) =>
-        previousImages.filter((_, imageIndex) => imageIndex !== index)
-      ),
+      setImages((previousImages) => previousImages.filter((_, imageIndex) => imageIndex !== index)),
     canSubmit: text !== "" || images.length > 0,
     isInitializing,
   };

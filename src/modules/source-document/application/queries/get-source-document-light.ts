@@ -71,9 +71,5 @@ export async function getSourceDocumentLightForLedger(
   ]);
   if (document == null) return null;
 
-  return toLightDto(
-    document,
-    entriesByDocId.get(document.id) ?? [],
-    document.hasImages ?? false
-  );
+  return toLightDto(document, entriesByDocId.get(document.id) ?? [], document.hasImages ?? false);
 }

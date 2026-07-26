@@ -71,13 +71,7 @@ vi.mock("@/modules/ledger/ui/ExportSection", () => ({
 }));
 
 vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
-  CollapsibleSection: ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
+  CollapsibleSection: ({ title, children }: { title: string; children: React.ReactNode }) => (
     <section>
       <h2>{title}</h2>
       {children}
@@ -95,15 +89,26 @@ describe("SettingsTab account authentication controls", () => {
       metadata: { settings: {} },
     } as unknown as Ledger;
 
-    render(<SettingsTab ledger={ledger} initialCategories={[]} ledgerId="ledger-1" userEmail="person@example.com" />);
+    render(
+      <SettingsTab
+        ledger={ledger}
+        initialCategories={[]}
+        ledgerId="ledger-1"
+        userEmail="person@example.com"
+      />
+    );
 
     // Required: email and sign-out command
     expect(screen.getAllByText("person@example.com").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: /sign out|退出登录/i })).toBeInTheDocument();
 
     // Retired commands must be absent
-    expect(screen.queryByRole("button", { name: /change email|修改邮箱/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /change email|修改邮箱/i })
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /clear data|清空数据/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /delete account|删除账户/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /delete account|删除账户/i })
+    ).not.toBeInTheDocument();
   });
 });

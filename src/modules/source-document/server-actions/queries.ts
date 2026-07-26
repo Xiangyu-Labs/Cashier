@@ -97,10 +97,7 @@ export const getSourceDocumentFullAction = withLedgerAccess(
  * Uses the unified keyset cursor format v1|entryDate|createdAt|id.
  */
 export const listStreamPageAction = withLedgerAccess(
-  async (
-    ledgerId: string,
-    params: unknown
-  ): Promise<StreamPage> => {
+  async (ledgerId: string, params: unknown): Promise<StreamPage> => {
     const parsed = streamPageInputSchema.safeParse(params);
     if (!parsed.success) {
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });

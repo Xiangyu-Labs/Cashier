@@ -108,14 +108,10 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
     conditions.push(inArray(derivedStatusExpression(), [...input.statuses]));
   }
   if (input.startDate != null && input.startDate !== "") {
-    conditions.push(
-      sql`${EFFECTIVE_DATE} >= ${input.startDate}`
-    );
+    conditions.push(sql`${EFFECTIVE_DATE} >= ${input.startDate}`);
   }
   if (input.endDate != null && input.endDate !== "") {
-    conditions.push(
-      sql`${EFFECTIVE_DATE} <= ${input.endDate}`
-    );
+    conditions.push(sql`${EFFECTIVE_DATE} <= ${input.endDate}`);
   }
   if (input.minAmount !== undefined || input.maxAmount !== undefined) {
     const totalAmount = sql<string>`COALESCE((
@@ -426,9 +422,7 @@ async function loadCandidateComparisonMap(
   if (candidatePairs.length === 0) return new Map();
 
   const allRevisionIds = [
-    ...new Set(
-      candidatePairs.flatMap((p) => [p.activeRevisionId, p.pendingRevisionId])
-    ),
+    ...new Set(candidatePairs.flatMap((p) => [p.activeRevisionId, p.pendingRevisionId])),
   ];
 
   const entries = await db
@@ -512,11 +506,7 @@ async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: bo
     .select()
     .from(sourceDocuments)
     .where(and(...conditions))
-    .orderBy(
-      desc(EFFECTIVE_DATE),
-      desc(sourceDocuments.createdAt),
-      desc(sourceDocuments.id)
-    )
+    .orderBy(desc(EFFECTIVE_DATE), desc(sourceDocuments.createdAt), desc(sourceDocuments.id))
     .limit(input.limit + 1);
 }
 

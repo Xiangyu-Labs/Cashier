@@ -138,7 +138,9 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(new Error("DB error"));
+      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(
+        new Error("DB error")
+      );
 
       const result = await checkResendCooldown("test@example.com");
       expect(result.allowed).toBe(true);
@@ -185,7 +187,9 @@ describe("OTP Rate Limiting", () => {
     });
 
     it("should fail open on error", async () => {
-      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(new Error("DB error"));
+      vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(
+        new Error("DB error")
+      );
 
       const result = await getCanResendAt("test@example.com");
       expect(result).toBeNull();

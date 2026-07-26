@@ -1,7 +1,4 @@
-import type {
-  SourceDocumentListItemDto,
-  SourceDocumentLedgerEntryDto,
-} from "./contracts";
+import type { SourceDocumentListItemDto, SourceDocumentLedgerEntryDto } from "./contracts";
 
 /**
  * Stream grouping — pure presentation model that groups consecutive server-ordered

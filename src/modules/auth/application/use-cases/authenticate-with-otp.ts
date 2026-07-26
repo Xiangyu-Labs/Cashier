@@ -64,12 +64,15 @@ function validateCredentials(email: string, otp: string): string {
   return normalizedEmail;
 }
 
-export async function authenticateWithOTP(params: {
-  email: string;
-  otp: string;
-  locale?: string;
-  requestHeaders: HeadersLike;
-}, userAccounts: UserAccountPort = currentApplication.userAccounts): Promise<User> {
+export async function authenticateWithOTP(
+  params: {
+    email: string;
+    otp: string;
+    locale?: string;
+    requestHeaders: HeadersLike;
+  },
+  userAccounts: UserAccountPort = currentApplication.userAccounts
+): Promise<User> {
   const normalizedEmail = validateCredentials(params.email, params.otp);
   const locale = params.locale ?? "zh";
 

@@ -15,10 +15,7 @@ import { LEDGER } from "@/lib/constants";
 import { type PeriodParams } from "@/lib/period-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-import {
-  getLedgerAction,
-  getEntryCategoriesAction,
-} from "@/modules/ledger/actions";
+import { getLedgerAction, getEntryCategoriesAction } from "@/modules/ledger/actions";
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
 import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
@@ -38,10 +35,9 @@ const DetailsTab = dynamic(
   { loading: () => <DetailsTabSkeleton /> }
 );
 
-const StatsTab = dynamic(
-  () => import("@/modules/workspace/ui/StatsTab").then((m) => m.StatsTab),
-  { loading: () => <StatsTabSkeleton /> }
-);
+const StatsTab = dynamic(() => import("@/modules/workspace/ui/StatsTab").then((m) => m.StatsTab), {
+  loading: () => <StatsTabSkeleton />,
+});
 
 const SettingsTab = dynamic(
   () => import("@/modules/ledger/ui/SettingsTab").then((m) => m.SettingsTab),
@@ -50,11 +46,17 @@ const SettingsTab = dynamic(
 
 // Keep dynamic imports for dialog-only components that aren't on the default path
 const SourceDocumentInput = dynamic(
-  () => import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({ default: m.SourceDocumentInput })),
+  () =>
+    import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({
+      default: m.SourceDocumentInput,
+    })),
   { ssr: false }
 );
 const QuickEntryForm = dynamic(
-  () => import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({ default: m.QuickEntryForm })),
+  () =>
+    import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({
+      default: m.QuickEntryForm,
+    })),
   { ssr: false }
 );
 
@@ -109,11 +111,12 @@ export function LedgerPageClient({
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset } = usePeriodFilter({
-    pathname,
-    searchParams,
-    initialPeriod,
-  });
+  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset } =
+    usePeriodFilter({
+      pathname,
+      searchParams,
+      initialPeriod,
+    });
 
   const advancedFilters = filterParams;
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
@@ -135,13 +138,8 @@ export function LedgerPageClient({
     };
   }, [ledgerId, queryClient]);
 
-  const {
-    isInputOpen,
-    setIsInputOpen,
-    inputMode,
-    setInputMode,
-    handleInputDialogChange,
-  } = useLedgerDialogState();
+  const { isInputOpen, setIsInputOpen, inputMode, setInputMode, handleInputDialogChange } =
+    useLedgerDialogState();
 
   // Wire the real new-record handler into the shell once this component mounts.
   const { setOpenInput } = useShellController();
@@ -179,7 +177,11 @@ export function LedgerPageClient({
 
       {activeTab === "details" && (
         <div className="mt-0">
-          <DeferredFeatureMessages feature="details" locale={locale} fallback={<DetailsTabSkeleton />}>
+          <DeferredFeatureMessages
+            feature="details"
+            locale={locale}
+            fallback={<DetailsTabSkeleton />}
+          >
             <DetailsTab
               ledgerId={ledgerId}
               categories={categories.length > 0 ? categories : []}
@@ -208,7 +210,11 @@ export function LedgerPageClient({
 
       {activeTab === "settings" && (
         <div className="mt-0">
-          <DeferredFeatureMessages feature="settings" locale={locale} fallback={<SettingsTabSkeleton />}>
+          <DeferredFeatureMessages
+            feature="settings"
+            locale={locale}
+            fallback={<SettingsTabSkeleton />}
+          >
             <SettingsTab
               ledgerId={ledgerId}
               ledger={ledger}

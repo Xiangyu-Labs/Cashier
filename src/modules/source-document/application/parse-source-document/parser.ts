@@ -10,14 +10,8 @@
 
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import {
-  isSuccessfulLoadImageResult,
-  loadStoredFilesForAI,
-} from "@/lib/storage/utils";
-import type {
-  AiContextContract,
-  AiMessageContentPart as AIMessageContentPart,
-} from "./contracts";
+import { isSuccessfulLoadImageResult, loadStoredFilesForAI } from "@/lib/storage/utils";
+import type { AiContextContract, AiMessageContentPart as AIMessageContentPart } from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 
 export interface ParserInput {

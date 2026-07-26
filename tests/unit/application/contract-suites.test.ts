@@ -1,4 +1,7 @@
-import { applicationContractSuite, type ApplicationContractHarness } from "../../helpers/application-contract-suites";
+import {
+  applicationContractSuite,
+  type ApplicationContractHarness,
+} from "../../helpers/application-contract-suites";
 import {
   supportedSourceDocumentActions,
   type AuthorizedFileReadContract,
@@ -30,15 +33,20 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
     createdAt: "2026-07-13T00:00:00.000Z",
   };
   const filePort: StoredFilePort = {
-    async createUploadPlan() { return plan; },
+    async createUploadPlan() {
+      return plan;
+    },
     async finalizeUpload(input: UploadFinalizationContract) {
-      if (input.uploadSessionId !== plan.id || input.finalizationToken !== plan.finalizationToken) return [];
+      if (input.uploadSessionId !== plan.id || input.finalizationToken !== plan.finalizationToken)
+        return [];
       files.set(storedFile.id, storedFile);
       return [storedFile];
     },
     async readAuthorized(ledgerId, fileId): Promise<AuthorizedFileReadContract | null> {
       const file = files.get(fileId);
-      return file != null && file.ownerLedgerId === ledgerId ? { file, body: new Uint8Array([1, 2, 3]) } : null;
+      return file != null && file.ownerLedgerId === ledgerId
+        ? { file, body: new Uint8Array([1, 2, 3]) }
+        : null;
     },
   };
 
@@ -52,7 +60,9 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
     },
     files: filePort,
     processing: {
-      async dispatch(intent: ProcessingIntentContract) { dispatched.add(intent.id); },
+      async dispatch(intent: ProcessingIntentContract) {
+        dispatched.add(intent.id);
+      },
       async claim(intentId) {
         if (!dispatched.has(intentId)) return null;
         return {
@@ -74,15 +84,22 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
       },
     },
     plan: () => filePort.createUploadPlan("ledger-1"),
-    finalize: (currentPlan) => filePort.finalizeUpload({
-      uploadSessionId: currentPlan.id,
-      finalizationToken: currentPlan.finalizationToken,
-      targetIds: ["target-1"],
-    }),
+    finalize: (currentPlan) =>
+      filePort.finalizeUpload({
+        uploadSessionId: currentPlan.id,
+        finalizationToken: currentPlan.finalizationToken,
+        targetIds: ["target-1"],
+      }),
     read: (file) => filePort.readAuthorized("ledger-1", file.id),
-    dispatch: (intent) => dispatched.has(intent.id) ? Promise.resolve() : Promise.resolve(dispatched.add(intent.id)).then(() => undefined),
+    dispatch: (intent) =>
+      dispatched.has(intent.id)
+        ? Promise.resolve()
+        : Promise.resolve(dispatched.add(intent.id)).then(() => undefined),
     completions: () => [...completed.values()],
   };
 }
 
-applicationContractSuite("current SQLite/local-file/in-process contract composition", createCurrentRuntimeHarness);
+applicationContractSuite(
+  "current SQLite/local-file/in-process contract composition",
+  createCurrentRuntimeHarness
+);

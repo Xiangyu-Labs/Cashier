@@ -31,13 +31,7 @@ interface SettingsTabProps {
   userEmail?: string;
 }
 
-
-export function SettingsTab({
-  ledger,
-  initialCategories,
-  ledgerId,
-  userEmail,
-}: SettingsTabProps) {
+export function SettingsTab({ ledger, initialCategories, ledgerId, userEmail }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
@@ -88,7 +82,10 @@ export function SettingsTab({
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="mx-auto max-w-4xl space-y-4">
-        <SettingsSection title={t("appearanceAndLanguage")} description={t("appearanceAndLanguageDesc")}>
+        <SettingsSection
+          title={t("appearanceAndLanguage")}
+          description={t("appearanceAndLanguageDesc")}
+        >
           <SettingsField title={t("theme")} description={t("themeDescription")}>
             <div className="flex w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-1 sm:w-auto">
               {(["system", "light", "dark"] as const).map((tName) => (

@@ -11,10 +11,7 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import {
-  lockLedgerForUpdate,
-  lockSourceDocumentForUpdate,
-} from "./transaction-locks";
+import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
 
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
@@ -53,8 +50,7 @@ async function assertCategoryOwnership(
         inArray(entryCategories.id, categoryIds),
         isNull(entryCategories.deletedAt)
       )
-    )
-    ;
+    );
   if (owned.length !== categoryIds.length) {
     throw new NotFoundError("Entry category");
   }
@@ -71,30 +67,26 @@ async function insertRevisionEntries(
 ): Promise<void> {
   for (const [position, entry] of input.entries.entries()) {
     const ledgerEntryId = entry.id ?? crypto.randomUUID();
-    await tx.insert(ledgerEntries)
-      .values({
-        id: ledgerEntryId,
-        ledgerId: input.ledgerId,
-        sourceDocumentId: input.sourceDocumentId,
-        sourceDocumentRevisionId: input.revisionId,
-        categoryId: entry.categoryId,
-        amount: entry.amount,
-        currency: entry.currency,
-        itemName: entry.itemName,
-        description: entry.description,
-        convertedAmount: entry.convertedAmount,
-        exchangeRate: entry.exchangeRate,
-        ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-      })
-      ;
-    await tx.insert(revisionEntries)
-      .values({
-        ledgerId: input.ledgerId,
-        revisionId: input.revisionId,
-        ledgerEntryId,
-        position,
-      })
-      ;
+    await tx.insert(ledgerEntries).values({
+      id: ledgerEntryId,
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.sourceDocumentId,
+      sourceDocumentRevisionId: input.revisionId,
+      categoryId: entry.categoryId,
+      amount: entry.amount,
+      currency: entry.currency,
+      itemName: entry.itemName,
+      description: entry.description,
+      convertedAmount: entry.convertedAmount,
+      exchangeRate: entry.exchangeRate,
+      ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+    });
+    await tx.insert(revisionEntries).values({
+      ledgerId: input.ledgerId,
+      revisionId: input.revisionId,
+      ledgerEntryId,
+      position,
+    });
   }
 }
 
@@ -110,7 +102,8 @@ async function replaceProjection(
   assertEntryValues(input.entries);
   await assertCategoryOwnership(tx, input.ledgerId, input.entries);
   const now = new Date();
-  await tx.update(ledgerEntries)
+  await tx
+    .update(ledgerEntries)
     .set({ deletedAt: now, updatedAt: now })
     .where(
       and(
@@ -118,35 +111,30 @@ async function replaceProjection(
         eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
         isNull(ledgerEntries.deletedAt)
       )
-    )
-    ;
+    );
 
   for (const [position, entry] of input.entries.entries()) {
     const ledgerEntryId = entry.id ?? crypto.randomUUID();
-    await tx.insert(ledgerEntries)
-      .values({
-        id: ledgerEntryId,
-        ledgerId: input.ledgerId,
-        sourceDocumentId: input.sourceDocumentId,
-        sourceDocumentRevisionId: input.revisionId,
-        categoryId: entry.categoryId,
-        amount: entry.amount,
-        currency: entry.currency,
-        itemName: entry.itemName,
-        description: entry.description,
-        convertedAmount: entry.convertedAmount,
-        exchangeRate: entry.exchangeRate,
-        ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-      })
-      ;
-    await tx.insert(revisionEntries)
-      .values({
-        ledgerId: input.ledgerId,
-        revisionId: input.revisionId,
-        ledgerEntryId,
-        position,
-      })
-      ;
+    await tx.insert(ledgerEntries).values({
+      id: ledgerEntryId,
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.sourceDocumentId,
+      sourceDocumentRevisionId: input.revisionId,
+      categoryId: entry.categoryId,
+      amount: entry.amount,
+      currency: entry.currency,
+      itemName: entry.itemName,
+      description: entry.description,
+      convertedAmount: entry.convertedAmount,
+      exchangeRate: entry.exchangeRate,
+      ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+    });
+    await tx.insert(revisionEntries).values({
+      ledgerId: input.ledgerId,
+      revisionId: input.revisionId,
+      ledgerEntryId,
+      position,
+    });
   }
 }
 
@@ -180,10 +168,7 @@ export async function storeCandidateRevision(
         )
       )
       .then((rows) => rows[0]);
-    if (
-      revision == null ||
-      revision.outcome !== "processing"
-    ) {
+    if (revision == null || revision.outcome !== "processing") {
       return false;
     }
 
@@ -191,16 +176,16 @@ export async function storeCandidateRevision(
     assertEntryValues(entries);
     await assertCategoryOwnership(tx, ledgerId, entries);
     await insertRevisionEntries(tx, { ledgerId, sourceDocumentId, revisionId, entries });
-    await tx.update(sourceDocumentRevisions)
+    await tx
+      .update(sourceDocumentRevisions)
       .set({ outcome: "completed", finalizedAt: now, anomalyReason: null, failureCode: null })
-      .where(eq(sourceDocumentRevisions.id, revisionId))
-      ;
+      .where(eq(sourceDocumentRevisions.id, revisionId));
     // Do NOT update activeRevisionId or clear pendingRevisionId
     if (title != null && title !== "") {
-      await tx.update(sourceDocuments)
+      await tx
+        .update(sourceDocuments)
         .set({ title, updatedAt: now })
-        .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-        ;
+        .where(activeDocumentWhere(ledgerId, sourceDocumentId));
     }
     return true;
   });
@@ -253,7 +238,8 @@ export async function acceptCandidateRevision(
 
     const now = new Date();
     // Soft-delete the old active revision's entries (safe: lock guards against concurrent mutation)
-    await tx.update(ledgerEntries)
+    await tx
+      .update(ledgerEntries)
       .set({ deletedAt: now, updatedAt: now })
       .where(
         and(
@@ -262,13 +248,13 @@ export async function acceptCandidateRevision(
           eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
           isNull(ledgerEntries.deletedAt)
         )
-      )
-      ;
+      );
 
     // Update document pointers with a final CAS check.
     // With the source-document lock this should always succeed, but the guard catches
     // programming errors and ensures the transaction rolls back on failure.
-    const updated = await tx.update(sourceDocuments)
+    const updated = await tx
+      .update(sourceDocuments)
       .set({
         activeRevisionId: candidateRevisionId,
         pendingRevisionId: null,
@@ -326,9 +312,7 @@ export async function abandonCandidateRevision(
 
     // Re-read pointers inside the lock — reject stale CAS on the spot.
     if (document.pendingRevisionId !== candidateRevisionId) {
-      throw new ConflictError(
-        "Cannot abandon candidate: pending revision does not match"
-      );
+      throw new ConflictError("Cannot abandon candidate: pending revision does not match");
     }
 
     const revision = await tx
@@ -350,7 +334,8 @@ export async function abandonCandidateRevision(
     const now = new Date();
     // Mark the revision as abandoned (safe: lock guards against concurrent mutation).
     // CAS: only update if outcome is still "completed".
-    const revisionUpdated = await tx.update(sourceDocumentRevisions)
+    const revisionUpdated = await tx
+      .update(sourceDocumentRevisions)
       .set({ outcome: "abandoned", finalizedAt: now })
       .where(
         and(
@@ -366,7 +351,8 @@ export async function abandonCandidateRevision(
 
     // Clear the pending pointer. With the source-document lock this should always succeed,
     // but the WHERE guard catches programming errors and ensures rollback.
-    const documentUpdated = await tx.update(sourceDocuments)
+    const documentUpdated = await tx
+      .update(sourceDocuments)
       .set({ pendingRevisionId: null, updatedAt: now })
       .where(
         and(
@@ -410,8 +396,7 @@ async function replaceManualProjection(
         eq(ledgerEntries.sourceDocumentRevisionId, input.previousRevisionId),
         isNull(ledgerEntries.deletedAt)
       )
-    )
-    ;
+    );
   const previousById = new Map(previousEntries.map((entry) => [entry.id, entry]));
   for (const id of requestedIds) {
     if (previousById.has(id)) continue;
@@ -439,27 +424,25 @@ async function replaceManualProjection(
     if (link == null) throw new ConflictError("Manual revision projection is incomplete");
 
     const archivedId = crypto.randomUUID();
-    await tx.insert(ledgerEntries)
-      .values({
-        ...previous,
-        id: archivedId,
-        deletedAt: now,
-        updatedAt: now,
-      })
-      ;
-    await tx.update(revisionEntries)
+    await tx.insert(ledgerEntries).values({
+      ...previous,
+      id: archivedId,
+      deletedAt: now,
+      updatedAt: now,
+    });
+    await tx
+      .update(revisionEntries)
       .set({ ledgerEntryId: archivedId })
-      .where(eq(revisionEntries.id, link.id))
-      ;
+      .where(eq(revisionEntries.id, link.id));
   }
 
   const retainedIds = new Set(requestedIds);
   for (const previous of previousEntries) {
     if (!retainedIds.has(previous.id)) {
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, previous.id)))
-        ;
+        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, previous.id)));
     }
   }
 
@@ -467,24 +450,23 @@ async function replaceManualProjection(
     const existing = entry.id == null ? null : (previousById.get(entry.id) ?? null);
     const ledgerEntryId = existing?.id ?? entry.id ?? crypto.randomUUID();
     if (existing == null) {
-      await tx.insert(ledgerEntries)
-        .values({
-          id: ledgerEntryId,
-          ledgerId: input.ledgerId,
-          sourceDocumentId: input.sourceDocumentId,
-          sourceDocumentRevisionId: input.revisionId,
-          categoryId: entry.categoryId,
-          amount: entry.amount,
-          currency: entry.currency,
-          itemName: entry.itemName,
-          description: entry.description,
-          convertedAmount: entry.convertedAmount,
-          exchangeRate: entry.exchangeRate,
-          ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-        })
-        ;
+      await tx.insert(ledgerEntries).values({
+        id: ledgerEntryId,
+        ledgerId: input.ledgerId,
+        sourceDocumentId: input.sourceDocumentId,
+        sourceDocumentRevisionId: input.revisionId,
+        categoryId: entry.categoryId,
+        amount: entry.amount,
+        currency: entry.currency,
+        itemName: entry.itemName,
+        description: entry.description,
+        convertedAmount: entry.convertedAmount,
+        exchangeRate: entry.exchangeRate,
+        ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+      });
     } else {
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({
           sourceDocumentRevisionId: input.revisionId,
           categoryId: entry.categoryId,
@@ -497,17 +479,16 @@ async function replaceManualProjection(
           deletedAt: null,
           updatedAt: now,
         })
-        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, ledgerEntryId)))
-        ;
+        .where(
+          and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, ledgerEntryId))
+        );
     }
-    await tx.insert(revisionEntries)
-      .values({
-        ledgerId: input.ledgerId,
-        revisionId: input.revisionId,
-        ledgerEntryId,
-        position,
-      })
-      ;
+    await tx.insert(revisionEntries).values({
+      ledgerId: input.ledgerId,
+      revisionId: input.revisionId,
+      ledgerEntryId,
+      position,
+    });
   }
 }
 
@@ -580,21 +561,20 @@ export async function ensureTargetLedgerProjection(
           eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
           isNull(ledgerEntries.deletedAt)
         )
-      )
-      ;
+      );
     for (const [position, entry] of entries.entries()) {
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ sourceDocumentRevisionId: revision.id, updatedAt: new Date() })
-        .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)))
-        ;
-      await tx.insert(revisionEntries)
-        .values({ ledgerId, revisionId: revision.id, ledgerEntryId: entry.id, position })
-        ;
+        .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)));
+      await tx
+        .insert(revisionEntries)
+        .values({ ledgerId, revisionId: revision.id, ledgerEntryId: entry.id, position });
     }
-    await tx.update(sourceDocuments)
+    await tx
+      .update(sourceDocuments)
       .set({ activeRevisionId: revision.id, pendingRevisionId: null, updatedAt: new Date() })
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-      ;
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId));
     return revision.id;
   });
 }
@@ -611,17 +591,14 @@ async function copyRevisionFiles(
         eq(revisionFiles.ledgerId, input.ledgerId),
         eq(revisionFiles.revisionId, input.fromRevisionId)
       )
-    )
-    ;
+    );
   for (const file of files) {
-    await tx.insert(revisionFiles)
-      .values({
-        ledgerId: input.ledgerId,
-        revisionId: input.toRevisionId,
-        storedFileId: file.storedFileId,
-        position: file.position,
-      })
-      ;
+    await tx.insert(revisionFiles).values({
+      ledgerId: input.ledgerId,
+      revisionId: input.toRevisionId,
+      storedFileId: file.storedFileId,
+      position: file.position,
+    });
   }
 }
 
@@ -654,28 +631,25 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           )
         )
         .then((rows) => rows[0]);
-      if (
-        revision == null ||
-        revision.outcome !== "processing"
-      ) {
+      if (revision == null || revision.outcome !== "processing") {
         return false;
       }
 
       await replaceProjection(tx, input);
       const now = new Date();
-      await tx.update(sourceDocumentRevisions)
+      await tx
+        .update(sourceDocumentRevisions)
         .set({ outcome: "completed", finalizedAt: now, anomalyReason: null, failureCode: null })
-        .where(eq(sourceDocumentRevisions.id, input.revisionId))
-        ;
-      await tx.update(sourceDocuments)
+        .where(eq(sourceDocumentRevisions.id, input.revisionId));
+      await tx
+        .update(sourceDocuments)
         .set({
           activeRevisionId: input.revisionId,
           pendingRevisionId: null,
           ...(input.title == null || input.title === "" ? {} : { title: input.title }),
           updatedAt: now,
         })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        ;
+        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
       return true;
     });
   },
@@ -694,15 +668,13 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .where(eq(sourceDocuments.id, sourceDocumentId))
         .then((rows) => rows[0]);
       if (existing != null) throw new ConflictError("Source document already exists");
-      await tx.insert(sourceDocuments)
-        .values({
-          id: sourceDocumentId,
-          ledgerId: input.ledgerId,
-          title: input.title ?? null,
-          type: "manual",
-          entryDate: input.entryDate ?? null,
-        })
-        ;
+      await tx.insert(sourceDocuments).values({
+        id: sourceDocumentId,
+        ledgerId: input.ledgerId,
+        title: input.title ?? null,
+        type: "manual",
+        entryDate: input.entryDate ?? null,
+      });
       const revision = await createCompletedRevision(tx, {
         ledgerId: input.ledgerId,
         sourceDocumentId,
@@ -714,17 +686,21 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         revisionId: revision.id,
         entries: input.entries,
       });
-      await tx.update(sourceDocuments)
+      await tx
+        .update(sourceDocuments)
         .set({ activeRevisionId: revision.id, pendingRevisionId: null })
-        .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
-        ;
+        .where(activeDocumentWhere(input.ledgerId, sourceDocumentId));
       return { sourceDocumentId, revisionId: revision.id };
     });
   },
 
   async replaceManual(input) {
     return db.transaction(async (tx) => {
-      const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
+      const document = await lockSourceDocumentForUpdate(
+        tx,
+        input.ledgerId,
+        input.sourceDocumentId
+      );
       if (document.type !== "manual" || document.activeRevisionId == null) {
         throw new ConflictError("Source document is not an active manual entry");
       }
@@ -752,7 +728,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         previousRevisionId: document.activeRevisionId,
         revisionId: revision.id,
       });
-      await tx.update(sourceDocuments)
+      await tx
+        .update(sourceDocuments)
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
@@ -760,15 +737,18 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
           updatedAt: new Date(),
         })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        ;
+        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
       return revision.id;
     });
   },
 
   async replaceActive(input) {
     return db.transaction(async (tx) => {
-      const document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
+      const document = await lockSourceDocumentForUpdate(
+        tx,
+        input.ledgerId,
+        input.sourceDocumentId
+      );
       if (
         document.activeRevisionId == null ||
         document.activeRevisionId !== input.expectedActiveRevisionId
@@ -787,10 +767,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
             )
           )
           .then((rows) => rows[0]);
-        if (
-          pending?.outcome === "processing" ||
-          pending?.outcome === "completed"
-        ) {
+        if (pending?.outcome === "processing" || pending?.outcome === "completed") {
           throw new ConflictError("Source document has processing work");
         }
       }
@@ -824,14 +801,14 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         previousRevisionId: document.activeRevisionId,
         revisionId: revision.id,
       });
-      await tx.update(sourceDocuments)
+      await tx
+        .update(sourceDocuments)
         .set({
           activeRevisionId: revision.id,
           pendingRevisionId: null,
           updatedAt: new Date(),
         })
-        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
-        ;
+        .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
       return revision.id;
     });
   },
@@ -865,7 +842,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           )
           .then((rows) => rows[0]);
         if (active == null) throw new NotFoundError("Active ledger entry projection");
-        await tx.update(ledgerEntries)
+        await tx
+          .update(ledgerEntries)
           .set({
             convertedAmount: update.convertedAmount,
             exchangeRate: update.exchangeRate,
@@ -876,8 +854,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
               eq(ledgerEntries.ledgerId, input.ledgerId),
               eq(ledgerEntries.id, update.ledgerEntryId)
             )
-          )
-          ;
+          );
       }
       return input.updates.length;
     });
@@ -901,7 +878,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .where(activeDocumentWhere(ledgerId, sourceDocumentId))
         .returning({ id: sourceDocuments.id });
       if (deleted.length === 0) return false;
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ deletedAt: now, updatedAt: now })
         .where(
           and(
@@ -909,8 +887,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
             eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
             isNull(ledgerEntries.deletedAt)
           )
-        )
-        ;
+        );
       return true;
     });
   },

@@ -122,9 +122,7 @@ describe("getLedgerPageBootstrap", () => {
     // requireLedgerAccess should NOT have been called when ledgerDto is provided
     expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     // The DTO should be seeded into the dehydrated state
-    const ledgersQuery = result?.dehydratedState.queries.find(
-      (q) => q.queryKey[0] === "ledger"
-    );
+    const ledgersQuery = result?.dehydratedState.queries.find((q) => q.queryKey[0] === "ledger");
     expect(ledgersQuery).toBeDefined();
     expect(ledgersQuery?.state.data).toEqual(preAuthDto);
   });

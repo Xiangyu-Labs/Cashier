@@ -3,16 +3,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  invalidateSourceDocumentCounts,
-} from "@/lib/query-keys";
+import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import {
   createSourceDocumentAction,
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import {
-  getLedgerTransactionManager,
-} from "@/lib/mutations/cache-transaction";
+import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import type {
   CreateSourceDocumentResponseDto,
   SourceDocumentListItemDto,
@@ -27,10 +23,7 @@ import {
   uploadSourceDocumentSubmissionImages,
 } from "./source-document-submission-upload";
 import { notifyNewSubmission } from "./revision-state-refresh";
-import {
-  applyOptimisticUpsert,
-  getStreamQueryMatches,
-} from "./source-document-optimistic-cache";
+import { applyOptimisticUpsert, getStreamQueryMatches } from "./source-document-optimistic-cache";
 import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
@@ -241,14 +234,14 @@ export function useSourceDocumentSubmitMutations({
       );
     },
     onMutate: async (_variables: RetryVariables) => {
-
       // Start transaction operation
       const op = manager.startOperation(ledgerId);
 
       // C3: Capture current entity from stream cache for rollback
-      const prevEntity = sourceDocumentId != null
-        ? captureCurrentEntity(queryClient, ledgerId, sourceDocumentId)
-        : null;
+      const prevEntity =
+        sourceDocumentId != null
+          ? captureCurrentEntity(queryClient, ledgerId, sourceDocumentId)
+          : null;
 
       const placeholder: SourceDocumentListItemDto = {
         id: sourceDocumentId ?? "",

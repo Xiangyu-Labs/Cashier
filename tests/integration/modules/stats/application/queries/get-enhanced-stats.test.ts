@@ -414,9 +414,7 @@ describe("getEnhancedStatsQuery", () => {
     expect(result.categories).toHaveLength(2);
 
     const primaryCategory = result.categories.find((c) => c.id === categoryId);
-    const secondaryCategory = result.categories.find(
-      (c) => c.id === secondCategoryId
-    );
+    const secondaryCategory = result.categories.find((c) => c.id === secondCategoryId);
     expect(primaryCategory).toBeDefined();
     expect(secondaryCategory).toBeDefined();
 

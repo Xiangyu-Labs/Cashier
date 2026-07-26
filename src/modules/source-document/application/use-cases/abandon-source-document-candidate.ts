@@ -21,9 +21,11 @@ interface AbandonCandidateInput {
  *
  * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
-export async function abandonSourceDocumentCandidate(
-  { ledgerId, sourceDocumentId, revisionId }: AbandonCandidateInput
-): Promise<AbandonCandidateResponseDto> {
+export async function abandonSourceDocumentCandidate({
+  ledgerId,
+  sourceDocumentId,
+  revisionId,
+}: AbandonCandidateInput): Promise<AbandonCandidateResponseDto> {
   await abandonCandidateRevision(ledgerId, sourceDocumentId, revisionId);
 
   return {

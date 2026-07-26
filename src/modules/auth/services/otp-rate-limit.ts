@@ -41,7 +41,10 @@ export async function checkSendRateLimit(email: string): Promise<{
 
     if (!result.success) {
       const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
-      logger.warn({ email, attempts: sendMaxAttempts + 1 }, "OTP send rate limit exceeded for email");
+      logger.warn(
+        { email, attempts: sendMaxAttempts + 1 },
+        "OTP send rate limit exceeded for email"
+      );
       return {
         allowed: false,
         remainingAttempts: 0,
@@ -149,7 +152,11 @@ export async function checkVerifyRateLimit(ip: string): Promise<boolean> {
     const key = `${OTP_VERIFY_PREFIX}${ip}`;
     const verifyMaxAttempts = getVerifyMaxAttempts();
 
-    const result = await postgresRateLimiter.increment(key, verifyMaxAttempts, VERIFY_WINDOW_SECONDS);
+    const result = await postgresRateLimiter.increment(
+      key,
+      verifyMaxAttempts,
+      VERIFY_WINDOW_SECONDS
+    );
 
     if (!result.success) {
       logger.warn({ ip, attempts: verifyMaxAttempts + 1 }, "OTP verify rate limit exceeded for IP");

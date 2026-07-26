@@ -134,18 +134,19 @@ export async function createPendingRevisionInTransaction(
   }
 
   // Acquire a lock on existing documents or create a new one.
-  const document = existingDocument == null
-    ? await tx
-        .insert(sourceDocuments)
-        .values({
-          id: sourceDocumentId,
-          ledgerId: input.ledgerId,
-          type: "ai_parsed",
-          ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
-        })
-        .returning()
-        .then((rows) => rows[0]!)
-    : await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
+  const document =
+    existingDocument == null
+      ? await tx
+          .insert(sourceDocuments)
+          .values({
+            id: sourceDocumentId,
+            ledgerId: input.ledgerId,
+            type: "ai_parsed",
+            ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+          })
+          .returning()
+          .then((rows) => rows[0]!)
+      : await lockSourceDocumentForUpdate(tx, input.ledgerId, sourceDocumentId);
 
   if (document.pendingRevisionId != null) {
     const currentPending = await tx
@@ -224,14 +225,12 @@ export async function createPendingRevisionInTransaction(
   }
 
   for (const [position, storedFileRow] of storedFileRows.entries()) {
-    await tx.insert(revisionFiles)
-      .values({
-        ledgerId: input.ledgerId,
-        revisionId: revision.id,
-        storedFileId: storedFileRow.id,
-        position,
-      })
-      ;
+    await tx.insert(revisionFiles).values({
+      ledgerId: input.ledgerId,
+      revisionId: revision.id,
+      storedFileId: storedFileRow.id,
+      position,
+    });
   }
 
   const updatedDocument = await tx
@@ -244,7 +243,8 @@ export async function createPendingRevisionInTransaction(
     .where(activeDocumentWhere(input.ledgerId, sourceDocumentId))
     .returning()
     .then((rows) => rows[0]);
-  if (updatedDocument == null) throw new ConflictError("Failed to update source document revision pointer");
+  if (updatedDocument == null)
+    throw new ConflictError("Failed to update source document revision pointer");
   return { document: mapDocument(updatedDocument, "processing"), revision: mapRevision(revision) };
 }
 
@@ -347,9 +347,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
             eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
             eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
             eq(sourceDocumentRevisions.id, input.revisionId),
-            or(
-              eq(sourceDocumentRevisions.outcome, "processing")
-            )
+            or(eq(sourceDocumentRevisions.outcome, "processing"))
           )
         )
         .returning({ id: sourceDocumentRevisions.id });
@@ -375,7 +373,8 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         .where(activeDocumentWhere(ledgerId, sourceDocumentId))
         .returning({ id: sourceDocuments.id });
       if (deleted.length === 0) return false;
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ deletedAt: new Date(), updatedAt: new Date() })
         .where(
           and(
@@ -383,8 +382,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
             eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
             isNull(ledgerEntries.deletedAt)
           )
-        )
-        ;
+        );
       return true;
     });
   },

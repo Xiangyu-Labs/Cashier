@@ -10,18 +10,16 @@ describe("Header", () => {
     expect(screen.getByText("navigation")).toBeInTheDocument();
     expect(screen.queryByText("Cashier")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /处理中|in progress/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /待处理|needing attention/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /待处理|needing attention/i })
+    ).not.toBeInTheDocument();
   });
 
   it("does not add controls outside the supplied navigation", async () => {
     const user = userEvent.setup();
     const onOpenInput = vi.fn();
 
-    render(
-      <Header
-        navigation={<button onClick={onOpenInput}>记一笔</button>}
-      />
-    );
+    render(<Header navigation={<button onClick={onOpenInput}>记一笔</button>} />);
 
     await user.click(screen.getByRole("button", { name: "记一笔" }));
     expect(onOpenInput).toHaveBeenCalledOnce();

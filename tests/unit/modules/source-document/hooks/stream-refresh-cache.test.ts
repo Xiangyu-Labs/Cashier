@@ -3,13 +3,20 @@ import { createQueryClient } from "tests/fixtures/query-client";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import { queryKeys } from "@/lib/query-keys";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
-import type { StreamPage, SourceDocumentListItemDto, SourceDocumentCountsDto } from "@/modules/source-document/contracts";
+import type {
+  StreamPage,
+  SourceDocumentListItemDto,
+  SourceDocumentCountsDto,
+} from "@/modules/source-document/contracts";
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function createListItem(id: string, overrides: Partial<SourceDocumentListItemDto> = {}): SourceDocumentListItemDto {
+function createListItem(
+  id: string,
+  overrides: Partial<SourceDocumentListItemDto> = {}
+): SourceDocumentListItemDto {
   return {
     id,
     ledgerId: "ledger-1",
@@ -96,7 +103,9 @@ describe("stream-refresh-cache", () => {
 
     applyStreamRefreshToCache(queryClient, "ledger-1", result);
 
-    const data = queryClient.getQueryData<{ pages: StreamPage[]; pageParams: unknown[] }>(streamKey);
+    const data = queryClient.getQueryData<{ pages: StreamPage[]; pageParams: unknown[] }>(
+      streamKey
+    );
 
     expect(data).toBeDefined();
     const d = data!;
@@ -156,7 +165,9 @@ describe("stream-refresh-cache", () => {
 
     applyStreamRefreshToCache(queryClient, "ledger-1", result);
 
-    const queryData = queryClient.getQueryData<{ pages: StreamPage[]; pageParams: unknown[] }>(streamKey);
+    const queryData = queryClient.getQueryData<{ pages: StreamPage[]; pageParams: unknown[] }>(
+      streamKey
+    );
     expect(queryData).toBeDefined();
     expect(queryData!.pages[1]!.items).toHaveLength(1);
     expect(queryData!.pages[1]!.items[0]!.id).toBe("3");
@@ -189,10 +200,7 @@ describe("stream-refresh-cache", () => {
       pendingRevisionId: null,
     };
 
-    queryClient.setQueryData(
-      ["sourceDocument", "light", "watched-1"],
-      detailDoc
-    );
+    queryClient.setQueryData(["sourceDocument", "light", "watched-1"], detailDoc);
 
     const result: StreamRefreshResult = {
       protocolVersion: 1,
@@ -215,7 +223,11 @@ describe("stream-refresh-cache", () => {
 
     applyStreamRefreshToCache(queryClient, "ledger-1", result);
 
-    const updated = queryClient.getQueryData<Record<string, unknown>>(["sourceDocument", "light", "watched-1"]);
+    const updated = queryClient.getQueryData<Record<string, unknown>>([
+      "sourceDocument",
+      "light",
+      "watched-1",
+    ]);
     expect(updated).toBeDefined();
     if (!updated) return;
     expect(updated.status).toBe("completed");
@@ -254,7 +266,11 @@ describe("stream-refresh-cache", () => {
 
     applyStreamRefreshToCache(queryClient, "ledger-1", result);
 
-    const counts = queryClient.getQueryData<SourceDocumentCountsDto>(["sourceDocuments", "ledger-1", "counts"]);
+    const counts = queryClient.getQueryData<SourceDocumentCountsDto>([
+      "sourceDocuments",
+      "ledger-1",
+      "counts",
+    ]);
     expect(counts).toEqual({
       processingCount: 2,
       attentionCount: 1,
@@ -303,7 +319,11 @@ describe("stream-refresh-cache", () => {
 
     applyStreamRefreshToCache(queryClient, "ledger-1", result);
 
-    const counts = queryClient.getQueryData<SourceDocumentCountsDto>(["sourceDocuments", "ledger-1", "counts"]);
+    const counts = queryClient.getQueryData<SourceDocumentCountsDto>([
+      "sourceDocuments",
+      "ledger-1",
+      "counts",
+    ]);
     expect(counts).toEqual({
       processingCount: 3,
       attentionCount: 1,
@@ -333,9 +353,7 @@ describe("stream-refresh-cache", () => {
       changed: true,
       hasTransitionalWork: false,
       firstPages: [],
-      changedWatched: [
-        { id: "deleted-1", doc: null, fingerprint: "" },
-      ],
+      changedWatched: [{ id: "deleted-1", doc: null, fingerprint: "" }],
       counts: null,
     };
 

@@ -13,9 +13,7 @@ import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-doc
  * The query key structure is:
  *   ["sourceDocuments", ledgerId, "stream", startDate, endDate, minAmount, maxAmount, statuses]
  */
-function extractFiltersFromQueryKey(
-  queryKey: readonly unknown[]
-): {
+function extractFiltersFromQueryKey(queryKey: readonly unknown[]): {
   startDate: string | null;
   endDate: string | null;
   minAmount: number | null;

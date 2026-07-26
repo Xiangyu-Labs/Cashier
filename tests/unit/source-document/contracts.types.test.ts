@@ -66,8 +66,12 @@ describe("source-document contract types", () => {
   });
 
   it("candidate comparison DTO uses compact projection summaries", () => {
-    expectTypeOf<SourceDocumentCandidateComparisonDto["active"]>().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
-    expectTypeOf<SourceDocumentCandidateComparisonDto["candidate"]>().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
+    expectTypeOf<
+      SourceDocumentCandidateComparisonDto["active"]
+    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
+    expectTypeOf<
+      SourceDocumentCandidateComparisonDto["candidate"]
+    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary>();
     expectTypeOf<SourceDocumentCandidateComparisonDto["changed"]>().toEqualTypeOf<boolean>();
     expectTypeOf<SourceDocumentCandidateProjectionSummary["entryCount"]>().toEqualTypeOf<number>();
     expectTypeOf<SourceDocumentCandidateProjectionSummary["total"]>().toEqualTypeOf<string>();
@@ -102,15 +106,15 @@ describe("source-document contract types", () => {
   });
 
   it("exposes activeResultSummary on list items as optional projection summary", () => {
-    expectTypeOf<
-      SourceDocumentListItemDto["activeResultSummary"]
-    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
+    expectTypeOf<SourceDocumentListItemDto["activeResultSummary"]>().toEqualTypeOf<
+      SourceDocumentCandidateProjectionSummary | undefined
+    >();
   });
 
   it("exposes activeResultSummary on light DTOs as optional projection summary", () => {
-    expectTypeOf<
-      SourceDocumentLightDto["activeResultSummary"]
-    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
+    expectTypeOf<SourceDocumentLightDto["activeResultSummary"]>().toEqualTypeOf<
+      SourceDocumentCandidateProjectionSummary | undefined
+    >();
   });
 
   it("list item DTO accepts optional activeResultSummary", () => {
@@ -142,8 +146,8 @@ describe("source-document contract types", () => {
   });
 
   it("exposes activeResultSummary on full DTOs as optional projection summary", () => {
-    expectTypeOf<
-      SourceDocumentDto["activeResultSummary"]
-    >().toEqualTypeOf<SourceDocumentCandidateProjectionSummary | undefined>();
+    expectTypeOf<SourceDocumentDto["activeResultSummary"]>().toEqualTypeOf<
+      SourceDocumentCandidateProjectionSummary | undefined
+    >();
   });
 });

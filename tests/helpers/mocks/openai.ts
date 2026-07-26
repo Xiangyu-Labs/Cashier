@@ -97,7 +97,10 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
               category_index: e.category_index ?? index + 1,
               notes: e.notes ?? null,
             }));
-            const totalAmount = entries.reduce((s, e) => new Decimal(s).plus(e.amount).toFixed(), "0");
+            const totalAmount = entries.reduce(
+              (s, e) => new Decimal(s).plus(e.amount).toFixed(),
+              "0"
+            );
             const currency = opts.currencies[0] ?? "CNY";
             return Promise.resolve({
               content: JSON.stringify({

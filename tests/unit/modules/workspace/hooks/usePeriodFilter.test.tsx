@@ -52,9 +52,7 @@ describe("usePeriodFilter", () => {
 
   describe("applyStreamStatusPreset", () => {
     it("applies needs_attention preset: clears period/date/amount, sets statuses, switches to stream", () => {
-      const replaceState = vi
-        .spyOn(window.history, "replaceState")
-        .mockImplementation(() => {});
+      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
       const searchParams = createSearchParams("period=thisMonth&minAmount=10");
       const { result } = renderHook(() =>
         usePeriodFilter({
@@ -84,9 +82,7 @@ describe("usePeriodFilter", () => {
     });
 
     it("applies in_progress preset: clears period/date/amount, sets statuses, switches to stream", () => {
-      const replaceState = vi
-        .spyOn(window.history, "replaceState")
-        .mockImplementation(() => {});
+      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
       const searchParams = createSearchParams(
         "period=custom&startDate=2024-01-01&endDate=2024-01-31&maxAmount=500"
       );
@@ -116,9 +112,7 @@ describe("usePeriodFilter", () => {
     });
 
     it("replaces existing statuses with preset statuses", () => {
-      const replaceState = vi
-        .spyOn(window.history, "replaceState")
-        .mockImplementation(() => {});
+      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
       const searchParams = createSearchParams("statuses=completed");
       const { result } = renderHook(() =>
         usePeriodFilter({

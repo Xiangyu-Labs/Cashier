@@ -43,7 +43,9 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          onIntent={onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined}
+          onIntent={
+            onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
+          }
         />
       ))}
 
@@ -63,7 +65,9 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          onIntent={onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined}
+          onIntent={
+            onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
+          }
         />
       ))}
     </nav>

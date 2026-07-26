@@ -416,7 +416,10 @@ export function EntryFilterPanel({
               <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
               <div className="space-y-1">
                 {STATUS_OPTIONS.map(({ status, labelKey }) => (
-                  <label key={status} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
+                  <label
+                    key={status}
+                    className="flex items-center gap-2 text-sm cursor-pointer py-0.5"
+                  >
                     <Checkbox
                       checked={tempFilters.statuses?.includes(status) ?? false}
                       onCheckedChange={() => toggleStatus(status)}
@@ -429,10 +432,20 @@ export function EntryFilterPanel({
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={resetStatuses}>
                   {t("allStatuses")}
                 </Button>
-                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => handlePreset("needs_attention")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => handlePreset("needs_attention")}
+                >
                   {t("needsAttention")}
                 </Button>
-                <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => handlePreset("in_progress")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => handlePreset("in_progress")}
+                >
                   {t("inProgress")}
                 </Button>
               </div>
@@ -440,12 +453,7 @@ export function EntryFilterPanel({
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 h-8"
-                onClick={handleReset}
-              >
+              <Button variant="ghost" size="sm" className="flex-1 h-8" onClick={handleReset}>
                 <X className="h-4 w-4 mr-1" />
                 {t("reset")}
               </Button>

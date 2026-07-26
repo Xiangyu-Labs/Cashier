@@ -101,10 +101,13 @@ describe("CacheTransactionManager", () => {
 
   it("commits an operation with canonical entity", () => {
     const item = makeItem("doc-1", { status: "completed" });
-    queryClient.setQueryData(["sourceDocuments", "ledger-1", "stream", null, null, null, null, null], {
-      pages: [{ items: [], nextCursor: null, generation: 1 }],
-      pageParams: [null],
-    });
+    queryClient.setQueryData(
+      ["sourceDocuments", "ledger-1", "stream", null, null, null, null, null],
+      {
+        pages: [{ items: [], nextCursor: null, generation: 1 }],
+        pageParams: [null],
+      }
+    );
 
     const op = manager.startOperation("ledger-1");
     op.patches.push({
@@ -125,10 +128,13 @@ describe("CacheTransactionManager", () => {
   // -----------------------------------------------------------------------
 
   it("replays only operations created after the committed one (C2)", () => {
-    queryClient.setQueryData(["sourceDocuments", "ledger-1", "stream", null, null, null, null, null], {
-      pages: [{ items: [makeItem("doc-1")], nextCursor: null, generation: 1 }],
-      pageParams: [null],
-    });
+    queryClient.setQueryData(
+      ["sourceDocuments", "ledger-1", "stream", null, null, null, null, null],
+      {
+        pages: [{ items: [makeItem("doc-1")], nextCursor: null, generation: 1 }],
+        pageParams: [null],
+      }
+    );
 
     // Operation A (order 0): set doc-1 to "processing"
     const opA = manager.startOperation("ledger-1");
@@ -152,7 +158,11 @@ describe("CacheTransactionManager", () => {
     expect(manager.getActiveOperations()).toHaveLength(2);
 
     // B commits first with canonical "completed" status
-    manager.commitOperation(opB.operationId, makeItem("doc-1", { status: "completed" }), queryClient);
+    manager.commitOperation(
+      opB.operationId,
+      makeItem("doc-1", { status: "completed" }),
+      queryClient
+    );
 
     // B should be removed from pending, A remains (order 0 < B's order 1)
     const remaining = manager.getActiveOperations();
@@ -166,10 +176,13 @@ describe("CacheTransactionManager", () => {
 
   it("rolls back an upsert by restoring the previous entity (C3)", () => {
     const original = makeItem("doc-1", { status: "completed", title: "Original" });
-    queryClient.setQueryData(["sourceDocuments", "ledger-1", "stream", null, null, null, null, null], {
-      pages: [{ items: [original], nextCursor: null, generation: 1 }],
-      pageParams: [null],
-    });
+    queryClient.setQueryData(
+      ["sourceDocuments", "ledger-1", "stream", null, null, null, null, null],
+      {
+        pages: [{ items: [original], nextCursor: null, generation: 1 }],
+        pageParams: [null],
+      }
+    );
 
     const op = manager.startOperation("ledger-1");
     op.patches.push({
@@ -187,10 +200,13 @@ describe("CacheTransactionManager", () => {
 
   it("rolls back a delete by re-inserting the entity (C3)", () => {
     const original = makeItem("doc-1", { title: "Will be restored" });
-    queryClient.setQueryData(["sourceDocuments", "ledger-1", "stream", null, null, null, null, null], {
-      pages: [{ items: [original], nextCursor: null, generation: 1 }],
-      pageParams: [null],
-    });
+    queryClient.setQueryData(
+      ["sourceDocuments", "ledger-1", "stream", null, null, null, null, null],
+      {
+        pages: [{ items: [original], nextCursor: null, generation: 1 }],
+        pageParams: [null],
+      }
+    );
 
     const op = manager.startOperation("ledger-1");
     op.patches.push({

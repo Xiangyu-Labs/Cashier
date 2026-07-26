@@ -41,10 +41,13 @@ describe("countSourceDocumentsByStatus", () => {
         .returning();
       // Create a revision for this document so the derived status expression resolves
       const outcome =
-        status === "processing" ? "processing"
-        : status === "anomaly" ? "anomaly"
-        : status === "failed" ? "failed"
-        : "completed";
+        status === "processing"
+          ? "processing"
+          : status === "anomaly"
+            ? "anomaly"
+            : status === "failed"
+              ? "failed"
+              : "completed";
       const [revision] = await db
         .insert(sourceDocumentRevisions)
         .values({

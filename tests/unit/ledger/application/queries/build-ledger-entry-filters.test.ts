@@ -18,7 +18,10 @@ describe("buildLedgerEntryFilterConditions", () => {
       startDate: undefined,
       endDate: undefined,
     } as unknown as LedgerEntryFilterParams;
-    const explicitUndefined = buildLedgerEntryFilterConditions("ledger-1", explicitUndefinedFilters);
+    const explicitUndefined = buildLedgerEntryFilterConditions(
+      "ledger-1",
+      explicitUndefinedFilters
+    );
 
     expect(explicitUndefined).toHaveLength(omitted.length);
   });

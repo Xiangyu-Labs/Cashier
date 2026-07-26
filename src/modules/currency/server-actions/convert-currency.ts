@@ -17,10 +17,10 @@ export async function convertCurrencyAction(
 ): Promise<ConvertCurrencyResult> {
   return convertCurrency(
     parseConvertCurrencyInput({
-    amount,
-    from,
-    to,
-    ...(date != null ? { date } : {}),
+      amount,
+      from,
+      to,
+      ...(date != null ? { date } : {}),
     })
   );
 }

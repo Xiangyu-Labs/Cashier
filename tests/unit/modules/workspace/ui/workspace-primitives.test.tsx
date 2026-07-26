@@ -5,7 +5,14 @@ import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
 
 describe("workspace primitives", () => {
   it("renders an accessible empty state with an optional action", () => {
-    render(<EmptyState title="No entries" description="Start by recording one." actionLabel="Record" onAction={vi.fn()} />);
+    render(
+      <EmptyState
+        title="No entries"
+        description="Start by recording one."
+        actionLabel="Record"
+        onAction={vi.fn()}
+      />
+    );
 
     expect(screen.getByText("No entries")).toBeInTheDocument();
     expect(screen.getByText("Start by recording one.")).toBeInTheDocument();

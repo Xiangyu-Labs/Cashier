@@ -19,11 +19,6 @@ export async function hasActiveEntries(ledgerId: string): Promise<boolean> {
         isNull(sourceDocuments.deletedAt)
       )
     )
-    .where(
-      and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
+    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
   return Number(row?.count ?? 0) > 0;
 }

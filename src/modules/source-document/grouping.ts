@@ -81,10 +81,7 @@ export function groupPendingSourceDocuments<
 }
 
 export function calculateSourceDocumentStats<T>(
-  groups: Pick<
-    GroupedSourceDocuments<T>,
-    "processing" | "candidate_pending" | "anomaly" | "failed"
-  >
+  groups: Pick<GroupedSourceDocuments<T>, "processing" | "candidate_pending" | "anomaly" | "failed">
 ) {
   return {
     processingCount: groups.processing.length,

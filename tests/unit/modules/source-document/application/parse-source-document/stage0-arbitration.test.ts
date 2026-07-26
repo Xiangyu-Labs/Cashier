@@ -45,10 +45,7 @@ function arbitrateStage0Results(
   input: Parameters<typeof arbitrateResults>[0],
   ai: Parameters<typeof arbitrateResults>[1]
 ) {
-  return arbitrateResults(
-    { ...input, input: { ledgerId: "ledger-1", ...input.input } },
-    ai
-  );
+  return arbitrateResults({ ...input, input: { ledgerId: "ledger-1", ...input.input } }, ai);
 }
 
 function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOptions {

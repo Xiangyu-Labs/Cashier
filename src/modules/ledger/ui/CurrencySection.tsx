@@ -10,7 +10,11 @@ interface CurrencySectionProps {
   mainCurrencyMutable?: boolean;
 }
 
-export function CurrencySection({ settings, onUpdateSettings, mainCurrencyMutable = true }: CurrencySectionProps) {
+export function CurrencySection({
+  settings,
+  onUpdateSettings,
+  mainCurrencyMutable = true,
+}: CurrencySectionProps) {
   const t = useTranslations("Settings");
   const selectedCurrencies = settings.currencies ?? [];
   const mainCurrency = settings.mainCurrency ?? "CNY";
@@ -81,8 +85,8 @@ export function CurrencySection({ settings, onUpdateSettings, mainCurrencyMutabl
                   isSelected
                     ? "border-primary bg-primary text-white shadow-sm"
                     : "border-border bg-surface text-muted-foreground hover:border-primary/50"
-              )}
-              aria-pressed={isSelected}
+                )}
+                aria-pressed={isSelected}
               >
                 {currency}
               </button>

@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest, NextResponse } from "next/server";
 
-const {
-  handleApiV1RouteMock,
-  createSourceDocumentFromCredentialActionMock,
-} = vi.hoisted(() => ({
+const { handleApiV1RouteMock, createSourceDocumentFromCredentialActionMock } = vi.hoisted(() => ({
   handleApiV1RouteMock: vi.fn(),
   createSourceDocumentFromCredentialActionMock: vi.fn(),
 }));

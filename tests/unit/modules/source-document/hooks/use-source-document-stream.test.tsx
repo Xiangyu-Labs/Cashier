@@ -19,15 +19,12 @@ function createWrapper() {
     },
   });
   return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
-const { useSourceDocumentStream } = await import(
-  "@/modules/source-document/hooks/useSourceDocumentStream"
-);
+const { useSourceDocumentStream } =
+  await import("@/modules/source-document/hooks/useSourceDocumentStream");
 
 function makeItem(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -68,9 +65,7 @@ describe("useSourceDocumentStream", () => {
           });
         }
         return Promise.resolve({
-          items: [
-            makeItem("doc-3", { entryDate: "2026-07-05" }),
-          ],
+          items: [makeItem("doc-3", { entryDate: "2026-07-05" })],
           nextCursor: null,
           generation: 1,
         });
@@ -79,10 +74,9 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("fetches the first page on mount and returns stream groups", async () => {
-    const { result } = renderHook(
-      () => useSourceDocumentStream("ledger-1"),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -97,10 +91,9 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("fetches next page using the prior nextCursor", async () => {
-    const { result } = renderHook(
-      () => useSourceDocumentStream("ledger-1"),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -137,10 +130,9 @@ describe("useSourceDocumentStream", () => {
         generation: 1,
       });
 
-    const { result } = renderHook(
-      () => useSourceDocumentStream("ledger-1"),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -169,10 +161,9 @@ describe("useSourceDocumentStream", () => {
       generation: 1,
     });
 
-    const { result } = renderHook(
-      () => useSourceDocumentStream("ledger-1"),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

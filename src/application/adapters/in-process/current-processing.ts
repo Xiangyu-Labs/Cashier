@@ -46,7 +46,12 @@ function toFailureCode(error: unknown): ProcessingFailureCode {
     if (msg.includes("database") || msg.includes("db") || msg.includes("connection")) {
       return "database_unavailable";
     }
-    if (msg.includes("ai") || msg.includes("openai") || msg.includes("provider") || msg.includes("model")) {
+    if (
+      msg.includes("ai") ||
+      msg.includes("openai") ||
+      msg.includes("provider") ||
+      msg.includes("model")
+    ) {
       return "ai_provider_unavailable";
     }
   }

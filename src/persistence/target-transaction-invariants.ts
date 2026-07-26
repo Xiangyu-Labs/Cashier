@@ -21,7 +21,10 @@ export function assertSourceDocumentRevisionPointers(input: {
   );
 
   for (const pointer of pointers) {
-    if (pointer.ledgerId !== input.ledgerId || pointer.sourceDocumentId !== input.sourceDocumentId) {
+    if (
+      pointer.ledgerId !== input.ledgerId ||
+      pointer.sourceDocumentId !== input.sourceDocumentId
+    ) {
       throw new Error("Revision pointer must belong to the source document in the same ledger");
     }
   }
@@ -50,6 +53,8 @@ export function assertLedgerProjectionRevision(input: {
     input.revision.ledgerId !== input.ledgerId ||
     (input.sourceDocumentId != null && input.revision.sourceDocumentId !== input.sourceDocumentId)
   ) {
-    throw new Error("Ledger projection revision must belong to the entry source document and ledger");
+    throw new Error(
+      "Ledger projection revision must belong to the entry source document and ledger"
+    );
   }
 }

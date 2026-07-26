@@ -62,10 +62,7 @@ function determineTargetTotal(
   const hasConflict = matching.some(
     (candidate) =>
       candidate.currency !== first.currency ||
-      compare(
-        new Decimal(candidate.amount).minus(first.amount).abs().toFixed(),
-        "0.01"
-      ) > 0
+      compare(new Decimal(candidate.amount).minus(first.amount).abs().toFixed(), "0.01") > 0
   );
   if (hasConflict) {
     return {
@@ -104,9 +101,7 @@ export function reconcileParseOutput({
 }: {
   aiLanguage?: string;
   result: NormalizedParseOutput;
-}):
-  | { kind: "success"; result: NormalizedParseOutput }
-  | { kind: "anomaly"; reason: string } {
+}): { kind: "success"; result: NormalizedParseOutput } | { kind: "anomaly"; reason: string } {
   if (result.outcome !== "success") {
     return { kind: "anomaly", reason: "reconciliation requires success result" };
   }
@@ -117,7 +112,9 @@ export function reconcileParseOutput({
   for (const adjustment of result.order_adjustments) receiptIndices.add(adjustment.receipt_index);
 
   const reconciledEntries = [...result.ledger_entries.map((entry) => ({ ...entry }))];
-  const reconciledAdjustments = [...result.order_adjustments.map((adjustment) => ({ ...adjustment }))];
+  const reconciledAdjustments = [
+    ...result.order_adjustments.map((adjustment) => ({ ...adjustment })),
+  ];
 
   for (const receiptIndex of receiptIndices) {
     const target = determineTargetTotal(receiptIndex, result.receipt_totals);
@@ -125,13 +122,18 @@ export function reconcileParseOutput({
       return target;
     }
 
-    const entriesForReceipt = reconciledEntries.filter((entry) => entry.receipt_index === receiptIndex);
+    const entriesForReceipt = reconciledEntries.filter(
+      (entry) => entry.receipt_index === receiptIndex
+    );
     const adjustmentsForReceipt = reconciledAdjustments.filter(
       (adjustment) => adjustment.receipt_index === receiptIndex
     );
 
     const entriesTotal = entriesForReceipt.reduce((sum, entry) => add(sum, entry.amount), "0");
-    const adjustmentsTotal = adjustmentsForReceipt.reduce((sum, adjustment) => add(sum, adjustment.amount), "0");
+    const adjustmentsTotal = adjustmentsForReceipt.reduce(
+      (sum, adjustment) => add(sum, adjustment.amount),
+      "0"
+    );
     const currentTotal = round(add(entriesTotal, adjustmentsTotal), 2);
     const delta = round(subtract(target.total.amount, currentTotal), 2);
 

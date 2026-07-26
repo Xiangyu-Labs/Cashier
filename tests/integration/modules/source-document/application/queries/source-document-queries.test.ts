@@ -160,9 +160,7 @@ describe("source-document-queries", () => {
     expect(existing).toMatchObject({
       id: docId,
       text: "full payload",
-      files: [
-        expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" }),
-      ],
+      files: [expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" })],
       status: "processing",
       createdAt: expect.any(String),
     });
@@ -260,7 +258,9 @@ describe("source-document-queries", () => {
           status,
           imageUrls: [],
           entryDate: `2026-03-${String(day).padStart(2, "0")}`,
-          createdAt: new Date(`2026-03-${String(day).padStart(2, "0")}T${String(10 + (i % 10)).padStart(2, "0")}:00:00Z`),
+          createdAt: new Date(
+            `2026-03-${String(day).padStart(2, "0")}T${String(10 + (i % 10)).padStart(2, "0")}:00:00Z`
+          ),
         })
         .returning();
       docs.push({ id: inserted[0]!.id, status });
@@ -592,15 +592,15 @@ describe("source-document-queries", () => {
         endDate: "2026-03-31",
       })
     ).resolves.toEqual({ total: "125.25" });
-    await expect(
-      getStreamTotal(ledgerId, { statuses: ["processing"] })
-    ).resolves.toEqual({ total: "0" });
-    await expect(
-      getStreamTotal(ledgerId, { statuses: ["completed", "failed"] })
-    ).resolves.toEqual({ total: "325.25" });
-    await expect(
-      getStreamTotal(ledgerId, { minAmount: 100, maxAmount: 150 })
-    ).resolves.toEqual({ total: "125.25" });
+    await expect(getStreamTotal(ledgerId, { statuses: ["processing"] })).resolves.toEqual({
+      total: "0",
+    });
+    await expect(getStreamTotal(ledgerId, { statuses: ["completed", "failed"] })).resolves.toEqual({
+      total: "325.25",
+    });
+    await expect(getStreamTotal(ledgerId, { minAmount: 100, maxAmount: 150 })).resolves.toEqual({
+      total: "125.25",
+    });
   });
 
   it("excludes deleted rows from the stream", async () => {

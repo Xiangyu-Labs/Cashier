@@ -72,10 +72,9 @@ export const updateLedgerEntryInputSchema = strictObjectSchema({
   amount: z
     .union([
       z.number().positive(),
-      z.string().refine(
-        (val) => !isNaN(Number(val)) && Number(val) > 0,
-        { message: "Amount must be a positive number" }
-      ),
+      z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: "Amount must be a positive number",
+      }),
     ])
     .optional(),
   currency: nullableCurrencyCodeSchema,

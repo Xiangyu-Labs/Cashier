@@ -59,14 +59,14 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
         if (storedFileIds === undefined && evidenceRevisionId != null) {
           storedFileIds = (
             await tx
-            .select({ id: revisionFiles.storedFileId })
-            .from(revisionFiles)
-            .where(
-              and(
-                eq(revisionFiles.ledgerId, input.ledgerId),
-                eq(revisionFiles.revisionId, evidenceRevisionId)
+              .select({ id: revisionFiles.storedFileId })
+              .from(revisionFiles)
+              .where(
+                and(
+                  eq(revisionFiles.ledgerId, input.ledgerId),
+                  eq(revisionFiles.revisionId, evidenceRevisionId)
+                )
               )
-            )
               .orderBy(asc(revisionFiles.position))
           ).map((file) => file.id);
         }
@@ -89,29 +89,25 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
         attempt: 1,
       };
 
-      await tx.insert(processingAttempts)
-        .values({
-          ledgerId: input.ledgerId,
-          revisionId: pending.revision.id,
-          attemptNumber: intent.attempt,
-          status: "queued",
-        })
-        ;
-      await tx.insert(processingOutbox)
-        .values({
-          id: intent.id,
-          ledgerId: input.ledgerId,
-          revisionId: pending.revision.id,
-          attemptNumber: intent.attempt,
-          idempotencyKey: intent.id,
-          status: "pending",
-          payload: {
-            sourceDocumentId: intent.sourceDocumentId,
-            requestedAt: intent.requestedAt,
-          },
-          availableAt: requestedAt,
-        })
-        ;
+      await tx.insert(processingAttempts).values({
+        ledgerId: input.ledgerId,
+        revisionId: pending.revision.id,
+        attemptNumber: intent.attempt,
+        status: "queued",
+      });
+      await tx.insert(processingOutbox).values({
+        id: intent.id,
+        ledgerId: input.ledgerId,
+        revisionId: pending.revision.id,
+        attemptNumber: intent.attempt,
+        idempotencyKey: intent.id,
+        status: "pending",
+        payload: {
+          sourceDocumentId: intent.sourceDocumentId,
+          requestedAt: intent.requestedAt,
+        },
+        availableAt: requestedAt,
+      });
 
       return { ...pending, intent };
     });

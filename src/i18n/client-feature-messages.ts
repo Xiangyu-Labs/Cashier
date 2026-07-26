@@ -52,12 +52,7 @@ export const FEATURE_MESSAGES = {
     "Settings",
   ] as readonly string[],
   /** Stats tab — loaded lazily when the tab mounts */
-  stats: [
-    "Calendar",
-    "DateRangeFilter",
-    "StatsChart",
-    "StatsTab",
-  ] as readonly string[],
+  stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"] as readonly string[],
   /** Settings tab — loaded lazily when the tab mounts */
   settings: [
     "CategoriesPage",

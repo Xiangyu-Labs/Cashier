@@ -97,9 +97,15 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         ...(revision.submittedText == null ? {} : { text: revision.submittedText }),
         ...(files.length === 0 ? {} : { storedFileIds: files.map((file) => file.id) }),
         categories,
-        ...(ledgerSettings?.aiCustomPrompt !== undefined ? { settings: { aiCustomPrompt: ledgerSettings.aiCustomPrompt } } : { settings: {} }),
-        ...(ledgerSettings?.aiLanguage !== undefined ? { aiLanguage: ledgerSettings.aiLanguage } : {}),
-        ...(ledgerSettings?.currencies !== undefined ? { preferredCurrencies: ledgerSettings.currencies } : {}),
+        ...(ledgerSettings?.aiCustomPrompt !== undefined
+          ? { settings: { aiCustomPrompt: ledgerSettings.aiCustomPrompt } }
+          : { settings: {} }),
+        ...(ledgerSettings?.aiLanguage !== undefined
+          ? { aiLanguage: ledgerSettings.aiLanguage }
+          : {}),
+        ...(ledgerSettings?.currencies !== undefined
+          ? { preferredCurrencies: ledgerSettings.currencies }
+          : {}),
       },
       buildStageContext({
         signal: controller.signal,
@@ -163,7 +169,10 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         entries: entryInputs,
       });
       if (!activated) {
-        const current = await postgresRevisionAdapter.get(request.ledgerId, request.sourceDocumentId);
+        const current = await postgresRevisionAdapter.get(
+          request.ledgerId,
+          request.sourceDocumentId
+        );
         if (current?.activeRevisionId !== request.revisionId) {
           throw new Error("Revision completion is stale");
         }

@@ -5,7 +5,10 @@ import { after } from "next/server";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { getStreamRefresh } from "@/modules/source-document/application/queries/get-stream-refresh";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
-import type { StreamRefreshRequest, StreamRefreshResult } from "@/modules/source-document/contract-refresh";
+import type {
+  StreamRefreshRequest,
+  StreamRefreshResult,
+} from "@/modules/source-document/contract-refresh";
 import {
   STREAM_REFRESH_PROTOCOL_VERSION,
   MAX_WATCHED_IDS,
@@ -82,17 +85,11 @@ function deduplicateWatchedIds(
  * Authorized via withLedgerAccess — each call independently authenticates.
  */
 export const getStreamRefreshAction = withLedgerAccess(
-  async (
-    ledgerId: string,
-    request: StreamRefreshRequest
-  ): Promise<StreamRefreshResult> => {
+  async (ledgerId: string, request: StreamRefreshRequest): Promise<StreamRefreshResult> => {
     // I4: Zod validation
     const parsed = streamRefreshRequestSchema.safeParse(request);
     if (!parsed.success) {
-      throw new ValidationError(
-        "Invalid refresh request",
-        { issues: parsed.error.issues }
-      );
+      throw new ValidationError("Invalid refresh request", { issues: parsed.error.issues });
     }
 
     // Validate ledger ID consistency

@@ -37,6 +37,5 @@ export function useLedgerPagePrefetching({
 
       return () => clearTimeout(timer);
     }
-
   }, [isInputOpen, ledgerId, queryClient]);
 }

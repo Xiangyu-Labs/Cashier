@@ -65,9 +65,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
 }
 
 function readAdvancedFilters(searchParams: Record<string, string | string[] | undefined>) {
-  const getSingleSearchParam = (
-    value: string | string[] | undefined
-  ): string | undefined => {
+  const getSingleSearchParam = (value: string | string[] | undefined): string | undefined => {
     return Array.isArray(value) ? value[0] : value;
   };
 
@@ -80,9 +78,13 @@ function readAdvancedFilters(searchParams: Record<string, string | string[] | un
 
   // I2: Include statuses from searchParams for filter membership coherence
   const rawStatuses = getSingleSearchParam(searchParams.statuses);
-  const statuses: SourceDocumentStatusType[] | undefined = rawStatuses != null && rawStatuses !== ""
-    ? (rawStatuses.split(",").map((s) => s.trim()).filter(Boolean) as SourceDocumentStatusType[])
-    : undefined;
+  const statuses: SourceDocumentStatusType[] | undefined =
+    rawStatuses != null && rawStatuses !== ""
+      ? (rawStatuses
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean) as SourceDocumentStatusType[])
+      : undefined;
 
   return {
     categoryId: getSingleSearchParam(searchParams.categoryId) ?? null,

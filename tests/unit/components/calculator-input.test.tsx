@@ -9,14 +9,8 @@ const { currentLocale } = vi.hoisted(() => {
 });
 
 vi.mock("next-intl", async () => {
-  const en = (await import("messages/en.json")).default as Record<
-    string,
-    Record<string, string>
-  >;
-  const zh = (await import("messages/zh.json")).default as Record<
-    string,
-    Record<string, string>
-  >;
+  const en = (await import("messages/en.json")).default as Record<string, Record<string, string>>;
+  const zh = (await import("messages/zh.json")).default as Record<string, Record<string, string>>;
 
   return {
     useTranslations: (namespace?: string) => {
@@ -45,8 +39,7 @@ vi.mock("next-intl", async () => {
     useMessages: () => (currentLocale.value === "en" ? en : zh),
     useTimeZone: () => "UTC",
     useNow: () => new Date(),
-    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
-      children,
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 

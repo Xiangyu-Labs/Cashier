@@ -3,7 +3,10 @@
 import { useMemo, useRef, useEffect, useCallback } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/actions";
-import type { SourceDocumentListItemDto, SourceDocumentStatusType } from "@/modules/source-document/contracts";
+import type {
+  SourceDocumentListItemDto,
+  SourceDocumentStatusType,
+} from "@/modules/source-document/contracts";
 import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -85,7 +88,8 @@ export function useSourceDocumentStream(
   const canonicalStatuses = canonicalizeSourceDocumentStatuses(rawStatuses);
   const statusesKey = canonicalStatuses?.join(",") ?? null;
   // Split back to array for the query function parameter.
-  const stableStatuses = statusesKey != null ? statusesKey.split(",") as SourceDocumentStatusType[] : undefined;
+  const stableStatuses =
+    statusesKey != null ? (statusesKey.split(",") as SourceDocumentStatusType[]) : undefined;
 
   // Build stream page key that includes all filter params
   const streamPageKey = queryKeys.sourceDocumentStream(ledgerId, {
@@ -98,7 +102,14 @@ export function useSourceDocumentStream(
 
   // Compute filter signature for refresh coordination
   const filterSignature = useMemo(
-    () => encodeFilterSignature({ startDate, endDate, minAmount: minAmount ?? null, maxAmount: maxAmount ?? null, statusesKey }),
+    () =>
+      encodeFilterSignature({
+        startDate,
+        endDate,
+        minAmount: minAmount ?? null,
+        maxAmount: maxAmount ?? null,
+        statusesKey,
+      }),
     [startDate, endDate, minAmount, maxAmount, statusesKey]
   );
 
@@ -109,13 +120,7 @@ export function useSourceDocumentStream(
   // I1: Persist count fingerprint from server for adaptive refresh
   const countFingerprintRef = useRef<string | null>(null);
 
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-  } = useInfiniteQuery({
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: streamPageKey,
     queryFn: ({ pageParam }) =>
       listStreamPageAction(ledgerId, {
@@ -123,7 +128,9 @@ export function useSourceDocumentStream(
         ...(endDate !== null ? { endDate } : {}),
         ...(minAmount != null ? { minAmount } : {}),
         ...(maxAmount != null ? { maxAmount } : {}),
-        ...(stableStatuses != null && stableStatuses.length > 0 ? { statuses: stableStatuses } : {}),
+        ...(stableStatuses != null && stableStatuses.length > 0
+          ? { statuses: stableStatuses }
+          : {}),
         cursor: pageParam,
         limit: STREAM_PAGE_LIMIT,
       }),
@@ -173,7 +180,10 @@ export function useSourceDocumentStream(
   }, [data, queryClient, streamPageKey]);
 
   // C3: Refresh function — calls the bounded refresh endpoint with persisted fingerprints
-  const refresh = useCallback(async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
+  const refresh = useCallback(async (): Promise<{
+    changed: boolean;
+    result?: StreamRefreshResult;
+  }> => {
     const firstPageFp = firstPageFingerprintRef.current;
 
     // I1: Send countFingerprint from last response for adaptive refresh

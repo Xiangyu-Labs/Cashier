@@ -43,10 +43,7 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
 
     if (operationId != null && result.updated) {
       // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        sourceId
-      );
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceId);
       const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,

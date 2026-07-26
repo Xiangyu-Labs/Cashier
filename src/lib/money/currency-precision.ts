@@ -10,23 +10,10 @@ import { round } from "./decimal";
 export const DEFAULT_DECIMALS = 2;
 
 // Currencies with zero decimal places (no minor units)
-const ZERO_DECIMAL_CURRENCIES = new Set([
-  "JPY",
-  "KRW",
-  "VND",
-  "CLP",
-  "COP",
-  "ISK",
-]);
+const ZERO_DECIMAL_CURRENCIES = new Set(["JPY", "KRW", "VND", "CLP", "COP", "ISK"]);
 
 // Currencies with three decimal places
-const THREE_DECIMAL_CURRENCIES = new Set([
-  "BHD",
-  "JOD",
-  "KWD",
-  "OMR",
-  "TND",
-]);
+const THREE_DECIMAL_CURRENCIES = new Set(["BHD", "JOD", "KWD", "OMR", "TND"]);
 
 /**
  * Return the number of decimal (minor-unit) places for a given ISO currency code.

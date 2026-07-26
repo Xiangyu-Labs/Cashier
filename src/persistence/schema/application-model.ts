@@ -211,7 +211,11 @@ export const processingOutbox = pgTable(
     uniqueIndex("uq_processing_outbox_revision_attempt").on(table.revisionId, table.attemptNumber),
     index("idx_processing_outbox_dispatch").on(table.status, table.availableAt),
     index("idx_processing_outbox_claim_expiry").on(table.status, table.claimExpiresAt),
-    index("idx_processing_outbox_recoverable").on(table.ledgerId, table.status, table.nextAvailableAt),
+    index("idx_processing_outbox_recoverable").on(
+      table.ledgerId,
+      table.status,
+      table.nextAvailableAt
+    ),
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
     check(
       "ck_processing_outbox_status",
@@ -300,15 +304,12 @@ export const uploadSessionFiles = pgTable(
   ]
 );
 
-export const rateLimitBuckets = pgTable(
-  "rate_limit_buckets",
-  {
-    bucketKey: text("bucket_key").primaryKey(),
-    count: integer("count").notNull().default(0),
-    windowStart: requiredTimestamp("window_start"),
-    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
-  }
-);
+export const rateLimitBuckets = pgTable("rate_limit_buckets", {
+  bucketKey: text("bucket_key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: requiredTimestamp("window_start"),
+  createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+});
 
 export const idempotencyRecords = pgTable(
   "idempotency_records",

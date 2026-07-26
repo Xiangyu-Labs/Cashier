@@ -131,11 +131,7 @@ describe("buildUnifiedStreamGroups", () => {
     // Items are already in server order (entryDate DESC, createdAt DESC, id DESC)
     const groups = buildUnifiedStreamGroups([c1, c2, c3]);
     // Groups should preserve server order: Jul 15 -> Jul 10 -> Jul 20
-    expect(groups.map((g) => g.date)).toEqual([
-      "2026-07-15",
-      "2026-07-10",
-      "2026-07-20",
-    ]);
+    expect(groups.map((g) => g.date)).toEqual(["2026-07-15", "2026-07-10", "2026-07-20"]);
   });
 
   it("computes group totals only from completed active entries", () => {
@@ -221,12 +217,7 @@ describe("buildUnifiedStreamGroups", () => {
     const groups = buildUnifiedStreamGroups([candidate, anomaly, failed, completed]);
     const statuses = groups[0]!.items.map((i) => i.sourceDocument.status);
     // Server order preserved
-    expect(statuses).toEqual([
-      "candidate_pending",
-      "anomaly",
-      "failed",
-      "completed",
-    ]);
+    expect(statuses).toEqual(["candidate_pending", "anomaly", "failed", "completed"]);
   });
 
   it("groups items with same effective date together", () => {

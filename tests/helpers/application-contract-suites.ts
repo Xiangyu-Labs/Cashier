@@ -10,7 +10,10 @@ import type {
 } from "@/application/contracts";
 
 export interface ApplicationContractHarness {
-  sourceDocumentActions(input: { activeRevisionId: string | null; pendingOutcome: "failed" | "processing" }): readonly string[];
+  sourceDocumentActions(input: {
+    activeRevisionId: string | null;
+    pendingOutcome: "failed" | "processing";
+  }): readonly string[];
   executeIdempotently<T>(key: string, operation: () => Promise<T>): Promise<T>;
   files: StoredFilePort;
   processing: ProcessingPort;
@@ -29,18 +32,27 @@ export function applicationContractSuite(
   describe(name, () => {
     it("preserves active revisions and only exposes actions for a terminal pending revision", async () => {
       const harness = await create();
-      expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
-        .toContain("retry");
-      expect(harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
-        .toEqual(["delete"]);
+      expect(
+        harness.sourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" })
+      ).toContain("retry");
+      expect(
+        harness.sourceDocumentActions({
+          activeRevisionId: "revision-1",
+          pendingOutcome: "processing",
+        })
+      ).toEqual(["delete"]);
     });
 
     it("enforces idempotency", async () => {
       const harness = await create();
       let calls = 0;
       const operation = async () => ({ value: ++calls });
-      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({ value: 1 });
-      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({ value: 1 });
+      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({
+        value: 1,
+      });
+      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({
+        value: 1,
+      });
       expect(calls).toBe(1);
     });
 

@@ -11,11 +11,7 @@ import {
   getTargetSourceDocument,
   listTargetSourceDocuments,
 } from "@/application/adapters/postgres/read-models";
-import {
-  ledgerEntries,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
@@ -165,7 +161,10 @@ describe("source document candidates", () => {
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-first-parse");
 
     // First parse: should activate directly (no active revision yet)
-    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(db, ledgerId);
+    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+      db,
+      ledgerId
+    );
 
     // Verify: candidate revision is completed
     const candidateRevision = await db.query.sourceDocumentRevisions.findFirst({
@@ -201,11 +200,7 @@ describe("source document candidates", () => {
       await setupDocumentWithCandidate(db, ledgerId);
 
     // Accept the candidate
-    const accepted = await acceptCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      candidateRevisionId
-    );
+    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
     expect(accepted).toBe(true);
 
     // Verify: document pointers updated
@@ -250,11 +245,7 @@ describe("source document candidates", () => {
     await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
 
     // Accept again should be idempotent
-    const accepted = await acceptCandidateRevision(
-      ledgerId,
-      sourceDocumentId,
-      candidateRevisionId
-    );
+    const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
     expect(accepted).toBe(true);
   });
 
@@ -868,9 +859,33 @@ describe("retry active result summary", () => {
       entryDate: "2026-07-15",
       submittedText: "Multi entry doc",
       entries: [
-        { categoryId: null, amount: "10.00", currency: "CNY", itemName: "Item 1", description: null, convertedAmount: "10.00", exchangeRate: "1.000000" },
-        { categoryId: null, amount: "20.00", currency: "CNY", itemName: "Item 2", description: null, convertedAmount: "20.00", exchangeRate: "1.000000" },
-        { categoryId: null, amount: "30.00", currency: "CNY", itemName: "Item 3", description: null, convertedAmount: "30.00", exchangeRate: "1.000000" },
+        {
+          categoryId: null,
+          amount: "10.00",
+          currency: "CNY",
+          itemName: "Item 1",
+          description: null,
+          convertedAmount: "10.00",
+          exchangeRate: "1.000000",
+        },
+        {
+          categoryId: null,
+          amount: "20.00",
+          currency: "CNY",
+          itemName: "Item 2",
+          description: null,
+          convertedAmount: "20.00",
+          exchangeRate: "1.000000",
+        },
+        {
+          categoryId: null,
+          amount: "30.00",
+          currency: "CNY",
+          itemName: "Item 3",
+          description: null,
+          convertedAmount: "30.00",
+          exchangeRate: "1.000000",
+        },
       ],
     });
 

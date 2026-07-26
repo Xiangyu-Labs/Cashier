@@ -40,10 +40,13 @@ async function getLoginNotificationCopy(locale: SupportedLocale) {
 /**
  * Send a notification email when a user logs in from a new device
  */
-export async function sendLoginNotification(params: {
-  email: string;
-  locale?: string;
-}, emailDelivery: EmailDeliveryPort = currentApplication.email): Promise<void> {
+export async function sendLoginNotification(
+  params: {
+    email: string;
+    locale?: string;
+  },
+  emailDelivery: EmailDeliveryPort = currentApplication.email
+): Promise<void> {
   const locale = resolveSupportedLocale({ explicitLocale: params.locale ?? null });
 
   try {

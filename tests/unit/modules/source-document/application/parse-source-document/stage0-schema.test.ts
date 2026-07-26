@@ -133,7 +133,6 @@ describe("stage0-schema", () => {
     expect(compareResults(left, right)).toBe(false);
   });
 
-
   it("treats different receipt totals as non-matching even when item and adjustment groupings match", () => {
     const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
@@ -157,9 +156,7 @@ describe("stage0-schema", () => {
     const right = normalizeResult(
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
-        ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, amount: "15.00" },
-        ],
+        ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "15.00" }],
         receipt_totals: [{ receipt_index: 0, amount: "15.00", currency: "USD" }],
       })
     );
@@ -169,9 +166,7 @@ describe("stage0-schema", () => {
   it("normalizeResult returns anomaly when a ledger_entry has a non-positive amount", () => {
     const withZeroEntry = stage0ParseOutputSchema.parse({
       ...simpleSuccess,
-      ledger_entries: [
-        { ...simpleSuccess.ledger_entries[0]!, amount: "0" },
-      ],
+      ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "0" }],
     });
     const result = normalizeResult(withZeroEntry);
     expect(result.outcome).toBe("anomaly");
@@ -181,9 +176,7 @@ describe("stage0-schema", () => {
     const withNegativeEntry = stage0ParseOutputSchema.parse({
       ...simpleSuccess,
       receipt_totals: [{ receipt_index: 0, amount: "-5", currency: "USD" }],
-      ledger_entries: [
-        { ...simpleSuccess.ledger_entries[0]!, amount: "-5" },
-      ],
+      ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "-5" }],
     });
     const result = normalizeResult(withNegativeEntry);
     expect(result.outcome).toBe("success");
@@ -196,9 +189,7 @@ describe("stage0-schema", () => {
     const right = normalizeResult(
       stage0ParseOutputSchema.parse({
         ...simpleSuccess,
-        ledger_entries: [
-          { ...simpleSuccess.ledger_entries[0]!, amount: "12.505" },
-        ],
+        ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "12.505" }],
         receipt_totals: [{ receipt_index: 0, amount: "12.505", currency: "USD" }],
       })
     );
@@ -254,7 +245,7 @@ describe("stage0-schema", () => {
     // 0.10 + 0.20 should exactly equal 0.30 as strings
     expect(
       Number.parseFloat(parsed.ledger_entries[0]!.amount) +
-      Number.parseFloat(parsed.ledger_entries[1]!.amount)
-    ).not.toBe(0.30); // BINARY ERROR: proves we need strings
+        Number.parseFloat(parsed.ledger_entries[1]!.amount)
+    ).not.toBe(0.3); // BINARY ERROR: proves we need strings
   });
 });

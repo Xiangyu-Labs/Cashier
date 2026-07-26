@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { reconcileParseOutput } from "@/modules/source-document/application/parse-source-document/reconciliation";
-import type { NormalizedLedgerEntry, NormalizedOrderAdjustment, NormalizedParseOutput, NormalizedReceiptTotal } from "@/modules/source-document/application/parse-source-document/parser-schema";
+import type {
+  NormalizedLedgerEntry,
+  NormalizedOrderAdjustment,
+  NormalizedParseOutput,
+  NormalizedReceiptTotal,
+} from "@/modules/source-document/application/parse-source-document/parser-schema";
 
 function entry(overrides: Partial<NormalizedLedgerEntry> = {}): NormalizedLedgerEntry {
   return {
@@ -88,7 +93,9 @@ describe("reconcileParseOutput", () => {
       aiLanguage: "en-US",
       result: successResult({
         receipt_totals: [receiptTotal({ amount: "90", currency: "USD" })],
-        ledger_entries: [entry({ item_name: "Meal", amount: "100", currency: "USD", category_index: 1 })],
+        ledger_entries: [
+          entry({ item_name: "Meal", amount: "100", currency: "USD", category_index: 1 }),
+        ],
         order_adjustments: [],
       }),
     });
@@ -144,7 +151,9 @@ describe("reconcileParseOutput", () => {
           receiptTotal({ receipt_index: 0, amount: "10", currency: "USD" }),
           receiptTotal({ receipt_index: 0, amount: "12", currency: "USD" }),
         ],
-        ledger_entries: [entry({ item_name: "A", amount: "10", currency: "USD", category_index: 1 })],
+        ledger_entries: [
+          entry({ item_name: "A", amount: "10", currency: "USD", category_index: 1 }),
+        ],
         order_adjustments: [],
       }),
     });
@@ -160,7 +169,9 @@ describe("reconcileParseOutput", () => {
       aiLanguage: "en-US",
       result: successResult({
         receipt_totals: [receiptTotal({ amount: "105", currency: "USD" })],
-        ledger_entries: [entry({ item_name: "Item", amount: "100", currency: "USD", category_index: 4 })],
+        ledger_entries: [
+          entry({ item_name: "Item", amount: "100", currency: "USD", category_index: 4 }),
+        ],
         order_adjustments: [adjustment({ item_name: "Shipping", amount: "3", currency: "USD" })],
       }),
     });

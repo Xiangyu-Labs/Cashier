@@ -27,9 +27,7 @@ export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries
           }}
           mainCurrency={mainCurrency}
           variant="default"
-          {...(sourceDocumentEntryDate !== undefined
-            ? { sourceDocumentEntryDate }
-            : {})}
+          {...(sourceDocumentEntryDate !== undefined ? { sourceDocumentEntryDate } : {})}
         />
       ))}
     </div>

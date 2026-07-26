@@ -192,9 +192,7 @@ export type ProcessingFailureCode = (typeof PROCESSING_FAILURE_CODES)[number];
  * Unknown values are mapped to "processing_unavailable" without discarding
  * the original stored value in the database.
  */
-export function toStableFailureCode(
-  legacyCode: string | null | undefined
-): ProcessingFailureCode {
+export function toStableFailureCode(legacyCode: string | null | undefined): ProcessingFailureCode {
   if (legacyCode == null) return "processing_unavailable";
 
   // Direct matches for known stable codes
@@ -223,9 +221,7 @@ export function toStableFailureCode(
  * Map a legacy anomaly reason string to a stable AnomalyCode.
  * Falls back to "insufficient_evidence" for unknown values.
  */
-export function toStableAnomalyCode(
-  reason: string | null | undefined
-): AnomalyCode {
+export function toStableAnomalyCode(reason: string | null | undefined): AnomalyCode {
   if (reason == null) return "insufficient_evidence";
 
   const normalized = reason.toLowerCase().replace(/\s+/g, "_");
@@ -235,10 +231,7 @@ export function toStableAnomalyCode(
   }
 
   // Map common legacy values
-  if (
-    normalized.includes("currency") ||
-    normalized.includes("unknown_currency")
-  ) {
+  if (normalized.includes("currency") || normalized.includes("unknown_currency")) {
     return "currency_required";
   }
   if (

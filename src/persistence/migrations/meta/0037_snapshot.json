@@ -82,31 +82,22 @@
       "indexes": {
         "otp_tokens_token_hash_unique": {
           "name": "otp_tokens_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
+          "columns": ["token_hash"],
           "isUnique": true
         },
         "idx_otp_tokens_email": {
           "name": "idx_otp_tokens_email",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": false
         },
         "idx_otp_tokens_expires": {
           "name": "idx_otp_tokens_expires",
-          "columns": [
-            "expires"
-          ],
+          "columns": ["expires"],
           "isUnique": false
         },
         "idx_otp_tokens_verified": {
           "name": "idx_otp_tokens_verified",
-          "columns": [
-            "email",
-            "verified_at"
-          ],
+          "columns": ["email", "verified_at"],
           "isUnique": false
         }
       },
@@ -178,16 +169,12 @@
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         },
         "idx_users_email": {
           "name": "idx_users_email",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": false
         }
       },
@@ -314,10 +301,7 @@
       "indexes": {
         "uniq_category_name_per_ledger": {
           "name": "uniq_category_name_per_ledger",
-          "columns": [
-            "ledger_id",
-            "name"
-          ],
+          "columns": ["ledger_id", "name"],
           "isUnique": true,
           "where": "\"entry_categories\".\"deleted_at\" IS NULL"
         }
@@ -327,12 +311,8 @@
           "name": "entry_categories_ledger_id_ledgers_id_fk",
           "tableFrom": "entry_categories",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -446,52 +426,32 @@
       "indexes": {
         "idx_ledger_entries_source_doc": {
           "name": "idx_ledger_entries_source_doc",
-          "columns": [
-            "source_document_id"
-          ],
+          "columns": ["source_document_id"],
           "isUnique": false
         },
         "uq_ledger_entries_ledger_id_id": {
           "name": "uq_ledger_entries_ledger_id_id",
-          "columns": [
-            "ledger_id",
-            "id"
-          ],
+          "columns": ["ledger_id", "id"],
           "isUnique": true
         },
         "idx_ledger_entries_ledger_revision": {
           "name": "idx_ledger_entries_ledger_revision",
-          "columns": [
-            "ledger_id",
-            "source_document_revision_id"
-          ],
+          "columns": ["ledger_id", "source_document_revision_id"],
           "isUnique": false
         },
         "idx_ledger_entries_ledger_active_created": {
           "name": "idx_ledger_entries_ledger_active_created",
-          "columns": [
-            "ledger_id",
-            "deleted_at",
-            "created_at"
-          ],
+          "columns": ["ledger_id", "deleted_at", "created_at"],
           "isUnique": false
         },
         "idx_ledger_entries_ledger_category_active": {
           "name": "idx_ledger_entries_ledger_category_active",
-          "columns": [
-            "ledger_id",
-            "category_id",
-            "deleted_at"
-          ],
+          "columns": ["ledger_id", "category_id", "deleted_at"],
           "isUnique": false
         },
         "idx_ledger_entries_ledger_currency": {
           "name": "idx_ledger_entries_ledger_currency",
-          "columns": [
-            "ledger_id",
-            "currency",
-            "deleted_at"
-          ],
+          "columns": ["ledger_id", "currency", "deleted_at"],
           "isUnique": false
         }
       },
@@ -500,12 +460,8 @@
           "name": "ledger_entries_ledger_id_ledgers_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -513,12 +469,8 @@
           "name": "ledger_entries_category_id_entry_categories_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "entry_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -577,16 +529,12 @@
       "indexes": {
         "idx_ledgers_user_id": {
           "name": "idx_ledgers_user_id",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "uniq_ledgers_user_id": {
           "name": "uniq_ledgers_user_id",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": true,
           "where": "\"ledgers\".\"deleted_at\" IS NULL"
         }
@@ -596,12 +544,8 @@
           "name": "ledgers_user_id_users_id_fk",
           "tableFrom": "ledgers",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -666,16 +610,12 @@
       "indexes": {
         "service_credentials_key_unique": {
           "name": "service_credentials_key_unique",
-          "columns": [
-            "key"
-          ],
+          "columns": ["key"],
           "isUnique": true
         },
         "idx_service_credentials_ledger_id": {
           "name": "idx_service_credentials_ledger_id",
-          "columns": [
-            "ledger_id"
-          ],
+          "columns": ["ledger_id"],
           "isUnique": false
         }
       },
@@ -684,12 +624,8 @@
           "name": "service_credentials_ledger_id_ledgers_id_fk",
           "tableFrom": "service_credentials",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -814,68 +750,42 @@
       "indexes": {
         "idx_source_docs_ledger_status": {
           "name": "idx_source_docs_ledger_status",
-          "columns": [
-            "ledger_id",
-            "status"
-          ],
+          "columns": ["ledger_id", "status"],
           "isUnique": false
         },
         "idx_source_docs_ledger_created": {
           "name": "idx_source_docs_ledger_created",
-          "columns": [
-            "ledger_id",
-            "created_at"
-          ],
+          "columns": ["ledger_id", "created_at"],
           "isUnique": false
         },
         "idx_source_docs_ledger_entry_date": {
           "name": "idx_source_docs_ledger_entry_date",
-          "columns": [
-            "ledger_id",
-            "entry_date"
-          ],
+          "columns": ["ledger_id", "entry_date"],
           "isUnique": false
         },
         "idx_source_docs_ledger_status_date": {
           "name": "idx_source_docs_ledger_status_date",
-          "columns": [
-            "ledger_id",
-            "status",
-            "entry_date"
-          ],
+          "columns": ["ledger_id", "status", "entry_date"],
           "isUnique": false
         },
         "idx_source_docs_ledger_status_type": {
           "name": "idx_source_docs_ledger_status_type",
-          "columns": [
-            "ledger_id",
-            "status",
-            "type"
-          ],
+          "columns": ["ledger_id", "status", "type"],
           "isUnique": false
         },
         "uq_source_documents_ledger_id_id": {
           "name": "uq_source_documents_ledger_id_id",
-          "columns": [
-            "ledger_id",
-            "id"
-          ],
+          "columns": ["ledger_id", "id"],
           "isUnique": true
         },
         "idx_source_docs_ledger_active_revision": {
           "name": "idx_source_docs_ledger_active_revision",
-          "columns": [
-            "ledger_id",
-            "active_revision_id"
-          ],
+          "columns": ["ledger_id", "active_revision_id"],
           "isUnique": false
         },
         "idx_source_docs_ledger_pending_revision": {
           "name": "idx_source_docs_ledger_pending_revision",
-          "columns": [
-            "ledger_id",
-            "pending_revision_id"
-          ],
+          "columns": ["ledger_id", "pending_revision_id"],
           "isUnique": false
         }
       },
@@ -884,12 +794,8 @@
           "name": "source_documents_ledger_id_ledgers_id_fk",
           "tableFrom": "source_documents",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -941,10 +847,7 @@
       "indexes": {
         "idx_idempotency_records_status_created": {
           "name": "idx_idempotency_records_status_created",
-          "columns": [
-            "status",
-            "created_at"
-          ],
+          "columns": ["status", "created_at"],
           "isUnique": false
         }
       },
@@ -1037,18 +940,12 @@
       "indexes": {
         "uq_migration_checkpoints_name_key": {
           "name": "uq_migration_checkpoints_name_key",
-          "columns": [
-            "migration_name",
-            "checkpoint_key"
-          ],
+          "columns": ["migration_name", "checkpoint_key"],
           "isUnique": true
         },
         "idx_migration_checkpoints_ledger_status": {
           "name": "idx_migration_checkpoints_ledger_status",
-          "columns": [
-            "ledger_id",
-            "status"
-          ],
+          "columns": ["ledger_id", "status"],
           "isUnique": false
         }
       },
@@ -1057,12 +954,8 @@
           "name": "migration_checkpoints_ledger_id_ledgers_id_fk",
           "tableFrom": "migration_checkpoints",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1165,18 +1058,12 @@
       "indexes": {
         "uq_processing_attempts_revision_number": {
           "name": "uq_processing_attempts_revision_number",
-          "columns": [
-            "revision_id",
-            "attempt_number"
-          ],
+          "columns": ["revision_id", "attempt_number"],
           "isUnique": true
         },
         "idx_processing_attempts_ledger_status": {
           "name": "idx_processing_attempts_ledger_status",
-          "columns": [
-            "ledger_id",
-            "status"
-          ],
+          "columns": ["ledger_id", "status"],
           "isUnique": false
         }
       },
@@ -1185,14 +1072,8 @@
           "name": "fk_processing_attempts_revision_ledger",
           "tableFrom": "processing_attempts",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1313,33 +1194,22 @@
       "indexes": {
         "uq_processing_outbox_idempotency_key": {
           "name": "uq_processing_outbox_idempotency_key",
-          "columns": [
-            "idempotency_key"
-          ],
+          "columns": ["idempotency_key"],
           "isUnique": true
         },
         "uq_processing_outbox_revision_attempt": {
           "name": "uq_processing_outbox_revision_attempt",
-          "columns": [
-            "revision_id",
-            "attempt_number"
-          ],
+          "columns": ["revision_id", "attempt_number"],
           "isUnique": true
         },
         "idx_processing_outbox_dispatch": {
           "name": "idx_processing_outbox_dispatch",
-          "columns": [
-            "status",
-            "available_at"
-          ],
+          "columns": ["status", "available_at"],
           "isUnique": false
         },
         "idx_processing_outbox_claim_expiry": {
           "name": "idx_processing_outbox_claim_expiry",
-          "columns": [
-            "status",
-            "claim_expires_at"
-          ],
+          "columns": ["status", "claim_expires_at"],
           "isUnique": false
         }
       },
@@ -1348,14 +1218,8 @@
           "name": "fk_processing_outbox_revision_ledger",
           "tableFrom": "processing_outbox",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1422,17 +1286,12 @@
       "indexes": {
         "uq_revision_entries_revision_position": {
           "name": "uq_revision_entries_revision_position",
-          "columns": [
-            "revision_id",
-            "position"
-          ],
+          "columns": ["revision_id", "position"],
           "isUnique": true
         },
         "uq_revision_entries_ledger_entry": {
           "name": "uq_revision_entries_ledger_entry",
-          "columns": [
-            "ledger_entry_id"
-          ],
+          "columns": ["ledger_entry_id"],
           "isUnique": true
         }
       },
@@ -1441,14 +1300,8 @@
           "name": "fk_revision_entries_revision_ledger",
           "tableFrom": "revision_entries",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1456,14 +1309,8 @@
           "name": "fk_revision_entries_ledger_entry_ledger",
           "tableFrom": "revision_entries",
           "tableTo": "ledger_entries",
-          "columnsFrom": [
-            "ledger_id",
-            "ledger_entry_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "ledger_entry_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1526,26 +1373,17 @@
       "indexes": {
         "uq_revision_files_revision_position": {
           "name": "uq_revision_files_revision_position",
-          "columns": [
-            "revision_id",
-            "position"
-          ],
+          "columns": ["revision_id", "position"],
           "isUnique": true
         },
         "uq_revision_files_revision_file": {
           "name": "uq_revision_files_revision_file",
-          "columns": [
-            "revision_id",
-            "stored_file_id"
-          ],
+          "columns": ["revision_id", "stored_file_id"],
           "isUnique": true
         },
         "idx_revision_files_ledger_file": {
           "name": "idx_revision_files_ledger_file",
-          "columns": [
-            "ledger_id",
-            "stored_file_id"
-          ],
+          "columns": ["ledger_id", "stored_file_id"],
           "isUnique": false
         }
       },
@@ -1554,14 +1392,8 @@
           "name": "fk_revision_files_revision_ledger",
           "tableFrom": "revision_files",
           "tableTo": "source_document_revisions",
-          "columnsFrom": [
-            "ledger_id",
-            "revision_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "revision_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1569,14 +1401,8 @@
           "name": "fk_revision_files_stored_file_ledger",
           "tableFrom": "revision_files",
           "tableTo": "stored_files",
-          "columnsFrom": [
-            "ledger_id",
-            "stored_file_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "stored_file_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1675,34 +1501,22 @@
       "indexes": {
         "uq_source_document_revisions_ledger_id_id": {
           "name": "uq_source_document_revisions_ledger_id_id",
-          "columns": [
-            "ledger_id",
-            "id"
-          ],
+          "columns": ["ledger_id", "id"],
           "isUnique": true
         },
         "uq_source_document_revisions_document_number": {
           "name": "uq_source_document_revisions_document_number",
-          "columns": [
-            "source_document_id",
-            "revision_number"
-          ],
+          "columns": ["source_document_id", "revision_number"],
           "isUnique": true
         },
         "idx_source_document_revisions_ledger_outcome": {
           "name": "idx_source_document_revisions_ledger_outcome",
-          "columns": [
-            "ledger_id",
-            "outcome"
-          ],
+          "columns": ["ledger_id", "outcome"],
           "isUnique": false
         },
         "idx_source_document_revisions_document_created": {
           "name": "idx_source_document_revisions_document_created",
-          "columns": [
-            "source_document_id",
-            "created_at"
-          ],
+          "columns": ["source_document_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1711,14 +1525,8 @@
           "name": "fk_revisions_source_document_ledger",
           "tableFrom": "source_document_revisions",
           "tableTo": "source_documents",
-          "columnsFrom": [
-            "ledger_id",
-            "source_document_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "source_document_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1820,26 +1628,17 @@
       "indexes": {
         "uq_stored_files_ledger_id_id": {
           "name": "uq_stored_files_ledger_id_id",
-          "columns": [
-            "ledger_id",
-            "id"
-          ],
+          "columns": ["ledger_id", "id"],
           "isUnique": true
         },
         "uq_stored_files_provider_key": {
           "name": "uq_stored_files_provider_key",
-          "columns": [
-            "storage_provider",
-            "storage_key"
-          ],
+          "columns": ["storage_provider", "storage_key"],
           "isUnique": true
         },
         "idx_stored_files_ledger_created": {
           "name": "idx_stored_files_ledger_created",
-          "columns": [
-            "ledger_id",
-            "created_at"
-          ],
+          "columns": ["ledger_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1848,12 +1647,8 @@
           "name": "stored_files_ledger_id_ledgers_id_fk",
           "tableFrom": "stored_files",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1959,26 +1754,17 @@
       "indexes": {
         "uq_upload_session_files_session_target": {
           "name": "uq_upload_session_files_session_target",
-          "columns": [
-            "upload_session_id",
-            "target_id"
-          ],
+          "columns": ["upload_session_id", "target_id"],
           "isUnique": true
         },
         "uq_upload_session_files_session_position": {
           "name": "uq_upload_session_files_session_position",
-          "columns": [
-            "upload_session_id",
-            "position"
-          ],
+          "columns": ["upload_session_id", "position"],
           "isUnique": true
         },
         "idx_upload_session_files_ledger_file": {
           "name": "idx_upload_session_files_ledger_file",
-          "columns": [
-            "ledger_id",
-            "stored_file_id"
-          ],
+          "columns": ["ledger_id", "stored_file_id"],
           "isUnique": false
         }
       },
@@ -1987,14 +1773,8 @@
           "name": "fk_upload_session_files_session_ledger",
           "tableFrom": "upload_session_files",
           "tableTo": "upload_sessions",
-          "columnsFrom": [
-            "ledger_id",
-            "upload_session_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "upload_session_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2002,14 +1782,8 @@
           "name": "fk_upload_session_files_stored_file_ledger",
           "tableFrom": "upload_session_files",
           "tableTo": "stored_files",
-          "columnsFrom": [
-            "ledger_id",
-            "stored_file_id"
-          ],
-          "columnsTo": [
-            "ledger_id",
-            "id"
-          ],
+          "columnsFrom": ["ledger_id", "stored_file_id"],
+          "columnsTo": ["ledger_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2088,26 +1862,17 @@
       "indexes": {
         "uq_upload_sessions_ledger_id_id": {
           "name": "uq_upload_sessions_ledger_id_id",
-          "columns": [
-            "ledger_id",
-            "id"
-          ],
+          "columns": ["ledger_id", "id"],
           "isUnique": true
         },
         "uq_upload_sessions_finalization_token_hash": {
           "name": "uq_upload_sessions_finalization_token_hash",
-          "columns": [
-            "finalization_token_hash"
-          ],
+          "columns": ["finalization_token_hash"],
           "isUnique": true
         },
         "idx_upload_sessions_ledger_status_expiry": {
           "name": "idx_upload_sessions_ledger_status_expiry",
-          "columns": [
-            "ledger_id",
-            "status",
-            "expires_at"
-          ],
+          "columns": ["ledger_id", "status", "expires_at"],
           "isUnique": false
         }
       },
@@ -2116,12 +1881,8 @@
           "name": "upload_sessions_ledger_id_ledgers_id_fk",
           "tableFrom": "upload_sessions",
           "tableTo": "ledgers",
-          "columnsFrom": [
-            "ledger_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ledger_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2262,59 +2023,37 @@
       "indexes": {
         "idx_task_runs_status": {
           "name": "idx_task_runs_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "idx_task_runs_scope_status": {
           "name": "idx_task_runs_scope_status",
-          "columns": [
-            "scope_id",
-            "status"
-          ],
+          "columns": ["scope_id", "status"],
           "isUnique": false
         },
         "idx_task_runs_type_dedup_status": {
           "name": "idx_task_runs_type_dedup_status",
-          "columns": [
-            "type",
-            "deduplication_key",
-            "status"
-          ],
+          "columns": ["type", "deduplication_key", "status"],
           "isUnique": false
         },
         "idx_task_runs_entity": {
           "name": "idx_task_runs_entity",
-          "columns": [
-            "entity_type",
-            "entity_id"
-          ],
+          "columns": ["entity_type", "entity_id"],
           "isUnique": false
         },
         "idx_task_runs_scope_entity": {
           "name": "idx_task_runs_scope_entity",
-          "columns": [
-            "scope_id",
-            "entity_type",
-            "entity_id"
-          ],
+          "columns": ["scope_id", "entity_type", "entity_id"],
           "isUnique": false
         },
         "idx_task_runs_scope_status_created": {
           "name": "idx_task_runs_scope_status_created",
-          "columns": [
-            "scope_id",
-            "status",
-            "created_at"
-          ],
+          "columns": ["scope_id", "status", "created_at"],
           "isUnique": false
         },
         "idx_task_runs_created": {
           "name": "idx_task_runs_created",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },

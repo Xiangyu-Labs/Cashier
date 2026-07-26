@@ -229,16 +229,16 @@ AI 解析、费用/折扣分摊和批量换汇仍可能产生二进制浮点误�
 
 ## Progress (Updated After Remediation)
 
-| Task | 状态 | 说明 |
-| --- | --- | --- |
-| 1. Decimal money | 已完成 | Commit `6ebac4a0`: AI parser, 分摊, batch conversion, revision processing 全程 decimal string. |
-| 2. Credential security | 已完成 | Commits `fbf8608e`, `3f03f5f5`: HMAC, prefix/suffix, deleted plaintext scrub, verify/clear gates. |
-| 3. Candidate lifecycle | 已完成 | Commits `8fa9fd7d`, `b81732bd`: Row-lock transactions, CAS-on-failure throws, concurrent tests. |
-| 4. Recovery/diagnostics UI | 已完成 | No change needed -- prior implementation was sound, now confirmed with Task 3 fixes. |
-| 5. Main currency lock | 已完成 | Commits `8fa9fd7d`, `b81732bd`: Shared ledger lock, concurrent interleaving tests. |
-| 6. Upload policy | 已完成 | Commit `94678f59`: Aggregate file-count checks at schema, use-case, and transaction layers. |
-| 7. Bounded Stream UX | 代码完成，视觉未验收 | Attention, 20-item pagination, optimistic, backoff, counts wired. Browser evidence unavailable. |
-| 8. Request-bound recovery | 已完成 | Commit `ce3107a4`: Separate batch/attempt config, CAS exhaustion, boundary tests. |
+| Task                       | 状态                 | 说明                                                                                              |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------- |
+| 1. Decimal money           | 已完成               | Commit `6ebac4a0`: AI parser, 分摊, batch conversion, revision processing 全程 decimal string.    |
+| 2. Credential security     | 已完成               | Commits `fbf8608e`, `3f03f5f5`: HMAC, prefix/suffix, deleted plaintext scrub, verify/clear gates. |
+| 3. Candidate lifecycle     | 已完成               | Commits `8fa9fd7d`, `b81732bd`: Row-lock transactions, CAS-on-failure throws, concurrent tests.   |
+| 4. Recovery/diagnostics UI | 已完成               | No change needed -- prior implementation was sound, now confirmed with Task 3 fixes.              |
+| 5. Main currency lock      | 已完成               | Commits `8fa9fd7d`, `b81732bd`: Shared ledger lock, concurrent interleaving tests.                |
+| 6. Upload policy           | 已完成               | Commit `94678f59`: Aggregate file-count checks at schema, use-case, and transaction layers.       |
+| 7. Bounded Stream UX       | 代码完成，视觉未验收 | Attention, 20-item pagination, optimistic, backoff, counts wired. Browser evidence unavailable.   |
+| 8. Request-bound recovery  | 已完成               | Commit `ce3107a4`: Separate batch/attempt config, CAS exhaustion, boundary tests.                 |
 
 ## Verification (Updated After Remediation)
 

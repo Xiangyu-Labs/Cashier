@@ -4,9 +4,7 @@ import type { ProcessingIntentContract } from "@/application/contracts";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { currentApplication } from "@/application/current";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
-import type {
-  CreateSourceDocumentResponseDto,
-} from "@/modules/source-document/contracts";
+import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   createSourceDocumentInputSchema,
   type CreateSourceDocumentInputContract,

@@ -32,10 +32,7 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        sourceDocumentId
-      );
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
       const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,
@@ -91,10 +88,7 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        sourceDocumentId
-      );
+      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
       const now = authoritativeUpdatedAt ?? new Date().toISOString();
       const entity = buildEntityReconciliation(
         operationId,

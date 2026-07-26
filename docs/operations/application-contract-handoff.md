@@ -95,12 +95,12 @@ processing. Their automated suites are the reference behavior, not their provide
 
 ## Replacement Adapter Boundaries
 
-| Provider     | Ports to replace                                                                            | Required suites                                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Neon         | revision, ledger projection/read, settings, authentication, service credential, idempotency | revision state, authorization, bookkeeping, concurrent idempotency, error sanitation, bounded reads                          |
-| R2           | stored file, upload plan, upload target, finalization, authorized read                      | upload/finalization, limits/expiry, ownership denial, ordered identity, authorized file read, error sanitation               |
+| Provider                | Ports to replace                                                                            | Required suites                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Neon                    | revision, ledger projection/read, settings, authentication, service credential, idempotency | revision state, authorization, bookkeeping, concurrent idempotency, error sanitation, bounded reads                          |
+| R2                      | stored file, upload plan, upload target, finalization, authorized read                      | upload/finalization, limits/expiry, ownership denial, ordered identity, authorized file read, error sanitation               |
 | Queue/Worker [DEFERRED] | processing intent, dispatch, claim, retry classification, completion, deduplication         | restart recovery, duplicate/stale dispatch, lease/claim, terminal outcome, active-result preservation, sanitized diagnostics |
-| Vercel       | host the existing Next.js upper layer and compose replacement adapters                      | API v1 fixture, retained behavior suites, bounded/sensitive responses, authentication and runtime startup checks             |
+| Vercel                  | host the existing Next.js upper layer and compose replacement adapters                      | API v1 fixture, retained behavior suites, bounded/sensitive responses, authentication and runtime startup checks             |
 
 Vercel does not own a business port and must not alter upper business contracts. If any provider
 limit requires an upper contract change, implementation stops and a new OpenSpec change must be

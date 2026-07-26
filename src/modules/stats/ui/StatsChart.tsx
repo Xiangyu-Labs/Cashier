@@ -170,90 +170,88 @@ export function StatsChart({
 
   return (
     <div className="w-full h-52 relative pt-6 pb-6 select-none">
-        {/* Outlier indicator */}
-        {hasOutliers && (
-          <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
-            {t("scaleAdjusted")}
-          </div>
-        )}
-        {/* Grid Lines */}
-        <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none">
-          <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
-          <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
-          <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
+      {/* Outlier indicator */}
+      {hasOutliers && (
+        <div className="absolute top-0 right-2 text-[10px] text-muted-foreground bg-surface2/50 px-2 py-0.5 rounded-full">
+          {t("scaleAdjusted")}
         </div>
+      )}
+      {/* Grid Lines */}
+      <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none">
+        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
+        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
+        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
+      </div>
 
-        {/* Chart Area - Using relative positioning for points */}
-        <div className="h-full w-full px-2 relative" style={{ height: `${chartHeight}px` }}>
-          {/* SVG for line only - stretched horizontally */}
-          <svg
-            className="absolute inset-0 w-full h-full overflow-visible"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            {/* Line Path */}
-            {chartPoints.length > 1 && (
-              <polyline
-                points={chartPoints
-                  .map((p, i) => {
-                    const xPercent =
-                      chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
-                    // Calculate y position (inverted: 0 at top) using capped value
-                    const displayValue = Math.min(p.value, yAxisMax);
-                    const yPercent =
-                      paddingTop +
-                      (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
-                    return `${xPercent},${yPercent}`;
-                  })
-                  .join(" ")}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-primary transition-all duration-300 ease-in-out"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
-          </svg>
+      {/* Chart Area - Using relative positioning for points */}
+      <div className="h-full w-full px-2 relative" style={{ height: `${chartHeight}px` }}>
+        {/* SVG for line only - stretched horizontally */}
+        <svg
+          className="absolute inset-0 w-full h-full overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          {/* Line Path */}
+          {chartPoints.length > 1 && (
+            <polyline
+              points={chartPoints
+                .map((p, i) => {
+                  const xPercent =
+                    chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
+                  // Calculate y position (inverted: 0 at top) using capped value
+                  const displayValue = Math.min(p.value, yAxisMax);
+                  const yPercent =
+                    paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
+                  return `${xPercent},${yPercent}`;
+                })
+                .join(" ")}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-primary transition-all duration-300 ease-in-out"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
 
-          {/* Points - Using absolute positioning with CSS (no SVG distortion) */}
-          {chartPoints.map((p, i) => {
-            const leftPercent =
-              chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
-            // Calculate top position using capped value
-            const isCapped = p.value > yAxisMax;
-            const displayValue = Math.min(p.value, yAxisMax);
-            const topPercent =
-              paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
+        {/* Points - Using absolute positioning with CSS (no SVG distortion) */}
+        {chartPoints.map((p, i) => {
+          const leftPercent = chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
+          // Calculate top position using capped value
+          const isCapped = p.value > yAxisMax;
+          const displayValue = Math.min(p.value, yAxisMax);
+          const topPercent =
+            paddingTop + (1 - displayValue / yAxisMax) * (100 - paddingTop - paddingBottom);
 
-            // Format display date based on range type
-            const displayDate =
-              rangeType === "year"
-                ? p.fullDate // YYYY-MM format
-                : parseDateString(p.fullDate).toLocaleDateString(locale, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  });
+          // Format display date based on range type
+          const displayDate =
+            rangeType === "year"
+              ? p.fullDate // YYYY-MM format
+              : parseDateString(p.fullDate).toLocaleDateString(locale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                });
 
-            const isHovered = hoveredIndex === i;
+          const isHovered = hoveredIndex === i;
 
-            return (
+          return (
+            <div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${leftPercent}%`,
+                top: `${topPercent}%`,
+              }}
+            >
+              {/* Data Point */}
               <div
-                key={i}
-                className="absolute"
-                style={{
-                  left: `${leftPercent}%`,
-                  top: `${topPercent}%`,
-                }}
-              >
-                {/* Data Point */}
-                <div
-                  onMouseEnter={() => setHoveredIndex(i)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onClick={() => setHoveredIndex(isHovered ? null : i)}
-                  className={`
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                onClick={() => setHoveredIndex(isHovered ? null : i)}
+                className={`
                     w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
                     transition-all duration-300 cursor-pointer
                     ${
@@ -262,52 +260,52 @@ export function StatsChart({
                         : "border-2 border-primary hover:scale-125"
                     }
                   `}
-                />
+              />
 
-                {/* Tooltip */}
-                {isHovered && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
-                    <div className="font-medium">{displayDate}</div>
-                    <div className={isCapped ? "text-danger" : ""}>
-                      {t("expense")}: {formatAmount(p.value)}
-                      {isCapped && t("exceedsLimit")}
-                    </div>
+              {/* Tooltip */}
+              {isHovered && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
+                  <div className="font-medium">{displayDate}</div>
+                  <div className={isCapped ? "text-danger" : ""}>
+                    {t("expense")}: {formatAmount(p.value)}
+                    {isCapped && t("exceedsLimit")}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        {/* X Axis Labels */}
-        <div className="relative mt-2 h-6 w-full px-2">
-          {chartPoints.map((p, i) => {
-            // Label Filtering
-            let showLabel = false;
-            if (rangeType === "week" || rangeType === "year") {
+      {/* X Axis Labels */}
+      <div className="relative mt-2 h-6 w-full px-2">
+        {chartPoints.map((p, i) => {
+          // Label Filtering
+          let showLabel = false;
+          if (rangeType === "week" || rangeType === "year") {
+            showLabel = true;
+          } else if (rangeType === "month") {
+            // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
+            if (i === 0 || i === chartPoints.length - 1 || i % 5 === 0) {
               showLabel = true;
-            } else if (rangeType === "month") {
-              // Show 1, 6, 11, 16, 21, 26, 31 (Every 5 days + last day?)
-              if (i === 0 || i === chartPoints.length - 1 || i % 5 === 0) {
-                showLabel = true;
-              }
             }
+          }
 
-            if (!showLabel) return null;
+          if (!showLabel) return null;
 
-            const leftPos = chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
+          const leftPos = chartPoints.length === 1 ? 50 : (i / (chartPoints.length - 1)) * 100;
 
-            return (
-              <div
-                key={i}
-                className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
-                style={{ left: `${leftPos}%` }}
-              >
-                {p.label}
-              </div>
-            );
-          })}
-        </div>
+          return (
+            <div
+              key={i}
+              className="absolute text-[10px] text-muted-foreground transform -translate-x-1/2 text-center w-8"
+              style={{ left: `${leftPos}%` }}
+            >
+              {p.label}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

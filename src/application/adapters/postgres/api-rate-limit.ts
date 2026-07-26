@@ -57,7 +57,11 @@ class PostgresRateLimiter {
     const row = result.rows?.[0];
     if (row == null) {
       // Fallback: should not happen with RETURNING
-      return { success: true, remaining: limit - 1, resetTime: (windowStart + windowSeconds) * 1000 };
+      return {
+        success: true,
+        remaining: limit - 1,
+        resetTime: (windowStart + windowSeconds) * 1000,
+      };
     }
 
     const currCount = Number(row.curr_count);
@@ -80,10 +84,7 @@ class PostgresRateLimiter {
    * @param _cooldownSeconds - Cooldown duration in seconds (used only for
    *   context; the bucket stores activation time, not the duration)
    */
-  async setCooldown(
-    bucketKey: string,
-    _cooldownSeconds: number
-  ): Promise<void> {
+  async setCooldown(bucketKey: string, _cooldownSeconds: number): Promise<void> {
     const now = new Date();
     await db.execute(sql`
       INSERT INTO rate_limit_buckets (bucket_key, count, window_start, created_at)
@@ -104,10 +105,7 @@ class PostgresRateLimiter {
    * @param cooldownSeconds - Cooldown duration in seconds
    * @returns Remaining seconds (0 if expired or no bucket exists)
    */
-  async getCooldownRemaining(
-    bucketKey: string,
-    cooldownSeconds: number
-  ): Promise<number> {
+  async getCooldownRemaining(bucketKey: string, cooldownSeconds: number): Promise<number> {
     const result = await db.execute<{ window_start: Date }>(sql`
       SELECT window_start FROM rate_limit_buckets WHERE bucket_key = ${bucketKey}
     `);

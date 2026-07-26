@@ -2,7 +2,10 @@
 import { useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getSourceDocumentLightAction, getStreamRefreshAction } from "@/modules/source-document/actions";
+import {
+  getSourceDocumentLightAction,
+  getStreamRefreshAction,
+} from "@/modules/source-document/actions";
 import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
@@ -37,8 +40,7 @@ export function useSourceDocumentDetailData({
     refetchOnReconnect: false,
   });
 
-  const pending =
-    sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
+  const pending = sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
 
   // C3: Persist watched entity fingerprint for refresh comparison
   const watchedFingerprintRef = useRef<string>("");

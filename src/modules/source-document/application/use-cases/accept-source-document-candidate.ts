@@ -22,9 +22,11 @@ interface AcceptCandidateInput {
  *
  * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
-export async function acceptSourceDocumentCandidate(
-  { ledgerId, sourceDocumentId, revisionId }: AcceptCandidateInput
-): Promise<AcceptCandidateResponseDto> {
+export async function acceptSourceDocumentCandidate({
+  ledgerId,
+  sourceDocumentId,
+  revisionId,
+}: AcceptCandidateInput): Promise<AcceptCandidateResponseDto> {
   await acceptCandidateRevision(ledgerId, sourceDocumentId, revisionId);
 
   return {

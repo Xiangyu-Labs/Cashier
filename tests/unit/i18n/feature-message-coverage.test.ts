@@ -34,15 +34,7 @@ const CATALOGS = [
  *   which inherits only the Shell manifest.
  */
 const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
-  shell: [
-    "Auth",
-    "AuthEmail",
-    "Common",
-    "Error",
-    "LedgerError",
-    "Metadata",
-    "NotFound",
-  ],
+  shell: ["Auth", "AuthEmail", "Common", "Error", "LedgerError", "Metadata", "NotFound"],
   stream: [
     "AnomalyCode",
     "BatchActions",
@@ -74,12 +66,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "LedgerEntryDetail",
     "Settings",
   ],
-  stats: [
-    "Calendar",
-    "DateRangeFilter",
-    "StatsChart",
-    "StatsTab",
-  ],
+  stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   settings: [
     "CategoriesPage",
     "Devices",
@@ -130,8 +117,7 @@ describe("feature message coverage", () => {
   describe("each boundary manifest includes all required namespaces", () => {
     for (const [boundary, expectedNamespaces] of Object.entries(REQUIRED_NAMESPACES)) {
       it(`${boundary} manifest is complete`, () => {
-        const manifest =
-          FEATURE_MESSAGES[boundary as keyof typeof FEATURE_MESSAGES];
+        const manifest = FEATURE_MESSAGES[boundary as keyof typeof FEATURE_MESSAGES];
         for (const ns of expectedNamespaces) {
           expect(manifest).toContain(ns);
         }
@@ -139,9 +125,7 @@ describe("feature message coverage", () => {
     }
 
     it("standaloneSettings effective provider includes all independently required namespaces", () => {
-      const effective = [
-        ...new Set([...FEATURE_MESSAGES.shell, ...FEATURE_MESSAGES.settings]),
-      ];
+      const effective = [...new Set([...FEATURE_MESSAGES.shell, ...FEATURE_MESSAGES.settings])];
       for (const ns of STANDALONE_SETTINGS_REQUIRED) {
         expect(effective).toContain(ns);
         for (const catalog of CATALOGS) {

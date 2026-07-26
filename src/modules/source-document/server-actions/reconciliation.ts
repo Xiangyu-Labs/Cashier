@@ -159,7 +159,7 @@ export async function buildAuthoritativeReconciliation(
 export async function buildDeleteReconciliation(
   operationId: string,
   _ledgerId: string,
-  _sourceDocumentId: string,
+  _sourceDocumentId: string
 ): Promise<MutationReconciliation<SourceDocumentListItemDto>> {
   return {
     operationId,

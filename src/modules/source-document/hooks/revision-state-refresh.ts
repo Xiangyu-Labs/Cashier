@@ -167,10 +167,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         cleanupIntervals();
         leadershipTimer = setInterval(() => {
           try {
-            localStorage.setItem(
-              leaseKey,
-              String(Date.now() + leaseMs)
-            );
+            localStorage.setItem(leaseKey, String(Date.now() + leaseMs));
             // Broadcast heartbeat
             broadcastChannel?.postMessage({
               type: "heartbeat",
@@ -589,7 +586,10 @@ export function notifyNewSubmission(): void {
 // Browser singleton initialization (client-side only)
 // ---------------------------------------------------------------------------
 
-export function initRefreshCoordinator(ledgerId: string, queryClient?: QueryClient): RefreshCoordinator {
+export function initRefreshCoordinator(
+  ledgerId: string,
+  queryClient?: QueryClient
+): RefreshCoordinator {
   const env = browserEnvironment(ledgerId);
   if (env == null) {
     // SSR — return a no-op coordinator

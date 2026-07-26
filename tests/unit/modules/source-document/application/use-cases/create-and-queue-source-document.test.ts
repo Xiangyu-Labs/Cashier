@@ -36,9 +36,10 @@ describe("createAndQueueSourceDocument", () => {
       revision: { id: "revision-1" },
       intent: { id: "intent-1" },
     });
-    processImage.mockImplementation(
-      async (buffer: Buffer, mimeType: string) => ({ buffer, mimeType })
-    );
+    processImage.mockImplementation(async (buffer: Buffer, mimeType: string) => ({
+      buffer,
+      mimeType,
+    }));
   });
 
   it("rejects an empty submission before creating durable state", async () => {
@@ -112,21 +113,47 @@ describe("createAndQueueSourceDocument", () => {
       const uploadPlan = {
         id: "session-1",
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
-        targets: [{ id: "target-1", method: "PUT" as const, url: "/upload/target-1", requiredHeaders: {} }],
+        targets: [
+          { id: "target-1", method: "PUT" as const, url: "/upload/target-1", requiredHeaders: {} },
+        ],
         finalizationToken: "token-1",
         maxFiles: 10,
         maxBytesPerFile: 10 * 1024 * 1024,
       };
       createUploadPlan.mockResolvedValue(uploadPlan);
-      uploadTarget.mockResolvedValue({ id: "stored-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
-      finalizeUpload.mockResolvedValue([{ id: "stored-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+      uploadTarget.mockResolvedValue({
+        id: "stored-1",
+        ownerLedgerId: ledger.id,
+        metadata: {
+          contentType: "image/jpeg",
+          byteSize: 100,
+          originalFilename: null,
+          checksum: null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      finalizeUpload.mockResolvedValue([
+        {
+          id: "stored-1",
+          ownerLedgerId: ledger.id,
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
       await createAndQueueSourceDocument(
         {
           ledgerId: ledger.id,
           ledger,
           text: "With inline image",
-          images: [{ data: Buffer.from("fake-jpeg-bytes").toString("base64"), mimeType: "image/jpeg" }],
+          images: [
+            { data: Buffer.from("fake-jpeg-bytes").toString("base64"), mimeType: "image/jpeg" },
+          ],
         },
         {
           submissions: { createPendingWithIntent },
@@ -175,14 +202,38 @@ describe("createAndQueueSourceDocument", () => {
       const uploadPlan = {
         id: "session-2",
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
-        targets: [{ id: "target-2", method: "PUT" as const, url: "/upload/target-2", requiredHeaders: {} }],
+        targets: [
+          { id: "target-2", method: "PUT" as const, url: "/upload/target-2", requiredHeaders: {} },
+        ],
         finalizationToken: "token-2",
         maxFiles: 10,
         maxBytesPerFile: 10 * 1024 * 1024,
       };
       createUploadPlan.mockResolvedValue(uploadPlan);
-      uploadTarget.mockResolvedValue({ id: "stored-2", ownerLedgerId: ledger.id, metadata: { contentType: "image/png", byteSize: 50, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
-      finalizeUpload.mockResolvedValue([{ id: "stored-2", ownerLedgerId: ledger.id, metadata: { contentType: "image/png", byteSize: 50, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+      uploadTarget.mockResolvedValue({
+        id: "stored-2",
+        ownerLedgerId: ledger.id,
+        metadata: {
+          contentType: "image/png",
+          byteSize: 50,
+          originalFilename: null,
+          checksum: null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      finalizeUpload.mockResolvedValue([
+        {
+          id: "stored-2",
+          ownerLedgerId: ledger.id,
+          metadata: {
+            contentType: "image/png",
+            byteSize: 50,
+            originalFilename: null,
+            checksum: null,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
       await createAndQueueSourceDocument(
         {
@@ -220,17 +271,38 @@ describe("createAndQueueSourceDocument", () => {
         maxFiles: 10,
         maxBytesPerFile: 10 * 1024 * 1024,
       };
-      createUploadPlan
-        .mockResolvedValueOnce({
-          ...uploadPlan,
-          id: "session-img",
-          targets: [{ id: "target-img-1", method: "PUT" as const, url: "/upload/img-1", requiredHeaders: {} }],
-          finalizationToken: "token-img",
-        });
-      uploadTarget
-        .mockResolvedValueOnce({ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
-      finalizeUpload
-        .mockResolvedValueOnce([{ id: "stored-img-1", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+      createUploadPlan.mockResolvedValueOnce({
+        ...uploadPlan,
+        id: "session-img",
+        targets: [
+          { id: "target-img-1", method: "PUT" as const, url: "/upload/img-1", requiredHeaders: {} },
+        ],
+        finalizationToken: "token-img",
+      });
+      uploadTarget.mockResolvedValueOnce({
+        id: "stored-img-1",
+        ownerLedgerId: ledger.id,
+        metadata: {
+          contentType: "image/jpeg",
+          byteSize: 100,
+          originalFilename: null,
+          checksum: null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      finalizeUpload.mockResolvedValueOnce([
+        {
+          id: "stored-img-1",
+          ownerLedgerId: ledger.id,
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
       await createAndQueueSourceDocument(
         {
@@ -263,7 +335,9 @@ describe("createAndQueueSourceDocument", () => {
             ledger,
             text: "With original images",
             images: [{ data: Buffer.from("img-data").toString("base64"), mimeType: "image/jpeg" }],
-            originalImages: [{ data: Buffer.from("oi-data").toString("base64"), mimeType: "image/jpeg" }],
+            originalImages: [
+              { data: Buffer.from("oi-data").toString("base64"), mimeType: "image/jpeg" },
+            ],
           },
           {
             submissions: { createPendingWithIntent },
@@ -303,13 +377,37 @@ describe("createAndQueueSourceDocument", () => {
       createUploadPlan.mockResolvedValue({
         id: "session-noraw",
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
-        targets: [{ id: "target-noraw", method: "PUT" as const, url: "/upload/noraw", requiredHeaders: {} }],
+        targets: [
+          { id: "target-noraw", method: "PUT" as const, url: "/upload/noraw", requiredHeaders: {} },
+        ],
         finalizationToken: "token-noraw",
         maxFiles: 10,
         maxBytesPerFile: 10 * 1024 * 1024,
       });
-      uploadTarget.mockResolvedValue({ id: "stored-noraw", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
-      finalizeUpload.mockResolvedValue([{ id: "stored-noraw", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+      uploadTarget.mockResolvedValue({
+        id: "stored-noraw",
+        ownerLedgerId: ledger.id,
+        metadata: {
+          contentType: "image/jpeg",
+          byteSize: 100,
+          originalFilename: null,
+          checksum: null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      finalizeUpload.mockResolvedValue([
+        {
+          id: "stored-noraw",
+          ownerLedgerId: ledger.id,
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
       await createAndQueueSourceDocument(
         {
@@ -401,17 +499,43 @@ describe("createAndQueueSourceDocument", () => {
       const uploadPlan = {
         id: "session-whitespace",
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
-        targets: [{ id: "target-ws", method: "PUT" as const, url: "/upload/ws", requiredHeaders: {} }],
+        targets: [
+          { id: "target-ws", method: "PUT" as const, url: "/upload/ws", requiredHeaders: {} },
+        ],
         finalizationToken: "token-ws",
         maxFiles: 10,
         maxBytesPerFile: 10 * 1024 * 1024,
       };
       createUploadPlan.mockResolvedValue(uploadPlan);
-      uploadTarget.mockResolvedValue({ id: "stored-ws", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() });
-      finalizeUpload.mockResolvedValue([{ id: "stored-ws", ownerLedgerId: ledger.id, metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null }, createdAt: new Date().toISOString() }]);
+      uploadTarget.mockResolvedValue({
+        id: "stored-ws",
+        ownerLedgerId: ledger.id,
+        metadata: {
+          contentType: "image/jpeg",
+          byteSize: 100,
+          originalFilename: null,
+          checksum: null,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      finalizeUpload.mockResolvedValue([
+        {
+          id: "stored-ws",
+          ownerLedgerId: ledger.id,
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
       // Base64 with embedded newlines as produced by e.g. base64 -w 76
-      const base64WithNewlines = Buffer.from("test-image-data").toString("base64").replace(/.{8}/g, "$&\n");
+      const base64WithNewlines = Buffer.from("test-image-data")
+        .toString("base64")
+        .replace(/.{8}/g, "$&\n");
       await expect(
         createAndQueueSourceDocument(
           {
@@ -451,7 +575,12 @@ describe("createAndQueueSourceDocument", () => {
         uploadTarget.mockResolvedValueOnce({
           id: `stored-${i}`,
           ownerLedgerId: ledger.id,
-          metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null },
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
           createdAt: new Date().toISOString(),
         });
       }
@@ -459,14 +588,20 @@ describe("createAndQueueSourceDocument", () => {
         Array.from({ length: 5 }, (_, i) => ({
           id: `stored-${i}`,
           ownerLedgerId: ledger.id,
-          metadata: { contentType: "image/jpeg", byteSize: 100, originalFilename: null, checksum: null },
+          metadata: {
+            contentType: "image/jpeg",
+            byteSize: 100,
+            originalFilename: null,
+            checksum: null,
+          },
           createdAt: new Date().toISOString(),
         }))
       );
 
       // 6 existing stored-file IDs
-      const existingIds = Array.from({ length: 6 }, (_, i) =>
-        `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`
+      const existingIds = Array.from(
+        { length: 6 },
+        (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`
       );
 
       await expect(

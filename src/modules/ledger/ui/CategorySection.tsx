@@ -80,13 +80,13 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
       </div>
 
       <div className="opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            onClick={onDelete}
-            className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
+        <button
+          onClick={onDelete}
+          className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
     </div>
   );
 }

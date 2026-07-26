@@ -100,7 +100,12 @@ describe("authenticateToken", () => {
 
   it("returns false for an incorrect token", () => {
     const { hash } = createToken();
-    expect(authenticateToken("sk_live_wrong_token_123456789012345678901234567890123456789012345678", hash)).toBe(false);
+    expect(
+      authenticateToken(
+        "sk_live_wrong_token_123456789012345678901234567890123456789012345678",
+        hash
+      )
+    ).toBe(false);
   });
 
   it("returns false for a tampered hash", () => {
@@ -143,7 +148,8 @@ describe("prefixSuffix", () => {
 describe("cannot authenticate by prefix/suffix alone", () => {
   it("rejects a token made from just prefix and suffix", () => {
     const { hash, prefix, suffix } = createToken();
-    const fabricatedToken = prefix + "X".repeat(48 - DISPLAY_PREFIX_LENGTH - DISPLAY_SUFFIX_LENGTH) + suffix;
+    const fabricatedToken =
+      prefix + "X".repeat(48 - DISPLAY_PREFIX_LENGTH - DISPLAY_SUFFIX_LENGTH) + suffix;
     expect(authenticateToken(fabricatedToken, hash)).toBe(false);
   });
 

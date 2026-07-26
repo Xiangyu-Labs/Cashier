@@ -135,11 +135,14 @@ describe("authenticateWithOTP additional coverage", () => {
         isExistingUser: false,
       }),
     } as unknown as UserAccountPort;
-    const result = await authenticateWithOTP({
-      email: "NEW-USER@EXAMPLE.COM",
-      otp: "123456",
-      requestHeaders: new Headers(),
-    }, users);
+    const result = await authenticateWithOTP(
+      {
+        email: "NEW-USER@EXAMPLE.COM",
+        otp: "123456",
+        requestHeaders: new Headers(),
+      },
+      users
+    );
 
     expect(assertRegistrationAllowedMock).toHaveBeenCalledWith("new-user@example.com");
     expect(ensureUserLedgerMock).toHaveBeenCalledWith({

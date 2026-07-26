@@ -43,32 +43,25 @@ export function SourceDocumentDetailWrapper({
     ...(initialLedgerEntries !== undefined ? { initialLedgerEntries } : {}),
   });
 
-  const {
-    updateSourceDoc,
-    updateEntry,
-    batchUpdate,
-    deleteEntry,
-    deleteDocument,
-  } = useSourceDocumentDetailMutations({
-    id,
-    ledgerId,
-    onClose,
-  });
+  const { updateSourceDoc, updateEntry, batchUpdate, deleteEntry, deleteDocument } =
+    useSourceDocumentDetailMutations({
+      id,
+      ledgerId,
+      onClose,
+    });
 
   const candidateRevisionId: string | undefined =
-    sourceDocument?.status === "candidate_pending" ? (sourceDocument.pendingRevisionId ?? undefined) : undefined;
+    sourceDocument?.status === "candidate_pending"
+      ? (sourceDocument.pendingRevisionId ?? undefined)
+      : undefined;
 
-  const {
-    acceptCandidate,
-    abandonCandidate,
-    isAccepting,
-    isAbandoning,
-  } = useSourceDocumentRecoveryMutations({
-    ledgerId: detailLedgerId ?? ledgerId,
-    sourceDocumentId: id,
-    ...(candidateRevisionId !== undefined ? { revisionId: candidateRevisionId } : {}),
-    onSuccess: onClose,
-  });
+  const { acceptCandidate, abandonCandidate, isAccepting, isAbandoning } =
+    useSourceDocumentRecoveryMutations({
+      ledgerId: detailLedgerId ?? ledgerId,
+      sourceDocumentId: id,
+      ...(candidateRevisionId !== undefined ? { revisionId: candidateRevisionId } : {}),
+      onSuccess: onClose,
+    });
 
   const handleAcceptCandidate = useCallback(async () => {
     if (sourceDocument == null) return;

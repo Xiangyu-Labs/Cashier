@@ -22,11 +22,18 @@ function correlationId(): string {
 export function toApplicationError(error: unknown): ApplicationErrorContract {
   const legacyCode = error instanceof AppError ? error.code : undefined;
   const code = legacyCode == null ? "INTERNAL" : (CODE_BY_LEGACY_CODE[legacyCode] ?? "INTERNAL");
-  const message = code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE"
-    ? "The request could not be completed."
-    : error instanceof AppError
-      ? error.message
-      : "The request could not be completed.";
+  const message =
+    code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE"
+      ? "The request could not be completed."
+      : error instanceof AppError
+        ? error.message
+        : "The request could not be completed.";
 
-  return { code, message, ...(code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE" ? { correlationId: correlationId() } : {}) };
+  return {
+    code,
+    message,
+    ...(code === "INTERNAL" || code === "STORAGE_UNAVAILABLE" || code === "PROCESSING_UNAVAILABLE"
+      ? { correlationId: correlationId() }
+      : {}),
+  };
 }

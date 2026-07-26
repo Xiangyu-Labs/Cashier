@@ -27,9 +27,7 @@ export default function Error({
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-text">{t("title")}</h1>
-          <p className="text-muted-foreground">
-            {t("description", { message: t("title") })}
-          </p>
+          <p className="text-muted-foreground">{t("description", { message: t("title") })}</p>
           {error.digest != null && (
             <p className="text-xs font-mono bg-surface2 p-2 rounded text-muted-foreground mt-4">
               {t("errorId", { id: error.digest })}

@@ -10,7 +10,10 @@ export async function deleteSourceDocument({
   ledgerId,
   sourceDocumentId,
 }: DeleteSourceDocumentInput): Promise<DeleteSourceDocumentResultDto> {
-  const sourceDocument = await currentApplication.sourceDocumentRevisions.get(ledgerId, sourceDocumentId);
+  const sourceDocument = await currentApplication.sourceDocumentRevisions.get(
+    ledgerId,
+    sourceDocumentId
+  );
   if (sourceDocument == null || !sourceDocument.supportedActions.includes("delete")) {
     return {
       sourceDocumentId,
@@ -18,7 +21,10 @@ export async function deleteSourceDocument({
     };
   }
 
-  const deleted = await currentApplication.sourceDocumentRevisions.softDelete(ledgerId, sourceDocumentId);
+  const deleted = await currentApplication.sourceDocumentRevisions.softDelete(
+    ledgerId,
+    sourceDocumentId
+  );
 
   return {
     sourceDocumentId,

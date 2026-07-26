@@ -144,33 +144,27 @@ export function useQuickEntryFormController({
       };
 
       const streamPrefix = queryKeys.sourceDocumentStreamPrefix(ledgerId);
-      const docSnapshots = createListSnapshots<InfiniteData<StreamPage>>(
-        queryClient,
-        streamPrefix
-      );
-      queryClient.setQueriesData<InfiniteData<StreamPage>>(
-        { queryKey: streamPrefix },
-        (old) => {
-          if (!old?.pages) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page, index) => {
-              if (index === 0) {
-                return {
-                  ...page,
-                  items: [tempDoc, ...page.items],
-                };
-              }
+      const docSnapshots = createListSnapshots<InfiniteData<StreamPage>>(queryClient, streamPrefix);
+      queryClient.setQueriesData<InfiniteData<StreamPage>>({ queryKey: streamPrefix }, (old) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page, index) => {
+            if (index === 0) {
               return {
                 ...page,
-                // Ensure no duplicate temp entry in other pages
-                items: page.items.filter((item) => !item.id.startsWith("temp-doc-")),
+                items: [tempDoc, ...page.items],
               };
-            }),
-            pageParams: old.pageParams,
-          };
-        }
-      );
+            }
+            return {
+              ...page,
+              // Ensure no duplicate temp entry in other pages
+              items: page.items.filter((item) => !item.id.startsWith("temp-doc-")),
+            };
+          }),
+          pageParams: old.pageParams,
+        };
+      });
 
       interface EntryPage {
         items: LedgerEntry[];

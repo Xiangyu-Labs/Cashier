@@ -100,8 +100,13 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
-    processingStatus != null && processingStatus !== "completed" &&
-    (ledgerEntries.length === 0 || status === "anomaly" || status === "failed" || status === "processing" || status === "candidate_pending");
+    processingStatus != null &&
+    processingStatus !== "completed" &&
+    (ledgerEntries.length === 0 ||
+      status === "anomaly" ||
+      status === "failed" ||
+      status === "processing" ||
+      status === "candidate_pending");
 
   // Derive stable error code for display
   const stableErrorCode =
@@ -183,7 +188,9 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           sourceDocument.title !== "" && (
             <>
               <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
-              <span className="text-sm font-semibold text-text truncate">{sourceDocument.title}</span>
+              <span className="text-sm font-semibold text-text truncate">
+                {sourceDocument.title}
+              </span>
             </>
           )}
         {sourceDocument.type === "manual" && (

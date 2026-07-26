@@ -152,8 +152,6 @@ describe("EntryFilterPanel", () => {
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
 
     expect(onFiltersChange).toHaveBeenCalledTimes(1);
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({ categoryId: "cat-1" })
-    );
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ categoryId: "cat-1" }));
   });
 });

@@ -14,30 +14,48 @@ import {
 
 describe("target application contracts", () => {
   it("preserves an active result while a retry is anomalous or failed", () => {
-    expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" }))
-      .toEqual(["retry", "edit_retry", "delete"]);
-    expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "processing" }))
-      .toEqual(["delete"]);
+    expect(
+      supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" })
+    ).toEqual(["retry", "edit_retry", "delete"]);
+    expect(
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        pendingOutcome: "processing",
+      })
+    ).toEqual(["delete"]);
   });
 
   it("offers accept/abandon actions when a completed candidate is pending", () => {
-    expect(supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "completed" }))
-      .toEqual(["accept_candidate", "abandon_candidate", "delete"]);
+    expect(
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        pendingOutcome: "completed",
+      })
+    ).toEqual(["accept_candidate", "abandon_candidate", "delete"]);
   });
 
   it("offers retry actions for first-parse completed with no active revision", () => {
-    expect(supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "completed" }))
-      .toEqual(["retry", "edit_retry", "delete"]);
+    expect(
+      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "completed" })
+    ).toEqual(["retry", "edit_retry", "delete"]);
   });
 
   it("does not allow actions for deleted source documents", () => {
-    expect(supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "failed", deleted: true }))
-      .toEqual([]);
+    expect(
+      supportedSourceDocumentActions({
+        activeRevisionId: null,
+        pendingOutcome: "failed",
+        deleted: true,
+      })
+    ).toEqual([]);
   });
 
   it("maps infrastructure failures to stable, non-sensitive application errors", () => {
     const error = toApplicationError(
-      new AppError("Failed to download /private/uploads/secret.jpg", "LOCAL_STORAGE_DOWNLOAD_FAILED")
+      new AppError(
+        "Failed to download /private/uploads/secret.jpg",
+        "LOCAL_STORAGE_DOWNLOAD_FAILED"
+      )
     );
 
     expect(error.code).toBe("STORAGE_UNAVAILABLE");
@@ -54,7 +72,9 @@ describe("target application contracts", () => {
     expect(toApiV1SourceDocumentCreateResponse(response)).toEqual(fixture.response);
     expect(apiV1Compatibility.version).toBe(fixture.compatibility.version);
     expect(apiV1Compatibility.additiveUntil).toBe(fixture.compatibility.additiveUntil);
-    expect(apiV1Compatibility.deprecatedTaskFields).toEqual(fixture.compatibility.deprecatedTaskFields);
+    expect(apiV1Compatibility.deprecatedTaskFields).toEqual(
+      fixture.compatibility.deprecatedTaskFields
+    );
   });
 
   describe("toStableFailureCode", () => {

@@ -2,11 +2,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
-import {
-  invalidateCalendar,
-  invalidateLedgerStats,
-  queryKeys,
-} from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { type DateRangeType } from "@/lib/date-utils";
@@ -98,9 +94,10 @@ export function StatsTab({
     stats?.summary.currency ?? ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const averageDaily = stats?.summary.dailyAverage ?? 0;
   const statsTrend = stats?.summary.trend;
-  const trend = statsTrend !== undefined
-    ? { percent: statsTrend.percent, amount: Number(statsTrend.amount) }
-    : undefined;
+  const trend =
+    statsTrend !== undefined
+      ? { percent: statsTrend.percent, amount: Number(statsTrend.amount) }
+      : undefined;
 
   const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";

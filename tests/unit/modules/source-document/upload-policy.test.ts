@@ -45,36 +45,34 @@ describe("upload-policy constants", () => {
 
 describe("validateFileUpload", () => {
   it("accepts valid files within limits", () => {
-    expect(() =>
-      validateFileUpload({ contentType: "image/jpeg", byteSize: 1024 })
-    ).not.toThrow();
+    expect(() => validateFileUpload({ contentType: "image/jpeg", byteSize: 1024 })).not.toThrow();
     expect(() =>
       validateFileUpload({ contentType: "image/png", byteSize: MAX_ORIGINAL_BYTES_PER_FILE })
     ).not.toThrow();
   });
 
   it("rejects unsupported MIME types", () => {
-    expect(() =>
-      validateFileUpload({ contentType: "application/pdf", byteSize: 1024 })
-    ).toThrow("Unsupported content type");
-    expect(() =>
-      validateFileUpload({ contentType: "image/tiff", byteSize: 1024 })
-    ).toThrow("Unsupported content type");
+    expect(() => validateFileUpload({ contentType: "application/pdf", byteSize: 1024 })).toThrow(
+      "Unsupported content type"
+    );
+    expect(() => validateFileUpload({ contentType: "image/tiff", byteSize: 1024 })).toThrow(
+      "Unsupported content type"
+    );
   });
 
   it("rejects zero or negative byte sizes", () => {
-    expect(() =>
-      validateFileUpload({ contentType: "image/jpeg", byteSize: 0 })
-    ).toThrow("Invalid byte size");
-    expect(() =>
-      validateFileUpload({ contentType: "image/jpeg", byteSize: -1 })
-    ).toThrow("Invalid byte size");
+    expect(() => validateFileUpload({ contentType: "image/jpeg", byteSize: 0 })).toThrow(
+      "Invalid byte size"
+    );
+    expect(() => validateFileUpload({ contentType: "image/jpeg", byteSize: -1 })).toThrow(
+      "Invalid byte size"
+    );
   });
 
   it("rejects non-integer byte sizes", () => {
-    expect(() =>
-      validateFileUpload({ contentType: "image/jpeg", byteSize: 1.5 })
-    ).toThrow("Invalid byte size");
+    expect(() => validateFileUpload({ contentType: "image/jpeg", byteSize: 1.5 })).toThrow(
+      "Invalid byte size"
+    );
   });
 
   it("rejects files exceeding the maximum original bytes", () => {
@@ -88,9 +86,7 @@ describe("validateFileUpload", () => {
 
   it("accepts each supported MIME type", () => {
     for (const mime of SUPPORTED_MIME_TYPES) {
-      expect(() =>
-        validateFileUpload({ contentType: mime, byteSize: 1024 })
-      ).not.toThrow();
+      expect(() => validateFileUpload({ contentType: mime, byteSize: 1024 })).not.toThrow();
     }
   });
 });
@@ -104,24 +100,22 @@ describe("validateImageProcessing", () => {
 
   it("rejects images exceeding the megapixel limit", () => {
     // 5000x4000 = 20 MP > 16 MP
-    expect(() =>
-      validateImageProcessing({ width: 5000, height: 4000, format: "jpeg" })
-    ).toThrow("exceed maximum");
+    expect(() => validateImageProcessing({ width: 5000, height: 4000, format: "jpeg" })).toThrow(
+      "exceed maximum"
+    );
   });
 
   it("rejects unsupported image formats", () => {
-    expect(() =>
-      validateImageProcessing({ width: 100, height: 100, format: "tiff" })
-    ).toThrow("Unsupported image format");
+    expect(() => validateImageProcessing({ width: 100, height: 100, format: "tiff" })).toThrow(
+      "Unsupported image format"
+    );
   });
 
   it("accepts supported image formats", () => {
     expect(() =>
       validateImageProcessing({ width: 100, height: 100, format: "jpeg" })
     ).not.toThrow();
-    expect(() =>
-      validateImageProcessing({ width: 100, height: 100, format: "png" })
-    ).not.toThrow();
+    expect(() => validateImageProcessing({ width: 100, height: 100, format: "png" })).not.toThrow();
     expect(() =>
       validateImageProcessing({ width: 100, height: 100, format: "webp" })
     ).not.toThrow();
@@ -132,14 +126,17 @@ describe("validateRevisionUpload", () => {
   it("accepts files within the aggregate limit", () => {
     expect(() => validateRevisionUpload(0, MAX_NORMALIZED_BYTES_PER_REVISION)).not.toThrow();
     expect(() =>
-      validateRevisionUpload(MAX_NORMALIZED_BYTES_PER_REVISION / 2, MAX_NORMALIZED_BYTES_PER_REVISION / 2)
+      validateRevisionUpload(
+        MAX_NORMALIZED_BYTES_PER_REVISION / 2,
+        MAX_NORMALIZED_BYTES_PER_REVISION / 2
+      )
     ).not.toThrow();
   });
 
   it("rejects files exceeding the aggregate limit", () => {
-    expect(() =>
-      validateRevisionUpload(MAX_NORMALIZED_BYTES_PER_REVISION, 1)
-    ).toThrow("exceeds revision limit");
+    expect(() => validateRevisionUpload(MAX_NORMALIZED_BYTES_PER_REVISION, 1)).toThrow(
+      "exceeds revision limit"
+    );
   });
 
   it("rejects when both values together exceed the limit", () => {
@@ -186,7 +183,9 @@ describe("validateAggregateFileCount", () => {
   });
 
   it("rejects count just above MAX_FILES", () => {
-    expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow("exceeds maximum of 10 files");
+    expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow(
+      "exceeds maximum of 10 files"
+    );
   });
 });
 
@@ -204,9 +203,7 @@ describe("sanitizeMimeType", () => {
   });
 
   it("throws when both declared and detected are unsupported", () => {
-    expect(() => sanitizeMimeType("image/tiff", "image/bmp")).toThrow(
-      "Unsupported MIME type"
-    );
+    expect(() => sanitizeMimeType("image/tiff", "image/bmp")).toThrow("Unsupported MIME type");
   });
 
   it("is case-insensitive", () => {

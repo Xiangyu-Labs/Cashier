@@ -23,13 +23,7 @@ vi.mock("@/components/ui/date-filter", () => ({
 }));
 
 vi.mock("@/components/ui/calculator-input", () => ({
-  CalculatorInput: ({
-    value,
-    inlineInputMode,
-  }: {
-    value: number;
-    inlineInputMode?: string;
-  }) => (
+  CalculatorInput: ({ value, inlineInputMode }: { value: number; inlineInputMode?: string }) => (
     <div data-testid="calculator-input" data-inline-input-mode={inlineInputMode ?? ""}>
       {value}
     </div>
@@ -37,7 +31,9 @@ vi.mock("@/components/ui/calculator-input", () => ({
 }));
 
 vi.mock("@/components/ui/select", () => ({
-  Select: ({ children }: { children: React.ReactNode }) => <div data-testid="currency-select">{children}</div>,
+  Select: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="currency-select">{children}</div>
+  ),
   SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <button type="button" className={className}>
       {children}
@@ -134,6 +130,8 @@ describe("QuickEntryForm", () => {
     expect(categoryLabel.compareDocumentPosition(currencyLabel)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
-    expect(currencyLabel.compareDocumentPosition(amountInput)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(currencyLabel.compareDocumentPosition(amountInput)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
   });
 });

@@ -176,7 +176,7 @@ if its accepted date differs from its previous effective date.
 ## Errors and Edge Cases
 
 - A source document with neither a valid `entryDate` nor a valid `createdAt` is rendered in a localized `日期未知`/`Date
-  unknown` group and does not receive an invented current date.
+unknown` group and does not receive an invented current date.
 - An attention record outside the active amount filter also remains visible and receives the outside-filter marker.
 - A candidate whose summary cannot be loaded must not offer opaque one-click acceptance on the collapsed card; the
   primary action opens detail review or is disabled with a recoverable error state.

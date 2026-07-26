@@ -54,10 +54,38 @@ const SIMPLE_STAGE0_RESULT = {
 };
 
 const COMPLEX_ENTRIES = [
-  { receipt_index: 0, item_name: "A", amount: "10", currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "B", amount: "20", currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "C", amount: "30", currency: "USD", category_index: 1, notes: null },
-  { receipt_index: 0, item_name: "D", amount: "40", currency: "USD", category_index: 1, notes: null },
+  {
+    receipt_index: 0,
+    item_name: "A",
+    amount: "10",
+    currency: "USD",
+    category_index: 1,
+    notes: null,
+  },
+  {
+    receipt_index: 0,
+    item_name: "B",
+    amount: "20",
+    currency: "USD",
+    category_index: 1,
+    notes: null,
+  },
+  {
+    receipt_index: 0,
+    item_name: "C",
+    amount: "30",
+    currency: "USD",
+    category_index: 1,
+    notes: null,
+  },
+  {
+    receipt_index: 0,
+    item_name: "D",
+    amount: "40",
+    currency: "USD",
+    category_index: 1,
+    notes: null,
+  },
 ];
 
 const COMPLEX_STAGE0_RESULT = {
@@ -204,7 +232,10 @@ describe("runParsePipeline — new single-pass flow", () => {
   it("triggers arbitration when complex results disagree", async () => {
     const differentResult = {
       ...COMPLEX_STAGE0_RESULT,
-      ledger_entries: COMPLEX_ENTRIES.map((e) => ({ ...e, amount: String(Number.parseFloat(e.amount) + 5) })),
+      ledger_entries: COMPLEX_ENTRIES.map((e) => ({
+        ...e,
+        amount: String(Number.parseFloat(e.amount) + 5),
+      })),
     };
     const { ai, generate } = createMockAI({
       stage0Result: COMPLEX_STAGE0_RESULT,
@@ -383,7 +414,11 @@ describe("runParsePipeline — new single-pass flow", () => {
     if (result.kind === "success") {
       expect(result.ledgerEntries).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ amount: "5.00", itemName: expect.any(String), isAdjustment: false }),
+          expect.objectContaining({
+            amount: "5.00",
+            itemName: expect.any(String),
+            isAdjustment: false,
+          }),
         ])
       );
     }

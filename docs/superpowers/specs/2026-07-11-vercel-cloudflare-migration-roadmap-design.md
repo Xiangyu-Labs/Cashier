@@ -307,15 +307,15 @@ pretend to eliminate, that coordination cost.
 
 ### Typical Changes
 
-| Change | Required Release Action |
-| --- | --- |
-| Web-only business or UI code | Build and publish the Docker Web image |
-| Additive database schema change | Run one Drizzle migration, then deploy affected Web or Worker code |
-| Worker-only parsing change | Deploy the Worker; Queue and Web remain unchanged |
-| R2 read/write behavior | Deploy only the Web or Worker component containing that adapter |
-| R2 CORS or lifecycle policy | Apply the Cloudflare configuration change |
-| Queue retry, DLQ, or binding settings | Apply Worker/Queue configuration and deploy the Worker |
-| Queue message contract | Deploy backward-compatible consumer support before the producer emits the new version |
+| Change                                | Required Release Action                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| Web-only business or UI code          | Build and publish the Docker Web image                                                |
+| Additive database schema change       | Run one Drizzle migration, then deploy affected Web or Worker code                    |
+| Worker-only parsing change            | Deploy the Worker; Queue and Web remain unchanged                                     |
+| R2 read/write behavior                | Deploy only the Web or Worker component containing that adapter                       |
+| R2 CORS or lifecycle policy           | Apply the Cloudflare configuration change                                             |
+| Queue retry, DLQ, or binding settings | Apply Worker/Queue configuration and deploy the Worker                                |
+| Queue message contract                | Deploy backward-compatible consumer support before the producer emits the new version |
 
 Queue itself is not regularly redeployed application code. Most Queue-related changes are Worker code or infrequent
 binding and retry-policy changes.

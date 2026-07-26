@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 120;
-import {
-  createSourceDocumentFromCredentialAction,
-} from "@/modules/source-document/actions";
+import { createSourceDocumentFromCredentialAction } from "@/modules/source-document/actions";
 import { ValidationError } from "@/lib/errors";
 import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { toApiV1SourceDocumentCreateResponse } from "@/app/api/v1/_shared/compatibility";

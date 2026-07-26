@@ -1,13 +1,8 @@
 import { createHash } from "node:crypto";
 import { currentApplication } from "@/application/current";
 import { listStreamPage } from "./list-stream-page";
-import type {
-  SourceDocumentListItemDto,
-  StreamPage,
-} from "@/modules/source-document/contracts";
-import {
-  getSourceDocumentCountsQuery,
-} from "@/modules/source-document/application/queries/get-source-document-counts";
+import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
+import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
 import type {
   StreamRefreshRequest,
   StreamRefreshResult,
@@ -147,8 +142,7 @@ export async function getStreamRefresh(
   const boundedWatchedIds = watchedIds.slice(0, MAX_WATCHED_IDS);
 
   // C3: Normalize empty string to null for fingerprint comparisons
-  const normalizedCountFingerprint =
-    countFingerprint === "" ? null : countFingerprint;
+  const normalizedCountFingerprint = countFingerprint === "" ? null : countFingerprint;
 
   // ---------------------------------------------------------------
   // 1. Refresh first pages for each active filter signature
@@ -263,11 +257,7 @@ export async function getStreamRefresh(
     protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
     generation: 1,
     changed: anyPageChanged || anyCountsChanged || anyWatchedChanged,
-    hasTransitionalWork: changedWatched.some(
-      (w) =>
-        w.doc != null &&
-        w.doc.status === "processing"
-    ),
+    hasTransitionalWork: changedWatched.some((w) => w.doc != null && w.doc.status === "processing"),
     firstPages,
     changedWatched,
     counts,

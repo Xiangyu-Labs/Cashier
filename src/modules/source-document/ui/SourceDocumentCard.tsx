@@ -68,8 +68,8 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
 
   const supportedActions: readonly SupportedSourceDocumentAction[] =
     "supportedActions" in sourceDocument
-      ? (sourceDocument as SourceDocument).supportedActions ?? []
-      : (sourceDocument as SourceDocumentLight).supportedActions ?? [];
+      ? ((sourceDocument as SourceDocument).supportedActions ?? [])
+      : ((sourceDocument as SourceDocumentLight).supportedActions ?? []);
 
   async function handleDirectRetry() {
     if (onDirectRetry == null && onRetry == null) return;

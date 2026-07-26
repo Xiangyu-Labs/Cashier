@@ -10,11 +10,7 @@ describe("TabNavigation", () => {
     const onOpenInput = vi.fn();
 
     render(
-      <TabNavigation
-        activeTab="stream"
-        onTabChange={onTabChange}
-        onOpenInput={onOpenInput}
-      />
+      <TabNavigation activeTab="stream" onTabChange={onTabChange} onOpenInput={onOpenInput} />
     );
 
     expect(screen.getByRole("button", { name: "流水" })).toHaveAttribute("aria-current", "page");
@@ -23,7 +19,13 @@ describe("TabNavigation", () => {
     expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
 
     const buttons = screen.getAllByRole("button");
-    expect(buttons.map((button) => button.textContent)).toEqual(["流水", "明细", "", "统计", "设置"]);
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "流水",
+      "明细",
+      "",
+      "统计",
+      "设置",
+    ]);
 
     await user.click(screen.getByRole("button", { name: "统计" }));
     expect(onTabChange).toHaveBeenCalledWith("stats");

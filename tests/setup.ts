@@ -10,8 +10,7 @@ import { memoryStore } from "@/lib/memory-store";
 import "./setup.common";
 
 const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
+  process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 
 interface TestDatabase {
@@ -72,12 +71,14 @@ afterAll(async () => {
 beforeEach(async () => {
   await memoryStore.flushall();
   const db = getTestDb();
-  await db.execute(sql.raw(`TRUNCATE TABLE
+  await db.execute(
+    sql.raw(`TRUNCATE TABLE
     rate_limit_buckets, processing_outbox, processing_attempts, revision_entries, revision_files,
     upload_session_files, upload_sessions, stored_files, source_document_revisions,
     idempotency_records, ledger_entries, source_documents, entry_categories,
     service_credentials, currency_rates, otp_tokens, ledgers, users
-    RESTART IDENTITY CASCADE`));
+    RESTART IDENTITY CASCADE`)
+  );
   await db.insert(schema.users).values({
     id: "00000000-0000-0000-0000-000000000000",
     email: "test@example.com",

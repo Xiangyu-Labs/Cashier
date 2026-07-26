@@ -90,16 +90,16 @@ describe("ledger server-action validation", () => {
   });
 
   it("createLedgerAction rejects invalid payload with ValidationError", async () => {
-    await expect(createLedgerAction({ aiLanguage: "x".repeat(200) } as never)).rejects.toBeInstanceOf(
-      ValidationError
-    );
+    await expect(
+      createLedgerAction({ aiLanguage: "x".repeat(200) } as never)
+    ).rejects.toBeInstanceOf(ValidationError);
     expect(createLedgerMock).not.toHaveBeenCalled();
   });
 
   it("createEntryCategoryAction rejects invalid payload with ValidationError", async () => {
-    await expect(createEntryCategoryAction("ledger-1", { name: "" } as never)).rejects.toBeInstanceOf(
-      ValidationError
-    );
+    await expect(
+      createEntryCategoryAction("ledger-1", { name: "" } as never)
+    ).rejects.toBeInstanceOf(ValidationError);
     expect(createEntryCategoryMock).not.toHaveBeenCalled();
   });
 

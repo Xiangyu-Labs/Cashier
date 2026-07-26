@@ -60,15 +60,15 @@ The verified coordinated backup contained 991 source documents and 983 local fil
 `integrity_check` was `ok` and foreign-key violations were zero. The following before/after proofs
 were identical:
 
-| Evidence | SHA-256 / count |
-| --- | --- |
-| Existing legacy source projection rows | `14cbb64d4c5bbcbc58916f4148c4679d1b96494593b4f76dbeeecf575e15f184` |
-| Legacy task history | `5826625259e55e190e64d6a1e7370dfc2740b2c6f3432db6dbeff32e3909d1e8` |
-| Excluded deleted source rows | 334 / `7cbd898f4008f0d6664329bb90dded31f86c4cb1fc6ff6e1573ccf268def66c5` |
-| Excluded deleted ledger rows | `d59a68392fed661b91e35fde71e8dbe3eba56da2885294f1f8a93a12315fb2be` |
-| Existing stable target rows | `b05127ff7a66571e51a356630a51591313849e82f92daed722a7f6ca2b35056e` |
-| Existing stored-file rows | `6fe52526b46c45336ac2f6305e1b6c50ebed1f36d622dcc15940e395b4a8b09e` |
-| Upload copy | 983 files / 157,318,937 bytes / `8e0c001ea5ef6b9c08ed7528c019e1d1289b86b9bbbe2a85bdcbb3928e222e60` |
+| Evidence                               | SHA-256 / count                                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Existing legacy source projection rows | `14cbb64d4c5bbcbc58916f4148c4679d1b96494593b4f76dbeeecf575e15f184`                                 |
+| Legacy task history                    | `5826625259e55e190e64d6a1e7370dfc2740b2c6f3432db6dbeff32e3909d1e8`                                 |
+| Excluded deleted source rows           | 334 / `7cbd898f4008f0d6664329bb90dded31f86c4cb1fc6ff6e1573ccf268def66c5`                           |
+| Excluded deleted ledger rows           | `d59a68392fed661b91e35fde71e8dbe3eba56da2885294f1f8a93a12315fb2be`                                 |
+| Existing stable target rows            | `b05127ff7a66571e51a356630a51591313849e82f92daed722a7f6ca2b35056e`                                 |
+| Existing stored-file rows              | `6fe52526b46c45336ac2f6305e1b6c50ebed1f36d622dcc15940e395b4a8b09e`                                 |
+| Upload copy                            | 983 files / 157,318,937 bytes / `8e0c001ea5ef6b9c08ed7528c019e1d1289b86b9bbbe2a85bdcbb3928e222e60` |
 
 The unauthenticated live response scan passed without SQLite details, local paths, storage keys,
 OpenAI material, prompts, stack traces, or the local-only credential marker. The machine-readable

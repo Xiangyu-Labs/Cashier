@@ -61,15 +61,16 @@ export async function createAndQueueSourceDocument(
     throw new ValidationError("Images must be finalized before source-document submission");
   }
 
-  const processedImageIds = imagesToProcess.length > 0
-    ? await prepareInlineImages(
-        imagesToProcess,
-        dependencies.storedFiles,
-        dependencies.processImage,
-        input.ledgerId,
-        input.maxDecodedImageBytes
-      )
-    : [];
+  const processedImageIds =
+    imagesToProcess.length > 0
+      ? await prepareInlineImages(
+          imagesToProcess,
+          dependencies.storedFiles,
+          dependencies.processImage,
+          input.ledgerId,
+          input.maxDecodedImageBytes
+        )
+      : [];
 
   // Enforce aggregate file count after inline images are converted to stored-file IDs.
   // Protects against dependency/mock bypass of the schema-level check.
@@ -77,10 +78,7 @@ export async function createAndQueueSourceDocument(
   validateAggregateFileCount(totalFileCount, 0);
 
   // Combine in input order: existing storedFileIds, then processed images
-  const allStoredFileIds = [
-    ...(validated.storedFileIds ?? []),
-    ...processedImageIds,
-  ];
+  const allStoredFileIds = [...(validated.storedFileIds ?? []), ...processedImageIds];
 
   const pending = await dependencies.submissions.createPendingWithIntent({
     ledgerId: input.ledgerId,

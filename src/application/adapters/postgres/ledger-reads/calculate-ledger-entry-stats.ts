@@ -24,12 +24,7 @@ export async function calculateLedgerEntryStats({
 }: CalculateLedgerEntryStatsInput): Promise<LedgerEntrySummary> {
   const conditions = buildLedgerEntryFilterConditions(ledgerId, filters);
 
-  const [
-    totalsQuery,
-    trendQuery,
-    convertedTotalResult,
-    settings,
-  ] = await Promise.all([
+  const [totalsQuery, trendQuery, convertedTotalResult, settings] = await Promise.all([
     db
       .select({
         currency: ledgerEntries.currency,
@@ -79,12 +74,9 @@ export async function calculateLedgerEntryStats({
       total: decimalNormalize(String(row.total ?? "0")),
     }));
 
-  const convertedTotalValue = decimalNormalize(
-    String(convertedTotalResult[0]?.total ?? "0")
-  );
+  const convertedTotalValue = decimalNormalize(String(convertedTotalResult[0]?.total ?? "0"));
 
-  const effectiveMainCurrency =
-    mainCurrency ?? settings?.metadata?.settings?.mainCurrency ?? "CNY";
+  const effectiveMainCurrency = mainCurrency ?? settings?.metadata?.settings?.mainCurrency ?? "CNY";
 
   return {
     convertedTotal: {

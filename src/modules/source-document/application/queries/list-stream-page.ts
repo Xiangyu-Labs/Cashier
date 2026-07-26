@@ -53,9 +53,7 @@ interface DecodedStreamCursor {
   innerCursor: string;
 }
 
-function decodeStreamCursor(
-  cursor: string | null | undefined
-): DecodedStreamCursor | null {
+function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCursor | null {
   if (cursor == null || cursor === "") return null;
   const parts = cursor.split("|");
   if (parts.length !== 6) return null;
@@ -152,12 +150,8 @@ export async function listStreamPage(
     ...(input.statuses != null && input.statuses.length > 0
       ? { statuses: input.statuses as unknown as SourceDocumentStatusType[] }
       : {}),
-    ...(input.startDate != null && input.startDate !== ""
-      ? { startDate: input.startDate }
-      : {}),
-    ...(input.endDate != null && input.endDate !== ""
-      ? { endDate: input.endDate }
-      : {}),
+    ...(input.startDate != null && input.startDate !== "" ? { startDate: input.startDate } : {}),
+    ...(input.endDate != null && input.endDate !== "" ? { endDate: input.endDate } : {}),
     ...(input.minAmount != null ? { minAmount: input.minAmount } : {}),
     ...(input.maxAmount != null ? { maxAmount: input.maxAmount } : {}),
     ...(innerCursor != null ? { cursor: innerCursor } : {}),

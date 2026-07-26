@@ -4,8 +4,14 @@ import { getDefaultLedger } from "@/config/default-ledger";
 import { ConflictError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
-export interface EnsureUserLedgerInput { userId: string; locale?: string }
-export interface EnsureUserLedgerResult { ledgerId: string; created: boolean }
+export interface EnsureUserLedgerInput {
+  userId: string;
+  locale?: string;
+}
+export interface EnsureUserLedgerResult {
+  ledgerId: string;
+  created: boolean;
+}
 
 export async function resolveSingleLedgerForUser(
   input: EnsureUserLedgerInput

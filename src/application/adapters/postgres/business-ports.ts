@@ -70,7 +70,7 @@ async function recalculateActiveEntries(
         isNull(sourceDocuments.deletedAt)
       )
     )
-    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
+    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
   for (const entry of entries) {
     const sourceCurrency = entry.currency ?? "CNY";
     let convertedAmount: string;
@@ -99,13 +99,14 @@ async function recalculateActiveEntries(
       convertedAmount = decimalRound(entry.amount, 2);
       exchangeRate = "1";
     }
-    await tx.update(ledgerEntries)
+    await tx
+      .update(ledgerEntries)
       .set({
         convertedAmount,
         exchangeRate,
         updatedAt: new Date(),
       })
-      .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)))
+      .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)));
   }
   return entries.length;
 }
@@ -190,8 +191,7 @@ export const postgresLedgerAdapter: LedgerPort = {
           .then((rows) => rows[0]);
         if (row == null) throw new ConflictError("Failed to create ledger");
         for (const category of input.categories) {
-          await tx.insert(entryCategories)
-            .values({ ...category, ledgerId: row.id })
+          await tx.insert(entryCategories).values({ ...category, ledgerId: row.id });
         }
         return {
           id: row.id,
@@ -210,23 +210,31 @@ export const postgresLedgerAdapter: LedgerPort = {
   },
   async deleteOwned(ledgerId, userId) {
     return db.transaction(async (tx) => {
-      const row = await tx.select().from(ledgers).where(eq(ledgers.id, ledgerId)).then((rows) => rows[0]);
+      const row = await tx
+        .select()
+        .from(ledgers)
+        .where(eq(ledgers.id, ledgerId))
+        .then((rows) => rows[0]);
       if (row == null) return "not_found" as const;
       if (row.userId !== userId) return "forbidden" as const;
       if (row.deletedAt != null) return "already_deleted" as const;
       const now = new Date();
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
-      await tx.update(entryCategories)
+        .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
+      await tx
+        .update(entryCategories)
         .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
-      await tx.update(sourceDocuments)
+        .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)));
+      await tx
+        .update(sourceDocuments)
         .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
-      await tx.update(ledgers)
+        .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)));
+      await tx
+        .update(ledgers)
         .set({ deletedAt: now, updatedAt: now })
-        .where(eq(ledgers.id, ledgerId))
+        .where(eq(ledgers.id, ledgerId));
       return "deleted" as const;
     });
   },
@@ -333,7 +341,8 @@ export const postgresCategoryAdapter: CategoryPort = {
         .then((rows) => rows[0]);
       if (category == null) return false;
       const now = new Date();
-      await tx.update(ledgerEntries)
+      await tx
+        .update(ledgerEntries)
         .set({ categoryId: null, updatedAt: now })
         .where(
           and(
@@ -341,10 +350,11 @@ export const postgresCategoryAdapter: CategoryPort = {
             eq(ledgerEntries.categoryId, categoryId),
             isNull(ledgerEntries.deletedAt)
           )
-        )
-      await tx.update(entryCategories)
+        );
+      await tx
+        .update(entryCategories)
         .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(entryCategories.ledgerId, ledgerId), eq(entryCategories.id, categoryId)))
+        .where(and(eq(entryCategories.ledgerId, ledgerId), eq(entryCategories.id, categoryId)));
       return true;
     });
   },
@@ -361,14 +371,15 @@ export const postgresCategoryAdapter: CategoryPort = {
             inArray(entryCategories.id, [...categoryIds]),
             isNull(entryCategories.deletedAt)
           )
-        )
+        );
       if (owned.length !== new Set(categoryIds).size) {
         throw new ValidationError("Category reorder contains an inaccessible category");
       }
       for (const [sortOrder, id] of categoryIds.entries()) {
-        await tx.update(entryCategories)
+        await tx
+          .update(entryCategories)
           .set({ sortOrder, updatedAt: new Date() })
-          .where(and(eq(entryCategories.ledgerId, ledgerId), eq(entryCategories.id, id)))
+          .where(and(eq(entryCategories.ledgerId, ledgerId), eq(entryCategories.id, id)));
       }
       return categoryIds.length;
     });
@@ -442,12 +453,7 @@ export const postgresSettingsAdapter: SettingsPort = {
               isNull(sourceDocuments.deletedAt)
             )
           )
-          .where(
-            and(
-              eq(ledgerEntries.ledgerId, input.ledgerId),
-              isNull(ledgerEntries.deletedAt)
-            )
-          );
+          .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), isNull(ledgerEntries.deletedAt)));
         if (Number(activeRow?.count ?? 0) > 0) {
           throw new ConflictError("Main currency cannot be changed after the first entry");
         }
@@ -527,7 +533,9 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
         ledgers,
         and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
       )
-      .where(and(eq(serviceCredentials.tokenHash, computedHash), isNull(serviceCredentials.deletedAt)))
+      .where(
+        and(eq(serviceCredentials.tokenHash, computedHash), isNull(serviceCredentials.deletedAt))
+      )
       .then((rows) => rows[0]);
 
     if (hashMatch) {
@@ -656,17 +664,21 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
   async replace(input) {
     await db.transaction(async (tx) => {
       await tx.delete(otpTokens).where(eq(otpTokens.email, input.email));
-      await tx.insert(otpTokens)
-        .values({
-          email: input.email,
-          tokenHash: input.tokenHash,
-          expires: input.expiresAt,
-          ...(input.ipAddress === undefined ? {} : { ipAddress: input.ipAddress }),
-        })
+      await tx.insert(otpTokens).values({
+        email: input.email,
+        tokenHash: input.tokenHash,
+        expires: input.expiresAt,
+        ...(input.ipAddress === undefined ? {} : { ipAddress: input.ipAddress }),
+      });
     });
   },
   async find(email) {
-    const row = await db.select().from(otpTokens).where(eq(otpTokens.email, email)).limit(1).then((rows) => rows[0]);
+    const row = await db
+      .select()
+      .from(otpTokens)
+      .where(eq(otpTokens.email, email))
+      .limit(1)
+      .then((rows) => rows[0]);
     return row == null
       ? null
       : {

@@ -164,7 +164,10 @@ describe("target source-document submissions", () => {
   it("preserves active results across failed/anomalous retries and rejects stale activation", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
-    const active = await postgresLedgerProjectionAdapter.createManual({ ledgerId, entries: [entry] });
+    const active = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId,
+      entries: [entry],
+    });
     const activeEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, active.revisionId),
     });

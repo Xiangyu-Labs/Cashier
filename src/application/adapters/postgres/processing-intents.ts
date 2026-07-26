@@ -77,16 +77,17 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .then((rows) => rows[0]);
       if (revision == null || revision.outcome !== "processing") return;
 
-      await tx.insert(processingAttempts)
+      await tx
+        .insert(processingAttempts)
         .values({
           ledgerId: revision.ledgerId,
           revisionId: intent.revisionId,
           attemptNumber: intent.attempt,
           status: "queued",
         })
-        .onConflictDoNothing()
-        ;
-      await tx.insert(processingOutbox)
+        .onConflictDoNothing();
+      await tx
+        .insert(processingOutbox)
         .values({
           id: intent.id,
           ledgerId: revision.ledgerId,
@@ -100,8 +101,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           },
           availableAt: new Date(intent.requestedAt),
         })
-        .onConflictDoNothing()
-        ;
+        .onConflictDoNothing();
     });
     this.onDispatch?.();
   }
@@ -159,7 +159,8 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .then((rows) => rows[0]);
       if (row == null) return null;
       const intent = mapIntent(row);
-      await tx.update(processingAttempts)
+      await tx
+        .update(processingAttempts)
         .set({ status: "processing", startedAt: now })
         .where(
           and(
@@ -167,8 +168,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(processingAttempts.attemptNumber, row.attemptNumber),
             eq(processingAttempts.status, "queued")
           )
-        )
-        ;
+        );
       return { intent, claimToken, expiresAt: expiresAt.toISOString() };
     });
   }
@@ -197,7 +197,8 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         })
         .then((rows) => rows[0]);
       if (row == null) return false;
-      await tx.update(processingAttempts)
+      await tx
+        .update(processingAttempts)
         .set({
           status: result.outcome,
           completedAt: now,
@@ -215,17 +216,12 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(processingAttempts.revisionId, row.revisionId),
             eq(processingAttempts.attemptNumber, row.attemptNumber)
           )
-        )
-        ;
+        );
       return true;
     });
   }
 
-  async expireTimedOut(
-    ledgerId: string,
-    timeoutSeconds: number,
-    limit: number
-  ): Promise<number> {
+  async expireTimedOut(ledgerId: string, timeoutSeconds: number, limit: number): Promise<number> {
     const deadline = new Date(this.now().getTime() - timeoutSeconds * 1000);
     const rows = await db
       .select({ id: processingOutbox.id })
@@ -286,11 +282,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
 
       let document;
       try {
-        document = await lockSourceDocumentForUpdate(
-          tx,
-          intent.ledgerId,
-          intent.sourceDocumentId
-        );
+        document = await lockSourceDocumentForUpdate(tx, intent.ledgerId, intent.sourceDocumentId);
       } catch (error) {
         if (error instanceof NotFoundError) return false;
         throw error;
@@ -388,10 +380,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
-            and(
-              eq(processingOutbox.status, "claimed"),
-              lte(processingOutbox.claimExpiresAt, now)
-            )
+            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
           )
         )
       )
@@ -429,7 +418,10 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         sourceDocuments,
         and(
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`),
+          eq(
+            sourceDocuments.id,
+            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+          ),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
         )
@@ -441,10 +433,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
-            and(
-              eq(processingOutbox.status, "claimed"),
-              lte(processingOutbox.claimExpiresAt, now)
-            )
+            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
           )
         )
       )
@@ -467,11 +456,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
    * and whose revision is still the current pending revision.
    * Returns the number of intents exhausted.
    */
-  async exhaustStaleIntents(
-    ledgerId: string,
-    maxAttempts: number,
-    limit: number
-  ): Promise<number> {
+  async exhaustStaleIntents(ledgerId: string, maxAttempts: number, limit: number): Promise<number> {
     const now = this.now();
     const rows = await db
       .select({
@@ -482,7 +467,10 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         sourceDocuments,
         and(
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`),
+          eq(
+            sourceDocuments.id,
+            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+          ),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
         )
@@ -494,10 +482,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           lte(processingOutbox.nextAvailableAt, now),
           or(
             eq(processingOutbox.status, "pending"),
-            and(
-              eq(processingOutbox.status, "claimed"),
-              lte(processingOutbox.claimExpiresAt, now)
-            )
+            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
           )
         )
       )
@@ -545,7 +530,10 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           sourceDocuments,
           and(
             eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-            eq(sourceDocuments.id, sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`)
+            eq(
+              sourceDocuments.id,
+              sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+            )
           )
         )
         .innerJoin(
@@ -586,10 +574,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(processingOutbox.id, intentId),
             or(
               eq(processingOutbox.status, "pending"),
-              and(
-                eq(processingOutbox.status, "claimed"),
-                lte(processingOutbox.claimExpiresAt, now)
-              )
+              and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
             )
           )
         )

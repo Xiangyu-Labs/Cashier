@@ -8,8 +8,10 @@ export interface SourceDocumentDetailPendingChanges {
   entries: Record<string, Partial<EntryEditData>>;
 }
 
-export interface SourceDocumentDetailDisplayEntry
-  extends Omit<LedgerEntry, "amount" | "convertedAmount" | "exchangeRate" | "currency"> {
+export interface SourceDocumentDetailDisplayEntry extends Omit<
+  LedgerEntry,
+  "amount" | "convertedAmount" | "exchangeRate" | "currency"
+> {
   amount: number;
   convertedAmount: number | null;
   exchangeRate: number | null;

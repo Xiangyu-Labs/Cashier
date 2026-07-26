@@ -124,9 +124,9 @@ describe("locale layout", () => {
 
       expect(getMessages).not.toHaveBeenCalled();
 
-      await expect(
-        generateMetadata({ params: Promise.resolve({ locale }) })
-      ).rejects.toThrow("NEXT_NOT_FOUND");
+      await expect(generateMetadata({ params: Promise.resolve({ locale }) })).rejects.toThrow(
+        "NEXT_NOT_FOUND"
+      );
 
       expect(getTranslations).not.toHaveBeenCalled();
       expect(notFound).toHaveBeenCalledTimes(2);

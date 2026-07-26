@@ -9,15 +9,15 @@ any managed provider, deploy, push, or require browser/manual acceptance.
 
 ## Release Inputs And Compatibility Behavior
 
-| Input | Recorded value |
-| --- | --- |
-| Candidate | Current workspace at `bfb63420502f84c87988d38e0c320da055ad5a4e`, including the uncommitted WAL/backfill fixes |
-| Candidate image | `sha256:4f0227152df9b1bffe39a6e1629fee7e6b3afc648905ab1466dcdaadb67b5cba` |
-| Prior-image baseline | `origin/main` at `4db249af8494b65cfb339082440c294a832c087b` |
-| Prior image | `sha256:279ea7e2e79725c5080902282e6298b65c406d0c99a5a9d1896e8399d3d1c145` |
-| Schema/backfill input | Fresh coordinated local copy of SQLite, present WAL/SHM, and all uploads |
-| Migration path | Real `./docker-entrypoint.sh`: Drizzle migrations, application-layer backfill, zero-difference reconciliation, then `node server.js` |
-| Compatibility window | API v1 keeps deprecated `status`; target writes retain the minimum legacy `source_documents` projection needed by the prior image |
+| Input                 | Recorded value                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Candidate             | Current workspace at `bfb63420502f84c87988d38e0c320da055ad5a4e`, including the uncommitted WAL/backfill fixes                        |
+| Candidate image       | `sha256:4f0227152df9b1bffe39a6e1629fee7e6b3afc648905ab1466dcdaadb67b5cba`                                                            |
+| Prior-image baseline  | `origin/main` at `4db249af8494b65cfb339082440c294a832c087b`                                                                          |
+| Prior image           | `sha256:279ea7e2e79725c5080902282e6298b65c406d0c99a5a9d1896e8399d3d1c145`                                                            |
+| Schema/backfill input | Fresh coordinated local copy of SQLite, present WAL/SHM, and all uploads                                                             |
+| Migration path        | Real `./docker-entrypoint.sh`: Drizzle migrations, application-layer backfill, zero-difference reconciliation, then `node server.js` |
+| Compatibility window  | API v1 keeps deprecated `status`; target writes retain the minimum legacy `source_documents` projection needed by the prior image    |
 
 The candidate built from the working tree and the prior image built from a read-only `git archive`
 of `origin/main`. Both production Docker builds passed. The candidate used a local-only OpenAI base
@@ -85,20 +85,20 @@ explicit container restart also returned HTTP 200, with zero duplicate ledger pr
 
 The focused group-9 smoke passed `21 files / 115 tests`:
 
-| Surface | Automated coverage |
-| --- | --- |
-| Authentication | OTP sign-in and sanitized unauthenticated API response |
-| Manual entry | Quick entry and target upper-workflow tests |
-| Text/image submission | Source-document submission integration and upload-controller unit tests |
-| Processing | Durable dispatcher, restart, duplicate dispatch, and target workflow tests |
-| Retry/edit retry | API retry, revision retry, stale completion, and active-result preservation |
-| Authorized file read | Stored-file route ownership and cross-owner denial |
-| Stream / Details / Stats | Target upper workflows and ledger Stats integration |
-| Settings | Settings/currency target workflow and settings authorization contracts |
-| Category/currency | Entry-category and currency API integration |
-| Service credentials | Create, authenticate, last-use, ingest, revoke, and denial integration |
-| API v1 | Authentication, concurrent idempotency, target fields, deprecated `status`, and bounded responses |
-| Sensitive responses | Live unauthenticated response scan plus error/contract suites |
+| Surface                  | Automated coverage                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| Authentication           | OTP sign-in and sanitized unauthenticated API response                                            |
+| Manual entry             | Quick entry and target upper-workflow tests                                                       |
+| Text/image submission    | Source-document submission integration and upload-controller unit tests                           |
+| Processing               | Durable dispatcher, restart, duplicate dispatch, and target workflow tests                        |
+| Retry/edit retry         | API retry, revision retry, stale completion, and active-result preservation                       |
+| Authorized file read     | Stored-file route ownership and cross-owner denial                                                |
+| Stream / Details / Stats | Target upper workflows and ledger Stats integration                                               |
+| Settings                 | Settings/currency target workflow and settings authorization contracts                            |
+| Category/currency        | Entry-category and currency API integration                                                       |
+| Service credentials      | Create, authenticate, last-use, ingest, revoke, and denial integration                            |
+| API v1                   | Authentication, concurrent idempotency, target fields, deprecated `status`, and bounded responses |
+| Sensitive responses      | Live unauthenticated response scan plus error/contract suites                                     |
 
 The live candidate returned the bounded `UNAUTHENTICATED` error once. Its response contained no
 SQLite detail, `/app/` path, storage key, prompt, OpenAI material, stack trace, or credential value.
@@ -129,20 +129,20 @@ After switch, rollback, roll-forward, and restart:
 
 ## Local Runtime Metrics
 
-| Metric | Result |
-| --- | --- |
-| SQLite locking/busy errors | 0 |
-| Recoverable pending processing | 1 |
-| Processing age at measurement | 5 seconds |
-| Live missing-file errors | 0 |
-| Unexpected request failures | 0 |
-| Candidate startup latency | 185.46 ms |
-| Candidate compatibility-write latency | 26.69 ms |
-| Prior-image startup latency | 158.15 ms |
-| Roll-forward startup latency | 287.72 ms |
-| Restart response latency | 164.62 ms |
-| Sanitized error-code frequency | `UNAUTHENTICATED`: 1 |
-| Duplicate ledger projections after restart | 0 |
+| Metric                                     | Result               |
+| ------------------------------------------ | -------------------- |
+| SQLite locking/busy errors                 | 0                    |
+| Recoverable pending processing             | 1                    |
+| Processing age at measurement              | 5 seconds            |
+| Live missing-file errors                   | 0                    |
+| Unexpected request failures                | 0                    |
+| Candidate startup latency                  | 185.46 ms            |
+| Candidate compatibility-write latency      | 26.69 ms             |
+| Prior-image startup latency                | 158.15 ms            |
+| Roll-forward startup latency               | 287.72 ms            |
+| Restart response latency                   | 164.62 ms            |
+| Sanitized error-code frequency             | `UNAUTHENTICATED`: 1 |
+| Duplicate ledger projections after restart | 0                    |
 
 These are local single-run measurements, not production service-level evidence.
 

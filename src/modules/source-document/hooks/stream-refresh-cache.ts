@@ -92,9 +92,7 @@ export function queryKeyToFilterSignature(key: readonly unknown[]): string {
 
   const [, , , startDate, endDate, minAmount, maxAmount, statuses] = key;
 
-  const statusParts = statuses != null && statuses !== ""
-    ? String(statuses).split(",").sort()
-    : [];
+  const statusParts = statuses != null && statuses !== "" ? String(statuses).split(",").sort() : [];
 
   return [
     startDate ?? "",

@@ -36,10 +36,7 @@ export async function listEntriesBySourceDocumentIds(
 
   const mapped = new Map<string, SourceDocumentLedgerEntryDto[]>();
   for (const [docId, entries] of entriesByDocId.entries()) {
-    mapped.set(
-      docId,
-      entries
-    );
+    mapped.set(docId, entries);
   }
 
   return mapped;
@@ -49,7 +46,16 @@ export async function querySourceDocumentPage(
   ledgerId: string,
   params: ListSourceDocumentsParams
 ): Promise<SourceDocumentPageDto> {
-  const { status, limit = 20, startDate, endDate, minAmount, maxAmount, cursor, includeLedgerEntries } = params;
+  const {
+    status,
+    limit = 20,
+    startDate,
+    endDate,
+    minAmount,
+    maxAmount,
+    cursor,
+    includeLedgerEntries,
+  } = params;
 
   const statuses = status
     ?.split(",")

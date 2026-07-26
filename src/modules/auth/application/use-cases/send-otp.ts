@@ -53,12 +53,15 @@ async function getOTPEmailCopy(
   };
 }
 
-export async function sendOTP(params: {
-  email: SendOTPEmail;
-  ip: string;
-  host: string;
-  locale?: SupportedLocale;
-}, emailDelivery: EmailDeliveryPort = currentApplication.email): Promise<{
+export async function sendOTP(
+  params: {
+    email: SendOTPEmail;
+    ip: string;
+    host: string;
+    locale?: SupportedLocale;
+  },
+  emailDelivery: EmailDeliveryPort = currentApplication.email
+): Promise<{
   expiresIn: number;
   expiresAt: number;
   canResendAt: number | null;
@@ -117,7 +120,10 @@ export async function sendOTP(params: {
       }
     } catch (error) {
       logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
-      throw new AppError("Failed to send verification code. Please try again.", "EMAIL_SEND_FAILED");
+      throw new AppError(
+        "Failed to send verification code. Please try again.",
+        "EMAIL_SEND_FAILED"
+      );
     }
 
     await setResendCooldown(normalizedEmail);

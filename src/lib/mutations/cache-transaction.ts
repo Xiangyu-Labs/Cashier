@@ -74,10 +74,7 @@ export class CacheTransactionManager {
   /**
    * Start a new operation. Returns the operation object with a unique ID.
    */
-  startOperation(
-    ledgerId: string,
-    baseVersion: string | null = null
-  ): CacheOperation {
+  startOperation(ledgerId: string, baseVersion: string | null = null): CacheOperation {
     const operation: CacheOperation = {
       operationId: crypto.randomUUID(),
       order: this.nextOrder++,
@@ -104,9 +101,7 @@ export class CacheTransactionManager {
     canonicalEntity: SourceDocumentListItemDto | null,
     queryClient: QueryClient
   ): void {
-    const idx = this.operations.findIndex(
-      (o) => o.operationId === operationId
-    );
+    const idx = this.operations.findIndex((o) => o.operationId === operationId);
     if (idx === -1) return;
 
     const op = this.operations[idx];
@@ -148,13 +143,8 @@ export class CacheTransactionManager {
    * Roll back a failed operation: invert its patches, remove it, and replay
    * only operations created after it over the restored base.
    */
-  rollbackOperation(
-    operationId: string,
-    queryClient: QueryClient
-  ): void {
-    const idx = this.operations.findIndex(
-      (o) => o.operationId === operationId
-    );
+  rollbackOperation(operationId: string, queryClient: QueryClient): void {
+    const idx = this.operations.findIndex((o) => o.operationId === operationId);
     if (idx === -1) return;
 
     const op = this.operations[idx];
@@ -177,11 +167,7 @@ export class CacheTransactionManager {
   /**
    * Invert a single patch.
    */
-  private invertPatch(
-    patch: CachePatch,
-    queryClient: QueryClient,
-    ledgerId: string
-  ): void {
+  private invertPatch(patch: CachePatch, queryClient: QueryClient, ledgerId: string): void {
     switch (patch.type) {
       case "upsert": {
         if (patch.prevEntity != null) {
@@ -223,11 +209,7 @@ export class CacheTransactionManager {
   /**
    * Apply a single patch (forward direction).
    */
-  private applyPatch(
-    patch: CachePatch,
-    queryClient: QueryClient,
-    ledgerId: string
-  ): void {
+  private applyPatch(patch: CachePatch, queryClient: QueryClient, ledgerId: string): void {
     switch (patch.type) {
       case "upsert": {
         applyOptimisticUpsert(queryClient, ledgerId, patch.entity);
@@ -277,9 +259,7 @@ const globalManagers = new Map<string, CacheTransactionManager>();
  * Uses a module-level singleton so in-flight operation state is not lost
  * when the calling component remounts.
  */
-export function getLedgerTransactionManager(
-  ledgerId: string
-): CacheTransactionManager {
+export function getLedgerTransactionManager(ledgerId: string): CacheTransactionManager {
   let manager = globalManagers.get(ledgerId);
   if (manager == null) {
     manager = new CacheTransactionManager();

@@ -24,13 +24,7 @@ describe("DateFilter", () => {
   });
 
   it("does not apply truncate class when truncate prop is false", () => {
-    render(
-      <DateFilter
-        value={new Date("2026-04-17")}
-        onChange={() => {}}
-        truncate={false}
-      />
-    );
+    render(<DateFilter value={new Date("2026-04-17")} onChange={() => {}} truncate={false} />);
 
     const dateText = screen.getByText("2026年4月17日");
     expect(dateText.classList.contains("truncate")).toBe(false);

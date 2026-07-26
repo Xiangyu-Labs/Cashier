@@ -8,10 +8,9 @@ import { isValidDecimal, compare } from "@/lib/money/decimal";
  * Zod type for canonical decimal strings.
  * Rejects raw JSON numbers — the AI must output quoted strings.
  */
-const decimalStringSchema = z.string().refine(
-  (v) => isValidDecimal(v),
-  { message: "Must be a valid decimal number string (e.g. \"45.00\")" }
-);
+const decimalStringSchema = z.string().refine((v) => isValidDecimal(v), {
+  message: 'Must be a valid decimal number string (e.g. "45.00")',
+});
 
 // ===== Raw Zod schema (AI response shape) =====
 
@@ -105,23 +104,23 @@ function normalizeSuccessfulExpenseAmount(amount: string): string {
 
 // ===== Normalization =====
 
-export function normalizeResult(
-  output: z.infer<typeof parserOutputSchema>
-): NormalizedParseOutput {
+export function normalizeResult(output: z.infer<typeof parserOutputSchema>): NormalizedParseOutput {
   // A debit is frequently rendered with a minus sign in banking and app UIs.
   // For a successful expense parse the sign is presentation, not an expense direction.
-  const ledgerEntries = output.outcome === "success"
-    ? output.ledger_entries.map((entry) => ({
-        ...entry,
-        amount: normalizeSuccessfulExpenseAmount(entry.amount),
-      }))
-    : output.ledger_entries;
-  const receiptTotals = output.outcome === "success"
-    ? output.receipt_totals.map((total) => ({
-        ...total,
-        amount: normalizeSuccessfulExpenseAmount(total.amount),
-      }))
-    : output.receipt_totals;
+  const ledgerEntries =
+    output.outcome === "success"
+      ? output.ledger_entries.map((entry) => ({
+          ...entry,
+          amount: normalizeSuccessfulExpenseAmount(entry.amount),
+        }))
+      : output.ledger_entries;
+  const receiptTotals =
+    output.outcome === "success"
+      ? output.receipt_totals.map((total) => ({
+          ...total,
+          amount: normalizeSuccessfulExpenseAmount(total.amount),
+        }))
+      : output.receipt_totals;
 
   // Zero cannot represent a usable expense. Negative successful entries above
   // have already been normalized from debit-display notation.
@@ -179,27 +178,26 @@ export function shouldDualRun(result: NormalizedParseOutput): boolean {
 
 // ===== Result comparison =====
 
-function groupTotals(entries: { currency: string; category_index: number; amount: string }[]): Record<string, string> {
+function groupTotals(
+  entries: { currency: string; category_index: number; amount: string }[]
+): Record<string, string> {
   return entries.reduce<Record<string, string>>((acc, e) => {
     const key = `${e.currency}:${e.category_index}`;
     const prev = acc[key];
-    acc[key] = prev != null
-      ? new Decimal(prev).plus(e.amount).toFixed()
-      : e.amount;
+    acc[key] = prev != null ? new Decimal(prev).plus(e.amount).toFixed() : e.amount;
     return acc;
   }, {});
 }
 
-function groupAdjustments(adjustments: { currency: string; amount: string }[]): Record<string, string> {
+function groupAdjustments(
+  adjustments: { currency: string; amount: string }[]
+): Record<string, string> {
   return adjustments.reduce<Record<string, string>>((acc, a) => {
     const prev = acc[a.currency];
-    acc[a.currency] = prev != null
-      ? new Decimal(prev).plus(a.amount).toFixed()
-      : a.amount;
+    acc[a.currency] = prev != null ? new Decimal(prev).plus(a.amount).toFixed() : a.amount;
     return acc;
   }, {});
 }
-
 
 function groupReceiptTotals(
   totals: { receipt_index: number; currency: string; amount: string }[]
@@ -207,9 +205,7 @@ function groupReceiptTotals(
   return totals.reduce<Record<string, string>>((acc, total) => {
     const key = `${total.receipt_index}:${total.currency}`;
     const prev = acc[key];
-    acc[key] = prev != null
-      ? new Decimal(prev).plus(total.amount).toFixed()
-      : total.amount;
+    acc[key] = prev != null ? new Decimal(prev).plus(total.amount).toFixed() : total.amount;
     return acc;
   }, {});
 }
@@ -228,16 +224,15 @@ function mapsMatch(a: Record<string, string>, b: Record<string, string>): boolea
  * Returns true when two normalized results are close enough to be treated as consistent.
  * Compares receipt totals, entry grouped sums, and adjustment grouped sums.
  */
-export function compareResults(
-  left: NormalizedParseOutput,
-  right: NormalizedParseOutput
-): boolean {
+export function compareResults(left: NormalizedParseOutput, right: NormalizedParseOutput): boolean {
   if (left.outcome !== right.outcome) return false;
   if (left.ledger_entries.length !== right.ledger_entries.length) return false;
   if (left.order_adjustments.length !== right.order_adjustments.length) return false;
 
   // Compare receipt totals
-  if (!mapsMatch(groupReceiptTotals(left.receipt_totals), groupReceiptTotals(right.receipt_totals))) {
+  if (
+    !mapsMatch(groupReceiptTotals(left.receipt_totals), groupReceiptTotals(right.receipt_totals))
+  ) {
     return false;
   }
 
@@ -245,7 +240,10 @@ export function compareResults(
   if (!mapsMatch(groupTotals(left.ledger_entries), groupTotals(right.ledger_entries))) return false;
 
   // Compare adjustment grouped sums
-  if (!mapsMatch(groupAdjustments(left.order_adjustments), groupAdjustments(right.order_adjustments))) return false;
+  if (
+    !mapsMatch(groupAdjustments(left.order_adjustments), groupAdjustments(right.order_adjustments))
+  )
+    return false;
 
   return true;
 }

@@ -29,10 +29,7 @@ export async function scheduleProcessingRecovery(ledgerId: string): Promise<void
 
   if (recoverable.length === 0) return;
 
-  logger.debug(
-    { ledgerId, count: recoverable.length },
-    "Scheduling processing recovery intents"
-  );
+  logger.debug({ ledgerId, count: recoverable.length }, "Scheduling processing recovery intents");
 
   for (const intent of recoverable) {
     after(() => executeSingleProcessingIntent(intent));

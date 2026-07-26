@@ -101,7 +101,9 @@ export interface ValidationResult {
  */
 export function validateEntries(entries: ParsedLedgerEntry[]): ValidationResult {
   // Adjustments (discounts, fees) may have negative amounts — keep them
-  const positiveEntries = entries.filter((entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true);
+  const positiveEntries = entries.filter(
+    (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
+  );
 
   if (positiveEntries.length === 0) {
     return { isValid: false, reason: "No entries with valid amount" };

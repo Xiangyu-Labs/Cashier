@@ -23,10 +23,7 @@ export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
       Partial<{ reconciliation: DeleteSourceDocumentReconciliationDto["reconciliation"] }>
   > => {
     // Read authoritative updatedAt BEFORE soft-delete sets deletedAt
-    const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-      ledgerId,
-      sourceId
-    );
+    const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceId);
 
     const result = await deleteSourceDocument({
       ledgerId,

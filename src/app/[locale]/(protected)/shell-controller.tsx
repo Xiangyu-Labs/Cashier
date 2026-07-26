@@ -20,9 +20,7 @@ export function ShellControllerProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ShellControllerContext.Provider value={value}>
-      {children}
-    </ShellControllerContext.Provider>
+    <ShellControllerContext.Provider value={value}>{children}</ShellControllerContext.Provider>
   );
 }
 

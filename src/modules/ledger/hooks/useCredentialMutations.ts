@@ -25,59 +25,60 @@ export function useCredentialMutations(ledgerId: string) {
   const queryKey = queryKeys.ledgerSettings(ledgerId);
   const tempIdSequence = useRef(0);
 
-  const createCredential = useLedgerMutation<CreatedServiceCredential, string, CreateCredentialContext>(
-    ledgerId,
-    {
-      mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
-      successMessage: t("credentialCreated"),
-      errorMessage: t("createFailed"),
-      cancelPredicates: [matchExactQueryKey(queryKey)],
-      skipInvalidation: true,
-      onOptimisticUpdate: (queryClient, name) => {
-        const tempCredential: ServiceCredential = {
-          id: `temp-credential-${ledgerId}-${++tempIdSequence.current}`,
-          name,
-          ledgerId,
-          tokenPrefix: "••••••••",
-          tokenSuffix: "••••",
-          createdAt: new Date().toISOString(),
-          deletedAt: null,
-          lastUsedAt: null,
-        };
+  const createCredential = useLedgerMutation<
+    CreatedServiceCredential,
+    string,
+    CreateCredentialContext
+  >(ledgerId, {
+    mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
+    successMessage: t("credentialCreated"),
+    errorMessage: t("createFailed"),
+    cancelPredicates: [matchExactQueryKey(queryKey)],
+    skipInvalidation: true,
+    onOptimisticUpdate: (queryClient, name) => {
+      const tempCredential: ServiceCredential = {
+        id: `temp-credential-${ledgerId}-${++tempIdSequence.current}`,
+        name,
+        ledgerId,
+        tokenPrefix: "••••••••",
+        tokenSuffix: "••••",
+        createdAt: new Date().toISOString(),
+        deletedAt: null,
+        lastUsedAt: null,
+      };
 
-        const prevData = queryClient.getQueryData<{
-          uncategorizedCount: number;
-          credentials: ServiceCredential[];
-        }>(queryKey);
+      const prevData = queryClient.getQueryData<{
+        uncategorizedCount: number;
+        credentials: ServiceCredential[];
+      }>(queryKey);
 
-        if (prevData) {
-          queryClient.setQueryData(queryKey, {
-            ...prevData,
-            credentials: [...prevData.credentials, tempCredential],
-          });
-        }
+      if (prevData) {
+        queryClient.setQueryData(queryKey, {
+          ...prevData,
+          credentials: [...prevData.credentials, tempCredential],
+        });
+      }
 
-        return { prevData, tempId: tempCredential.id };
-      },
-      onSuccessExtra: (data, _variables, context) => {
-        const currentData = queryClient.getQueryData<{
-          uncategorizedCount: number;
-          credentials: ServiceCredential[];
-        }>(queryKey);
-        if (currentData) {
-          queryClient.setQueryData(queryKey, {
-            ...currentData,
-            credentials: currentData.credentials.map((c) => (c.id === context?.tempId ? data : c)),
-          });
-        }
-      },
-      onRollback: (queryClient, context) => {
-        if (context?.prevData) {
-          queryClient.setQueryData(queryKey, context.prevData);
-        }
-      },
-    }
-  );
+      return { prevData, tempId: tempCredential.id };
+    },
+    onSuccessExtra: (data, _variables, context) => {
+      const currentData = queryClient.getQueryData<{
+        uncategorizedCount: number;
+        credentials: ServiceCredential[];
+      }>(queryKey);
+      if (currentData) {
+        queryClient.setQueryData(queryKey, {
+          ...currentData,
+          credentials: currentData.credentials.map((c) => (c.id === context?.tempId ? data : c)),
+        });
+      }
+    },
+    onRollback: (queryClient, context) => {
+      if (context?.prevData) {
+        queryClient.setQueryData(queryKey, context.prevData);
+      }
+    },
+  });
 
   const deleteCredential = useLedgerMutation<void, string, DeleteCredentialContext>(ledgerId, {
     mutationFn: (id) => deleteServiceCredentialAction(ledgerId, id),

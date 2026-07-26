@@ -22,8 +22,7 @@ export const queryKeys = {
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
-  sourceDocumentCounts: (ledgerId: string) =>
-    ["sourceDocuments", ledgerId, "counts"] as const,
+  sourceDocumentCounts: (ledgerId: string) => ["sourceDocuments", ledgerId, "counts"] as const,
   sourceDocumentStream: (
     ledgerId: string,
     filters?: {

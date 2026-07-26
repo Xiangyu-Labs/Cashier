@@ -46,12 +46,11 @@ export function SourceDocumentImageModal({
   };
   const currentImage = hasImages ? images[currentIndex] : null;
 
-  const title =
-    !hasImages
-      ? ""
-      : images.length === 1
-        ? t("title")
-        : t("titleWithIndex", { current: currentIndex + 1, total: images.length });
+  const title = !hasImages
+    ? ""
+    : images.length === 1
+      ? t("title")
+      : t("titleWithIndex", { current: currentIndex + 1, total: images.length });
 
   if (!hasImages) return null;
 
@@ -132,9 +131,7 @@ export function SourceDocumentImageModal({
                 variant="ghost"
                 size="icon"
                 className="absolute right-3 top-1/2 z-10 -translate-y-1/2"
-                onClick={() =>
-                  setCurrentIndex((prev) => Math.min(images.length - 1, prev + 1))
-                }
+                onClick={() => setCurrentIndex((prev) => Math.min(images.length - 1, prev + 1))}
                 disabled={currentIndex === images.length - 1}
                 aria-label={t("next")}
               >

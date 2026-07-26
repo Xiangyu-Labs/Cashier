@@ -9,15 +9,15 @@ production database, production upload volume, or production container. No deplo
 
 ## Release Identities And Hard Stop
 
-| Field | Recorded value | Audit result |
-| --- | --- | --- |
-| Implementation base | `c223d539b673ce7c7f926e026aba6baf97b69733` | Recorded on the isolated removal branch |
-| Removal commit | `6505c8a12606037bddf1d6298964b72398264280` | Historical release boundary |
-| Expand-only commit | `a112a260f4b7ae4e79239a1552ce384dc569578f` | Historical release boundary |
-| Switch-candidate commit | `bfb63420502f84c87988d38e0c320da055ad5a4e` | Current `HEAD` |
-| Candidate image | `sha256:77065352649f164064af4eb14ca43f79d4fc96dd761d1bf83d871a5bf2909cae` | Local image only; includes the current uncommitted WAL/backfill fixes, so it is not yet an immutable commit-to-image release record |
-| Current production prior image | **Missing** | Must be read from the production host by the production operator; local images are not substitutes |
-| Local rollback-rehearsal image | `sha256:8c2020c6fee9285d1f8c25ed3fc16bbcba5b95ccd33978a61033bcfc9d015d5d` | Local historical image only; explicitly not asserted to be the deployed production image |
+| Field                          | Recorded value                                                            | Audit result                                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Implementation base            | `c223d539b673ce7c7f926e026aba6baf97b69733`                                | Recorded on the isolated removal branch                                                                                             |
+| Removal commit                 | `6505c8a12606037bddf1d6298964b72398264280`                                | Historical release boundary                                                                                                         |
+| Expand-only commit             | `a112a260f4b7ae4e79239a1552ce384dc569578f`                                | Historical release boundary                                                                                                         |
+| Switch-candidate commit        | `bfb63420502f84c87988d38e0c320da055ad5a4e`                                | Current `HEAD`                                                                                                                      |
+| Candidate image                | `sha256:77065352649f164064af4eb14ca43f79d4fc96dd761d1bf83d871a5bf2909cae` | Local image only; includes the current uncommitted WAL/backfill fixes, so it is not yet an immutable commit-to-image release record |
+| Current production prior image | **Missing**                                                               | Must be read from the production host by the production operator; local images are not substitutes                                  |
+| Local rollback-rehearsal image | `sha256:8c2020c6fee9285d1f8c25ed3fc16bbcba5b95ccd33978a61033bcfc9d015d5d` | Local historical image only; explicitly not asserted to be the deployed production image                                            |
 
 An exact production rollback command cannot be truthfully finalized until the current production
 prior-image digest is supplied. This remains a release hard stop. The required command form is:
@@ -53,14 +53,14 @@ recovery population and must not become target projections.
 The fresh candidate restore copied SQLite, the present WAL/SHM state, and the complete upload tree.
 Before first start and after explicit restart, the following values were identical:
 
-| Check | Result |
-| --- | --- |
-| Excluded deleted documents | 334 |
-| Excluded target revisions / pointers / projections | 0 / 0 / 0 |
-| Excluded source-row SHA-256 | `7cbd898f4008f0d6664329bb90dded31f86c4cb1fc6ff6e1573ccf268def66c5` |
-| Excluded ledger-entry SHA-256 | `d59a68392fed661b91e35fde71e8dbe3eba56da2885294f1f8a93a12315fb2be` |
-| Complete upload-copy SHA-256 | `0bec6155a3c71b65f479c7c258b9bb63f57113c3ad06b0556f6a815a67a7d9c2` |
-| Upload files | 983 |
+| Check                                              | Result                                                             |
+| -------------------------------------------------- | ------------------------------------------------------------------ |
+| Excluded deleted documents                         | 334                                                                |
+| Excluded target revisions / pointers / projections | 0 / 0 / 0                                                          |
+| Excluded source-row SHA-256                        | `7cbd898f4008f0d6664329bb90dded31f86c4cb1fc6ff6e1573ccf268def66c5` |
+| Excluded ledger-entry SHA-256                      | `d59a68392fed661b91e35fde71e8dbe3eba56da2885294f1f8a93a12315fb2be` |
+| Complete upload-copy SHA-256                       | `0bec6155a3c71b65f479c7c258b9bb63f57113c3ad06b0556f6a815a67a7d9c2` |
+| Upload files                                       | 983                                                                |
 
 This independently confirms that the excluded deleted population remained unchanged. The existing
 backfill record states that the owner approved the production-shape copy and confirmed the
@@ -82,8 +82,7 @@ called. Temporary containers were removed after each check.
   returned HTTP 200 for `/en/login`.
 - The database contained none of `source_document_revisions`, `stored_files`, or
   `processing_outbox`; removal therefore introduced no target-model schema.
-- The base image then started against the same copy with `SKIP_MIGRATIONS=true` and returned HTTP
-  200. This closes the local build/migration/rollback evidence for task 2.7, not production task 2.8.
+- The base image then started against the same copy with `SKIP_MIGRATIONS=true` and returned HTTP 200. This closes the local build/migration/rollback evidence for task 2.7, not production task 2.8.
 
 ### Expand-only release
 
@@ -127,13 +126,13 @@ called. Temporary containers were removed after each check.
 The existing removal runbook defines the following proposed controls; they are not approved merely
 by being documented:
 
-| Control | Current evidence state |
-| --- | --- |
-| Maintenance window | 30 minutes with coordinated write freeze; pending production operator scheduling and acceptance |
-| Observation period | 24 hours after smoke acceptance; pending owner acceptance |
-| Approval owner | Missing; must be explicitly named |
-| Smoke checks | OTP/login notification, manual bookkeeping consistency, text/image processing, retry/edit retry, file preview, delete, Stream/Details/Stats, Settings, credentials/API, authorization, and restart recovery, as listed in `removal-release/release-runbook.md` |
-| Stop conditions | Authentication/authorization failure, missing source file, bookkeeping mismatch, duplicate entry, stuck processing, migration/integrity/FK error, elevated locking, unsanitized error, response-contract change, or retained desktop/mobile failure |
+| Control            | Current evidence state                                                                                                                                                                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Maintenance window | 30 minutes with coordinated write freeze; pending production operator scheduling and acceptance                                                                                                                                                                |
+| Observation period | 24 hours after smoke acceptance; pending owner acceptance                                                                                                                                                                                                      |
+| Approval owner     | Missing; must be explicitly named                                                                                                                                                                                                                              |
+| Smoke checks       | OTP/login notification, manual bookkeeping consistency, text/image processing, retry/edit retry, file preview, delete, Stream/Details/Stats, Settings, credentials/API, authorization, and restart recovery, as listed in `removal-release/release-runbook.md` |
+| Stop conditions    | Authentication/authorization failure, missing source file, bookkeeping mismatch, duplicate entry, stuck processing, migration/integrity/FK error, elevated locking, unsanitized error, response-contract change, or retained desktop/mobile failure            |
 
 Because the approval owner, accepted times, production prior digest, and external client attestation
 are missing, task 1.8 remains open. Tasks 2.8 and 4.9 remain open because the repository contains no
@@ -141,19 +140,19 @@ explicit approval plus production deployment/acceptance record for either histor
 
 ## Task Audit Result
 
-| Task | Result | Evidence |
-| --- | --- | --- |
-| 1.1 | Open | Isolated base/branch recorded; deployed production digest missing |
-| 1.3 | Closed | Approved-copy aggregate inventory and accepted anomaly classification above |
-| 1.4 | Closed | Existing owner-confirmed coordinated backup plus fresh SQLite/WAL/uploads restore and candidate start/restart; backup identifier remains a later release-gate input |
-| 1.6 | Open | Automated baseline exists, but baseline request counts, polling, response sizes, and interaction observations were explicitly deferred |
-| 1.7 | Open | Repository surface is known; external client attestation is missing |
-| 1.8 | Open | Smoke/stop controls exist; named approver and accepted window/observation times are missing |
-| 2.7 | Closed | Removal build, no target schema, base-image rollback against restored copy |
-| 2.8 | Open | No explicit approval or production deployment/acceptance record |
-| 4.7 | Open | Image start and API write passed; positive authenticated retained business-read smoke is missing |
-| 4.8 | Closed | Expand entrypoint, zero-row target schema, no upper target read, compatible write, and image rollback passed |
-| 4.9 | Open | No explicit approval, production backup identifier, deployment, or old-behavior acceptance record |
+| Task | Result | Evidence                                                                                                                                                            |
+| ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1  | Open   | Isolated base/branch recorded; deployed production digest missing                                                                                                   |
+| 1.3  | Closed | Approved-copy aggregate inventory and accepted anomaly classification above                                                                                         |
+| 1.4  | Closed | Existing owner-confirmed coordinated backup plus fresh SQLite/WAL/uploads restore and candidate start/restart; backup identifier remains a later release-gate input |
+| 1.6  | Open   | Automated baseline exists, but baseline request counts, polling, response sizes, and interaction observations were explicitly deferred                              |
+| 1.7  | Open   | Repository surface is known; external client attestation is missing                                                                                                 |
+| 1.8  | Open   | Smoke/stop controls exist; named approver and accepted window/observation times are missing                                                                         |
+| 2.7  | Closed | Removal build, no target schema, base-image rollback against restored copy                                                                                          |
+| 2.8  | Open   | No explicit approval or production deployment/acceptance record                                                                                                     |
+| 4.7  | Open   | Image start and API write passed; positive authenticated retained business-read smoke is missing                                                                    |
+| 4.8  | Closed | Expand entrypoint, zero-row target schema, no upper target read, compatible write, and image rollback passed                                                        |
+| 4.9  | Open   | No explicit approval, production backup identifier, deployment, or old-behavior acceptance record                                                                   |
 
 Task 9.1 was not started. Production deployment remains prohibited until every open prerequisite is
 closed or explicitly waived by the authorized owner.

@@ -7,17 +7,15 @@ import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
-import {
-  queryKeys,
-  invalidateSourceDocumentStreamTotal,
-} from "@/lib/query-keys";
+import { queryKeys, invalidateSourceDocumentStreamTotal } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
-import { useBatchSourceDocumentActions,
+import {
+  useBatchSourceDocumentActions,
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
 import {
@@ -75,7 +73,10 @@ export function LedgerEntriesTab({
   const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId: _layoutGroupId } = useLayoutTransition();
-  const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(periodParams, advancedFilters);
+  const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
+    periodParams,
+    advancedFilters
+  );
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
 
   const canonicalStatuses = canonicalizeSourceDocumentStatuses(filters.statuses);
@@ -95,8 +96,7 @@ export function LedgerEntriesTab({
       maxAmount: filters.maxAmount,
       statuses: statusesKey,
     }),
-    queryFn: () =>
-      getStreamTotalAction(ledgerId, streamTotalInput),
+    queryFn: () => getStreamTotalAction(ledgerId, streamTotalInput),
   });
   const filteredTotal = Number(streamTotalData?.total ?? 0);
 
@@ -128,7 +128,10 @@ export function LedgerEntriesTab({
         if (!data) continue;
         for (const page of data.pages) {
           const found = page.items.find((item) => item.id === doc.id);
-          if (found) { prevEntity = found; break; }
+          if (found) {
+            prevEntity = found;
+            break;
+          }
         }
         if (prevEntity) break;
       }
@@ -141,7 +144,10 @@ export function LedgerEntriesTab({
         prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
       });
 
-      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "processing" } as unknown as SourceDocumentListItemDto);
+      applyOptimisticUpsert(queryClient, ledgerId, {
+        ...doc,
+        status: "processing",
+      } as unknown as SourceDocumentListItemDto);
       notifyNewSubmission();
       return { operationId: op.operationId };
     },
@@ -158,11 +164,77 @@ export function LedgerEntriesTab({
     },
   });
 
-  const acceptCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
+  const acceptCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>(
+    {
+      mutationFn: async (doc) => {
+        if (doc.pendingRevisionId == null) throw new Error("No pending revision");
+        const operationId = crypto.randomUUID();
+        await acceptSourceDocumentCandidateAction(
+          ledgerId,
+          doc.id,
+          doc.pendingRevisionId,
+          operationId
+        );
+      },
+      onMutate: (doc) => {
+        const matches = getStreamQueryMatches(queryClient, ledgerId);
+        let prevEntity: SourceDocumentListItemDto | null = null;
+        for (const [, data] of matches) {
+          if (!data) continue;
+          for (const page of data.pages) {
+            const found = page.items.find((item) => item.id === doc.id);
+            if (found) {
+              prevEntity = found;
+              break;
+            }
+          }
+          if (prevEntity) break;
+        }
+
+        const op = txnManager.startOperation(ledgerId);
+        op.patches.push({
+          type: "upsert",
+          entityId: doc.id,
+          entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
+          prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
+        });
+
+        applyOptimisticUpsert(queryClient, ledgerId, {
+          ...doc,
+          status: "completed",
+        } as unknown as SourceDocumentListItemDto);
+        return { operationId: op.operationId };
+      },
+      onSuccess: (_data, _variables, context) => {
+        if (context?.operationId)
+          txnManager.commitOperation(context.operationId, null, queryClient);
+        void queryClient.invalidateQueries({
+          predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+        });
+        toast.success(tActions("acceptSuccess"));
+      },
+      onError: (_error, _variables, context) => {
+        if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
+        toast.error(tActions("acceptError"));
+      },
+    }
+  );
+
+  const abandonCandidateMutation = useMutation<
+    void,
+    Error,
+    SourceDocument,
+    { operationId: string }
+  >({
     mutationFn: async (doc) => {
       if (doc.pendingRevisionId == null) throw new Error("No pending revision");
       const operationId = crypto.randomUUID();
-      await acceptSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
+      await abandonSourceDocumentCandidateAction(
+        ledgerId,
+        doc.id,
+        doc.pendingRevisionId,
+        operationId
+      );
     },
     onMutate: (doc) => {
       const matches = getStreamQueryMatches(queryClient, ledgerId);
@@ -171,7 +243,10 @@ export function LedgerEntriesTab({
         if (!data) continue;
         for (const page of data.pages) {
           const found = page.items.find((item) => item.id === doc.id);
-          if (found) { prevEntity = found; break; }
+          if (found) {
+            prevEntity = found;
+            break;
+          }
         }
         if (prevEntity) break;
       }
@@ -184,49 +259,10 @@ export function LedgerEntriesTab({
         prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
       });
 
-      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto);
-      return { operationId: op.operationId };
-    },
-    onSuccess: (_data, _variables, context) => {
-      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
-      void queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-      });
-      toast.success(tActions("acceptSuccess"));
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
-      toast.error(tActions("acceptError"));
-    },
-  });
-
-  const abandonCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
-    mutationFn: async (doc) => {
-      if (doc.pendingRevisionId == null) throw new Error("No pending revision");
-      const operationId = crypto.randomUUID();
-      await abandonSourceDocumentCandidateAction(ledgerId, doc.id, doc.pendingRevisionId, operationId);
-    },
-    onMutate: (doc) => {
-      const matches = getStreamQueryMatches(queryClient, ledgerId);
-      let prevEntity: SourceDocumentListItemDto | null = null;
-      for (const [, data] of matches) {
-        if (!data) continue;
-        for (const page of data.pages) {
-          const found = page.items.find((item) => item.id === doc.id);
-          if (found) { prevEntity = found; break; }
-        }
-        if (prevEntity) break;
-      }
-
-      const op = txnManager.startOperation(ledgerId);
-      op.patches.push({
-        type: "upsert",
-        entityId: doc.id,
-        entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
-        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
-      });
-
-      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto);
+      applyOptimisticUpsert(queryClient, ledgerId, {
+        ...doc,
+        status: "completed",
+      } as unknown as SourceDocumentListItemDto);
       return { operationId: op.operationId };
     },
     onSuccess: (_data, _variables, context) => {
@@ -243,22 +279,18 @@ export function LedgerEntriesTab({
   });
 
   // Use the unified stream hook with paginated all-statuses results
-  const {
-    streamGroups,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refresh,
-  } = useSourceDocumentStream(ledgerId, {
-    dateRange: {
-      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
-      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
-    },
-    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.statuses != null && filters.statuses.length > 0 ? { statuses: filters.statuses } : {}),
-  });
+  const { streamGroups, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refresh } =
+    useSourceDocumentStream(ledgerId, {
+      dateRange: {
+        ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
+        ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
+      },
+      ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
+      ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
+      ...(filters.statuses != null && filters.statuses.length > 0
+        ? { statuses: filters.statuses }
+        : {}),
+    });
 
   // Build groupedItems from completed groups for useGroupedEntries — no longer needed
   // Selection uses unified stream groups
@@ -277,8 +309,10 @@ export function LedgerEntriesTab({
     isAllSelected,
   } = useSelection({ allIds: allSourceDocumentIds });
 
-  const { deleteSourceDocument, batchUpdateDates } =
-    useBatchSourceDocumentActions(ledgerId, clearSelection);
+  const { deleteSourceDocument, batchUpdateDates } = useBatchSourceDocumentActions(
+    ledgerId,
+    clearSelection
+  );
 
   // C1: Targeted refresh — uses the bounded refresh path via coordinator
   const handleRefresh = useCallback(async () => {
@@ -346,12 +380,7 @@ export function LedgerEntriesTab({
     if (deleteConfirm.type === "sourceDocument") deleteSourceDocument.mutate(deleteConfirm.id);
     else if (deleteConfirm.type === "ledgerEntry") deleteEntry.mutate(deleteConfirm.id);
     closeDeleteConfirm();
-  }, [
-    deleteConfirm,
-    deleteSourceDocument,
-    deleteEntry,
-    closeDeleteConfirm,
-  ]);
+  }, [deleteConfirm, deleteSourceDocument, deleteEntry, closeDeleteConfirm]);
 
   const handleBatchUpdateDates = useCallback(
     (date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }),
@@ -371,88 +400,88 @@ export function LedgerEntriesTab({
         <LedgerEntriesToolbar
           isSelectionMode={isSelectionMode}
           isAllSelected={isAllSelected}
-            selectedCount={selectedIds.length}
-            onToggleSelectionMode={handleToggleSelectionMode}
-            onSelectAll={selectAll}
-            onClearSelection={clearSelection}
-            onUpdateDates={handleBatchUpdateDates}
-            isUpdatingDates={batchUpdateDates.isPending}
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-            periodParams={periodParams}
-            filteredTotalLabel={tFilter("filteredTotal")}
-            mainCurrency={mainCurrency}
-            filteredTotal={filteredTotal}
-            statusSummaryRef={statusSummaryRef}
-            {...(onApplyPreset != null ? { onApplyPreset } : {})}
-          />
-
-          {isLoading ? (
-            <LedgerEntriesLoading />
-          ) : (
-            <>
-              {/* Unified stream groups — all states in a single chronological sequence */}
-              {streamGroups.length > 0 && (
-                <LedgerEntriesUnifiedGroups
-                  streamGroups={streamGroups}
-                  mainCurrency={mainCurrency}
-                  onViewLedgerEntry={handleViewLedgerEntry}
-                  onViewSourceDetail={handleViewSourceDetail}
-                  onRetry={setRetrySourceDocument}
-                  onDirectRetry={handleDirectRetry}
-                  onEditRetry={setRetrySourceDocument}
-                  onAcceptCandidate={handleAcceptCandidate}
-                  onAbandonCandidate={handleAbandonCandidate}
-                  onDeleteSourceConfirm={handleDeleteSourceConfirm}
-                  isSelectionMode={isSelectionMode}
-                  selectedIds={selectedIds}
-                  onToggleSelection={toggleSelection}
-                  collapseEntriesDefault={collapseEntriesDefault}
-                  noRecordsText={tCommon("noRecords")}
-                  getItemProps={getItemProps}
-                />
-              )}
-
-              {/* No records state */}
-              {!isLoading && streamGroups.length === 0 && (
-                <div className="space-y-6 px-2 pt-2">
-                  <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                    <span>{tCommon("noRecords")}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Load completed history before the user reaches the list end. */}
-              {hasNextPage && (
-                <div ref={sentinelRef} className="flex h-12 justify-center py-4" aria-live="polite">
-                  {isFetchingNextPage && (
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      {t("loadingMore")}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* End of list indicator when no more pages */}
-              {!hasNextPage && streamGroups.length > 0 && (
-                <div className="flex justify-center py-4">
-                  <span className="text-xs text-muted-foreground/50">- {t("noMore")} -</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <LedgerEntriesOverlays
-          deleteConfirm={deleteConfirm}
-          onDeleteConfirmOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
-          onDeleteConfirm={handleDeleteConfirmAction}
-          deleteLabel={tCommon("delete")}
-          retrySourceDocument={retrySourceDocument}
-          onRetryDialogOpenChange={(open) => !open && closeRetrySourceDocument()}
-          ledgerId={ledgerId}
+          selectedCount={selectedIds.length}
+          onToggleSelectionMode={handleToggleSelectionMode}
+          onSelectAll={selectAll}
+          onClearSelection={clearSelection}
+          onUpdateDates={handleBatchUpdateDates}
+          isUpdatingDates={batchUpdateDates.isPending}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          periodParams={periodParams}
+          filteredTotalLabel={tFilter("filteredTotal")}
+          mainCurrency={mainCurrency}
+          filteredTotal={filteredTotal}
+          statusSummaryRef={statusSummaryRef}
+          {...(onApplyPreset != null ? { onApplyPreset } : {})}
         />
-      </PullToRefresh>
+
+        {isLoading ? (
+          <LedgerEntriesLoading />
+        ) : (
+          <>
+            {/* Unified stream groups — all states in a single chronological sequence */}
+            {streamGroups.length > 0 && (
+              <LedgerEntriesUnifiedGroups
+                streamGroups={streamGroups}
+                mainCurrency={mainCurrency}
+                onViewLedgerEntry={handleViewLedgerEntry}
+                onViewSourceDetail={handleViewSourceDetail}
+                onRetry={setRetrySourceDocument}
+                onDirectRetry={handleDirectRetry}
+                onEditRetry={setRetrySourceDocument}
+                onAcceptCandidate={handleAcceptCandidate}
+                onAbandonCandidate={handleAbandonCandidate}
+                onDeleteSourceConfirm={handleDeleteSourceConfirm}
+                isSelectionMode={isSelectionMode}
+                selectedIds={selectedIds}
+                onToggleSelection={toggleSelection}
+                collapseEntriesDefault={collapseEntriesDefault}
+                noRecordsText={tCommon("noRecords")}
+                getItemProps={getItemProps}
+              />
+            )}
+
+            {/* No records state */}
+            {!isLoading && streamGroups.length === 0 && (
+              <div className="space-y-6 px-2 pt-2">
+                <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
+                  <span>{tCommon("noRecords")}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Load completed history before the user reaches the list end. */}
+            {hasNextPage && (
+              <div ref={sentinelRef} className="flex h-12 justify-center py-4" aria-live="polite">
+                {isFetchingNextPage && (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("loadingMore")}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* End of list indicator when no more pages */}
+            {!hasNextPage && streamGroups.length > 0 && (
+              <div className="flex justify-center py-4">
+                <span className="text-xs text-muted-foreground/50">- {t("noMore")} -</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <LedgerEntriesOverlays
+        deleteConfirm={deleteConfirm}
+        onDeleteConfirmOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
+        onDeleteConfirm={handleDeleteConfirmAction}
+        deleteLabel={tCommon("delete")}
+        retrySourceDocument={retrySourceDocument}
+        onRetryDialogOpenChange={(open) => !open && closeRetrySourceDocument()}
+        ledgerId={ledgerId}
+      />
+    </PullToRefresh>
   );
 }

@@ -49,7 +49,13 @@ vi.mock("@/modules/ledger/ui/ExportSection", () => ({
 }));
 
 vi.mock("@/modules/ledger/hooks", () => ({
-  useLedgerSettings: ({ ledger, initialCategories }: { ledger: Ledger; initialCategories: unknown[] }) => ({
+  useLedgerSettings: ({
+    ledger,
+    initialCategories,
+  }: {
+    ledger: Ledger;
+    initialCategories: unknown[];
+  }) => ({
     ledger,
     categories: initialCategories,
     uncategorizedCount: 0,
@@ -89,15 +95,11 @@ describe("SettingsTab layout", () => {
   it("renders workflow sections in the agreed order", () => {
     render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
-    const sectionHeadings = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
+    const sectionHeadings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((node) => node.textContent);
 
-    expect(sectionHeadings).toEqual([
-      "外观与语言",
-      "记账规则",
-      "AI 解析",
-      "自动化",
-      "账号与数据",
-    ]);
+    expect(sectionHeadings).toEqual(["外观与语言", "记账规则", "AI 解析", "自动化", "账号与数据"]);
   });
 
   it("labels service credentials as automation", () => {

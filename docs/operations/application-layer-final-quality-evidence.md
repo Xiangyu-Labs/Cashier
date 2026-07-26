@@ -19,23 +19,23 @@ The removal baseline deferred request counts, polling, response sizes, and inter
 so those columns have no numeric pre-change value to compare. The available build and automated
 suite values are compared directly.
 
-| Measurement | Removal baseline | Final result |
-| --- | --- | --- |
-| Detail loading | Not recorded | One bounded action request; no duplicate request |
-| Text-only upload preparation | Not recorded | Zero upload-plan, upload-target, or finalize requests |
-| Two-image upload preparation | Not recorded | One plan, two ordered target PUTs, one finalize; no duplicate phase |
-| No queued/processing revision | Not recorded | Zero refresh timer and zero refresh listeners |
-| Queued/processing revisions | Not recorded | One shared 3-second timer and one four-listener global set; duplicate scope callback suppressed |
-| Source-document list DTO | Not recorded | 3,045 bytes for a seven-item page; asserted below 10,000 bytes |
-| Ledger-entry list DTO | Not recorded | 5,342 bytes for a seven-item page; asserted below 15,000 bytes |
-| Unit suite | 140 files / 785 tests | 141 files / 794 tests |
-| Integration suite | 59 files / 309 tests | 67 files / 341 tests |
-| Coverage suite | 199 files / 1,094 tests | 208 files / 1,135 tests |
-| Coverage | lines 61.34%, statements 60.46%, functions 54.77%, branches 53.85% | lines 64.31%, statements 63.33%, functions 59.81%, branches 58.25% |
-| Next.js compile | 8.4 seconds | 11.4 seconds on the final host check; 12.0 seconds in the final Docker build |
-| Full check wall time | 108.24 seconds | 143.00 seconds with the expanded suites |
-| Build output | Retained routes only | Same retained route surface; `.next/standalone` 75 MB and `.next/static` 4.5 MB |
-| Production image | Docker unavailable at baseline | 351,549,847 bytes; `sha256:77065352649f164064af4eb14ca43f79d4fc96dd761d1bf83d871a5bf2909cae` |
+| Measurement                   | Removal baseline                                                   | Final result                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Detail loading                | Not recorded                                                       | One bounded action request; no duplicate request                                                |
+| Text-only upload preparation  | Not recorded                                                       | Zero upload-plan, upload-target, or finalize requests                                           |
+| Two-image upload preparation  | Not recorded                                                       | One plan, two ordered target PUTs, one finalize; no duplicate phase                             |
+| No queued/processing revision | Not recorded                                                       | Zero refresh timer and zero refresh listeners                                                   |
+| Queued/processing revisions   | Not recorded                                                       | One shared 3-second timer and one four-listener global set; duplicate scope callback suppressed |
+| Source-document list DTO      | Not recorded                                                       | 3,045 bytes for a seven-item page; asserted below 10,000 bytes                                  |
+| Ledger-entry list DTO         | Not recorded                                                       | 5,342 bytes for a seven-item page; asserted below 15,000 bytes                                  |
+| Unit suite                    | 140 files / 785 tests                                              | 141 files / 794 tests                                                                           |
+| Integration suite             | 59 files / 309 tests                                               | 67 files / 341 tests                                                                            |
+| Coverage suite                | 199 files / 1,094 tests                                            | 208 files / 1,135 tests                                                                         |
+| Coverage                      | lines 61.34%, statements 60.46%, functions 54.77%, branches 53.85% | lines 64.31%, statements 63.33%, functions 59.81%, branches 58.25%                              |
+| Next.js compile               | 8.4 seconds                                                        | 11.4 seconds on the final host check; 12.0 seconds in the final Docker build                    |
+| Full check wall time          | 108.24 seconds                                                     | 143.00 seconds with the expanded suites                                                         |
+| Build output                  | Retained routes only                                               | Same retained route surface; `.next/standalone` 75 MB and `.next/static` 4.5 MB                 |
+| Production image              | Docker unavailable at baseline                                     | 351,549,847 bytes; `sha256:77065352649f164064af4eb14ca43f79d4fc96dd761d1bf83d871a5bf2909cae`    |
 
 The final build is slower than the historical host baseline, while executing more tests and a newer
 Next.js patch release. Repeated final builds completed without a route or output expansion. A real
@@ -101,4 +101,3 @@ local paths, storage keys, raw prompts, raw AI output, credentials, stack traces
 OpenAI material, and provider errors. There were zero matches. The API response was the bounded
 88-byte `UNAUTHENTICATED` error and did not expose internal diagnostics. Contract and integration
 tests separately cover authenticated list/detail/API and stored-file responses.
-

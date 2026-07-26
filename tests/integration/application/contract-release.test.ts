@@ -6,12 +6,7 @@ import {
   postgresSourceDocumentSubmissionAdapter,
   getTargetSourceDocument,
 } from "@/application/adapters/postgres";
-import {
-  ledgerEntries,
-  processingOutbox,
-  revisionEntries,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgerEntries, processingOutbox, revisionEntries, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 

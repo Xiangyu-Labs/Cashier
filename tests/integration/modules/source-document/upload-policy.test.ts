@@ -18,11 +18,7 @@ import {
   MAX_ORIGINAL_BYTES_PER_FILE,
   MAX_FILES,
 } from "@/modules/source-document/upload-policy";
-import {
-  sourceDocumentRevisions,
-  storedFiles,
-  uploadSessions,
-} from "@/persistence";
+import { sourceDocumentRevisions, storedFiles, uploadSessions } from "@/persistence";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 import { getTestDb } from "../../../setup";
 
@@ -123,9 +119,7 @@ describe("upload policy integration", () => {
         originalFilename: null as string | null,
       }));
 
-      await expect(adapter.createUploadPlan(ledgerId, files)).rejects.toThrow(
-        ValidationError
-      );
+      await expect(adapter.createUploadPlan(ledgerId, files)).rejects.toThrow(ValidationError);
 
       const db = getTestDb();
       const sessions = await db.select().from(uploadSessions);

@@ -82,7 +82,8 @@ export async function createQuickEntry<
   ledger: TLedger,
   payload: CreateQuickEntryPayload
 ): Promise<QuickEntryResponseDto> {
-  const mainCurrency = ledger.settings?.mainCurrency ?? ledger.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency =
+    ledger.settings?.mainCurrency ?? ledger.metadata?.settings?.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
   const entryDate = payload.entryDate ?? formatDateTimeForApi(new Date());
 

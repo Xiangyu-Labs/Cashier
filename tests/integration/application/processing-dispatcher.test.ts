@@ -55,7 +55,10 @@ async function pendingIntent(
 describe("PostgresProcessingIntentAdapter", () => {
   it("processes parser, reconciliation, exchange-rate facts, and result writes by revision identity", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
     const generate = vi.fn(async () => ({
       content: JSON.stringify({
         outcome: "success",
@@ -98,17 +101,20 @@ describe("PostgresProcessingIntentAdapter", () => {
 
     expect(generate).toHaveBeenCalledTimes(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
-    await expect(postgresRevisionAdapter.get(ledgerId, intent.sourceDocumentId)).resolves.toMatchObject(
-      {
-        activeRevisionId: intent.revisionId,
-        pendingRevisionId: null,
-      }
-    );
+    await expect(
+      postgresRevisionAdapter.get(ledgerId, intent.sourceDocumentId)
+    ).resolves.toMatchObject({
+      activeRevisionId: intent.revisionId,
+      pendingRevisionId: null,
+    });
   });
 
   it("processes with custom ledger prompt in AI generation request", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
 
     // Update ledger metadata with custom prompt
     const customPrompt = "Please categorize expenses as food or transport";
@@ -168,7 +174,10 @@ describe("PostgresProcessingIntentAdapter", () => {
 
   it("retried revision uses current ledger settings", async () => {
     const db = getTestDb();
-    const { ledgerId, intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
 
     // Process once without custom prompt (successful first parse)
     const generate1 = vi.fn(async () => ({

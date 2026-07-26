@@ -1,7 +1,13 @@
 import Decimal from "decimal.js";
 import { and, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { currencyRates, entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import {
+  currencyRates,
+  entryCategories,
+  ledgerEntries,
+  ledgers,
+  sourceDocuments,
+} from "@/persistence";
 import { parseDateString } from "@/lib/date-utils";
 import {
   parseEnhancedStatsInput,
@@ -131,10 +137,7 @@ function processBatch(
     }
   >();
   const dailyMap = new Map<string, Decimal>();
-  const dateInfoMap = new Map<
-    string,
-    { entryCount: number; currencies: Set<string> }
-  >();
+  const dateInfoMap = new Map<string, { entryCount: number; currencies: Set<string> }>();
 
   for (const row of rows) {
     const dateStr = row.entryDate ?? "";
@@ -182,21 +185,15 @@ function processBatch(
   return {
     total: total.toFixed(),
     categoryMap,
-    dailyMap: new Map(
-      Array.from(dailyMap.entries()).map(([d, v]) => [d, v.toNumber()])
-    ),
+    dailyMap: new Map(Array.from(dailyMap.entries()).map(([d, v]) => [d, v.toNumber()])),
     dateInfoMap,
   };
 }
 
-async function collectUniqueDates(
-  rows: AggregatedRow[]
-): Promise<string[]> {
+async function collectUniqueDates(rows: AggregatedRow[]): Promise<string[]> {
   return Array.from(
     new Set(
-      rows
-        .map((row) => row.entryDate)
-        .filter((date): date is string => date != null && date !== "")
+      rows.map((row) => row.entryDate).filter((date): date is string => date != null && date !== "")
     )
   );
 }
@@ -236,20 +233,13 @@ export async function getEnhancedStatsQuery({
   const currentStats = processBatch(currentRows, mainCurrency, ratesMap);
   const prevStats = processBatch(prevRows, mainCurrency, ratesMap);
 
-  const categories: EnhancedCategoryStatDto[] = Array.from(
-    currentStats.categoryMap.values()
-  )
+  const categories: EnhancedCategoryStatDto[] = Array.from(currentStats.categoryMap.values())
     .map((category) => {
-      const prevCategory = prevStats.categoryMap.get(
-        category.id ?? "uncategorized"
-      );
+      const prevCategory = prevStats.categoryMap.get(category.id ?? "uncategorized");
       const prevAmount = prevCategory?.amount ?? new Decimal(0);
       const categoryTotal = category.amount.toFixed();
       const prevTotal = prevAmount.toFixed();
-      const growth = calculateGrowth(
-        Number(categoryTotal),
-        Number(prevTotal)
-      );
+      const growth = calculateGrowth(Number(categoryTotal), Number(prevTotal));
       return {
         id: category.id,
         name: category.name,
@@ -273,17 +263,12 @@ export async function getEnhancedStatsQuery({
     .map(([date, total]) => ({ date, total }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const effectiveEnd =
-    currentEnd > new Date() ? new Date() : currentEnd;
+  const effectiveEnd = currentEnd > new Date() ? new Date() : currentEnd;
   const oneDay = 24 * 60 * 60 * 1000;
   const daysDiff =
-    Math.round(
-      Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)
-    ) + 1;
+    Math.round(Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
 
-  const heatmapDays: CalendarDayData[] = Array.from(
-    currentStats.dailyMap.entries()
-  )
+  const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries())
     .map(([date, totalAmount]) => {
       const dateInfo = currentStats.dateInfoMap.get(date);
       return {
@@ -295,10 +280,7 @@ export async function getEnhancedStatsQuery({
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const totalGrowth = calculateGrowth(
-    Number(currentStats.total),
-    Number(prevStats.total)
-  );
+  const totalGrowth = calculateGrowth(Number(currentStats.total), Number(prevStats.total));
 
   return {
     summary: {
@@ -308,8 +290,7 @@ export async function getEnhancedStatsQuery({
         percent: totalGrowth.percent,
         amount: String(totalGrowth.amount),
       },
-      dailyAverage:
-        daysDiff > 0 ? Number(currentStats.total) / daysDiff : 0,
+      dailyAverage: daysDiff > 0 ? Number(currentStats.total) / daysDiff : 0,
     },
     categories,
     chart,
@@ -320,9 +301,7 @@ export async function getEnhancedStatsQuery({
   };
 }
 
-export async function getEnhancedStats(
-  input: GetEnhancedStatsInput
-): Promise<EnhancedStatsDto> {
+export async function getEnhancedStats(input: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
   const validatedInput = parseEnhancedStatsInput(input);
   return getEnhancedStatsQuery(validatedInput);
 }
