@@ -2,10 +2,10 @@ import crypto from "node:crypto";
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type {
   AuthorizedFileReadContract,
+  DirectStoredFilePort,
   LedgerId,
   StoredFileContract,
   StoredFileId,
-  StoredFilePort,
   UploadFileRequestContract,
   UploadFinalizationContract,
   UploadPlanContract,
@@ -35,7 +35,22 @@ interface ObjectFileStore {
   upload(key: string, data: Buffer, contentType: string): Promise<unknown>;
   download(key: string): Promise<Buffer>;
   delete(key: string): Promise<{ success: boolean; error?: Error }>;
+  presignUpload?(
+    key: string,
+    contentType: string,
+    sha256: string,
+    expiresInSeconds: number
+  ): Promise<{ url: string; requiredHeaders: Readonly<Record<string, string>> }>;
+  head?(key: string): Promise<{
+    byteSize: number;
+    contentType: string;
+    metadata: Readonly<Record<string, string>>;
+  }>;
+  copy?(sourceKey: string, destinationKey: string): Promise<void>;
 }
+
+type DirectObjectFileStore = Required<Pick<ObjectFileStore, "presignUpload" | "head" | "copy">> &
+  ObjectFileStore;
 
 function tokenHash(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -89,7 +104,22 @@ function validateRequests(files: readonly UploadFileRequestContract[]): void {
   }
 }
 
-export class StoredFileAdapter implements StoredFilePort {
+function requireDirectStorage(storage: ObjectFileStore): DirectObjectFileStore {
+  if (storage.presignUpload == null || storage.head == null || storage.copy == null) {
+    throw new AppError("Direct upload storage is not configured", "STORAGE_UNAVAILABLE", 503);
+  }
+  return storage as DirectObjectFileStore;
+}
+
+function temporaryKey(ledgerId: string, sessionId: string, targetId: string): string {
+  return `temporary/${ledgerId}/${sessionId}/${targetId}`;
+}
+
+function durableKey(ledgerId: string, storedFileId: string): string {
+  return `${ledgerId}/stored/${storedFileId}`;
+}
+
+export class StoredFileAdapter implements DirectStoredFilePort {
   constructor(
     private readonly storage: ObjectFileStore = getR2Storage(),
     private readonly now: () => Date = () => new Date()
@@ -117,6 +147,7 @@ export class StoredFileAdapter implements StoredFilePort {
         id: sessionId,
         ledgerId,
         finalizationTokenHash: tokenHash(finalizationToken),
+        transport: "proxy",
         status: "open",
         expiresAt,
         createdAt: now,
@@ -151,6 +182,88 @@ export class StoredFileAdapter implements StoredFilePort {
     };
   }
 
+  async createDirectUploadPlan(
+    ledgerId: LedgerId,
+    files: readonly UploadFileRequestContract[]
+  ): Promise<UploadPlanContract> {
+    validateRequests(files);
+    if (files.some((file) => file.checksum == null || !/^[a-f\d]{64}$/.test(file.checksum))) {
+      throw new ValidationError("Direct uploads require a lowercase SHA-256 checksum");
+    }
+    if (
+      files.reduce((total, file) => total + file.byteSize, 0) > MAX_NORMALIZED_BYTES_PER_REVISION
+    ) {
+      throw new ValidationError("Direct upload batch exceeds the configured total byte limit");
+    }
+
+    const storage = requireDirectStorage(this.storage);
+    const sessionId = crypto.randomUUID();
+    const finalizationToken = crypto.randomBytes(32).toString("base64url");
+    const now = this.now();
+    const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
+    const targetIds = files.map(() => crypto.randomUUID());
+
+    await db.transaction(async (tx) => {
+      const ledger = await tx
+        .select({ id: ledgers.id })
+        .from(ledgers)
+        .where(and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)))
+        .then((rows) => rows[0]);
+      if (ledger == null) throw new NotFoundError("Ledger");
+      await tx.insert(uploadSessions).values({
+        id: sessionId,
+        ledgerId,
+        finalizationTokenHash: tokenHash(finalizationToken),
+        transport: "direct",
+        status: "open",
+        expiresAt,
+        createdAt: now,
+      });
+      await tx.insert(uploadSessionFiles).values(
+        files.map((file, position) => ({
+          ledgerId,
+          uploadSessionId: sessionId,
+          targetId: targetIds[position]!,
+          position,
+          expectedContentType: file.contentType,
+          expectedByteSize: file.byteSize,
+          originalFilename: file.originalFilename,
+          expectedChecksum: file.checksum!.toLowerCase(),
+          status: "planned",
+        }))
+      );
+    });
+
+    try {
+      const targets = await Promise.all(
+        files.map(async (file, position) => {
+          const targetId = targetIds[position]!;
+          const signed = await storage.presignUpload(
+            temporaryKey(ledgerId, sessionId, targetId),
+            file.contentType,
+            file.checksum!,
+            Math.floor(UPLOAD_SESSION_EXPIRY_MS / 1000)
+          );
+          return { id: targetId, method: "PUT" as const, ...signed };
+        })
+      );
+      return {
+        id: sessionId,
+        expiresAt: expiresAt.toISOString(),
+        targets,
+        finalizationToken,
+        maxFiles: MAX_FILES,
+        maxBytesPerFile: MAX_ORIGINAL_BYTES_PER_FILE,
+      };
+    } catch (error) {
+      await db
+        .update(uploadSessions)
+        .set({ status: "cancelled" })
+        .where(and(eq(uploadSessions.id, sessionId), eq(uploadSessions.status, "open")));
+      throw error;
+    }
+  }
+
   async uploadTargetForUser(input: {
     userId: string;
     uploadSessionId: string;
@@ -183,7 +296,9 @@ export class StoredFileAdapter implements StoredFilePort {
       ),
     });
     const now = this.now();
-    if (session == null || session.status !== "open") throw new NotFoundError("Upload target");
+    if (session == null || session.transport !== "proxy" || session.status !== "open") {
+      throw new NotFoundError("Upload target");
+    }
     if (session.expiresAt.getTime() <= now.getTime()) {
       await db
         .update(uploadSessions)
@@ -271,6 +386,185 @@ export class StoredFileAdapter implements StoredFilePort {
     }
   }
 
+  async finalizeDirectUpload(
+    input: UploadFinalizationContract
+  ): Promise<readonly StoredFileContract[]> {
+    const storage = requireDirectStorage(this.storage);
+    let session = await db.query.uploadSessions.findFirst({
+      where: eq(uploadSessions.id, input.uploadSessionId),
+    });
+    if (
+      session == null ||
+      session.transport !== "direct" ||
+      (input.ownerLedgerId != null && session.ledgerId !== input.ownerLedgerId) ||
+      !safeTokenMatches(input.finalizationToken, session.finalizationTokenHash)
+    ) {
+      throw new NotFoundError("Upload session");
+    }
+
+    const targets = await db
+      .select()
+      .from(uploadSessionFiles)
+      .where(
+        and(
+          eq(uploadSessionFiles.ledgerId, session.ledgerId),
+          eq(uploadSessionFiles.uploadSessionId, session.id)
+        )
+      )
+      .orderBy(asc(uploadSessionFiles.position));
+    if (
+      targets.length === 0 ||
+      targets.length !== input.targetIds.length ||
+      targets.some((target, position) => target.targetId !== input.targetIds[position])
+    ) {
+      throw new ValidationError("Upload targets must be complete and in planned order");
+    }
+    if (
+      targets.some(
+        (target) =>
+          target.expectedContentType == null ||
+          target.expectedByteSize == null ||
+          target.expectedChecksum == null
+      )
+    ) {
+      throw new ConflictError("Direct upload targets are incomplete");
+    }
+
+    const now = this.now();
+    if (session.status === "open") {
+      if (session.expiresAt.getTime() <= now.getTime()) {
+        await db
+          .update(uploadSessions)
+          .set({ status: "expired" })
+          .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.status, "open")));
+        throw new ConflictError("Upload plan has expired");
+      }
+      await db
+        .update(uploadSessions)
+        .set({ status: "finalizing" })
+        .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.status, "open")));
+      session =
+        (await db.query.uploadSessions.findFirst({
+          where: eq(uploadSessions.id, session.id),
+        })) ?? session;
+    }
+    if (session.status === "finalized") {
+      return this.finalizeUpload(input);
+    }
+    if (session.status !== "finalizing") {
+      throw new ConflictError("Upload session cannot be finalized");
+    }
+
+    try {
+      const inspected = await Promise.all(
+        targets.map((target) =>
+          storage.head(temporaryKey(session.ledgerId, session.id, target.targetId))
+        )
+      );
+      for (const [position, target] of targets.entries()) {
+        const actual = inspected[position]!;
+        if (
+          actual.byteSize !== target.expectedByteSize ||
+          actual.contentType !== target.expectedContentType ||
+          actual.metadata.sha256 !== target.expectedChecksum
+        ) {
+          throw new ConflictError("Uploaded object metadata does not match the upload plan");
+        }
+      }
+    } catch (error) {
+      if (error instanceof ConflictError) {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(uploadSessionFiles)
+            .set({ status: "rejected" })
+            .where(
+              and(
+                eq(uploadSessionFiles.uploadSessionId, session.id),
+                eq(uploadSessionFiles.status, "planned")
+              )
+            );
+          await tx
+            .update(uploadSessions)
+            .set({ status: "cancelled" })
+            .where(eq(uploadSessions.id, session.id));
+        });
+      }
+      throw error;
+    }
+
+    await Promise.all(
+      targets.map(async (target) => {
+        if (target.status === "uploaded" || target.status === "finalized") return;
+        const storedFileId = target.targetId;
+        const storageKey = durableKey(session.ledgerId, storedFileId);
+        await storage.copy(temporaryKey(session.ledgerId, session.id, target.targetId), storageKey);
+        await db.transaction(async (tx) => {
+          await tx
+            .insert(storedFiles)
+            .values({
+              id: storedFileId,
+              ledgerId: session.ledgerId,
+              storageProvider: "r2",
+              storageKey,
+              contentType: target.expectedContentType!,
+              byteSize: target.expectedByteSize!,
+              originalFilename: target.originalFilename,
+              checksum: target.expectedChecksum!,
+              createdAt: now,
+            })
+            .onConflictDoNothing();
+          const file = await tx.query.storedFiles.findFirst({
+            where: and(
+              eq(storedFiles.ledgerId, session.ledgerId),
+              eq(storedFiles.id, storedFileId)
+            ),
+          });
+          if (
+            file == null ||
+            file.storageKey !== storageKey ||
+            file.contentType !== target.expectedContentType ||
+            file.byteSize !== target.expectedByteSize ||
+            file.checksum !== target.expectedChecksum
+          ) {
+            throw new ConflictError("Stored file promotion conflicted with existing state");
+          }
+          await tx
+            .update(uploadSessionFiles)
+            .set({ storedFileId, status: "uploaded" })
+            .where(
+              and(
+                eq(uploadSessionFiles.ledgerId, session.ledgerId),
+                eq(uploadSessionFiles.uploadSessionId, session.id),
+                eq(uploadSessionFiles.targetId, target.targetId),
+                eq(uploadSessionFiles.status, "planned")
+              )
+            );
+        });
+      })
+    );
+
+    const files = await this.finalizeUpload(input);
+    const cleanupResults = await Promise.all(
+      targets.map((target) =>
+        storage.delete(temporaryKey(session.ledgerId, session.id, target.targetId))
+      )
+    );
+    if (cleanupResults.some((result) => !result.success)) {
+      logger.warn({ uploadSessionId: session.id }, "Temporary R2 upload cleanup was incomplete");
+    }
+    return files;
+  }
+
+  async finalizeBrowserUpload(
+    input: UploadFinalizationContract
+  ): Promise<readonly StoredFileContract[]> {
+    const session = await db.query.uploadSessions.findFirst({
+      where: eq(uploadSessions.id, input.uploadSessionId),
+    });
+    if (session?.transport === "direct") return this.finalizeDirectUpload(input);
+    return this.finalizeUpload(input);
+  }
+
   async finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]> {
     const session = await db.query.uploadSessions.findFirst({
       where: eq(uploadSessions.id, input.uploadSessionId),
@@ -285,6 +579,24 @@ export class StoredFileAdapter implements StoredFilePort {
     const targetIds = [...new Set(input.targetIds)];
     if (targetIds.length === 0 || targetIds.length !== input.targetIds.length) {
       throw new ValidationError("Finalization requires unique upload targets");
+    }
+    if (session.transport === "direct") {
+      const plannedTargets = await db
+        .select({ targetId: uploadSessionFiles.targetId })
+        .from(uploadSessionFiles)
+        .where(
+          and(
+            eq(uploadSessionFiles.ledgerId, session.ledgerId),
+            eq(uploadSessionFiles.uploadSessionId, session.id)
+          )
+        )
+        .orderBy(asc(uploadSessionFiles.position));
+      if (
+        plannedTargets.length !== input.targetIds.length ||
+        plannedTargets.some((target, position) => target.targetId !== input.targetIds[position])
+      ) {
+        throw new ValidationError("Upload targets must be complete and in planned order");
+      }
     }
     const now = this.now();
     if (session.expiresAt.getTime() <= now.getTime() && session.status === "open") {
@@ -317,7 +629,11 @@ export class StoredFileAdapter implements StoredFilePort {
       ) {
         throw new ConflictError("Upload targets are incomplete");
       }
-      if (session.status !== "open" && session.status !== "finalized") {
+      if (
+        session.status !== "open" &&
+        session.status !== "finalizing" &&
+        session.status !== "finalized"
+      ) {
         throw new ConflictError("Upload session cannot be finalized");
       }
       // Validate unique display order: deduplicate on position since targets are unique

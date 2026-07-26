@@ -230,6 +230,7 @@ export const uploadSessions = pgTable(
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     finalizationTokenHash: text("finalization_token_hash").notNull(),
+    transport: text("transport").notNull().default("proxy"),
     status: text("status").notNull().default("open"),
     expiresAt: requiredTimestamp("expires_at"),
     finalizedAt: timestamp("finalized_at", { withTimezone: true }),
@@ -245,8 +246,9 @@ export const uploadSessions = pgTable(
     ),
     check(
       "ck_upload_sessions_status",
-      sql`${table.status} IN ('open', 'finalized', 'expired', 'cancelled')`
+      sql`${table.status} IN ('open', 'finalizing', 'finalized', 'expired', 'cancelled')`
     ),
+    check("ck_upload_sessions_transport", sql`${table.transport} IN ('proxy', 'direct')`),
   ]
 );
 

@@ -7,6 +7,7 @@ import {
   processImage,
   isSupportedImageFormat,
   getImageDimensions,
+  validateStoredImageBytes,
   DEFAULT_IMAGE_OPTIONS,
 } from "@/lib/storage/image-processing";
 import sharp from "sharp";
@@ -153,6 +154,23 @@ describe("image-processing", () => {
     it("should be case insensitive", () => {
       expect(isSupportedImageFormat("IMAGE/JPEG")).toBe(true);
       expect(isSupportedImageFormat("Image/Png")).toBe(true);
+    });
+  });
+
+  describe("validateStoredImageBytes", () => {
+    it("fully decodes supported bytes with matching MIME", async () => {
+      const { buffer } = await createTestImage(20, 20, "png");
+      await expect(validateStoredImageBytes(buffer, "image/png")).resolves.toBeUndefined();
+    });
+
+    it("rejects malformed bytes and declared MIME mismatches", async () => {
+      await expect(
+        validateStoredImageBytes(Buffer.from("not-an-image"), "image/jpeg")
+      ).rejects.toThrow();
+      const { buffer } = await createTestImage(20, 20, "png");
+      await expect(validateStoredImageBytes(buffer, "image/jpeg")).rejects.toThrow(
+        "does not match"
+      );
     });
   });
 

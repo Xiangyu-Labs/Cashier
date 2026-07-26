@@ -1,16 +1,27 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AppError } from "@/lib/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { assertSafeStorageKey, type StorageProvider } from "./index";
 
 type R2Client = Pick<S3Client, "send">;
+
+export interface R2ObjectMetadata {
+  byteSize: number;
+  contentType: string;
+  metadata: Readonly<Record<string, string>>;
+}
+
+type Presign = typeof getSignedUrl;
 
 function isNotFound(error: unknown): boolean {
   if (error == null || typeof error !== "object") return false;
@@ -49,7 +60,8 @@ export class R2StorageProvider implements StorageProvider {
 
   constructor(
     client?: R2Client,
-    private readonly configuredBucket?: string
+    private readonly configuredBucket?: string,
+    private readonly presign: Presign = getSignedUrl
   ) {
     this.client = client ?? null;
   }
@@ -79,6 +91,82 @@ export class R2StorageProvider implements StorageProvider {
     }
   }
 
+  async presignUpload(
+    key: string,
+    contentType: string,
+    sha256: string,
+    expiresInSeconds: number
+  ): Promise<{ url: string; requiredHeaders: Readonly<Record<string, string>> }> {
+    assertSafeStorageKey(key);
+    try {
+      const requiredHeaders = {
+        "Content-Type": contentType,
+        "x-amz-meta-sha256": sha256,
+      } as const;
+      const url = await this.presign(
+        this.getClient() as S3Client,
+        new PutObjectCommand({
+          Bucket: this.getBucket(),
+          Key: key,
+          ContentType: contentType,
+          Metadata: { sha256 },
+        }),
+        {
+          expiresIn: expiresInSeconds,
+          signableHeaders: new Set(["content-type"]),
+          unhoistableHeaders: new Set(["x-amz-meta-sha256"]),
+        }
+      );
+      return { url, requiredHeaders };
+    } catch (error) {
+      throw storageError("Failed to sign R2 upload", "R2_PRESIGN_FAILED", key, error);
+    }
+  }
+
+  async head(key: string): Promise<R2ObjectMetadata> {
+    assertSafeStorageKey(key);
+    try {
+      const response = await this.getClient().send(
+        new HeadObjectCommand({ Bucket: this.getBucket(), Key: key })
+      );
+      if (response.ContentLength == null || response.ContentType == null) {
+        throw storageError("R2 object metadata is incomplete", "R2_HEAD_FAILED", key);
+      }
+      return {
+        byteSize: response.ContentLength,
+        contentType: response.ContentType,
+        metadata: response.Metadata ?? {},
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (isNotFound(error)) {
+        throw storageError("File not found in R2", "FILE_NOT_FOUND", key, error);
+      }
+      throw storageError("Failed to inspect R2 object", "R2_HEAD_FAILED", key, error);
+    }
+  }
+
+  async copy(sourceKey: string, destinationKey: string): Promise<void> {
+    assertSafeStorageKey(sourceKey);
+    assertSafeStorageKey(destinationKey);
+    const copySource = `${this.getBucket()}/${sourceKey
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`;
+    try {
+      await this.getClient().send(
+        new CopyObjectCommand({
+          Bucket: this.getBucket(),
+          Key: destinationKey,
+          CopySource: copySource,
+          MetadataDirective: "COPY",
+        })
+      );
+    } catch (error) {
+      throw storageError("Failed to promote R2 object", "R2_COPY_FAILED", destinationKey, error);
+    }
+  }
+
   async download(key: string): Promise<Buffer> {
     assertSafeStorageKey(key);
     try {
@@ -99,9 +187,7 @@ export class R2StorageProvider implements StorageProvider {
   async delete(key: string): Promise<{ success: boolean; key: string; error?: Error }> {
     assertSafeStorageKey(key);
     try {
-      await this.getClient().send(
-        new DeleteObjectCommand({ Bucket: this.getBucket(), Key: key })
-      );
+      await this.getClient().send(new DeleteObjectCommand({ Bucket: this.getBucket(), Key: key }));
       return { success: true, key };
     } catch (error) {
       const mapped = storageError("Failed to delete file from R2", "R2_DELETE_FAILED", key, error);

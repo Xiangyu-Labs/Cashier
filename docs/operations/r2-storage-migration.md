@@ -1,8 +1,8 @@
 # Private R2 storage cutover
 
-Cashier runtime supports private Cloudflare R2 only. Browsers upload through Cashier and read
-through `/api/stored-files/:fileId`; the bucket must not have public access, a custom domain, CORS,
-signed browser URLs, or a Worker.
+Cashier runtime supports private Cloudflare R2 only. Browsers upload source images with short-lived,
+PUT-only signed URLs and read through `/api/stored-files/:fileId`. The bucket must not have public
+access or a public custom domain, and no Worker is required.
 
 ## Prepare
 
@@ -18,6 +18,39 @@ signed browser URLs, or a Worker.
    ```
 
 Do not paste credentials into chat, logs, issue trackers, or Git.
+
+The same four R2 values support upload signing, HEAD verification, server-side COPY, reads, and
+deletes. Do not expose them to the browser and do not create a separate browser credential.
+
+## Configure direct-upload CORS and cleanup
+
+Before deploying the direct-upload Web flow, add an R2 CORS rule with the exact production and
+stable staging origins. Local development may add `http://localhost:3000`. Do not add `*` or
+ephemeral Vercel preview origins.
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://cashier.example.com",
+      "https://cashier-staging.example.com",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["content-type", "x-amz-meta-sha256"],
+    "ExposeHeaders": ["etag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Replace the example HTTPS origins with the deployed values of `NEXT_PUBLIC_APP_URL`; omit staging
+when it does not exist. Keep the bucket private. CORS grants no object access without a valid signed
+URL.
+
+Configure an R2 lifecycle rule that deletes objects with prefix `temporary/` after one day. The
+application deletes promoted temporary objects best-effort; the lifecycle rule covers abandoned
+sessions and interrupted cleanup.
 
 ## Upload historical objects
 

@@ -1,11 +1,13 @@
 import { AppError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { storedFileAdapter } from "@/application/adapters/storage";
+import { validateStoredImageBytes } from "@/lib/storage/image-processing";
 
 export async function loadStoredFileForAI(ledgerId: string, storedFileId: string): Promise<string> {
   try {
     const read = await storedFileAdapter.readAuthorized(ledgerId, storedFileId);
     if (read == null) throw new ValidationError("Stored image is not available for this revision");
+    await validateStoredImageBytes(Buffer.from(read.body), read.file.metadata.contentType);
     return `data:${read.file.metadata.contentType};base64,${Buffer.from(read.body).toString("base64")}`;
   } catch (error) {
     logger.error({ error, ledgerId, storedFileId }, "Failed to load stored image evidence for AI");

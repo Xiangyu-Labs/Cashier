@@ -1,6 +1,8 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   type S3Client,
 } from "@aws-sdk/client-s3";
@@ -49,6 +51,52 @@ describe("R2StorageProvider", () => {
         "image/jpeg"
       )
     ).rejects.toMatchObject({ code: "R2_UPLOAD_FAILED", statusCode: 503 });
+  });
+
+  it("signs scoped uploads, inspects metadata, and copies within the bucket", async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ContentLength: 3,
+        ContentType: "image/png",
+        Metadata: { sha256: "a".repeat(64) },
+      })
+      .mockResolvedValueOnce({});
+    const signer = vi.fn().mockResolvedValue("https://signed.example/upload");
+    const storage = new R2StorageProvider(
+      { send } as unknown as Pick<S3Client, "send">,
+      "cashier-images",
+      signer as never
+    );
+
+    await expect(
+      storage.presignUpload("temporary/ledger/session/target", "image/png", "a".repeat(64), 900)
+    ).resolves.toEqual({
+      url: "https://signed.example/upload",
+      requiredHeaders: {
+        "Content-Type": "image/png",
+        "x-amz-meta-sha256": "a".repeat(64),
+      },
+    });
+    await expect(storage.head("temporary/ledger/session/target")).resolves.toEqual({
+      byteSize: 3,
+      contentType: "image/png",
+      metadata: { sha256: "a".repeat(64) },
+    });
+    await expect(
+      storage.copy("temporary/ledger/session/target", "ledger/stored/target")
+    ).resolves.toBeUndefined();
+
+    expect(signer).toHaveBeenCalledWith(expect.anything(), expect.any(PutObjectCommand), {
+      expiresIn: 900,
+      signableHeaders: new Set(["content-type"]),
+      unhoistableHeaders: new Set(["x-amz-meta-sha256"]),
+    });
+    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(HeadObjectCommand);
+    expect(send.mock.calls[1]?.[0]).toBeInstanceOf(CopyObjectCommand);
+    expect(send.mock.calls[1]?.[0].input.CopySource).toBe(
+      "cashier-images/temporary/ledger/session/target"
+    );
   });
 
   it("rejects unsafe object keys before calling R2", async () => {

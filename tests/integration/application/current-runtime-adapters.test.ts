@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
@@ -13,12 +14,10 @@ import {
   postgresServiceCredentialAdapter,
   postgresSettingsAdapter,
 } from "@/application/adapters/postgres";
-import {
-  createUploadPlanForSubmission,
-  StoredFileAdapter,
-} from "@/application/adapters/storage";
+import { createUploadPlanForSubmission, StoredFileAdapter } from "@/application/adapters/storage";
 import {
   MAX_FILES,
+  MAX_NORMALIZED_BYTES_PER_REVISION,
   MAX_ORIGINAL_BYTES_PER_FILE,
 } from "@/modules/source-document/upload-policy";
 import {
@@ -77,6 +76,32 @@ class CoordinatedObjectStore extends MemoryObjectStore {
     this.deletedKeys.push(key);
     this.files.delete(key);
     return { success: true };
+  }
+}
+
+class DirectMemoryObjectStore extends MemoryObjectStore {
+  readonly metadata = new Map<
+    string,
+    { byteSize: number; contentType: string; metadata: Record<string, string> }
+  >();
+
+  async presignUpload(key: string, contentType: string, sha256: string) {
+    return {
+      url: `https://r2.test/${key}`,
+      requiredHeaders: { "Content-Type": contentType, "x-amz-meta-sha256": sha256 },
+    };
+  }
+
+  async head(key: string) {
+    const value = this.metadata.get(key);
+    if (value == null) throw new Error("missing object");
+    return value;
+  }
+
+  async copy(sourceKey: string, destinationKey: string) {
+    const value = this.files.get(sourceKey);
+    if (value == null) throw new Error("missing source");
+    this.files.set(destinationKey, Buffer.from(value));
   }
 }
 
@@ -564,5 +589,108 @@ describe("current-runtime target adapters", () => {
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
     expect(storage.deletedKeys).toHaveLength(1);
     expect(storage.files.size).toBe(1);
+  });
+
+  it("presigns, verifies, promotes, and idempotently finalizes direct uploads", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new DirectMemoryObjectStore();
+    const adapter = new StoredFileAdapter(storage);
+    const bytes = Buffer.from("direct-image");
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    const plan = await adapter.createDirectUploadPlan(ledgerId, [
+      {
+        contentType: "image/jpeg",
+        byteSize: bytes.length,
+        originalFilename: "receipt.jpg",
+        checksum: digest,
+      },
+    ]);
+    const target = plan.targets[0]!;
+    const temporaryKey = `temporary/${ledgerId}/${plan.id}/${target.id}`;
+    storage.files.set(temporaryKey, bytes);
+    storage.metadata.set(temporaryKey, {
+      byteSize: bytes.length,
+      contentType: "image/jpeg",
+      metadata: { sha256: digest },
+    });
+
+    const input = {
+      ownerLedgerId: ledgerId,
+      uploadSessionId: plan.id,
+      finalizationToken: plan.finalizationToken,
+      targetIds: [target.id],
+    };
+    const [file] = await adapter.finalizeDirectUpload(input);
+    expect(file).toMatchObject({
+      id: target.id,
+      ownerLedgerId: ledgerId,
+      metadata: { checksum: digest },
+    });
+    expect(storage.files.get(`${ledgerId}/stored/${target.id}`)).toEqual(bytes);
+    expect(storage.files.has(temporaryKey)).toBe(false);
+    await expect(adapter.finalizeDirectUpload(input)).resolves.toMatchObject([{ id: target.id }]);
+    expect(
+      await db.query.uploadSessions.findFirst({ where: eq(uploadSessions.id, plan.id) })
+    ).toMatchObject({ transport: "direct", status: "finalized" });
+  });
+
+  it("rejects oversized direct batches, target reordering, and mismatched metadata", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new DirectMemoryObjectStore();
+    const adapter = new StoredFileAdapter(storage);
+    const checksum = "a".repeat(64);
+    await expect(
+      adapter.createDirectUploadPlan(
+        ledgerId,
+        Array.from(
+          {
+            length: Math.floor(MAX_NORMALIZED_BYTES_PER_REVISION / MAX_ORIGINAL_BYTES_PER_FILE) + 1,
+          },
+          () => ({
+            contentType: "image/jpeg",
+            byteSize: MAX_ORIGINAL_BYTES_PER_FILE,
+            originalFilename: null,
+            checksum,
+          })
+        )
+      )
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+    const plan = await adapter.createDirectUploadPlan(ledgerId, [
+      { contentType: "image/jpeg", byteSize: 1, originalFilename: null, checksum },
+      { contentType: "image/png", byteSize: 1, originalFilename: null, checksum },
+    ]);
+    const [first, second] = plan.targets;
+    await expect(
+      adapter.finalizeDirectUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: [second!.id, first!.id],
+      })
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+    for (const target of plan.targets) {
+      const key = `temporary/${ledgerId}/${plan.id}/${target.id}`;
+      storage.files.set(key, Buffer.from([1]));
+      storage.metadata.set(key, {
+        byteSize: 1,
+        contentType: target.id === first!.id ? "image/webp" : "image/png",
+        metadata: { sha256: checksum },
+      });
+    }
+    await expect(
+      adapter.finalizeDirectUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: plan.targets.map((target) => target.id),
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(
+      await db.query.uploadSessions.findFirst({ where: eq(uploadSessions.id, plan.id) })
+    ).toMatchObject({ status: "cancelled" });
   });
 });

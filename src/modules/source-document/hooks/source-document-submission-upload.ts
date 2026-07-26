@@ -83,6 +83,11 @@ function decodeImageDataUrl(dataUrl: string): { bytes: ArrayBuffer; contentType:
   }
 }
 
+async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
 export async function uploadSourceDocumentSubmissionImages(
   ledgerId: string,
   payload: SourceDocumentSubmitPayload,
@@ -91,7 +96,20 @@ export async function uploadSourceDocumentSubmissionImages(
   const images = payload.images ?? [];
   if (images.length === 0) return withoutInlineImages(payload);
 
-  const prepared = images.map((image) => decodeImageDataUrl(image.data));
+  let prepared: Array<{ bytes: ArrayBuffer; contentType: string; checksum: string }>;
+  try {
+    prepared = await Promise.all(
+      images.map(async (image) => {
+        const decoded = decodeImageDataUrl(image.data);
+        return { ...decoded, checksum: await sha256Hex(decoded.bytes) };
+      })
+    );
+  } catch (error) {
+    if (error instanceof SourceDocumentSubmissionUploadError) throw error;
+    throw new SourceDocumentSubmissionUploadError("Failed to checksum source image", "prepare", {
+      cause: error,
+    });
+  }
   let plan: Awaited<ReturnType<SubmissionUploadDependencies["createPlan"]>>;
   try {
     plan = await dependencies.createPlan(
@@ -100,6 +118,7 @@ export async function uploadSourceDocumentSubmissionImages(
         contentType: file.contentType,
         byteSize: file.bytes.byteLength,
         originalFilename: null,
+        checksum: file.checksum,
       }))
     );
   } catch (error) {

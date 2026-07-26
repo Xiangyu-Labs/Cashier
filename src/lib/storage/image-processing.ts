@@ -250,6 +250,31 @@ export async function processImage(
   }
 }
 
+export async function validateStoredImageBytes(
+  buffer: Buffer,
+  declaredContentType: string
+): Promise<void> {
+  try {
+    const pipeline = sharp(buffer, {
+      limitInputPixels: Math.round(MAX_INPUT_PIXELS),
+    });
+    const metadata = await pipeline.metadata();
+    const detectedContentType = formatToMimeType(metadata.format ?? "unknown");
+    validateImageProcessing({
+      width: metadata.width ?? 0,
+      height: metadata.height ?? 0,
+      format: metadata.format ?? "unknown",
+    });
+    if (detectedContentType !== declaredContentType.toLowerCase()) {
+      throw new ValidationError("Stored image content does not match its declared MIME type");
+    }
+    await pipeline.toBuffer();
+  } catch (error) {
+    logger.error({ error, declaredContentType }, "Stored image content validation failed");
+    throw error;
+  }
+}
+
 /**
  * Map a sharp format string to a MIME type.
  */

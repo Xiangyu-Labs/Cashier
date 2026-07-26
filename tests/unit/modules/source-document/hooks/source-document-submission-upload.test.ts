@@ -67,8 +67,18 @@ describe("source-document submission uploads", () => {
     );
 
     expect(createPlan).toHaveBeenCalledWith("ledger-1", [
-      { contentType: "image/jpeg", byteSize: 1, originalFilename: null },
-      { contentType: "image/png", byteSize: 2, originalFilename: null },
+      {
+        contentType: "image/jpeg",
+        byteSize: 1,
+        originalFilename: null,
+        checksum: "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      },
+      {
+        contentType: "image/png",
+        byteSize: 2,
+        originalFilename: null,
+        checksum: "ee9040f65c341855e070ff438eb0ea9d5b831b2a2c270fb7ef592d750408e3b3",
+      },
     ]);
     expect(finalize).toHaveBeenCalledWith("ledger-1", {
       uploadSessionId: "session-1",

@@ -534,6 +534,14 @@ export interface StoredFilePort {
   ): Promise<AuthorizedFileReadContract | null>;
 }
 
+export interface DirectStoredFilePort extends StoredFilePort {
+  createDirectUploadPlan(
+    ledgerId: LedgerId,
+    files: readonly UploadFileRequestContract[]
+  ): Promise<UploadPlanContract>;
+  finalizeDirectUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
+}
+
 export interface LedgerProjectionEntryContract {
   id?: string;
   categoryId: string | null;
