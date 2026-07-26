@@ -18,15 +18,15 @@
   --color-info: var(--info);
 
   /* z-index 层级 */
-  --z-tooltip: 40;
-  --z-content: 1;
-  --z-header: 50;
-  --z-action-bar: 60;
-  --z-modal-overlay: 100;
-  --z-modal: 200;
-  --z-modal-control: 210;
-  --z-modal-footer: 220;
-  --z-toast: 300;
+  --z-index-tooltip: 40;
+  --z-index-content: 1;
+  --z-index-header: 50;
+  --z-index-action-bar: 60;
+  --z-index-modal-overlay: 100;
+  --z-index-modal: 200;
+  --z-index-modal-control: 210;
+  --z-index-modal-footer: 220;
+  --z-index-toast: 300;
 
   --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --shadow-toast: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
