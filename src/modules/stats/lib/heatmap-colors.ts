@@ -6,6 +6,7 @@
  */
 
 import type { CalendarHeatmapStats, HeatmapLevel } from "../types";
+import { formatCompactCurrencyAmount } from "@/lib/format/currency";
 
 // Heatmap color configuration using CSS custom property tokens
 const HEATMAP_TOKEN_COLORS: Record<HeatmapLevel, string> = {
@@ -75,19 +76,5 @@ export function getHeatmapLegend() {
  * Format amount for display in cell (abbreviated, localized currency symbol)
  */
 export function formatCellAmount(amount: number, currency = "CNY", locale = "zh-CN"): string {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      notation: "compact",
-      maximumFractionDigits: 1,
-      currencyDisplay: "narrowSymbol",
-    }).format(amount);
-  } catch {
-    // Fallback: if currency is invalid/unsupported, format with ISO code prefix
-    return `${currency} ${new Intl.NumberFormat(locale, {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(amount)}`;
-  }
+  return formatCompactCurrencyAmount(amount, currency, locale);
 }

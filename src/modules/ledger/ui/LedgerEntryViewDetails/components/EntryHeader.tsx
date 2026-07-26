@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { useLocale } from "next-intl";
+import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 
 interface EntryHeaderProps {
   itemName: string;
@@ -33,6 +35,7 @@ export function EntryHeader({
   isDifferentCurrency,
   onFieldChange,
 }: EntryHeaderProps) {
+  const locale = useLocale();
   const sortedCurrencies = [
     ...preferredCurrencies.filter((c) => c !== "unknown"),
     ...SUPPORTED_CURRENCIES.filter((c) => !preferredCurrencies.includes(c)),
@@ -60,7 +63,7 @@ export function EntryHeader({
             <Popover modal={true}>
               <PopoverTrigger asChild>
                 <button className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
-                  {currency === "unknown" ? "?" : currency}
+                  {getCurrencySymbol(currency, locale)}
                   <ChevronDown className="h-3 w-3 opacity-50" />
                 </button>
               </PopoverTrigger>
@@ -91,7 +94,7 @@ export function EntryHeader({
 
           {isDifferentCurrency && (
             <p className="text-sm font-medium text-muted-foreground mt-0.5 opacity-80">
-              ≈ {mainCurrency} {convertedAmount.toFixed(2)}
+              ≈ {formatCurrencyAmount(convertedAmount, mainCurrency, locale)}
             </p>
           )}
         </div>

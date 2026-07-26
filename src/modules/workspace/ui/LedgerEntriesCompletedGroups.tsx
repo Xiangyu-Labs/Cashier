@@ -2,9 +2,9 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui";
-import type {
-  UnifiedStreamGroup,
-} from "@/modules/source-document/stream-grouping";
+import { useLocale } from "next-intl";
+import { formatCurrencyAmount } from "@/lib/format/currency";
+import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -63,21 +63,12 @@ export function LedgerEntriesUnifiedGroups({
   return (
     <div className="space-y-6 px-2 pt-2">
       {streamGroups.map((dateGroup) => (
-        <div
-          key={dateGroup.date}
-          className="space-y-2 animate-fade-in"
-        >
-          <UnifiedGroupHeader
-            group={dateGroup}
-            mainCurrency={mainCurrency}
-          />
+        <div key={dateGroup.date} className="space-y-2 animate-fade-in">
+          <UnifiedGroupHeader group={dateGroup} mainCurrency={mainCurrency} />
 
           <div className="space-y-4">
             {dateGroup.items.map((item) => (
-              <div
-                key={item.sourceDocument.id}
-                {...getItemProps()}
-              >
+              <div key={item.sourceDocument.id} {...getItemProps()}>
                 <SourceDocumentCard
                   sourceDocument={item.sourceDocument}
                   ledgerEntries={item.ledgerEntries}
@@ -118,18 +109,12 @@ export function LedgerEntriesUnifiedGroups({
                         },
                       }
                     : {})}
-                  onDelete={() =>
-                    onDeleteSourceConfirm(item.sourceDocument as SourceDocument)
-                  }
-                  status={
-                    item.sourceDocument.status as SourceDocumentStatusType
-                  }
+                  onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
+                  status={item.sourceDocument.status as SourceDocumentStatusType}
                   anomalyReason={item.sourceDocument.anomalyReason}
                   selectionMode={isSelectionMode}
                   isSelected={selectedIds.includes(item.sourceDocument.id)}
-                  onToggleSelect={() =>
-                    onToggleSelection(item.sourceDocument.id)
-                  }
+                  onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
                   defaultExpanded={!collapseEntriesDefault}
                   dateProvenance={item.dateProvenance}
                 />
@@ -149,6 +134,7 @@ function UnifiedGroupHeader({
   group: UnifiedStreamGroup;
   mainCurrency: string;
 }) {
+  const locale = useLocale();
   const t = useGroupHeaderStrings();
 
   const dateLabel = (() => {
@@ -191,7 +177,7 @@ function UnifiedGroupHeader({
         )}
       </h3>
       <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
-        {mainCurrency} {group.total.toFixed(2)}
+        {formatCurrencyAmount(group.total, mainCurrency, locale)}
       </span>
     </div>
   );

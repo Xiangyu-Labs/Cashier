@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
@@ -43,6 +44,7 @@ function CurrencyBreakdownItem({
   mainCurrency,
   entries,
 }: CurrencyBreakdownItemProps) {
+  const locale = useLocale();
   const converted = useMemo(() => {
     const currencyEntries = entries.filter((e) => (e.currency ?? mainCurrency) === currency);
     return currencyEntries.reduce((total, entry) => total + (entry.convertedAmount ?? 0), 0);
@@ -51,11 +53,11 @@ function CurrencyBreakdownItem({
   return (
     <span className="text-xs text-muted-foreground/80">
       <span className="font-mono tabular-nums">
-        {currency} {amount.toFixed(2)}
+        {formatCurrencyAmount(amount, currency, locale)}
       </span>
       {currency !== mainCurrency && (
         <span className="ml-1.5 text-[10px]">
-          (≈ {mainCurrency} {converted.toFixed(2)})
+          (≈ {formatCurrencyAmount(converted, mainCurrency, locale)})
         </span>
       )}
     </span>
@@ -195,12 +197,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             {t("totalAmount")}:
           </span>
           <span className="font-bold text-primary tabular-nums">
-            {totalInMainCurrency.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
           </span>
-          <span className="text-muted-foreground/50 text-xs">{mainCurrency}</span>
           {uniqueCurrencies.length > 1 && (
             <div className="flex items-center gap-1.5 ml-1">
               <span className="text-muted-foreground/30">·</span>
@@ -288,10 +286,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
               {(hasImages || hasRawText) && (
                 <span className="text-muted-foreground/40 font-normal lowercase">
                   (
-                  {[
-                    hasImages && `${files.length} ${tCard("image")}`,
-                    hasRawText && t("rawContent"),
-                  ]
+                  {[hasImages && `${files.length} ${tCard("image")}`, hasRawText && t("rawContent")]
                     .filter(Boolean)
                     .join(", ")}
                   )

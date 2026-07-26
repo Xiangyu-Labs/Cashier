@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { ArrowLeft, CheckSquare, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
@@ -13,6 +13,7 @@ import {
   type StreamStatusPreset,
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/workspace/ledger-filter-state";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -33,9 +34,14 @@ interface LedgerEntriesToolbarProps {
   statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
 }
 
-function detectActivePreset(statuses: SourceDocumentStatusType[] | undefined): StreamStatusPreset | null {
+function detectActivePreset(
+  statuses: SourceDocumentStatusType[] | undefined
+): StreamStatusPreset | null {
   if (statuses == null || statuses.length === 0) return null;
-  for (const [preset, values] of Object.entries(STREAM_STATUS_PRESET_VALUES) as [StreamStatusPreset, SourceDocumentStatusType[]][]) {
+  for (const [preset, values] of Object.entries(STREAM_STATUS_PRESET_VALUES) as [
+    StreamStatusPreset,
+    SourceDocumentStatusType[],
+  ][]) {
     if (values.length === statuses.length && values.every((v) => statuses.includes(v))) {
       return preset;
     }
@@ -64,11 +70,15 @@ export function LedgerEntriesToolbar({
   const t = useTranslations("LedgerEntriesTab");
   const tBatch = useTranslations("BatchActions");
   const tFilter = useTranslations("EntryFilterPanel");
+  const locale = useLocale();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const showBatchActions = isSelectionMode && selectedCount > 0;
-  const masterChecked: boolean | "indeterminate" =
-    isAllSelected ? true : selectedCount > 0 ? "indeterminate" : false;
+  const masterChecked: boolean | "indeterminate" = isAllSelected
+    ? true
+    : selectedCount > 0
+      ? "indeterminate"
+      : false;
   const handleUpdateDates = () => {
     if (!onUpdateDates) return;
     return onUpdateDates(formatDateTimeForApi(selectedDate));
@@ -92,11 +102,7 @@ export function LedgerEntriesToolbar({
         className="shrink-0 h-8 w-8"
         title={isSelectionMode ? t("cancelSelect") : t("select")}
       >
-        {isSelectionMode ? (
-          <ArrowLeft className="h-4 w-4" />
-        ) : (
-          <CheckSquare className="h-4 w-4" />
-        )}
+        {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
       </Button>
 
       {isSelectionMode && (
@@ -111,7 +117,9 @@ export function LedgerEntriesToolbar({
               aria-label={isAllSelected ? t("deselectAll") : t("selectAll")}
               className="h-4 w-4"
             />
-            <span className="text-xs font-medium text-text">{tBatch("selected", { count: selectedCount })}</span>
+            <span className="text-xs font-medium text-text">
+              {tBatch("selected", { count: selectedCount })}
+            </span>
           </div>
         </>
       )}
@@ -153,7 +161,11 @@ export function LedgerEntriesToolbar({
           className="text-xs text-muted-foreground flex items-center gap-1 outline-none"
         >
           {activeStatusPreset != null
-            ? tFilter("statusSummary", { label: tFilter(activeStatusPreset === "needs_attention" ? "needsAttention" : "inProgress") })
+            ? tFilter("statusSummary", {
+                label: tFilter(
+                  activeStatusPreset === "needs_attention" ? "needsAttention" : "inProgress"
+                ),
+              })
             : tFilter("statusSummary", { label: `${filters.statuses.length}` })}
           <button
             type="button"
@@ -166,8 +178,13 @@ export function LedgerEntriesToolbar({
         </span>
       )}
 
-      <span className={cn("text-xs text-muted-foreground font-mono ml-auto", showBatchActions && "sm:ml-0")}>
-        {filteredTotalLabel} {mainCurrency} {filteredTotal.toFixed(2)}
+      <span
+        className={cn(
+          "text-xs text-muted-foreground font-mono ml-auto",
+          showBatchActions && "sm:ml-0"
+        )}
+      >
+        {filteredTotalLabel} {formatCurrencyAmount(filteredTotal, mainCurrency, locale)}
       </span>
     </div>
   );

@@ -139,7 +139,10 @@ export function StatsRanking({
                         ) : (
                           <TrendingDown size={10} />
                         )}
-                        {Math.abs(cat.trend.amount).toFixed(0)}
+                        {formatCurrencyAmount(Math.abs(cat.trend.amount), currencySymbol, locale, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}
                       </span>
                     )}
                   </div>

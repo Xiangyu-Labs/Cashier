@@ -1,7 +1,7 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { memo } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { EntryEditData } from "@/modules/source-document/types";
+import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 
 const itemVariants = cva("flex items-center py-2 px-3 rounded-lg transition-all", {
   variants: {
@@ -62,6 +63,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   sourceDocumentEntryDate,
 }: EditableLedgerEntryItemProps) {
   const t = useTranslations("Calendar");
+  const locale = useLocale();
 
   // Merge pending changes with original data
   const displayData = {
@@ -142,7 +144,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         <Popover modal={true}>
           <PopoverTrigger asChild>
             <button className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5">
-              {displayData.currency ?? "?"}
+              {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
               <ChevronDown className="h-2.5 w-2.5 opacity-50" />
             </button>
           </PopoverTrigger>
@@ -173,7 +175,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
 
       {isDifferentCurrency && (
         <div className="text-[9px] text-muted-foreground font-mono opacity-60 shrink-0">
-          ≈ {mainCurrency} {converted.toFixed(2)}
+          ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
         </div>
       )}
     </div>

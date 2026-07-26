@@ -30,18 +30,11 @@ describe("LedgerEntriesToolbar", () => {
     expect(screen.getByTitle("选择")).toBeDefined();
 
     // Should render the total
-    expect(screen.getByText(/CNY/)).toBeDefined();
-    expect(screen.getByText(/123\.45/)).toBeDefined();
+    expect(screen.getByText("Total ¥123.45")).toBeDefined();
   });
 
   it("renders in selection mode with checkbox and clear button", () => {
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        isSelectionMode={true}
-        selectedCount={3}
-      />
-    );
+    render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={3} />);
 
     // Should render the selection checkbox area
     expect(screen.getByText(/已选择 3 项/)).toBeDefined();
@@ -57,12 +50,7 @@ describe("LedgerEntriesToolbar", () => {
   });
 
   it("renders status summary when statuses are active", () => {
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        filters={{ statuses: ["completed"] }}
-      />
-    );
+    render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
 
     // Status summary should appear
     expect(screen.getByText(/状态：/)).toBeDefined();
@@ -102,25 +90,14 @@ describe("LedgerEntriesToolbar", () => {
   it("passes onApplyPreset to EntryFilterPanel", () => {
     const onApplyPreset = vi.fn();
 
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        onApplyPreset={onApplyPreset}
-      />
-    );
+    render(<LedgerEntriesToolbar {...defaultProps} onApplyPreset={onApplyPreset} />);
 
     // EntryFilterPanel is rendered (check for more filters button)
     expect(screen.getByText("更多筛选")).toBeDefined();
   });
 
   it("does not render EntryFilterPanel in selection mode", () => {
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        isSelectionMode={true}
-        selectedCount={1}
-      />
-    );
+    render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={1} />);
 
     // EntryFilterPanel should not be rendered in selection mode
     expect(screen.queryByText("更多筛选")).not.toBeInTheDocument();

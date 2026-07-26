@@ -1,5 +1,6 @@
 "use client";
-import { formatAmountStandard } from "@/lib/formatters";
+import { useLocale } from "next-intl";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 import { useAmountDisplay } from "@/modules/currency/client";
 
 interface AmountDisplayProps {
@@ -21,6 +22,7 @@ export function AmountDisplay({
   size = "md",
   showOriginal = true,
 }: AmountDisplayProps) {
+  const locale = useLocale();
   const amountDisplayInput =
     date == null ? { amount, currency, mainCurrency } : { amount, currency, mainCurrency, date };
 
@@ -34,23 +36,18 @@ export function AmountDisplay({
     lg: "text-lg",
   };
 
-  const currencySizeClasses = {
-    sm: "text-xs",
-    md: "text-xs",
-    lg: "text-sm",
-  };
-
   return (
     <div className={`flex flex-col items-end ${className}`}>
       <p className={`font-mono font-semibold text-text ${sizeClasses[size]}`}>
-        <span className={`text-muted-foreground mr-1 ${currencySizeClasses[size]}`}>
-          {isDifferentCurrency ? mainCurrency : originalCurrency}
-        </span>
-        {formatAmountStandard(displayAmount)}
+        {formatCurrencyAmount(
+          displayAmount,
+          isDifferentCurrency ? mainCurrency : originalCurrency,
+          locale
+        )}
       </p>
       {isDifferentCurrency && showOriginal && (
         <p className="text-[10px] text-muted-foreground font-mono opacity-60">
-          ≈ {originalCurrency} {formatAmountStandard(amount)}
+          ≈ {formatCurrencyAmount(amount, originalCurrency, locale)}
         </p>
       )}
     </div>

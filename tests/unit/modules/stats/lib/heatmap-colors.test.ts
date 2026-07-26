@@ -62,9 +62,9 @@ describe("heatmap-colors", () => {
     expect(smallUsd).toContain("500");
   });
 
-  it("falls back to ISO code for invalid currency", () => {
-    const result = formatCellAmount(1000, "XYZ", "en-US");
-    expect(result).toContain("XYZ");
+  it("falls back to a generic currency symbol for invalid currency", () => {
+    const result = formatCellAmount(1000, "invalid", "en-US");
+    expect(result).toContain("¤");
     expect(result).toContain("1");
   });
 });

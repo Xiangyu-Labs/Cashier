@@ -7,10 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import {
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-} from "@/lib/query-keys";
+import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import {
   useDetailsTabData,
@@ -26,6 +23,7 @@ import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -51,7 +49,7 @@ export function DetailsTab({
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
-  const _locale = useLocale();
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const push = useModalStackStore((state) => state.push);
 
@@ -115,7 +113,11 @@ export function DetailsTab({
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="space-y-4">
         <DetailsToolbar
-          totalLabel={`${monthStats.mainCurrency} ${Number(monthStats.mainTotal).toFixed(2)}`}
+          totalLabel={formatCurrencyAmount(
+            Number(monthStats.mainTotal),
+            monthStats.mainCurrency,
+            locale
+          )}
         >
           <EntryFilterPanel
             filters={filters}
@@ -140,7 +142,7 @@ export function DetailsTab({
               >
                 <EntryGroupHeader
                   title={group.title}
-                  totalLabel={`${monthStats.mainCurrency} ${group.total.toFixed(2)}`}
+                  totalLabel={formatCurrencyAmount(group.total, monthStats.mainCurrency, locale)}
                 />
                 <div className="space-y-4 px-2">
                   {group.items.map((entry) => (
@@ -180,9 +182,7 @@ export function DetailsTab({
           )}
 
           {/* Empty State */}
-          {!isLoading && entries.length === 0 && (
-            <EmptyState title={tCommon("noRecords")} />
-          )}
+          {!isLoading && entries.length === 0 && <EmptyState title={tCommon("noRecords")} />}
 
           {/* Infinite Scroll Sentinel */}
           <div ref={sentinelRef} className="h-1" />

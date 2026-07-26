@@ -2,7 +2,8 @@
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -31,6 +32,7 @@ export function StatsHeader({
   trend,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
+  const locale = useLocale();
   const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
   const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
 
@@ -99,11 +101,8 @@ export function StatsHeader({
       {/* 3. Summary Stats */}
       <div className="flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
-        <div className="text-2xl sm:text-4xl font-bold font-mono tracking-tight text-text flex items-baseline gap-2">
-          <span className="text-base sm:text-xl text-muted-foreground font-normal">
-            {currencySymbol}
-          </span>
-          {totalExpense.toFixed(2)}
+        <div className="text-2xl sm:text-4xl font-bold font-mono tracking-tight text-text">
+          {formatCurrencyAmount(totalExpense, currencySymbol, locale)}
         </div>
 
         {/* Trend Section */}
@@ -133,7 +132,10 @@ export function StatsHeader({
         )}
 
         <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-          {t("averageDaily")} <span className="font-mono">{averageDaily.toFixed(2)}</span>
+          {t("averageDaily")}{" "}
+          <span className="font-mono">
+            {formatCurrencyAmount(averageDaily, currencySymbol, locale)}
+          </span>
         </div>
       </div>
     </div>

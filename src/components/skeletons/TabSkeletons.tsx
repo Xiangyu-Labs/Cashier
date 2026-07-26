@@ -179,7 +179,7 @@ export function StatsTabSkeleton() {
         <div className="flex flex-col items-center gap-2">
           {/* "总支出" label */}
           <div className="h-4 w-16 bg-surface2 rounded animate-pulse" />
-          {/* Total amount (CNY 3820.47) */}
+          {/* Total amount */}
           <div className="flex items-center gap-2">
             <div className="h-6 w-12 bg-surface2 rounded animate-pulse" />
             <div className="h-10 w-32 bg-surface2 rounded animate-pulse" />
