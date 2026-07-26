@@ -21,4 +21,12 @@ export async function processAllPendingTasks(timeoutMs: number = 10000) {
 
     await new Promise((r) => setTimeout(r, 200));
   }
+
+  const pendingJobs = await db.query.processingOutbox.findMany({
+    where: or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed")),
+  });
+  const pendingSummary = pendingJobs.map((job) => `${job.id}:${job.status}`).join(", ");
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for processing tasks: ${pendingSummary || "unknown"}`
+  );
 }

@@ -66,10 +66,20 @@ const COMPLEX_STAGE0_RESULT = {
   ledger_entries: COMPLEX_ENTRIES,
 };
 
+function isArbitrationPrompt(prompt: string | undefined): boolean {
+  return prompt?.includes("arbitration AI") ?? false;
+}
+
+function isParserPrompt(prompt: string | undefined): boolean {
+  return (
+    prompt?.includes('"receipt_totals"') === true &&
+    prompt.includes('"order_adjustments"') &&
+    !isArbitrationPrompt(prompt)
+  );
+}
+
 /**
- * Creates a mock AI that routes by prompt content.
- * - stage0 parse prompt ("receipt and invoice parser"): returns stage0 result JSON
- * - arbitration prompt ("arbitration AI"): returns choice JSON
+ * Creates a mock AI that routes parser and arbitration calls by their output protocols.
  */
 function createMockAI(
   options: {
@@ -92,14 +102,14 @@ function createMockAI(
     const prompt = opts.prompt ?? "";
 
     // Arbitration call
-    if (prompt.includes("arbitration AI")) {
+    if (isArbitrationPrompt(prompt)) {
       return {
         content: JSON.stringify({ choice: arbitrationChoice, reason: "result 1 is correct" }),
       };
     }
 
-    // Stage 0 single-pass
-    if (prompt.includes("receipt and invoice parser")) {
+    // Single-pass parser
+    if (isParserPrompt(prompt)) {
       stage0CallCount++;
       const base =
         stage0Outcome != null ? { ...stage0Result, outcome: stage0Outcome } : stage0Result;
@@ -165,7 +175,7 @@ describe("runParsePipeline — new single-pass flow", () => {
 
     expect(result.kind).toBe("success");
     const stage0Calls = generate.mock.calls.filter((c) =>
-      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+      isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
     expect(stage0Calls).toHaveLength(1);
   });
@@ -176,7 +186,7 @@ describe("runParsePipeline — new single-pass flow", () => {
 
     expect(result.kind).toBe("success");
     const stage0Calls = generate.mock.calls.filter((c) =>
-      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+      isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
     expect(stage0Calls).toHaveLength(2);
   });
@@ -186,7 +196,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     await runParsePipeline(createInput(), buildCtx(ai));
 
     const arbitrationCalls = generate.mock.calls.filter((c) =>
-      (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
+      isArbitrationPrompt((c[0] as AIGenerateOptions).prompt)
     );
     expect(arbitrationCalls).toHaveLength(0);
   });
@@ -204,7 +214,7 @@ describe("runParsePipeline — new single-pass flow", () => {
 
     expect(result.kind).toBe("success");
     const arbitrationCalls = generate.mock.calls.filter((c) =>
-      (c[0] as AIGenerateOptions).prompt?.includes("arbitration AI")
+      isArbitrationPrompt((c[0] as AIGenerateOptions).prompt)
     );
     expect(arbitrationCalls).toHaveLength(1);
   });
@@ -215,7 +225,7 @@ describe("runParsePipeline — new single-pass flow", () => {
 
     expect(result.kind).toBe("invalid");
     const stage0Calls = generate.mock.calls.filter((c) =>
-      (c[0] as AIGenerateOptions).prompt?.includes("receipt and invoice parser")
+      isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
     expect(stage0Calls).toHaveLength(1);
   });

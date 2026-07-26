@@ -83,9 +83,12 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
         ) => {
           const prompt = _prompt.toLowerCase();
 
-          // Stage 0: Single-pass receipt and invoice parser
-          const isStage0Parser = prompt.includes("receipt and invoice parser");
-          if (isStage0Parser && !prompt.includes("arbitration")) {
+          // Single-pass parser: route by its stable output protocol, not prompt wording.
+          const isSinglePassParser =
+            !prompt.includes("arbitration") &&
+            prompt.includes('"receipt_totals"') &&
+            prompt.includes('"order_adjustments"');
+          if (isSinglePassParser) {
             const entries = opts.entries.map((e, index) => ({
               receipt_index: 0,
               item_name: e.item_name,
@@ -110,7 +113,7 @@ export function createMultiStageMock(options: MultiStageMockOptions = {}) {
             });
           }
 
-          // Stage 0: Arbitration
+          // Single-pass arbitration
           const isStage0Arbitration = prompt.includes("arbitration ai");
           if (isStage0Arbitration) {
             return Promise.resolve({
