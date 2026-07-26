@@ -24,7 +24,7 @@ describe("createSourceDocumentAction omission semantics", () => {
     requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
-      status: "queued",
+      status: "processing",
     });
   });
 

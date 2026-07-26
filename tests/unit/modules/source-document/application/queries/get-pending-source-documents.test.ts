@@ -16,11 +16,6 @@ describe("getPendingSourceDocumentsQuery", () => {
     querySourceDocumentPageMock.mockResolvedValue({
       items: [
         {
-          id: "doc-queued",
-          status: "queued",
-          ledgerEntries: [],
-        },
-        {
           id: "doc-processing",
           status: "processing",
           ledgerEntries: [],
@@ -40,17 +35,16 @@ describe("getPendingSourceDocumentsQuery", () => {
     });
   });
 
-  it("groups queued, processing, anomaly, and failed documents", async () => {
+  it("groups processing, anomaly, and failed documents", async () => {
     const result = await getPendingSourceDocumentsQuery("ledger-1");
 
     expect(querySourceDocumentPageMock).toHaveBeenCalledWith("ledger-1", {
-      status: "queued,processing,anomaly,failed",
+      status: "processing,anomaly,failed",
       includeLedgerEntries: true,
     });
-    expect(result.groups.queued).toHaveLength(1);
     expect(result.groups.processing).toHaveLength(1);
     expect(result.groups.anomaly).toHaveLength(1);
     expect(result.groups.failed).toHaveLength(1);
-    expect(result.stats.total).toBe(4);
+    expect(result.stats.total).toBe(3);
   });
 });

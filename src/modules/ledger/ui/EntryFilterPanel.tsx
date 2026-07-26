@@ -49,7 +49,6 @@ interface EntryFilterPanelProps {
 const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "week", "month", "custom"];
 
 const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] = [
-  { status: "queued", labelKey: "statusQueued" },
   { status: "processing", labelKey: "statusProcessing" },
   { status: "completed", labelKey: "statusCompleted" },
   { status: "anomaly", labelKey: "statusAnomaly" },

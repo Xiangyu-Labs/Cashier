@@ -6,7 +6,6 @@ export interface SourceDocumentGroup<T> {
 }
 
 export interface GroupedSourceDocuments<T> {
-  queued: SourceDocumentGroup<T>[];
   processing: SourceDocumentGroup<T>[];
   candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
@@ -15,7 +14,6 @@ export interface GroupedSourceDocuments<T> {
 }
 
 export interface PendingGroups<T> {
-  queued: SourceDocumentGroup<T>[];
   processing: SourceDocumentGroup<T>[];
   candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
@@ -28,7 +26,6 @@ export function groupSourceDocumentsByStatus<
   const { includeCompleted = true } = options;
 
   const groups: GroupedSourceDocuments<T> = {
-    queued: [],
     processing: [],
     candidate_pending: [],
     anomaly: [],
@@ -45,9 +42,6 @@ export function groupSourceDocumentsByStatus<
     };
 
     switch (doc.status as SourceDocumentStatusType) {
-      case "queued":
-        groups.queued.push(group);
-        break;
       case "processing":
         groups.processing.push(group);
         break;
@@ -79,7 +73,6 @@ export function groupPendingSourceDocuments<
   const groups = groupSourceDocumentsByStatus(docs, { includeCompleted: false });
 
   return {
-    queued: groups.queued,
     processing: groups.processing,
     candidate_pending: groups.candidate_pending,
     anomaly: groups.anomaly,
@@ -90,11 +83,10 @@ export function groupPendingSourceDocuments<
 export function calculateSourceDocumentStats<T>(
   groups: Pick<
     GroupedSourceDocuments<T>,
-    "queued" | "processing" | "candidate_pending" | "anomaly" | "failed"
+    "processing" | "candidate_pending" | "anomaly" | "failed"
   >
 ) {
   return {
-    queuedCount: groups.queued.length,
     processingCount: groups.processing.length,
     anomalyCount: groups.anomaly.length,
     failedCount: groups.failed.length,
@@ -103,7 +95,6 @@ export function calculateSourceDocumentStats<T>(
 
 export function calculatePendingTotal<T>(groups: PendingGroups<T>): number {
   return (
-    groups.queued.length +
     groups.processing.length +
     groups.candidate_pending.length +
     groups.anomaly.length +

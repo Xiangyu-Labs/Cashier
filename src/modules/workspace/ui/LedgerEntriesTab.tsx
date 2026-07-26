@@ -137,11 +137,11 @@ export function LedgerEntriesTab({
       op.patches.push({
         type: "upsert",
         entityId: doc.id,
-        entity: { ...doc, status: "queued" } as unknown as SourceDocumentListItemDto,
+        entity: { ...doc, status: "processing" } as unknown as SourceDocumentListItemDto,
         prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
       });
 
-      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "queued" } as unknown as SourceDocumentListItemDto);
+      applyOptimisticUpsert(queryClient, ledgerId, { ...doc, status: "processing" } as unknown as SourceDocumentListItemDto);
       notifyNewSubmission();
       return { operationId: op.operationId };
     },

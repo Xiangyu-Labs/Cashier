@@ -1,13 +1,13 @@
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 
 export interface ApiV1SourceDocumentCreateResponse extends CreateSourceDocumentResponseDto {
-  /** @deprecated Use revisionState. Retained through the compatibility window. */
-  status: "queued";
+  /** @deprecated Use revisionState. The field remains, but queued is no longer emitted. */
+  status: "processing";
 }
 
 /**
- * API v1 remains additive through 2026-10-13, the documented rollback window
- * for this application-layer migration. No task identifier is published by v1.
+ * API v1 retains the deprecated field through 2026-10-13. Its value follows the
+ * unified public processing state; no internal queue state is published.
  */
 export const apiV1Compatibility = {
   version: "v1",

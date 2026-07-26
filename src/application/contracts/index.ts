@@ -13,7 +13,6 @@ export type UploadSessionId = string;
 export type ProcessingIntentId = string;
 
 export const REVISION_OUTCOMES = [
-  "queued",
   "processing",
   "completed",
   "anomaly",
@@ -54,7 +53,7 @@ export function supportedSourceDocumentActions(input: {
     return [];
   }
 
-  if (input.pendingOutcome === "queued" || input.pendingOutcome === "processing") {
+  if (input.pendingOutcome === "processing") {
     return ["delete"];
   }
 
@@ -184,6 +183,7 @@ export const PROCESSING_FAILURE_CODES = [
   "processing_unavailable",
   "database_unavailable",
   "request_bound_retry_exhausted",
+  "processing_timeout",
 ] as const;
 export type ProcessingFailureCode = (typeof PROCESSING_FAILURE_CODES)[number];
 
@@ -289,14 +289,14 @@ export interface SourceDocumentDetailContract extends SourceDocumentListContract
   text: string | null;
   files: readonly Pick<StoredFileContract, "id" | "metadata">[];
   anomalyReason: string | null;
-  errorCode: ApplicationErrorCode | null;
+  errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   stableErrorCode: AnomalyCode | ProcessingFailureCode | null;
 }
 
 export interface SourceDocumentSubmissionContract {
   sourceDocumentId: SourceDocumentId;
   revisionId: RevisionId;
-  revisionState: "queued";
+  revisionState: "processing";
 }
 
 export function toSourceDocumentSubmissionContract(
@@ -306,7 +306,7 @@ export function toSourceDocumentSubmissionContract(
   return {
     sourceDocumentId: sourceDocument.id,
     revisionId: revision.id,
-    revisionState: "queued",
+    revisionState: "processing",
   };
 }
 

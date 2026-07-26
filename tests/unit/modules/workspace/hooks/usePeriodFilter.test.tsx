@@ -12,7 +12,7 @@ describe("usePeriodFilter", () => {
   }
 
   it("reads statuses from search params", () => {
-    const searchParams = createSearchParams("statuses=queued,failed");
+    const searchParams = createSearchParams("statuses=processing,failed");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -21,7 +21,7 @@ describe("usePeriodFilter", () => {
       })
     );
 
-    expect(result.current.statuses).toEqual(["queued", "failed"]);
+    expect(result.current.statuses).toEqual(["processing", "failed"]);
   });
 
   it("returns empty statuses when no statuses param is present", () => {
@@ -112,7 +112,7 @@ describe("usePeriodFilter", () => {
       expect(params.get("minAmount")).toBeNull();
       expect(params.get("maxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
-      expect(params.get("statuses")).toBe("queued,processing");
+      expect(params.get("statuses")).toBe("processing");
     });
 
     it("replaces existing statuses with preset statuses", () => {
@@ -136,7 +136,7 @@ describe("usePeriodFilter", () => {
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
-      expect(params.get("statuses")).toBe("queued,processing");
+      expect(params.get("statuses")).toBe("processing");
     });
   });
 });

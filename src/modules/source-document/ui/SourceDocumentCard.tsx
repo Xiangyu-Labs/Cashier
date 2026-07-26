@@ -3,7 +3,7 @@ import type { SourceDocument, SourceDocumentLight } from "@/modules/source-docum
 import { useState, useMemo, memo } from "react";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
-import type { ApplicationErrorCode } from "@/application/contracts";
+import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { cn } from "@/lib/utils";
 import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
@@ -26,7 +26,7 @@ interface SourceDocumentCardProps {
   onAbandonCandidate?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
-  errorCode?: ApplicationErrorCode | null | undefined;
+  errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   className?: string;
   selectionMode?: boolean;
   isSelected?: boolean;

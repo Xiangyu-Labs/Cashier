@@ -133,8 +133,8 @@ describe("API v1 source-documents route", () => {
     expect(response.status).toBe(201);
 
     const data = await response.json();
-    expect(data.status).toBe("queued");
-    expect(data.revisionState).toBe("queued");
+    expect(data.status).toBe("processing");
+    expect(data.revisionState).toBe("processing");
     expect(data.sourceDocumentId).toEqual(expect.any(String));
     expect(data.revisionId).toEqual(expect.any(String));
 
@@ -198,7 +198,7 @@ describe("API v1 source-documents route", () => {
       expect(response.status).toBe(201);
 
       const data = await response.json();
-      expect(data.revisionState).toBe("queued");
+      expect(data.revisionState).toBe("processing");
 
       // Verify the revision has a linked stored file
       const db = getTestDb();
@@ -259,7 +259,7 @@ describe("API v1 source-documents route", () => {
       expect(response.status).toBe(201);
 
       const data = await response.json();
-      expect(data.revisionState).toBe("queued");
+      expect(data.revisionState).toBe("processing");
 
       const db = getTestDb();
       const revisionFilesRows = await db

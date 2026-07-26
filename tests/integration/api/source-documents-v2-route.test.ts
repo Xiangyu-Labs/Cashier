@@ -161,7 +161,7 @@ describe("API v2 direct source-document ingestion", () => {
     expect(second.status).toBe(201);
     const firstBody = await first.json();
     expect(await second.json()).toEqual(firstBody);
-    expect(firstBody).toMatchObject({ revisionState: "queued" });
+    expect(firstBody).toMatchObject({ revisionState: "processing" });
     expect(firstBody).not.toHaveProperty("status");
 
     const db = getTestDb();

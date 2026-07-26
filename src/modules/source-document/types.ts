@@ -1,5 +1,4 @@
 export const SOURCE_DOCUMENT_STATUSES = [
-  "queued",
   "processing",
   "completed",
   "anomaly",
@@ -9,7 +8,6 @@ export const SOURCE_DOCUMENT_STATUSES = [
 ] as const;
 
 export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
-  "queued",
   "processing",
   "completed",
   "anomaly",
@@ -18,12 +16,11 @@ export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
 ] as const;
 
 export const SourceDocumentStatus = {
-  Queued: SOURCE_DOCUMENT_STATUSES[0],
-  Processing: SOURCE_DOCUMENT_STATUSES[1],
-  Completed: SOURCE_DOCUMENT_STATUSES[2],
-  Anomaly: SOURCE_DOCUMENT_STATUSES[3],
-  Failed: SOURCE_DOCUMENT_STATUSES[4],
-  Deleted: SOURCE_DOCUMENT_STATUSES[5],
+  Processing: SOURCE_DOCUMENT_STATUSES[0],
+  Completed: SOURCE_DOCUMENT_STATUSES[1],
+  Anomaly: SOURCE_DOCUMENT_STATUSES[2],
+  Failed: SOURCE_DOCUMENT_STATUSES[3],
+  Deleted: SOURCE_DOCUMENT_STATUSES[4],
 } as const;
 
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];

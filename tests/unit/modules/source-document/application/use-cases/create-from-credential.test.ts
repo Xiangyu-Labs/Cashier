@@ -26,7 +26,7 @@ describe("createSourceDocumentFromCredential", () => {
     vi.clearAllMocks();
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
-      status: "queued",
+      status: "processing",
     });
   });
 

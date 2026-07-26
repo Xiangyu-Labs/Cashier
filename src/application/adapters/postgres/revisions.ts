@@ -160,7 +160,6 @@ export async function createPendingRevisionInTransaction(
       )
       .then((rows) => rows[0]);
     if (
-      currentPending?.outcome === "queued" ||
       currentPending?.outcome === "processing" ||
       (currentPending?.outcome === "completed" && document.activeRevisionId != null)
     ) {
@@ -180,7 +179,7 @@ export async function createPendingRevisionInTransaction(
       sourceDocumentId,
       revisionNumber: (aggregate?.value ?? 0) + 1,
       submittedText: input.submittedText ?? null,
-      outcome: "queued",
+      outcome: "processing",
     })
     .returning()
     .then((rows) => rows[0]);
@@ -246,7 +245,7 @@ export async function createPendingRevisionInTransaction(
     .returning()
     .then((rows) => rows[0]);
   if (updatedDocument == null) throw new ConflictError("Failed to update source document revision pointer");
-  return { document: mapDocument(updatedDocument, "queued"), revision: mapRevision(revision) };
+  return { document: mapDocument(updatedDocument, "processing"), revision: mapRevision(revision) };
 }
 
 export const postgresRevisionAdapter: SourceDocumentPort = {
@@ -316,7 +315,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
             eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
             eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
             eq(sourceDocumentRevisions.id, input.revisionId),
-            eq(sourceDocumentRevisions.outcome, "queued")
+            eq(sourceDocumentRevisions.outcome, "processing")
           )
         )
         .returning({ id: sourceDocumentRevisions.id });
@@ -349,7 +348,6 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
             eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
             eq(sourceDocumentRevisions.id, input.revisionId),
             or(
-              eq(sourceDocumentRevisions.outcome, "queued"),
               eq(sourceDocumentRevisions.outcome, "processing")
             )
           )

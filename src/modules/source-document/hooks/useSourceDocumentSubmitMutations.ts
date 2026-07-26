@@ -72,7 +72,7 @@ function buildPlaceholder(
     title: null,
     text: null,
     files: [],
-    status: "queued",
+    status: "processing",
     type: "ai_parsed",
     anomalyReason: null,
     entryDate: payload.entryDate ?? null,
@@ -154,7 +154,7 @@ export function useSourceDocumentSubmitMutations({
       // Start transaction operation
       const op = manager.startOperation(ledgerId);
 
-      // Build a queued placeholder entity
+      // Build a processing placeholder entity
       const placeholder = buildPlaceholder(ledgerId, clientSubmissionId, payload);
 
       // Record the patch for rollback — entity is new so prevEntity is null
@@ -256,7 +256,7 @@ export function useSourceDocumentSubmitMutations({
         title: prevEntity?.title ?? null,
         text: null,
         files: [],
-        status: "queued",
+        status: "processing",
         type: "ai_parsed",
         anomalyReason: null,
         entryDate: prevEntity?.entryDate ?? null,

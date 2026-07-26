@@ -8,7 +8,6 @@ const STATUSES_URL_DELIMITER = ",";
  * Mirrors SOURCE_DOCUMENT_STATUSES order for stable, predictable encoding.
  */
 const CANONICAL_STATUS_ORDER: readonly SourceDocumentStatusType[] = [
-  "queued",
   "processing",
   "completed",
   "anomaly",

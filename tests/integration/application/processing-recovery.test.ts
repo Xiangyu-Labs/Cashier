@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 import { eq, and } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
-import { PostgresProcessingIntentAdapter, postgresRevisionAdapter } from "@/application/adapters/postgres";
+import {
+  PostgresProcessingIntentAdapter,
+  postgresRevisionAdapter,
+} from "@/application/adapters/postgres";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { processingAttempts, processingOutbox, sourceDocuments, sourceDocumentRevisions } from "@/persistence";
+import {
+  processingAttempts,
+  processingOutbox,
+  sourceDocuments,
+  sourceDocumentRevisions,
+} from "@/persistence";
 
 /**
  * Creates a pending revision + intent for a single source document.
@@ -164,7 +172,7 @@ describe("Processing Recovery", () => {
         sourceDocumentId: intent.sourceDocumentId,
         revisionNumber: 2,
         submittedText: "Updated text",
-        outcome: "queued",
+        outcome: "processing",
       })
       .returning()
       .then((rows) => rows[0]);
@@ -339,7 +347,7 @@ describe("Processing Recovery", () => {
         sourceDocumentId: intent.sourceDocumentId,
         revisionNumber: 2,
         submittedText: "Updated text",
-        outcome: "queued",
+        outcome: "processing",
       })
       .returning()
       .then((rows) => rows[0]);
@@ -485,5 +493,77 @@ describe("Processing Recovery", () => {
       where: eq(processingOutbox.id, intent.id),
     });
     expect(row2?.status).toBe("failed");
+  });
+});
+
+describe("Processing Timeout", () => {
+  const now = new Date("2026-07-26T00:05:00.000Z");
+
+  async function setIntentCreatedAt(intentId: string, createdAt: string) {
+    await getTestDb()
+      .update(processingOutbox)
+      .set({ createdAt: new Date(createdAt) })
+      .where(eq(processingOutbox.id, intentId));
+  }
+
+  it("expires a processing intent at the configured boundary", async () => {
+    const { ledgerId, intent } = await pendingIntent();
+    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
+    await adapter.dispatch(intent);
+    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:00.000Z");
+
+    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(1);
+
+    const db = getTestDb();
+    const [outbox, attempt, revision] = await Promise.all([
+      db.query.processingOutbox.findFirst({ where: eq(processingOutbox.id, intent.id) }),
+      db.query.processingAttempts.findFirst({
+        where: and(
+          eq(processingAttempts.revisionId, intent.revisionId),
+          eq(processingAttempts.attemptNumber, 1)
+        ),
+      }),
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, intent.revisionId),
+      }),
+    ]);
+    expect(outbox).toMatchObject({ status: "failed", claimToken: null, claimExpiresAt: null });
+    expect(attempt).toMatchObject({
+      status: "failed",
+      retryClassification: "permanent",
+      diagnosticCode: "processing_timeout",
+    });
+    expect(revision).toMatchObject({ outcome: "failed", failureCode: "processing_timeout" });
+  });
+
+  it("does not expire an intent before the configured boundary", async () => {
+    const { ledgerId, intent } = await pendingIntent();
+    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
+    await adapter.dispatch(intent);
+    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:01.000Z");
+
+    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(0);
+    const revision = await getTestDb().query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    expect(revision?.outcome).toBe("processing");
+  });
+
+  it("revokes an active claim when the absolute timeout is reached", async () => {
+    const { ledgerId, intent } = await pendingIntent();
+    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
+    await adapter.dispatch(intent);
+    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:00.000Z");
+    const claim = await adapter.claim(intent.id);
+    expect(claim).not.toBeNull();
+
+    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(1);
+    await expect(
+      adapter.complete({
+        intentId: intent.id,
+        claimToken: claim!.claimToken,
+        outcome: "completed",
+      })
+    ).resolves.toBe(false);
   });
 });

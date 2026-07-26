@@ -17,6 +17,9 @@ vi.mock("@/modules/source-document/application/queries/get-source-document-light
     id: "11111111-1111-4111-8111-111111111111",
   }),
 }));
+vi.mock("@/modules/source-document/server-actions/expire-processing-timeouts", () => ({
+  expireProcessingTimeouts: vi.fn().mockResolvedValue(0),
+}));
 
 const sourceDocumentId = "11111111-1111-4111-8111-111111111111";
 

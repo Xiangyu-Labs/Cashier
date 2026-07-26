@@ -55,7 +55,7 @@ describe("EntryFilterPanel", () => {
     expect(filterPopover?.getAttribute("data-collision-padding")).toBe("16");
   });
 
-  it("renders status checkboxes for all six active statuses", () => {
+  it("renders status checkboxes for all five active statuses", () => {
     render(
       <EntryFilterPanel
         filters={{}}
@@ -68,9 +68,8 @@ describe("EntryFilterPanel", () => {
     // Check that the status section header is rendered
     expect(screen.getByText("状态")).toBeDefined();
 
-    // Check that all six status checkbox labels are rendered
+    // Check that all five status checkbox labels are rendered
     // "处理中" appears as a checkbox label, and "进行中" as a preset button
-    expect(screen.getByText("排队中")).toBeDefined();
     expect(screen.getByText("处理中")).toBeDefined(); // checkbox label
     expect(screen.getByText("已完成")).toBeDefined();
     expect(screen.getByText("异常")).toBeDefined();

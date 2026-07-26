@@ -53,7 +53,7 @@ async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledg
   });
   const originalActiveRevisionId = created.revisionId;
 
-  // Step 2: Create a pending revision (queued)
+  // Step 2: Create a pending revision (processing)
   const pending = await db.transaction(async (tx) => {
     return createPendingRevisionInTransaction(tx, {
       ledgerId,
@@ -101,7 +101,7 @@ async function setupDocumentWithFailedRetry(
     entries: [activeEntry],
   });
 
-  // Step 2: Create a pending revision (queued)
+  // Step 2: Create a pending revision (processing)
   const pending = await db.transaction(async (tx) => {
     return createPendingRevisionInTransaction(tx, {
       ledgerId,
@@ -718,13 +718,13 @@ describe("candidate concurrency invariants", () => {
       expect(candidateRev?.outcome).toBe("abandoned");
 
       // If the retry succeeded (abandon cleared the pending first), the new pending
-      // must point to a fresh queued revision, not the old candidate.
+      // must point to a fresh processing revision, not the old candidate.
       if (doc.pendingRevisionId != null) {
         expect(doc.pendingRevisionId).not.toBe(candidateRevisionId);
         const newPending = await db.query.sourceDocumentRevisions.findFirst({
           where: eq(sourceDocumentRevisions.id, doc.pendingRevisionId),
         });
-        expect(newPending?.outcome).toBe("queued");
+        expect(newPending?.outcome).toBe("processing");
       }
 
       // Clean up for next iteration

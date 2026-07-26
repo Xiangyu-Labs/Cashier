@@ -30,7 +30,7 @@ import { parseDateString } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
-import type { ApplicationErrorCode } from "@/application/contracts";
+import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
 import type { DateProvenance } from "@/modules/source-document/stream-grouping";
 
@@ -38,7 +38,7 @@ interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null | undefined;
-  errorCode?: ApplicationErrorCode | null | undefined;
+  errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
   isExpanded: boolean;
@@ -63,7 +63,7 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
     return "error" as const;
   }
 
-  if (status === "queued" || status === "processing" || status === "completed" || status === "candidate_pending") {
+  if (status === "processing" || status === "completed" || status === "candidate_pending") {
     return status;
   }
 
@@ -101,7 +101,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
     processingStatus != null && processingStatus !== "completed" &&
-    (ledgerEntries.length === 0 || status === "anomaly" || status === "failed" || status === "queued" || status === "processing" || status === "candidate_pending");
+    (ledgerEntries.length === 0 || status === "anomaly" || status === "failed" || status === "processing" || status === "candidate_pending");
 
   // Derive stable error code for display
   const stableErrorCode =
@@ -178,7 +178,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         </span>
         {status !== "processing" &&
-          status !== "queued" &&
           status !== "failed" &&
           sourceDocument.title != null &&
           sourceDocument.title !== "" && (
@@ -206,7 +205,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         )}
 
-        {!["queued", "processing", "anomaly", "failed", "candidate_pending"].includes(status) && (
+        {!["processing", "anomaly", "failed", "candidate_pending"].includes(status) && (
           <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
         )}
 

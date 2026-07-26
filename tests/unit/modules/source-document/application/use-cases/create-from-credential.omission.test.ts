@@ -25,7 +25,7 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
     resolveLedgerForServiceCredentialMock.mockResolvedValue({ id: "ledger-1" });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
-      status: "queued",
+      status: "processing",
     });
   });
 

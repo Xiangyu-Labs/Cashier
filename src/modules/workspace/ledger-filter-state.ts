@@ -10,7 +10,7 @@ export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
 
 export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
   needs_attention: ["candidate_pending", "anomaly", "failed"],
-  in_progress: ["queued", "processing"],
+  in_progress: ["processing"],
 };
 
 type LedgerFilterKeyInput = Pick<

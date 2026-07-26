@@ -19,7 +19,7 @@ describe("countSourceDocumentsByStatus", () => {
     });
   });
 
-  it("counts queued and processing documents as processingCount", async () => {
+  it("counts processing documents as processingCount", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const now = new Date();
@@ -41,8 +41,7 @@ describe("countSourceDocumentsByStatus", () => {
         .returning();
       // Create a revision for this document so the derived status expression resolves
       const outcome =
-        status === "queued" ? "queued"
-        : status === "processing" ? "processing"
+        status === "processing" ? "processing"
         : status === "anomaly" ? "anomaly"
         : status === "failed" ? "failed"
         : "completed";
@@ -54,7 +53,7 @@ describe("countSourceDocumentsByStatus", () => {
           revisionNumber: 1,
           submittedText: null,
           outcome,
-          finalizedAt: outcome === "queued" || outcome === "processing" || status === "candidate_pending" ? null : now,
+          finalizedAt: outcome === "processing" || status === "candidate_pending" ? null : now,
         })
         .returning();
       await db
@@ -64,13 +63,12 @@ describe("countSourceDocumentsByStatus", () => {
       return doc!;
     }
 
-    await insertWithStatus("queued");
     await insertWithStatus("processing");
     await insertWithStatus("anomaly"); // should NOT be in processingCount
 
     const result = await countSourceDocumentsByStatus(ledgerId);
 
-    expect(result.processingCount).toBe(2);
+    expect(result.processingCount).toBe(1);
     expect(result.attentionCount).toBe(1);
   });
 

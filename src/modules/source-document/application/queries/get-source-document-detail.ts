@@ -2,6 +2,8 @@ import { currentApplication } from "@/application/current";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
+import { runtimeEnv } from "@/lib/env/runtime";
+import { expireTimedOutProcessingIntents } from "../use-cases/expire-timed-out-processing-intents";
 
 export async function getSourceDocumentDetail(
   sourceDocumentId: string
@@ -11,6 +13,11 @@ export async function getSourceDocumentDetail(
   if (accessContext == null) {
     return null;
   }
+
+  await expireTimedOutProcessingIntents(accessContext.ledgerId, {
+    timeoutSeconds: runtimeEnv.processingTimeoutSeconds,
+    maxBatch: runtimeEnv.processingRecoveryMaxBatch,
+  });
 
   const [document, entriesByDocId] = await Promise.all([
     currentApplication.sourceDocumentReads.get(accessContext.ledgerId, sourceDocumentId),

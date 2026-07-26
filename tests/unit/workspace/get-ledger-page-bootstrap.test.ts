@@ -38,6 +38,9 @@ vi.mock("@/modules/source-document/application/queries/get-stream-total", () => 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
   getEnhancedStats: getEnhancedStatsMock,
 }));
+vi.mock("@/modules/source-document/server-actions/expire-processing-timeouts", () => ({
+  expireProcessingTimeouts: vi.fn().mockResolvedValue(0),
+}));
 
 function createAuthorizedLedger() {
   return {
@@ -194,7 +197,7 @@ describe("getLedgerPageBootstrap", () => {
         endDate: "2026-07-31",
       },
       advancedFilters: {
-        statuses: ["queued", "processing"],
+        statuses: ["processing", "failed"],
       },
       ledgerDto: createPreAuthorizedLedgerDto(),
     });
@@ -202,14 +205,14 @@ describe("getLedgerPageBootstrap", () => {
     expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-07-01",
       endDate: "2026-07-31",
-      statuses: ["processing", "queued"],
+      statuses: ["failed", "processing"],
       cursor: undefined,
       limit: 20,
     });
     expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
       startDate: "2026-07-01",
       endDate: "2026-07-31",
-      statuses: ["processing", "queued"],
+      statuses: ["failed", "processing"],
     });
   });
 

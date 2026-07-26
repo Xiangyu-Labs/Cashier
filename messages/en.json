@@ -28,7 +28,9 @@
     "database_unavailable": "Database Unavailable",
     "database_unavailable_desc": "A database error occurred. Please retry later.",
     "request_bound_retry_exhausted": "Retries Exhausted",
-    "request_bound_retry_exhausted_desc": "All automatic retry attempts have been exhausted. Please try a manual correction or retry."
+    "request_bound_retry_exhausted_desc": "All automatic retry attempts have been exhausted. Please try a manual correction or retry.",
+    "processing_timeout": "Processing Timed Out",
+    "processing_timeout_desc": "Processing took too long and was stopped. Please retry."
   },
   "CandidateAction": {
     "accept": "Accept",
@@ -110,7 +112,6 @@
     "allStatuses": "All Statuses",
     "needsAttention": "Needs Attention",
     "inProgress": "In Progress",
-    "statusQueued": "Queued",
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusAnomaly": "Anomaly",
@@ -176,7 +177,6 @@
     "image": "Images",
     "imageAlt": "Image {index}",
     "quickEntry": "Quick Entry",
-    "queued": "Queued",
     "processing": "Processing",
     "completed": "Completed",
     "candidatePendingTitle": "New result ready for review",

@@ -49,7 +49,7 @@ describe("target application contracts", () => {
     const response = fixture.response as {
       sourceDocumentId: string;
       revisionId: string;
-      revisionState: "queued";
+      revisionState: "processing";
     };
     expect(toApiV1SourceDocumentCreateResponse(response)).toEqual(fixture.response);
     expect(apiV1Compatibility.version).toBe(fixture.compatibility.version);

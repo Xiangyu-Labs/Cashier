@@ -71,7 +71,7 @@ export async function createTestSourceDocument(
   ledgerId: string,
   overrides: Partial<{
     text: string;
-    status: "queued" | "processing" | "completed" | "anomaly" | "failed" | "deleted";
+    status: "processing" | "completed" | "anomaly" | "failed" | "deleted";
     imageUrls: string[];
   }> = {}
 ): Promise<string> {
@@ -112,7 +112,6 @@ export async function activateTestSourceDocumentProjection(
         revisionNumber: 1,
         submittedText: document.text,
         outcome:
-          document.status === "queued" ||
           document.status === "processing" ||
           document.status === "anomaly" ||
           document.status === "failed"
@@ -120,7 +119,7 @@ export async function activateTestSourceDocumentProjection(
             : "completed",
         anomalyReason: document.anomalyReason,
         finalizedAt:
-          document.status === "queued" || document.status === "processing" ? null : new Date(),
+          document.status === "processing" ? null : new Date(),
       })
       .returning();
     const revision = requireDefined(revisions[0], "Expected inserted revision");

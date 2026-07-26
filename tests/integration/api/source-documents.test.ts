@@ -99,7 +99,7 @@ describe("SourceDocument Actions", () => {
       text: "苹果2公斤，每公斤10元",
     });
 
-    expect(result.revisionState).toBe("queued");
+    expect(result.revisionState).toBe("processing");
 
     // Process
     await processAllPendingTasks();
@@ -119,7 +119,7 @@ describe("SourceDocument Actions", () => {
   it("should process text message and create ledger entry", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐花了25.5元" });
     expect(result.sourceDocumentId).toBeDefined();
-    expect(result.revisionState).toBe("queued");
+    expect(result.revisionState).toBe("processing");
 
     // Process
     await processAllPendingTasks();
@@ -137,7 +137,7 @@ describe("SourceDocument Actions", () => {
 
   it("should match category by index", async () => {
     const result = await createSourceDocumentAction(testLedgerId, { text: "午餐" });
-    expect(result.revisionState).toBe("queued");
+    expect(result.revisionState).toBe("processing");
 
     // Process
     await processAllPendingTasks();
@@ -170,7 +170,7 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocumentRevisions.sourceDocumentId, result.sourceDocumentId!),
     });
     expect(revision?.submittedText).toBe("午餐25元");
-    expect(["queued", "processing"]).toContain(revision?.outcome);
+    expect(revision?.outcome).toBe("processing");
 
     // Process tasks to ensure cleanup
     await processAllPendingTasks();
@@ -213,7 +213,7 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
-    expect(docAfter?.status).toBe("queued");
+    expect(docAfter?.status).toBe("processing");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({

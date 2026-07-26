@@ -1,6 +1,7 @@
 import type { SourceDocumentStatusType, SourceDocumentTypeValue } from "./types";
 import type {
   ApplicationErrorCode,
+  ProcessingFailureCode,
   SupportedSourceDocumentAction,
 } from "@/application/contracts";
 
@@ -58,7 +59,7 @@ export interface SourceDocumentDto {
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages?: boolean;
   supportedActions: SupportedSourceDocumentAction[];
-  errorCode: ApplicationErrorCode | null;
+  errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
 }
@@ -91,7 +92,7 @@ export interface SourceDocumentListItemDto {
   ledgerEntries?: SourceDocumentLedgerEntryDto[];
   hasImages: boolean;
   supportedActions: SupportedSourceDocumentAction[];
-  errorCode: ApplicationErrorCode | null;
+  errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
   candidateComparison?: SourceDocumentCandidateComparisonDto;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
@@ -110,7 +111,7 @@ export interface SourceDocumentLightDto {
   createdAt: string;
   hasImages: boolean;
   supportedActions: SupportedSourceDocumentAction[];
-  errorCode: ApplicationErrorCode | null;
+  errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
 }

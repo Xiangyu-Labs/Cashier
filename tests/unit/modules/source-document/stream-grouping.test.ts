@@ -153,7 +153,7 @@ describe("buildUnifiedStreamGroups", () => {
   });
 
   it("excludes non-completed items from group totals", () => {
-    const pending = makeItem("p1", { status: "queued", entryDate: "2026-07-01" });
+    const pending = makeItem("p1", { status: "processing", entryDate: "2026-07-01" });
     const completed = makeItem("c1", {
       status: "completed",
       entryDate: "2026-07-01",
@@ -167,7 +167,7 @@ describe("buildUnifiedStreamGroups", () => {
   });
 
   it("does not invent a total for empty/pending groups", () => {
-    const att = makeItem("q1", { status: "queued", entryDate: "2026-07-01" });
+    const att = makeItem("q1", { status: "processing", entryDate: "2026-07-01" });
 
     const groups = buildUnifiedStreamGroups([att]);
     expect(groups[0]!.total).toBe(0);
@@ -256,7 +256,7 @@ describe("buildUnifiedStreamGroups", () => {
 
   it("places date_unknown group where it appears in server order", () => {
     const unknown = makeItem("u1", {
-      status: "queued",
+      status: "processing",
       entryDate: null,
       createdAt: "",
     });

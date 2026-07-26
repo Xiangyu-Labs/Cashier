@@ -14,7 +14,7 @@ import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/strea
 export const REVISION_STATE_REFRESH_INTERVAL_MS = 3000;
 
 export function isRefreshableRevisionState(status: SourceDocumentStatusType): boolean {
-  return status === "queued" || status === "processing";
+  return status === "processing";
 }
 
 // ---------------------------------------------------------------------------

@@ -182,7 +182,7 @@ export async function storeCandidateRevision(
       .then((rows) => rows[0]);
     if (
       revision == null ||
-      (revision.outcome !== "queued" && revision.outcome !== "processing")
+      revision.outcome !== "processing"
     ) {
       return false;
     }
@@ -656,7 +656,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         .then((rows) => rows[0]);
       if (
         revision == null ||
-        (revision.outcome !== "queued" && revision.outcome !== "processing")
+        revision.outcome !== "processing"
       ) {
         return false;
       }
@@ -740,7 +740,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           .from(sourceDocumentRevisions)
           .where(eq(sourceDocumentRevisions.id, document.pendingRevisionId))
           .then((rows) => rows[0]);
-        if (pending?.outcome === "queued" || pending?.outcome === "processing" || pending?.outcome === "completed") {
+        if (pending?.outcome === "processing" || pending?.outcome === "completed") {
           throw new ConflictError("Source document has processing work");
         }
       }
@@ -788,7 +788,6 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           )
           .then((rows) => rows[0]);
         if (
-          pending?.outcome === "queued" ||
           pending?.outcome === "processing" ||
           pending?.outcome === "completed"
         ) {
@@ -916,4 +915,3 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
     });
   },
 };
-

@@ -95,7 +95,8 @@ describe("revision state refresh", () => {
   // Legacy API — isRefreshableRevisionState
   // -----------------------------------------------------------------------
 
-  it.each(["queued", "processing"] as const)("returns true for %s", (status) => {
+  it("returns true for processing", () => {
+    const status = "processing" as const;
     expect(isRefreshableRevisionState(status)).toBe(true);
   });
 

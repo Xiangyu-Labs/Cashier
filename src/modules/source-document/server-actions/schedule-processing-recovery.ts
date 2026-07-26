@@ -3,6 +3,7 @@ import { executeSingleProcessingIntent } from "@/application/adapters/in-process
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
+import { expireProcessingTimeouts } from "./expire-processing-timeouts";
 
 /**
  * Schedules recovery of bounded processing intents that were missed by
@@ -16,6 +17,8 @@ import { selectRecoverableProcessingIntents } from "@/modules/source-document/ap
  * invoked from within other server contexts, not directly from the client.
  */
 export async function scheduleProcessingRecovery(ledgerId: string): Promise<void> {
+  await expireProcessingTimeouts(ledgerId);
+
   const config = {
     maxBatch: runtimeEnv.processingRecoveryMaxBatch,
     maxAttempts: runtimeEnv.processingRecoveryMaxAttempts,

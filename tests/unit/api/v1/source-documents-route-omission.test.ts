@@ -43,7 +43,7 @@ describe("api/v1/source-documents omission semantics", () => {
     );
     createSourceDocumentFromCredentialActionMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
-      status: "queued",
+      status: "processing",
     });
   });
 

@@ -12,6 +12,7 @@ import {
   PROCESSING_FAILURE_CODES,
   supportedSourceDocumentActions,
   type ApplicationErrorCode,
+  type ProcessingFailureCode,
   type RevisionOutcome,
 } from "@/application/contracts";
 import { parseAmount } from "@/lib/formatters";
@@ -242,7 +243,6 @@ function statusForRow(
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const outcome = revisionId == null ? null : revisions.get(revisionId)?.outcome;
   if (
-    outcome === "queued" ||
     outcome === "processing" ||
     outcome === "completed" ||
     outcome === "anomaly" ||
@@ -476,7 +476,7 @@ async function loadCandidateComparisonMap(
 function sanitizedErrorCode(
   outcome: string | undefined,
   failureCode: string | null | undefined
-): ApplicationErrorCode | null {
+): ApplicationErrorCode | ProcessingFailureCode | null {
   if (outcome === "anomaly") return "VALIDATION_FAILED";
   if (outcome !== "failed") return null;
   const allowed: readonly ApplicationErrorCode[] = [
@@ -491,7 +491,7 @@ function sanitizedErrorCode(
     "INTERNAL",
   ];
   if (allowed.includes(failureCode as ApplicationErrorCode)) {
-    return failureCode as ApplicationErrorCode;
+    return failureCode as ProcessingFailureCode;
   }
   if (
     failureCode != null &&
@@ -594,7 +594,7 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
 }
 
 /**
- * Lightweight aggregation that returns processing count (queued + processing)
+ * Lightweight aggregation that returns the processing count
  * and attention count (candidate_pending + anomaly + failed) for a ledger.
  * Uses the same derived status expression as list/collect queries but
  * performs a single-pass aggregate without fetching rows.
@@ -606,7 +606,7 @@ export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
   const derivedStatus = derivedStatusExpression();
   const result = await db
     .select({
-      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} IN ('queued', 'processing'))`,
+      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} = 'processing')`,
       attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} IN ('candidate_pending', 'anomaly', 'failed'))`,
     })
     .from(sourceDocuments)

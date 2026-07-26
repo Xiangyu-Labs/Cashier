@@ -21,7 +21,7 @@ function makeItem(
     title: null,
     text: null,
     files: [],
-    status: "queued",
+    status: "processing",
     type: "ai_parsed",
     anomalyReason: null,
     entryDate: null,
@@ -110,7 +110,7 @@ describe("CacheTransactionManager", () => {
     op.patches.push({
       type: "upsert",
       entityId: "doc-1",
-      entity: makeItem("doc-1", { status: "queued" }),
+      entity: makeItem("doc-1", { status: "processing" }),
       prevEntity: null,
     });
 
@@ -130,12 +130,12 @@ describe("CacheTransactionManager", () => {
       pageParams: [null],
     });
 
-    // Operation A (order 0): set doc-1 to "queued"
+    // Operation A (order 0): set doc-1 to "processing"
     const opA = manager.startOperation("ledger-1");
     opA.patches.push({
       type: "upsert",
       entityId: "doc-1",
-      entity: makeItem("doc-1", { status: "queued" }),
+      entity: makeItem("doc-1", { status: "processing" }),
       prevEntity: null,
     });
 
@@ -175,7 +175,7 @@ describe("CacheTransactionManager", () => {
     op.patches.push({
       type: "upsert",
       entityId: "doc-1",
-      entity: makeItem("doc-1", { status: "queued", title: "Optimistic" }),
+      entity: makeItem("doc-1", { status: "processing", title: "Optimistic" }),
       prevEntity: original,
     });
 

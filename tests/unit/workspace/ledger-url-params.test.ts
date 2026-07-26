@@ -154,16 +154,16 @@ describe("ledger-url-params", () => {
     });
 
     it("parses multiple comma-delimited statuses in canonical order", () => {
-      // Input order: failed,queued — canonical order: queued,failed
-      expect(parseStatusesParam("failed,queued")).toEqual(["queued", "failed"]);
+      // Input order: failed,processing — canonical order: processing,failed
+      expect(parseStatusesParam("failed,processing")).toEqual(["processing", "failed"]);
     });
 
     it("deduplicates repeated statuses", () => {
-      expect(parseStatusesParam("queued,queued,processing")).toEqual(["queued", "processing"]);
+      expect(parseStatusesParam("processing,processing,processing")).toEqual(["processing"]);
     });
 
     it("ignores unknown status tokens", () => {
-      expect(parseStatusesParam("queued,unknown_status,failed")).toEqual(["queued", "failed"]);
+      expect(parseStatusesParam("processing,unknown_status,failed")).toEqual(["processing", "failed"]);
     });
 
     it("returns empty array when all tokens are invalid", () => {
@@ -171,15 +171,15 @@ describe("ledger-url-params", () => {
     });
 
     it("handles whitespace around tokens", () => {
-      expect(parseStatusesParam(" queued , processing ")).toEqual(["queued", "processing"]);
+      expect(parseStatusesParam(" processing , failed ")).toEqual(["processing", "failed"]);
     });
 
     it("handles trailing and leading delimiters", () => {
-      expect(parseStatusesParam(",queued,")).toEqual(["queued"]);
+      expect(parseStatusesParam(",processing,")).toEqual(["processing"]);
     });
 
     it("handles empty tokens between delimiters", () => {
-      expect(parseStatusesParam("queued,,processing")).toEqual(["queued", "processing"]);
+      expect(parseStatusesParam("processing,,failed")).toEqual(["processing", "failed"]);
     });
   });
 
@@ -193,13 +193,13 @@ describe("ledger-url-params", () => {
     });
 
     it("formats multiple statuses in canonical order", () => {
-      expect(formatStatusesParam(["failed", "queued", "processing"])).toBe(
-        "queued,processing,failed"
+      expect(formatStatusesParam(["failed", "processing"])).toBe(
+        "processing,failed"
       );
     });
 
     it("deduplicates values", () => {
-      expect(formatStatusesParam(["queued", "queued", "processing"])).toBe("queued,processing");
+      expect(formatStatusesParam(["processing", "processing", "processing"])).toBe("processing");
     });
   });
 
@@ -214,7 +214,7 @@ describe("ledger-url-params", () => {
 
     it("deletes statuses parameter when set to null", () => {
       const params = updateLedgerSearchParams(
-        new URLSearchParams("statuses=queued,processing"),
+        new URLSearchParams("statuses=processing,failed"),
         { statuses: null }
       );
 
@@ -223,7 +223,7 @@ describe("ledger-url-params", () => {
 
     it("deletes statuses parameter when set to empty array", () => {
       const params = updateLedgerSearchParams(
-        new URLSearchParams("statuses=queued,processing"),
+        new URLSearchParams("statuses=processing,failed"),
         { statuses: [] }
       );
 
@@ -232,11 +232,11 @@ describe("ledger-url-params", () => {
 
     it("preserves existing statuses when not in updates", () => {
       const params = updateLedgerSearchParams(
-        new URLSearchParams("statuses=queued,processing"),
+        new URLSearchParams("statuses=processing,failed"),
         { period: "all" }
       );
 
-      expect(params.get("statuses")).toBe("queued,processing");
+      expect(params.get("statuses")).toBe("processing,failed");
     });
 
     it("sets statuses together with other params in one update", () => {
@@ -264,10 +264,10 @@ describe("ledger-url-params", () => {
   describe("statuses in readLedgerFilterParams", () => {
     it("reads statuses from URL", () => {
       const filters = readLedgerFilterParams(
-        new URLSearchParams("statuses=queued,failed")
+        new URLSearchParams("statuses=processing,failed")
       );
 
-      expect(filters.statuses).toEqual(["queued", "failed"]);
+      expect(filters.statuses).toEqual(["processing", "failed"]);
     });
 
     it("returns empty array when statuses param is absent", () => {

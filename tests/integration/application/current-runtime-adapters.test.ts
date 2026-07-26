@@ -237,7 +237,7 @@ describe("current-runtime target adapters", () => {
       activeRevisionId: null,
       pendingRevisionId: pending.revision.id,
     });
-    expect(revision?.outcome).toBe("queued");
+    expect(revision?.outcome).toBe("processing");
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
     expect(await db.select().from(revisionEntries)).toHaveLength(0);
   });
@@ -316,7 +316,7 @@ describe("current-runtime target adapters", () => {
       where: eq(sourceDocuments.id, active.sourceDocumentId),
     });
     expect(deleted).toMatchObject({
-      status: "queued",
+      status: "processing",
       deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
       pendingRevisionId: pending.revision.id,
@@ -378,7 +378,7 @@ describe("current-runtime target adapters", () => {
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(deleted).toMatchObject({ status: "queued", deletedAt: expect.any(Date) });
+    expect(deleted).toMatchObject({ status: "processing", deletedAt: expect.any(Date) });
     expect(
       (
         await db.query.ledgerEntries.findFirst({

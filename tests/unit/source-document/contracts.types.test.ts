@@ -44,7 +44,7 @@ describe("source-document contract types", () => {
 
   it("uses list item DTOs inside pending groups", () => {
     expectTypeOf<
-      PendingSourceDocumentsResponseDto["groups"]["queued"][number]["sourceDocument"]
+      PendingSourceDocumentsResponseDto["groups"]["processing"][number]["sourceDocument"]
     >().toEqualTypeOf<SourceDocumentListItemDto>();
   });
 
@@ -53,10 +53,10 @@ describe("source-document contract types", () => {
   });
 
   it("exports status and type runtime values from contracts", () => {
-    const queuedStatus: SourceDocumentStatusType = SourceDocumentStatus.Queued;
+    const processingStatus: SourceDocumentStatusType = SourceDocumentStatus.Processing;
     const aiParsedType: SourceDocumentTypeValue = SourceDocumentType.AiParsed;
 
-    expect(queuedStatus).toBe(SourceDocumentStatus.Queued);
+    expect(processingStatus).toBe(SourceDocumentStatus.Processing);
     expect(aiParsedType).toBe(SourceDocumentType.AiParsed);
   });
 

@@ -54,8 +54,8 @@ describe("source-document query action boundaries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "queued doc",
-        status: "queued",
+        text: "processing doc",
+        status: "processing",
         imageUrls: [],
         entryDate: "2026-03-23",
       })
@@ -64,7 +64,7 @@ describe("source-document query action boundaries", () => {
 
     const result = await getPendingSourceDocumentsAction(ledgerId);
 
-    expect(result.groups.queued).toHaveLength(1);
+    expect(result.groups.processing).toHaveLength(1);
     expect(result.stats.total).toBe(1);
   });
 });

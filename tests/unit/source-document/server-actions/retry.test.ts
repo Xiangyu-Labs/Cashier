@@ -25,7 +25,7 @@ describe("retrySourceDocumentAction omission semantics", () => {
     retrySourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "new-doc",
       previousSourceDocumentId: "old-doc",
-      status: "queued",
+      status: "processing",
     });
   });
 

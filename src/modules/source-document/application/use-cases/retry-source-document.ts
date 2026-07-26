@@ -43,6 +43,6 @@ export async function retrySourceDocument(
   return {
     sourceDocumentId: pending.document.id,
     previousSourceDocumentId: sourceDocumentId,
-    status: "queued",
+    status: "processing",
   };
 }

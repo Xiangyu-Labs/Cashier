@@ -28,7 +28,9 @@
     "database_unavailable": "数据库不可用",
     "database_unavailable_desc": "数据库发生错误。请稍后重试。",
     "request_bound_retry_exhausted": "重试已耗尽",
-    "request_bound_retry_exhausted_desc": "所有自动重试尝试已耗尽。请尝试手动修正或重新处理。"
+    "request_bound_retry_exhausted_desc": "所有自动重试尝试已耗尽。请尝试手动修正或重新处理。",
+    "processing_timeout": "处理超时",
+    "processing_timeout_desc": "处理时间过长，任务已停止。请重试。"
   },
   "CandidateAction": {
     "accept": "确认候选",
@@ -110,7 +112,6 @@
     "allStatuses": "全部状态",
     "needsAttention": "待处理",
     "inProgress": "进行中",
-    "statusQueued": "排队中",
     "statusProcessing": "处理中",
     "statusCompleted": "已完成",
     "statusAnomaly": "异常",
@@ -176,7 +177,6 @@
     "image": "图片",
     "imageAlt": "图片 {index}",
     "quickEntry": "快速记账",
-    "queued": "排队中",
     "processing": "处理中",
     "completed": "已完成",
     "candidatePendingTitle": "新解析结果待确认",

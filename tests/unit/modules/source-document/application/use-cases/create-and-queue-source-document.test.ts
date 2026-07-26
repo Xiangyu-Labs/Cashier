@@ -80,7 +80,7 @@ describe("createAndQueueSourceDocument", () => {
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
       revisionId: "revision-1",
-      revisionState: "queued",
+      revisionState: "processing",
     });
   });
 

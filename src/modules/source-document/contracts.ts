@@ -45,13 +45,13 @@ export interface CreateSourceDocumentInput {
 export interface CreateSourceDocumentResponseDto {
   sourceDocumentId: string;
   revisionId: string;
-  revisionState: "queued";
+  revisionState: "processing";
 }
 
 export interface RetrySourceDocumentResponseDto {
   sourceDocumentId: string;
   previousSourceDocumentId: string;
-  status: "queued";
+  status: "processing";
 }
 
 export interface QuickEntryResponseDto {
@@ -62,13 +62,11 @@ export interface QuickEntryResponseDto {
 
 export interface PendingSourceDocumentsResponseDto {
   groups: {
-    queued: SourceDocumentGroupDto[];
     processing: SourceDocumentGroupDto[];
     anomaly: SourceDocumentGroupDto[];
     failed: SourceDocumentGroupDto[];
   };
   stats: {
-    queuedCount: number;
     processingCount: number;
     anomalyCount: number;
     failedCount: number;
@@ -135,7 +133,7 @@ export interface MutationReconciliation<T> {
 export interface CreateSourceDocumentReconciliationDto {
   sourceDocumentId: string;
   revisionId: string;
-  revisionState: "queued";
+  revisionState: "processing";
   reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
 }
 
@@ -145,7 +143,7 @@ export interface CreateSourceDocumentReconciliationDto {
 export interface RetrySourceDocumentReconciliationDto {
   sourceDocumentId: string;
   previousSourceDocumentId: string;
-  status: "queued";
+  status: "processing";
   reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
 }
 

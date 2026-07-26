@@ -114,7 +114,7 @@ async function createTestSourceDocument(
   const doc = createSourceDocumentData(ledgerId);
   await db.insert(sourceDocuments).values({
     ...doc,
-    status: status as "queued" | "processing" | "completed" | "anomaly",
+    status: status as "processing" | "processing" | "completed" | "anomaly",
   });
   return doc;
 }

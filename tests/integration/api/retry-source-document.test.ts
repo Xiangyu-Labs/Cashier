@@ -74,7 +74,7 @@ describe("source-document retry action", () => {
     expect(retried).toMatchObject({
       sourceDocumentId: created.sourceDocumentId,
       previousSourceDocumentId: created.sourceDocumentId,
-      status: "queued",
+      status: "processing",
     });
     await processAllPendingTasks();
 
@@ -96,7 +96,7 @@ describe("source-document retry action", () => {
     // Document has an active revision and a completed pending candidate
     expect(after).toMatchObject({
       id: created.sourceDocumentId,
-      status: "queued",
+      status: "processing",
       deletedAt: null,
     });
     expect(after?.pendingRevisionId).not.toBeNull();
@@ -174,7 +174,7 @@ describe("source-document retry action", () => {
     const retried = await editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
       text: "晚餐 50元",
     });
-    expect(retried.status).toBe("queued");
+    expect(retried.status).toBe("processing");
     await processAllPendingTasks();
 
     // Step 5: Verify final state — 3 revisions, candidate is pending, original active preserved

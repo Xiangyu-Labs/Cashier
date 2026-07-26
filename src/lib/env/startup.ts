@@ -33,6 +33,7 @@ export const ENV_DEFAULTS = {
   PROCESSING_RECOVERY_MAX_BATCH: "5",
   PROCESSING_RECOVERY_MAX_ATTEMPTS: "5",
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: "60",
+  PROCESSING_TIMEOUT_SECONDS: "300",
 } as const;
 
 function blankToUndefined(value: unknown): unknown {
@@ -164,6 +165,7 @@ const startupEnvFields = {
   PROCESSING_RECOVERY_MAX_BATCH: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_BATCH"),
   PROCESSING_RECOVERY_MAX_ATTEMPTS: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_ATTEMPTS"),
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: positiveIntWithDefault("PROCESSING_RECOVERY_COOLDOWN_SECONDS"),
+  PROCESSING_TIMEOUT_SECONDS: positiveIntWithDefault("PROCESSING_TIMEOUT_SECONDS"),
 } satisfies z.ZodRawShape;
 
 const startupEnvSchema = z.object(startupEnvFields);

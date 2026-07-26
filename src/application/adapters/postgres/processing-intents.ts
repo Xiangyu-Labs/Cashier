@@ -7,12 +7,14 @@ import type {
   RecoverableProcessingIntentContract,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
+import { NotFoundError } from "@/lib/errors";
 import {
   processingAttempts,
   processingOutbox,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
+import { lockSourceDocumentForUpdate } from "./transaction-locks";
 
 const DEFAULT_LEASE_MS = 5 * 60 * 1000;
 
@@ -73,7 +75,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           )
         )
         .then((rows) => rows[0]);
-      if (revision == null || !["queued", "processing"].includes(revision.outcome)) return;
+      if (revision == null || revision.outcome !== "processing") return;
 
       await tx.insert(processingAttempts)
         .values({
@@ -167,15 +169,6 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           )
         )
         ;
-      await tx.update(sourceDocumentRevisions)
-        .set({ outcome: "processing" })
-        .where(
-          and(
-            eq(sourceDocumentRevisions.id, row.revisionId),
-            eq(sourceDocumentRevisions.outcome, "queued")
-          )
-        )
-        ;
       return { intent, claimToken, expiresAt: expiresAt.toISOString() };
     });
   }
@@ -224,6 +217,145 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           )
         )
         ;
+      return true;
+    });
+  }
+
+  async expireTimedOut(
+    ledgerId: string,
+    timeoutSeconds: number,
+    limit: number
+  ): Promise<number> {
+    const deadline = new Date(this.now().getTime() - timeoutSeconds * 1000);
+    const rows = await db
+      .select({ id: processingOutbox.id })
+      .from(processingOutbox)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .innerJoin(
+        sourceDocumentRevisions,
+        and(
+          eq(sourceDocumentRevisions.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocumentRevisions.id, processingOutbox.revisionId),
+          eq(sourceDocumentRevisions.outcome, "processing")
+        )
+      )
+      .where(
+        and(
+          eq(processingOutbox.ledgerId, ledgerId),
+          lte(processingOutbox.createdAt, deadline),
+          or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed"))
+        )
+      )
+      .orderBy(asc(processingOutbox.createdAt))
+      .limit(limit);
+
+    let expired = 0;
+    for (const row of rows) {
+      if (await this.markTimedOut(row.id, deadline)) expired++;
+    }
+    return expired;
+  }
+
+  async markTimedOut(intentId: string, deadline: Date): Promise<boolean> {
+    const now = this.now();
+    return db.transaction(async (tx) => {
+      const intent = await tx
+        .select({
+          ledgerId: processingOutbox.ledgerId,
+          revisionId: processingOutbox.revisionId,
+          attemptNumber: processingOutbox.attemptNumber,
+          sourceDocumentId: sql<string>`${processingOutbox.payload}->>'sourceDocumentId'`,
+        })
+        .from(processingOutbox)
+        .where(
+          and(
+            eq(processingOutbox.id, intentId),
+            lte(processingOutbox.createdAt, deadline),
+            or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed"))
+          )
+        )
+        .then((rows) => rows[0]);
+      if (intent == null || intent.sourceDocumentId == null) return false;
+
+      let document;
+      try {
+        document = await lockSourceDocumentForUpdate(
+          tx,
+          intent.ledgerId,
+          intent.sourceDocumentId
+        );
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+      if (document.pendingRevisionId !== intent.revisionId) return false;
+
+      const revision = await tx
+        .select({ outcome: sourceDocumentRevisions.outcome })
+        .from(sourceDocumentRevisions)
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, intent.ledgerId),
+            eq(sourceDocumentRevisions.id, intent.revisionId),
+            eq(sourceDocumentRevisions.sourceDocumentId, intent.sourceDocumentId)
+          )
+        )
+        .then((rows) => rows[0]);
+      if (revision?.outcome !== "processing") return false;
+
+      const closed = await tx
+        .update(processingOutbox)
+        .set({
+          status: "failed",
+          completedAt: now,
+          claimToken: null,
+          claimExpiresAt: null,
+        })
+        .where(
+          and(
+            eq(processingOutbox.id, intentId),
+            lte(processingOutbox.createdAt, deadline),
+            or(eq(processingOutbox.status, "pending"), eq(processingOutbox.status, "claimed"))
+          )
+        )
+        .returning({ id: processingOutbox.id })
+        .then((rows) => rows[0]);
+      if (closed == null) return false;
+
+      await tx
+        .update(processingAttempts)
+        .set({
+          status: "failed",
+          completedAt: now,
+          retryClassification: "permanent",
+          diagnosticCode: "processing_timeout",
+        })
+        .where(
+          and(
+            eq(processingAttempts.revisionId, intent.revisionId),
+            eq(processingAttempts.attemptNumber, intent.attemptNumber)
+          )
+        );
+      await tx
+        .update(sourceDocumentRevisions)
+        .set({
+          outcome: "failed",
+          failureCode: "processing_timeout",
+          finalizedAt: now,
+        })
+        .where(
+          and(
+            eq(sourceDocumentRevisions.id, intent.revisionId),
+            eq(sourceDocumentRevisions.outcome, "processing")
+          )
+        );
       return true;
     });
   }
@@ -384,7 +516,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
    *
    * CAS verification: joins the source document to ensure the revision is still
    * the current pending revision (document not deleted, exact pendingRevisionId,
-   * revision outcome is queued/processing). The outbox must be pending or
+   * revision outcome is processing). The outbox must be pending or
    * expired-claimed to be actionable.
    *
    * If CAS passes: updates the outbox, attempt record, and revision diagnostic
@@ -438,7 +570,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       const isCurrentPending =
         row.documentDeletedAt == null &&
         row.documentPendingRevisionId === row.revisionId &&
-        (row.revisionOutcome === "queued" || row.revisionOutcome === "processing");
+        row.revisionOutcome === "processing";
 
       // Update outbox to failed (common to both paths)
       const updated = await tx
@@ -492,10 +624,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           .where(
             and(
               eq(sourceDocumentRevisions.id, row.revisionId),
-              or(
-                eq(sourceDocumentRevisions.outcome, "queued"),
-                eq(sourceDocumentRevisions.outcome, "processing")
-              )
+              eq(sourceDocumentRevisions.outcome, "processing")
             )
           );
 

@@ -25,7 +25,7 @@ export const sourceDocumentRevisions = pgTable(
     sourceDocumentId: text("source_document_id").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     submittedText: text("submitted_text"),
-    outcome: text("outcome").notNull().default("queued"),
+    outcome: text("outcome").notNull().default("processing"),
     anomalyReason: text("anomaly_reason"),
     failureCode: text("failure_code"),
     submittedAt: requiredTimestamp("submitted_at").$defaultFn(() => new Date()),
@@ -51,7 +51,7 @@ export const sourceDocumentRevisions = pgTable(
     check("ck_source_document_revisions_number", sql`${table.revisionNumber} > 0`),
     check(
       "ck_source_document_revisions_outcome",
-      sql`${table.outcome} IN ('queued', 'processing', 'completed', 'anomaly', 'failed', 'abandoned')`
+      sql`${table.outcome} IN ('processing', 'completed', 'anomaly', 'failed', 'abandoned')`
     ),
   ]
 );

@@ -227,14 +227,14 @@ describe("useSourceDocumentStream", () => {
     renderHook(
       () =>
         useSourceDocumentStream("ledger-1", {
-          statuses: ["queued", "processing"],
+          statuses: ["processing", "failed"],
         }),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(listStreamPageActionMock).toHaveBeenCalledWith("ledger-1", {
-        statuses: ["processing", "queued"], // Hook normalizes (sorts) for stable cache keys
+        statuses: ["failed", "processing"], // Hook normalizes (sorts) for stable cache keys
         cursor: undefined,
         limit: 20,
       });

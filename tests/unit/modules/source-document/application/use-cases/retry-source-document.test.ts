@@ -53,7 +53,7 @@ describe("retrySourceDocument", () => {
     expect(result).toEqual({
       sourceDocumentId: "doc-1",
       previousSourceDocumentId: "doc-1",
-      status: "queued",
+      status: "processing",
     });
   });
 

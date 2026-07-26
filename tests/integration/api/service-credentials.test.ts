@@ -154,7 +154,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const res = await ledgerEntryPOST(req);
     expect(res.status).toBe(201);
     const data = await res.json();
-    expect(data.status).toBe("queued");
+    expect(data.status).toBe("processing");
 
     // Check DB
     const doc = await db.query.sourceDocuments.findFirst({
@@ -166,7 +166,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       where: eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId),
     });
     expect(revision?.submittedText).toBe("API Ledger Entry");
-    expect(["queued", "processing"]).toContain(revision?.outcome);
+    expect(revision?.outcome).toBe("processing");
   });
 
   it("should reject ledger entry with invalid service credential", async () => {

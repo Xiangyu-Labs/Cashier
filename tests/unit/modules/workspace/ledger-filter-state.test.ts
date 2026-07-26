@@ -62,13 +62,13 @@ describe("ledger-filter-state", () => {
       currentPeriod: { period: "thisMonth" },
       currentFilters: {},
       nextFilters: {
-        statuses: ["queued", "processing"],
+        statuses: ["processing", "failed"],
       },
     });
 
     expect(result.periodUpdate).toBeUndefined();
     expect(result.advancedFilterUpdate).toEqual({
-      statuses: ["queued", "processing"],
+      statuses: ["processing", "failed"],
     });
   });
 
@@ -100,8 +100,8 @@ describe("ledger-filter-state", () => {
       ]);
     });
 
-    it("in_progress includes queued and processing", () => {
-      expect(STREAM_STATUS_PRESET_VALUES.in_progress).toEqual(["queued", "processing"]);
+    it("in_progress includes processing", () => {
+      expect(STREAM_STATUS_PRESET_VALUES.in_progress).toEqual(["processing"]);
     });
   });
 });

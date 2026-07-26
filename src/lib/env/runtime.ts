@@ -40,6 +40,7 @@ export interface RuntimeEnv {
   readonly processingRecoveryMaxBatch: number;
   readonly processingRecoveryMaxAttempts: number;
   readonly processingRecoveryCooldownSeconds: number;
+  readonly processingTimeoutSeconds: number;
 }
 
 function hasExplicitValue(name: string): boolean {
@@ -165,5 +166,8 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get processingRecoveryCooldownSeconds() {
     return getStartupEnvValue("PROCESSING_RECOVERY_COOLDOWN_SECONDS");
+  },
+  get processingTimeoutSeconds() {
+    return getStartupEnvValue("PROCESSING_TIMEOUT_SECONDS");
   },
 };

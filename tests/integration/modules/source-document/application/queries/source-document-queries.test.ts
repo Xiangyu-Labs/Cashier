@@ -148,7 +148,7 @@ describe("source-document-queries", () => {
       .values({
         ledgerId,
         text: "full payload",
-        status: "queued",
+        status: "processing",
         imageUrls: ["/api/uploads/a.jpg"],
         entryDate: "2026-03-22",
       })
@@ -163,7 +163,7 @@ describe("source-document-queries", () => {
       files: [
         expect.objectContaining({ id: expect.any(String), contentType: "image/jpeg" }),
       ],
-      status: "queued",
+      status: "processing",
       createdAt: expect.any(String),
     });
     expect(existing).not.toHaveProperty("imageUrls");
@@ -214,8 +214,8 @@ describe("source-document-queries", () => {
       .values([
         {
           ledgerId,
-          text: "queued doc",
-          status: "queued",
+          text: "processing doc",
+          status: "processing",
           imageUrls: [],
           entryDate: "2026-03-23",
         },
@@ -235,7 +235,7 @@ describe("source-document-queries", () => {
     const result = await getPendingSourceDocuments(ledgerId);
 
     expect(result.stats.total).toBeGreaterThan(0);
-    expect(result.groups.queued).toHaveLength(1);
+    expect(result.groups.processing).toHaveLength(1);
     expect(result.groups.failed).toHaveLength(1);
   });
 
@@ -245,7 +245,7 @@ describe("source-document-queries", () => {
 
   it("walks all cursor pages through 40+ interleaved status records", async () => {
     const db = getTestDb();
-    const statuses = ["queued", "processing", "completed", "anomaly", "failed"] as const;
+    const statuses = ["processing", "processing", "completed", "anomaly", "failed"] as const;
     const docs: Array<{ id: string; status: string }> = [];
 
     // Insert 45 documents (9 per status) with descending entry dates
@@ -441,8 +441,8 @@ describe("source-document-queries", () => {
         },
         {
           ledgerId,
-          title: "queued-in-range",
-          status: "queued",
+          title: "processing-in-range",
+          status: "processing",
           imageUrls: [],
           entryDate: "2026-03-16",
         },
@@ -593,7 +593,7 @@ describe("source-document-queries", () => {
       })
     ).resolves.toEqual({ total: "125.25" });
     await expect(
-      getStreamTotal(ledgerId, { statuses: ["queued", "processing"] })
+      getStreamTotal(ledgerId, { statuses: ["processing"] })
     ).resolves.toEqual({ total: "0" });
     await expect(
       getStreamTotal(ledgerId, { statuses: ["completed", "failed"] })
@@ -641,8 +641,8 @@ describe("source-document-queries", () => {
     await db.insert(sourceDocuments).values([
       {
         ledgerId,
-        text: "queued doc",
-        status: "queued",
+        text: "processing doc",
+        status: "processing",
         imageUrls: [],
         entryDate: "2026-03-20",
       },
@@ -672,8 +672,8 @@ describe("source-document-queries", () => {
 
     const counts = await countSourceDocumentsByStatus(ledgerId);
 
-    // The queued doc counts as processing (queued), completed as completed, anomaly as attention
-    expect(counts.processingCount).toBe(1); // queued → processing in attention
+    // The processing doc counts as processing (processing), completed as completed, anomaly as attention
+    expect(counts.processingCount).toBe(1); // processing → processing in attention
     expect(counts.attentionCount).toBe(1); // anomaly
 
     // Stream page with status filter should not affect counts

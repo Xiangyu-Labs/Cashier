@@ -266,7 +266,7 @@ export async function getStreamRefresh(
     hasTransitionalWork: changedWatched.some(
       (w) =>
         w.doc != null &&
-        (w.doc.status === "queued" || w.doc.status === "processing")
+        w.doc.status === "processing"
     ),
     firstPages,
     changedWatched,

@@ -25,9 +25,11 @@ import {
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { expireProcessingTimeouts } from "./expire-processing-timeouts";
 
 export const getSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> => {
+    await expireProcessingTimeouts(ledgerId);
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return listSourceDocuments(ledgerId, params);
@@ -35,11 +37,12 @@ export const getSourceDocumentsAction = withLedgerAccess(
 );
 
 /**
- * Get all pending source documents (processing + anomaly + failed + queued)
+ * Get all pending source documents (processing + anomaly + failed)
  * Used for the pending source documents modal that should always show ALL pending items.
  */
 export const getPendingSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
+    await expireProcessingTimeouts(ledgerId);
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return getPendingSourceDocuments(ledgerId);
@@ -47,11 +50,12 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
 );
 
 /**
- * Get attention source documents (queued, processing, candidate_pending, anomaly, failed).
+ * Get attention source documents (processing, candidate_pending, anomaly, failed).
  * Bounded independently; returns items + total count.
  */
 export const getSourceDocumentAttentionAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentAttentionDto> => {
+    await expireProcessingTimeouts(ledgerId);
     // Schedule processing recovery alongside attention reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return getSourceDocumentAttentionQuery(ledgerId);
@@ -63,6 +67,7 @@ export const getSourceDocumentAttentionAction = withLedgerAccess(
  */
 export const getSourceDocumentCountsAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentCountsDto> => {
+    await expireProcessingTimeouts(ledgerId);
     // Schedule processing recovery alongside count reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return getSourceDocumentCountsQuery(ledgerId);
@@ -78,6 +83,8 @@ export const getSourceDocumentFullAction = withLedgerAccess(
     if (!parsed.success) {
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
+
+    await expireProcessingTimeouts(ledgerId);
 
     // Schedule processing recovery alongside detail reads
     after(() => scheduleProcessingRecovery(ledgerId));
@@ -101,6 +108,8 @@ export const listStreamPageAction = withLedgerAccess(
 
     const { startDate, endDate, minAmount, maxAmount, statuses, cursor, limit } = parsed.data;
 
+    await expireProcessingTimeouts(ledgerId);
+
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
     return listStreamPage(ledgerId, {
@@ -123,6 +132,7 @@ export const getStreamTotalAction = withLedgerAccess(
     }
 
     const { startDate, endDate, minAmount, maxAmount, statuses } = parsed.data;
+    await expireProcessingTimeouts(ledgerId);
     return getStreamTotal(ledgerId, {
       ...(startDate != null ? { startDate } : {}),
       ...(endDate != null ? { endDate } : {}),

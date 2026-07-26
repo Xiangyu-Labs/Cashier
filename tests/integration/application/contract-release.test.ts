@@ -51,7 +51,7 @@ describe("local contract release", () => {
     expect(compatibilityBaseline).toEqual({
       text: null,
       imageUrls: [],
-      status: "queued",
+      status: "processing",
       anomalyReason: null,
       metadata: {},
     });

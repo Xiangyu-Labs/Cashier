@@ -222,7 +222,7 @@ export function useSourceDocumentRecoveryMutations({
         title: prevEntity?.title ?? null,
         text: null,
         files: [],
-        status: "queued",
+        status: "processing",
         type: "ai_parsed",
         anomalyReason: null,
         entryDate: prevEntity?.entryDate ?? null,

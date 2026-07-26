@@ -23,7 +23,7 @@ export const sourceDocuments = pgTable(
     imageUrls: jsonb("image_urls").$type<string[]>().default([]),
     status: text("status")
       .notNull()
-      .default(SourceDocumentStatus.Queued)
+      .default(SourceDocumentStatus.Processing)
       .$type<SourceDocumentStatusType>(),
     type: text("type")
       .notNull()

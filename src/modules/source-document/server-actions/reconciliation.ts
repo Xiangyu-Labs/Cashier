@@ -35,7 +35,7 @@ export async function readSourceDocumentListItem(
       ? "pending"
       : row.activeRevisionId != null
         ? "completed"
-        : "queued";
+        : "processing";
 
   return {
     id: row.id,
@@ -81,7 +81,7 @@ export function buildReconciliationEntity(arg: {
     title: null,
     text: null,
     files: [],
-    status: "queued",
+    status: "processing",
     type: "ai_parsed",
     anomalyReason: null,
     entryDate: arg.entryDate,
