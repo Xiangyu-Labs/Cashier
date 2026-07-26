@@ -7,7 +7,6 @@ import { calculateLedgerStats } from "@/modules/ledger/application/queries/calcu
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanced-stats";
-import { getSourceDocumentCountsQuery } from "@/modules/source-document/application/queries/get-source-document-counts";
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import type { StreamPage } from "@/modules/source-document/contracts";
 import { requireLedgerAccess } from "@/modules/ledger/access";
@@ -80,12 +79,6 @@ export async function getLedgerPageBootstrap(
     }),
     ...(input.initialTab === "stream"
       ? [
-          // Counts (lightweight aggregation, unfiltered)
-          queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocumentCounts(input.ledgerId),
-            queryFn: () => getSourceDocumentCountsQuery(input.ledgerId),
-            staleTime: runtimeEnv.sourceDocStaleTimeMs,
-          }),
           // First stream page (all-statuses, filtered by period+amount, paginated)
           queryClient.prefetchInfiniteQuery({
             queryKey: queryKeys.sourceDocumentStream(input.ledgerId, {

@@ -121,7 +121,7 @@ describe("getLedgerPageBootstrap", () => {
     expect(ledgersQuery?.state.data).toEqual(preAuthDto);
   });
 
-  it("prefetches stream tab counts and first stream page with period-bound dates", async () => {
+  it("prefetches the first stream page without legacy header counts", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stream",
@@ -135,7 +135,7 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(getSourceDocumentCountsQueryMock).toHaveBeenCalledWith("ledger-1");
+    expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listStreamPageMock).toHaveBeenCalled();
     expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(

@@ -30,10 +30,10 @@ export function LedgerPageSkeleton({ activeTab = "stream" }: { activeTab?: Ledge
       </header>
 
       <main className="relative z-content w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4">
-        {/* Tabs skeleton - matches actual TabsList */}
-        <div className="w-full grid grid-cols-4 gap-1 bg-surface2 p-1 rounded-lg mb-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-8 bg-surface rounded animate-pulse" />
+        {/* Header navigation skeleton - includes the centered new-record action */}
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem_minmax(0,1fr)_minmax(0,1fr)] gap-1 rounded-lg bg-surface2 p-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="min-h-11 rounded-md bg-surface animate-pulse" />
           ))}
         </div>
 

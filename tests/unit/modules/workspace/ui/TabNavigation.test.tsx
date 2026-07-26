@@ -1,63 +1,56 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Tabs } from "@/components/ui/tabs";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 
 describe("TabNavigation", () => {
-  it("renders all four top-level tabs with accessible labels", async () => {
+  it("renders the four destinations with the new-record action in the middle", async () => {
     const user = userEvent.setup();
     const onTabChange = vi.fn();
+    const onOpenInput = vi.fn();
 
     render(
-      <Tabs value="stream">
-        <TabNavigation activeTab="stream" onTabChange={onTabChange} />
-      </Tabs>
+      <TabNavigation
+        activeTab="stream"
+        onTabChange={onTabChange}
+        onOpenInput={onOpenInput}
+      />
     );
 
-    expect(screen.getByRole("tab", { name: "流水" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "明细" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "统计" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "流水" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "明细" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "统计" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "统计" }));
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(["流水", "明细", "", "统计", "设置"]);
 
+    await user.click(screen.getByRole("button", { name: "统计" }));
     expect(onTabChange).toHaveBeenCalledWith("stats");
+
+    await user.click(screen.getByRole("button", { name: /记一笔|new record/i }));
+    expect(onOpenInput).toHaveBeenCalledOnce();
   });
 
-  it("calls onTabIntent on pointer enter for inactive tabs", async () => {
+  it("calls onTabIntent on pointer enter and focus for inactive destinations", async () => {
     const user = userEvent.setup();
-    const onTabChange = vi.fn();
     const onTabIntent = vi.fn();
 
     render(
-      <Tabs value="stream">
-        <TabNavigation activeTab="stream" onTabChange={onTabChange} onTabIntent={onTabIntent} />
-      </Tabs>
+      <TabNavigation
+        activeTab="stream"
+        onTabChange={vi.fn()}
+        onOpenInput={vi.fn()}
+        onTabIntent={onTabIntent}
+      />
     );
 
-    const statsTab = screen.getByRole("tab", { name: "统计" });
-    await user.hover(statsTab);
-
+    const statsButton = screen.getByRole("button", { name: "统计" });
+    await user.hover(statsButton);
     expect(onTabIntent).toHaveBeenCalledWith("stats");
 
-    // Verify click navigation still works alongside intent
-    await user.click(statsTab);
-    expect(onTabChange).toHaveBeenCalledWith("stats");
-  });
-
-  it("calls onTabIntent on focus for inactive tabs", async () => {
-    const onTabIntent = vi.fn();
-
-    render(
-      <Tabs value="stream">
-        <TabNavigation activeTab="stream" onTabChange={vi.fn()} onTabIntent={onTabIntent} />
-      </Tabs>
-    );
-
-    const detailsTab = screen.getByRole("tab", { name: "明细" });
-    detailsTab.focus();
-
+    const detailsButton = screen.getByRole("button", { name: "明细" });
+    detailsButton.focus();
     expect(onTabIntent).toHaveBeenCalledWith("details");
   });
 });

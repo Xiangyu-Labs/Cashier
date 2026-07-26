@@ -1,11 +1,10 @@
 "use client";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
-import { TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DetailsTabSkeleton,
@@ -144,26 +143,12 @@ export function LedgerPageClient({
     handleInputDialogChange,
   } = useLedgerDialogState();
 
-  // Wire real handlers into the ShellController so the shell's header
-  // buttons (open input, needs-attention preset, in-progress preset) work
-  // once this component mounts.
-  const { setOpenInput, setNeedsAttention, setInProgress } = useShellController();
-
-  const handleNeedsAttention = useCallback(
-    () => applyStreamStatusPreset("needs_attention"),
-    [applyStreamStatusPreset]
-  );
-
-  const handleInProgress = useCallback(
-    () => applyStreamStatusPreset("in_progress"),
-    [applyStreamStatusPreset]
-  );
+  // Wire the real new-record handler into the shell once this component mounts.
+  const { setOpenInput } = useShellController();
 
   useEffect(() => {
     setOpenInput(() => () => setIsInputOpen(true));
-    setNeedsAttention(() => handleNeedsAttention);
-    setInProgress(() => handleInProgress);
-  }, [setOpenInput, setNeedsAttention, setInProgress, setIsInputOpen, handleNeedsAttention, handleInProgress]);
+  }, [setOpenInput, setIsInputOpen]);
 
   if (ledger == null) {
     return (
@@ -177,7 +162,7 @@ export function LedgerPageClient({
     <>
       {/* Only mount the active tab — inactive tabs load lazily */}
       {activeTab === "stream" && (
-        <TabsContent value="stream" className="mt-0">
+        <div className="mt-0">
           <LedgerEntriesTab
             ledgerId={ledgerId}
             categories={categories.length > 0 ? categories : []}
@@ -189,11 +174,11 @@ export function LedgerPageClient({
             onApplyPreset={applyStreamStatusPreset}
             statusSummaryRef={statusSummaryRef}
           />
-        </TabsContent>
+        </div>
       )}
 
       {activeTab === "details" && (
-        <TabsContent value="details" className="mt-0">
+        <div className="mt-0">
           <DeferredFeatureMessages feature="details" locale={locale} fallback={<DetailsTabSkeleton />}>
             <DetailsTab
               ledgerId={ledgerId}
@@ -204,11 +189,11 @@ export function LedgerPageClient({
               advancedFilters={advancedFilters}
             />
           </DeferredFeatureMessages>
-        </TabsContent>
+        </div>
       )}
 
       {activeTab === "stats" && (
-        <TabsContent value="stats" className="mt-0">
+        <div className="mt-0">
           <DeferredFeatureMessages feature="stats" locale={locale} fallback={<StatsTabSkeleton />}>
             <StatsTab
               ledgerId={ledgerId}
@@ -218,11 +203,11 @@ export function LedgerPageClient({
               {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
             />
           </DeferredFeatureMessages>
-        </TabsContent>
+        </div>
       )}
 
       {activeTab === "settings" && (
-        <TabsContent value="settings" className="mt-0">
+        <div className="mt-0">
           <DeferredFeatureMessages feature="settings" locale={locale} fallback={<SettingsTabSkeleton />}>
             <SettingsTab
               ledgerId={ledgerId}
@@ -231,7 +216,7 @@ export function LedgerPageClient({
               {...(userEmail !== undefined ? { userEmail } : {})}
             />
           </DeferredFeatureMessages>
-        </TabsContent>
+        </div>
       )}
 
       <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>

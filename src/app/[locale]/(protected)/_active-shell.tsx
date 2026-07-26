@@ -1,7 +1,6 @@
 "use client";
 import { useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Tabs } from "@/components/ui/tabs";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { useLedgerTabs } from "@/modules/workspace/hooks";
@@ -23,7 +22,7 @@ interface ActiveShellProps {
  * the provider) and the LedgerPageClient (deep in children) can access
  * the same context. The header's "+" button and status-preset buttons
  * start as no-ops; LedgerPageClient registers the real handlers via
- * setOpenInput/setNeedsAttention/setInProgress once it mounts.
+ * setOpenInput once it mounts.
  */
 export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
   return (
@@ -33,10 +32,10 @@ export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
   );
 }
 
-function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
+function ActiveShellInner({ children }: ActiveShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { onOpenInput, onNeedsAttention, onInProgress } = useShellController();
+  const { onOpenInput } = useShellController();
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.
@@ -58,28 +57,16 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
 
   return (
     <AppShell
-      ledgerId={ledgerId}
-      onOpenInput={onOpenInput}
-      onNeedsAttention={onNeedsAttention}
-      onInProgress={onInProgress}
+      navigation={
+        <TabNavigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onOpenInput={onOpenInput}
+          onTabIntent={preloadTab}
+        />
+      }
     >
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <div className="mx-auto flex w-full max-w-4xl justify-center px-2 md:justify-start md:px-0">
-          <TabNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            onTabIntent={preloadTab}
-          />
-        </div>
-
-        {/*
-         * The children are the inner Suspense boundary wrapping
-         * ActiveContent -> LedgerPageClient (tab content + dialogs).
-         * This allows the shell (header, tabs) to render before
-         * the heavy bootstrap queries complete.
-         */}
-        {children}
-      </Tabs>
+      {children}
     </AppShell>
   );
 }
