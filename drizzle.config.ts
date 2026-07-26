@@ -2,25 +2,24 @@ import { defineConfig } from "drizzle-kit";
 import fs from "fs";
 import path from "path";
 
-function loadEnvLocal() {
-  try {
-    const envLocalPath = path.resolve(process.cwd(), ".env.local");
-    if (fs.existsSync(envLocalPath)) {
-      const envLocal = fs.readFileSync(envLocalPath, "utf8");
-      const dbUrlMatch = envLocal.match(/^DATABASE_URL=(.+)$/m);
-      if (dbUrlMatch) {
-        const databaseUrl = dbUrlMatch[1];
-        if (databaseUrl != null) {
-          process.env.DATABASE_URL = databaseUrl.trim();
-        }
+function loadLocalDatabaseUrl() {
+  if (process.env.DATABASE_URL != null) return;
+  for (const filename of [".env.local", ".env"]) {
+    try {
+      const envPath = path.resolve(process.cwd(), filename);
+      if (!fs.existsSync(envPath)) continue;
+      const match = fs.readFileSync(envPath, "utf8").match(/^DATABASE_URL=(.+)$/m);
+      if (match?.[1] != null) {
+        process.env.DATABASE_URL = match[1].trim().replace(/^(['"])(.*)\1$/, "$2");
+        return;
       }
+    } catch (error) {
+      console.warn(`Failed to load DATABASE_URL from ${filename}:`, error);
     }
-  } catch (error) {
-    console.warn("Failed to load .env.local:", error);
   }
 }
 
-loadEnvLocal();
+loadLocalDatabaseUrl();
 
 export default defineConfig({
   schema: [
@@ -34,6 +33,6 @@ export default defineConfig({
   out: "./src/persistence/postgres-migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL ?? "",
+    url: process.env.DATABASE_URL ?? "",
   },
 });

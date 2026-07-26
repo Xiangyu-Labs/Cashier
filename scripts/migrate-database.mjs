@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 function loadLocalEnvironment() {
-  for (const filename of [".env.local", ".env.neon.local"]) {
+  for (const filename of [".env.local", ".env"]) {
     const envPath = path.resolve(process.cwd(), filename);
     if (!existsSync(envPath)) continue;
     for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
@@ -19,21 +19,18 @@ function loadLocalEnvironment() {
 
 async function main() {
   loadLocalEnvironment();
-  const configuredUrl = process.env.DATABASE_MIGRATION_URL ?? process.env.NEON_DATABASE_URL;
-  const connectionString = configuredUrl?.replace("-pooler.", ".");
+  const connectionString = process.env.DATABASE_URL;
   if (connectionString == null || !/^postgres(ql)?:\/\//.test(connectionString)) {
-    throw new Error("DATABASE_MIGRATION_URL must be a direct PostgreSQL connection URL");
+    throw new Error("DATABASE_URL must be a PostgreSQL connection URL");
   }
   const client = new pg.Client({ connectionString });
   await client.connect();
   try {
-    await client.query("SELECT pg_advisory_lock($1)", [0x43415348]);
     await migrate(drizzle(client), {
       migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
     });
     console.log(JSON.stringify({ mode: "migrate", database: "postgresql", status: "complete" }));
   } finally {
-    await client.query("SELECT pg_advisory_unlock($1)", [0x43415348]).catch(() => undefined);
     await client.end();
   }
 }

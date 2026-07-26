@@ -7,16 +7,15 @@ operations; the application container does not run either operation at startup.
 ## Before The Window
 
 1. Build and test the exact commit that will be released.
-2. Confirm the Neon pooled URL is available for `DATABASE_URL`.
-3. Confirm `.env.neon.local` contains `NEON_DATABASE_URL` or set a direct
-   `DATABASE_MIGRATION_URL` for the migration commands.
-4. Run the read-only source preflight:
+2. Confirm the Neon URL is available for `DATABASE_URL`; application and migration commands use
+   this same variable.
+3. Run the read-only source preflight:
 
    ```sh
    npm run db:migrate:neon
    ```
 
-5. Confirm the reported missing-file count is zero and record the source fingerprint and counts.
+4. Confirm the reported missing-file count is zero and record the source fingerprint and counts.
 
 ## Maintenance Window
 
