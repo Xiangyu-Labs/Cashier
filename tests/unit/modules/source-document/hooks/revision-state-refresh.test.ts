@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
+  initRefreshCoordinator,
   isRefreshableRevisionState,
   RefreshCoordinator,
   setGlobalCoordinator,
@@ -86,6 +87,7 @@ describe("revision state refresh", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   // Shared no-op refresh callback for tests
@@ -226,38 +228,46 @@ describe("revision state refresh", () => {
   });
 
   it("refresh proceeds as fallback when local storage reads work but writes fail", async () => {
-    const env = createEnvironment();
-    env.environment.acquireLeadership = async (_leaseMs) => false;
-    // Simulate: getItem works, setItem fails (storage-quota / privacy-restricted)
-    env.environment.isLeadershipAvailable = () => {
-      try {
-        // setItem throws — simulate quota/security restriction
-        const PROBE_KEY = "__cashier_leadership_probe__";
-        localStorage.setItem(PROBE_KEY, "1");
-        localStorage.removeItem(PROBE_KEY);
-        return true;
-      } catch {
-        return false;
+    const getItem = vi.fn(() => null);
+    const setItem = vi.fn(() => {
+      throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+    });
+    vi.stubGlobal("localStorage", {
+      getItem,
+      setItem,
+      removeItem: vi.fn(),
+    } as unknown as Storage);
+    vi.stubGlobal(
+      "BroadcastChannel",
+      class {
+        onmessage: ((event: MessageEvent) => void) | null = null;
+        postMessage() {}
       }
-    };
-    const coordinator = new RefreshCoordinator(env.environment);
-    setGlobalCoordinator(coordinator);
+    );
+
+    const coordinator = initRefreshCoordinator("storage-write-failure");
 
     let refreshCalled = false;
-    coordinator.subscribe("test", async () => {
-      refreshCalled = true;
-      return { changed: false };
-    });
-    await flushTimers();
+    try {
+      coordinator.subscribe("test", async () => {
+        refreshCalled = true;
+        return { changed: false };
+      });
+      await flushTimers();
 
-    expect(coordinator.getIsLeader()).toBe(false);
+      expect(coordinator.getIsLeader()).toBe(false);
 
-    // Advance timers to trigger refresh
-    await vi.advanceTimersByTimeAsync(20000);
-    await flushTimers();
+      // Advance timers to trigger refresh
+      await vi.advanceTimersByTimeAsync(20000);
+      await flushTimers();
 
-    // Should have polled even though not leader, because leadership is unavailable
-    expect(refreshCalled).toBe(true);
+      expect(getItem).toHaveBeenCalled();
+      expect(setItem).toHaveBeenCalled();
+      // Should have polled even though not leader, because leadership is unavailable
+      expect(refreshCalled).toBe(true);
+    } finally {
+      coordinator.destroy();
+    }
   });
 
   it("hidden tabs do not refresh in fallback mode", async () => {
