@@ -1,6 +1,7 @@
 export interface SourceDocumentInputProps {
   ledgerId: string;
   onSuccess?: () => void;
+  onPendingChange?: (pending: boolean) => void;
   mode?: "create" | "retry";
   sourceDocumentId?: string;
   initialData?: {

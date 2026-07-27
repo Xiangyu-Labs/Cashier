@@ -38,10 +38,6 @@ vi.mock("@/modules/source-document/application/queries/get-stream-total", () => 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
   getEnhancedStats: getEnhancedStatsMock,
 }));
-vi.mock("@/modules/source-document/server-actions/expire-processing-timeouts", () => ({
-  expireProcessingTimeouts: vi.fn().mockResolvedValue(0),
-}));
-
 function createAuthorizedLedger() {
   return {
     userId: "user-1",

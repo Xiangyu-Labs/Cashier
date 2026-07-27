@@ -15,7 +15,6 @@ import {
   MAX_FILTER_SIGNATURES,
 } from "@/modules/source-document/contract-refresh";
 import { ValidationError } from "@/lib/errors";
-import { expireProcessingTimeouts } from "./expire-processing-timeouts";
 
 // ---------------------------------------------------------------------------
 // I4: Zod schema for validating refresh request input
@@ -101,8 +100,6 @@ export const getStreamRefreshAction = withLedgerAccess(
     const signatures = deduplicateSignatures(parsed.data.signatures);
     // I4: Deduplicate watched IDs by id
     const watchedIds = deduplicateWatchedIds(parsed.data.watchedIds);
-
-    await expireProcessingTimeouts(ledgerId);
 
     // Schedule processing recovery alongside refresh
     after(() => scheduleProcessingRecovery(ledgerId));

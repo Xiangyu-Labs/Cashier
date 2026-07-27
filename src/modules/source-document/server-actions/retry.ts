@@ -7,7 +7,6 @@ import { retrySourceDocument } from "@/modules/source-document/application/use-c
 import type {
   RetrySourceDocumentReconciliationDto,
   RetrySourceDocumentResponseDto,
-  SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
 import {
   retrySourceDocumentInputSchema,
@@ -16,7 +15,7 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
-import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { buildAuthoritativeReconciliation } from "./reconciliation";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -52,36 +51,14 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        {
-          id: sourceDocumentId,
+      return {
+        ...result,
+        reconciliation: await buildAuthoritativeReconciliation(
+          operationId,
           ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "processing",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
-        now,
-        true,
-        true
-      );
-      return { ...result, reconciliation: entity };
+          sourceDocumentId
+        ),
+      };
     }
 
     return result;
@@ -129,36 +106,14 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        {
-          id: sourceDocumentId,
+      return {
+        ...result,
+        reconciliation: await buildAuthoritativeReconciliation(
+          operationId,
           ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "processing",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
-        now,
-        true,
-        true
-      );
-      return { ...result, reconciliation: entity };
+          sourceDocumentId
+        ),
+      };
     }
 
     return result;

@@ -17,10 +17,13 @@ interface ActiveTabProps {
 }
 
 export async function ActiveTab({ searchParams }: ActiveTabProps) {
-  const locale = await getLocale();
+  const localePromise = getLocale();
+  const contextPromise = resolveAuthenticatedHome();
+  const locale = await localePromise;
+  const messagesPromise = getMessages({ locale });
   let context;
   try {
-    context = await resolveAuthenticatedHome();
+    context = await contextPromise;
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       redirect({ href: "/login", locale });
@@ -34,7 +37,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   const periodParams = parsePeriodFromSearchParams(searchParams);
   const advancedFilters = readAdvancedFilters(searchParams);
 
-  const allMessages = await getMessages({ locale });
+  const allMessages = await messagesPromise;
   const streamMessages = pickMessages(allMessages, [
     ...FEATURE_MESSAGES.shell,
     ...FEATURE_MESSAGES.stream,

@@ -54,7 +54,7 @@ export function supportedSourceDocumentActions(input: {
   }
 
   if (input.pendingOutcome === "processing") {
-    return ["delete"];
+    return ["retry", "edit_retry", "delete"];
   }
 
   if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
@@ -348,6 +348,7 @@ export interface SourceDocumentSubmissionPort {
     storedFileIds?: readonly StoredFileId[];
     entryDate?: string | null;
     inheritEvidence?: boolean;
+    supersedeProcessing?: boolean;
   }): Promise<PendingRevisionSubmissionContract>;
 }
 

@@ -34,7 +34,7 @@ export function TabNavigation({
   return (
     <nav
       aria-label={t("navigation")}
-      className="grid w-full max-w-xl grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-1 rounded-lg border border-border bg-surface2 p-1"
+      className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem_minmax(0,1fr)_minmax(0,1fr)] items-stretch"
     >
       {TAB_CONFIG.slice(0, 2).map(({ value, icon: Icon, labelKey }) => (
         <NavButton
@@ -52,7 +52,7 @@ export function TabNavigation({
       <button
         type="button"
         onClick={onOpenInput}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface2 active:scale-[0.98]"
+        className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]"
         aria-label={t("newRecord")}
       >
         <Plus className="h-5 w-5" aria-hidden="true" />
@@ -91,11 +91,11 @@ function NavButton({ active, icon: Icon, label, onClick, onIntent }: NavButtonPr
       onFocus={onIntent}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-md px-1.5 text-xs font-medium transition-colors sm:px-2 sm:text-sm",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface2",
+        "relative inline-flex h-full min-w-0 items-center justify-center gap-1 px-1 text-xs font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent sm:px-2 sm:text-sm",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         active
-          ? "bg-surface text-text shadow-sm ring-1 ring-border"
-          : "text-muted-foreground hover:bg-surface/60 hover:text-text"
+          ? "bg-surface2/60 text-text after:bg-primary"
+          : "text-muted-foreground hover:bg-surface2/40 hover:text-text"
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

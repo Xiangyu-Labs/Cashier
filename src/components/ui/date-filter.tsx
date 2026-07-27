@@ -21,6 +21,7 @@ interface DateFilterProps {
   showClear?: boolean;
   /** Whether to truncate overflow text with ellipsis */
   truncate?: boolean;
+  disabled?: boolean;
 }
 
 export function DateFilter({
@@ -31,6 +32,7 @@ export function DateFilter({
   size = "default",
   showClear = true,
   truncate = true,
+  disabled = false,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
   const format = useFormatter();
@@ -63,6 +65,7 @@ export function DateFilter({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          disabled={disabled}
           variant="outline"
           size={isSmall ? "sm" : "default"}
           className={cn(

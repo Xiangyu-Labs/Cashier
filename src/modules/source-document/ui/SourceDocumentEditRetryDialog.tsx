@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "./SourceDocumentInput";
 import { useTranslations } from "next-intl";
@@ -27,6 +27,7 @@ export function SourceDocumentEditRetryDialog({
   onSuccess,
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasStoredFiles = (sourceDocument.files?.length ?? 0) > 0;
   const hasText = sourceDocument.text != null && sourceDocument.text !== "";
@@ -53,8 +54,21 @@ export function SourceDocumentEditRetryDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (!next && isSubmitting ? undefined : onOpenChange(next))}
+    >
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        aria-describedby={undefined}
+        hideCloseButton={isSubmitting}
+        onEscapeKeyDown={(event) => {
+          if (isSubmitting) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (isSubmitting) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
@@ -66,6 +80,7 @@ export function SourceDocumentEditRetryDialog({
             mode="retry"
             sourceDocumentId={sourceDocument.id}
             initialData={initialData}
+            onPendingChange={setIsSubmitting}
             onSuccess={() => {
               onOpenChange(false);
               onSuccess?.();

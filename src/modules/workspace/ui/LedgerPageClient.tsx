@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,7 +22,7 @@ import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
-import { initRefreshCoordinator } from "@/modules/source-document/hooks/revision-state-refresh";
+import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
 
 // Dynamic imports for inactive tabs — keeps their dependencies
 // (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
@@ -81,7 +81,15 @@ interface LedgerPageClientProps {
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
 
-export function LedgerPageClient({
+export function LedgerPageClient({ ...props }: LedgerPageClientProps) {
+  return (
+    <RevisionStateRefreshProvider ledgerId={props.ledgerId}>
+      <LedgerPageClientContent {...props} />
+    </RevisionStateRefreshProvider>
+  );
+}
+
+function LedgerPageClientContent({
   ledgerId,
   initialTab,
   initialPeriod,
@@ -130,20 +138,9 @@ export function LedgerPageClient({
 
   const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
 
-  // Initialize the refresh coordinator for this ledger
-  // This enables cross-tab leadership, bounded polling, and cache patches.
-  const queryClient = useQueryClient();
-  const coordinatorRef = useRef<ReturnType<typeof initRefreshCoordinator> | null>(null);
-  useEffect(() => {
-    coordinatorRef.current = initRefreshCoordinator(ledgerId, queryClient);
-    return () => {
-      coordinatorRef.current?.destroy();
-      coordinatorRef.current = null;
-    };
-  }, [ledgerId, queryClient]);
-
   const { isInputOpen, setIsInputOpen, inputMode, setInputMode, handleInputDialogChange } =
     useLedgerDialogState();
+  const [isInputSubmitting, setIsInputSubmitting] = useState(false);
 
   // Wire the real new-record handler into the shell once this component mounts.
   const { setOpenInput } = useShellController();
@@ -231,10 +228,23 @@ export function LedgerPageClient({
         </div>
       )}
 
-      <Dialog open={isInputOpen} onOpenChange={handleInputDialogChange}>
+      <Dialog
+        open={isInputOpen}
+        onOpenChange={(open) => {
+          if (!open && isInputSubmitting) return;
+          handleInputDialogChange(open);
+        }}
+      >
         <DialogContent
           className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-[20%] sm:w-full sm:max-w-md sm:rounded-lg sm:p-6"
           aria-describedby={undefined}
+          hideCloseButton={isInputSubmitting}
+          onEscapeKeyDown={(event) => {
+            if (isInputSubmitting) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (isInputSubmitting) event.preventDefault();
+          }}
         >
           <DialogHeader>
             <DialogTitle>{t("newRecord")}</DialogTitle>
@@ -266,7 +276,11 @@ export function LedgerPageClient({
           </div>
 
           {inputMode === "ai" ? (
-            <SourceDocumentInput ledgerId={ledgerId} onSuccess={() => setIsInputOpen(false)} />
+            <SourceDocumentInput
+              ledgerId={ledgerId}
+              onPendingChange={setIsInputSubmitting}
+              onSuccess={() => setIsInputOpen(false)}
+            />
           ) : (
             <QuickEntryForm
               ledgerId={ledgerId}

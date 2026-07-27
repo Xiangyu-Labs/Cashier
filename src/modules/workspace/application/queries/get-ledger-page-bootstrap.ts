@@ -22,7 +22,6 @@ import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { scheduleProcessingRecovery } from "@/modules/source-document/server-actions/schedule-processing-recovery";
-import { expireProcessingTimeouts } from "@/modules/source-document/server-actions/expire-processing-timeouts";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
@@ -65,8 +64,6 @@ export async function getLedgerPageBootstrap(
       throw error;
     }
   }
-
-  await expireProcessingTimeouts(input.ledgerId);
 
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);

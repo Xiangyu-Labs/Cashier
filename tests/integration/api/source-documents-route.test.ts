@@ -121,12 +121,13 @@ describe("API v1 source-documents route", () => {
   });
 
   it("POST /api/v1/source-documents returns 201 for valid credential request", async () => {
+    const image = await validJpegBase64();
     const request = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${credentialKey}`,
       },
-      body: JSON.stringify({ text: "Route API POST test document" }),
+      body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
     });
 
     const response = await POST(request);
@@ -146,6 +147,7 @@ describe("API v1 source-documents route", () => {
   });
 
   it("creates one document, revision, and processing intent for concurrent idempotent requests", async () => {
+    const image = await validJpegBase64();
     const makeRequest = () =>
       new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
@@ -153,7 +155,7 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
           "Idempotency-Key": "same-ingestion-request",
         },
-        body: JSON.stringify({ text: "Concurrent API ingestion" }),
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
       });
 
     const [first, second] = await Promise.all([POST(makeRequest()), POST(makeRequest())]);
@@ -189,7 +191,6 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
         },
         body: JSON.stringify({
-          text: "Receipt with inline image",
           images: [{ data: fakeJpegBase64, mimeType: "image/jpeg" }],
         }),
       });
@@ -248,7 +249,6 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
         },
         body: JSON.stringify({
-          text: "Receipt with data URL image",
           images: [{ data: `data:image/png;base64,${pngBase64}`, mimeType: "image/png" }],
         }),
       });
@@ -279,7 +279,6 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
         },
         body: JSON.stringify({
-          text: "Bad image",
           images: [{ data: "!!!invalid-base64!!!", mimeType: "image/jpeg" }],
         }),
       });
@@ -287,7 +286,48 @@ describe("API v1 source-documents route", () => {
       const response = await POST(request);
       expect(response.status).toBe(400);
       const body = await response.json();
-      expect(body.error).toBeDefined();
+      expect(body.error.details.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: ["images", 0, "data"] })])
+      );
+    });
+
+    it("normalizes an RFC3339 entryDate without changing image ingestion", async () => {
+      const image = await validJpegBase64();
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({
+          images: [{ data: image, mimeType: "image/jpeg" }],
+          entryDate: "2026-07-27T23:30:00+08:00",
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(201);
+      const body = await response.json();
+      const document = await getTestDb().query.sourceDocuments.findFirst({
+        where: eq(sourceDocuments.id, body.sourceDocumentId),
+      });
+      expect(document?.entryDate).toBe("2026-07-27");
+    });
+
+    it("reports an invalid entryDate separately from valid image data", async () => {
+      const image = await validJpegBase64();
+      const request = new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({
+          images: [{ data: image, mimeType: "image/jpeg" }],
+          entryDate: "27/07/2026",
+        }),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.error.details.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: ["entryDate"] })])
+      );
     });
 
     it("rejects data URL MIME mismatch with 400", async () => {
@@ -297,7 +337,6 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
         },
         body: JSON.stringify({
-          text: "MIME mismatch",
           images: [{ data: "data:image/png;base64,iVBORw0KGgo=", mimeType: "image/jpeg" }],
         }),
       });
@@ -313,7 +352,6 @@ describe("API v1 source-documents route", () => {
           Authorization: `Bearer ${credentialKey}`,
         },
         body: JSON.stringify({
-          text: "Unsupported MIME",
           images: [{ data: "dGVzdA==", mimeType: "image/tiff" }],
         }),
       });
@@ -332,7 +370,6 @@ describe("API v1 source-documents route", () => {
             "Idempotency-Key": "same-image-ingestion-request",
           },
           body: JSON.stringify({
-            text: "Concurrent image ingestion",
             images: [{ data: fakeJpegBase64, mimeType: "image/jpeg" }],
           }),
         });

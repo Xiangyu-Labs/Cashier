@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type {
   PendingRevisionSubmissionContract,
   SourceDocumentSubmissionPort,
@@ -35,6 +35,7 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
               eq(sourceDocuments.id, input.sourceDocumentId)
             )
           )
+          .for("update")
           .then((rows) => rows[0]);
         const evidenceRevisionId = document?.pendingRevisionId ?? document?.activeRevisionId;
 
@@ -69,6 +70,63 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
               )
               .orderBy(asc(revisionFiles.position))
           ).map((file) => file.id);
+        }
+
+        if (input.supersedeProcessing === true && document?.pendingRevisionId != null) {
+          const now = new Date();
+          const supersededRevision = await tx
+            .update(sourceDocumentRevisions)
+            .set({ outcome: "abandoned", finalizedAt: now })
+            .where(
+              and(
+                eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+                eq(sourceDocumentRevisions.id, document.pendingRevisionId),
+                eq(sourceDocumentRevisions.outcome, "processing")
+              )
+            )
+            .returning({ id: sourceDocumentRevisions.id })
+            .then((rows) => rows[0]);
+
+          if (supersededRevision != null) {
+            await tx
+              .update(processingOutbox)
+              .set({
+                status: "failed",
+                completedAt: now,
+                claimToken: null,
+                claimExpiresAt: null,
+              })
+              .where(
+                and(
+                  eq(processingOutbox.revisionId, supersededRevision.id),
+                  inArray(processingOutbox.status, ["pending", "claimed"])
+                )
+              );
+            await tx
+              .update(processingAttempts)
+              .set({
+                status: "failed",
+                completedAt: now,
+                retryClassification: "permanent",
+                diagnosticCode: "superseded_by_retry",
+              })
+              .where(
+                and(
+                  eq(processingAttempts.revisionId, supersededRevision.id),
+                  inArray(processingAttempts.status, ["queued", "processing"])
+                )
+              );
+            await tx
+              .update(sourceDocuments)
+              .set({ pendingRevisionId: null, updatedAt: now })
+              .where(
+                and(
+                  eq(sourceDocuments.ledgerId, input.ledgerId),
+                  eq(sourceDocuments.id, input.sourceDocumentId),
+                  eq(sourceDocuments.pendingRevisionId, supersededRevision.id)
+                )
+              );
+          }
         }
       }
 

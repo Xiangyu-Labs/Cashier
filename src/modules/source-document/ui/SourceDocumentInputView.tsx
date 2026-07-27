@@ -9,9 +9,10 @@ import {
   SourceDocumentImageModal,
   type SourceDocumentModalImage,
 } from "./SourceDocumentImageModal";
+import type { SourceDocumentSubmissionProgress } from "../hooks/source-document-submission-upload";
 
 const imageActionButtonClassName =
-  "absolute z-10 flex h-11 w-11 items-center justify-center rounded-full text-white transition-opacity opacity-100 sm:h-7 sm:w-7 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
+  "absolute right-0 top-0 z-10 flex h-7 w-7 -translate-y-1/4 translate-x-1/4 items-center justify-center rounded-full text-white transition-opacity after:absolute after:h-11 after:w-11 after:content-[''] opacity-100 [@media(any-hover:hover)]:opacity-0 [@media(any-hover:hover)]:group-hover:opacity-100";
 
 export interface SourceDocumentInputViewMessages {
   placeholder: string;
@@ -21,6 +22,10 @@ export interface SourceDocumentInputViewMessages {
   delete: string;
   sendingStatus: string;
   entryDate: string;
+  preparing: string;
+  uploading: string;
+  finalizing: string;
+  submitting: string;
 }
 
 export interface SourceDocumentInputViewProps {
@@ -31,6 +36,7 @@ export interface SourceDocumentInputViewProps {
   selectedImageIndex: number | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isPending: boolean;
+  progress: SourceDocumentSubmissionProgress | null;
   canSubmit: boolean;
   messages: SourceDocumentInputViewMessages;
   onEntryDateChange: (date: Date) => void;
@@ -52,6 +58,7 @@ export function SourceDocumentInputView({
   selectedImageIndex,
   fileInputRef,
   isPending,
+  progress,
   canSubmit,
   messages,
   onEntryDateChange,
@@ -89,9 +96,10 @@ export function SourceDocumentInputView({
                 type="button"
                 aria-label={messages.delete}
                 title={messages.delete}
-                className={`${imageActionButtonClassName} right-1 top-1 bg-danger text-xs`}
+                className={`${imageActionButtonClassName} bg-danger text-xs`}
+                disabled={isPending}
               >
-                <X className="h-3 w-3" />
+                <X className="h-2.5 w-2.5" />
               </button>
             </div>
           ))}
@@ -107,6 +115,7 @@ export function SourceDocumentInputView({
         className="resize-none"
         rows={5}
         autoFocus
+        disabled={isPending}
       />
 
       <DateFilter
@@ -115,7 +124,10 @@ export function SourceDocumentInputView({
         placeholder={messages.entryDate}
         size="sm"
         className="w-full"
+        disabled={isPending}
       />
+
+      {progress != null ? <SubmissionProgress progress={progress} messages={messages} /> : null}
 
       <div className="flex items-center gap-2">
         <input
@@ -127,7 +139,13 @@ export function SourceDocumentInputView({
           aria-label={messages.image}
           className="hidden"
         />
-        <Button type="button" variant="outline" size="sm" onClick={onSelectImages}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onSelectImages}
+          disabled={isPending}
+        >
           <Camera className="mr-2 h-4 w-4" />
           {messages.image}
         </Button>
@@ -164,6 +182,39 @@ export function SourceDocumentInputView({
           }
         }}
       />
+    </div>
+  );
+}
+
+function SubmissionProgress({
+  progress,
+  messages,
+}: {
+  progress: SourceDocumentSubmissionProgress;
+  messages: SourceDocumentInputViewMessages;
+}) {
+  const label =
+    progress.phase === "preparing"
+      ? messages.preparing
+      : progress.phase === "uploading"
+        ? messages.uploading
+        : progress.phase === "finalizing"
+          ? messages.finalizing
+          : messages.submitting;
+  const percent = progress.phase === "uploading" ? progress.percent : null;
+
+  return (
+    <div className="space-y-2" aria-live="polite">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>{label}</span>
+        {percent != null ? <span>{percent}%</span> : null}
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface2">
+        <div
+          className={`h-full bg-primary transition-[width] duration-200 ${percent == null ? "w-1/3 animate-pulse" : ""}`}
+          style={percent == null ? undefined : { width: `${percent}%` }}
+        />
+      </div>
     </div>
   );
 }

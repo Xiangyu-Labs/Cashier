@@ -22,7 +22,7 @@ describe("target application contracts", () => {
         activeRevisionId: "revision-1",
         pendingOutcome: "processing",
       })
-    ).toEqual(["delete"]);
+    ).toEqual(["retry", "edit_retry", "delete"]);
   });
 
   it("offers accept/abandon actions when a completed candidate is pending", () => {

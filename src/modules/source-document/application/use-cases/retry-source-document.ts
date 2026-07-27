@@ -37,6 +37,7 @@ export async function retrySourceDocument(
     ledgerId,
     sourceDocumentId,
     inheritEvidence: true,
+    supersedeProcessing: true,
     ...(input?.text === undefined ? {} : { submittedText: input.text }),
     ...(input?.storedFileIds === undefined ? {} : { storedFileIds: input.storedFileIds }),
     ...(input?.entryDate === undefined ? {} : { entryDate: input.entryDate }),

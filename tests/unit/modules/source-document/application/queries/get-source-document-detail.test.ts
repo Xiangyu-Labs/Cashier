@@ -25,13 +25,6 @@ vi.mock("@/modules/ledger/access", () => ({ requireLedgerAccess: requireLedgerAc
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
-vi.mock(
-  "@/modules/source-document/application/use-cases/expire-timed-out-processing-intents",
-  () => ({
-    expireTimedOutProcessingIntents: vi.fn().mockResolvedValue(0),
-  })
-);
-
 import { getSourceDocumentDetail } from "@/modules/source-document/application/queries/get-source-document-detail";
 
 describe("getSourceDocumentDetail", () => {

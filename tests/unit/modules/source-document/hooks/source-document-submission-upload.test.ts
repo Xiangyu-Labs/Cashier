@@ -168,8 +168,8 @@ describe("source-document submission uploads", () => {
     expect(finalize).not.toHaveBeenCalled();
   });
 
-  it("preserves the browser receiver when using the default fetch dependency", async () => {
-    createUploadPlanActionMock.mockResolvedValue({
+  it("reports aggregate byte progress through the upload transport", async () => {
+    const createPlan = vi.fn().mockResolvedValue({
       id: "session-default",
       expiresAt: "2026-07-15T01:00:00.000Z",
       finalizationToken: "finalize-default",
@@ -179,23 +179,32 @@ describe("source-document submission uploads", () => {
         { id: "target-default", method: "PUT", url: "target:default", requiredHeaders: {} },
       ],
     });
-    finalizeUploadActionMock.mockResolvedValue(["file-default"]);
-    const receiverSensitiveFetch = vi.fn(function (this: typeof globalThis) {
-      if (this !== globalThis) throw new TypeError("Illegal invocation");
-      return Promise.resolve(new Response(null, { status: 201 }));
-    });
-    vi.stubGlobal("fetch", receiverSensitiveFetch);
+    const finalize = vi.fn().mockResolvedValue(["file-default"]);
+    const upload = vi.fn(
+      async (_target, bytes: ArrayBuffer, onProgress: (loaded: number) => void) => {
+        onProgress(bytes.byteLength);
+      }
+    );
+    const progress = vi.fn();
 
     await expect(
-      uploadSourceDocumentSubmissionImages("ledger-1", {
-        entryDate: "2026-07-15",
-        images: [{ data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" }],
-      })
+      uploadSourceDocumentSubmissionImages(
+        "ledger-1",
+        {
+          entryDate: "2026-07-15",
+          images: [{ data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" }],
+        },
+        { createPlan, finalize, fetch: vi.fn(), upload },
+        progress
+      )
     ).resolves.toEqual({
       entryDate: "2026-07-15",
       storedFileIds: ["file-default"],
     });
 
-    expect(receiverSensitiveFetch).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(progress).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: "uploading", loadedBytes: 1, totalBytes: 1, percent: 100 })
+    );
   });
 });

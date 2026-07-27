@@ -24,7 +24,7 @@ import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
 } from "@/modules/source-document/actions";
-import { notifyNewSubmission } from "@/modules/source-document/hooks/revision-state-refresh";
+import { useNotifyRevisionRefresh } from "@/modules/source-document/hooks/revision-state-refresh";
 import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
 import {
   applyOptimisticUpsert,
@@ -71,6 +71,7 @@ export function LedgerEntriesTab({
   const tFilter = useTranslations("EntryFilterPanel");
   const tActions = useTranslations("CandidateAction");
   const queryClient = useQueryClient();
+  const notifyRefresh = useNotifyRevisionRefresh();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId: _layoutGroupId } = useLayoutTransition();
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
@@ -115,51 +116,19 @@ export function LedgerEntriesTab({
   // Transaction-scoped mutations for stream card actions
   const txnManager = getLedgerTransactionManager(ledgerId);
 
-  const retryMutation = useMutation<void, Error, SourceDocument, { operationId: string }>({
+  const retryMutation = useMutation<void, Error, SourceDocument>({
     mutationFn: async (doc) => {
       const operationId = crypto.randomUUID();
       await retrySourceDocumentAction(ledgerId, doc.id, operationId);
     },
-    onMutate: (doc) => {
-      // Capture current entity from stream cache for rollback
-      const matches = getStreamQueryMatches(queryClient, ledgerId);
-      let prevEntity: SourceDocumentListItemDto | null = null;
-      for (const [, data] of matches) {
-        if (!data) continue;
-        for (const page of data.pages) {
-          const found = page.items.find((item) => item.id === doc.id);
-          if (found) {
-            prevEntity = found;
-            break;
-          }
-        }
-        if (prevEntity) break;
-      }
-
-      const op = txnManager.startOperation(ledgerId);
-      op.patches.push({
-        type: "upsert",
-        entityId: doc.id,
-        entity: { ...doc, status: "processing" } as unknown as SourceDocumentListItemDto,
-        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
-      });
-
-      applyOptimisticUpsert(queryClient, ledgerId, {
-        ...doc,
-        status: "processing",
-      } as unknown as SourceDocumentListItemDto);
-      notifyNewSubmission();
-      return { operationId: op.operationId };
-    },
-    onSuccess: (_data, _variables, context) => {
-      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
+    onSuccess: () => {
+      notifyRefresh();
       void queryClient.invalidateQueries({
         predicate: invalidateSourceDocumentStreamTotal(ledgerId),
       });
       toast.success(tActions("retrySuccess"));
     },
-    onError: (_error, _variables, context) => {
-      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
+    onError: () => {
       toast.error(tActions("retryError"));
     },
   });
@@ -317,12 +286,12 @@ export function LedgerEntriesTab({
   // C1: Targeted refresh — uses the bounded refresh path via coordinator
   const handleRefresh = useCallback(async () => {
     // Notify the coordinator of a change — triggers immediate refresh cycle
-    notifyNewSubmission();
+    notifyRefresh();
     // Also refresh the live ledger stats via the actual stream refresh
     if (refresh) {
       await refresh();
     }
-  }, [refresh]);
+  }, [notifyRefresh, refresh]);
 
   const handleToggleSelectionMode = useCallback(() => {
     toggleSelectionMode();

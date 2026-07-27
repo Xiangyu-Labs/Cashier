@@ -13,7 +13,7 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
-import { buildCreateReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { buildAuthoritativeReconciliation } from "./reconciliation";
 
 /**
  * Create a new source document and trigger processing.
@@ -29,7 +29,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     clientSubmissionId?: string
   ): Promise<
     CreateSourceDocumentResponseDto &
-      Partial<{ reconciliation: ReturnType<typeof buildCreateReconciliation> }>
+      Partial<{ reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>> }>
   > => {
     const validated = createSourceDocumentInputSchema.parse(input);
     const payload = omitUndefinedProperties(validated);
@@ -52,21 +52,13 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     after(() => scheduleProcessingRecovery(ledgerId));
 
     if (operationId != null) {
-      // Read authoritative updatedAt from DB (the row was just committed)
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(
-        ledgerId,
-        result.sourceDocumentId
-      );
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
       return {
         ...result,
-        reconciliation: buildCreateReconciliation(
+        reconciliation: await buildAuthoritativeReconciliation(
           operationId,
-          clientSubmissionId,
           ledgerId,
           result.sourceDocumentId,
-          payload.entryDate ?? null,
-          now
+          clientSubmissionId
         ),
       };
     }

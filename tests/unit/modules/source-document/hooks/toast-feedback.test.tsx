@@ -55,6 +55,7 @@ vi.mock("@/modules/source-document/hooks/source-document-optimistic-cache", () =
 
 vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
   notifyNewSubmission: vi.fn(),
+  useNotifyRevisionRefresh: () => vi.fn(),
 }));
 
 function createWrapper() {

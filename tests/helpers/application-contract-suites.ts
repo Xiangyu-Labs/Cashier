@@ -40,7 +40,7 @@ export function applicationContractSuite(
           activeRevisionId: "revision-1",
           pendingOutcome: "processing",
         })
-      ).toEqual(["delete"]);
+      ).toEqual(["retry", "edit_retry", "delete"]);
     });
 
     it("enforces idempotency", async () => {

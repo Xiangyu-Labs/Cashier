@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createSourceDocumentInputSchema,
+  createSourceDocumentInputSchemaV1,
   listSourceDocumentsInputSchema,
   retrySourceDocumentInputSchema,
 } from "@/modules/source-document/contract-schemas";
@@ -34,6 +35,22 @@ describe("contract schema omission semantics", () => {
     expect(parsed.limit).toBe(10);
     expect(parsed.includeEntries).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(parsed, "status")).toBe(false);
+  });
+
+  it("keeps the API v1 Shortcut contract compact and normalizes ISO entry dates", () => {
+    const parsed = createSourceDocumentInputSchemaV1.parse({
+      images: [{ data: "AQ==\n", mimeType: "image/jpeg" }],
+      entryDate: "2026-07-27T23:30:00+08:00",
+    });
+    expect(parsed.entryDate).toBe("2026-07-27");
+    expect(parsed.images).toHaveLength(1);
+
+    expect(() =>
+      createSourceDocumentInputSchemaV1.parse({
+        text: "removed from v1",
+        images: [{ data: "AQ==", mimeType: "image/jpeg" }],
+      })
+    ).toThrow();
   });
 
   it("omits undefined optional keys in ledger list/stats schemas", () => {

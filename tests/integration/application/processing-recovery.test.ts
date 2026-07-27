@@ -4,6 +4,7 @@ import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import {
   PostgresProcessingIntentAdapter,
+  postgresSourceDocumentSubmissionAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
@@ -496,72 +497,50 @@ describe("Processing Recovery", () => {
   });
 });
 
-describe("Processing Timeout", () => {
-  const now = new Date("2026-07-26T00:05:00.000Z");
-
-  async function setIntentCreatedAt(intentId: string, createdAt: string) {
-    await getTestDb()
-      .update(processingOutbox)
-      .set({ createdAt: new Date(createdAt) })
-      .where(eq(processingOutbox.id, intentId));
-  }
-
-  it("expires a processing intent at the configured boundary", async () => {
-    const { ledgerId, intent } = await pendingIntent();
-    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
-    await adapter.dispatch(intent);
-    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:00.000Z");
-
-    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(1);
-
+describe("Processing retry supersession", () => {
+  it("atomically abandons the old revision and invalidates its active claim", async () => {
     const db = getTestDb();
-    const [outbox, attempt, revision] = await Promise.all([
-      db.query.processingOutbox.findFirst({ where: eq(processingOutbox.id, intent.id) }),
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const first = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      ledgerId,
+      submittedText: "Lunch 12.50 CNY",
+    });
+    const processing = new PostgresProcessingIntentAdapter();
+    const oldClaim = await processing.claim(first.intent.id);
+    expect(oldClaim).not.toBeNull();
+
+    const second = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
+      ledgerId,
+      sourceDocumentId: first.document.id,
+      inheritEvidence: true,
+      supersedeProcessing: true,
+    });
+
+    const [document, oldRevision, oldOutbox, oldAttempt] = await Promise.all([
+      db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, first.document.id) }),
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, first.revision.id),
+      }),
+      db.query.processingOutbox.findFirst({ where: eq(processingOutbox.id, first.intent.id) }),
       db.query.processingAttempts.findFirst({
         where: and(
-          eq(processingAttempts.revisionId, intent.revisionId),
+          eq(processingAttempts.revisionId, first.revision.id),
           eq(processingAttempts.attemptNumber, 1)
         ),
       }),
-      db.query.sourceDocumentRevisions.findFirst({
-        where: eq(sourceDocumentRevisions.id, intent.revisionId),
-      }),
     ]);
-    expect(outbox).toMatchObject({ status: "failed", claimToken: null, claimExpiresAt: null });
-    expect(attempt).toMatchObject({
+
+    expect(document?.pendingRevisionId).toBe(second.revision.id);
+    expect(oldRevision?.outcome).toBe("abandoned");
+    expect(oldOutbox?.status).toBe("failed");
+    expect(oldAttempt).toMatchObject({
       status: "failed",
-      retryClassification: "permanent",
-      diagnosticCode: "processing_timeout",
+      diagnosticCode: "superseded_by_retry",
     });
-    expect(revision).toMatchObject({ outcome: "failed", failureCode: "processing_timeout" });
-  });
-
-  it("does not expire an intent before the configured boundary", async () => {
-    const { ledgerId, intent } = await pendingIntent();
-    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
-    await adapter.dispatch(intent);
-    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:01.000Z");
-
-    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(0);
-    const revision = await getTestDb().query.sourceDocumentRevisions.findFirst({
-      where: eq(sourceDocumentRevisions.id, intent.revisionId),
-    });
-    expect(revision?.outcome).toBe("processing");
-  });
-
-  it("revokes an active claim when the absolute timeout is reached", async () => {
-    const { ledgerId, intent } = await pendingIntent();
-    const adapter = new PostgresProcessingIntentAdapter({ now: () => now });
-    await adapter.dispatch(intent);
-    await setIntentCreatedAt(intent.id, "2026-07-26T00:00:00.000Z");
-    const claim = await adapter.claim(intent.id);
-    expect(claim).not.toBeNull();
-
-    await expect(adapter.expireTimedOut(ledgerId, 300, 5)).resolves.toBe(1);
     await expect(
-      adapter.complete({
-        intentId: intent.id,
-        claimToken: claim!.claimToken,
+      processing.complete({
+        intentId: first.intent.id,
+        claimToken: oldClaim!.claimToken,
         outcome: "completed",
       })
     ).resolves.toBe(false);

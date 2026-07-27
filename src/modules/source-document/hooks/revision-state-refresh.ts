@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef } from "react";
-import type { QueryClient } from "@tanstack/react-query";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useState,
+  type ReactNode,
+} from "react";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { STREAM_REFRESH_PROTOCOL_VERSION } from "@/modules/source-document/contract-refresh";
@@ -39,6 +47,7 @@ export interface RefreshEnvironment {
   releaseLeadership(): void;
   onLeadershipExpired(cb: () => void): void;
   isLeadershipAvailable(): boolean;
+  destroy?(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,11 +65,23 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
 
   const STORAGE_KEY_LEADER = `cashier-refresh-leader-${ledgerId}`;
   const STORAGE_KEY_LEASE = `cashier-refresh-lease-${ledgerId}`;
+  const STORAGE_KEY_BROADCAST = `cashier-refresh-result-${ledgerId}`;
   const LEADER_HEARTBEAT_MS = 2000;
   const MISSED_HEARTBEATS = 3;
 
   // I2: Stable per-tab token — generated once when the environment is created
   const myId = `tab-${Math.random().toString(36).slice(2, 10)}`;
+
+  const handleStorageBroadcast = (event: StorageEvent) => {
+    if (event.key !== STORAGE_KEY_BROADCAST || event.newValue == null) return;
+    try {
+      const message = JSON.parse(event.newValue) as { data?: unknown };
+      for (const handler of broadcastHandlers) handler(message.data);
+    } catch {
+      // Ignore malformed cross-tab messages.
+    }
+  };
+  window.addEventListener("storage", handleStorageBroadcast);
 
   try {
     broadcastChannel = new BroadcastChannel(`cashier-refresh-${ledgerId}`);
@@ -128,7 +149,14 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
     broadcastChannelName: `cashier-refresh-${ledgerId}`,
     broadcast: (data) => {
       try {
-        broadcastChannel?.postMessage(data);
+        if (broadcastChannel != null) {
+          broadcastChannel.postMessage(data);
+        } else {
+          localStorage.setItem(
+            STORAGE_KEY_BROADCAST,
+            JSON.stringify({ id: crypto.randomUUID(), data })
+          );
+        }
       } catch {
         // Ignore broadcast failures
       }
@@ -217,6 +245,13 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         return false;
       }
     },
+    destroy: () => {
+      cleanupIntervals();
+      window.removeEventListener("storage", handleStorageBroadcast);
+      if (typeof broadcastChannel?.close === "function") broadcastChannel.close();
+      broadcastChannel = null;
+      broadcastHandlers.clear();
+    },
   };
 }
 
@@ -245,11 +280,19 @@ export class RefreshCoordinator {
   private unsubscribeBroadcast: (() => void) | null = null;
   private cleanupExpiry: (() => void) | null = null;
   private running = false;
+  private hasTransitionalWork = true;
+  private pollingStartedAt = 0;
   private subscribers = new Map<
     string,
     { refresh: () => Promise<{ changed: boolean; result?: StreamRefreshResult }> }
   >();
   private applyCacheFromRefresh: ((result: StreamRefreshResult) => void) | null = null;
+  private readonly focusHandler = () => this.handleVisibilityFocus();
+  private readonly offlineHandler = () => this.cancelTimer();
+  private readonly visibilityHandler = () => {
+    if (this.env.isVisible()) this.handleVisibilityFocus();
+    else this.cancelTimer();
+  };
 
   // Backoff stages for unchanged success
   static readonly SUCCESS_BACKOFFS = [3000, 5000, 8000, 12000, 15000] as const;
@@ -288,6 +331,8 @@ export class RefreshCoordinator {
    * Cancels any pending timer and queues an immediate single-flight refresh.
    */
   notifyChange(): void {
+    this.hasTransitionalWork = true;
+    this.pollingStartedAt = this.env.now();
     this.backoffStage = 0;
     this.lastErrorBackoff = 5000;
     this.wake();
@@ -307,11 +352,13 @@ export class RefreshCoordinator {
   destroy(): void {
     this.stop();
     this.subscribers.clear();
+    this.env.destroy?.();
   }
 
   private start(): void {
     if (this.running) return;
     this.running = true;
+    this.pollingStartedAt = this.env.now();
 
     // Set up broadcast listener
     this.unsubscribeBroadcast = this.env.onBroadcast((data) => {
@@ -325,16 +372,10 @@ export class RefreshCoordinator {
     });
 
     // Attach window/visibility listeners
-    this.env.addEventListener("focus", () => this.handleVisibilityFocus());
-    this.env.addEventListener("online", () => this.handleVisibilityFocus());
-    this.env.addEventListener("offline", () => this.cancelTimer());
-    this.env.addEventListener("visibilitychange", () => {
-      if (this.env.isVisible()) {
-        this.handleVisibilityFocus();
-      } else {
-        this.cancelTimer();
-      }
-    });
+    this.env.addEventListener("focus", this.focusHandler);
+    this.env.addEventListener("online", this.focusHandler);
+    this.env.addEventListener("offline", this.offlineHandler);
+    this.env.addEventListener("visibilitychange", this.visibilityHandler);
 
     // Try to become leader
     this.tryAcquireLeadership().then(() => {
@@ -348,6 +389,10 @@ export class RefreshCoordinator {
     this.running = false;
     this.cancelTimer();
     this.env.releaseLeadership();
+    this.env.removeEventListener("focus", this.focusHandler);
+    this.env.removeEventListener("online", this.focusHandler);
+    this.env.removeEventListener("offline", this.offlineHandler);
+    this.env.removeEventListener("visibilitychange", this.visibilityHandler);
     if (this.unsubscribeBroadcast) {
       this.unsubscribeBroadcast();
       this.unsubscribeBroadcast = null;
@@ -411,6 +456,7 @@ export class RefreshCoordinator {
     if (this.timerId != null) return;
     if (this.inFlight != null) return;
     if (this.subscribers.size === 0) return;
+    if (!this.hasTransitionalWork) return;
     if (!this.env.isOnline() || !this.env.isVisible()) return;
 
     const delay = this.computeDelay();
@@ -426,9 +472,8 @@ export class RefreshCoordinator {
     if (this.lastErrorBackoff > 5000) {
       return jitter(this.env, this.lastErrorBackoff, 0);
     }
-    // Standard backoff by stage
-    const stage = Math.min(this.backoffStage, RefreshCoordinator.SUCCESS_BACKOFFS.length - 1);
-    const base = RefreshCoordinator.SUCCESS_BACKOFFS[stage] ?? 3000;
+    const elapsed = this.env.now() - this.pollingStartedAt;
+    const base = elapsed < 30_000 ? 2_000 : elapsed < 120_000 ? 5_000 : 10_000;
     return jitter(this.env, base, base * 0.3);
   }
 
@@ -453,14 +498,21 @@ export class RefreshCoordinator {
     if (!this.isLeader && !this.inFallbackMode) return false;
 
     let anyChanged = false;
-    let lastResult: StreamRefreshResult | undefined;
+    let hasTransitionalWork = false;
 
     for (const [, entry] of this.subscribers) {
       try {
         const { changed, result } = await entry.refresh();
         if (changed) {
           anyChanged = true;
-          if (result) lastResult = result;
+        }
+        if (result?.hasTransitionalWork === true) hasTransitionalWork = true;
+        if (this.isLeader && result != null) {
+          this.env.broadcast({
+            type: "refresh_result",
+            protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
+            result,
+          });
         }
       } catch {
         // Error backoff
@@ -474,15 +526,6 @@ export class RefreshCoordinator {
     if (anyChanged) {
       // I3: Reset backoff on success/changed
       this.backoffStage = 0;
-
-      // Only the leader broadcasts results to other tabs
-      if (this.isLeader && lastResult) {
-        this.env.broadcast({
-          type: "refresh_result",
-          protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
-          result: lastResult,
-        });
-      }
     } else {
       // I3: Advance backoff stage on unchanged
       this.backoffStage = Math.min(
@@ -490,6 +533,8 @@ export class RefreshCoordinator {
         RefreshCoordinator.SUCCESS_BACKOFFS.length - 1
       );
     }
+
+    this.hasTransitionalWork = hasTransitionalWork;
 
     return anyChanged;
   }
@@ -513,6 +558,7 @@ export class RefreshCoordinator {
 
 // We'll create the coordinator lazily so tests can inject a mock
 let globalCoordinator: RefreshCoordinator | null = null;
+const RefreshCoordinatorContext = createContext<RefreshCoordinator | null>(null);
 
 function getGlobalCoordinator(): RefreshCoordinator | null {
   return globalCoordinator;
@@ -520,6 +566,33 @@ function getGlobalCoordinator(): RefreshCoordinator | null {
 
 export function setGlobalCoordinator(coordinator: RefreshCoordinator): void {
   globalCoordinator = coordinator;
+}
+
+export function RevisionStateRefreshProvider({
+  ledgerId,
+  children,
+}: {
+  ledgerId: string;
+  children: ReactNode;
+}) {
+  return createElement(RefreshCoordinatorScope, { key: ledgerId, ledgerId }, children);
+}
+
+function RefreshCoordinatorScope({
+  ledgerId,
+  children,
+}: {
+  ledgerId: string;
+  children?: ReactNode;
+}) {
+  const queryClient = useQueryClient();
+  const [coordinator] = useState(() => initRefreshCoordinator(ledgerId, queryClient));
+
+  useEffect(() => {
+    return () => coordinator.destroy();
+  }, [coordinator]);
+
+  return createElement(RefreshCoordinatorContext.Provider, { value: coordinator }, children);
 }
 
 // ---------------------------------------------------------------------------
@@ -549,15 +622,13 @@ export function useRevisionStateRefresh({
   pending,
   refresh,
 }: UseRevisionStateRefreshOptions) {
+  const contextCoordinator = useContext(RefreshCoordinatorContext);
   const refreshEvent = useEffectEvent(() => refresh());
-  const subscribedRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || !pending) return;
-    if (subscribedRef.current) return;
-
-    subscribedRef.current = true;
-    const coordinator = getGlobalCoordinator();
+    const coordinator = contextCoordinator ?? getGlobalCoordinator();
+    if (coordinator == null) return;
     // C1: Pass the refresh callback to subscribe
     const unsubscribe = coordinator?.subscribe(scope, async () => {
       const r = await refreshEvent();
@@ -568,16 +639,21 @@ export function useRevisionStateRefresh({
     });
 
     return () => {
-      subscribedRef.current = false;
       unsubscribe?.();
     };
-  }, [enabled, pending, scope]);
+  }, [contextCoordinator, enabled, pending, scope]);
 }
 
 /**
  * Notify the refresh coordinator that a new source document has been submitted.
  * This resets the backoff timer so the next polling cycle happens sooner.
  */
+export function useNotifyRevisionRefresh(): () => void {
+  const contextCoordinator = useContext(RefreshCoordinatorContext);
+  return () => (contextCoordinator ?? getGlobalCoordinator())?.notifyChange();
+}
+
+/** @deprecated Prefer useNotifyRevisionRefresh inside React components. */
 export function notifyNewSubmission(): void {
   getGlobalCoordinator()?.notifyChange();
 }

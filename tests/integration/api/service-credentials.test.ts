@@ -16,9 +16,20 @@ import {
   getServiceCredentialsAction,
   getLedgerSettingsAction,
 } from "@/modules/ledger/actions";
-import { getDateInTimezone } from "@/lib/date-utils";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
 import { authenticateToken } from "@/lib/security/service-credential-token";
+import sharp from "sharp";
+
+async function validJpegBase64(): Promise<string> {
+  return (
+    await sharp({
+      create: { width: 1, height: 1, channels: 3, background: { r: 255, g: 255, b: 255 } },
+    })
+      .jpeg()
+      .toBuffer()
+  ).toString("base64");
+}
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
   const first = rows[0];
@@ -32,6 +43,31 @@ function requireFirst<T>(rows: readonly T[], label: string): T {
 vi.mock("@/lib/processing", () => ({
   createProcessingTask: vi.fn(),
   createTask: vi.fn(),
+}));
+
+const mockR2 = vi.hoisted(() => {
+  const files = new Map<string, Buffer>();
+  return {
+    R2StorageProvider: class {
+      async upload(key: string, data: Buffer) {
+        files.set(key, Buffer.from(data));
+      }
+      async download(key: string) {
+        const data = files.get(key);
+        if (data == null) throw new Error("File not found");
+        return Buffer.from(data);
+      }
+      async delete(key: string) {
+        files.delete(key);
+        return { success: true };
+      }
+    },
+  };
+});
+
+vi.mock("@/lib/storage/s3", () => ({
+  S3StorageProvider: mockR2.R2StorageProvider,
+  getS3Storage: () => new mockR2.R2StorageProvider(),
 }));
 
 const { submitMock } = vi.hoisted(() => ({
@@ -143,12 +179,13 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       .returning();
     requireFirst(createdCredentials, "service credential");
 
+    const image = await validJpegBase64();
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${knownToken}`,
       },
-      body: JSON.stringify({ text: "API Ledger Entry" }),
+      body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
     });
 
     const res = await ledgerEntryPOST(req);
@@ -165,7 +202,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.sourceDocumentId, data.sourceDocumentId),
     });
-    expect(revision?.submittedText).toBe("API Ledger Entry");
+    expect(revision?.submittedText).toBeNull();
     expect(revision?.outcome).toBe("processing");
   });
 
@@ -216,7 +253,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     expect(data.error.code).toBe("VALIDATION_FAILED");
   });
 
-  it("should derive entryDate from timezone when entryDate is omitted", async () => {
+  it("should derive entryDate when entryDate is omitted", async () => {
     const db = getTestDb();
     const knownToken = "sk_timezone";
     const { computeHash, prefixSuffix } = await import("@/lib/security/service-credential-token");
@@ -234,12 +271,13 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       .returning();
     requireFirst(createdCredentials, "service credential");
 
+    const image = await validJpegBase64();
     const req = new NextRequest("http://localhost/api/v1/source-documents", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${knownToken}`,
       },
-      body: JSON.stringify({ text: "Timezone Entry", timezone: "UTC" }),
+      body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
     });
 
     const res = await ledgerEntryPOST(req);
@@ -250,7 +288,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
       where: eq(sourceDocuments.id, data.sourceDocumentId),
     });
 
-    expect(doc?.entryDate).toBe(getDateInTimezone("UTC"));
+    expect(doc?.entryDate).toBe(formatDateTimeForApi(new Date()));
   });
 
   it("should delete service credential via Action", async () => {
@@ -275,6 +313,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     const credential = await createServiceCredentialAction(testLedgerId, {
       name: "Lifecycle Credential",
     });
+    const image = await validJpegBase64();
     const firstResponse = await ledgerEntryPOST(
       new NextRequest("http://localhost/api/v1/source-documents", {
         method: "POST",
@@ -282,7 +321,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
           Authorization: `Bearer ${credential.token}`,
           "Idempotency-Key": "credential-lifecycle-record",
         },
-        body: JSON.stringify({ text: "Persist before revoke" }),
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
       })
     );
     const created = await firstResponse.json();

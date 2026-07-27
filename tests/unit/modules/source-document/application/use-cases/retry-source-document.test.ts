@@ -44,6 +44,7 @@ describe("retrySourceDocument", () => {
       ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
       inheritEvidence: true,
+      supersedeProcessing: true,
     });
     expect(scheduleProcessing).toHaveBeenCalledWith({ id: "intent-2" });
     // ordering: scheduleProcessing must be called AFTER createPendingWithIntent completes
@@ -75,6 +76,7 @@ describe("retrySourceDocument", () => {
       ledgerId: ledger.id,
       sourceDocumentId: "doc-1",
       inheritEvidence: true,
+      supersedeProcessing: true,
       submittedText: "corrected",
       entryDate: "2026-07-16",
       storedFileIds: ["00000000-0000-4000-8000-000000000001"],

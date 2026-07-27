@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { AppError } from "./errors";
+import { ValidationError } from "./errors";
 import { toApplicationError } from "@/application/contracts/errors";
 
 /**
@@ -26,13 +27,33 @@ export function toErrorResponse(error: unknown): ErrorResponse {
  */
 export function toSanitizedErrorResponse(error: unknown): ErrorResponse {
   const applicationError = toApplicationError(error);
+  const validationDetails =
+    error instanceof ValidationError && Array.isArray(error.details?.issues)
+      ? {
+          issues: error.details.issues.map((issue) => {
+            const candidate = issue as { code?: unknown; path?: unknown; message?: unknown };
+            return {
+              code: typeof candidate.code === "string" ? candidate.code : "custom",
+              path: Array.isArray(candidate.path)
+                ? candidate.path.filter(
+                    (segment): segment is string | number =>
+                      typeof segment === "string" || typeof segment === "number"
+                  )
+                : [],
+              message: typeof candidate.message === "string" ? candidate.message : "Invalid value",
+            };
+          }),
+        }
+      : null;
   return {
     error: {
       message: applicationError.message,
       code: applicationError.code,
-      ...(applicationError.correlationId !== undefined
-        ? { details: { correlationId: applicationError.correlationId } }
-        : {}),
+      ...(validationDetails != null
+        ? { details: validationDetails }
+        : applicationError.correlationId !== undefined
+          ? { details: { correlationId: applicationError.correlationId } }
+          : {}),
     },
   };
 }

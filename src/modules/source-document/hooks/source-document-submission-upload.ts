@@ -14,7 +14,25 @@ interface SubmissionUploadDependencies {
   createPlan: typeof createSourceDocumentUploadPlanAction;
   finalize: typeof finalizeSourceDocumentUploadAction;
   fetch: typeof fetch;
+  upload?: (
+    target: { url: string; method: string; requiredHeaders: Readonly<Record<string, string>> },
+    bytes: ArrayBuffer,
+    onProgress: (loaded: number) => void
+  ) => Promise<void>;
 }
+
+export type SourceDocumentSubmissionProgress =
+  | { phase: "preparing" }
+  | {
+      phase: "uploading";
+      loadedBytes: number;
+      totalBytes: number;
+      percent: number;
+      fileIndex: number;
+      fileCount: number;
+    }
+  | { phase: "finalizing" }
+  | { phase: "submitting" };
 
 export type SourceDocumentSubmissionUploadStage = "prepare" | "plan" | "upload" | "finalize";
 
@@ -33,7 +51,30 @@ const defaultDependencies: SubmissionUploadDependencies = {
   createPlan: createSourceDocumentUploadPlanAction,
   finalize: finalizeSourceDocumentUploadAction,
   fetch: (input, init) => globalThis.fetch(input, init),
+  upload: uploadWithXhr,
 };
+
+function uploadWithXhr(
+  target: { url: string; method: string; requiredHeaders: Readonly<Record<string, string>> },
+  bytes: ArrayBuffer,
+  onProgress: (loaded: number) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open(target.method, target.url);
+    for (const [name, value] of Object.entries(target.requiredHeaders)) {
+      request.setRequestHeader(name, value);
+    }
+    request.upload.onprogress = (event) => onProgress(event.loaded);
+    request.onerror = () => reject(new Error("Source image upload failed"));
+    request.onabort = () => reject(new Error("Source image upload was aborted"));
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) resolve();
+      else reject(new Error(`Source image upload returned HTTP ${request.status}`));
+    };
+    request.send(bytes);
+  });
+}
 
 function withoutInlineImages(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
   const submission: SourceDocumentSubmitPayload = { entryDate: payload.entryDate };
@@ -91,10 +132,13 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 export async function uploadSourceDocumentSubmissionImages(
   ledgerId: string,
   payload: SourceDocumentSubmitPayload,
-  dependencies: SubmissionUploadDependencies = defaultDependencies
+  dependencies: SubmissionUploadDependencies = defaultDependencies,
+  onProgress?: (progress: SourceDocumentSubmissionProgress) => void
 ): Promise<SourceDocumentSubmitPayload> {
   const images = payload.images ?? [];
   if (images.length === 0) return withoutInlineImages(payload);
+
+  onProgress?.({ phase: "preparing" });
 
   let prepared: Array<{ bytes: ArrayBuffer; contentType: string; checksum: string }>;
   try {
@@ -136,15 +180,37 @@ export async function uploadSourceDocumentSubmissionImages(
   }
 
   try {
+    const loadedByFile = prepared.map(() => 0);
+    const totalBytes = prepared.reduce((sum, file) => sum + file.bytes.byteLength, 0);
     await Promise.all(
       plan.targets.map(async (target, index) => {
-        const response = await dependencies.fetch(target.url, {
-          method: target.method,
-          headers: target.requiredHeaders,
-          body: prepared[index]!.bytes,
-        });
-        if (!response.ok) {
-          throw new Error(`Source image upload returned HTTP ${response.status}`);
+        const bytes = prepared[index]!.bytes;
+        const report = (loaded: number) => {
+          loadedByFile[index] = Math.min(loaded, bytes.byteLength);
+          const loadedBytes = loadedByFile.reduce((sum, value) => sum + value, 0);
+          onProgress?.({
+            phase: "uploading",
+            loadedBytes,
+            totalBytes,
+            percent: totalBytes === 0 ? 0 : Math.round((loadedBytes / totalBytes) * 100),
+            fileIndex: index + 1,
+            fileCount: prepared.length,
+          });
+        };
+        report(0);
+        if (dependencies.upload != null) {
+          await dependencies.upload(target, bytes, report);
+          report(bytes.byteLength);
+        } else {
+          const response = await dependencies.fetch(target.url, {
+            method: target.method,
+            headers: target.requiredHeaders,
+            body: bytes,
+          });
+          if (!response.ok) {
+            throw new Error(`Source image upload returned HTTP ${response.status}`);
+          }
+          report(bytes.byteLength);
         }
       })
     );
@@ -156,6 +222,7 @@ export async function uploadSourceDocumentSubmissionImages(
 
   let storedFileIds: string[];
   try {
+    onProgress?.({ phase: "finalizing" });
     storedFileIds = await dependencies.finalize(ledgerId, {
       uploadSessionId: plan.id,
       finalizationToken: plan.finalizationToken,

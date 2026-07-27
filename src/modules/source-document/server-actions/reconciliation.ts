@@ -3,6 +3,7 @@ import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
+import { currentApplication } from "@/application/current";
 
 // ---------------------------------------------------------------------------
 // Authoritative DB-backed read
@@ -21,39 +22,26 @@ export async function readSourceDocumentListItem(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentListItemDto | null> {
-  const row = await db.query.sourceDocuments.findFirst({
-    where: and(
-      eq(sourceDocuments.id, sourceDocumentId),
-      eq(sourceDocuments.ledgerId, ledgerId),
-      isNull(sourceDocuments.deletedAt)
-    ),
-  });
+  const row = await currentApplication.sourceDocumentReads.get(ledgerId, sourceDocumentId);
   if (row == null) return null;
-
-  const status =
-    row.pendingRevisionId != null
-      ? "pending"
-      : row.activeRevisionId != null
-        ? "completed"
-        : "processing";
 
   return {
     id: row.id,
     ledgerId: row.ledgerId,
-    title: row.title ?? null,
+    title: row.title,
     text: null,
     files: [],
-    status: status as SourceDocumentListItemDto["status"],
-    type: row.type as SourceDocumentListItemDto["type"],
-    anomalyReason: row.anomalyReason ?? null,
-    entryDate: row.entryDate ?? null,
+    status: row.status,
+    type: row.type,
+    anomalyReason: row.anomalyReason,
+    entryDate: row.entryDate,
     metadata: {},
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: null,
-    hasImages: false,
-    supportedActions: [],
-    errorCode: null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt,
+    hasImages: row.hasImages ?? false,
+    supportedActions: row.supportedActions,
+    errorCode: row.errorCode,
     pendingRevisionId: row.pendingRevisionId,
     ledgerEntries: [],
   };

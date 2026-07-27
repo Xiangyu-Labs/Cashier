@@ -209,17 +209,17 @@ export async function getStreamRefresh(
     fingerprint: string;
   }> = [];
 
-  for (const { id } of boundedWatchedIds) {
+  for (const { id, fingerprint: previousFingerprint } of boundedWatchedIds) {
     const doc = docMap.get(id);
     if (doc == null) {
-      // Tombstone — document deleted
-      changedWatched.push({ id, doc: null, fingerprint: "" });
+      if (previousFingerprint !== "") {
+        changedWatched.push({ id, doc: null, fingerprint: "" });
+      }
     } else {
-      changedWatched.push({
-        id,
-        doc,
-        fingerprint: computeDocumentFingerprint(doc),
-      });
+      const fingerprint = computeDocumentFingerprint(doc);
+      if (fingerprint !== previousFingerprint) {
+        changedWatched.push({ id, doc, fingerprint });
+      }
     }
   }
 
@@ -227,16 +227,15 @@ export async function getStreamRefresh(
   // 3. Refresh global counts
   // ---------------------------------------------------------------
   let counts: StreamRefreshResult["counts"] = null;
+  const rawCounts = await getSourceDocumentCountsQuery(ledgerId);
 
   if (normalizedCountFingerprint == null) {
     // Client has no counts yet — always include
-    const rawCounts = await getSourceDocumentCountsQuery(ledgerId);
     counts = {
       ...rawCounts,
       fingerprint: computeCountFingerprint(rawCounts),
     };
   } else {
-    const rawCounts = await getSourceDocumentCountsQuery(ledgerId);
     const currentCF = computeCountFingerprint(rawCounts);
     if (currentCF !== normalizedCountFingerprint) {
       counts = {
@@ -257,7 +256,7 @@ export async function getStreamRefresh(
     protocolVersion: STREAM_REFRESH_PROTOCOL_VERSION,
     generation: 1,
     changed: anyPageChanged || anyCountsChanged || anyWatchedChanged,
-    hasTransitionalWork: changedWatched.some((w) => w.doc != null && w.doc.status === "processing"),
+    hasTransitionalWork: rawCounts.processingCount > 0,
     firstPages,
     changedWatched,
     counts,

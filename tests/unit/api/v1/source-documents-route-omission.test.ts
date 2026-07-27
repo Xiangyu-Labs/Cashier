@@ -48,17 +48,16 @@ describe("api/v1/source-documents omission semantics", () => {
     const request = new Request("http://localhost:3000/api/v1/source-documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "Lunch 12.50" }),
+      body: JSON.stringify({
+        images: [{ data: "AQ==", mimeType: "image/jpeg" }],
+      }),
     }) as unknown as NextRequest;
 
     await POST(request);
 
     const payload = createSourceDocumentFromCredentialActionMock.mock.calls[0]?.[0]
       ?.payload as Record<string, unknown>;
-    expect(payload.text).toBe("Lunch 12.50");
-    expect(Object.prototype.hasOwnProperty.call(payload, "images")).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(payload, "originalImages")).toBe(false);
+    expect(payload.images).toEqual([{ data: "AQ==", mimeType: "image/jpeg" }]);
     expect(Object.prototype.hasOwnProperty.call(payload, "entryDate")).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(payload, "timezone")).toBe(false);
   });
 });
