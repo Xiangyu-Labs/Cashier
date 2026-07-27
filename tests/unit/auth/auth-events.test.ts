@@ -37,6 +37,10 @@ vi.mock("@/modules/auth/application/use-cases/authenticate-with-otp", () => ({
   authenticateWithOTP: authenticateWithOTPMock,
 }));
 
+vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () => ({
+  authenticateWithPassword: vi.fn(),
+}));
+
 vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
   handleAuthUserCreated: handleAuthUserCreatedMock,
 }));
@@ -79,6 +83,8 @@ describe("auth.ts adapter wiring", () => {
       email: "db@example.com",
       name: "DB User",
       image: "db-image",
+      passwordHash: "hashed-password",
+      passwordUpdatedAt: new Date("2026-07-01T00:00:00.000Z"),
     });
   });
 
@@ -194,6 +200,8 @@ describe("auth.ts adapter wiring", () => {
         email: "db@example.com",
         name: "DB User",
         image: "db-image",
+        hasPassword: true,
+        passwordUpdatedAt: "2026-07-01T00:00:00.000Z",
       },
     });
   });

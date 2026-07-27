@@ -14,6 +14,8 @@ interface ActiveContentProps {
   periodParams: PeriodParams;
   advancedFilters: LedgerAdvancedFilters;
   userEmail?: string;
+  hasPassword?: boolean;
+  passwordUpdatedAt?: string | null;
   locale: string;
 }
 
@@ -24,6 +26,8 @@ export async function ActiveContent({
   periodParams,
   advancedFilters,
   userEmail,
+  hasPassword,
+  passwordUpdatedAt,
   locale,
 }: ActiveContentProps) {
   const pageData = await getLedgerPageBootstrap({
@@ -52,6 +56,8 @@ export async function ActiveContent({
         initialPeriod={periodParams}
         initialStatsDate={pageData.initialStatsDate}
         {...(userEmail !== undefined ? { userEmail } : {})}
+        {...(hasPassword !== undefined ? { hasPassword } : {})}
+        {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
       />
     </HydrationBoundary>
   );

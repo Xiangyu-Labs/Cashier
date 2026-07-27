@@ -1,31 +1,57 @@
 #!/bin/sh
-set -e
+set -eu
 
-for name in R2_ACCOUNT_ID R2_BUCKET_NAME R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
-    case "$name" in
-        R2_ACCOUNT_ID) value=${R2_ACCOUNT_ID:-} ;;
-        R2_BUCKET_NAME) value=${R2_BUCKET_NAME:-} ;;
-        R2_ACCESS_KEY_ID) value=${R2_ACCESS_KEY_ID:-} ;;
-        R2_SECRET_ACCESS_KEY) value=${R2_SECRET_ACCESS_KEY:-} ;;
-    esac
-    if [ -z "$value" ]; then
-        echo "[ERROR] $name is required"
-        exit 1
+CONFIG_DIR=${CASHIER_CONFIG_DIR:-/app/config}
+mkdir -p "$CONFIG_DIR"
+
+load_or_create_secret() {
+    explicit_value=$1
+    secret_file=$2
+    if [ -n "$explicit_value" ]; then
+        printf '%s' "$explicit_value"
+        return
     fi
-done
+    if [ ! -s "$secret_file" ]; then
+        temporary_file="${secret_file}.tmp.$$"
+        node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))" > "$temporary_file"
+        chmod 600 "$temporary_file"
+        mv "$temporary_file" "$secret_file"
+    fi
+    tr -d '\r\n' < "$secret_file"
+}
+
+AUTH_SECRET=$(load_or_create_secret "${AUTH_SECRET:-}" "$CONFIG_DIR/auth-secret")
+API_KEY_PEPPER=$(load_or_create_secret "${API_KEY_PEPPER:-}" "$CONFIG_DIR/api-key-pepper")
+S3_SECRET_ACCESS_KEY=$(load_or_create_secret \
+    "${S3_SECRET_ACCESS_KEY:-}" "$CONFIG_DIR/s3-secret-access-key")
+export AUTH_SECRET API_KEY_PEPPER S3_SECRET_ACCESS_KEY
+
+case "${DATABASE_URL:-}" in
+    postgres://*|postgresql://*) ;;
+    *) echo "[ERROR] DATABASE_URL must be a PostgreSQL connection URL" >&2; exit 1 ;;
+esac
 
 echo "========================================"
 echo "  Cashier Application Startup"
 echo "========================================"
 echo "Environment: ${NODE_ENV:-production}"
-echo "Database: $(echo "${DATABASE_URL:-missing}" | sed 's|://[^:]*:.*@|://***:***@|')"
-echo "Storage: R2 (configured)"
+echo "Database: configured"
+echo "Storage: S3-compatible (${S3_ENDPOINT:-missing})"
+echo "Email OTP: $([ -n "${AUTH_RESEND_KEY:-}" ] && echo enabled || echo disabled)"
 echo "========================================"
 
-case "${DATABASE_URL:-}" in
-    postgres://*|postgresql://*) ;;
-    *) echo "[ERROR] DATABASE_URL must be a PostgreSQL connection URL"; exit 1 ;;
-esac
+attempt=1
+until node scripts/migrate-database.mjs; do
+    if [ "$attempt" -ge 30 ]; then
+        echo "[ERROR] Database migration did not succeed after $attempt attempts" >&2
+        exit 1
+    fi
+    echo "[INIT] Database unavailable; retrying migration ($attempt/30)..."
+    attempt=$((attempt + 1))
+    sleep 2
+done
+
+node scripts/bootstrap-initial-user.mjs
 
 echo "[INIT] Starting application..."
 exec node server.js

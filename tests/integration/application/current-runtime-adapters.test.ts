@@ -517,7 +517,7 @@ describe("current-runtime target adapters", () => {
     });
     await db
       .update(storedFiles)
-      .set({ storageProvider: "r2" })
+      .set({ storageProvider: "s3" })
       .where(eq(storedFiles.id, uploaded.id));
     expect(pending.document.pendingRevisionId).toBe(pending.revision.id);
 

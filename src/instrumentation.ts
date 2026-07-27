@@ -17,7 +17,7 @@ export async function register() {
       {
         nodeEnv: process.env.NODE_ENV ?? "not set",
         databaseUrl: startupEnv.DATABASE_URL !== "" ? "configured" : "not configured",
-        r2Storage: "configured",
+        s3Storage: "configured",
       },
       "Service configuration status"
     );

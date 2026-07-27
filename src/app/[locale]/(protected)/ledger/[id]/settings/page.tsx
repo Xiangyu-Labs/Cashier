@@ -10,6 +10,7 @@ import { SettingsPageClient } from "@/modules/ledger/ui";
 import { queryKeys } from "@/lib/query-keys";
 import { LEDGER } from "@/lib/constants";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
+import { auth } from "@/auth";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
@@ -19,6 +20,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   const { id: ledgerId } = await params;
   const locale = await getLocale();
   const queryClient = new QueryClient();
+  const session = await auth();
 
   const STALE_TIME = LEDGER.STALE_TIME_MS;
 
@@ -57,7 +59,14 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   return (
     <NextIntlClientProvider messages={settingsMessages} locale={locale}>
       <HydrationBoundary state={dehydrate(queryClient)}>
-        <SettingsPageClient ledger={ledger} initialCategories={categories} ledgerId={ledgerId} />
+        <SettingsPageClient
+          ledger={ledger}
+          initialCategories={categories}
+          ledgerId={ledgerId}
+          {...(session?.user?.email != null ? { userEmail: session.user.email } : {})}
+          {...(session?.user != null ? { hasPassword: session.user.hasPassword } : {})}
+          {...(session?.user != null ? { passwordUpdatedAt: session.user.passwordUpdatedAt } : {})}
+        />
       </HydrationBoundary>
     </NextIntlClientProvider>
   );

@@ -445,6 +445,8 @@ export interface UserAccountContract {
   email: string;
   name: string | null;
   image: string | null;
+  passwordHash: string | null;
+  passwordUpdatedAt: Date | null;
 }
 
 export interface UserAccountPort {

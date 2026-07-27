@@ -5,37 +5,44 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+FROM base AS runtime-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+
 FROM base AS builder
 WORKDIR /app
-
-# Build-time args for client-side env vars
-# MUST be declared BEFORE any COPY to properly receive values from docker-compose
-ARG NEXT_PUBLIC_APP_URL
-
-ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Next.js evaluates server instrumentation while building. These values are
+# placeholders only; Compose supplies the real runtime configuration.
 ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
-ENV R2_ACCOUNT_ID=build-placeholder
-ENV R2_BUCKET_NAME=cashier-images
-ENV R2_ACCESS_KEY_ID=build-placeholder
-ENV R2_SECRET_ACCESS_KEY=build-placeholder
+ENV API_KEY_PEPPER=build-placeholder
+ENV OPENAI_API_KEY=build-placeholder
+ENV AUTH_SECRET=build-placeholder
+ENV APP_URL=http://localhost:3000
+ENV S3_ENDPOINT=http://127.0.0.1:9000
+ENV S3_BUCKET=cashier
+ENV S3_ACCESS_KEY_ID=build-placeholder
+ENV S3_SECRET_ACCESS_KEY=build-placeholder
 RUN npm run build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy application files
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src/persistence/postgres-migrations ./src/persistence/postgres-migrations
+COPY --from=runtime-deps /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
 
+RUN mkdir -p /app/config && chown -R node:node /app/config
 USER node
-
-# Copy entrypoint script with executable permission
-COPY --chmod=755 docker-entrypoint.sh ./
 
 EXPOSE 3000
 CMD ["./docker-entrypoint.sh"]

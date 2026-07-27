@@ -8,6 +8,7 @@ import { CategorySection } from "./CategorySection";
 import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
+import { PasswordForm } from "@/modules/auth/ui/PasswordForm";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
@@ -29,9 +30,18 @@ interface SettingsTabProps {
   ledgerId: string;
   /** Server-derived user email (avoids useSession in a SessionProvider). */
   userEmail?: string;
+  hasPassword?: boolean;
+  passwordUpdatedAt?: string | null;
 }
 
-export function SettingsTab({ ledger, initialCategories, ledgerId, userEmail }: SettingsTabProps) {
+export function SettingsTab({
+  ledger,
+  initialCategories,
+  ledgerId,
+  userEmail,
+  hasPassword = false,
+  passwordUpdatedAt = null,
+}: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
@@ -211,6 +221,9 @@ export function SettingsTab({ ledger, initialCategories, ledgerId, userEmail }: 
         <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
           <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
             <span className="text-sm text-muted-foreground">{userEmail ?? ""}</span>
+          </SettingsField>
+          <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
+            <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
           </SettingsField>
           <SettingsField title={t("signOut")} description={t("signOutDesc")}>
             <button

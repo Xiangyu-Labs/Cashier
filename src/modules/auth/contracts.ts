@@ -3,4 +3,6 @@ export interface AuthenticatedUserDto {
   email: string | null;
   name: string | null;
   image: string | null;
+  hasPassword: boolean;
+  passwordUpdatedAt: string | null;
 }

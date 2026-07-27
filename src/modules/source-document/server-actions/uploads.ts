@@ -11,7 +11,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
 
 export const createSourceDocumentUploadPlanAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, input: CreateSourceDocumentUploadPlanInput): Promise<UploadPlanContract> =>
-    currentApplication.storedFiles.createDirectUploadPlan(
+    currentApplication.storedFiles.createUploadPlan(
       ledgerId,
       createSourceDocumentUploadPlanInputSchema.parse(input).map((file) => ({
         contentType: file.contentType,

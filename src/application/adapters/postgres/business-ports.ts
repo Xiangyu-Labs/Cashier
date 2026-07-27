@@ -729,6 +729,8 @@ export const postgresUserAccountAdapter: UserAccountPort = {
             email: existing.email,
             name: existing.name,
             image: existing.image,
+            passwordHash: existing.passwordHash,
+            passwordUpdatedAt: existing.passwordUpdatedAt,
           },
           isExistingUser: true,
         };
@@ -740,7 +742,14 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         .then((rows) => rows[0]);
       if (created == null) throw new ConflictError("Failed to create user account");
       return {
-        user: { id: created.id, email: created.email, name: created.name, image: created.image },
+        user: {
+          id: created.id,
+          email: created.email,
+          name: created.name,
+          image: created.image,
+          passwordHash: created.passwordHash,
+          passwordUpdatedAt: created.passwordUpdatedAt,
+        },
         isExistingUser: false,
       };
     });
@@ -748,14 +757,28 @@ export const postgresUserAccountAdapter: UserAccountPort = {
   async findByEmail(email) {
     const row = await db.query.users.findFirst({
       where: and(eq(users.email, email), isNull(users.deletedAt)),
-      columns: { id: true, email: true, name: true, image: true },
+      columns: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        passwordHash: true,
+        passwordUpdatedAt: true,
+      },
     });
     return row ?? null;
   },
   async findById(id) {
     const row = await db.query.users.findFirst({
       where: and(eq(users.id, id), isNull(users.deletedAt)),
-      columns: { id: true, email: true, name: true, image: true },
+      columns: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        passwordHash: true,
+        passwordUpdatedAt: true,
+      },
     });
     return row ?? null;
   },

@@ -50,7 +50,7 @@ describe("R2StorageProvider", () => {
         Buffer.from("x"),
         "image/jpeg"
       )
-    ).rejects.toMatchObject({ code: "R2_UPLOAD_FAILED", statusCode: 503 });
+    ).rejects.toMatchObject({ code: "S3_UPLOAD_FAILED", statusCode: 503 });
   });
 
   it("signs scoped uploads, inspects metadata, and copies within the bucket", async () => {
@@ -99,7 +99,7 @@ describe("R2StorageProvider", () => {
     );
   });
 
-  it("rejects unsafe object keys before calling R2", async () => {
+  it("rejects unsafe object keys before calling S3", async () => {
     const send = vi.fn();
     const storage = provider(send);
 

@@ -79,8 +79,8 @@ export async function executeSingleProcessingIntent(
         reportTokens: () => {},
         getClient: getOpenAIClient,
         modelConfig: {
-          text: runtimeEnv.aiModelText,
-          vision: runtimeEnv.aiModelVision,
+          text: runtimeEnv.aiModel,
+          vision: runtimeEnv.aiModel,
         },
       }),
   });

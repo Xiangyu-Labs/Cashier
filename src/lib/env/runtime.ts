@@ -6,17 +6,19 @@ export interface RuntimeEnv {
   readonly openaiApiKey: string;
   readonly openaiBaseUrl: string;
   readonly hasOpenaiBaseUrl: boolean;
-  readonly authUrl: string | undefined;
+  readonly appUrl: string;
   readonly authResendKey: string | undefined;
   readonly authEmailFrom: string;
-  readonly r2AccountId: string;
-  readonly r2BucketName: string;
-  readonly r2AccessKeyId: string;
-  readonly r2SecretAccessKey: string;
+  readonly s3Endpoint: string;
+  readonly s3PublicEndpoint: string | undefined;
+  readonly s3Region: string;
+  readonly s3Bucket: string;
+  readonly s3AccessKeyId: string;
+  readonly s3SecretAccessKey: string;
+  readonly s3ForcePathStyle: boolean;
   readonly trustedProxy: string | undefined;
   readonly timeZone: string;
-  readonly aiModelText: string;
-  readonly aiModelVision: string;
+  readonly aiModel: string;
   readonly aiMaxRetries: number;
   readonly aiRetryDelayMs: number;
   readonly aiTemperature: number;
@@ -65,8 +67,8 @@ export const runtimeEnv: RuntimeEnv = {
   get hasOpenaiBaseUrl() {
     return hasExplicitValue("OPENAI_BASE_URL");
   },
-  get authUrl() {
-    return hasExplicitValue("AUTH_URL") ? getStartupEnvValue("AUTH_URL") : undefined;
+  get appUrl() {
+    return getStartupEnvValue("APP_URL");
   },
   get authResendKey() {
     return getStartupEnvValue("AUTH_RESEND_KEY");
@@ -74,17 +76,26 @@ export const runtimeEnv: RuntimeEnv = {
   get authEmailFrom() {
     return getStartupEnvValue("AUTH_EMAIL_FROM");
   },
-  get r2AccountId() {
-    return getStartupEnvValue("R2_ACCOUNT_ID");
+  get s3Endpoint() {
+    return getStartupEnvValue("S3_ENDPOINT");
   },
-  get r2BucketName() {
-    return getStartupEnvValue("R2_BUCKET_NAME");
+  get s3PublicEndpoint() {
+    return getStartupEnvValue("S3_PUBLIC_ENDPOINT");
   },
-  get r2AccessKeyId() {
-    return getStartupEnvValue("R2_ACCESS_KEY_ID");
+  get s3Region() {
+    return getStartupEnvValue("S3_REGION");
   },
-  get r2SecretAccessKey() {
-    return getStartupEnvValue("R2_SECRET_ACCESS_KEY");
+  get s3Bucket() {
+    return getStartupEnvValue("S3_BUCKET");
+  },
+  get s3AccessKeyId() {
+    return getStartupEnvValue("S3_ACCESS_KEY_ID");
+  },
+  get s3SecretAccessKey() {
+    return getStartupEnvValue("S3_SECRET_ACCESS_KEY");
+  },
+  get s3ForcePathStyle() {
+    return getStartupEnvValue("S3_FORCE_PATH_STYLE") === "true";
   },
   get trustedProxy() {
     return getStartupEnvValue("TRUSTED_PROXY");
@@ -92,11 +103,8 @@ export const runtimeEnv: RuntimeEnv = {
   get timeZone() {
     return getStartupEnvValue("TZ");
   },
-  get aiModelText() {
-    return getStartupEnvValue("AI_MODEL_TEXT");
-  },
-  get aiModelVision() {
-    return getStartupEnvValue("AI_MODEL_VISION");
+  get aiModel() {
+    return getStartupEnvValue("AI_MODEL");
   },
   get aiMaxRetries() {
     return getStartupEnvValue("AI_MAX_RETRIES");

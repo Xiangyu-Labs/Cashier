@@ -1,8 +1,15 @@
 node_modules
 .next
+.tmp
+coverage
+.formless
+tests
+docs
+openspec
+.DS_Store
+tsconfig.tsbuildinfo
 .git
 .env*
-! .env.example
 data/
 sqlite.db
 *.db

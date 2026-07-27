@@ -15,6 +15,8 @@ describe("getSessionUser", () => {
       email: "session-active@example.com",
       name: "Session Active",
       image: "https://example.com/avatar.png",
+      passwordHash: null,
+      passwordUpdatedAt: null,
       emailVerified: new Date(),
     });
 
@@ -24,6 +26,8 @@ describe("getSessionUser", () => {
       email: "session-active@example.com",
       name: "Session Active",
       image: "https://example.com/avatar.png",
+      passwordHash: null,
+      passwordUpdatedAt: null,
     });
   });
 

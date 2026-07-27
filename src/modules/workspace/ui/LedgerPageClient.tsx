@@ -75,6 +75,8 @@ interface LedgerPageClientProps {
   initialStatsDate?: Date;
   /** Server-derived user email for the Settings tab (avoids useSession). */
   userEmail?: string;
+  hasPassword?: boolean;
+  passwordUpdatedAt?: string | null;
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -85,6 +87,8 @@ export function LedgerPageClient({
   initialPeriod,
   initialStatsDate,
   userEmail,
+  hasPassword,
+  passwordUpdatedAt,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const locale = useLocale();
@@ -220,6 +224,8 @@ export function LedgerPageClient({
               ledger={ledger}
               initialCategories={categories}
               {...(userEmail !== undefined ? { userEmail } : {})}
+              {...(hasPassword !== undefined ? { hasPassword } : {})}
+              {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
             />
           </DeferredFeatureMessages>
         </div>

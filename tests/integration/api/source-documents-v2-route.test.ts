@@ -58,9 +58,9 @@ const mockR2 = vi.hoisted(() => {
   return { files, metadata, storage };
 });
 
-vi.mock("@/lib/storage/r2", () => ({
-  getR2Storage: () => mockR2.storage,
-  R2StorageProvider: class {},
+vi.mock("@/lib/storage/s3", () => ({
+  getS3Storage: () => mockR2.storage,
+  S3StorageProvider: class {},
 }));
 
 const TEST_USER_ID = "10000000-0000-4000-8000-000000000002";

@@ -99,6 +99,10 @@ export async function sendOTP(
       );
     }
 
+    if (runtimeEnv.authResendKey == null) {
+      throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
+    }
+
     const otp = generateOTP();
     const { expiresAt } = await createOTPToken(normalizedEmail, otp, params.ip);
 
@@ -113,8 +117,7 @@ export async function sendOTP(
         content: OTPEmail({ otp, host: params.host, expiresInMinutes, locale, copy }),
       });
       if (delivery === "not_configured") {
-        logger.warn("AUTH_RESEND_KEY not configured, skipping email send");
-        logger.info({ email: normalizedEmail, otp }, "OTP generated (dev mode)");
+        throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
       } else {
         logger.info({ email: normalizedEmail }, "OTP email sent successfully");
       }

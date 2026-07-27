@@ -11,12 +11,18 @@ interface SettingsPageClientProps {
   ledger: Ledger;
   initialCategories: EntryCategoryWithCount[];
   ledgerId: string;
+  userEmail?: string;
+  hasPassword?: boolean;
+  passwordUpdatedAt?: string | null;
 }
 
 export function SettingsPageClient({
   ledger,
   initialCategories,
   ledgerId,
+  userEmail,
+  hasPassword,
+  passwordUpdatedAt,
 }: SettingsPageClientProps) {
   const router = useRouter();
   const t = useTranslations("Settings");
@@ -30,7 +36,14 @@ export function SettingsPageClient({
         <h1 className="text-xl sm:text-2xl font-semibold truncate">{t("title")}</h1>
       </div>
 
-      <SettingsTab ledger={ledger} initialCategories={initialCategories} ledgerId={ledgerId} />
+      <SettingsTab
+        ledger={ledger}
+        initialCategories={initialCategories}
+        ledgerId={ledgerId}
+        {...(userEmail !== undefined ? { userEmail } : {})}
+        {...(hasPassword !== undefined ? { hasPassword } : {})}
+        {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+      />
     </div>
   );
 }

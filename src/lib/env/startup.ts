@@ -3,10 +3,11 @@ import { AppError } from "@/lib/errors";
 import { isValidAuthEmailFrom } from "@/lib/utils/email";
 export const ENV_DEFAULTS = {
   OPENAI_BASE_URL: "https://api.openai.com/v1",
-  AUTH_URL: "http://localhost:3000",
+  APP_URL: "http://localhost:3000",
   TZ: "Asia/Shanghai",
-  AI_MODEL_TEXT: "gpt-4o-mini",
-  AI_MODEL_VISION: "gpt-4o",
+  AI_MODEL: "gpt-4o",
+  S3_REGION: "auto",
+  S3_FORCE_PATH_STYLE: "false",
   AI_MAX_RETRIES: "3",
   AI_RETRY_DELAY_MS: "1000",
   AI_TEMPERATURE: "0.3",
@@ -29,7 +30,6 @@ export const ENV_DEFAULTS = {
   LOG_LEVEL: "info",
   DEV_AUTH_BYPASS: "false",
   NEXT_PUBLIC_DEV_AUTH_BYPASS: "false",
-  NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   PROCESSING_RECOVERY_MAX_BATCH: "5",
   PROCESSING_RECOVERY_MAX_ATTEMPTS: "5",
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: "60",
@@ -104,7 +104,7 @@ const startupEnvFields = {
   OPENAI_API_KEY: requiredString("OPENAI_API_KEY"),
   OPENAI_BASE_URL: urlWithDefault("OPENAI_BASE_URL"),
   AUTH_SECRET: requiredString("AUTH_SECRET"),
-  AUTH_URL: urlWithDefault("AUTH_URL"),
+  APP_URL: urlWithDefault("APP_URL"),
   AUTH_RESEND_KEY: z.preprocess(blankToUndefined, z.string().trim().optional()),
   AUTH_EMAIL_FROM: z.preprocess(
     blankToUndefined,
@@ -117,14 +117,19 @@ const startupEnvFields = {
       )
       .default(getDefaultString("AUTH_EMAIL_FROM"))
   ),
-  R2_ACCOUNT_ID: requiredString("R2_ACCOUNT_ID"),
-  R2_BUCKET_NAME: requiredString("R2_BUCKET_NAME"),
-  R2_ACCESS_KEY_ID: requiredString("R2_ACCESS_KEY_ID"),
-  R2_SECRET_ACCESS_KEY: requiredString("R2_SECRET_ACCESS_KEY"),
+  S3_ENDPOINT: z.preprocess(blankToUndefined, z.url({ error: "S3_ENDPOINT must be a valid URL" })),
+  S3_PUBLIC_ENDPOINT: z.preprocess(
+    blankToUndefined,
+    z.url({ error: "S3_PUBLIC_ENDPOINT must be a valid URL" }).optional()
+  ),
+  S3_REGION: stringWithDefault("S3_REGION"),
+  S3_BUCKET: requiredString("S3_BUCKET"),
+  S3_ACCESS_KEY_ID: requiredString("S3_ACCESS_KEY_ID"),
+  S3_SECRET_ACCESS_KEY: requiredString("S3_SECRET_ACCESS_KEY"),
+  S3_FORCE_PATH_STYLE: booleanStringWithDefault("S3_FORCE_PATH_STYLE"),
   TRUSTED_PROXY: z.preprocess(blankToUndefined, z.string().trim().optional()),
   TZ: stringWithDefault("TZ"),
-  AI_MODEL_TEXT: stringWithDefault("AI_MODEL_TEXT"),
-  AI_MODEL_VISION: stringWithDefault("AI_MODEL_VISION"),
+  AI_MODEL: stringWithDefault("AI_MODEL"),
   AI_MAX_RETRIES: nonNegativeIntWithDefault("AI_MAX_RETRIES"),
   AI_RETRY_DELAY_MS: nonNegativeIntWithDefault("AI_RETRY_DELAY_MS"),
   AI_TEMPERATURE: z.preprocess(
@@ -161,7 +166,6 @@ const startupEnvFields = {
   LOG_LEVEL: stringWithDefault("LOG_LEVEL"),
   DEV_AUTH_BYPASS: booleanStringWithDefault("DEV_AUTH_BYPASS"),
   NEXT_PUBLIC_DEV_AUTH_BYPASS: booleanStringWithDefault("NEXT_PUBLIC_DEV_AUTH_BYPASS"),
-  NEXT_PUBLIC_APP_URL: urlWithDefault("NEXT_PUBLIC_APP_URL"),
   PROCESSING_RECOVERY_MAX_BATCH: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_BATCH"),
   PROCESSING_RECOVERY_MAX_ATTEMPTS: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_ATTEMPTS"),
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: positiveIntWithDefault(

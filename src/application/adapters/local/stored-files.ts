@@ -13,7 +13,7 @@ import type {
 import { db } from "@/lib/db";
 import { AppError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { getR2Storage } from "@/lib/storage/r2";
+import { getS3Storage } from "@/lib/storage/s3";
 import {
   ledgers,
   revisionFiles,
@@ -121,7 +121,7 @@ function durableKey(ledgerId: string, storedFileId: string): string {
 
 export class StoredFileAdapter implements DirectStoredFilePort {
   constructor(
-    private readonly storage: ObjectFileStore = getR2Storage(),
+    private readonly storage: ObjectFileStore = getS3Storage(),
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -347,7 +347,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
           .values({
             id: storedFileId,
             ledgerId: input.ledgerId,
-            storageProvider: "r2",
+            storageProvider: "s3",
             storageKey,
             contentType: input.contentType,
             byteSize: bytes.length,
@@ -378,8 +378,8 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       const cleanup = await this.storage.delete(storageKey);
       if (!cleanup.success) {
         logger.error(
-          { provider: "r2", storageKey, cleanupError: cleanup.error },
-          "Failed to clean up R2 object after database transaction failure"
+          { provider: "s3", storageKey, cleanupError: cleanup.error },
+          "Failed to clean up S3 object after database transaction failure"
         );
       }
       throw error;
@@ -504,7 +504,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
             .values({
               id: storedFileId,
               ledgerId: session.ledgerId,
-              storageProvider: "r2",
+              storageProvider: "s3",
               storageKey,
               contentType: target.expectedContentType!,
               byteSize: target.expectedByteSize!,
@@ -550,7 +550,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       )
     );
     if (cleanupResults.some((result) => !result.success)) {
-      logger.warn({ uploadSessionId: session.id }, "Temporary R2 upload cleanup was incomplete");
+      logger.warn({ uploadSessionId: session.id }, "Temporary S3 upload cleanup was incomplete");
     }
     return files;
   }
@@ -724,7 +724,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       .limit(1);
     const row = rows[0]?.file;
     if (row == null) return null;
-    if (row.storageProvider !== "r2") {
+    if (row.storageProvider !== "s3") {
       throw new AppError(
         `Unsupported stored file provider: ${row.storageProvider}`,
         "UNSUPPORTED_STORAGE_PROVIDER",

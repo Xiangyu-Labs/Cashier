@@ -7,7 +7,8 @@ describe("public env source", () => {
     const source = readFileSync(path.resolve(process.cwd(), "src/lib/env/public.ts"), "utf8");
 
     expect(source).toContain('import { ENV_DEFAULTS } from "./startup"');
-    expect(source).toContain("process.env.NEXT_PUBLIC_APP_URL");
+    expect(source).toContain("process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS");
+    expect(source).not.toContain("NEXT_PUBLIC_APP_URL");
     expect(source).not.toContain("runtimeEnv");
     expect(source).not.toContain("./defaults");
   });

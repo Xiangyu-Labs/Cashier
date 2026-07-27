@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
 import { authenticateDevUser } from "@/modules/auth/application/use-cases/authenticate-dev-user";
 import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
 import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
@@ -40,6 +41,20 @@ const providers: NextAuthConfig["providers"] = [
         locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
         requestHeaders: request.headers,
       });
+    },
+  }),
+  Credentials({
+    id: "password",
+    name: "Password",
+    credentials: {
+      email: { type: "email" },
+      password: { type: "password" },
+    },
+    async authorize(credentials) {
+      if (typeof credentials?.email !== "string" || typeof credentials.password !== "string") {
+        return null;
+      }
+      return authenticateWithPassword({ email: credentials.email, password: credentials.password });
     },
   }),
 ];
@@ -107,6 +122,8 @@ export const authOptions = {
             email: dbUser.email,
             name: dbUser.name,
             image: dbUser.image,
+            hasPassword: dbUser.passwordHash != null,
+            passwordUpdatedAt: dbUser.passwordUpdatedAt?.toISOString() ?? null,
           },
         };
       }
@@ -124,6 +141,8 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      hasPassword: boolean;
+      passwordUpdatedAt: string | null;
     };
   }
 

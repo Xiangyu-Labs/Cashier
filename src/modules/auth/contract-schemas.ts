@@ -39,3 +39,21 @@ export function parseSendOTPEmail(input: unknown): SendOTPEmail {
 
   return result.data;
 }
+
+const passwordMutationSchema = z
+  .object({
+    currentPassword: z.string().max(128).optional(),
+    newPassword: z.string().max(128),
+    confirmPassword: z.string().max(128),
+  })
+  .strict();
+
+export type PasswordMutationInput = z.infer<typeof passwordMutationSchema>;
+
+export function parsePasswordMutationInput(input: unknown): PasswordMutationInput {
+  const result = passwordMutationSchema.safeParse(input);
+  if (!result.success) {
+    throw new ValidationError("Invalid password input", { issues: result.error.issues });
+  }
+  return result.data;
+}

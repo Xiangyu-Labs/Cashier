@@ -14,8 +14,8 @@ import { AppError } from "@/lib/errors";
 
 const { downloadMock } = vi.hoisted(() => ({ downloadMock: vi.fn() }));
 
-vi.mock("@/lib/storage/r2", () => ({
-  getR2Storage: () => ({
+vi.mock("@/lib/storage/s3", () => ({
+  getS3Storage: () => ({
     upload: vi.fn(),
     download: downloadMock,
     delete: vi.fn(async () => ({ success: true })),
@@ -48,7 +48,7 @@ async function createLinkedStoredFile(ledgerId: string) {
     .insert(storedFiles)
     .values({
       ledgerId,
-      storageProvider: "r2",
+      storageProvider: "s3",
       storageKey: `${ledgerId}/private/file`,
       contentType: "image/png",
       byteSize: 5,
@@ -120,7 +120,7 @@ describe("GET /api/stored-files/[fileId]", () => {
     expect(downloadMock).not.toHaveBeenCalled();
   });
 
-  it("maps missing R2 objects and R2 outages to controlled responses", async () => {
+  it("maps missing S3 objects and S3 outages to controlled responses", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const { file } = await createLinkedStoredFile(ledgerId);
@@ -130,7 +130,7 @@ describe("GET /api/stored-files/[fileId]", () => {
       GET(request(), { params: Promise.resolve({ fileId: file.id }) })
     ).resolves.toMatchObject({ status: 404 });
 
-    downloadMock.mockRejectedValueOnce(new AppError("outage", "R2_DOWNLOAD_FAILED", 503));
+    downloadMock.mockRejectedValueOnce(new AppError("outage", "S3_DOWNLOAD_FAILED", 503));
     await expect(
       GET(request(), { params: Promise.resolve({ fileId: file.id }) })
     ).resolves.toMatchObject({ status: 503 });

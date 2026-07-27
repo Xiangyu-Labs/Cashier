@@ -89,9 +89,9 @@ const mockR2 = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/lib/storage/r2", () => ({
-  R2StorageProvider: mockR2.R2StorageProvider,
-  getR2Storage: mockR2.getStorage,
+vi.mock("@/lib/storage/s3", () => ({
+  S3StorageProvider: mockR2.R2StorageProvider,
+  getS3Storage: mockR2.getStorage,
 }));
 
 describe("API v1 source-documents route", () => {
@@ -223,7 +223,7 @@ describe("API v1 source-documents route", () => {
         .where(eq(storedFiles.id, revisionFilesRows[0]!.storedFileId))
         .then((rows) => rows[0]);
       expect(storedFile).not.toBeUndefined();
-      expect(storedFile!.storageProvider).toBe("r2");
+      expect(storedFile!.storageProvider).toBe("s3");
       expect(storedFile!.finalizedAt).not.toBeNull();
 
       // Verify one processing outbox record exists

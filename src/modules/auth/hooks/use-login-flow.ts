@@ -1,41 +1,25 @@
 "use client";
+
 import { useState } from "react";
 import { signIn, type SignInResponse } from "next-auth/react";
-import { useRouter } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useRouter } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import { OTP_LENGTH } from "@/modules/auth/constants";
 import { publicEnv } from "@/lib/env/public";
 
 type LoginStep = "email" | "otp";
-
-interface UseLoginFlowReturn {
-  callbackUrl: string;
-  step: LoginStep;
-  email: string;
-  otp: string;
-  isLoading: boolean;
-  error: string | null;
-  expiresAt: number | null;
-  canResendAt: number | null;
-  isDevAuthAvailable: boolean;
-  setEmail: (email: string) => void;
-  setOtp: (otp: string) => void;
-  handleSendOTP: (e: React.FormEvent) => Promise<void>;
-  handleVerifyOTP: () => Promise<void>;
-  handleResendOTP: () => Promise<void>;
-  handleChangeEmail: () => void;
-  handleOTPExpired: () => void;
-  handleDevSignIn: () => Promise<void>;
-}
+export type LoginMode = "password" | "otp";
 
 function getSignInErrorMessage(
-  signInResult: SignInResponse | undefined,
+  result: SignInResponse | undefined,
   t: (key: string, values?: Record<string, string | number>) => string
 ): string {
-  switch (signInResult?.code) {
+  switch (result?.code) {
+    case AUTH_ERROR_CODES.INVALID_CREDENTIALS:
+      return t("invalidCredentials");
     case AUTH_ERROR_CODES.REGISTRATION_DISABLED:
       return t("registrationDisabledDesc");
     case AUTH_ERROR_CODES.OTP_INVALID:
@@ -47,122 +31,88 @@ function getSignInErrorMessage(
     case AUTH_ERROR_CODES.OTP_RATE_LIMITED:
       return t("rateLimitedDesc");
     default:
-      break;
+      return result?.error != null ? t("errorDesc") : t("unexpectedError");
   }
-
-  if (signInResult?.error != null) {
-    return t("errorDesc");
-  }
-
-  return t("unexpectedError");
 }
 
-function sanitizeCallbackUrl(rawCallbackUrl: string | null): string {
-  if (rawCallbackUrl == null || rawCallbackUrl === "") {
-    return "/";
-  }
-
-  if (!rawCallbackUrl.startsWith("/") || rawCallbackUrl.startsWith("//")) {
-    return "/";
-  }
-
-  return rawCallbackUrl;
+function sanitizeCallbackUrl(value: string | null): string {
+  return value != null && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
-export function useLoginFlow(
-  t: (key: string, values?: Record<string, string | number>) => string
-): UseLoginFlowReturn {
+export function useLoginFlow(t: (key: string, values?: Record<string, string | number>) => string) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
-
+  const [mode, setModeState] = useState<LoginMode>("password");
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [canResendAt, setCanResendAt] = useState<number | null>(null);
-
   const isDevAuthAvailable = publicEnv.devAuthBypass;
 
-  const handleDevSignIn = async () => {
-    if (!isDevAuthAvailable) {
-      return;
-    }
-
-    setIsLoading(true);
+  const setMode = (nextMode: LoginMode) => {
+    setModeState(nextMode);
+    setStep("email");
+    setOtp("");
+    setPassword("");
     setError(null);
-
-    try {
-      const signInResult = await signIn("dev", {
-        locale,
-        redirect: false,
-        callbackUrl,
-      });
-
-      if (signInResult?.ok) {
-        router.push(callbackUrl);
-        router.refresh();
-        return;
-      }
-
-      setError(t("devSignInFailed"));
-      setIsLoading(false);
-    } catch {
-      setError(t("devSignInFailed"));
-      setIsLoading(false);
-    }
   };
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email === "") return;
+  const finishSignIn = (result: SignInResponse | undefined) => {
+    if (result?.ok) {
+      router.push(callbackUrl);
+      router.refresh();
+      return true;
+    }
+    setError(getSignInErrorMessage(result, t));
+    setIsLoading(false);
+    return false;
+  };
 
+  const handlePasswordLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (email === "" || password === "") return;
     setIsLoading(true);
     setError(null);
-
     try {
-      const result = await sendOTPAction(email, locale);
-      setExpiresAt(result.expiresAt ?? null);
-      setCanResendAt(result.canResendAt ?? null);
-      setStep("otp");
-      setIsLoading(false);
+      finishSignIn(await signIn("password", { email, password, redirect: false, callbackUrl }));
     } catch {
       setError(t("unexpectedError"));
       setIsLoading(false);
     }
   };
 
+  const handleSendOTP = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (email === "") return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await sendOTPAction(email, locale);
+      setExpiresAt(result.expiresAt ?? null);
+      setCanResendAt(result.canResendAt ?? null);
+      setStep("otp");
+    } catch {
+      setError(t("unexpectedError"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleVerifyOTP = async () => {
-    if (otp === "" || otp.length !== OTP_LENGTH) {
+    if (otp.length !== OTP_LENGTH) {
       setError(t("invalidCode"));
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     try {
-      const signInResult = await signIn("otp", {
-        email,
-        otp,
-        locale,
-        redirect: false,
-        callbackUrl,
-      });
-
-      if (signInResult?.error != null) {
-        setError(getSignInErrorMessage(signInResult, t));
-        setIsLoading(false);
-      } else if (signInResult?.ok) {
-        router.push(callbackUrl);
-        router.refresh();
-      } else {
-        setError(getSignInErrorMessage(signInResult, t));
-        setIsLoading(false);
-      }
+      finishSignIn(await signIn("otp", { email, otp, locale, redirect: false, callbackUrl }));
     } catch {
       setError(t("unexpectedError"));
       setIsLoading(false);
@@ -189,27 +139,40 @@ export function useLoginFlow(
     setCanResendAt(null);
   };
 
-  const handleOTPExpired = () => {
-    setError(t("codeExpiredMessage"));
+  const handleDevSignIn = async () => {
+    if (!isDevAuthAvailable) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      finishSignIn(await signIn("dev", { locale, redirect: false, callbackUrl }));
+    } catch {
+      setError(t("devSignInFailed"));
+      setIsLoading(false);
+    }
   };
 
   return {
     callbackUrl,
+    mode,
     step,
     email,
+    password,
     otp,
     isLoading,
     error,
     expiresAt,
     canResendAt,
     isDevAuthAvailable,
+    setMode,
     setEmail,
+    setPassword,
     setOtp,
+    handlePasswordLogin,
     handleSendOTP,
     handleVerifyOTP,
     handleResendOTP,
     handleChangeEmail,
-    handleOTPExpired,
+    handleOTPExpired: () => setError(t("codeExpiredMessage")),
     handleDevSignIn,
   };
 }

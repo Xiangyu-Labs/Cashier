@@ -25,6 +25,10 @@ vi.mock("@/modules/auth/application/use-cases/authenticate-with-otp", () => ({
   authenticateWithOTP: vi.fn(),
 }));
 
+vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () => ({
+  authenticateWithPassword: vi.fn(),
+}));
+
 vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
   handleAuthUserCreated: vi.fn(),
 }));
@@ -67,7 +71,7 @@ describe("auth runtime config", () => {
     expect(nextAuthMock).toHaveBeenCalledTimes(1);
   });
 
-  it("registers only the email OTP credentials provider and no database adapter", async () => {
+  it("registers password and email OTP credentials providers without a database adapter", async () => {
     process.env.DEV_AUTH_BYPASS = "false";
     (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     vi.doUnmock("@/auth");
@@ -82,13 +86,13 @@ describe("auth runtime config", () => {
       | undefined;
 
     expect(config?.adapter).toBeUndefined();
-    expect(config?.providers).toHaveLength(1);
+    expect(config?.providers).toHaveLength(2);
     expect(config?.providers?.[0]).toMatchObject({
       id: "otp",
       name: "OTP",
       type: "credentials",
     });
-    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp"]);
+    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp", "password"]);
   });
 
   it("registers the dev provider only when local dev bypass is enabled", async () => {
@@ -104,6 +108,10 @@ describe("auth runtime config", () => {
         }
       | undefined;
 
-    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp", "dev"]);
+    expect(config?.providers?.map((provider) => provider.id)).toEqual([
+      "otp",
+      "password",
+      "dev",
+    ]);
   });
 });

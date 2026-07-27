@@ -5,87 +5,68 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 ## Features
 
 - **AI-Powered Entry**: Upload a receipt or type a natural language description, and Cashier extracts dates, amounts, merchants, and items.
-- **Email OTP Authentication**: Secure email verification-code login with isolated user data.
+- **Self-hosted authentication**: Password login works without email; Resend-backed OTP is optional.
 - **Multi-Currency**: Automatic currency conversion and management.
 - **Service Credentials**: Create scoped API credentials for automation against the current ledger.
 
 ## Tech Stack
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
-- **Database**: SQLite (via [Drizzle ORM](https://orm.drizzle.team/) + better-sqlite3)
+- **Database**: PostgreSQL via [Drizzle ORM](https://orm.drizzle.team/)
 - **Auth**: [Auth.js v5](https://authjs.dev/) (NextAuth)
 - **UI**: Tailwind CSS, Radix UI, Shadcn/ui
 - **AI**: OpenAI / LLM Integration
 
-## Getting Started
+## Docker Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- npm or pnpm
-
-### Configuration
-
-Copy `.env.example` to `.env.local` and fill in the values you need:
-
-```bash
-cp .env.example .env.local
-```
-
-- Canonical key list and descriptions: `src/lib/env/catalog.ts`
-- Startup validation rules: `src/lib/env/startup.ts`
-- Example defaults and comments: `.env.example`
-
-### Installation
-
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Set up the database:
-
-   ```bash
-   npm run db:push
-   ```
-
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser.
-
-## Docker Deployment
-
-### Production
+Docker and Docker Compose are the only prerequisites. Prepare the compact environment file:
 
 ```bash
 cp .env.example .env
-# Edit .env with production values
-npm run docker:prod
 ```
 
-Or manually:
+Review the five values in `QUICK START` (email, password, API key, base URL, and model), then start
+the complete stack:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
+
+Open [http://localhost:3000](http://localhost:3000). Compose starts PostgreSQL and MinIO,
+creates the private bucket, applies database migrations, generates internal secrets, and creates the
+initial user when the database is empty. The initial password is never synchronized again and may be
+removed from `.env` after the first successful start.
+
+Set `AUTH_RESEND_KEY` to enable email-code login and registration. Without it, the login page only
+shows password login. External PostgreSQL or S3-compatible services can be configured in the
+commented `EXTERNAL SERVICES` section of `.env.example`.
 
 ### Docker Commands
 
-| Command                | Description                          |
-| ---------------------- | ------------------------------------ |
-| `npm run docker:prod`  | Build and start production container |
-| `npm run docker:build` | Build production image only          |
-| `npm run docker:down`  | Stop and remove containers           |
+| Command                | Description                         |
+| ---------------------- | ----------------------------------- |
+| `npm run docker:prod`  | Start the complete production stack |
+| `npm run docker:build` | Build production image only         |
+| `npm run docker:down`  | Stop and remove containers          |
 
-> **Note:** The Compose service uses `expose` (container-internal) rather than `ports` (host-facing). For production behind a reverse proxy (nginx, Caddy), the current setup is correct. For direct host access (local testing), add `ports: - "3000:3000"` to `docker-compose.yml`.
+Application data lives in the `cashier_postgres`, `cashier_minio`, and `cashier_config` named
+volumes. `docker compose down` preserves them; `docker compose down -v` permanently removes them.
+
+## Local Development
+
+Local Node development requires PostgreSQL and S3-compatible storage. Start the bundled services,
+install dependencies, migrate, and run Next.js:
+
+```bash
+npm install
+docker compose up -d postgres minio minio-init
+npm run db:migrate
+npm run dev
+```
 
 ## Testing
 
-Tests use in-memory SQLite, no external database required.
+Integration tests use the PostgreSQL service from `docker-compose.test.yml`.
 
 ```bash
 npm run test        # Watch mode
@@ -96,9 +77,6 @@ npm run test:coverage  # With coverage
 ## Documentation
 
 - [CLAUDE.md](./CLAUDE.md) - Working conventions for agents in this repository
-- [docs/architecture/PRD.md](./docs/architecture/PRD.md) - Current product scope, flows, and domain terms
-- [docs/architecture/UI.md](./docs/architecture/UI.md) - UI and interaction reference
-- [docs/architecture/coding-patterns.md](./docs/architecture/coding-patterns.md) - Durable engineering rules
 - [docs/operations/runbook.md](./docs/operations/runbook.md) - Operations runbook for local running, migrations, backup, and deployment
 
 ## Processing

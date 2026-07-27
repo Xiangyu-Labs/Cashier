@@ -343,7 +343,7 @@ describe("upload policy integration", () => {
         .then((rows) => rows[0]);
       expect(rawRow).toBeDefined();
       expect(rawRow!.storageKey).toContain(ledgerId);
-      expect(rawRow!.storageProvider).toBe("r2");
+      expect(rawRow!.storageProvider).toBe("s3");
     });
   });
 });
