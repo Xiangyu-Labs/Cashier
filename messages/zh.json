@@ -42,7 +42,23 @@
     "abandonSuccess": "候选已放弃",
     "abandonError": "放弃候选失败",
     "retry": "重新处理",
-    "editRetry": "编辑重试"
+    "editRetry": "编辑重试",
+    "retrySuccess": "已开始重试",
+    "retrySuccessDescription": "正在重新解析此凭证。",
+    "retryError": "重试失败",
+    "retryErrorDescription": "原结果未改变，请稍后重试。"
+  },
+  "CandidateReview": {
+    "title": "审核解析结果",
+    "loading": "正在加载对比",
+    "loadError": "该候选结果已不可用。",
+    "reload": "重新加载",
+    "original": "原来的解析结果",
+    "candidate": "新的解析结果",
+    "entryCount": "共 {count} 条",
+    "noEntries": "暂无条目",
+    "keepOriginal": "保留原结果",
+    "acceptCandidate": "接受新结果"
   },
   "HomePage": {
     "loading": "加载中…",

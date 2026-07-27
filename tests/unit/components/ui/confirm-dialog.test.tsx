@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -53,5 +53,32 @@ describe("ConfirmDialog", () => {
     const footerProps = dialogFooterSpy.mock.calls[0]?.[0] as { className?: string } | undefined;
 
     expect(footerProps?.className).toBe("justify-between sm:justify-between");
+  });
+
+  it("stays open and disables its action until an async confirmation succeeds", async () => {
+    let resolveConfirmation!: () => void;
+    const onOpenChange = vi.fn();
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConfirmation = resolve;
+        })
+    );
+    render(
+      <ConfirmDialog
+        title="Delete"
+        description="Delete this item"
+        onConfirm={onConfirm}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const confirmButton = screen.getByRole("button", { name: "confirm" });
+    fireEvent.click(confirmButton);
+    await waitFor(() => expect(confirmButton).toBeDisabled());
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    resolveConfirmation();
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 });

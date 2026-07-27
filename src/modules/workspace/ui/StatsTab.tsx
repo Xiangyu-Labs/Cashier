@@ -128,9 +128,9 @@ export function StatsTab({
           {...(trend !== undefined ? { trend } : {})}
         />
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+        <div className="min-w-0 space-y-2 px-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">
               {chartView === "trend" ? t("expenseTrend") : t("dailyHeatmap")}
             </h3>
             <div className="flex items-center gap-1">

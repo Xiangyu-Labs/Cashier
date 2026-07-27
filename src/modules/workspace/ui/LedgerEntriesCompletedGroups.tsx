@@ -18,11 +18,7 @@ export interface UnifiedStreamGroupProps {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
   }) => void;
-  onRetry: (doc: SourceDocument) => void;
-  onDirectRetry?: (doc: SourceDocument) => void;
   onEditRetry?: (doc: SourceDocument) => void;
-  onAcceptCandidate?: (doc: SourceDocument) => void;
-  onAbandonCandidate?: (doc: SourceDocument) => void;
   onDeleteSourceConfirm: (doc: SourceDocument) => void;
   isSelectionMode: boolean;
   selectedIds: string[];
@@ -37,11 +33,7 @@ export function LedgerEntriesUnifiedGroups({
   mainCurrency,
   onViewLedgerEntry,
   onViewSourceDetail,
-  onRetry,
-  onDirectRetry,
   onEditRetry,
-  onAcceptCandidate,
-  onAbandonCandidate,
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
@@ -80,32 +72,10 @@ export function LedgerEntriesUnifiedGroups({
                       ledgerEntries: item.ledgerEntries as LedgerEntry[],
                     })
                   }
-                  onRetry={() => onRetry(item.sourceDocument as SourceDocument)}
-                  {...(onDirectRetry != null
-                    ? {
-                        onDirectRetry: () => {
-                          onDirectRetry(item.sourceDocument as SourceDocument);
-                        },
-                      }
-                    : {})}
                   {...(onEditRetry != null
                     ? {
                         onEditRetry: () => {
                           onEditRetry(item.sourceDocument as SourceDocument);
-                        },
-                      }
-                    : {})}
-                  {...(onAcceptCandidate != null
-                    ? {
-                        onAcceptCandidate: () => {
-                          onAcceptCandidate(item.sourceDocument as SourceDocument);
-                        },
-                      }
-                    : {})}
-                  {...(onAbandonCandidate != null
-                    ? {
-                        onAbandonCandidate: () => {
-                          onAbandonCandidate(item.sourceDocument as SourceDocument);
                         },
                       }
                     : {})}

@@ -6,15 +6,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
-import {
-  ChevronDown,
-  MoreVertical,
-  Pencil,
-  RefreshCw,
-  Trash2,
-  XCircle,
-  CheckCheck,
-} from "lucide-react";
+import { ChevronDown, MoreVertical, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -53,8 +45,6 @@ interface SourceDocumentCardHeaderProps {
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onEditRetry?: (() => void | Promise<void>) | undefined;
-  onAcceptCandidate?: (() => void | Promise<void>) | undefined;
-  onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
@@ -88,8 +78,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   onToggleSelect,
   onDirectRetry,
   onEditRetry,
-  onAcceptCandidate,
-  onAbandonCandidate,
   onDelete,
 }: SourceDocumentCardHeaderProps) {
   const t = useTranslations("SourceDocumentCard");
@@ -229,20 +217,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              {/* Candidate actions */}
-              {hasAction("accept_candidate") && onAcceptCandidate != null && (
-                <DropdownMenuItem onClick={onAcceptCandidate}>
-                  <CheckCheck className="mr-2 h-4 w-4 text-primary" />
-                  {tActions("accept")}
-                </DropdownMenuItem>
-              )}
-              {hasAction("abandon_candidate") && onAbandonCandidate != null && (
-                <DropdownMenuItem onClick={onAbandonCandidate}>
-                  <XCircle className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {tActions("abandon")}
-                </DropdownMenuItem>
-              )}
-
               {/* Recovery actions for anomaly/failed */}
               {hasAction("retry") && onDirectRetry != null && (
                 <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
@@ -257,9 +231,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                 </DropdownMenuItem>
               )}
 
-              {(hasAction("accept_candidate") || hasAction("retry")) && onDelete != null && (
-                <DropdownMenuSeparator />
-              )}
+              {hasAction("retry") && onDelete != null && <DropdownMenuSeparator />}
 
               {onDelete != null && (
                 <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">

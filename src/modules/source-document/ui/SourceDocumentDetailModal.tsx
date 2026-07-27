@@ -53,7 +53,7 @@ interface SourceDocumentDetailModalProps {
     }
   ) => Promise<void>;
   onDeleteEntry: (id: string) => Promise<void>;
-  onDelete?: () => void;
+  onDelete?: () => void | Promise<void>;
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
   onAbandonCandidate?: () => Promise<void>;
@@ -194,9 +194,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     }
   };
 
-  const handleDeleteDocument = () => {
-    onDelete?.();
-    setShowDeleteConfirm(false);
+  const handleDeleteDocument = async () => {
+    await onDelete?.();
   };
 
   const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument?.title ?? "";
@@ -204,7 +203,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border"
+        className="flex h-[100dvh] max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-auto sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:rounded-lg"
         onOpenAutoFocus={() => {
           restoreFocusRef.current = document.activeElement as HTMLElement | null;
         }}
@@ -340,8 +339,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           variant="inline"
         />
 
-        <div className="shrink-0 px-4 py-3 border-t bg-surface/80 backdrop-blur-md sm:bg-surface2/30 flex justify-between items-center gap-2 z-modal-footer">
-          <div className="flex items-center gap-2">
+        <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 py-3 backdrop-blur-md sm:bg-surface2/30">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {/* Candidate actions: Accept / Abandon */}
             {sourceDocument?.supportedActions.includes("accept_candidate") &&
               onAcceptCandidate != null && (

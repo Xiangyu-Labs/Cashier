@@ -1,6 +1,5 @@
 "use client";
-import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
@@ -12,7 +11,7 @@ import {
   invalidateUncategorizedCount,
   queryKeys,
 } from "@/lib/query-keys";
-import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createEntryCategoryAction,
   updateEntryCategoryAction,
@@ -26,10 +25,8 @@ import type {
 } from "@/modules/ledger/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
-export function useCategoryMutations(ledgerId: string, categories: EntryCategoryWithCount[]) {
+export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
   const t = useTranslations("Settings");
-  const queryKey = queryKeys.entryCategories(ledgerId);
-  const tempIdSequence = useRef(0);
 
   const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => {});
 
@@ -44,30 +41,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     invalidatePredicates: [invalidateEntryCategories(ledgerId)],
     onSuccessExtra: () => {
       setCategoryCreatedTrigger(() => () => {});
-    },
-    onOptimisticUpdate: (queryClient, { name }) => {
-      const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
-
-      const tempCategory: EntryCategoryWithCount = {
-        id: `temp-category-${ledgerId}-${++tempIdSequence.current}`,
-        name,
-        icon: null,
-        description: null,
-        isEditable: true,
-        sortOrder: categories.length,
-        ledgerId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deletedAt: null,
-        entryCount: 0,
-      };
-
-      queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) => [
-        ...old,
-        tempCategory,
-      ]);
-
-      return { snapshots };
     },
   });
 
@@ -90,15 +63,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient, { id, data }) => {
-      const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
-
-      queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) =>
-        old.map((c) => (c.id === id ? { ...c, ...data } : c))
-      );
-
-      return { snapshots };
-    },
   });
 
   const deleteCategory = useLedgerMutation<DeleteEntryCategoryResultDto, string>(ledgerId, {
@@ -115,15 +79,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient, id) => {
-      const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
-
-      queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) =>
-        old.filter((c) => c.id !== id)
-      );
-
-      return { snapshots };
-    },
     onSettledExtra: (queryClient) => {
       fireAndForget(
         queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) }),
@@ -143,21 +98,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient, categoryIds) => {
-      const snapshots = createListSnapshots<EntryCategoryWithCount[]>(queryClient, queryKey);
-
-      queryClient.setQueriesData<EntryCategoryWithCount[]>({ queryKey }, (old = []) => {
-        const categoryMap = new Map(old.map((c) => [c.id, c]));
-        return categoryIds
-          .map((id, index) => {
-            const cat = categoryMap.get(id);
-            return cat ? { ...cat, sortOrder: index } : null;
-          })
-          .filter((c): c is EntryCategoryWithCount => c !== null);
-      });
-
-      return { snapshots };
-    },
   });
 
   return {

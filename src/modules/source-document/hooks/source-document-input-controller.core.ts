@@ -72,6 +72,9 @@ export function buildSubmitPayload(
 
   return {
     entryDate: formatDateTimeForApi(entryDate),
+    ...(typeof Intl !== "undefined"
+      ? { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+      : {}),
     ...(text !== "" ? { text } : {}),
     ...(newImages.length > 0 ? { images: newImages } : {}),
     ...(storedFileIds.length > 0 ? { storedFileIds } : {}),

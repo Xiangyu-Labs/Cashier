@@ -34,7 +34,6 @@ describe("LedgerEntriesUnifiedGroups", () => {
         mainCurrency="CNY"
         onViewLedgerEntry={vi.fn()}
         onViewSourceDetail={vi.fn()}
-        onRetry={vi.fn()}
         onDeleteSourceConfirm={vi.fn()}
         isSelectionMode={false}
         selectedIds={[]}

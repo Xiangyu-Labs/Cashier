@@ -1,21 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { InfiniteData } from "@tanstack/react-query";
-import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import { round } from "@/lib/money/decimal";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  queryKeys,
 } from "@/lib/query-keys";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
-import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
-import type { EntryCategory, LedgerEntry } from "@/modules/ledger/contracts";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 
 interface UseQuickEntryFormControllerParams {
   ledgerId: string;
@@ -44,7 +40,6 @@ export function useQuickEntryFormController({
   const [currency, setCurrency] = useState(mainCurrency);
   const [itemName, setItemName] = useState("");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
-  const tempIdSequence = useRef(0);
 
   useEffect(() => {
     setCurrency(mainCurrency);
@@ -63,137 +58,12 @@ export function useQuickEntryFormController({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient, variables) => {
-      const sequence = ++tempIdSequence.current;
-      const tempDocId = `temp-doc-${ledgerId}-${sequence}`;
-      const tempEntryId = `temp-entry-${ledgerId}-${sequence}`;
-      const now = new Date().toISOString();
-      const entryDateStr = variables.entryDate;
-      const optimisticConvertedAmount =
-        variables.currency === mainCurrency ? round(String(variables.amount), 2) : null;
-      const optimisticExchangeRate = variables.currency === mainCurrency ? "1" : null;
-
-      const tempEntry: LedgerEntry = {
-        id: tempEntryId,
-        ledgerId,
-        sourceDocumentId: tempDocId,
-        categoryId: variables.categoryId,
-        amount: round(String(variables.amount), 2),
-        currency: variables.currency,
-        itemName: variables.itemName ?? selectedCategory?.name ?? "",
-        description: null,
-        convertedAmount: optimisticConvertedAmount,
-        exchangeRate: optimisticExchangeRate,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        category: selectedCategory || null,
-        sourceDocument: null,
-      };
-
-      const tempDoc: SourceDocumentListItemDto = {
-        id: tempDocId,
-        ledgerId,
-        type: "manual",
-        status: "completed",
-        title: selectedCategory?.name ?? null,
-        text: null,
-        entryDate: entryDateStr,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        metadata: {},
-        files: [],
-        hasImages: false,
-        anomalyReason: null,
-        supportedActions: ["retry", "edit_retry", "delete"],
-        errorCode: null,
-        pendingRevisionId: null,
-        ledgerEntries: [
-          {
-            id: tempEntryId,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
-            ledgerId,
-            description: null,
-            categoryId: variables.categoryId,
-            sourceDocumentId: tempDocId,
-            amount: round(String(variables.amount), 2),
-            currency: variables.currency,
-            itemName: variables.itemName ?? selectedCategory?.name ?? "",
-            convertedAmount: optimisticConvertedAmount,
-            exchangeRate: optimisticExchangeRate,
-            category:
-              selectedCategory !== undefined
-                ? {
-                    id: selectedCategory.id,
-                    name: selectedCategory.name,
-                    createdAt: selectedCategory.createdAt,
-                    updatedAt: selectedCategory.updatedAt,
-                    deletedAt: selectedCategory.deletedAt,
-                    ledgerId: selectedCategory.ledgerId,
-                    description: selectedCategory.description,
-                    icon: selectedCategory.icon,
-                    sortOrder: selectedCategory.sortOrder,
-                    isEditable: selectedCategory.isEditable,
-                  }
-                : null,
-          },
-        ],
-      };
-
-      const streamPrefix = queryKeys.sourceDocumentStreamPrefix(ledgerId);
-      const docSnapshots = createListSnapshots<InfiniteData<StreamPage>>(queryClient, streamPrefix);
-      queryClient.setQueriesData<InfiniteData<StreamPage>>({ queryKey: streamPrefix }, (old) => {
-        if (!old?.pages) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page, index) => {
-            if (index === 0) {
-              return {
-                ...page,
-                items: [tempDoc, ...page.items],
-              };
-            }
-            return {
-              ...page,
-              // Ensure no duplicate temp entry in other pages
-              items: page.items.filter((item) => !item.id.startsWith("temp-doc-")),
-            };
-          }),
-          pageParams: old.pageParams,
-        };
-      });
-
-      interface EntryPage {
-        items: LedgerEntry[];
-      }
-      const entrySnapshots = createListSnapshots<InfiniteData<EntryPage>>(
-        queryClient,
-        queryKeys.ledgerEntries(ledgerId)
-      );
-      queryClient.setQueriesData<InfiniteData<EntryPage>>(
-        { queryKey: queryKeys.ledgerEntries(ledgerId) },
-        (old) => {
-          if (!old?.pages) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page, index) =>
-              index === 0 ? { ...page, items: [tempEntry, ...page.items] } : page
-            ),
-          };
-        }
-      );
-
-      return { snapshots: [...docSnapshots, ...entrySnapshots] };
-    },
+    onSuccessExtra: () => onSuccess?.(),
   });
 
   const handleSubmit = () => {
     if (selectedCategoryId === null || amount <= 0) return;
     const nextItemName = itemName !== "" ? itemName : undefined;
-    onSuccess?.();
     mutation.mutate({
       categoryId: selectedCategoryId,
       amount,

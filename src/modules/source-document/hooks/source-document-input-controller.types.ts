@@ -11,6 +11,7 @@ export interface EditableInputImage extends SourceDocumentModalImage {
 
 export interface SourceDocumentSubmitPayload {
   entryDate: string;
+  timezone?: string;
   text?: string;
   images?: SourceDocumentModalImage[];
   originalImages?: SourceDocumentModalImage[];

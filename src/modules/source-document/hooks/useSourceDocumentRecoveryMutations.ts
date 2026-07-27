@@ -1,18 +1,15 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
-import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
+import { invalidateSourceDocumentCounts, invalidateSourceDocuments } from "@/lib/query-keys";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { applyOptimisticUpsert, getStreamQueryMatches } from "./source-document-optimistic-cache";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
@@ -23,31 +20,12 @@ interface UseSourceDocumentRecoveryMutationsOptions {
 }
 
 /**
- * Capture the current entity from the stream cache for a given source document ID.
- */
-function captureCurrentEntity(
-  queryClient: ReturnType<typeof useQueryClient>,
-  ledgerId: string,
-  sourceDocumentId: string
-): SourceDocumentListItemDto | null {
-  const matches = getStreamQueryMatches(queryClient, ledgerId);
-  for (const [, data] of matches) {
-    if (!data) continue;
-    for (const page of data.pages) {
-      const found = page.items.find((item) => item.id === sourceDocumentId);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-/**
  * Provides mutations for source document recovery actions:
  * - Accept candidate
  * - Abandon candidate
  * - Direct retry
  *
- * Uses operation-scoped cache transactions for optimistic updates.
+ * Cached server data remains unchanged until an action succeeds.
  */
 export function useSourceDocumentRecoveryMutations({
   ledgerId,
@@ -57,71 +35,25 @@ export function useSourceDocumentRecoveryMutations({
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const queryClient = useQueryClient();
   const notifyRefresh = useNotifyRevisionRefresh();
-  // I4: Use module-level singleton to survive remounts
-  const manager = getLedgerTransactionManager(ledgerId);
+  const actionLockRef = useRef(false);
   const tActions = useTranslations("CandidateAction");
 
   // -----------------------------------------------------------------------
   // Accept candidate
   // -----------------------------------------------------------------------
 
-  const acceptMutation = useMutation<unknown, Error, { operationId: string }>({
+  const acceptMutation = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       if (revisionId == null) throw new Error("No revision ID provided for accept");
-      return acceptSourceDocumentCandidateAction(
-        ledgerId,
-        sourceDocumentId,
-        revisionId,
-        "accept-" + crypto.randomUUID()
-      );
+      return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
     },
-    onMutate: () => {
-      const op = manager.startOperation(ledgerId);
-
-      // C3: Capture current entity from stream cache for rollback
-      const prevEntity = captureCurrentEntity(queryClient, ledgerId, sourceDocumentId);
-
-      const optimisticEntity: SourceDocumentListItemDto = {
-        id: sourceDocumentId,
-        ledgerId,
-        title: prevEntity?.title ?? null,
-        text: null,
-        files: [],
-        status: "completed",
-        type: "ai_parsed",
-        anomalyReason: null,
-        entryDate: prevEntity?.entryDate ?? null,
-        metadata: {},
-        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deletedAt: null,
-        hasImages: prevEntity?.hasImages ?? false,
-        supportedActions: [],
-        errorCode: null,
-        pendingRevisionId: null,
-        ledgerEntries: prevEntity?.ledgerEntries ?? [],
-      };
-
-      op.patches.push({
-        type: "upsert",
-        entityId: sourceDocumentId,
-        entity: optimisticEntity,
-        prevEntity, // C3: store actual previous entity
-      });
-
-      applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity);
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
       notifyRefresh();
-      return { operationId: op.operationId };
-    },
-    onSuccess: (_data, variables) => {
-      // I3: Pass reconciliation — we don't have the canonical entity here,
-      // but the commit clears the operation from the pending stack
-      manager.commitOperation(variables.operationId, null, queryClient);
       toast.success(tActions("acceptSuccess"));
       onSuccess?.();
     },
-    onError: (_error, variables) => {
-      manager.rollbackOperation(variables.operationId, queryClient);
+    onError: () => {
       toast.error(tActions("acceptError"));
     },
     onSettled: () => {
@@ -135,60 +67,22 @@ export function useSourceDocumentRecoveryMutations({
   // Abandon candidate
   // -----------------------------------------------------------------------
 
-  const abandonMutation = useMutation<unknown, Error, { operationId: string }>({
+  const abandonMutation = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       if (revisionId == null) throw new Error("No revision ID provided for abandon");
       return abandonSourceDocumentCandidateAction(
         ledgerId,
         sourceDocumentId,
         revisionId,
-        "abandon-" + crypto.randomUUID()
+        undefined
       );
     },
-    onMutate: () => {
-      const op = manager.startOperation(ledgerId);
-
-      // C3: Capture current entity from stream cache for rollback
-      const prevEntity = captureCurrentEntity(queryClient, ledgerId, sourceDocumentId);
-
-      const optimisticEntity: SourceDocumentListItemDto = {
-        id: sourceDocumentId,
-        ledgerId,
-        title: prevEntity?.title ?? null,
-        text: null,
-        files: [],
-        status: "completed",
-        type: "ai_parsed",
-        anomalyReason: null,
-        entryDate: prevEntity?.entryDate ?? null,
-        metadata: {},
-        createdAt: prevEntity?.createdAt ?? new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deletedAt: null,
-        hasImages: prevEntity?.hasImages ?? false,
-        supportedActions: [],
-        errorCode: null,
-        pendingRevisionId: null,
-        ledgerEntries: prevEntity?.ledgerEntries ?? [],
-      };
-
-      op.patches.push({
-        type: "upsert",
-        entityId: sourceDocumentId,
-        entity: optimisticEntity,
-        prevEntity, // C3: store actual previous entity
-      });
-
-      applyOptimisticUpsert(queryClient, ledgerId, optimisticEntity);
-      return { operationId: op.operationId };
-    },
-    onSuccess: (_data, variables) => {
-      manager.commitOperation(variables.operationId, null, queryClient);
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
       toast.success(tActions("abandonSuccess"));
       onSuccess?.();
     },
-    onError: (_error, variables) => {
-      manager.rollbackOperation(variables.operationId, queryClient);
+    onError: () => {
       toast.error(tActions("abandonError"));
     },
     onSettled: () => {
@@ -206,13 +100,18 @@ export function useSourceDocumentRecoveryMutations({
     mutationFn: async ({ operationId }) => {
       return retrySourceDocumentAction(ledgerId, sourceDocumentId, operationId);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
       notifyRefresh();
-      toast.success(tActions("retrySuccess"));
+      toast.success(tActions("retrySuccess"), {
+        description: tActions("retrySuccessDescription"),
+      });
       onSuccess?.();
     },
     onError: () => {
-      toast.error(tActions("retryError"));
+      toast.error(tActions("retryError"), {
+        description: tActions("retryErrorDescription"),
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({
@@ -226,17 +125,33 @@ export function useSourceDocumentRecoveryMutations({
   // -----------------------------------------------------------------------
 
   const acceptCandidate = useCallback(async () => {
-    const op = manager.startOperation(ledgerId);
-    await acceptMutation.mutateAsync({ operationId: op.operationId });
-  }, [ledgerId, acceptMutation, manager]);
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    try {
+      await acceptMutation.mutateAsync();
+    } finally {
+      actionLockRef.current = false;
+    }
+  }, [acceptMutation]);
 
   const abandonCandidate = useCallback(async () => {
-    const op = manager.startOperation(ledgerId);
-    await abandonMutation.mutateAsync({ operationId: op.operationId });
-  }, [ledgerId, abandonMutation, manager]);
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    try {
+      await abandonMutation.mutateAsync();
+    } finally {
+      actionLockRef.current = false;
+    }
+  }, [abandonMutation]);
 
   const retry = useCallback(async () => {
-    await retryMutation.mutateAsync({ operationId: "retry-" + crypto.randomUUID() });
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    try {
+      await retryMutation.mutateAsync({ operationId: "retry-" + crypto.randomUUID() });
+    } finally {
+      actionLockRef.current = false;
+    }
   }, [retryMutation]);
 
   return {
@@ -246,5 +161,6 @@ export function useSourceDocumentRecoveryMutations({
     isAccepting: acceptMutation.isPending,
     isAbandoning: abandonMutation.isPending,
     isRetrying: retryMutation.isPending,
+    isReviewing: acceptMutation.isPending || abandonMutation.isPending,
   };
 }

@@ -1,13 +1,12 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMutation } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
-import { queryKeys, invalidateSourceDocumentStreamTotal } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useLayoutTransition } from "@/hooks/use-layout-transition";
@@ -18,21 +17,8 @@ import {
   useBatchSourceDocumentActions,
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
-import {
-  getStreamTotalAction,
-  retrySourceDocumentAction,
-  acceptSourceDocumentCandidateAction,
-  abandonSourceDocumentCandidateAction,
-} from "@/modules/source-document/actions";
+import { getStreamTotalAction } from "@/modules/source-document/actions";
 import { useNotifyRevisionRefresh } from "@/modules/source-document/hooks/revision-state-refresh";
-import { getLedgerTransactionManager } from "@/lib/mutations/cache-transaction";
-import {
-  applyOptimisticUpsert,
-  getStreamQueryMatches,
-} from "@/modules/source-document/hooks/source-document-optimistic-cache";
-import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
-import { toast } from "sonner";
 import { type EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
@@ -41,7 +27,7 @@ import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
-import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
+import { buildStreamTotalQuery, useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -69,8 +55,6 @@ export function LedgerEntriesTab({
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
-  const tActions = useTranslations("CandidateAction");
-  const queryClient = useQueryClient();
   const notifyRefresh = useNotifyRevisionRefresh();
   const pushModal = useModalStackStore((state) => state.push);
   const { containerProps, getItemProps, layoutGroupId: _layoutGroupId } = useLayoutTransition();
@@ -79,16 +63,15 @@ export function LedgerEntriesTab({
     advancedFilters
   );
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const [candidateReviewDocument, setCandidateReviewDocument] = useState<SourceDocument | null>(
+    null
+  );
 
-  const canonicalStatuses = canonicalizeSourceDocumentStatuses(filters.statuses);
-  const statusesKey = canonicalStatuses?.join(",") ?? null;
-  const streamTotalInput = {
-    ...(startDateStr != null && startDateStr !== "" ? { startDate: startDateStr } : {}),
-    ...(endDateStr != null && endDateStr !== "" ? { endDate: endDateStr } : {}),
-    ...(filters.minAmount !== undefined ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount !== undefined ? { maxAmount: filters.maxAmount } : {}),
-    ...(canonicalStatuses != null ? { statuses: canonicalStatuses } : {}),
-  };
+  const { input: streamTotalInput, statusesKey } = buildStreamTotalQuery(
+    filters,
+    startDateStr,
+    endDateStr
+  );
   const { data: streamTotalData } = useQuery({
     queryKey: queryKeys.sourceDocumentStreamTotal(ledgerId, {
       startDate: startDateStr,
@@ -107,145 +90,10 @@ export function LedgerEntriesTab({
     retrySourceDocument,
     setRetrySourceDocument,
     openSourceDocumentDeleteConfirm,
-    closeDeleteConfirm,
     closeRetrySourceDocument,
   } = useLedgerEntriesTabState();
 
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
-
-  // Transaction-scoped mutations for stream card actions
-  const txnManager = getLedgerTransactionManager(ledgerId);
-
-  const retryMutation = useMutation<void, Error, SourceDocument>({
-    mutationFn: async (doc) => {
-      const operationId = crypto.randomUUID();
-      await retrySourceDocumentAction(ledgerId, doc.id, operationId);
-    },
-    onSuccess: () => {
-      notifyRefresh();
-      void queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-      });
-      toast.success(tActions("retrySuccess"));
-    },
-    onError: () => {
-      toast.error(tActions("retryError"));
-    },
-  });
-
-  const acceptCandidateMutation = useMutation<void, Error, SourceDocument, { operationId: string }>(
-    {
-      mutationFn: async (doc) => {
-        if (doc.pendingRevisionId == null) throw new Error("No pending revision");
-        const operationId = crypto.randomUUID();
-        await acceptSourceDocumentCandidateAction(
-          ledgerId,
-          doc.id,
-          doc.pendingRevisionId,
-          operationId
-        );
-      },
-      onMutate: (doc) => {
-        const matches = getStreamQueryMatches(queryClient, ledgerId);
-        let prevEntity: SourceDocumentListItemDto | null = null;
-        for (const [, data] of matches) {
-          if (!data) continue;
-          for (const page of data.pages) {
-            const found = page.items.find((item) => item.id === doc.id);
-            if (found) {
-              prevEntity = found;
-              break;
-            }
-          }
-          if (prevEntity) break;
-        }
-
-        const op = txnManager.startOperation(ledgerId);
-        op.patches.push({
-          type: "upsert",
-          entityId: doc.id,
-          entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
-          prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
-        });
-
-        applyOptimisticUpsert(queryClient, ledgerId, {
-          ...doc,
-          status: "completed",
-        } as unknown as SourceDocumentListItemDto);
-        return { operationId: op.operationId };
-      },
-      onSuccess: (_data, _variables, context) => {
-        if (context?.operationId)
-          txnManager.commitOperation(context.operationId, null, queryClient);
-        void queryClient.invalidateQueries({
-          predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-        });
-        toast.success(tActions("acceptSuccess"));
-      },
-      onError: (_error, _variables, context) => {
-        if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
-        toast.error(tActions("acceptError"));
-      },
-    }
-  );
-
-  const abandonCandidateMutation = useMutation<
-    void,
-    Error,
-    SourceDocument,
-    { operationId: string }
-  >({
-    mutationFn: async (doc) => {
-      if (doc.pendingRevisionId == null) throw new Error("No pending revision");
-      const operationId = crypto.randomUUID();
-      await abandonSourceDocumentCandidateAction(
-        ledgerId,
-        doc.id,
-        doc.pendingRevisionId,
-        operationId
-      );
-    },
-    onMutate: (doc) => {
-      const matches = getStreamQueryMatches(queryClient, ledgerId);
-      let prevEntity: SourceDocumentListItemDto | null = null;
-      for (const [, data] of matches) {
-        if (!data) continue;
-        for (const page of data.pages) {
-          const found = page.items.find((item) => item.id === doc.id);
-          if (found) {
-            prevEntity = found;
-            break;
-          }
-        }
-        if (prevEntity) break;
-      }
-
-      const op = txnManager.startOperation(ledgerId);
-      op.patches.push({
-        type: "upsert",
-        entityId: doc.id,
-        entity: { ...doc, status: "completed" } as unknown as SourceDocumentListItemDto,
-        prevEntity: prevEntity as unknown as SourceDocumentListItemDto | null,
-      });
-
-      applyOptimisticUpsert(queryClient, ledgerId, {
-        ...doc,
-        status: "completed",
-      } as unknown as SourceDocumentListItemDto);
-      return { operationId: op.operationId };
-    },
-    onSuccess: (_data, _variables, context) => {
-      if (context?.operationId) txnManager.commitOperation(context.operationId, null, queryClient);
-      void queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-      });
-      toast.success(tActions("abandonSuccess"));
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.operationId) txnManager.rollbackOperation(context.operationId, queryClient);
-      toast.error(tActions("abandonError"));
-    },
-  });
 
   // Use the unified stream hook with paginated all-statuses results
   const { streamGroups, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refresh } =
@@ -299,6 +147,10 @@ export function LedgerEntriesTab({
 
   const handleViewSourceDetail = useCallback(
     (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
+      if (group.sourceDocument.status === "candidate_pending") {
+        setCandidateReviewDocument(group.sourceDocument);
+        return;
+      }
       pushModal({
         type: "source-document",
         id: group.sourceDocument.id,
@@ -321,35 +173,14 @@ export function LedgerEntriesTab({
     [openSourceDocumentDeleteConfirm, t]
   );
 
-  const handleDirectRetry = useCallback(
-    async (doc: SourceDocument) => {
-      await retryMutation.mutateAsync(doc);
-    },
-    [retryMutation]
-  );
-
-  const handleAcceptCandidate = useCallback(
-    async (doc: SourceDocument) => {
-      if (doc.pendingRevisionId == null) return;
-      await acceptCandidateMutation.mutateAsync(doc);
-    },
-    [acceptCandidateMutation]
-  );
-
-  const handleAbandonCandidate = useCallback(
-    async (doc: SourceDocument) => {
-      if (doc.pendingRevisionId == null) return;
-      await abandonCandidateMutation.mutateAsync(doc);
-    },
-    [abandonCandidateMutation]
-  );
-
-  const handleDeleteConfirmAction = useCallback(() => {
+  const handleDeleteConfirmAction = useCallback(async () => {
     if (deleteConfirm.id == null || deleteConfirm.id === "" || deleteConfirm.type == null) return;
-    if (deleteConfirm.type === "sourceDocument") deleteSourceDocument.mutate(deleteConfirm.id);
-    else if (deleteConfirm.type === "ledgerEntry") deleteEntry.mutate(deleteConfirm.id);
-    closeDeleteConfirm();
-  }, [deleteConfirm, deleteSourceDocument, deleteEntry, closeDeleteConfirm]);
+    if (deleteConfirm.type === "sourceDocument") {
+      await deleteSourceDocument.mutateAsync(deleteConfirm.id);
+    } else if (deleteConfirm.type === "ledgerEntry") {
+      await deleteEntry.mutateAsync(deleteConfirm.id);
+    }
+  }, [deleteConfirm, deleteSourceDocument, deleteEntry]);
 
   const handleBatchUpdateDates = useCallback(
     (date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }),
@@ -396,11 +227,7 @@ export function LedgerEntriesTab({
                 mainCurrency={mainCurrency}
                 onViewLedgerEntry={handleViewLedgerEntry}
                 onViewSourceDetail={handleViewSourceDetail}
-                onRetry={setRetrySourceDocument}
-                onDirectRetry={handleDirectRetry}
                 onEditRetry={setRetrySourceDocument}
-                onAcceptCandidate={handleAcceptCandidate}
-                onAbandonCandidate={handleAbandonCandidate}
                 onDeleteSourceConfirm={handleDeleteSourceConfirm}
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
@@ -450,6 +277,9 @@ export function LedgerEntriesTab({
         retrySourceDocument={retrySourceDocument}
         onRetryDialogOpenChange={(open) => !open && closeRetrySourceDocument()}
         ledgerId={ledgerId}
+        candidateReviewDocument={candidateReviewDocument}
+        onCandidateReviewOpenChange={(open) => !open && setCandidateReviewDocument(null)}
+        mainCurrency={mainCurrency}
       />
     </PullToRefresh>
   );

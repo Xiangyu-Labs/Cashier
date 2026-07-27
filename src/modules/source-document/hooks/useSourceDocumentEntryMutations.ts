@@ -8,13 +8,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { round } from "@/lib/money/decimal";
 import { useTranslations } from "next-intl";
 import type { EntryEditData } from "@/modules/source-document/types";
-import {
-  type BatchEntryUpdateData,
-  createSourceDocSnapshots,
-  removeSingleEntryFromCaches,
-  updateBatchEntriesInCaches,
-  updateSingleEntryInCaches,
-} from "./source-document-detail-cache";
+import { type BatchEntryUpdateData } from "./source-document-detail-cache";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -26,7 +20,7 @@ interface UseSourceDocumentEntryMutationsOptions {
 }
 
 export function useSourceDocumentEntryMutations({
-  id,
+  id: _id,
   ledgerId,
   sourceDocumentAndEntriesPredicates,
   sourceDocumentEntriesSummaryPredicates,
@@ -57,11 +51,6 @@ export function useSourceDocumentEntryMutations({
     ...(sourceDocumentEntriesSummaryPredicates !== null
       ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
       : {}),
-    onOptimisticUpdate: (queryClient, { entryId, data }) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-      updateSingleEntryInCaches(queryClient, id, ledgerId, entryId, data);
-      return { snapshots };
-    },
   });
 
   const batchUpdateMutation = useLedgerMutation<
@@ -79,11 +68,6 @@ export function useSourceDocumentEntryMutations({
     ...(sourceDocumentEntriesSummaryPredicates !== null
       ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
       : {}),
-    onOptimisticUpdate: (queryClient, { ids, data }) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-      updateBatchEntriesInCaches(queryClient, id, ledgerId, ids, data);
-      return { snapshots };
-    },
   });
 
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {
@@ -99,11 +83,6 @@ export function useSourceDocumentEntryMutations({
     ...(sourceDocumentEntriesSummaryPredicates !== null
       ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
       : {}),
-    onOptimisticUpdate: (queryClient, entryId) => {
-      const snapshots = createSourceDocSnapshots(queryClient, id, ledgerId);
-      removeSingleEntryFromCaches(queryClient, id, ledgerId, entryId);
-      return { snapshots };
-    },
   });
 
   return {

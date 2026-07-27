@@ -8,9 +8,16 @@ import type {
   AbandonCandidateReconciliationDto,
   AbandonCandidateResponseDto,
   SourceDocumentListItemDto,
+  SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
+import { getSourceDocumentCandidateReview } from "@/application/adapters/postgres";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+
+export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
+  async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
+    getSourceDocumentCandidateReview(ledgerId, sourceDocumentId)
+);
 
 /**
  * Accept a completed candidate revision for a source document.

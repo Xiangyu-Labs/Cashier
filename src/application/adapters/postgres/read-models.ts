@@ -7,6 +7,8 @@ import type {
   SourceDocumentStatusType,
   SourceDocumentCandidateComparisonDto,
   SourceDocumentCandidateProjectionSummary,
+  SourceDocumentCandidateReviewDto,
+  SourceDocumentCandidateReviewEntryDto,
 } from "@/modules/source-document/contracts";
 import {
   PROCESSING_FAILURE_CODES,
@@ -16,14 +18,17 @@ import {
   type RevisionOutcome,
 } from "@/application/contracts";
 import { parseAmount } from "@/lib/formatters";
-import { normalize as decimalNormalize } from "@/lib/money/decimal";
+import { add as decimalAdd, normalize as decimalNormalize } from "@/lib/money/decimal";
 import {
+  entryCategories,
   ledgerEntries,
+  revisionEntries,
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
+import { ConflictError, NotFoundError } from "@/lib/errors";
 
 /**
  * Effective date: `entryDate` if present, otherwise the ISO calendar date
@@ -64,6 +69,130 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
       columns: { id: true },
     })) != null;
   return { ledgerId: document.ledgerId, hasImages: hasFiles };
+}
+
+export async function getSourceDocumentCandidateReview(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentCandidateReviewDto> {
+  const document = await db.query.sourceDocuments.findFirst({
+    where: and(
+      eq(sourceDocuments.ledgerId, ledgerId),
+      eq(sourceDocuments.id, sourceDocumentId),
+      isNull(sourceDocuments.deletedAt)
+    ),
+    columns: { activeRevisionId: true, pendingRevisionId: true },
+  });
+  if (document == null) throw new NotFoundError("Source document");
+  if (document.activeRevisionId == null || document.pendingRevisionId == null) {
+    throw new ConflictError("Source document has no candidate to review");
+  }
+
+  const revisionIds = [document.activeRevisionId, document.pendingRevisionId];
+  const [revisions, rows] = await Promise.all([
+    db
+      .select({ id: sourceDocumentRevisions.id, outcome: sourceDocumentRevisions.outcome })
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          inArray(sourceDocumentRevisions.id, revisionIds)
+        )
+      ),
+    db
+      .select({
+        revisionId: revisionEntries.revisionId,
+        id: ledgerEntries.id,
+        itemName: ledgerEntries.itemName,
+        description: ledgerEntries.description,
+        amount: ledgerEntries.amount,
+        currency: ledgerEntries.currency,
+        convertedAmount: ledgerEntries.convertedAmount,
+        categoryId: entryCategories.id,
+        categoryLedgerId: entryCategories.ledgerId,
+        categoryName: entryCategories.name,
+        categoryDescription: entryCategories.description,
+        categoryIcon: entryCategories.icon,
+        categorySortOrder: entryCategories.sortOrder,
+        categoryIsEditable: entryCategories.isEditable,
+        categoryCreatedAt: entryCategories.createdAt,
+        categoryUpdatedAt: entryCategories.updatedAt,
+        categoryDeletedAt: entryCategories.deletedAt,
+      })
+      .from(revisionEntries)
+      .innerJoin(
+        ledgerEntries,
+        and(
+          eq(ledgerEntries.ledgerId, revisionEntries.ledgerId),
+          eq(ledgerEntries.id, revisionEntries.ledgerEntryId),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      .leftJoin(
+        entryCategories,
+        and(
+          eq(entryCategories.ledgerId, ledgerEntries.ledgerId),
+          eq(entryCategories.id, ledgerEntries.categoryId)
+        )
+      )
+      .where(
+        and(
+          eq(revisionEntries.ledgerId, ledgerId),
+          inArray(revisionEntries.revisionId, revisionIds)
+        )
+      )
+      .orderBy(revisionEntries.revisionId, revisionEntries.position),
+  ]);
+
+  const pendingRevision = revisions.find((revision) => revision.id === document.pendingRevisionId);
+  if (pendingRevision?.outcome !== "completed") {
+    throw new ConflictError("Candidate revision is no longer available for review");
+  }
+
+  const entriesByRevision = new Map<string, SourceDocumentCandidateReviewEntryDto[]>();
+  for (const row of rows) {
+    const entries = entriesByRevision.get(row.revisionId) ?? [];
+    entries.push({
+      id: row.id,
+      itemName: row.itemName,
+      description: row.description,
+      amount: row.amount,
+      currency: row.currency,
+      convertedAmount: row.convertedAmount,
+      category:
+        row.categoryId == null || row.categoryLedgerId == null || row.categoryName == null
+          ? null
+          : {
+              id: row.categoryId,
+              ledgerId: row.categoryLedgerId,
+              name: row.categoryName,
+              description: row.categoryDescription,
+              icon: row.categoryIcon,
+              sortOrder: row.categorySortOrder ?? 0,
+              isEditable: row.categoryIsEditable ?? true,
+              createdAt: row.categoryCreatedAt?.toISOString() ?? "",
+              updatedAt: row.categoryUpdatedAt?.toISOString() ?? "",
+              deletedAt: row.categoryDeletedAt?.toISOString() ?? null,
+            },
+    });
+    entriesByRevision.set(row.revisionId, entries);
+  }
+
+  const buildRevision = (revisionId: string) => {
+    const entries = entriesByRevision.get(revisionId) ?? [];
+    const total = entries.reduce(
+      (sum, entry) => decimalAdd(sum, entry.convertedAmount ?? entry.amount),
+      "0"
+    );
+    return { revisionId, entries, entryCount: entries.length, total };
+  };
+
+  return {
+    sourceDocumentId,
+    active: buildRevision(document.activeRevisionId),
+    candidate: buildRevision(document.pendingRevisionId),
+  };
 }
 
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;

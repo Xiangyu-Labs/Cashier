@@ -63,7 +63,7 @@ export function supportedSourceDocumentActions(input: {
 
   // Document has an existing active projection and a completed pending revision -> candidate pending
   if (input.activeRevisionId != null && input.pendingOutcome === "completed") {
-    return ["accept_candidate", "abandon_candidate", "delete"];
+    return ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"];
   }
 
   // First parse completed successfully (no active revision yet)

@@ -14,7 +14,7 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { useLedgerMutation, createListSnapshots } from "@/lib/mutations/use-ledger-mutation";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 
@@ -64,17 +64,6 @@ export function LedgerEntryDetailWrapper({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient, data) => {
-      const snapshotKey = queryKeys.ledgerEntry(id);
-      const snapshots = createListSnapshots(queryClient, snapshotKey);
-
-      queryClient.setQueriesData({ queryKey: snapshotKey }, (old: unknown) => {
-        if (old == null) return old;
-        return { ...old, ...data };
-      });
-
-      return { snapshots };
-    },
   });
 
   const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
@@ -90,15 +79,6 @@ export function LedgerEntryDetailWrapper({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onOptimisticUpdate: (queryClient) => {
-      const snapshotKey = queryKeys.ledgerEntry(id);
-      const snapshots = createListSnapshots(queryClient, snapshotKey);
-
-      // Optimistically remove the entry by setting data to undefined
-      queryClient.setQueriesData({ queryKey: snapshotKey }, () => undefined);
-
-      return { snapshots };
-    },
   });
 
   // Handle error state - moved to useEffect to avoid render-path side effects

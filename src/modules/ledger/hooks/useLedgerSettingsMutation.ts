@@ -66,45 +66,6 @@ export function useLedgerSettingsMutation({
     onSuccessExtra: (data) => {
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
     },
-    onOptimisticUpdate: (_, newData) => {
-      const snapshots = queryClient.getQueriesData<Ledger>({ queryKey: ledgerQueryKey });
-
-      queryClient.setQueryData<Ledger>(ledgerQueryKey, (old) => {
-        if (!old) return old;
-
-        const updated = { ...old };
-
-        if (
-          newData.preferredCurrencies !== undefined ||
-          newData.mainCurrency !== undefined ||
-          newData.aiLanguage !== undefined ||
-          newData.collapseEntriesDefault !== undefined ||
-          newData.aiCustomPrompt !== undefined
-        ) {
-          updated.metadata = {
-            ...old.metadata,
-            settings: {
-              ...old.metadata?.settings,
-              ...(newData.preferredCurrencies !== undefined && {
-                currencies: newData.preferredCurrencies,
-              }),
-              ...(newData.mainCurrency !== undefined && { mainCurrency: newData.mainCurrency }),
-              ...(newData.aiLanguage !== undefined && { aiLanguage: newData.aiLanguage }),
-              ...(newData.collapseEntriesDefault !== undefined && {
-                collapseEntriesDefault: newData.collapseEntriesDefault,
-              }),
-              ...(newData.aiCustomPrompt !== undefined && {
-                aiCustomPrompt: newData.aiCustomPrompt,
-              }),
-            },
-          };
-        }
-
-        return updated;
-      });
-
-      return { snapshots };
-    },
     onSettledExtra: async (qc, variables, _data, error) => {
       if (error != null || variables.mainCurrency === undefined) return;
       await Promise.all([

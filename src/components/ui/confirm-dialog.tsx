@@ -1,5 +1,6 @@
 "use client";
-import { memo } from "react";
+import { memo, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,16 +16,16 @@ import {
 interface ConfirmDialogProps {
   title: string;
   description: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
-  onSave?: () => void;
+  onSave?: () => void | Promise<void>;
   saveLabel?: string;
-  onDiscard?: () => void;
+  onDiscard?: () => void | Promise<void>;
   discardLabel?: string;
 }
 
@@ -46,6 +47,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   discardLabel,
 }: ConfirmDialogProps) {
   const t = useTranslations("Common");
+  const [isPending, setIsPending] = useState(false);
   const displayConfirmLabel = confirmLabel ?? t("confirm");
   const displayCancelLabel = cancelLabel ?? t("cancel");
   const displaySaveLabel = saveLabel ?? t("save");
@@ -55,7 +57,9 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   const hasThreeButtonLayout = onSave != null || onDiscard != null;
   const dialogProps = {
     ...(open !== undefined ? { open } : {}),
-    ...(onOpenChange !== undefined ? { onOpenChange } : {}),
+    ...(onOpenChange !== undefined
+      ? { onOpenChange: (nextOpen: boolean) => !isPending && onOpenChange(nextOpen) }
+      : {}),
   };
   const footerProps = hasThreeButtonLayout
     ? { className: "justify-between sm:justify-between" }
@@ -64,7 +68,10 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   return (
     <Dialog {...dialogProps}>
       {trigger != null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent>
+      <DialogContent
+        onEscapeKeyDown={(event) => isPending && event.preventDefault()}
+        onPointerDownOutside={(event) => isPending && event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -73,11 +80,17 @@ export const ConfirmDialog = memo(function ConfirmDialog({
           {hasThreeButtonLayout && onDiscard && (
             <Button
               variant="destructive"
-              onClick={(e) => {
+              disabled={isPending}
+              onClick={async (e) => {
                 e.stopPropagation();
-                onDiscard();
-                if (onOpenChange) {
-                  onOpenChange(false);
+                setIsPending(true);
+                try {
+                  await onDiscard();
+                  onOpenChange?.(false);
+                } catch {
+                  // The owning mutation reports the error; keep this dialog open.
+                } finally {
+                  setIsPending(false);
                 }
               }}
             >
@@ -86,32 +99,48 @@ export const ConfirmDialog = memo(function ConfirmDialog({
           )}
           <div className="flex gap-2 justify-end">
             <DialogClose asChild>
-              <Button variant="outline">{displayCancelLabel}</Button>
+              <Button variant="outline" disabled={isPending}>
+                {displayCancelLabel}
+              </Button>
             </DialogClose>
             {hasThreeButtonLayout && onSave ? (
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={(e) => {
+                disabled={isPending}
+                onClick={async (e) => {
                   e.stopPropagation();
-                  onSave();
-                  if (onOpenChange) {
-                    onOpenChange(false);
+                  setIsPending(true);
+                  try {
+                    await onSave();
+                    onOpenChange?.(false);
+                  } catch {
+                    // The owning mutation reports the error; keep this dialog open.
+                  } finally {
+                    setIsPending(false);
                   }
                 }}
               >
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {displaySaveLabel}
               </Button>
             ) : (
               <Button
                 variant={variant}
-                onClick={(e) => {
+                disabled={isPending}
+                onClick={async (e) => {
                   e.stopPropagation();
-                  onConfirm();
-                  if (onOpenChange) {
-                    onOpenChange(false);
+                  setIsPending(true);
+                  try {
+                    await onConfirm();
+                    onOpenChange?.(false);
+                  } catch {
+                    // The owning mutation reports the error; keep this dialog open.
+                  } finally {
+                    setIsPending(false);
                   }
                 }}
               >
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {displayConfirmLabel}
               </Button>
             )}

@@ -32,13 +32,13 @@ export function DayCellLarge({
   const t = useTranslations("Calendar");
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0 overflow-visible">
       <button
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "w-full aspect-square rounded-lg transition-all duration-150",
+          "w-full min-w-0 aspect-square overflow-hidden rounded-lg transition-all duration-150",
           "flex flex-col items-center justify-center gap-0.5",
           "hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
         )}
@@ -50,7 +50,7 @@ export function DayCellLarge({
         {/* Day number */}
         <span
           className={cn(
-            "text-xs lg:text-sm font-normal",
+            "max-w-full truncate px-0.5 text-xs lg:text-sm font-normal",
             level >= 4 ? "text-white/70" : "text-muted-foreground"
           )}
         >
@@ -61,7 +61,7 @@ export function DayCellLarge({
         {amount > 0 && (
           <span
             className={cn(
-              "text-[10px] lg:text-xs font-semibold",
+              "max-w-full truncate px-0.5 text-xs font-semibold",
               level >= 4 ? "text-white" : "text-foreground"
             )}
           >

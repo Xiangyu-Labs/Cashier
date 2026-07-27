@@ -120,7 +120,9 @@ describe("source document mutation toast ownership", () => {
       await result.current.retry();
     });
 
-    expect(toastSuccessMock).toHaveBeenCalledWith("retrySuccess");
+    expect(toastSuccessMock).toHaveBeenCalledWith("retrySuccess", {
+      description: "retrySuccessDescription",
+    });
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(onSuccess).toHaveBeenCalledTimes(1);
 
@@ -129,7 +131,11 @@ describe("source document mutation toast ownership", () => {
       await expect(result.current.retry()).rejects.toThrow("retry failed");
     });
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("retryError"));
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("retryError", {
+        description: "retryErrorDescription",
+      })
+    );
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 });

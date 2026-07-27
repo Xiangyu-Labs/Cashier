@@ -42,7 +42,23 @@
     "abandonSuccess": "Candidate abandoned",
     "abandonError": "Failed to abandon candidate",
     "retry": "Retry",
-    "editRetry": "Edit & Retry"
+    "editRetry": "Edit & Retry",
+    "retrySuccess": "Retry started",
+    "retrySuccessDescription": "The document is being parsed again.",
+    "retryError": "Retry failed",
+    "retryErrorDescription": "The original result was kept. Please try again."
+  },
+  "CandidateReview": {
+    "title": "Review parsing result",
+    "loading": "Loading comparison",
+    "loadError": "The comparison is no longer available.",
+    "reload": "Reload",
+    "original": "Original parsing result",
+    "candidate": "New parsing result",
+    "entryCount": "{count} entries",
+    "noEntries": "No entries",
+    "keepOriginal": "Keep original result",
+    "acceptCandidate": "Accept new result"
   },
   "HomePage": {
     "loading": "Loading…",

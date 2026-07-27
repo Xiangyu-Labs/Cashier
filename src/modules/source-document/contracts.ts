@@ -12,6 +12,9 @@ export type {
 export type {
   SourceDocumentAttentionDto,
   SourceDocumentCandidateComparisonDto,
+  SourceDocumentCandidateReviewDto,
+  SourceDocumentCandidateReviewEntryDto,
+  SourceDocumentCandidateReviewRevisionDto,
   SourceDocumentCandidateProjectionSummary,
   SourceDocumentCompletedPageDto,
   SourceDocumentCountsDto,

@@ -31,7 +31,7 @@ describe("target application contracts", () => {
         activeRevisionId: "revision-1",
         pendingOutcome: "completed",
       })
-    ).toEqual(["accept_candidate", "abandon_candidate", "delete"]);
+    ).toEqual(["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"]);
   });
 
   it("offers retry actions for first-parse completed with no active revision", () => {

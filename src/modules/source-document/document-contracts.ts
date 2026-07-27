@@ -75,6 +75,29 @@ export interface SourceDocumentCandidateComparisonDto {
   changed: boolean;
 }
 
+export interface SourceDocumentCandidateReviewEntryDto {
+  id: string;
+  itemName: string;
+  description: string | null;
+  category: SourceDocumentEntryCategoryDto | null;
+  amount: string;
+  currency: string | null;
+  convertedAmount: string | null;
+}
+
+export interface SourceDocumentCandidateReviewRevisionDto {
+  revisionId: string;
+  entries: SourceDocumentCandidateReviewEntryDto[];
+  entryCount: number;
+  total: string;
+}
+
+export interface SourceDocumentCandidateReviewDto {
+  sourceDocumentId: string;
+  active: SourceDocumentCandidateReviewRevisionDto;
+  candidate: SourceDocumentCandidateReviewRevisionDto;
+}
+
 export interface SourceDocumentListItemDto {
   id: string;
   ledgerId: string;

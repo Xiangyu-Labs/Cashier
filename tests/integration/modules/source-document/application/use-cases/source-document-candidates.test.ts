@@ -1,19 +1,22 @@
 import { eq, and, isNull } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   acceptCandidateRevision,
   abandonCandidateRevision,
   postgresLedgerProjectionAdapter,
+  postgresSourceDocumentSubmissionAdapter,
   storeCandidateRevision,
 } from "@/application/adapters/postgres";
 import { createPendingRevisionInTransaction } from "@/application/adapters/postgres/revisions";
 import {
   getTargetSourceDocument,
+  getSourceDocumentCandidateReview,
   listTargetSourceDocuments,
 } from "@/application/adapters/postgres/read-models";
 import { ledgerEntries, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
+import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 
 const activeEntry = {
   categoryId: null,
@@ -156,6 +159,65 @@ async function setupDocumentWithFirstParseFailure(
 }
 
 describe("source document candidates", () => {
+  it("returns complete active and candidate projections for review", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-review");
+    const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
+      await setupDocumentWithCandidate(db, ledgerId);
+
+    const review = await getSourceDocumentCandidateReview(ledgerId, sourceDocumentId);
+
+    expect(review.active).toMatchObject({
+      revisionId: originalActiveRevisionId,
+      entryCount: 1,
+      total: "12.5",
+    });
+    expect(review.active.entries[0]).toMatchObject({
+      itemName: "Lunch",
+      amount: "12.50",
+      convertedAmount: "12.50",
+    });
+    expect(review.candidate).toMatchObject({
+      revisionId: candidateRevisionId,
+      entryCount: 1,
+      total: "25",
+    });
+    expect(review.candidate.entries[0]).toMatchObject({
+      itemName: "Dinner",
+      amount: "25.00",
+      convertedAmount: "25.00",
+    });
+  });
+
+  it("abandons an existing candidate before creating a replacement retry", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-retry-replacement");
+    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+      db,
+      ledgerId
+    );
+    const scheduleProcessing = vi.fn();
+
+    await retrySourceDocument(
+      { ledgerId, sourceDocumentId },
+      { submissions: postgresSourceDocumentSubmissionAdapter, scheduleProcessing }
+    );
+
+    const [oldCandidate, document] = await Promise.all([
+      db.query.sourceDocumentRevisions.findFirst({
+        where: eq(sourceDocumentRevisions.id, candidateRevisionId),
+      }),
+      db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, sourceDocumentId) }),
+    ]);
+    expect(oldCandidate?.outcome).toBe("abandoned");
+    expect(document?.pendingRevisionId).not.toBe(candidateRevisionId);
+    const replacement = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, document?.pendingRevisionId ?? ""),
+    });
+    expect(replacement?.outcome).toBe("processing");
+    expect(scheduleProcessing).toHaveBeenCalledTimes(1);
+  });
+
   it("first parse activates directly; reparse creates a candidate", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "candidate-first-parse");

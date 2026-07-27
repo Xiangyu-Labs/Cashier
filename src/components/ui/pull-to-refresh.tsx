@@ -136,8 +136,8 @@ export function PullToRefresh({
   }
 
   // 计算指示器状态
-  const indicatorScale = pullDistance > 30 ? 1 : pullDistance / 30;
-  const showText = pullDistance > 20;
+  const indicatorScale = isRefreshing || pullDistance > 30 ? 1 : pullDistance / 30;
+  const showText = isRefreshing || pullDistance > 20;
   const releaseToRefresh = pullDistance > threshold;
   const isVisible = pullDistance > 0 || isRefreshing;
 
@@ -155,14 +155,17 @@ export function PullToRefresh({
           <div className="flex items-center gap-2 pb-2">
             {/* Spinner indicator — CSS animation replaces motion.div */}
             <div
-              className={`w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary ${
-                isRefreshing ? "animate-spin" : ""
-              }`}
               style={{
                 transform: `scale(${indicatorScale})`,
                 transition: "transform 0.2s ease-out",
               }}
-            />
+            >
+              <div
+                className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </div>
 
             {/* Text hint */}
             {showText && (

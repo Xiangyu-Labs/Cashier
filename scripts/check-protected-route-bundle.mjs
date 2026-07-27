@@ -18,8 +18,8 @@ const manifest = context.__RSC_MANIFEST?.[routeKey];
 if (manifest == null) throw new Error(`Protected-route manifest entry is missing: ${routeKey}`);
 
 const files = new Set();
-for (const module of Object.values(manifest.clientModules)) {
-  for (const chunk of module.chunks ?? []) {
+for (const clientModule of Object.values(manifest.clientModules)) {
+  for (const chunk of clientModule.chunks ?? []) {
     if (chunk.endsWith(".js")) files.add(decodeURIComponent(chunk));
   }
 }

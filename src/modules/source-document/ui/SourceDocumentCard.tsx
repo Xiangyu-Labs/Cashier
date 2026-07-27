@@ -10,6 +10,7 @@ import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
 import type { DateProvenance } from "@/modules/source-document/stream-grouping";
+import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -19,11 +20,7 @@ interface SourceDocumentCardProps {
   onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
   defaultExpanded?: boolean;
-  onRetry?: () => void | Promise<void>;
-  onDirectRetry?: () => void | Promise<void>;
   onEditRetry?: () => void | Promise<void>;
-  onAcceptCandidate?: () => void | Promise<void>;
-  onAbandonCandidate?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
@@ -43,11 +40,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   onViewLedgerEntry,
   onViewDetails: _onViewDetails,
   defaultExpanded = false,
-  onRetry,
-  onDirectRetry,
   onEditRetry,
-  onAcceptCandidate,
-  onAbandonCandidate,
   status,
   anomalyReason,
   errorCode,
@@ -57,8 +50,14 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   onToggleSelect,
   dateProvenance,
 }: SourceDocumentCardProps) {
-  const [isRetrying, setIsRetrying] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
+  const recovery = useSourceDocumentRecoveryMutations({
+    ledgerId: sourceDocument.ledgerId,
+    sourceDocumentId: sourceDocument.id,
+    ...(sourceDocument.pendingRevisionId == null
+      ? {}
+      : { revisionId: sourceDocument.pendingRevisionId }),
+  });
 
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
   const { text, images } = useMemo(
@@ -72,17 +71,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       : ((sourceDocument as SourceDocumentLight).supportedActions ?? []);
 
   async function handleDirectRetry() {
-    if (onDirectRetry == null && onRetry == null) return;
-    setIsRetrying(true);
-    try {
-      if (onDirectRetry != null) {
-        await onDirectRetry();
-      } else if (onRetry != null) {
-        await onRetry();
-      }
-    } finally {
-      setIsRetrying(false);
-    }
+    await recovery.retry();
   }
 
   return (
@@ -103,7 +92,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         ledgerEntries={ledgerEntries}
         mainCurrency={mainCurrency}
         isExpanded={isItemsExpanded}
-        isRetrying={isRetrying}
+        isRetrying={recovery.isRetrying}
         selectionMode={selectionMode}
         isSelected={isSelected}
         supportedActions={supportedActions}
@@ -112,9 +101,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         onViewDetails={_onViewDetails}
         onToggleSelect={onToggleSelect}
         onDirectRetry={handleDirectRetry}
-        onEditRetry={onEditRetry ?? onRetry}
-        onAcceptCandidate={onAcceptCandidate}
-        onAbandonCandidate={onAbandonCandidate}
+        onEditRetry={onEditRetry}
         onDelete={onDelete}
       />
 

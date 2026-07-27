@@ -1,5 +1,8 @@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui";
+import {
+  SourceDocumentCandidateReviewDialog,
+  SourceDocumentEditRetryDialog,
+} from "@/modules/source-document/ui";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import type { LedgerEntriesDeleteConfirmState } from "./useLedgerEntriesTabState";
 
@@ -11,6 +14,9 @@ interface LedgerEntriesOverlaysProps {
   retrySourceDocument: SourceDocument | null;
   onRetryDialogOpenChange: (open: boolean) => void;
   ledgerId: string;
+  candidateReviewDocument: SourceDocument | null;
+  onCandidateReviewOpenChange: (open: boolean) => void;
+  mainCurrency: string;
 }
 
 export function LedgerEntriesOverlays({
@@ -21,6 +27,9 @@ export function LedgerEntriesOverlays({
   retrySourceDocument,
   onRetryDialogOpenChange,
   ledgerId,
+  candidateReviewDocument,
+  onCandidateReviewOpenChange,
+  mainCurrency,
 }: LedgerEntriesOverlaysProps) {
   return (
     <>
@@ -40,6 +49,16 @@ export function LedgerEntriesOverlays({
           open={true}
           onOpenChange={onRetryDialogOpenChange}
           ledgerId={ledgerId}
+        />
+      )}
+
+      {candidateReviewDocument != null && (
+        <SourceDocumentCandidateReviewDialog
+          ledgerId={ledgerId}
+          sourceDocumentId={candidateReviewDocument.id}
+          open={true}
+          onOpenChange={onCandidateReviewOpenChange}
+          mainCurrency={mainCurrency}
         />
       )}
     </>

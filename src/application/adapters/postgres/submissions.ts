@@ -81,7 +81,7 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
               and(
                 eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
                 eq(sourceDocumentRevisions.id, document.pendingRevisionId),
-                eq(sourceDocumentRevisions.outcome, "processing")
+                inArray(sourceDocumentRevisions.outcome, ["processing", "completed"])
               )
             )
             .returning({ id: sourceDocumentRevisions.id })

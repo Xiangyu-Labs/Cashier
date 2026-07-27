@@ -25,5 +25,6 @@ export {
 export {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
+  getSourceDocumentCandidateReviewAction,
 } from "./server-actions/candidates";
 export { getStreamRefreshAction } from "./server-actions/refresh";

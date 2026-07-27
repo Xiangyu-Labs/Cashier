@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-// Type for snapshot data returned by onOptimisticUpdate
+// Kept for compatibility with cache helper tests and non-persistent draft helpers.
 export type MutationSnapshot = [QueryKey, unknown][];
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -33,22 +33,13 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
    */
   errorMessage?: string | null;
 
-  /**
-   * Optional function to perform optimistic updates.
-   * Should modify queryClient cache directly and return context for rollback.
-   * Return { snapshots: MutationSnapshot } to enable automatic rollback,
-   * or return any custom context for manual rollback.
-   */
+  /** @deprecated Persistent mutations no longer apply optimistic server results. */
   onOptimisticUpdate?: (
     queryClient: ReturnType<typeof useQueryClient>,
     variables: TVariables
   ) => TContext | undefined | Promise<TContext | undefined>;
 
-  /**
-   * Optional function for custom rollback logic.
-   * Only needed if not using the standard snapshot pattern.
-   * If onOptimisticUpdate returns { snapshots }, this is not needed.
-   */
+  /** @deprecated Persistent mutations no longer need cache rollback. */
   onRollback?: (queryClient: ReturnType<typeof useQueryClient>, context: TContext) => void;
 
   /**
@@ -95,39 +86,11 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
 }
 
 /**
- * Check if context contains standard snapshots for automatic rollback
- */
-interface SnapshotContext {
-  snapshots: MutationSnapshot;
-}
-
-function hasSnapshots(context: unknown): context is SnapshotContext {
-  return (
-    typeof context === "object" &&
-    context !== null &&
-    "snapshots" in context &&
-    Array.isArray((context as SnapshotContext).snapshots)
-  );
-}
-
-/**
  * Generic mutation hook for ledger-related operations.
  * Handles the common pattern of:
- * 1. Cancel queries and snapshot (onMutate)
- * 2. Execute mutation
- * 3. Show success toast (onSuccess)
- * 4. Rollback on error (onError)
- * 5. Invalidate queries (onSettled)
- *
- * Supports two rollback patterns:
- * 1. Standard: onOptimisticUpdate returns { snapshots: MutationSnapshot } - automatic rollback
- * 2. Custom: onOptimisticUpdate returns any context + provide onRollback function
- *
- * NOTE: Stream-facing source-document mutations (create, retry, update, delete,
- * accept, abandon) must use CacheTransactionManager-based hooks instead of
- * this generic hook. This hook is retained for non-Stream settings workflows
- * (batch operations, calendar mutations, etc.) until they are intentionally
- * migrated to the transaction model.
+ * 1. Preserve cached server data while the request is pending.
+ * 2. Refresh explicitly affected queries after a successful response.
+ * 3. Show feedback and run UI callbacks only after refresh completes.
  *
  * @param ledgerId - The ledger ID for scoped cache invalidation
  * @param options - Mutation configuration
@@ -140,8 +103,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
 
   const {
     mutationFn,
-    onOptimisticUpdate,
-    onRollback,
     successMessage,
     errorMessage,
     skipInvalidation = false,
@@ -156,22 +117,26 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
   return useMutation<TData, Error, TVariables, TContext | undefined>({
     mutationFn,
 
-    onMutate: async (variables) => {
+    onMutate: async (_variables) => {
       // Cancel outgoing queries to prevent race conditions
       if (ledgerId != null && cancelPredicates != null && cancelPredicates.length > 0) {
         await runPredicates(queryClient, "cancelQueries", cancelPredicates);
       }
 
-      // Perform optimistic update if provided
-      if (onOptimisticUpdate != null) {
-        return await onOptimisticUpdate(queryClient, variables);
-      }
-
-      // When no optimistic context is produced, omit it explicitly.
+      // Server-backed cache data is intentionally left unchanged until success.
       return undefined;
     },
 
-    onSuccess: (data, variables, context) => {
+    onSuccess: async (data, variables, context) => {
+      if (!skipInvalidation) {
+        if (ledgerId != null && invalidatePredicates != null && invalidatePredicates.length > 0) {
+          await runPredicates(queryClient, "invalidateQueries", invalidatePredicates);
+        }
+        if (customInvalidation != null) {
+          await customInvalidation(queryClient);
+        }
+      }
+
       // Show success toast if message provided
       if (successMessage !== null && successMessage !== undefined) {
         toast.success(successMessage);
@@ -183,21 +148,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       }
     },
 
-    onError: (error, variables, context) => {
-      // Rollback optimistic updates if provided
-      if (context !== undefined) {
-        // Pattern 1: Standard snapshots - automatic rollback
-        if (hasSnapshots(context)) {
-          context.snapshots.forEach(([queryKey, data]) => {
-            queryClient.setQueryData(queryKey, data);
-          });
-        }
-        // Pattern 2: Custom rollback function
-        else if (onRollback) {
-          onRollback(queryClient, context);
-        }
-      }
-
+    onError: (error, variables) => {
       // Show error toast if message provided
       if (errorMessage !== null && errorMessage !== undefined) {
         toast.error(errorMessage);
@@ -209,17 +160,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       }
     },
 
-    onSettled: async (data, error, variables) => {
-      // Mutations invalidate only the resource predicates they explicitly declare.
-      if (!skipInvalidation && !error) {
-        if (ledgerId != null && invalidatePredicates != null && invalidatePredicates.length > 0) {
-          await runPredicates(queryClient, "invalidateQueries", invalidatePredicates);
-        }
-        if (customInvalidation != null) {
-          await customInvalidation(queryClient);
-        }
-      }
-
+    onSettled: (data, error, variables) => {
       // Run additional settled callback
       if (onSettledExtra) {
         onSettledExtra(queryClient, variables, data, error);

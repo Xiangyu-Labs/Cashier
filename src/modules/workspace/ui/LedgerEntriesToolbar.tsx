@@ -94,7 +94,7 @@ export function LedgerEntriesToolbar({
   };
 
   return (
-    <div className="px-2 mb-2 sm:mb-4 flex flex-wrap items-center gap-2">
+    <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-2 py-2 sm:mb-4">
       <Button
         variant="ghost"
         size="icon"
