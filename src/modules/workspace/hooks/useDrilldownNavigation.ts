@@ -1,12 +1,14 @@
 "use client";
 import { useCallback } from "react";
-import { useRouter } from "@/i18n/routing";
 import { updateLedgerSearchParams } from "../ledger-url-params";
-import { replaceAndNavigateLedgerUrl } from "../ledger-url-navigation";
+import { replaceLedgerUrl } from "../ledger-url-navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchDetailsTabQuery } from "../prefetch-ledger-tabs";
 
 interface UseDrilldownNavigationOptions {
   searchParams: URLSearchParams;
   pathname: string;
+  ledgerId: string;
 }
 
 interface UseDrilldownNavigationResult {
@@ -20,40 +22,55 @@ interface UseDrilldownNavigationResult {
 export function useDrilldownNavigation({
   searchParams,
   pathname,
+  ledgerId,
 }: UseDrilldownNavigationOptions): UseDrilldownNavigationResult {
-  const router = useRouter();
-
+  const queryClient = useQueryClient();
   const handleCategoryDrilldown = useCallback(
     (categoryId: string, startDate: string, endDate: string) => {
-      const params = updateLedgerSearchParams(searchParams, {
-        tab: "details",
-        period: "custom",
-        startDate,
-        endDate,
-        categoryId,
-      });
-      replaceAndNavigateLedgerUrl(pathname, params, router);
+      const params = updateLedgerSearchParams(
+        searchParams,
+        { tab: "details", period: "custom", startDate, endDate, categoryId },
+        "details"
+      );
+      void prefetchDetailsTabQuery(
+        queryClient,
+        ledgerId,
+        { period: "custom", startDate, endDate },
+        { categoryId }
+      );
+      replaceLedgerUrl(pathname, params);
     },
-    [searchParams, pathname, router]
+    [ledgerId, pathname, queryClient, searchParams]
   );
 
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
-      const existingCategoryId = searchParams.get("categoryId");
+      const existingCategoryId =
+        searchParams.get("detailsCategoryId") ?? searchParams.get("categoryId");
       const nextCategoryId =
         filters?.categoryId !== undefined ? filters.categoryId : (existingCategoryId ?? null);
 
-      const params = updateLedgerSearchParams(searchParams, {
-        tab: "details",
-        period: "custom",
-        startDate: date,
-        endDate: date,
-        categoryId: nextCategoryId,
-        currency: filters?.currency ?? null,
-      });
-      replaceAndNavigateLedgerUrl(pathname, params, router);
+      const params = updateLedgerSearchParams(
+        searchParams,
+        {
+          tab: "details",
+          period: "custom",
+          startDate: date,
+          endDate: date,
+          categoryId: nextCategoryId,
+          currency: filters?.currency ?? null,
+        },
+        "details"
+      );
+      void prefetchDetailsTabQuery(
+        queryClient,
+        ledgerId,
+        { period: "custom", startDate: date, endDate: date },
+        { categoryId: nextCategoryId, currency: filters?.currency ?? null }
+      );
+      replaceLedgerUrl(pathname, params);
     },
-    [searchParams, pathname, router]
+    [ledgerId, pathname, queryClient, searchParams]
   );
 
   return {

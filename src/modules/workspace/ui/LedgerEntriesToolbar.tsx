@@ -14,6 +14,7 @@ import {
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/workspace/ledger-filter-state";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -178,14 +179,9 @@ export function LedgerEntriesToolbar({
         </span>
       )}
 
-      <span
-        className={cn(
-          "text-xs text-muted-foreground font-mono ml-auto",
-          showBatchActions && "sm:ml-0"
-        )}
-      >
+      <AmountText variant="summary" className={cn("ml-auto", showBatchActions && "sm:ml-0")}>
         {filteredTotalLabel} {formatCurrencyAmount(filteredTotal, mainCurrency, locale)}
-      </span>
+      </AmountText>
     </div>
   );
 }

@@ -88,10 +88,11 @@ function NavButton({ active, icon: Icon, label, onClick, onIntent }: NavButtonPr
       type="button"
       onClick={onClick}
       onPointerEnter={onIntent}
+      onPointerDown={onIntent}
       onFocus={onIntent}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex h-full min-w-0 items-center justify-center gap-1 px-1 text-xs font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent sm:px-2 sm:text-sm",
+        "relative inline-flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent md:flex-row md:gap-1 md:px-2 md:text-sm",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         active
           ? "bg-surface2/60 text-text after:bg-primary"

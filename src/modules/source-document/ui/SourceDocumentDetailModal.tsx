@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
+import { AmountText } from "@/modules/currency/ui";
 import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
 import { toast } from "sonner";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";
@@ -296,10 +297,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                         <span className="text-[11px] text-muted-foreground/70">
                           {t("activeResultDescription")}
                         </span>
-                        <span className="text-xs font-mono tabular-nums text-text">
+                        <AmountText variant="group">
                           {sourceDocument.activeResultSummary.entryCount} ·{" "}
                           {sourceDocument.activeResultSummary.total}
-                        </span>
+                        </AmountText>
                       </div>
                     </div>
                   </div>

@@ -8,6 +8,8 @@ import {
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
+  getScopedLedgerSearchParams,
+  type LedgerFilterScope,
   type LedgerUrlUpdate,
   readLedgerFilterParams,
   updateLedgerSearchParams,
@@ -33,6 +35,7 @@ interface UsePeriodFilterParams {
   pathname: string;
   searchParams: URLSearchParams;
   initialPeriod: PeriodParams;
+  scope?: LedgerFilterScope;
 }
 
 interface UsePeriodFilterReturn {
@@ -70,17 +73,22 @@ export function usePeriodFilter({
   pathname,
   searchParams,
   initialPeriod: _initialPeriod,
+  scope = "stream",
 }: UsePeriodFilterParams): UsePeriodFilterReturn {
+  const scopedSearchParams = useMemo(
+    () => getScopedLedgerSearchParams(searchParams, scope),
+    [scope, searchParams]
+  );
   const periodParams = useMemo<PeriodParams>(() => {
-    const parsed = parsePeriodFromSearchParams(searchParams);
+    const parsed = parsePeriodFromSearchParams(scopedSearchParams);
     return parsed;
-  }, [searchParams]);
+  }, [scopedSearchParams]);
 
   const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
 
   const filterParams = useMemo<FilterParams>(
-    () => readLedgerFilterParams(searchParams),
-    [searchParams]
+    () => readLedgerFilterParams(searchParams, scope),
+    [scope, searchParams]
   );
 
   const filters: EntryFilters = useMemo(
@@ -97,18 +105,18 @@ export function usePeriodFilter({
     (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => {
       if (options?.skipUrlUpdate) return;
 
-      const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod));
+      const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod), scope);
       replaceLedgerUrl(pathname, params);
     },
-    [pathname, searchParams]
+    [pathname, scope, searchParams]
   );
 
   const handleAdvancedFiltersChange = useCallback(
     (newFilters: LedgerAdvancedFilters) => {
-      const params = updateLedgerSearchParams(searchParams, newFilters);
+      const params = updateLedgerSearchParams(searchParams, newFilters, scope);
       replaceLedgerUrl(pathname, params);
     },
-    [pathname, searchParams]
+    [pathname, scope, searchParams]
   );
 
   const handleFiltersChange = useCallback(
@@ -118,26 +126,34 @@ export function usePeriodFilter({
         currentFilters: filters,
         nextFilters: newFilters,
       });
-      const params = updateLedgerSearchParams(searchParams, {
-        ...(periodUpdate != null ? buildPeriodUrlUpdate(periodUpdate) : {}),
-        ...advancedFilterUpdate,
-      });
+      const params = updateLedgerSearchParams(
+        searchParams,
+        {
+          ...(periodUpdate != null ? buildPeriodUrlUpdate(periodUpdate) : {}),
+          ...advancedFilterUpdate,
+        },
+        scope
+      );
 
       replaceLedgerUrl(pathname, params);
     },
-    [filters, pathname, periodParams, searchParams]
+    [filters, pathname, periodParams, scope, searchParams]
   );
 
   const applyStreamStatusPreset = useCallback(
     (preset: StreamStatusPreset) => {
       const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
-      const params = updateLedgerSearchParams(searchParams, {
-        period: "all",
-        minAmount: null,
-        maxAmount: null,
-        statuses: presetStatuses,
-        tab: "stream",
-      });
+      const params = updateLedgerSearchParams(
+        searchParams,
+        {
+          period: "all",
+          minAmount: null,
+          maxAmount: null,
+          statuses: presetStatuses,
+          tab: "stream",
+        },
+        "stream"
+      );
       replaceLedgerUrl(pathname, params);
     },
     [pathname, searchParams]

@@ -6,10 +6,7 @@ import {
   readLedgerFilterParams,
   updateLedgerSearchParams,
 } from "@/modules/workspace/ledger-url-params";
-import {
-  replaceAndNavigateLedgerUrl,
-  replaceLedgerUrl,
-} from "@/modules/workspace/ledger-url-navigation";
+import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
 
 describe("ledger-url-params", () => {
   beforeEach(() => {
@@ -123,20 +120,47 @@ describe("ledger-url-params", () => {
     );
   });
 
-  it("replaces browser URL and optionally navigates through router", () => {
+  it("replaces the browser URL synchronously", () => {
     const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
-    const router = { replace: vi.fn() };
     const params = new URLSearchParams("tab=details&period=custom");
 
     const replacedUrl = replaceLedgerUrl("/ledger/test-id", params);
-    const navigatedUrl = replaceAndNavigateLedgerUrl("/ledger/test-id", params, router);
 
     expect(replacedUrl).toBe("/ledger/test-id?tab=details&period=custom");
-    expect(navigatedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(replaceState).toHaveBeenCalled();
-    expect(router.replace).toHaveBeenCalledWith("/ledger/test-id?tab=details&period=custom", {
-      scroll: false,
-    });
+  });
+
+  it("keeps Stream and Details filter namespaces isolated", () => {
+    const initial = new URLSearchParams(
+      "streamPeriod=week&streamCategoryId=stream-cat&detailsPeriod=year&detailsCategoryId=details-cat"
+    );
+
+    const next = updateLedgerSearchParams(initial, { currency: "EUR" }, "details");
+
+    expect(next.get("streamPeriod")).toBe("week");
+    expect(next.get("streamCategoryId")).toBe("stream-cat");
+    expect(next.get("detailsPeriod")).toBe("year");
+    expect(next.get("detailsCategoryId")).toBe("details-cat");
+    expect(next.get("detailsCurrency")).toBe("EUR");
+    expect(readLedgerFilterParams(next, "stream").currency).toBeNull();
+    expect(readLedgerFilterParams(next, "details").currency).toBe("EUR");
+  });
+
+  it("reads legacy filters for the current scope and migrates them on update", () => {
+    const legacy = new URLSearchParams(
+      "period=custom&startDate=2026-07-01&endDate=2026-07-31&categoryId=cat-1&statuses=failed"
+    );
+
+    expect(readLedgerFilterParams(legacy, "stream").categoryId).toBe("cat-1");
+    const migrated = updateLedgerSearchParams(legacy, { currency: "CNY" }, "stream");
+
+    expect(migrated.get("period")).toBeNull();
+    expect(migrated.get("categoryId")).toBeNull();
+    expect(migrated.get("streamPeriod")).toBe("custom");
+    expect(migrated.get("streamStartDate")).toBe("2026-07-01");
+    expect(migrated.get("streamEndDate")).toBe("2026-07-31");
+    expect(migrated.get("streamCategoryId")).toBe("cat-1");
+    expect(migrated.get("streamStatuses")).toBe("failed");
   });
 
   describe("parseStatusesParam", () => {

@@ -10,6 +10,7 @@ import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, CheckSquare, X } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
@@ -43,13 +44,11 @@ function CurrencyBreakdownItem({
 
   return (
     <span className="text-xs text-muted-foreground/80">
-      <span className="font-mono tabular-nums">
-        {formatCurrencyAmount(amount, currency, locale)}
-      </span>
+      <AmountText variant="group">{formatCurrencyAmount(amount, currency, locale)}</AmountText>
       {currency !== mainCurrency && (
-        <span className="ml-1.5 text-xs">
+        <AmountText variant="secondary" className="ml-1.5">
           (≈ {formatCurrencyAmount(converted, mainCurrency, locale)})
-        </span>
+        </AmountText>
       )}
     </span>
   );
@@ -181,9 +180,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         <div className="flex items-center gap-2 text-sm py-1">
           <Wallet className="h-3.5 w-3.5 text-primary/60" />
           <span className="text-xs font-medium text-muted-foreground/60">{t("totalAmount")}:</span>
-          <span className="font-bold text-primary tabular-nums">
+          <AmountText variant="summary">
             {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
-          </span>
+          </AmountText>
           {uniqueCurrencies.length > 1 && (
             <div className="flex items-center gap-1.5 ml-1">
               <span className="text-muted-foreground/30">·</span>

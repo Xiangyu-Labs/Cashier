@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { EmptyState } from "@/modules/workspace/ui/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 
 interface CategoryStat {
   id: string | null;
@@ -86,10 +87,13 @@ export function StatsRanking({
             }
           };
           return (
-            <div
+            <button
+              type="button"
               key={idx}
+              disabled={onCategoryClick == null}
+              aria-label={`${cat.name}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
               className={cn(
-                "flex items-center gap-3 group",
+                "flex w-full items-center gap-3 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 onCategoryClick &&
                   "cursor-pointer hover:bg-surface2/50 rounded-lg -mx-2 px-2 py-1 transition-colors"
               )}
@@ -108,9 +112,9 @@ export function StatsRanking({
                 {/* Top Line: Name + Amount */}
                 <div className="flex justify-between items-center text-sm">
                   <div className="font-medium text-text">{cat.name}</div>
-                  <div className="font-mono font-medium tabular-nums">
+                  <AmountText variant="item">
                     {formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}
-                  </div>
+                  </AmountText>
                 </div>
 
                 {/* Bottom Line: Progress + Detail */}
@@ -125,7 +129,7 @@ export function StatsRanking({
 
                   {/* Stats Detail */}
                   <div className="text-xs text-muted-foreground flex items-center gap-2 shrink-0">
-                    <span>{percent.toFixed(0)}%</span>
+                    <span className="tabular-nums">{percent.toFixed(0)}%</span>
                     {/* Show trend if significant */}
                     {cat.trend && Math.abs(cat.trend.percent) > 10 && (
                       <span
@@ -139,16 +143,23 @@ export function StatsRanking({
                         ) : (
                           <TrendingDown size={10} />
                         )}
-                        {formatCurrencyAmount(Math.abs(cat.trend.amount), currencySymbol, locale, {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })}
+                        <AmountText variant="secondary">
+                          {formatCurrencyAmount(
+                            Math.abs(cat.trend.amount),
+                            currencySymbol,
+                            locale,
+                            {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            }
+                          )}
+                        </AmountText>
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

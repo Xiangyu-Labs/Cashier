@@ -16,6 +16,7 @@ import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui";
 
 const itemVariants = cva("flex items-center py-2 px-3 rounded-lg transition-all", {
   variants: {
@@ -169,14 +170,14 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         <CalculatorInput
           value={parseAmount(displayData.amount)}
           onChange={(v) => handleChange("amount", v.toFixed(2))}
-          displayClassName="font-mono font-semibold text-sm text-text"
+          displayClassName={amountTextClassName("item")}
         />
       </div>
 
       {isDifferentCurrency && (
-        <div className="text-[9px] text-muted-foreground font-mono opacity-60 shrink-0">
+        <AmountText variant="secondary" className="shrink-0">
           ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
-        </div>
+        </AmountText>
       )}
     </div>
   );

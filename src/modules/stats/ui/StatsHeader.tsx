@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { type DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -101,9 +102,9 @@ export function StatsHeader({
       {/* 3. Summary Stats */}
       <div className="flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
-        <div className="text-2xl sm:text-4xl font-bold font-mono tracking-tight text-text">
+        <AmountText variant="hero">
           {formatCurrencyAmount(totalExpense, currencySymbol, locale)}
-        </div>
+        </AmountText>
 
         {/* Trend Section */}
         {trend && (
@@ -133,9 +134,9 @@ export function StatsHeader({
 
         <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
           {t("averageDaily")}{" "}
-          <span className="font-mono">
+          <AmountText variant="secondary">
             {formatCurrencyAmount(averageDaily, currencySymbol, locale)}
-          </span>
+          </AmountText>
         </div>
       </div>
     </div>

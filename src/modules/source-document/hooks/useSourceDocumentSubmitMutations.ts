@@ -49,6 +49,16 @@ interface UseSourceDocumentSubmitMutationsOptions {
   onSuccess?: () => void;
 }
 
+function waitForPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof globalThis.requestAnimationFrame === "function") {
+      globalThis.requestAnimationFrame(() => resolve());
+    } else {
+      globalThis.setTimeout(resolve, 0);
+    }
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -63,6 +73,13 @@ export function useSourceDocumentSubmitMutations({
   const queryClient = useQueryClient();
   const notifyRefresh = useNotifyRevisionRefresh();
   const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
+  const setMonotonicProgress = (next: SourceDocumentSubmissionProgress) => {
+    setProgress((current) =>
+      current != null && current.percent > next.percent
+        ? { ...next, percent: current.percent }
+        : next
+    );
+  };
 
   const handleSubmitError = (error: Error, fallbackMessage: string) => {
     console.error("Source document submission failed:", error);
@@ -84,17 +101,20 @@ export function useSourceDocumentSubmitMutations({
         ledgerId,
         payload,
         undefined,
-        setProgress
+        setMonotonicProgress
       );
-      setProgress({ phase: "submitting" });
-      return createSourceDocumentAction(
+      setMonotonicProgress({ phase: "submitting", percent: 90 });
+      const result = await createSourceDocumentAction(
         ledgerId,
         uploadedPayload,
         variables.operationId,
         clientSubmissionId
       );
+      setMonotonicProgress({ phase: "submitting", percent: 99 });
+      return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      setMonotonicProgress({ phase: "complete", percent: 100 });
       if (data != null) {
         const response = data as CreateSourceDocumentResponseDto &
           Partial<{
@@ -108,6 +128,7 @@ export function useSourceDocumentSubmitMutations({
 
       toast.success(messages.uploadSuccess);
       notifyRefresh();
+      await waitForPaint();
       onSuccess?.();
     },
     onError: (error) => {
@@ -134,17 +155,20 @@ export function useSourceDocumentSubmitMutations({
         ledgerId,
         payload,
         undefined,
-        setProgress
+        setMonotonicProgress
       );
-      setProgress({ phase: "submitting" });
-      return editRetrySourceDocumentAction(
+      setMonotonicProgress({ phase: "submitting", percent: 90 });
+      const result = await editRetrySourceDocumentAction(
         ledgerId,
         sourceDocumentId,
         uploadedPayload,
         variables.operationId
       );
+      setMonotonicProgress({ phase: "submitting", percent: 99 });
+      return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      setMonotonicProgress({ phase: "complete", percent: 100 });
       if (data != null) {
         const response = data as Partial<{
           reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
@@ -157,6 +181,7 @@ export function useSourceDocumentSubmitMutations({
 
       toast.success(messages.retrySuccess);
       notifyRefresh();
+      await waitForPaint();
       onSuccess?.();
     },
     onError: (error) => {
@@ -177,23 +202,31 @@ export function useSourceDocumentSubmitMutations({
   const activeMutation = mode === "retry" ? retryMutation : createMutation;
 
   const submit = (payload: SourceDocumentSubmitPayload) => {
-    if (mode === "retry") {
-      if (sourceDocumentId == null) return false;
-      // C1: Generate a single operationId used for both the server action and the transaction
-      const operationId = crypto.randomUUID();
-      retryMutation.mutate({ payload, operationId });
-      return true;
-    }
+    if (mode === "retry" && sourceDocumentId == null) return false;
+    setProgress({ phase: "preparing", percent: 0 });
+    const startMutation = () => {
+      if (mode === "retry") {
+        if (sourceDocumentId == null) return;
+        const operationId = crypto.randomUUID();
+        retryMutation.mutate({ payload, operationId });
+        return;
+      }
 
-    // C1: Generate a single operationId
-    const operationId = crypto.randomUUID();
-    const clientSubmissionId = crypto.randomUUID();
-    createMutation.mutate({ payload, operationId, clientSubmissionId });
+      const operationId = crypto.randomUUID();
+      const clientSubmissionId = crypto.randomUUID();
+      createMutation.mutate({ payload, operationId, clientSubmissionId });
+    };
+
+    if (typeof globalThis.requestAnimationFrame === "function") {
+      globalThis.requestAnimationFrame(startMutation);
+    } else {
+      globalThis.setTimeout(startMutation, 0);
+    }
     return true;
   };
 
   return {
-    isPending: activeMutation.isPending,
+    isPending: activeMutation.isPending || progress != null,
     progress,
     submit,
   };

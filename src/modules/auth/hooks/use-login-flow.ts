@@ -8,7 +8,6 @@ import { useRouter } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import { OTP_LENGTH } from "@/modules/auth/constants";
-import { publicEnv } from "@/lib/env/public";
 
 type LoginStep = "email" | "otp";
 export type LoginMode = "password" | "otp";
@@ -39,7 +38,10 @@ function sanitizeCallbackUrl(value: string | null): string {
   return value != null && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
-export function useLoginFlow(t: (key: string, values?: Record<string, string | number>) => string) {
+export function useLoginFlow(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  isDevAuthAvailable = false
+) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
@@ -53,7 +55,6 @@ export function useLoginFlow(t: (key: string, values?: Record<string, string | n
   const [error, setError] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [canResendAt, setCanResendAt] = useState<number | null>(null);
-  const isDevAuthAvailable = publicEnv.devAuthBypass;
 
   const setMode = (nextMode: LoginMode) => {
     setModeState(nextMode);

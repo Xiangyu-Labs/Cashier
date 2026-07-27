@@ -3,10 +3,10 @@
 ## 首次部署
 
 ```bash
-cp .env.example .env
-# 填写 QUICK START 中的邮箱、密码和 OpenAI-compatible 配置
-docker compose up -d
-docker compose ps
+cp .env.local.example .env
+# 填写账号和 OpenAI-compatible 配置
+npm run docker:local
+docker compose -f docker-compose.yml -f docker-compose.local.yml ps
 ```
 
 访问 `http://localhost:3000`。入口脚本会自动生成并持久化 Auth secret 与 API key
@@ -18,11 +18,10 @@ pepper、执行 PostgreSQL migrations，并在用户表为空时创建初始账�
 ## 日常操作
 
 ```bash
+npm run docker:local             # 本地完整栈
+npm run docker:external          # 外部 Neon/R2，仅 app
 docker compose logs -f app       # 查看应用日志
-docker compose pull              # 拉取新镜像
-docker compose up -d             # 滚动更新并自动迁移
-docker compose restart app       # 只重启应用
-docker compose down              # 停止，保留数据
+npm run docker:down              # 停止本地栈并保留数据
 ```
 
 不要运行 `docker compose down -v`，除非确认要永久删除数据库、对象和内部密钥。
@@ -62,10 +61,11 @@ AUTH_EMAIL_FROM=Cashier <noreply@example.com>
 
 ## 外部 PostgreSQL 或 S3
 
-取消 `.env` 中 `EXTERNAL SERVICES` 对应变量的注释并填写连接信息，然后只启动应用：
+从外部模板创建 `.env`，填写所有数据库和对象存储密钥，然后只启动应用：
 
 ```bash
-docker compose up -d --no-deps app
+cp .env.example .env
+npm run docker:external
 ```
 
 外部 S3 bucket 必须预先存在。R2 使用账户 endpoint、`S3_REGION=auto` 和
@@ -76,7 +76,7 @@ docker compose up -d --no-deps app
 
 ```bash
 npm install
-docker compose up -d postgres minio minio-init
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d postgres minio storage-bootstrap
 npm run db:migrate
 npm run dev
 ```

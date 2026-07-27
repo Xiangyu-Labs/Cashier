@@ -204,7 +204,49 @@ describe("source-document submission uploads", () => {
 
     expect(upload).toHaveBeenCalledTimes(1);
     expect(progress).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: "uploading", loadedBytes: 1, totalBytes: 1, percent: 100 })
+      expect.objectContaining({ phase: "uploading", loadedBytes: 1, totalBytes: 1, percent: 80 })
     );
+    const percentages = progress.mock.calls.map(([value]) => value.percent as number);
+    expect(percentages).toEqual([...percentages].sort((a, b) => a - b));
+    expect(percentages[0]).toBe(0);
+    expect(percentages.at(-1)).toBe(90);
+  });
+
+  it("keeps aggregate progress monotonic across parallel files", async () => {
+    const createPlan = vi.fn().mockResolvedValue({
+      id: "parallel",
+      finalizationToken: "token",
+      targets: [
+        { id: "one", method: "PUT", url: "target:one", requiredHeaders: {} },
+        { id: "two", method: "PUT", url: "target:two", requiredHeaders: {} },
+      ],
+    });
+    const progress = vi.fn();
+    await uploadSourceDocumentSubmissionImages(
+      "ledger-1",
+      {
+        entryDate: "2026-07-15",
+        images: [
+          { data: "data:image/jpeg;base64,AQ==", mimeType: "image/jpeg" },
+          { data: "data:image/jpeg;base64,Ag==", mimeType: "image/jpeg" },
+        ],
+      },
+      {
+        createPlan,
+        finalize: vi.fn().mockResolvedValue(["one", "two"]),
+        fetch: vi.fn(),
+        upload: async (_target, bytes, report) => {
+          report(bytes.byteLength);
+          report(0);
+        },
+      },
+      progress
+    );
+
+    const percentages = progress.mock.calls.map(([value]) => value.percent as number);
+    expect(percentages).toEqual([...percentages].sort((a, b) => a - b));
+    expect(percentages).toContain(20);
+    expect(percentages).toContain(80);
+    expect(percentages.at(-1)).toBe(90);
   });
 });

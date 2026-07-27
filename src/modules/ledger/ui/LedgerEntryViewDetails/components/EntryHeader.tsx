@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui";
 
 interface EntryHeaderProps {
   itemName: string;
@@ -88,14 +89,14 @@ export function EntryHeader({
             <CalculatorInput
               value={amount}
               onChange={(v) => onFieldChange("amount", v)}
-              displayClassName="text-2xl sm:text-3xl font-bold text-primary font-mono"
+              displayClassName={amountTextClassName("item")}
             />
           </div>
 
           {isDifferentCurrency && (
-            <p className="text-sm font-medium text-muted-foreground mt-0.5 opacity-80">
+            <AmountText variant="secondary" className="mt-0.5">
               ≈ {formatCurrencyAmount(convertedAmount, mainCurrency, locale)}
-            </p>
+            </AmountText>
           )}
         </div>
       </div>

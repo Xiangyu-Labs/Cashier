@@ -24,9 +24,7 @@ import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
 
-// Dynamic imports for inactive tabs — keeps their dependencies
-// (Framer Motion for DetailsTab/StatsTab, heavy bundle for SettingsTab)
-// out of the initial Stream bundle.
+// Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
 // are loaded separately via DeferredFeatureMessages at the usage site
 // so that the locale prop is available from the parent component scope.
@@ -128,12 +126,14 @@ function LedgerPageClientContent({
       pathname,
       searchParams,
       initialPeriod,
+      scope: activeTab === "details" ? "details" : "stream",
     });
 
   const advancedFilters = filterParams;
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
+    ledgerId,
   });
 
   const statusSummaryRef = useRef<HTMLSpanElement | null>(null);

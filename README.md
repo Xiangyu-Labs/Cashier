@@ -17,40 +17,52 @@ Cashier is a modern, AI-powered bookkeeping application designed to streamline p
 - **UI**: Tailwind CSS, Radix UI, Shadcn/ui
 - **AI**: OpenAI / LLM Integration
 
-## Docker Quick Start
+## Docker
 
-Docker and Docker Compose are the only prerequisites. Prepare the compact environment file:
+Docker and Docker Compose are the only prerequisites. Choose one explicit mode.
+
+### Bundled local stack
+
+```bash
+cp .env.local.example .env
+npm run docker:local
+```
+
+This starts the app, PostgreSQL, MinIO, and the one-shot `storage-bootstrap` bucket creator. The
+PostgreSQL and MinIO credentials are fixed local-only values and must not be used for external
+services.
+
+### External Neon / R2
 
 ```bash
 cp .env.example .env
+# Fill DATABASE_URL and every S3 credential; create the bucket first.
+npm run docker:external
 ```
 
-Review the five values in `QUICK START` (email, password, API key, base URL, and model), then start
-the complete stack:
+External mode starts only `app`; it never creates PostgreSQL, MinIO, or initialization containers.
+Both modes apply migrations, generate stable Auth/API internal secrets in `cashier_config`, and
+create the initial user when the database is empty. External S3/R2 credentials are never generated.
 
-```bash
-docker compose up -d
-```
-
-Open [http://localhost:3000](http://localhost:3000). Compose starts PostgreSQL and MinIO,
-creates the private bucket, applies database migrations, generates internal secrets, and creates the
-initial user when the database is empty. The initial password is never synchronized again and may be
-removed from `.env` after the first successful start.
+Open [http://localhost:3000](http://localhost:3000). The initial password is never synchronized
+again and may be removed from `.env` after the first successful start.
 
 Set `AUTH_RESEND_KEY` to enable email-code login and registration. Without it, the login page only
-shows password login. External PostgreSQL or S3-compatible services can be configured in the
-commented `EXTERNAL SERVICES` section of `.env.example`.
+shows password login.
 
 ### Docker Commands
 
-| Command                | Description                         |
-| ---------------------- | ----------------------------------- |
-| `npm run docker:prod`  | Start the complete production stack |
-| `npm run docker:build` | Build production image only         |
-| `npm run docker:down`  | Stop and remove containers          |
+| Command                   | Description                      |
+| ------------------------- | -------------------------------- |
+| `npm run docker:local`    | Start app + PostgreSQL + MinIO   |
+| `npm run docker:external` | Start app with external services |
+| `npm run docker:prod`     | Alias for `docker:external`      |
+| `npm run docker:build`    | Build production image only      |
+| `npm run docker:down`     | Stop and remove containers       |
 
 Application data lives in the `cashier_postgres`, `cashier_minio`, and `cashier_config` named
-volumes. `docker compose down` preserves them; `docker compose down -v` permanently removes them.
+volumes. `npm run docker:down` preserves them; adding `-v` to the underlying Compose command
+permanently removes them.
 
 ## Local Development
 
@@ -59,10 +71,13 @@ install dependencies, migrate, and run Next.js:
 
 ```bash
 npm install
-docker compose up -d postgres minio minio-init
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d postgres minio storage-bootstrap
 npm run db:migrate
 npm run dev
 ```
+
+Ignored files such as `.env`, `.env.local`, and `.env.r2.local` are not changed by this migration.
+After confirming the new `.env` works, obsolete local copies can be archived manually.
 
 ## Testing
 

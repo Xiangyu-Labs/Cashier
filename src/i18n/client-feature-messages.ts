@@ -24,6 +24,7 @@ export const FEATURE_MESSAGES = {
     "BatchActions",
     "Calculator",
     "Calendar",
+    "CandidateReview",
     "CandidateAction",
     "DateFilter",
     "DateRangeFilter",

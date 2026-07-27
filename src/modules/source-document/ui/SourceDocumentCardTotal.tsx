@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui";
 import { buildSourceDocumentCardTotals } from "./source-document-card.utils";
 
 interface SourceDocumentCardTotalProps {
@@ -30,14 +31,17 @@ export const SourceDocumentCardTotal = memo(function SourceDocumentCardTotal({
   const formattedTotal = formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale);
 
   if (!hasMultipleCurrencies) {
-    return <span className="text-sm font-bold text-text">{formattedTotal}</span>;
+    return <AmountText variant="item">{formattedTotal}</AmountText>;
   }
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="inline-flex items-center gap-1 text-sm font-bold text-text hover:text-primary transition-colors group"
+          className={amountTextClassName(
+            "item",
+            "inline-flex items-center gap-1 transition-colors hover:text-primary group"
+          )}
           type="button"
         >
           {formattedTotal}
@@ -54,13 +58,13 @@ export const SourceDocumentCardTotal = memo(function SourceDocumentCardTotal({
             {breakdownData.map(({ currency, amount, convertedAmount }) => (
               <div key={currency} className="flex justify-between items-center text-sm">
                 <div className="ml-auto text-right">
-                  <span className="font-medium">
+                  <AmountText variant="item">
                     {formatCurrencyAmount(amount, currency, locale)}
-                  </span>
+                  </AmountText>
                   {currency !== mainCurrency && convertedAmount !== undefined && (
-                    <span className="text-xs text-muted-foreground ml-1.5">
+                    <AmountText variant="secondary" className="ml-1.5">
                       ≈ {formatCurrencyAmount(convertedAmount, mainCurrency, locale)}
-                    </span>
+                    </AmountText>
                   )}
                 </div>
               </div>
@@ -68,7 +72,7 @@ export const SourceDocumentCardTotal = memo(function SourceDocumentCardTotal({
           </div>
           <div className="border-t pt-2 mt-2 flex justify-between items-center">
             <span className="text-xs text-muted-foreground">{t("convertedTotal")}</span>
-            <span className="text-sm font-bold text-primary">{formattedTotal}</span>
+            <AmountText variant="summary">{formattedTotal}</AmountText>
           </div>
         </div>
       </PopoverContent>

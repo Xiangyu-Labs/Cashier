@@ -1,11 +1,23 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { useLocale } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { useLedgerTabs } from "@/modules/workspace/hooks";
 import { ShellControllerProvider, useShellController } from "./shell-controller";
 import type { LedgerTab } from "@/modules/workspace/tabs";
+import { preloadFeatureMessages } from "@/i18n/use-feature-messages";
+import { parsePeriodFromSearchParams } from "@/lib/period-utils";
+import {
+  getScopedLedgerSearchParams,
+  readLedgerFilterParams,
+} from "@/modules/workspace/ledger-url-params";
+import {
+  prefetchDetailsTabQuery,
+  prefetchStatsTabQuery,
+} from "@/modules/workspace/prefetch-ledger-tabs";
 
 interface ActiveShellProps {
   ledgerId: string;
@@ -32,9 +44,11 @@ export function ActiveShell({ ledgerId, children }: ActiveShellProps) {
   );
 }
 
-function ActiveShellInner({ children }: ActiveShellProps) {
+function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const queryClient = useQueryClient();
   const { onOpenInput } = useShellController();
 
   // Derive the active tab from the URL — keeps the shell and the inner
@@ -44,16 +58,51 @@ function ActiveShellInner({ children }: ActiveShellProps) {
     pathname,
   });
 
-  // Preload inactive tab chunks on pointer intent (hover/focus)
-  const preloadTab = useCallback((tab: LedgerTab) => {
-    if (tab === "details") {
-      import("@/modules/workspace/ui/DetailsTab");
-    } else if (tab === "stats") {
-      import("@/modules/workspace/ui/StatsTab");
-    } else if (tab === "settings") {
-      import("@/modules/ledger/ui/SettingsTab");
+  const preloadTabCode = useCallback(
+    (tab: LedgerTab) => {
+      if (tab === "details") {
+        import("@/modules/workspace/ui/DetailsTab");
+        void preloadFeatureMessages(locale);
+      } else if (tab === "stats") {
+        import("@/modules/workspace/ui/StatsTab");
+        void preloadFeatureMessages(locale);
+      } else if (tab === "settings") {
+        import("@/modules/ledger/ui/SettingsTab");
+      }
+    },
+    [locale]
+  );
+
+  const preloadTab = useCallback(
+    (tab: LedgerTab) => {
+      preloadTabCode(tab);
+      if (tab === "details") {
+        const scoped = getScopedLedgerSearchParams(searchParams, "details");
+        void prefetchDetailsTabQuery(
+          queryClient,
+          ledgerId,
+          parsePeriodFromSearchParams(scoped),
+          readLedgerFilterParams(searchParams, "details")
+        );
+      } else if (tab === "stats") {
+        void prefetchStatsTabQuery(queryClient, ledgerId);
+      }
+    },
+    [ledgerId, preloadTabCode, queryClient, searchParams]
+  );
+
+  useEffect(() => {
+    const preload = () => {
+      preloadTabCode("details");
+      preloadTabCode("stats");
+    };
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 2500 });
+      return () => window.cancelIdleCallback(id);
     }
-  }, []);
+    const id = globalThis.setTimeout(preload, 1500);
+    return () => globalThis.clearTimeout(id);
+  }, [preloadTabCode]);
 
   return (
     <AppShell

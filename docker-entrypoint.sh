@@ -22,9 +22,7 @@ load_or_create_secret() {
 
 AUTH_SECRET=$(load_or_create_secret "${AUTH_SECRET:-}" "$CONFIG_DIR/auth-secret")
 API_KEY_PEPPER=$(load_or_create_secret "${API_KEY_PEPPER:-}" "$CONFIG_DIR/api-key-pepper")
-S3_SECRET_ACCESS_KEY=$(load_or_create_secret \
-    "${S3_SECRET_ACCESS_KEY:-}" "$CONFIG_DIR/s3-secret-access-key")
-export AUTH_SECRET API_KEY_PEPPER S3_SECRET_ACCESS_KEY
+export AUTH_SECRET API_KEY_PEPPER
 
 case "${DATABASE_URL:-}" in
     postgres://*|postgresql://*) ;;

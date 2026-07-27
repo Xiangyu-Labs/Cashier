@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 import { cn } from "@/lib/utils";
 import { getSourceDocumentCandidateReviewAction } from "@/modules/source-document/actions";
 import type {
@@ -164,9 +165,9 @@ function RevisionPanel({
           </h3>
           <p className="text-xs text-muted-foreground">{entryCountLabel}</p>
         </div>
-        <span className="text-sm font-semibold tabular-nums">
+        <AmountText variant="summary">
           {formatCurrencyAmount(Number(revision.total), mainCurrency, locale)}
-        </span>
+        </AmountText>
       </header>
       <div className="divide-y divide-border">
         {revision.entries.length === 0 ? (
@@ -204,13 +205,13 @@ function ReviewEntry({
         </p>
       </div>
       <div className="shrink-0 text-right">
-        <p className="text-sm font-medium tabular-nums">
+        <AmountText variant="item">
           {formatCurrencyAmount(Number(entry.amount), currency, locale)}
-        </p>
+        </AmountText>
         {entry.convertedAmount != null && currency !== mainCurrency && (
-          <p className="text-xs text-muted-foreground tabular-nums">
+          <AmountText variant="secondary">
             {formatCurrencyAmount(Number(entry.convertedAmount), mainCurrency, locale)}
-          </p>
+          </AmountText>
         )}
       </div>
     </div>

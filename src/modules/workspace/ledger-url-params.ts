@@ -1,6 +1,7 @@
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 
 export const STATUSES_URL_PARAM = "statuses";
+export type LedgerFilterScope = "stream" | "details";
 const STATUSES_URL_DELIMITER = ",";
 
 /**
@@ -67,6 +68,46 @@ export interface LedgerFilterParams {
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
 type SearchParamsStringLike = Pick<URLSearchParams, "toString">;
 
+const FILTER_KEYS = [
+  "period",
+  "startDate",
+  "endDate",
+  "categoryId",
+  "currency",
+  "minAmount",
+  "maxAmount",
+  "statuses",
+] as const;
+
+type FilterKey = (typeof FILTER_KEYS)[number];
+
+function scopedKey(scope: LedgerFilterScope, key: FilterKey): string {
+  return `${scope}${key[0]!.toUpperCase()}${key.slice(1)}`;
+}
+
+function readScopedValue(
+  searchParams: Pick<URLSearchParams, "get">,
+  key: FilterKey,
+  scope?: LedgerFilterScope
+): string | null {
+  if (scope == null) return searchParams.get(key);
+  return searchParams.get(scopedKey(scope, key)) ?? searchParams.get(key);
+}
+
+/** Returns a legacy-shaped view so existing period parsing can share scoped URL state. */
+export function getScopedLedgerSearchParams(
+  searchParams: SearchParamsLike,
+  scope: LedgerFilterScope
+): URLSearchParams {
+  const scoped = new URLSearchParams(searchParams.toString());
+  for (const key of FILTER_KEYS) {
+    const value = readScopedValue(searchParams, key, scope);
+    if (value == null || value === "") scoped.delete(key);
+    else scoped.set(key, value);
+  }
+  return scoped;
+}
+
 export interface LedgerUrlUpdate {
   tab?: string | null;
   period?: string | null;
@@ -85,7 +126,7 @@ function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchPar
 
 function setOrDeleteStringParam(
   params: URLSearchParams,
-  key: keyof LedgerUrlUpdate,
+  key: string,
   value: string | null | undefined
 ) {
   const isEmpty = value == null || value === "";
@@ -100,7 +141,7 @@ function setOrDeleteStringParam(
 
 function setOrDeleteNumberParam(
   params: URLSearchParams,
-  key: "minAmount" | "maxAmount",
+  key: string,
   value: number | null | undefined
 ) {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -111,9 +152,12 @@ function setOrDeleteNumberParam(
   params.set(key, String(value));
 }
 
-export function readLedgerFilterParams(searchParams: SearchParamsLike): LedgerFilterParams {
+export function readLedgerFilterParams(
+  searchParams: SearchParamsLike,
+  scope?: LedgerFilterScope
+): LedgerFilterParams {
   const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
-    const raw = searchParams.get(key);
+    const raw = readScopedValue(searchParams, key, scope);
     if (raw == null) return null;
 
     const parsed = Number(raw);
@@ -121,27 +165,39 @@ export function readLedgerFilterParams(searchParams: SearchParamsLike): LedgerFi
   };
 
   return {
-    categoryId: searchParams.get("categoryId") ?? null,
-    currency: searchParams.get("currency") ?? null,
+    categoryId: readScopedValue(searchParams, "categoryId", scope),
+    currency: readScopedValue(searchParams, "currency", scope),
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
-    statuses: parseStatusesParam(searchParams.get(STATUSES_URL_PARAM)),
+    statuses: parseStatusesParam(readScopedValue(searchParams, STATUSES_URL_PARAM, scope)),
   };
 }
 
 export function updateLedgerSearchParams(
   searchParams: SearchParamsLike,
-  updates: LedgerUrlUpdate
+  updates: LedgerUrlUpdate,
+  scope?: LedgerFilterScope
 ): URLSearchParams {
   const params = createMutableSearchParams(searchParams);
 
+  if (scope != null) {
+    for (const key of FILTER_KEYS) {
+      const legacyValue = params.get(key);
+      const namespacedKey = scopedKey(scope, key);
+      if (legacyValue != null && !params.has(namespacedKey)) params.set(namespacedKey, legacyValue);
+      params.delete(key);
+    }
+  }
+
+  const keyFor = (key: FilterKey) => (scope == null ? key : scopedKey(scope, key));
+
   if ("tab" in updates) setOrDeleteStringParam(params, "tab", updates.tab);
   if ("period" in updates) {
-    setOrDeleteStringParam(params, "period", updates.period);
+    setOrDeleteStringParam(params, keyFor("period"), updates.period);
 
     if (updates.period !== "custom") {
-      params.delete("startDate");
-      params.delete("endDate");
+      params.delete(keyFor("startDate"));
+      params.delete(keyFor("endDate"));
     }
   }
 
@@ -149,21 +205,25 @@ export function updateLedgerSearchParams(
     updates.period === "custom" ||
     (!("period" in updates) && ("startDate" in updates || "endDate" in updates))
   ) {
-    if ("startDate" in updates) setOrDeleteStringParam(params, "startDate", updates.startDate);
-    if ("endDate" in updates) setOrDeleteStringParam(params, "endDate", updates.endDate);
+    if ("startDate" in updates)
+      setOrDeleteStringParam(params, keyFor("startDate"), updates.startDate);
+    if ("endDate" in updates) setOrDeleteStringParam(params, keyFor("endDate"), updates.endDate);
   }
 
-  if ("categoryId" in updates) setOrDeleteStringParam(params, "categoryId", updates.categoryId);
-  if ("currency" in updates) setOrDeleteStringParam(params, "currency", updates.currency);
-  if ("minAmount" in updates) setOrDeleteNumberParam(params, "minAmount", updates.minAmount);
-  if ("maxAmount" in updates) setOrDeleteNumberParam(params, "maxAmount", updates.maxAmount);
+  if ("categoryId" in updates)
+    setOrDeleteStringParam(params, keyFor("categoryId"), updates.categoryId);
+  if ("currency" in updates) setOrDeleteStringParam(params, keyFor("currency"), updates.currency);
+  if ("minAmount" in updates)
+    setOrDeleteNumberParam(params, keyFor("minAmount"), updates.minAmount);
+  if ("maxAmount" in updates)
+    setOrDeleteNumberParam(params, keyFor("maxAmount"), updates.maxAmount);
 
   if ("statuses" in updates) {
     const formatted = updates.statuses != null ? formatStatusesParam(updates.statuses) : null;
     if (formatted != null) {
-      params.set(STATUSES_URL_PARAM, formatted);
+      params.set(keyFor(STATUSES_URL_PARAM), formatted);
     } else {
-      params.delete(STATUSES_URL_PARAM);
+      params.delete(keyFor(STATUSES_URL_PARAM));
     }
   }
 

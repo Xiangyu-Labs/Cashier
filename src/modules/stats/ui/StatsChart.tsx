@@ -247,9 +247,14 @@ export function StatsChart({
               }}
             >
               {/* Data Point */}
-              <div
+              <button
+                type="button"
+                aria-label={`${displayDate}, ${t("expense")}: ${formatAmount(p.value)}`}
+                aria-pressed={isHovered}
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                onFocus={() => setHoveredIndex(i)}
+                onBlur={() => setHoveredIndex(null)}
                 onClick={() => setHoveredIndex(isHovered ? null : i)}
                 className={`
                     w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2

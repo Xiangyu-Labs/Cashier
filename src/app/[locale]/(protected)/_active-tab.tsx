@@ -8,7 +8,10 @@ import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
 import { EntriesTabSkeleton } from "@/components/skeletons/TabSkeletons";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import {
+  getScopedLedgerSearchParams,
+  readLedgerFilterParams,
+} from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
 
@@ -34,8 +37,13 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
 
   const { ledgerId, ledgerDto, session } = context;
 
-  const periodParams = parsePeriodFromSearchParams(searchParams);
-  const advancedFilters = readAdvancedFilters(searchParams);
+  const activeTab = parseLedgerTab(searchParams);
+  const filterScope = activeTab === "details" ? "details" : "stream";
+  const urlSearchParams = toUrlSearchParams(searchParams);
+  const periodParams = parsePeriodFromSearchParams(
+    getScopedLedgerSearchParams(urlSearchParams, filterScope)
+  );
+  const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
 
   const allMessages = await messagesPromise;
   const streamMessages = pickMessages(allMessages, [
@@ -55,7 +63,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
           <ActiveContent
             ledgerId={ledgerId}
             ledgerDto={ledgerDto}
-            initialTab={parseLedgerTab(searchParams)}
+            initialTab={activeTab}
             periodParams={periodParams}
             advancedFilters={advancedFilters}
             {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
@@ -69,33 +77,11 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   );
 }
 
-function readAdvancedFilters(searchParams: Record<string, string | string[] | undefined>) {
-  const getSingleSearchParam = (value: string | string[] | undefined): string | undefined => {
-    return Array.isArray(value) ? value[0] : value;
-  };
-
-  const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
-    const raw = getSingleSearchParam(searchParams[key]);
-    if (raw == null) return null;
-    const parsed = Number(raw);
-    return Number.isNaN(parsed) ? null : parsed;
-  };
-
-  // I2: Include statuses from searchParams for filter membership coherence
-  const rawStatuses = getSingleSearchParam(searchParams.statuses);
-  const statuses: SourceDocumentStatusType[] | undefined =
-    rawStatuses != null && rawStatuses !== ""
-      ? (rawStatuses
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean) as SourceDocumentStatusType[])
-      : undefined;
-
-  return {
-    categoryId: getSingleSearchParam(searchParams.categoryId) ?? null,
-    currency: getSingleSearchParam(searchParams.currency) ?? null,
-    minAmount: readNumber("minAmount"),
-    maxAmount: readNumber("maxAmount"),
-    ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
-  };
+function toUrlSearchParams(searchParams: Record<string, string | string[] | undefined>) {
+  const result = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) value.forEach((item) => result.append(key, item));
+    else if (value != null) result.set(key, value);
+  }
+  return result;
 }

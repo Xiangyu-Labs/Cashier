@@ -86,7 +86,7 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
         currency={ledgerEntry.currency}
         mainCurrency={mainCurrency}
         date={sourceDocumentEntryDate ?? ledgerEntry.createdAt}
-        size="sm"
+        variant="item"
         className="shrink-0 ml-3"
       />
     </div>

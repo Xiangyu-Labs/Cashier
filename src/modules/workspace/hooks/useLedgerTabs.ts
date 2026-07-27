@@ -27,10 +27,11 @@ export function useLedgerTabs({
 
   const handleTabChange = useCallback(
     (value: string) => {
-      const params = updateLedgerSearchParams(searchParams, { tab: value });
+      const scope = activeTab === "stream" || activeTab === "details" ? activeTab : undefined;
+      const params = updateLedgerSearchParams(searchParams, { tab: value }, scope);
       replaceLedgerUrl(pathname, params);
     },
-    [searchParams, pathname]
+    [activeTab, searchParams, pathname]
   );
 
   return {

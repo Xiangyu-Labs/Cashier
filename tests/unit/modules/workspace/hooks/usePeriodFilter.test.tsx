@@ -71,14 +71,14 @@ describe("usePeriodFilter", () => {
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
-      expect(params.get("period")).toBe("all");
-      expect(params.get("startDate")).toBeNull();
-      expect(params.get("endDate")).toBeNull();
-      expect(params.get("minAmount")).toBeNull();
-      expect(params.get("maxAmount")).toBeNull();
+      expect(params.get("streamPeriod")).toBe("all");
+      expect(params.get("streamStartDate")).toBeNull();
+      expect(params.get("streamEndDate")).toBeNull();
+      expect(params.get("streamMinAmount")).toBeNull();
+      expect(params.get("streamMaxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
       // Canonical order: anomaly, failed, candidate_pending
-      expect(params.get("statuses")).toBe("anomaly,failed,candidate_pending");
+      expect(params.get("streamStatuses")).toBe("anomaly,failed,candidate_pending");
     });
 
     it("applies in_progress preset: clears period/date/amount, sets statuses, switches to stream", () => {
@@ -102,13 +102,13 @@ describe("usePeriodFilter", () => {
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
-      expect(params.get("period")).toBe("all");
-      expect(params.get("startDate")).toBeNull();
-      expect(params.get("endDate")).toBeNull();
-      expect(params.get("minAmount")).toBeNull();
-      expect(params.get("maxAmount")).toBeNull();
+      expect(params.get("streamPeriod")).toBe("all");
+      expect(params.get("streamStartDate")).toBeNull();
+      expect(params.get("streamEndDate")).toBeNull();
+      expect(params.get("streamMinAmount")).toBeNull();
+      expect(params.get("streamMaxAmount")).toBeNull();
       expect(params.get("tab")).toBe("stream");
-      expect(params.get("statuses")).toBe("processing");
+      expect(params.get("streamStatuses")).toBe("processing");
     });
 
     it("replaces existing statuses with preset statuses", () => {
@@ -130,7 +130,7 @@ describe("usePeriodFilter", () => {
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
-      expect(params.get("statuses")).toBe("processing");
+      expect(params.get("streamStatuses")).toBe("processing");
     });
   });
 });

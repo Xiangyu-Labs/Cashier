@@ -129,7 +129,7 @@ export function LedgerEntryCard({
               currency={ledgerEntry.currency}
               mainCurrency={mainCurrency}
               date={ledgerEntry.sourceDocument?.entryDate ?? ledgerEntry.createdAt}
-              size="md"
+              variant="item"
             />
           </div>
         </div>

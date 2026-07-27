@@ -9,7 +9,6 @@ import { type PeriodParams } from "@/lib/period-utils";
 import { queryKeys } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { useLayoutTransition } from "@/hooks/use-layout-transition";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
@@ -57,7 +56,6 @@ export function LedgerEntriesTab({
   const tFilter = useTranslations("EntryFilterPanel");
   const notifyRefresh = useNotifyRevisionRefresh();
   const pushModal = useModalStackStore((state) => state.push);
-  const { containerProps, getItemProps, layoutGroupId: _layoutGroupId } = useLayoutTransition();
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
     advancedFilters
@@ -195,8 +193,9 @@ export function LedgerEntriesTab({
   });
 
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="space-y-4" {...containerProps}>
+    <PullToRefresh
+      onRefresh={handleRefresh}
+      header={
         <LedgerEntriesToolbar
           isSelectionMode={isSelectionMode}
           isAllSelected={isAllSelected}
@@ -215,7 +214,9 @@ export function LedgerEntriesTab({
           statusSummaryRef={statusSummaryRef}
           {...(onApplyPreset != null ? { onApplyPreset } : {})}
         />
-
+      }
+    >
+      <div className="space-y-4">
         {isLoading ? (
           <LedgerEntriesLoading />
         ) : (
@@ -234,7 +235,7 @@ export function LedgerEntriesTab({
                 onToggleSelection={toggleSelection}
                 collapseEntriesDefault={collapseEntriesDefault}
                 noRecordsText={tCommon("noRecords")}
-                getItemProps={getItemProps}
+                getItemProps={() => ({})}
               />
             )}
 

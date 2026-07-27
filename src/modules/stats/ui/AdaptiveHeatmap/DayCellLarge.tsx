@@ -34,6 +34,8 @@ export function DayCellLarge({
   return (
     <div className="relative min-w-0 overflow-visible">
       <button
+        type="button"
+        aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

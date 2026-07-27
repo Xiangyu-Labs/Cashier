@@ -21,18 +21,14 @@ interface SubmissionUploadDependencies {
   ) => Promise<void>;
 }
 
-export type SourceDocumentSubmissionProgress =
-  | { phase: "preparing" }
-  | {
-      phase: "uploading";
-      loadedBytes: number;
-      totalBytes: number;
-      percent: number;
-      fileIndex: number;
-      fileCount: number;
-    }
-  | { phase: "finalizing" }
-  | { phase: "submitting" };
+export interface SourceDocumentSubmissionProgress {
+  phase: "preparing" | "planning" | "uploading" | "finalizing" | "submitting" | "complete";
+  percent: number;
+  loadedBytes?: number;
+  totalBytes?: number;
+  fileIndex?: number;
+  fileCount?: number;
+}
 
 export type SourceDocumentSubmissionUploadStage = "prepare" | "plan" | "upload" | "finalize";
 
@@ -138,7 +134,7 @@ export async function uploadSourceDocumentSubmissionImages(
   const images = payload.images ?? [];
   if (images.length === 0) return withoutInlineImages(payload);
 
-  onProgress?.({ phase: "preparing" });
+  onProgress?.({ phase: "preparing", percent: 0 });
 
   let prepared: Array<{ bytes: ArrayBuffer; contentType: string; checksum: string }>;
   try {
@@ -154,6 +150,7 @@ export async function uploadSourceDocumentSubmissionImages(
       cause: error,
     });
   }
+  onProgress?.({ phase: "planning", percent: 15 });
   let plan: Awaited<ReturnType<SubmissionUploadDependencies["createPlan"]>>;
   try {
     plan = await dependencies.createPlan(
@@ -178,6 +175,14 @@ export async function uploadSourceDocumentSubmissionImages(
       "plan"
     );
   }
+  onProgress?.({
+    phase: "uploading",
+    percent: 20,
+    loadedBytes: 0,
+    totalBytes: prepared.reduce((sum, file) => sum + file.bytes.byteLength, 0),
+    fileIndex: 1,
+    fileCount: prepared.length,
+  });
 
   try {
     const loadedByFile = prepared.map(() => 0);
@@ -186,13 +191,14 @@ export async function uploadSourceDocumentSubmissionImages(
       plan.targets.map(async (target, index) => {
         const bytes = prepared[index]!.bytes;
         const report = (loaded: number) => {
-          loadedByFile[index] = Math.min(loaded, bytes.byteLength);
+          loadedByFile[index] = Math.max(loadedByFile[index]!, Math.min(loaded, bytes.byteLength));
           const loadedBytes = loadedByFile.reduce((sum, value) => sum + value, 0);
+          const uploadRatio = totalBytes === 0 ? 0 : loadedBytes / totalBytes;
           onProgress?.({
             phase: "uploading",
             loadedBytes,
             totalBytes,
-            percent: totalBytes === 0 ? 0 : Math.round((loadedBytes / totalBytes) * 100),
+            percent: Math.round(20 + uploadRatio * 60),
             fileIndex: index + 1,
             fileCount: prepared.length,
           });
@@ -222,7 +228,7 @@ export async function uploadSourceDocumentSubmissionImages(
 
   let storedFileIds: string[];
   try {
-    onProgress?.({ phase: "finalizing" });
+    onProgress?.({ phase: "finalizing", percent: 80 });
     storedFileIds = await dependencies.finalize(ledgerId, {
       uploadSessionId: plan.id,
       finalizationToken: plan.finalizationToken,
@@ -235,6 +241,7 @@ export async function uploadSourceDocumentSubmissionImages(
       { cause: error }
     );
   }
+  onProgress?.({ phase: "submitting", percent: 90 });
   return {
     ...withoutInlineImages(payload),
     storedFileIds: [...(payload.storedFileIds ?? []), ...storedFileIds],

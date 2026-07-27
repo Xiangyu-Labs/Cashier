@@ -36,6 +36,8 @@ export function DayCellSmall({
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            type="button"
+            aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
             onClick={onClick}
             className={cn(
               "w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0",

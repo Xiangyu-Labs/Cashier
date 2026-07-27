@@ -4,6 +4,7 @@ import { type SourceDocumentStatusType } from "@/modules/source-document/contrac
 import { SourceDocumentCard } from "@/modules/source-document/ui";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { AmountText } from "@/modules/currency/ui";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 
 // ---------------------------------------------------------------------------
@@ -146,9 +147,9 @@ function UnifiedGroupHeader({
           </span>
         )}
       </h3>
-      <span className="text-[10px] sm:text-xs font-mono font-medium text-muted-foreground">
+      <AmountText variant="group">
         {formatCurrencyAmount(group.total, mainCurrency, locale)}
-      </span>
+      </AmountText>
     </div>
   );
 }

@@ -79,7 +79,7 @@ describe("AuthLoginPage", () => {
     });
 
     const { AuthLoginPage } = await import("@/modules/auth/ui/login-page");
-    render(<AuthLoginPage />);
+    render(<AuthLoginPage devAuthAvailable />);
 
     expect(screen.getByRole("button", { name: "以开发身份进入" })).toBeInTheDocument();
   });

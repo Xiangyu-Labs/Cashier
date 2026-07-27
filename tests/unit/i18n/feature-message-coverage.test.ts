@@ -40,6 +40,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "BatchActions",
     "Calculator",
     "Calendar",
+    "CandidateReview",
     "CandidateAction",
     "DateFilter",
     "DateRangeFilter",

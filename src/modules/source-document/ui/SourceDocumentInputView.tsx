@@ -193,26 +193,25 @@ function SubmissionProgress({
   progress: SourceDocumentSubmissionProgress;
   messages: SourceDocumentInputViewMessages;
 }) {
-  const label =
-    progress.phase === "preparing"
-      ? messages.preparing
-      : progress.phase === "uploading"
-        ? messages.uploading
-        : progress.phase === "finalizing"
-          ? messages.finalizing
-          : messages.submitting;
-  const percent = progress.phase === "uploading" ? progress.percent : null;
+  const percent = progress.percent;
 
   return (
-    <div className="space-y-2" aria-live="polite">
+    <div className="space-y-2" role="status" aria-live="polite">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{label}</span>
-        {percent != null ? <span>{percent}%</span> : null}
+        <span>{messages.submitting}</span>
+        <span className="tabular-nums">{percent}%</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-surface2">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-surface2"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        aria-label={messages.submitting}
+      >
         <div
-          className={`h-full bg-primary transition-[width] duration-200 ${percent == null ? "w-1/3 animate-pulse" : ""}`}
-          style={percent == null ? undefined : { width: `${percent}%` }}
+          className="h-full bg-primary transition-[width] duration-200"
+          style={{ width: `${percent}%` }}
         />
       </div>
     </div>

@@ -8,6 +8,12 @@ interface PullToRefreshProps {
   threshold?: number;
   disabled?: boolean;
   className?: string;
+  header?: ReactNode;
+  indicator?: (state: {
+    isRefreshing: boolean;
+    pullDistance: number;
+    releaseToRefresh: boolean;
+  }) => ReactNode;
 }
 
 export function PullToRefresh({
@@ -16,6 +22,8 @@ export function PullToRefresh({
   threshold = 60,
   disabled = false,
   className,
+  header,
+  indicator,
 }: PullToRefreshProps) {
   const t = useTranslations("PullToRefresh");
   const [pullDistance, setPullDistance] = useState(0);
@@ -132,7 +140,12 @@ export function PullToRefresh({
 
   // 如果禁用或非触摸设备，直接渲染子元素
   if (disabled || !isTouchDevice) {
-    return <div className={className}>{children}</div>;
+    return (
+      <div className={className}>
+        {header}
+        {children}
+      </div>
+    );
   }
 
   // 计算指示器状态
@@ -143,6 +156,7 @@ export function PullToRefresh({
 
   return (
     <div ref={containerRef} className={className}>
+      {header}
       {/* Pull-down indicator — CSS transitions replace Framer Motion */}
       <div
         className="overflow-hidden transition-all duration-200 ease-out"
@@ -151,33 +165,35 @@ export function PullToRefresh({
           height: isVisible ? (isRefreshing ? 44 : pullDistance) : 0,
         }}
       >
-        <div className="flex flex-col items-center justify-end overflow-hidden">
-          <div className="flex items-center gap-2 pb-2">
-            {/* Spinner indicator — CSS animation replaces motion.div */}
-            <div
-              style={{
-                transform: `scale(${indicatorScale})`,
-                transition: "transform 0.2s ease-out",
-              }}
-            >
+        <div className="flex flex-col items-center justify-end overflow-hidden" role="status">
+          {indicator?.({ isRefreshing, pullDistance, releaseToRefresh }) ?? (
+            <div className="flex items-center gap-2 pb-2">
+              {/* Spinner indicator — CSS animation replaces motion.div */}
               <div
-                className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
-              />
-            </div>
+                style={{
+                  transform: `scale(${indicatorScale})`,
+                  transition: "transform 0.2s ease-out",
+                }}
+              >
+                <div
+                  className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
+              </div>
 
-            {/* Text hint */}
-            {showText && (
-              <span className="transition-opacity duration-200 text-xs text-muted-foreground">
-                {isRefreshing
-                  ? t("refreshing")
-                  : releaseToRefresh
-                    ? t("releaseToRefresh")
-                    : t("pullToRefresh")}
-              </span>
-            )}
-          </div>
+              {/* Text hint */}
+              {showText && (
+                <span className="transition-opacity duration-200 text-xs text-muted-foreground">
+                  {isRefreshing
+                    ? t("refreshing")
+                    : releaseToRefresh
+                      ? t("releaseToRefresh")
+                      : t("pullToRefresh")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

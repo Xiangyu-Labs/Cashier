@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
-import { motion, AnimatePresence } from "framer-motion";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
@@ -104,8 +103,9 @@ export function DetailsTab({
   }, [queryClient, ledgerId]);
 
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="space-y-4">
+    <PullToRefresh
+      onRefresh={handleRefresh}
+      header={
         <DetailsToolbar
           totalLabel={formatCurrencyAmount(
             Number(monthStats.mainTotal),
@@ -122,49 +122,35 @@ export function DetailsTab({
             className="flex-1 sm:flex-none"
           />
         </DetailsToolbar>
-
+      }
+    >
+      <div className="space-y-4">
         {/* Entry Groups */}
         <div className="space-y-6 pt-2">
-          <AnimatePresence mode="popLayout">
-            {groupedItems.map((group) => (
-              <motion.div
-                key={group.title}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-2"
-              >
-                <EntryGroupHeader
-                  title={group.title}
-                  totalLabel={formatCurrencyAmount(group.total, monthStats.mainCurrency, locale)}
-                />
-                <div className="space-y-4 px-2">
-                  {group.items.map((entry) => (
-                    <motion.div
-                      key={entry.id}
-                      layout
-                      layoutId={entry.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <LedgerEntryCard
-                        ledgerEntry={entry}
-                        categories={categories}
-                        {...(ledger?.metadata?.settings?.mainCurrency !== undefined
-                          ? { mainCurrency: ledger.metadata.settings.mainCurrency }
-                          : {})}
-                        onView={() => {
-                          handleViewEntry(entry);
-                        }}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {groupedItems.map((group) => (
+            <div key={group.title} className="ledger-list-group space-y-2">
+              <EntryGroupHeader
+                title={group.title}
+                totalLabel={formatCurrencyAmount(group.total, monthStats.mainCurrency, locale)}
+              />
+              <div className="space-y-4 px-2">
+                {group.items.map((entry) => (
+                  <div key={entry.id}>
+                    <LedgerEntryCard
+                      ledgerEntry={entry}
+                      categories={categories}
+                      {...(ledger?.metadata?.settings?.mainCurrency !== undefined
+                        ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+                        : {})}
+                      onView={() => {
+                        handleViewEntry(entry);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {/* Loading State */}
           {isLoading && (

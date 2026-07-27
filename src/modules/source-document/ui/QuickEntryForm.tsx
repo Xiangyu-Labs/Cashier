@@ -17,6 +17,7 @@ import { Send } from "lucide-react";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
+import { amountTextClassName } from "@/modules/currency/ui";
 
 interface QuickEntryFormProps {
   ledgerId: string;
@@ -143,7 +144,7 @@ export function QuickEntryForm({
           value={amount}
           onChange={setAmount}
           inlineInputMode="minor-unit"
-          displayClassName="text-3xl font-bold font-mono text-center"
+          displayClassName={amountTextClassName("item", "text-center")}
           ariaLabel={t("amount")}
         />
       </div>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AmountText } from "@/modules/currency/ui";
 
 interface DetailsToolbarProps {
   totalLabel: string;
@@ -10,9 +11,9 @@ export function DetailsToolbar({ totalLabel, children }: DetailsToolbarProps) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
         {children}
-        <span className="ml-auto text-xs font-medium tabular-nums text-muted-foreground">
+        <AmountText variant="summary" className="ml-auto">
           {totalLabel}
-        </span>
+        </AmountText>
       </div>
     </div>
   );

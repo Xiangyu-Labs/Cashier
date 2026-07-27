@@ -46,8 +46,6 @@ export const viewport = {
   themeColor: "#10a37f",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, // Prevent zooming on mobile for app-like feel
   viewportFit: "cover", // Ensure content extends to edges including notches
 };
 

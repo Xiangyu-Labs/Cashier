@@ -7,9 +7,15 @@ import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
 import { PasswordStep } from "./password-step";
 
-export function AuthLoginPage({ emailAuthEnabled = false }: { emailAuthEnabled?: boolean }) {
+export function AuthLoginPage({
+  emailAuthEnabled = false,
+  devAuthAvailable = false,
+}: {
+  emailAuthEnabled?: boolean;
+  devAuthAvailable?: boolean;
+}) {
   const t = useTranslations("Auth");
-  const flow = useLoginFlow(t);
+  const flow = useLoginFlow(t, devAuthAvailable);
   const passwordMode = flow.mode === "password";
 
   return (

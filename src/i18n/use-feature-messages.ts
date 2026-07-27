@@ -9,6 +9,17 @@ const MESSAGE_LOADERS: Record<string, () => Promise<Record<string, unknown>>> = 
   zh: () => import("../../messages/zh.json").then((m) => m.default as Record<string, unknown>),
 };
 
+const messagePromises = new Map<string, Promise<Record<string, unknown>>>();
+
+export function preloadFeatureMessages(locale: string): Promise<Record<string, unknown>> {
+  const normalizedLocale = MESSAGE_LOADERS[locale] != null ? locale : "en";
+  const existing = messagePromises.get(normalizedLocale);
+  if (existing != null) return existing;
+  const promise = MESSAGE_LOADERS[normalizedLocale]!();
+  messagePromises.set(normalizedLocale, promise);
+  return promise;
+}
+
 /**
  * Loads a subset of locale messages for a specific feature boundary.
  * Returns null while the messages are being fetched, giving the caller
@@ -25,12 +36,7 @@ export function useFeatureMessages(
 
   useEffect(() => {
     let cancelled = false;
-    const loader = MESSAGE_LOADERS[locale] ?? MESSAGE_LOADERS["en"];
-    if (!loader) {
-      Promise.resolve().then(() => setMessages({}));
-      return;
-    }
-    loader().then((full) => {
+    preloadFeatureMessages(locale).then((full) => {
       if (cancelled) return;
       setMessages(pickMessages(full, FEATURE_MESSAGES[feature]));
     });
