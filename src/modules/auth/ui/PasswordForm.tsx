@@ -97,7 +97,7 @@ export function PasswordForm({
   const canSubmit = matches && (!hasPassword || currentPassword !== "");
 
   return (
-    <div className="flex flex-col items-start gap-2 sm:items-end">
+    <div className="flex w-full flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-muted-foreground">
         {passwordUpdatedAt == null
           ? t("passwordNotSet")

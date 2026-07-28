@@ -4,19 +4,24 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 interface ShellControllerValue {
   onOpenInput: () => void;
   setOpenInput: (fn: () => void) => void;
+  onInputIntent: () => void;
+  setInputIntent: (fn: () => void) => void;
 }
 
 const ShellControllerContext = createContext<ShellControllerValue | null>(null);
 
 export function ShellControllerProvider({ children }: { children: ReactNode }) {
   const [onOpenInput, setOpenInput] = useState<() => void>(() => {});
+  const [onInputIntent, setInputIntent] = useState<() => void>(() => {});
 
   const value = useMemo(
     () => ({
       onOpenInput,
       setOpenInput,
+      onInputIntent,
+      setInputIntent,
     }),
-    [onOpenInput]
+    [onInputIntent, onOpenInput]
   );
 
   return (

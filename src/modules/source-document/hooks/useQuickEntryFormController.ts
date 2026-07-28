@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
@@ -38,17 +38,28 @@ export function useQuickEntryFormController({
 }: UseQuickEntryFormControllerParams) {
   const t = useTranslations("QuickEntryForm");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState(mainCurrency);
   const [itemName, setItemName] = useState("");
-  const [entryDate, setEntryDate] = useState<Date>(() => {
-    const zonedDate = getDateInTimezone(timeZone);
-    return zonedDate != null ? parseDateString(zonedDate) : new Date();
-  });
+  const [entryDate, setEntryDateState] = useState(
+    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date())
+  );
+  const entryDateWasEdited = useRef(false);
+
+  const setEntryDate = useCallback((date: string) => {
+    entryDateWasEdited.current = true;
+    setEntryDateState(date);
+  }, []);
 
   useEffect(() => {
     setCurrency(mainCurrency);
   }, [mainCurrency]);
+
+  useEffect(() => {
+    if (entryDateWasEdited.current) return;
+    const zonedDate = getDateInTimezone(timeZone);
+    if (zonedDate != null) setEntryDateState(zonedDate);
+  }, [timeZone]);
 
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
@@ -67,13 +78,14 @@ export function useQuickEntryFormController({
   });
 
   const handleSubmit = () => {
-    if (selectedCategoryId === null || amount <= 0) return;
+    const parsedAmount = Number(amount);
+    if (selectedCategoryId === null || !Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
     const nextItemName = itemName !== "" ? itemName : undefined;
     mutation.mutate({
       categoryId: selectedCategoryId,
-      amount,
+      amount: parsedAmount,
       currency,
-      entryDate: formatDateTimeForApi(entryDate),
+      entryDate,
       ...(nextItemName !== undefined ? { itemName: nextItemName } : {}),
     });
   };

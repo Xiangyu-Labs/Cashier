@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
 
@@ -34,6 +34,25 @@ vi.mock("@/components/ui/date-filter", () => ({
     </button>
   ),
 }));
+
+let mobileViewport = false;
+
+beforeEach(() => {
+  mobileViewport = false;
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches: mobileViewport,
+      media: "(max-width: 639px)",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+});
 
 describe("EntryFilterPanel", () => {
   it("does not count the default current-month period", () => {
@@ -77,7 +96,7 @@ describe("EntryFilterPanel", () => {
     expect(screen.getByPlaceholderText("搜索标题、名称或描述")).toHaveClass("text-base");
   });
 
-  it("centers the mobile filter popover within the viewport", () => {
+  it("keeps the desktop filter in an anchored popover", () => {
     render(
       <EntryFilterPanel
         filters={{}}
@@ -94,6 +113,32 @@ describe("EntryFilterPanel", () => {
     expect(filterPopover).toBeDefined();
     expect(filterPopover?.getAttribute("data-align")).toBe("center");
     expect(filterPopover?.getAttribute("data-collision-padding")).toBe("16");
+  });
+
+  it("opens a bottom dialog and applies the shared draft on mobile", async () => {
+    mobileViewport = true;
+    const user = userEvent.setup();
+    const onFiltersChange = vi.fn();
+
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        onFiltersChange={onFiltersChange}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "筛选" }));
+    const dialog = screen.getByRole("dialog", { name: "筛选" });
+    expect(dialog).toHaveClass("bottom-0", "rounded-b-none");
+    expect(screen.queryByTestId("popover-content")).not.toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("搜索标题、名称或描述"), "coffee");
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ search: "coffee" }));
+    expect(screen.queryByRole("dialog", { name: "筛选" })).not.toBeInTheDocument();
   });
 
   it("renders status checkboxes for all five active statuses", () => {

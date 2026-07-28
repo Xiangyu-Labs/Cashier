@@ -50,15 +50,32 @@ const SourceDocumentInput = dynamic(
     import("@/modules/source-document/ui/SourceDocumentInput").then((m) => ({
       default: m.SourceDocumentInput,
     })),
-  { ssr: false }
+  { ssr: false, loading: () => <InputFormLoadingFallback /> }
 );
 const QuickEntryForm = dynamic(
   () =>
     import("@/modules/source-document/ui/QuickEntryForm").then((m) => ({
       default: m.QuickEntryForm,
     })),
-  { ssr: false }
+  { ssr: false, loading: () => <InputFormLoadingFallback /> }
 );
+
+export function preloadNewRecordModules() {
+  void import("@/modules/source-document/ui/SourceDocumentInput");
+  void import("@/modules/source-document/ui/QuickEntryForm");
+}
+
+function InputFormLoadingFallback() {
+  return (
+    <div aria-hidden className="min-h-[26rem] space-y-4 pt-1">
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-9 w-full" />
+    </div>
+  );
+}
 
 const ModalStackRenderer = dynamic(
   () =>
@@ -194,11 +211,15 @@ function LedgerPageClientContent({
   const [isInputSubmitting, setIsInputSubmitting] = useState(false);
 
   // Wire the real new-record handler into the shell once this component mounts.
-  const { setOpenInput } = useShellController();
+  const { setInputIntent, setOpenInput } = useShellController();
 
   useEffect(() => {
     setOpenInput(() => () => setIsInputOpen(true));
   }, [setOpenInput, setIsInputOpen]);
+
+  useEffect(() => {
+    setInputIntent(() => preloadNewRecordModules);
+  }, [setInputIntent]);
 
   if (ledger == null) {
     return (
@@ -292,7 +313,7 @@ function LedgerPageClientContent({
         }}
       >
         <DialogContent
-          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:top-[20%] sm:w-full sm:max-w-md sm:rounded-lg sm:p-6"
+          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6"
           aria-describedby={undefined}
           hideCloseButton={isInputSubmitting}
           onEscapeKeyDown={(event) => {
@@ -331,23 +352,25 @@ function LedgerPageClientContent({
             </button>
           </div>
 
-          {inputMode === "ai" ? (
-            <SourceDocumentInput
-              ledgerId={ledgerId}
-              onPendingChange={setIsInputSubmitting}
-              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-              onSuccess={() => setIsInputOpen(false)}
-            />
-          ) : (
-            <QuickEntryForm
-              ledgerId={ledgerId}
-              categories={categories}
-              mainCurrency={mainCurrency}
-              preferredCurrencies={preferredCurrencies}
-              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-              onSuccess={() => setIsInputOpen(false)}
-            />
-          )}
+          <div className="min-h-[26rem]">
+            {inputMode === "ai" ? (
+              <SourceDocumentInput
+                ledgerId={ledgerId}
+                onPendingChange={setIsInputSubmitting}
+                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                onSuccess={() => setIsInputOpen(false)}
+              />
+            ) : (
+              <QuickEntryForm
+                ledgerId={ledgerId}
+                categories={categories}
+                mainCurrency={mainCurrency}
+                preferredCurrencies={preferredCurrencies}
+                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                onSuccess={() => setIsInputOpen(false)}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

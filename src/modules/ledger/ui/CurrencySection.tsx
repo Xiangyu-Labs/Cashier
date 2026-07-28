@@ -5,6 +5,13 @@ import type { Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CurrencySectionProps {
   settings: Settings;
@@ -30,21 +37,21 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
     <div className="space-y-6">
       <div className="flex flex-col gap-4 justify-between sm:flex-row sm:items-center">
         <div>
-          <h3 className="text-base font-medium">{t("mainCurrency")}</h3>
-          <p className="text-sm text-muted">{t("mainCurrencyDesc")}</p>
+          <h3 className="text-sm font-medium text-text">{t("mainCurrency")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("mainCurrencyDesc")}</p>
         </div>
-        <select
-          aria-label={t("mainCurrency")}
-          value={mainCurrency}
-          onChange={(event) => setPendingMainCurrency(event.target.value)}
-          className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
-        >
-          {SUPPORTED_CURRENCIES.map((currency) => (
-            <option key={currency} value={currency}>
-              {currency}
-            </option>
-          ))}
-        </select>
+        <Select value={mainCurrency} onValueChange={setPendingMainCurrency}>
+          <SelectTrigger aria-label={t("mainCurrency")} className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {SUPPORTED_CURRENCIES.map((currency) => (
+              <SelectItem key={currency} value={currency}>
+                {currency}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <ConfirmDialog
@@ -65,7 +72,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
 
       <div className="space-y-4">
         <div>
-          <h3 className="text-base font-medium">{t("preferredCurrencies")}</h3>
+          <h3 className="text-sm font-medium text-text">{t("preferredCurrencies")}</h3>
         </div>
         <div className="flex flex-wrap gap-2">
           {SUPPORTED_CURRENCIES.map((currency) => {

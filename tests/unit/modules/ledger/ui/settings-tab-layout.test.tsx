@@ -119,9 +119,18 @@ describe("SettingsTab layout", () => {
     render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
     expect(screen.getByRole("combobox", { name: "主题" })).toBeInTheDocument();
+    const timeZoneField = screen.getByRole("heading", { name: "账本时区" }).parentElement
+      ?.parentElement;
     await waitFor(() =>
-      expect(screen.getByRole("option", { name: "自动（Asia/Shanghai）" })).toBeInTheDocument()
+      expect(timeZoneField?.querySelector("[data-slot='select-trigger']")).toHaveTextContent(
+        "自动（Asia/Shanghai）"
+      )
     );
+    expect(screen.getByRole("combobox", { name: "界面语言" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "AI 输出语言" })).toBeInTheDocument();
+    expect(
+      screen.getByText("控制解析结果中的项目名、补差项和摘要语言，不限制票据原文语言")
+    ).toBeInTheDocument();
     const prompt = screen.getByRole("textbox", { name: "账本提示词" });
     expect(prompt).toHaveClass("w-full", "resize-y");
     expect(prompt.parentElement).toHaveClass("w-full");

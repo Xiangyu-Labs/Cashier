@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useTranslations, useFormatter } from "next-intl";
+import { parseDateString } from "@/lib/date-utils";
 
 interface DateFilterProps {
   /** Selected date */
@@ -42,8 +43,7 @@ export function DateFilter({
   const dateValue = React.useMemo(() => {
     if (value == null) return null;
     if (value instanceof Date) return value;
-    // Handle ISO string or date string
-    const parsed = new Date(value);
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseDateString(value) : new Date(value);
     return isNaN(parsed.getTime()) ? null : parsed;
   }, [value]);
 

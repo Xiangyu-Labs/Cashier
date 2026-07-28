@@ -104,8 +104,8 @@ export function CategorySection({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-medium">{t("categories")}</h3>
-          <p className="text-sm text-muted">{t("categoriesDesc")}</p>
+          <h3 className="text-sm font-medium text-text">{t("categories")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("categoriesDesc")}</p>
         </div>
         {!managing ? (
           <Button type="button" variant="outline" size="sm" onClick={enterManagement}>

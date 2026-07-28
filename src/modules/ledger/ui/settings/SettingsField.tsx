@@ -17,7 +17,7 @@ export function SettingsField({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0",
+        "flex flex-col gap-3",
         !stacked && "sm:flex-row sm:items-center sm:justify-between"
       )}
     >

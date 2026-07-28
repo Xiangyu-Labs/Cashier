@@ -74,8 +74,8 @@ export function ServiceCredentialSection({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-medium">{t("title")}</h3>
-          <p className="text-sm text-muted">{t("description")}</p>
+          <h3 className="text-sm font-medium text-text">{t("title")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
           <Plus size={16} />

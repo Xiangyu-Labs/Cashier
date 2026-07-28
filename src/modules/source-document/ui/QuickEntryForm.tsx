@@ -2,7 +2,6 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CalculatorInput } from "@/components/ui/calculator-input";
 import {
   Select,
   SelectContent,
@@ -17,7 +16,7 @@ import { Send } from "lucide-react";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
-import { amountTextClassName } from "@/modules/currency/ui";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 interface QuickEntryFormProps {
   ledgerId: string;
@@ -70,6 +69,8 @@ export function QuickEntryForm({
       (curr) => curr !== mainCurrency && !preferredCurrencyOptions.includes(curr)
     ),
   ];
+  const parsedAmount = Number(amount);
+  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   return (
     <div className="space-y-4">
@@ -91,7 +92,9 @@ export function QuickEntryForm({
         <p className="text-sm text-muted-foreground mb-2">{t("selectDate")}</p>
         <DateFilter
           value={entryDate}
-          onChange={(date) => setEntryDate(date ?? new Date())}
+          onChange={(date) => {
+            if (date != null) setEntryDate(formatDateTimeForApi(date));
+          }}
           placeholder={t("selectDate")}
           size="sm"
           className="w-full"
@@ -142,20 +145,33 @@ export function QuickEntryForm({
       </div>
 
       {/* Amount */}
-      <div className="flex items-center justify-center py-2">
-        <CalculatorInput
-          value={amount}
-          onChange={setAmount}
-          inlineInputMode="minor-unit"
-          displayClassName={amountTextClassName("item", "text-center")}
-          ariaLabel={t("amount")}
-        />
+      <div>
+        <p className="mb-2 text-sm text-muted-foreground">{t("amount")}</p>
+        <div className="relative">
+          <Input
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            pattern="[0-9]*[.,]?[0-9]{0,2}"
+            value={amount}
+            onChange={(event) => {
+              const next = event.target.value.replace(",", ".");
+              if (/^\d*(?:\.\d{0,2})?$/.test(next)) setAmount(next);
+            }}
+            aria-label={t("amount")}
+            placeholder="0.00"
+            className="h-12 pr-16 text-right text-lg font-semibold tabular-nums"
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-muted-foreground">
+            {currency}
+          </span>
+        </div>
       </div>
 
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={selectedCategoryId === null || amount <= 0 || mutation.isPending}
+        disabled={selectedCategoryId === null || !hasValidAmount || mutation.isPending}
         className="w-full"
       >
         {mutation.isPending ? (

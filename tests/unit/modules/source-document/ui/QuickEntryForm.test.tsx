@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { QuickEntryForm } from "@/modules/source-document/ui/QuickEntryForm";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -19,14 +19,6 @@ vi.mock("@/components/CategoryIcon", () => ({
 vi.mock("@/components/ui/date-filter", () => ({
   DateFilter: ({ placeholder }: { placeholder?: string }) => (
     <div data-testid="date-filter">{placeholder ?? "date-filter"}</div>
-  ),
-}));
-
-vi.mock("@/components/ui/calculator-input", () => ({
-  CalculatorInput: ({ value, inlineInputMode }: { value: number; inlineInputMode?: string }) => (
-    <div data-testid="calculator-input" data-inline-input-mode={inlineInputMode ?? ""}>
-      {value}
-    </div>
   ),
 }));
 
@@ -73,13 +65,13 @@ describe("QuickEntryForm", () => {
       selectedCategoryId: null,
       setSelectedCategoryId: vi.fn(),
       selectedCategory: null,
-      amount: 0,
+      amount: "",
       setAmount: vi.fn(),
       currency: "MYR",
       setCurrency: vi.fn(),
       itemName: "",
       setItemName: vi.fn(),
-      entryDate: new Date("2026-03-24T00:00:00.000Z"),
+      entryDate: "2026-03-24",
       setEntryDate: vi.fn(),
       mutation: { isPending: false },
       handleSubmit: vi.fn(),
@@ -97,9 +89,10 @@ describe("QuickEntryForm", () => {
     );
 
     expect(screen.getByText("货币")).toBeTruthy();
-    expect(screen.getByTestId("calculator-input").getAttribute("data-inline-input-mode")).toBe(
-      "minor-unit"
-    );
+    const amountInput = screen.getByRole("textbox", { name: "金额" });
+    expect(amountInput).toHaveAttribute("inputmode", "decimal");
+    expect(amountInput).toHaveAttribute("placeholder", "0.00");
+    expect(screen.getAllByText("MYR")).toHaveLength(2);
 
     const options = screen.getAllByTestId("currency-option").map((node) => node.textContent);
     expect(options.slice(0, 3)).toEqual(["MYR", "USD", "CNY"]);
@@ -112,7 +105,6 @@ describe("QuickEntryForm", () => {
     const dateLabel = labels.find((label) => label.text === "选择日期")?.node ?? null;
     const categoryLabel = labels.find((label) => label.text === "选择分类")?.node ?? null;
     const currencyLabel = labels.find((label) => label.text === "货币")?.node ?? null;
-    const amountInput = screen.getByTestId("calculator-input");
 
     expect(itemNameInput).not.toBeNull();
     expect(dateLabel).not.toBeNull();
@@ -133,5 +125,22 @@ describe("QuickEntryForm", () => {
     expect(currencyLabel.compareDocumentPosition(amountInput)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
+  });
+
+  it("accepts a decimal amount with at most two fractional digits", () => {
+    const setAmount = vi.fn();
+    useQuickEntryFormControllerMock.mockReturnValue({
+      ...useQuickEntryFormControllerMock(),
+      setAmount,
+    });
+
+    render(<QuickEntryForm ledgerId="ledger-1" categories={[createCategory()]} />);
+    const amountInput = screen.getByRole("textbox", { name: "金额" });
+
+    fireEvent.change(amountInput, { target: { value: "12.34" } });
+    fireEvent.change(amountInput, { target: { value: "12.345" } });
+
+    expect(setAmount).toHaveBeenCalledTimes(1);
+    expect(setAmount).toHaveBeenCalledWith("12.34");
   });
 });

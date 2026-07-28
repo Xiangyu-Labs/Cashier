@@ -15,7 +15,9 @@ export function SettingsSection({ title, description, children }: SettingsSectio
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      <div className="space-y-4">{children}</div>
+      <div className="[&>*+*]:mt-4 [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-4">
+        {children}
+      </div>
     </section>
   );
 }

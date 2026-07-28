@@ -55,4 +55,27 @@ describe("TabNavigation", () => {
     detailsButton.focus();
     expect(onTabIntent).toHaveBeenCalledWith("details");
   });
+
+  it("preloads new-record code on pointer and keyboard intent without opening", async () => {
+    const user = userEvent.setup();
+    const onInputIntent = vi.fn();
+    const onOpenInput = vi.fn();
+
+    render(
+      <TabNavigation
+        activeTab="stream"
+        onTabChange={vi.fn()}
+        onOpenInput={onOpenInput}
+        onInputIntent={onInputIntent}
+      />
+    );
+
+    const addButton = screen.getByRole("button", { name: /记一笔|new record/i });
+    await user.hover(addButton);
+    expect(onInputIntent).toHaveBeenCalled();
+    expect(onOpenInput).not.toHaveBeenCalled();
+
+    addButton.focus();
+    expect(onInputIntent.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
 });

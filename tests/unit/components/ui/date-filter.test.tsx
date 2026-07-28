@@ -30,4 +30,10 @@ describe("DateFilter", () => {
     expect(dateText.classList.contains("truncate")).toBe(false);
     expect(dateText.classList.contains("whitespace-nowrap")).toBe(true);
   });
+
+  it("parses a date-only string as a local civil date", () => {
+    render(<DateFilter value="2026-04-17" onChange={() => {}} />);
+
+    expect(screen.getByText("2026年4月17日")).toBeInTheDocument();
+  });
 });

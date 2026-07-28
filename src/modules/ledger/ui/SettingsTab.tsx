@@ -141,10 +141,10 @@ export function SettingsTab({
             </Select>
           </SettingsField>
           <SettingsField title={t("uiLanguage")}>
-            <select
+            <Select
               value={languagePreference}
-              onChange={(e) => {
-                const preference = e.target.value as InterfaceLanguage;
+              onValueChange={(value) => {
+                const preference = value as InterfaceLanguage;
                 startLanguageTransition(async () => {
                   try {
                     const saved = await updateUserPreferencesAction({
@@ -171,15 +171,18 @@ export function SettingsTab({
                 });
               }}
               disabled={isPending || languagePending}
-              aria-label={t("uiLanguage")}
-              className="rounded-md border border-border bg-bg px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             >
-              {UI_LANGUAGES.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.value === "auto" ? t("uiLanguageAuto") : lang.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label={t("uiLanguage")} className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {UI_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.value === "auto" ? t("uiLanguageAuto") : lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </SettingsField>
         </SettingsSection>
 
@@ -195,40 +198,43 @@ export function SettingsTab({
             />
           </SettingsField>
           <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
-            <select
+            <Select
               value={settingsLedger.metadata?.settings?.timeZone ?? "auto"}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 updateLedgerMutation.mutate({
-                  timeZone: event.target.value === "auto" ? null : event.target.value,
+                  timeZone: value === "auto" ? null : value,
                 });
               }}
               disabled={isPending}
-              aria-label={t("timeZone")}
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
             >
-              <option value="auto">
-                {deviceTimeZone == null
-                  ? t("timeZoneAuto")
-                  : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
-              </option>
-              {[
-                "Asia/Shanghai",
-                "Asia/Tokyo",
-                "Asia/Singapore",
-                "Europe/London",
-                "Europe/Paris",
-                "America/New_York",
-                "America/Chicago",
-                "America/Denver",
-                "America/Los_Angeles",
-                "Australia/Sydney",
-                "UTC",
-              ].map((timeZone) => (
-                <option key={timeZone} value={timeZone}>
-                  {timeZone}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label={t("timeZone")} className="w-full sm:w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="auto">
+                  {deviceTimeZone == null
+                    ? t("timeZoneAuto")
+                    : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
+                </SelectItem>
+                {[
+                  "Asia/Shanghai",
+                  "Asia/Tokyo",
+                  "Asia/Singapore",
+                  "Europe/London",
+                  "Europe/Paris",
+                  "America/New_York",
+                  "America/Chicago",
+                  "America/Denver",
+                  "America/Los_Angeles",
+                  "Australia/Sydney",
+                  "UTC",
+                ].map((timeZone) => (
+                  <SelectItem key={timeZone} value={timeZone}>
+                    {timeZone}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </SettingsField>
           <CurrencySection
             settings={{
@@ -255,20 +261,23 @@ export function SettingsTab({
         </SettingsSection>
 
         <SettingsSection title={t("aiParsing")}>
-          <SettingsField title={t("aiLanguage")}>
-            <select
+          <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
+            <Select
               value={settingsLedger.metadata?.settings?.aiLanguage ?? "zh-CN"}
-              onChange={(e) => updateLedgerMutation.mutate({ aiLanguage: e.target.value })}
+              onValueChange={(value) => updateLedgerMutation.mutate({ aiLanguage: value })}
               disabled={isPending}
-              aria-label={t("aiLanguage")}
-              className="max-w-[150px] rounded-md border border-border bg-bg px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             >
-              {AI_LANGUAGES.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label={t("aiLanguage")} className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {AI_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </SettingsField>
           <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
             <textarea

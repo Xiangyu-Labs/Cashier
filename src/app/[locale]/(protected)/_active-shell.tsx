@@ -50,7 +50,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const searchParams = useSearchParams();
   const locale = useLocale();
   const queryClient = useQueryClient();
-  const { onOpenInput } = useShellController();
+  const { onInputIntent, onOpenInput } = useShellController();
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.
@@ -112,11 +112,17 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onOpenInput={onOpenInput}
+          onInputIntent={onInputIntent}
           onTabIntent={preloadTab}
         />
       }
     >
-      <SwipeTabSurface key={activeTab} activeTab={activeTab} onTabChange={handleTabChange} onTabIntent={preloadTab}>
+      <SwipeTabSurface
+        key={activeTab}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onTabIntent={preloadTab}
+      >
         {children}
       </SwipeTabSurface>
     </AppShell>

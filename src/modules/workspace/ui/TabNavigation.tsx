@@ -8,6 +8,7 @@ interface TabNavigationProps {
   activeTab: LedgerTab;
   onTabChange: (tab: LedgerTab) => void;
   onOpenInput: () => void;
+  onInputIntent?: () => void;
   /** Called when an inactive destination receives pointer or keyboard intent. */
   onTabIntent?: (tab: LedgerTab) => void;
 }
@@ -27,6 +28,7 @@ export function TabNavigation({
   activeTab,
   onTabChange,
   onOpenInput,
+  onInputIntent,
   onTabIntent,
 }: TabNavigationProps) {
   const t = useTranslations("LedgerPage");
@@ -52,6 +54,9 @@ export function TabNavigation({
       <button
         type="button"
         onClick={onOpenInput}
+        onPointerEnter={onInputIntent}
+        onPointerDown={onInputIntent}
+        onFocus={onInputIntent}
         className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]"
         aria-label={t("newRecord")}
       >
