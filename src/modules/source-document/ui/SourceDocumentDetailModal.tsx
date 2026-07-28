@@ -42,6 +42,7 @@ interface SourceDocumentDetailModalProps {
   mainCurrency?: string;
   open: boolean;
   onClose: () => void;
+  onExitComplete?: () => void;
   onUpdateSourceDoc: (data: { title?: string; entryDate?: string }) => Promise<void>;
   onUpdateEntry: (id: string, data: Partial<EntryEditData>) => Promise<void>;
   onBatchUpdate: (
@@ -73,6 +74,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   mainCurrency: _mainCurrency = "CNY",
   open,
   onClose,
+  onExitComplete,
   onUpdateSourceDoc,
   onUpdateEntry,
   onBatchUpdate,
@@ -204,6 +206,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
       <DialogContent
+        {...(onExitComplete !== undefined ? { onExitComplete } : {})}
         className="flex h-[100dvh] max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-auto sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:rounded-lg"
         onOpenAutoFocus={() => {
           restoreFocusRef.current = document.activeElement as HTMLElement | null;

@@ -17,6 +17,7 @@ interface LedgerEntryDetailModalProps {
   mainCurrency?: string;
   open: boolean;
   onClose: () => void;
+  onExitComplete?: () => void;
   onUpdate: (data: {
     categoryId?: string | null;
     itemName?: string;
@@ -36,6 +37,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   mainCurrency = "CNY",
   open,
   onClose,
+  onExitComplete,
   onUpdate,
   onDelete,
   onViewSourceDocument,
@@ -182,6 +184,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent
+          {...(onExitComplete !== undefined ? { onExitComplete } : {})}
           className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg"
           aria-describedby={undefined}
         >

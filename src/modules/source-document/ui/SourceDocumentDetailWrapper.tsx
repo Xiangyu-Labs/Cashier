@@ -16,6 +16,7 @@ interface SourceDocumentDetailWrapperProps {
   ledgerId: string;
   open: boolean;
   onClose: () => void;
+  onExitComplete?: () => void;
   categories: EntryCategory[];
   ledgerEntries?: LedgerEntry[];
 }
@@ -25,6 +26,7 @@ export function SourceDocumentDetailWrapper({
   ledgerId,
   open,
   onClose,
+  onExitComplete,
   categories,
   ledgerEntries: initialLedgerEntries,
 }: SourceDocumentDetailWrapperProps) {
@@ -96,6 +98,7 @@ export function SourceDocumentDetailWrapper({
       categories={categories}
       open={open}
       onClose={onClose}
+      {...(onExitComplete !== undefined ? { onExitComplete } : {})}
       onUpdateSourceDoc={updateSourceDoc}
       onUpdateEntry={updateEntry}
       onBatchUpdate={batchUpdate}

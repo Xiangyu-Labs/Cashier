@@ -116,7 +116,7 @@ The ledger home displays a single unified Stream of source documents across all 
 
 ### Refresh Ownership
 
-One visible eligible tab owns network work per ledger via BroadcastChannel-based leadership. The leader runs a bounded refresh cycle for distinct active filter signatures and watched source-document IDs, returning only changed canonical data. Followers receive versioned distribution messages. Polling pauses when hidden/offline, wakes after relevant mutations, and uses jittered backoff.
+Every visible eligible tab independently runs a bounded refresh cycle for its active filter signatures and watched source-document IDs, returning only changed canonical data. BroadcastChannel-based leadership still distributes versioned results as a cache optimization, but it does not gate local refreshes. Polling pauses when hidden/offline, wakes after relevant mutations, and uses jittered backoff.
 
 ### Cache Transaction Model
 

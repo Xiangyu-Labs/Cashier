@@ -6,6 +6,7 @@ import { useLocale } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
+import { AnimatePresence, motion } from "framer-motion";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -55,45 +56,65 @@ export function LedgerEntriesUnifiedGroups({
 
   return (
     <div className="space-y-6 px-2 pt-2">
-      {streamGroups.map((dateGroup) => (
-        <div key={dateGroup.date} className="space-y-2 animate-fade-in">
-          <UnifiedGroupHeader group={dateGroup} mainCurrency={mainCurrency} />
+      <AnimatePresence initial={false} mode="popLayout">
+        {streamGroups.map((dateGroup) => (
+          <motion.div
+            key={dateGroup.date}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+            className="space-y-2"
+          >
+            <UnifiedGroupHeader group={dateGroup} mainCurrency={mainCurrency} />
 
-          <div className="space-y-4">
-            {dateGroup.items.map((item) => (
-              <div key={item.sourceDocument.id} {...getItemProps()}>
-                <SourceDocumentCard
-                  sourceDocument={item.sourceDocument}
-                  ledgerEntries={item.ledgerEntries}
-                  mainCurrency={mainCurrency}
-                  onViewLedgerEntry={onViewLedgerEntry}
-                  onViewDetails={() =>
-                    onViewSourceDetail({
-                      sourceDocument: item.sourceDocument as SourceDocument,
-                      ledgerEntries: item.ledgerEntries as LedgerEntry[],
-                    })
-                  }
-                  {...(onEditRetry != null
-                    ? {
-                        onEditRetry: () => {
-                          onEditRetry(item.sourceDocument as SourceDocument);
-                        },
+            <div className="space-y-4">
+              <AnimatePresence initial={false} mode="popLayout">
+                {dateGroup.items.map((item) => (
+                  <motion.div
+                    key={item.sourceDocument.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+                    {...getItemProps()}
+                  >
+                    <SourceDocumentCard
+                      sourceDocument={item.sourceDocument}
+                      ledgerEntries={item.ledgerEntries}
+                      mainCurrency={mainCurrency}
+                      onViewLedgerEntry={onViewLedgerEntry}
+                      onViewDetails={() =>
+                        onViewSourceDetail({
+                          sourceDocument: item.sourceDocument as SourceDocument,
+                          ledgerEntries: item.ledgerEntries as LedgerEntry[],
+                        })
                       }
-                    : {})}
-                  onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
-                  status={item.sourceDocument.status as SourceDocumentStatusType}
-                  anomalyReason={item.sourceDocument.anomalyReason}
-                  selectionMode={isSelectionMode}
-                  isSelected={selectedIds.includes(item.sourceDocument.id)}
-                  onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
-                  defaultExpanded={!collapseEntriesDefault}
-                  dateProvenance={item.dateProvenance}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+                      {...(onEditRetry != null
+                        ? {
+                            onEditRetry: () => {
+                              onEditRetry(item.sourceDocument as SourceDocument);
+                            },
+                          }
+                        : {})}
+                      onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
+                      status={item.sourceDocument.status as SourceDocumentStatusType}
+                      anomalyReason={item.sourceDocument.anomalyReason}
+                      selectionMode={isSelectionMode}
+                      isSelected={selectedIds.includes(item.sourceDocument.id)}
+                      onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
+                      defaultExpanded={!collapseEntriesDefault}
+                      dateProvenance={item.dateProvenance}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

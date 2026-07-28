@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
+import { MotionConfig } from "framer-motion";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -26,10 +27,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        {children}
-        <Toaster position="top-center" richColors closeButton />
-      </ThemeProvider>
+      <MotionConfig reducedMotion="user">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="top-center" richColors closeButton />
+        </ThemeProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

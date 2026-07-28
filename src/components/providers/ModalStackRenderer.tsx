@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
@@ -10,11 +11,17 @@ interface ModalStackRendererProps {
 export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
   const stack = useModalStackStore((state) => state.stack);
   const pop = useModalStackStore((state) => state.pop);
-  // const isOpen = useModalStackStore(state => state.isOpen); // Not needed yet
-
   const item = stack.at(-1);
+  const itemKey = item == null ? null : `${item.type}:${item.id}`;
+  const [closingKey, setClosingKey] = useState<string | null>(null);
+
   if (item == null) return null;
-  const onClose = () => pop();
+  const open = closingKey !== itemKey;
+  const onClose = () => setClosingKey(itemKey);
+  const onExitComplete = () => {
+    const current = useModalStackStore.getState().stack.at(-1);
+    if (current != null && `${current.type}:${current.id}` === itemKey) pop();
+  };
 
   if (item.type === "source-document") {
     return (
@@ -22,8 +29,9 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
         key={`source-doc-${item.id}`}
         id={item.id}
         ledgerId={item.ledgerId}
-        open={true} // It's in the stack, so it's open
+        open={open}
         onClose={onClose}
+        onExitComplete={onExitComplete}
         categories={categories}
       />
     );
@@ -35,8 +43,9 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
         key={`ledger-entry-${item.id}`}
         id={item.id}
         ledgerId={item.ledgerId}
-        open={true}
+        open={open}
         onClose={onClose}
+        onExitComplete={onExitComplete}
         categories={categories}
       />
     );

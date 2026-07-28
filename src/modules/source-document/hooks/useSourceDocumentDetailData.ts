@@ -47,25 +47,20 @@ export function useSourceDocumentDetailData({
 
   // Register this document as "watched" for bounded refresh
   const refreshWatched = async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
-    try {
-      const result = await getStreamRefreshAction(ledgerId, {
-        ledgerId,
-        protocolVersion: 1,
-        signatures: [],
-        watchedIds: [{ id, fingerprint: watchedFingerprintRef.current }],
-        countFingerprint: null,
-      });
+    const result = await getStreamRefreshAction(ledgerId, {
+      ledgerId,
+      protocolVersion: 1,
+      signatures: [],
+      watchedIds: [{ id, fingerprint: watchedFingerprintRef.current }],
+      countFingerprint: null,
+    });
 
-      applyStreamRefreshToCache(queryClient, ledgerId, result);
-      // C3: Update fingerprint from server response
-      const matched = result.changedWatched?.find((w) => w.id === id);
-      if (matched) {
-        watchedFingerprintRef.current = matched.fingerprint;
-      }
-      return { changed: result.changed, result };
-    } catch {
-      return { changed: false };
+    applyStreamRefreshToCache(queryClient, ledgerId, result);
+    const matched = result.changedWatched?.find((w) => w.id === id);
+    if (matched) {
+      watchedFingerprintRef.current = matched.fingerprint;
     }
+    return { changed: result.changed, result };
   };
 
   useRevisionStateRefresh({

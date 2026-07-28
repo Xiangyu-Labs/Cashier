@@ -6,6 +6,7 @@ import {
   setGlobalCoordinator,
   type RefreshEnvironment,
 } from "@/modules/source-document/hooks/revision-state-refresh";
+import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 
 // ---------------------------------------------------------------------------
 // Test environment factory
@@ -16,11 +17,13 @@ function createEnvironment() {
   let visible = true;
   const listeners = new Map<string, Set<() => void>>();
   const broadcastHandlers = new Set<(data: unknown) => void>();
+  const scheduledDelays: number[] = [];
 
   const environment: RefreshEnvironment = {
     now: () => Date.now(),
     random: () => 0.5,
     setTimer: (cb, ms) => {
+      scheduledDelays.push(ms);
       const id = String(setTimeout(cb, ms));
       return id;
     },
@@ -73,6 +76,7 @@ function createEnvironment() {
       if (handler) for (const cb of handler) cb();
     },
     getIsLeader: () => environment.acquireLeadership,
+    scheduledDelays,
   };
 }
 
@@ -92,6 +96,15 @@ describe("revision state refresh", () => {
 
   // Shared no-op refresh callback for tests
   const noopRefresh = async (): Promise<{ changed: boolean }> => ({ changed: false });
+  const refreshResult = (hasTransitionalWork: boolean): StreamRefreshResult => ({
+    protocolVersion: 1,
+    generation: 1,
+    changed: false,
+    hasTransitionalWork,
+    firstPages: [],
+    changedWatched: [],
+    counts: null,
+  });
 
   // -----------------------------------------------------------------------
   // Legacy API — isRefreshableRevisionState
@@ -369,7 +382,7 @@ describe("revision state refresh", () => {
   // Coordinator — healthy follower (working primitives, not leader)
   // -----------------------------------------------------------------------
 
-  it("does not refresh as a healthy follower when another tab is leader", async () => {
+  it("refreshes independently when another tab is leader", async () => {
     const env = createEnvironment();
     // acquireLeadership returns false (another tab is leader)
     env.environment.acquireLeadership = async (_leaseMs) => false;
@@ -391,8 +404,104 @@ describe("revision state refresh", () => {
     await vi.advanceTimersByTimeAsync(30000);
     await flushTimers();
 
-    // Follower should NOT have called refresh
-    expect(refreshCalled).toBe(false);
+    expect(refreshCalled).toBe(true);
+  });
+
+  it("allows two visible coordinators to refresh their own subscriptions", async () => {
+    const firstEnv = createEnvironment();
+    const secondEnv = createEnvironment();
+    secondEnv.environment.acquireLeadership = async () => false;
+    const firstRefresh = vi.fn(async () => ({
+      changed: false,
+      result: refreshResult(true),
+    }));
+    const secondRefresh = vi.fn(async () => ({
+      changed: false,
+      result: refreshResult(true),
+    }));
+    const first = new RefreshCoordinator(firstEnv.environment);
+    const second = new RefreshCoordinator(secondEnv.environment);
+
+    first.subscribe("first-filter", firstRefresh);
+    second.subscribe("second-filter", secondRefresh);
+    await vi.advanceTimersByTimeAsync(0);
+    await flushTimers();
+
+    expect(firstRefresh).toHaveBeenCalledTimes(1);
+    expect(secondRefresh).toHaveBeenCalledTimes(1);
+    first.destroy();
+    second.destroy();
+  });
+
+  it("backs off after an error and keeps processing subscribed work", async () => {
+    const env = createEnvironment();
+    const refresh = vi
+      .fn<() => Promise<{ changed: boolean; result?: StreamRefreshResult }>>()
+      .mockRejectedValueOnce(new Error("temporary"))
+      .mockResolvedValue({ changed: false, result: refreshResult(true) });
+    const coordinator = new RefreshCoordinator(env.environment);
+
+    coordinator.subscribe("processing", refresh);
+    await vi.advanceTimersByTimeAsync(0);
+    await flushTimers();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(env.scheduledDelays.at(-1)).toBe(5_000);
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await flushTimers();
+    expect(refresh).toHaveBeenCalledTimes(2);
+    coordinator.destroy();
+  });
+
+  it("uses the adaptive polling windows with bounded jitter", async () => {
+    vi.setSystemTime(0);
+    const env = createEnvironment();
+    const coordinator = new RefreshCoordinator(env.environment);
+    coordinator.subscribe("processing", noopRefresh);
+    const getDelay = coordinator as unknown as { computeDelay: () => number };
+
+    expect(getDelay.computeDelay()).toBe(2_300);
+    vi.setSystemTime(30_000);
+    expect(getDelay.computeDelay()).toBe(5_750);
+    vi.setSystemTime(120_000);
+    expect(getDelay.computeDelay()).toBe(11_500);
+    coordinator.destroy();
+  });
+
+  it("caps repeated error backoff at thirty seconds", async () => {
+    const env = createEnvironment();
+    const refresh = vi.fn(async () => {
+      throw new Error("temporary");
+    });
+    const coordinator = new RefreshCoordinator(env.environment);
+    coordinator.subscribe("processing", refresh);
+
+    for (const expectedDelay of [5_000, 10_000, 20_000, 30_000, 30_000]) {
+      await vi.advanceTimersByTimeAsync(env.scheduledDelays.at(-1) ?? 0);
+      await flushTimers();
+      expect(env.scheduledDelays.at(-1)).toBe(expectedDelay);
+    }
+
+    coordinator.destroy();
+  });
+
+  it("stops only after a successful response explicitly reports terminal work", async () => {
+    const env = createEnvironment();
+    const refresh = vi.fn(async () => ({
+      changed: true,
+      result: refreshResult(false),
+    }));
+    const coordinator = new RefreshCoordinator(env.environment);
+
+    coordinator.subscribe("processing", refresh);
+    await vi.advanceTimersByTimeAsync(0);
+    await flushTimers();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await flushTimers();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    coordinator.destroy();
   });
 
   // -----------------------------------------------------------------------

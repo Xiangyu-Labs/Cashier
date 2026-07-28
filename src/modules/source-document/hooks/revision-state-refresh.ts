@@ -273,10 +273,8 @@ export class RefreshCoordinator {
   private state: CoordinatorState = "IDLE";
   private timerId: string | null = null;
   private inFlight: Promise<boolean> | null = null;
-  private backoffStage = 0;
-  private lastErrorBackoff = 5000;
+  private errorBackoffMs: number | null = null;
   private isLeader = false;
-  private inFallbackMode = false;
   private unsubscribeBroadcast: (() => void) | null = null;
   private cleanupExpiry: (() => void) | null = null;
   private running = false;
@@ -293,9 +291,6 @@ export class RefreshCoordinator {
     if (this.env.isVisible()) this.handleVisibilityFocus();
     else this.cancelTimer();
   };
-
-  // Backoff stages for unchanged success
-  static readonly SUCCESS_BACKOFFS = [3000, 5000, 8000, 12000, 15000] as const;
 
   constructor(private readonly env: RefreshEnvironment) {}
 
@@ -333,8 +328,7 @@ export class RefreshCoordinator {
   notifyChange(): void {
     this.hasTransitionalWork = true;
     this.pollingStartedAt = this.env.now();
-    this.backoffStage = 0;
-    this.lastErrorBackoff = 5000;
+    this.errorBackoffMs = null;
     this.wake();
   }
 
@@ -405,11 +399,6 @@ export class RefreshCoordinator {
   private async tryAcquireLeadership(): Promise<void> {
     const acquired = await this.env.acquireLeadership(30000);
     this.isLeader = acquired;
-    if (acquired) {
-      this.backoffStage = 0;
-    }
-    // Determine fallback mode: only when leadership primitives themselves are unavailable
-    this.inFallbackMode = !acquired && !this.env.isLeadershipAvailable();
     this.schedule();
   }
 
@@ -427,7 +416,8 @@ export class RefreshCoordinator {
 
     this.cancelTimer();
     // Schedule ASAP (microtask)
-    this.env.setTimer(() => {
+    this.timerId = this.env.setTimer(() => {
+      this.timerId = null;
       void this.refreshNow();
     }, 0);
     this.state = "REFRESHING";
@@ -435,8 +425,7 @@ export class RefreshCoordinator {
 
   private handleVisibilityFocus(): void {
     if (!this.env.isOnline() || !this.env.isVisible()) return;
-    this.backoffStage = 0;
-    this.lastErrorBackoff = 5000;
+    this.errorBackoffMs = null;
     this.wake();
   }
 
@@ -468,9 +457,8 @@ export class RefreshCoordinator {
   }
 
   private computeDelay(): number {
-    // Use the last error backoff if we're in error recovery
-    if (this.lastErrorBackoff > 5000) {
-      return jitter(this.env, this.lastErrorBackoff, 0);
+    if (this.errorBackoffMs != null) {
+      return this.errorBackoffMs;
     }
     const elapsed = this.env.now() - this.pollingStartedAt;
     const base = elapsed < 30_000 ? 2_000 : elapsed < 120_000 ? 5_000 : 10_000;
@@ -494,11 +482,10 @@ export class RefreshCoordinator {
     if (!this.env.isOnline()) return false;
     if (!this.env.isVisible()) return false;
 
-    // Restore the leader guard but allow fallback mode
-    if (!this.isLeader && !this.inFallbackMode) return false;
-
     let anyChanged = false;
-    let hasTransitionalWork = false;
+    let allSuccessfulResultsAreTerminal = true;
+    let hadSuccessfulResult = false;
+    let hadError = false;
 
     for (const [, entry] of this.subscribers) {
       try {
@@ -506,7 +493,12 @@ export class RefreshCoordinator {
         if (changed) {
           anyChanged = true;
         }
-        if (result?.hasTransitionalWork === true) hasTransitionalWork = true;
+        if (result != null) {
+          hadSuccessfulResult = true;
+          if (result.hasTransitionalWork !== false) allSuccessfulResultsAreTerminal = false;
+        } else {
+          allSuccessfulResultsAreTerminal = false;
+        }
         if (this.isLeader && result != null) {
           this.env.broadcast({
             type: "refresh_result",
@@ -515,26 +507,18 @@ export class RefreshCoordinator {
           });
         }
       } catch {
-        // Error backoff
-        if (this.lastErrorBackoff < 30000) {
-          this.lastErrorBackoff = Math.min(this.lastErrorBackoff * 2, 30000);
-        }
-        this.backoffStage = 0;
+        hadError = true;
       }
     }
 
-    if (anyChanged) {
-      // I3: Reset backoff on success/changed
-      this.backoffStage = 0;
+    if (hadError) {
+      this.errorBackoffMs = Math.min((this.errorBackoffMs ?? 2_500) * 2, 30_000);
     } else {
-      // I3: Advance backoff stage on unchanged
-      this.backoffStage = Math.min(
-        this.backoffStage + 1,
-        RefreshCoordinator.SUCCESS_BACKOFFS.length - 1
-      );
+      this.errorBackoffMs = null;
     }
 
-    this.hasTransitionalWork = hasTransitionalWork;
+    // Errors and incomplete responses are never terminal processing states.
+    this.hasTransitionalWork = hadError || !hadSuccessfulResult || !allSuccessfulResultsAreTerminal;
 
     return anyChanged;
   }
@@ -614,7 +598,7 @@ interface UseRevisionStateRefreshOptions {
  * cache patches. It should return `{ changed, result? }`.
  *
  * The hook passes the refresh callback to subscribe() so the coordinator
- * can call it during leader-driven polling cycles.
+ * can call it during the local page's polling cycles.
  */
 export function useRevisionStateRefresh({
   scope,

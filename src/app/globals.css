@@ -76,6 +76,11 @@
   --space-lg: 24px;
   --space-xl: 32px;
 
+  --motion-fast: 160ms;
+  --motion-base: 200ms;
+  --motion-slow: 240ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--surface);
@@ -286,5 +291,39 @@ body {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in var(--motion-base) var(--motion-ease);
+}
+
+[data-slot="collapsible-content"] {
+  overflow: hidden;
+}
+
+[data-slot="collapsible-content"][data-state="open"] {
+  animation: collapsible-open var(--motion-slow) var(--motion-ease);
+}
+
+[data-slot="collapsible-content"][data-state="closed"] {
+  animation: collapsible-close var(--motion-base) var(--motion-ease);
+}
+
+@keyframes collapsible-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-close {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
 }

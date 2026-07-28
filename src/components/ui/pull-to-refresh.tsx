@@ -156,9 +156,9 @@ export function PullToRefresh({
 
   return (
     <div ref={containerRef} className={className}>
-      {header}
       {/* Pull-down indicator — CSS transitions replace Framer Motion */}
       <div
+        data-testid="pull-to-refresh-indicator"
         className="overflow-hidden transition-all duration-200 ease-out"
         style={{
           opacity: isVisible ? 1 : 0,
@@ -197,6 +197,7 @@ export function PullToRefresh({
         </div>
       </div>
 
+      {header}
       {/* 子内容 */}
       {children}
     </div>
