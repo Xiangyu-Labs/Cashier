@@ -286,7 +286,12 @@ describe("current-runtime target adapters", () => {
       sourceDocumentId: active.sourceDocumentId,
       storedFileIds: [file!.id],
     });
-    expect(pending.document.supportedActions).toEqual(["retry", "edit_retry", "delete"]);
+    expect(pending.document.supportedActions).toEqual([
+      "cancel_processing",
+      "retry",
+      "edit_retry",
+      "delete",
+    ]);
     const revisionCount = (await db.select().from(sourceDocumentRevisions)).length;
     const fileLinkCount = (await db.select().from(revisionFiles)).length;
 

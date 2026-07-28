@@ -1,3 +1,4 @@
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V3 */
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { useState, useMemo, memo } from "react";
@@ -39,7 +40,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   mainCurrency = "CNY",
   onDelete,
   onViewLedgerEntry,
-  onViewDetails: _onViewDetails,
+  onViewDetails,
   defaultExpanded = false,
   onEditRetry,
   status,
@@ -75,15 +76,26 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     await recovery.retry();
   }
 
+  const handleCardClick = () => {
+    if (selectionMode) {
+      onToggleSelect?.();
+      return;
+    }
+    onViewDetails?.();
+  };
+
   return (
     <div
       data-testid="source-document-card-root"
       className={cn(
-        "bg-surface rounded-xl shadow-sm border overflow-hidden mb-6 transition-all",
+        "mb-4 overflow-hidden rounded-lg border bg-surface shadow-[0_1px_2px_color-mix(in_srgb,var(--text),transparent_94%)] transition-[border-color,box-shadow]",
         isSelected ? "border-primary ring-1 ring-primary/20" : "border-border",
+        !selectionMode &&
+          onViewDetails != null &&
+          "cursor-pointer hover:border-muted-foreground/40 hover:shadow-sm",
         className
       )}
-      onClick={selectionMode ? onToggleSelect : undefined}
+      onClick={handleCardClick}
     >
       <SourceDocumentCardHeader
         sourceDocument={sourceDocument}
@@ -94,14 +106,18 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         mainCurrency={mainCurrency}
         isExpanded={isItemsExpanded}
         isRetrying={recovery.isRetrying}
+        isCancelling={recovery.isCancelling}
+        isAbandoning={recovery.isAbandoning}
         selectionMode={selectionMode}
         isSelected={isSelected}
         supportedActions={supportedActions}
         {...(dateProvenance !== undefined ? { dateProvenance } : {})}
         onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
-        onViewDetails={_onViewDetails}
+        onViewDetails={onViewDetails}
         onToggleSelect={onToggleSelect}
         onDirectRetry={handleDirectRetry}
+        onCancelProcessing={recovery.cancelProcessing}
+        onAbandonCandidate={recovery.abandonCandidate}
         onEditRetry={onEditRetry}
         onDelete={onDelete}
       />
@@ -117,20 +133,24 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
             className="relative z-content overflow-hidden"
           >
             {status !== "completed" && (
-              <SourceDocumentCardPreview
-                text={text}
-                images={images}
-                onViewDetails={_onViewDetails}
-              />
+              <div onClick={(event) => event.stopPropagation()}>
+                <SourceDocumentCardPreview
+                  text={text}
+                  images={images}
+                  onViewDetails={onViewDetails}
+                />
+              </div>
             )}
 
             {status === "completed" && sortedEntries.length > 0 && (
-              <SourceDocumentCardEntries
-                entries={sortedEntries}
-                mainCurrency={mainCurrency}
-                sourceDocumentEntryDate={sourceDocument.entryDate}
-                onViewLedgerEntry={onViewLedgerEntry}
-              />
+              <div onClick={(event) => event.stopPropagation()}>
+                <SourceDocumentCardEntries
+                  entries={sortedEntries}
+                  mainCurrency={mainCurrency}
+                  sourceDocumentEntryDate={sourceDocument.entryDate}
+                  onViewLedgerEntry={onViewLedgerEntry}
+                />
+              </div>
             )}
           </motion.div>
         )}

@@ -21,6 +21,7 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
   const onExitComplete = () => {
     const current = useModalStackStore.getState().stack.at(-1);
     if (current != null && `${current.type}:${current.id}` === itemKey) pop();
+    setClosingKey(null);
   };
 
   if (item.type === "source-document") {

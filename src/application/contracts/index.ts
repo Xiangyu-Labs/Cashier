@@ -17,6 +17,7 @@ export const REVISION_OUTCOMES = [
   "completed",
   "anomaly",
   "failed",
+  "cancelled",
   "abandoned",
 ] as const;
 export type RevisionOutcome = (typeof REVISION_OUTCOMES)[number];
@@ -26,7 +27,8 @@ export type SupportedSourceDocumentAction =
   | "edit_retry"
   | "delete"
   | "accept_candidate"
-  | "abandon_candidate";
+  | "abandon_candidate"
+  | "cancel_processing";
 
 export interface SourceDocumentContract {
   id: SourceDocumentId;
@@ -54,10 +56,13 @@ export function supportedSourceDocumentActions(input: {
   }
 
   if (input.pendingOutcome === "processing") {
-    return ["retry", "edit_retry", "delete"];
+    return ["cancel_processing", "retry", "edit_retry", "delete"];
   }
 
   if (input.pendingOutcome === "anomaly" || input.pendingOutcome === "failed") {
+    if (input.activeRevisionId != null) {
+      return ["abandon_candidate", "retry", "edit_retry", "delete"];
+    }
     return ["retry", "edit_retry", "delete"];
   }
 

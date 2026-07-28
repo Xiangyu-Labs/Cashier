@@ -154,6 +154,7 @@
 
 html {
   background-color: var(--bg);
+  overflow-x: clip;
   scroll-behavior: smooth;
   overscroll-behavior-y: contain;
 }
@@ -162,6 +163,7 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  overflow-x: clip;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }

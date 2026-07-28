@@ -51,7 +51,7 @@ export const sourceDocumentRevisions = pgTable(
     check("ck_source_document_revisions_number", sql`${table.revisionNumber} > 0`),
     check(
       "ck_source_document_revisions_outcome",
-      sql`${table.outcome} IN ('processing', 'completed', 'anomaly', 'failed', 'abandoned')`
+      sql`${table.outcome} IN ('processing', 'completed', 'anomaly', 'failed', 'cancelled', 'abandoned')`
     ),
   ]
 );
@@ -170,7 +170,7 @@ export const processingAttempts = pgTable(
     check("ck_processing_attempts_number", sql`${table.attemptNumber} > 0`),
     check(
       "ck_processing_attempts_status",
-      sql`${table.status} IN ('queued', 'processing', 'completed', 'anomaly', 'failed')`
+      sql`${table.status} IN ('queued', 'processing', 'completed', 'anomaly', 'failed', 'cancelled')`
     ),
     check(
       "ck_processing_attempts_retry_classification",
@@ -219,7 +219,7 @@ export const processingOutbox = pgTable(
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
     check(
       "ck_processing_outbox_status",
-      sql`${table.status} IN ('pending', 'claimed', 'completed', 'failed')`
+      sql`${table.status} IN ('pending', 'claimed', 'completed', 'failed', 'cancelled')`
     ),
   ]
 );

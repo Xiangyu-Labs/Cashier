@@ -498,7 +498,7 @@ describe("Processing Recovery", () => {
 });
 
 describe("Processing retry supersession", () => {
-  it("atomically abandons the old revision and invalidates its active claim", async () => {
+  it("atomically cancels the old revision and invalidates its active claim", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const first = await postgresSourceDocumentSubmissionAdapter.createPendingWithIntent({
@@ -531,10 +531,10 @@ describe("Processing retry supersession", () => {
     ]);
 
     expect(document?.pendingRevisionId).toBe(second.revision.id);
-    expect(oldRevision?.outcome).toBe("abandoned");
-    expect(oldOutbox?.status).toBe("failed");
+    expect(oldRevision?.outcome).toBe("cancelled");
+    expect(oldOutbox?.status).toBe("cancelled");
     expect(oldAttempt).toMatchObject({
-      status: "failed",
+      status: "cancelled",
       diagnosticCode: "superseded_by_retry",
     });
     await expect(

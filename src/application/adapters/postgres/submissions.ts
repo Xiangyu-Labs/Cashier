@@ -74,9 +74,17 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
 
         if (input.supersedeProcessing === true && document?.pendingRevisionId != null) {
           const now = new Date();
+          const pendingRevision = await tx
+            .select({ outcome: sourceDocumentRevisions.outcome })
+            .from(sourceDocumentRevisions)
+            .where(eq(sourceDocumentRevisions.id, document.pendingRevisionId))
+            .then((rows) => rows[0]);
           const supersededRevision = await tx
             .update(sourceDocumentRevisions)
-            .set({ outcome: "abandoned", finalizedAt: now })
+            .set({
+              outcome: pendingRevision?.outcome === "processing" ? "cancelled" : "abandoned",
+              finalizedAt: now,
+            })
             .where(
               and(
                 eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
@@ -91,7 +99,7 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
             await tx
               .update(processingOutbox)
               .set({
-                status: "failed",
+                status: "cancelled",
                 completedAt: now,
                 claimToken: null,
                 claimExpiresAt: null,
@@ -105,9 +113,8 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
             await tx
               .update(processingAttempts)
               .set({
-                status: "failed",
+                status: "cancelled",
                 completedAt: now,
-                retryClassification: "permanent",
                 diagnosticCode: "superseded_by_retry",
               })
               .where(

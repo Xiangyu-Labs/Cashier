@@ -71,7 +71,7 @@ export async function createTestSourceDocument(
   ledgerId: string,
   overrides: Partial<{
     text: string;
-    status: "processing" | "completed" | "anomaly" | "failed" | "deleted";
+    status: "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "deleted";
     imageUrls: string[];
   }> = {}
 ): Promise<string> {

@@ -389,7 +389,8 @@ function statusForRow(
     outcome === "processing" ||
     outcome === "completed" ||
     outcome === "anomaly" ||
-    outcome === "failed"
+    outcome === "failed" ||
+    outcome === "cancelled"
   ) {
     return outcome;
   }

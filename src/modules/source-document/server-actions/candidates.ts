@@ -2,17 +2,21 @@
 
 import { acceptSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/accept-source-document-candidate";
 import { abandonSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/abandon-source-document-candidate";
+import { cancelSourceDocumentProcessing } from "@/modules/source-document/application/use-cases/cancel-source-document-processing";
 import type {
   AcceptCandidateReconciliationDto,
   AcceptCandidateResponseDto,
   AbandonCandidateReconciliationDto,
   AbandonCandidateResponseDto,
+  CancelProcessingReconciliationDto,
+  CancelProcessingResponseDto,
   SourceDocumentListItemDto,
   SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
 import { getSourceDocumentCandidateReview } from "@/application/adapters/postgres";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { buildAuthoritativeReconciliation } from "./reconciliation";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
@@ -127,5 +131,32 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
     }
 
     return result;
+  }
+);
+
+export const cancelSourceDocumentProcessingAction = withSourceDocumentLedgerAccess(
+  async (
+    { ledgerId },
+    sourceDocumentId: string,
+    revisionId: string,
+    operationId?: string
+  ): Promise<
+    CancelProcessingResponseDto &
+      Partial<{ reconciliation: CancelProcessingReconciliationDto["reconciliation"] }>
+  > => {
+    const result = await cancelSourceDocumentProcessing({
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+    });
+    if (operationId == null) return result;
+    return {
+      ...result,
+      reconciliation: await buildAuthoritativeReconciliation(
+        operationId,
+        ledgerId,
+        sourceDocumentId
+      ),
+    };
   }
 );

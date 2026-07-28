@@ -56,6 +56,7 @@ const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] =
   { status: "completed", labelKey: "statusCompleted" },
   { status: "anomaly", labelKey: "statusAnomaly" },
   { status: "failed", labelKey: "statusFailed" },
+  { status: "cancelled", labelKey: "statusCancelled" },
   { status: "candidate_pending", labelKey: "statusCandidatePending" },
 ];
 

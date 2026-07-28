@@ -19,8 +19,8 @@ export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview
   const t = useTranslations("SourceDocumentCard");
 
   return (
-    <div className="bg-surface2/30 border-b border-border">
-      <div className="p-4 space-y-3">
+    <div className="border-t border-border bg-surface">
+      <div className="space-y-3 p-3 sm:p-4">
         {images.length > 0 && (
           <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5">
             {images.map((image, index) => (
@@ -43,7 +43,7 @@ export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview
         )}
 
         {text !== "" && (
-          <div className="text-text bg-surface2/30 p-3 rounded-md text-sm whitespace-pre-wrap leading-relaxed">
+          <div className="whitespace-pre-wrap rounded-md border border-border bg-surface2/40 p-3 text-sm leading-relaxed text-text">
             {text}
           </div>
         )}

@@ -30,21 +30,28 @@ describe("getPendingSourceDocumentsQuery", () => {
           status: "failed",
           ledgerEntries: [],
         },
+        {
+          id: "doc-cancelled",
+          status: "cancelled",
+          ledgerEntries: [],
+        },
       ],
       nextCursor: null,
     });
   });
 
-  it("groups processing, anomaly, and failed documents", async () => {
+  it("groups processing, anomaly, failed, and cancelled documents", async () => {
     const result = await getPendingSourceDocumentsQuery("ledger-1");
 
     expect(querySourceDocumentPageMock).toHaveBeenCalledWith("ledger-1", {
-      status: "processing,anomaly,failed",
+      status: "processing,anomaly,failed,cancelled",
       includeLedgerEntries: true,
     });
     expect(result.groups.processing).toHaveLength(1);
     expect(result.groups.anomaly).toHaveLength(1);
     expect(result.groups.failed).toHaveLength(1);
-    expect(result.stats.total).toBe(3);
+    expect(result.groups.cancelled).toHaveLength(1);
+    expect(result.stats.cancelledCount).toBe(1);
+    expect(result.stats.total).toBe(4);
   });
 });

@@ -68,11 +68,13 @@ export interface PendingSourceDocumentsResponseDto {
     processing: SourceDocumentGroupDto[];
     anomaly: SourceDocumentGroupDto[];
     failed: SourceDocumentGroupDto[];
+    cancelled: SourceDocumentGroupDto[];
   };
   stats: {
     processingCount: number;
     anomalyCount: number;
     failedCount: number;
+    cancelledCount: number;
     total: number;
   };
 }
@@ -102,6 +104,13 @@ export interface AbandonCandidateResponseDto {
   sourceDocumentId: string;
   revisionId: string;
   status: "abandoned";
+}
+
+export interface CancelProcessingResponseDto {
+  sourceDocumentId: string;
+  revisionId: string;
+  status: "cancelled" | "abandoned";
+  restoredActiveResult: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,5 +194,9 @@ export interface AbandonCandidateReconciliationDto {
   sourceDocumentId: string;
   revisionId: string;
   status: "abandoned";
+  reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
+}
+
+export interface CancelProcessingReconciliationDto extends CancelProcessingResponseDto {
   reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
 }

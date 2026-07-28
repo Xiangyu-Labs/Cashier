@@ -44,4 +44,16 @@ describe("ModalStackRenderer", () => {
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
     expect(useModalStackStore.getState().stack).toHaveLength(0);
   });
+
+  it("can reopen the same item after its exit completes", async () => {
+    render(<ModalStackRenderer categories={[]} />);
+    const item = { type: "ledger-entry" as const, id: "entry-1", ledgerId: "ledger-1" };
+
+    act(() => useModalStackStore.getState().push(item));
+    fireEvent.click(await screen.findByRole("button", { name: "close" }));
+    fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
+    act(() => useModalStackStore.getState().push(item));
+
+    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+  });
 });

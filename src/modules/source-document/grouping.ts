@@ -10,6 +10,7 @@ export interface GroupedSourceDocuments<T> {
   candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
+  cancelled: SourceDocumentGroup<T>[];
   completed: SourceDocumentGroup<T>[];
 }
 
@@ -18,6 +19,7 @@ export interface PendingGroups<T> {
   candidate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
+  cancelled: SourceDocumentGroup<T>[];
 }
 
 export function groupSourceDocumentsByStatus<
@@ -30,6 +32,7 @@ export function groupSourceDocumentsByStatus<
     candidate_pending: [],
     anomaly: [],
     failed: [],
+    cancelled: [],
     completed: [],
   };
 
@@ -54,6 +57,9 @@ export function groupSourceDocumentsByStatus<
       case "failed":
         groups.failed.push(group);
         break;
+      case "cancelled":
+        groups.cancelled.push(group);
+        break;
       case "completed":
         if (includeCompleted) {
           groups.completed.push(group);
@@ -77,16 +83,21 @@ export function groupPendingSourceDocuments<
     candidate_pending: groups.candidate_pending,
     anomaly: groups.anomaly,
     failed: groups.failed,
+    cancelled: groups.cancelled,
   };
 }
 
 export function calculateSourceDocumentStats<T>(
-  groups: Pick<GroupedSourceDocuments<T>, "processing" | "candidate_pending" | "anomaly" | "failed">
+  groups: Pick<
+    GroupedSourceDocuments<T>,
+    "processing" | "candidate_pending" | "anomaly" | "failed" | "cancelled"
+  >
 ) {
   return {
     processingCount: groups.processing.length,
     anomalyCount: groups.anomaly.length,
     failedCount: groups.failed.length,
+    cancelledCount: groups.cancelled.length,
   };
 }
 
@@ -95,6 +106,7 @@ export function calculatePendingTotal<T>(groups: PendingGroups<T>): number {
     groups.processing.length +
     groups.candidate_pending.length +
     groups.anomaly.length +
-    groups.failed.length
+    groups.failed.length +
+    groups.cancelled.length
   );
 }

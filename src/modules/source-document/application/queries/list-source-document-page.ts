@@ -60,7 +60,7 @@ export async function querySourceDocumentPage(
   const statuses = status
     ?.split(",")
     .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
-      ["processing", "completed", "anomaly", "failed"].includes(value)
+      ["processing", "completed", "anomaly", "failed", "cancelled"].includes(value)
     );
   const page = await currentApplication.sourceDocumentReads.list({
     ledgerId,

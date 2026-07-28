@@ -6,6 +6,8 @@ import { isValidDecimal } from "@/lib/money/decimal";
 import {
   entryCategories,
   ledgerEntries,
+  processingAttempts,
+  processingOutbox,
   revisionEntries,
   revisionFiles,
   sourceDocumentRevisions,
@@ -314,6 +316,9 @@ export async function abandonCandidateRevision(
     if (document.pendingRevisionId !== candidateRevisionId) {
       throw new ConflictError("Cannot abandon candidate: pending revision does not match");
     }
+    if (document.activeRevisionId == null) {
+      throw new ConflictError("Cannot abandon candidate without an active result");
+    }
 
     const revision = await tx
       .select()
@@ -323,24 +328,24 @@ export async function abandonCandidateRevision(
           eq(sourceDocumentRevisions.ledgerId, ledgerId),
           eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
           eq(sourceDocumentRevisions.id, candidateRevisionId),
-          eq(sourceDocumentRevisions.outcome, "completed")
+          inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
         )
       )
       .then((rows) => rows[0]);
     if (revision == null) {
-      throw new ConflictError("Candidate revision is not completed");
+      throw new ConflictError("Pending revision cannot be abandoned");
     }
 
     const now = new Date();
     // Mark the revision as abandoned (safe: lock guards against concurrent mutation).
-    // CAS: only update if outcome is still "completed".
+    // CAS: a completed, anomalous, or failed retry can be abandoned.
     const revisionUpdated = await tx
       .update(sourceDocumentRevisions)
       .set({ outcome: "abandoned", finalizedAt: now })
       .where(
         and(
           eq(sourceDocumentRevisions.id, candidateRevisionId),
-          eq(sourceDocumentRevisions.outcome, "completed")
+          inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
         )
       )
       .returning({ id: sourceDocumentRevisions.id })
@@ -366,6 +371,121 @@ export async function abandonCandidateRevision(
       throw new ConflictError("Source document was modified concurrently during abandon");
     }
     return true;
+  });
+}
+
+export interface CancelPendingRevisionResult {
+  sourceDocumentId: string;
+  revisionId: string;
+  status: "cancelled" | "abandoned";
+  restoredActiveResult: boolean;
+}
+
+/** Stop accepting results for a pending revision without interrupting provider I/O. */
+export async function cancelPendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string
+): Promise<CancelPendingRevisionResult> {
+  return db.transaction(async (tx) => {
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    const revision = await tx
+      .select({ outcome: sourceDocumentRevisions.outcome })
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, revisionId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (revision == null) throw new NotFoundError("Source document revision");
+
+    const restoredActiveResult = document.activeRevisionId != null;
+    if (
+      (revision.outcome === "cancelled" || revision.outcome === "abandoned") &&
+      (document.pendingRevisionId == null || document.pendingRevisionId === revisionId)
+    ) {
+      return { sourceDocumentId, revisionId, status: revision.outcome, restoredActiveResult };
+    }
+    if (document.pendingRevisionId !== revisionId) {
+      throw new ConflictError("Cannot cancel processing: pending revision does not match");
+    }
+
+    const canAbandonFinishedCandidate =
+      restoredActiveResult && ["completed", "anomaly", "failed"].includes(revision.outcome);
+    if (revision.outcome !== "processing" && !canAbandonFinishedCandidate) {
+      throw new ConflictError("Processing already reached a final state");
+    }
+
+    const now = new Date();
+    const nextOutcome = canAbandonFinishedCandidate ? "abandoned" : "cancelled";
+    const revisionUpdated = await tx
+      .update(sourceDocumentRevisions)
+      .set({ outcome: nextOutcome, finalizedAt: now })
+      .where(
+        and(
+          eq(sourceDocumentRevisions.id, revisionId),
+          canAbandonFinishedCandidate
+            ? inArray(sourceDocumentRevisions.outcome, ["completed", "anomaly", "failed"])
+            : eq(sourceDocumentRevisions.outcome, "processing")
+        )
+      )
+      .returning({ id: sourceDocumentRevisions.id })
+      .then((rows) => rows[0]);
+    if (revisionUpdated == null) {
+      throw new ConflictError("Revision outcome changed during cancellation");
+    }
+
+    await tx
+      .update(processingOutbox)
+      .set({ status: "cancelled", completedAt: now, claimToken: null, claimExpiresAt: null })
+      .where(
+        and(
+          eq(processingOutbox.revisionId, revisionId),
+          inArray(processingOutbox.status, ["pending", "claimed"])
+        )
+      );
+    await tx
+      .update(processingAttempts)
+      .set({ status: "cancelled", completedAt: now })
+      .where(
+        and(
+          eq(processingAttempts.revisionId, revisionId),
+          inArray(processingAttempts.status, ["queued", "processing"])
+        )
+      );
+
+    if (restoredActiveResult) {
+      const documentUpdated = await tx
+        .update(sourceDocuments)
+        .set({ pendingRevisionId: null, updatedAt: now })
+        .where(
+          and(
+            activeDocumentWhere(ledgerId, sourceDocumentId),
+            eq(sourceDocuments.pendingRevisionId, revisionId),
+            isNotNull(sourceDocuments.activeRevisionId)
+          )
+        )
+        .returning({ id: sourceDocuments.id })
+        .then((rows) => rows[0]);
+      if (documentUpdated == null) {
+        throw new ConflictError("Source document changed during cancellation");
+      }
+    } else {
+      await tx
+        .update(sourceDocuments)
+        .set({ updatedAt: now })
+        .where(
+          and(
+            activeDocumentWhere(ledgerId, sourceDocumentId),
+            eq(sourceDocuments.pendingRevisionId, revisionId)
+          )
+        );
+    }
+
+    return { sourceDocumentId, revisionId, status: nextOutcome, restoredActiveResult };
   });
 }
 

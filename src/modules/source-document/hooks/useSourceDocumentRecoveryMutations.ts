@@ -6,6 +6,7 @@ import { invalidateSourceDocumentCounts, invalidateSourceDocuments } from "@/lib
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
+  cancelSourceDocumentProcessingAction,
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
@@ -120,6 +121,28 @@ export function useSourceDocumentRecoveryMutations({
     },
   });
 
+  const cancelMutation = useMutation<unknown, Error, { operationId: string }>({
+    mutationFn: async ({ operationId }) => {
+      if (revisionId == null) throw new Error("No revision ID provided for cancellation");
+      return cancelSourceDocumentProcessingAction(
+        ledgerId,
+        sourceDocumentId,
+        revisionId,
+        operationId
+      );
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+      notifyRefresh();
+      toast.success(tActions("cancelSuccess"));
+      onSuccess?.();
+    },
+    onError: () => toast.error(tActions("cancelError")),
+    onSettled: () => {
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) });
+    },
+  });
+
   // -----------------------------------------------------------------------
   // Public API
   // -----------------------------------------------------------------------
@@ -154,13 +177,25 @@ export function useSourceDocumentRecoveryMutations({
     }
   }, [retryMutation]);
 
+  const cancelProcessing = useCallback(async () => {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    try {
+      await cancelMutation.mutateAsync({ operationId: "cancel-" + crypto.randomUUID() });
+    } finally {
+      actionLockRef.current = false;
+    }
+  }, [cancelMutation]);
+
   return {
     acceptCandidate,
     abandonCandidate,
     retry,
+    cancelProcessing,
     isAccepting: acceptMutation.isPending,
     isAbandoning: abandonMutation.isPending,
     isRetrying: retryMutation.isPending,
+    isCancelling: cancelMutation.isPending,
     isReviewing: acceptMutation.isPending || abandonMutation.isPending,
   };
 }

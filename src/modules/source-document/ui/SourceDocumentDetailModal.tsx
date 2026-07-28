@@ -59,8 +59,10 @@ interface SourceDocumentDetailModalProps {
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
   onAbandonCandidate?: () => Promise<void>;
+  onCancelProcessing?: () => Promise<void>;
   isAccepting?: boolean;
   isAbandoning?: boolean;
+  isCancelling?: boolean;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -82,8 +84,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onDelete,
   onAcceptCandidate,
   onAbandonCandidate,
+  onCancelProcessing,
   isAccepting = false,
   isAbandoning = false,
+  isCancelling = false,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -204,13 +208,20 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     setIsSaving(true);
     try {
       for (const id of selectedIds) {
-        try { await onDeleteEntry(id); } catch { failed.push(id); }
+        try {
+          await onDeleteEntry(id);
+        } catch {
+          failed.push(id);
+        }
       }
-      if (failed.length === 0) clearSelection(); else retainSelection(failed);
+      if (failed.length === 0) clearSelection();
+      else retainSelection(failed);
       toast.success(t("batchDeleteSuccess", { count: selectedIds.length - failed.length }));
       if (failed.length > 0) toast.error(t("batchDeletePartial", { count: failed.length }));
       setShowBatchDeleteConfirm(false);
-    } finally { setIsSaving(false); }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteDocument = async () => {
@@ -400,6 +411,35 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       </Button>
                     )}
                 </>
+              )}
+
+            {sourceDocument?.supportedActions.includes("abandon_candidate") &&
+              !sourceDocument.supportedActions.includes("accept_candidate") &&
+              onAbandonCandidate != null && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-3 text-muted-foreground"
+                  onClick={onAbandonCandidate}
+                  disabled={isAbandoning}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tActions("abandon")}</span>
+                </Button>
+              )}
+
+            {sourceDocument?.supportedActions.includes("cancel_processing") &&
+              onCancelProcessing != null && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-3 text-muted-foreground"
+                  onClick={onCancelProcessing}
+                  disabled={isCancelling}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
+                </Button>
               )}
 
             {/* Edit & Retry */}

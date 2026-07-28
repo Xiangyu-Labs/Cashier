@@ -16,12 +16,18 @@ describe("target application contracts", () => {
   it("preserves an active result while a retry is anomalous or failed", () => {
     expect(
       supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: "failed" })
-    ).toEqual(["retry", "edit_retry", "delete"]);
+    ).toEqual(["abandon_candidate", "retry", "edit_retry", "delete"]);
     expect(
       supportedSourceDocumentActions({
         activeRevisionId: "revision-1",
         pendingOutcome: "processing",
       })
+    ).toEqual(["cancel_processing", "retry", "edit_retry", "delete"]);
+  });
+
+  it("offers retry actions after a first parse is cancelled", () => {
+    expect(
+      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "cancelled" })
     ).toEqual(["retry", "edit_retry", "delete"]);
   });
 

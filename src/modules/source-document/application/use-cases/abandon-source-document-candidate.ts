@@ -8,7 +8,7 @@ interface AbandonCandidateInput {
 }
 
 /**
- * Abandon a completed candidate revision.
+ * Abandon a terminal retry candidate revision.
  *
  * Marks the candidate revision as abandoned and clears the pending revision pointer
  * without affecting the active projection. Idempotent when the candidate revision

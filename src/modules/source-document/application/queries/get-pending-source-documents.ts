@@ -10,7 +10,7 @@ export async function getPendingSourceDocumentsQuery(
   ledgerId: string
 ): Promise<PendingSourceDocumentsResponseDto> {
   const result = await querySourceDocumentPage(ledgerId, {
-    status: "processing,anomaly,failed",
+    status: "processing,anomaly,failed,cancelled",
     includeLedgerEntries: true,
   });
 

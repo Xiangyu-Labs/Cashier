@@ -3,6 +3,7 @@ export const SOURCE_DOCUMENT_STATUSES = [
   "completed",
   "anomaly",
   "failed",
+  "cancelled",
   "deleted",
   "candidate_pending",
 ] as const;
@@ -12,6 +13,7 @@ export const ACTIVE_SOURCE_DOCUMENT_STATUSES = [
   "completed",
   "anomaly",
   "failed",
+  "cancelled",
   "candidate_pending",
 ] as const;
 
@@ -20,7 +22,8 @@ export const SourceDocumentStatus = {
   Completed: SOURCE_DOCUMENT_STATUSES[1],
   Anomaly: SOURCE_DOCUMENT_STATUSES[2],
   Failed: SOURCE_DOCUMENT_STATUSES[3],
-  Deleted: SOURCE_DOCUMENT_STATUSES[4],
+  Cancelled: SOURCE_DOCUMENT_STATUSES[4],
+  Deleted: SOURCE_DOCUMENT_STATUSES[5],
 } as const;
 
 export type SourceDocumentStatusType = (typeof SOURCE_DOCUMENT_STATUSES)[number];

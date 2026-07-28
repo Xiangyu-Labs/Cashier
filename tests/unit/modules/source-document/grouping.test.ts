@@ -11,6 +11,7 @@ describe("grouping helpers", () => {
     { id: "processing-1", status: "processing", ledgerEntries: [{ id: "entry-1" }] },
     { id: "anomaly-1", status: "anomaly" },
     { id: "failed-1", status: "failed" },
+    { id: "cancelled-1", status: "cancelled" },
     { id: "completed-1", status: "completed" },
     { id: "deleted-1", status: "deleted" },
   ] as const;
@@ -24,7 +25,7 @@ describe("grouping helpers", () => {
     expect(groups.completed).toHaveLength(1);
     expect(groups.completed[0]?.ledgerEntries).toEqual([]);
     expect(
-      groups.processing.concat(groups.anomaly, groups.failed, groups.completed)
+      groups.processing.concat(groups.anomaly, groups.failed, groups.cancelled, groups.completed)
     ).not.toContainEqual(
       expect.objectContaining({ sourceDocument: expect.objectContaining({ id: "deleted-1" }) })
     );
@@ -36,12 +37,14 @@ describe("grouping helpers", () => {
     expect(pendingGroups.processing).toHaveLength(1);
     expect(pendingGroups.anomaly).toHaveLength(1);
     expect(pendingGroups.failed).toHaveLength(1);
+    expect(pendingGroups.cancelled).toHaveLength(1);
     expect(calculateSourceDocumentStats(pendingGroups)).toEqual({
       processingCount: 1,
       anomalyCount: 1,
       failedCount: 1,
+      cancelledCount: 1,
     });
-    expect(calculatePendingTotal(pendingGroups)).toBe(3);
+    expect(calculatePendingTotal(pendingGroups)).toBe(4);
   });
 
   it("groups candidate_pending documents into their own group, not failed", () => {

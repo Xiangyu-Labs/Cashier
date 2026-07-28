@@ -1,8 +1,13 @@
-import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, Ban, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-export type ProcessingStatusType = "processing" | "completed" | "error" | "candidate_pending";
+export type ProcessingStatusType =
+  | "processing"
+  | "completed"
+  | "error"
+  | "candidate_pending"
+  | "cancelled";
 
 interface ProcessingStatusProps {
   status: ProcessingStatusType;
@@ -39,6 +44,12 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       colorClass: "text-warning",
       bgClass: "bg-warning",
     },
+    cancelled: {
+      label: t("cancelled"),
+      icon: Ban,
+      colorClass: "text-muted-foreground",
+      bgClass: "bg-muted-foreground",
+    },
   };
 
   if (status === "completed") {
@@ -55,7 +66,10 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
 
   return (
     <div
-      className={cn("inline-flex items-center gap-2", className)}
+      className={cn(
+        "inline-flex min-h-6 items-center gap-1.5 rounded-md border border-border bg-surface2/50 px-2",
+        className
+      )}
       role={status === "error" ? "alert" : "status"}
       aria-live={status === "error" ? "assertive" : "polite"}
       aria-atomic="true"
@@ -63,13 +77,17 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       <div className="relative flex items-center justify-center">
         {status === "processing" ? (
           <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />
-        ) : status === "candidate_pending" ? (
+        ) : status === "candidate_pending" || status === "cancelled" ? (
           <Icon className={cn("w-3.5 h-3.5", colorClass)} />
         ) : (
           <div className={cn("w-2 h-2 rounded-full", bgClass)} />
         )}
       </div>
-      <span className={cn("text-xs font-medium", colorClass)} data-testid="status-label">
+      <span
+        className={cn("max-w-32 truncate text-xs font-medium sm:max-w-48", colorClass)}
+        data-testid="status-label"
+        title={displayLabel}
+      >
         {displayLabel}
       </span>
     </div>

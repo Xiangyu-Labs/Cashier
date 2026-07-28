@@ -6,7 +6,15 @@ import type {
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
-import { ChevronDown, MoreVertical, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  CircleStop,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +43,8 @@ interface SourceDocumentCardHeaderProps {
   mainCurrency: string;
   isExpanded: boolean;
   isRetrying: boolean;
+  isCancelling: boolean;
+  isAbandoning: boolean;
   selectionMode: boolean;
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
@@ -44,6 +54,8 @@ interface SourceDocumentCardHeaderProps {
   onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
+  onCancelProcessing?: (() => void | Promise<void>) | undefined;
+  onAbandonCandidate?: (() => void | Promise<void>) | undefined;
   onEditRetry?: (() => void | Promise<void>) | undefined;
   onDelete?: (() => void) | undefined;
 }
@@ -53,7 +65,12 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
     return "error" as const;
   }
 
-  if (status === "processing" || status === "completed" || status === "candidate_pending") {
+  if (
+    status === "processing" ||
+    status === "completed" ||
+    status === "candidate_pending" ||
+    status === "cancelled"
+  ) {
     return status;
   }
 
@@ -69,6 +86,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   mainCurrency,
   isExpanded,
   isRetrying,
+  isCancelling,
+  isAbandoning,
   selectionMode,
   isSelected,
   supportedActions,
@@ -77,6 +96,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   onViewDetails,
   onToggleSelect,
   onDirectRetry,
+  onCancelProcessing,
+  onAbandonCandidate,
   onEditRetry,
   onDelete,
 }: SourceDocumentCardHeaderProps) {
@@ -94,6 +115,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       status === "anomaly" ||
       status === "failed" ||
       status === "processing" ||
+      status === "cancelled" ||
       status === "candidate_pending");
 
   // Derive stable error code for display
@@ -127,7 +149,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   })();
 
   return (
-    <div className="px-4 py-3 bg-surface2/50 border-b border-border flex items-center transition-all gap-1">
+    <div className="flex items-center gap-1 px-3 py-2.5 sm:px-4">
       {selectionMode && (
         <div className="mr-2 shrink-0" onClick={(event) => event.stopPropagation()}>
           <Checkbox
@@ -156,7 +178,10 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
       <button
         type="button"
-        onClick={!selectionMode ? onViewDetails : undefined}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!selectionMode) onViewDetails?.();
+        }}
         disabled={selectionMode || onViewDetails == null}
         className={cn(
           "flex min-h-11 flex-1 items-center gap-2 overflow-hidden rounded px-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8",
@@ -200,11 +225,14 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           />
         )}
 
-        {!["processing", "anomaly", "failed", "candidate_pending"].includes(status) && (
-          <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
-        )}
+        {!["processing", "anomaly", "failed", "candidate_pending", "cancelled"].includes(
+          status
+        ) && <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />}
 
-        <div className="flex items-center gap-1.5 ml-1">
+        <div
+          className="ml-1 flex items-center gap-1.5"
+          onClick={(event) => event.stopPropagation()}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -230,6 +258,22 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
                   {tActions("editRetry")}
                 </DropdownMenuItem>
               )}
+
+              {hasAction("cancel_processing") && onCancelProcessing != null && (
+                <DropdownMenuItem onClick={onCancelProcessing} disabled={isCancelling}>
+                  <CircleStop className="mr-2 h-4 w-4" />
+                  {tActions("cancelProcessing")}
+                </DropdownMenuItem>
+              )}
+
+              {hasAction("abandon_candidate") &&
+                status !== "candidate_pending" &&
+                onAbandonCandidate != null && (
+                  <DropdownMenuItem onClick={onAbandonCandidate} disabled={isAbandoning}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    {tActions("abandon")}
+                  </DropdownMenuItem>
+                )}
 
               {hasAction("retry") && onDelete != null && <DropdownMenuSeparator />}
 

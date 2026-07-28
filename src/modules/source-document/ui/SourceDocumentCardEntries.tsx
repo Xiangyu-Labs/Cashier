@@ -17,7 +17,7 @@ export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries
   onViewLedgerEntry,
 }: SourceDocumentCardEntriesProps) {
   return (
-    <div className="border-t border-border divide-y divide-border p-3 space-y-3 bg-surface2/30">
+    <div className="divide-y divide-border border-t border-border px-3">
       {entries.map((entry) => (
         <LedgerEntryItem
           key={entry.id}

@@ -89,7 +89,7 @@ export function createSourceDocumentData(
     text: string | null;
     imageUrls: string[];
     metadata: Record<string, unknown>;
-    status: "processing" | "processing" | "completed" | "anomaly" | "failed" | "deleted";
+    status: "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "deleted";
     type: "ai_parsed" | "manual";
     anomalyReason: string | null;
     entryDate: string | null;

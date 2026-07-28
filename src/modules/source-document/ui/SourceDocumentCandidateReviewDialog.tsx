@@ -63,9 +63,13 @@ export function SourceDocumentCandidateReviewDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {reviewQuery.isLoading ? (
-            <div className="flex h-full min-h-48 items-center justify-center" aria-live="polite">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">{t("loading")}</span>
+            <div
+              className="grid min-w-0 gap-4 md:grid-cols-2"
+              aria-busy="true"
+              aria-label={t("loading")}
+            >
+              <RevisionPanelSkeleton />
+              <RevisionPanelSkeleton />
             </div>
           ) : reviewQuery.isError || reviewQuery.data == null ? (
             <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
@@ -127,6 +131,36 @@ export function SourceDocumentCandidateReviewDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function RevisionPanelSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="h-5 w-20" />
+      </div>
+      <div className="space-y-0 divide-y divide-border">
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="flex items-center gap-3 px-4 py-3">
+            <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <Skeleton className="h-4 w-16 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("animate-pulse rounded bg-surface2", className)} />;
 }
 
 function RevisionPanel({
