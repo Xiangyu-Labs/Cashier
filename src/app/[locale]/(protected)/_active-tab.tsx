@@ -69,6 +69,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
             {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
             hasPassword={session.user?.hasPassword ?? false}
             passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}
+            interfaceLanguage={session.user?.interfaceLanguage ?? "auto"}
             locale={locale}
           />
         </Suspense>

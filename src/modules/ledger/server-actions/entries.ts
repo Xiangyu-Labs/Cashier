@@ -185,6 +185,9 @@ async function getBatchEntryDateImpact(ledgerId: string, inputIds: string[]): Pr
     ))
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), inArray(ledgerEntries.id, ids), isNull(ledgerEntries.deletedAt)));
   const sourceDocumentIds = [...new Set(selected.flatMap((row) => row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))];
+  if (selected.length !== ids.length) {
+    throw new NotFoundError("Selected ledger entry");
+  }
   if (sourceDocumentIds.length === 0) {
     return { selectedEntryCount: selected.length, sourceDocumentCount: 0, affectedEntryCount: 0, sourceDocumentIds: [] };
   }

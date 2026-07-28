@@ -54,12 +54,12 @@ export function useSourceDocumentEntryMutations({
   });
 
   const batchUpdateMutation = useLedgerMutation<
-    void,
+    { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
   >(ledgerId, {
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
-      await batchUpdateLedgerEntriesAction(ledgerId, ids, data);
+      return batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: null,
     ...(sourceDocumentAndEntriesPredicates !== null
@@ -68,6 +68,14 @@ export function useSourceDocumentEntryMutations({
     ...(sourceDocumentEntriesSummaryPredicates !== null
       ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
       : {}),
+    onSettledExtra: (client) => {
+      for (const predicate of [
+        ...(sourceDocumentAndEntriesPredicates ?? []),
+        ...(sourceDocumentEntriesSummaryPredicates ?? []),
+      ]) {
+        void client.invalidateQueries({ predicate });
+      }
+    },
   });
 
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {

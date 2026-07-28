@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   ensureTargetLedgerProjection,
   postgresLedgerProjectionAdapter,
@@ -11,6 +11,9 @@ import { getLedgerMainCurrency } from "@/modules/ledger/application/queries/get-
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { getLedgerEntryDetail } from "./ledger-reads/get-ledger-entry-detail";
+import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import { ExchangeRateService } from "./exchange-rate";
+import { ConflictError } from "@/lib/errors";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
@@ -216,18 +219,143 @@ export async function batchUpdateLedgerEntries(input: {
   description?: string | null;
   itemName?: string;
 }): Promise<number> {
-  let affectedCount = 0;
-  for (const ledgerEntryId of input.ledgerEntryIds) {
-    await updateLedgerEntryWithConversion({
-      ledgerId: input.ledgerId,
-      ledgerEntryId,
-      ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
-      ...(input.currency !== undefined ? { currency: input.currency } : {}),
-      ...(input.amount !== undefined ? { amount: input.amount } : {}),
-      ...(input.description !== undefined ? { description: input.description } : {}),
-      ...(input.itemName !== undefined ? { itemName: input.itemName } : {}),
-    });
-    affectedCount += 1;
+  if (input.ledgerEntryIds.length === 0) return 0;
+  const requestedIds = [...new Set(input.ledgerEntryIds)].sort();
+  const legacyDocuments = await db
+    .select({
+      id: sourceDocuments.id,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, input.ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        inArray(ledgerEntries.id, requestedIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+  for (const documentId of [
+    ...new Set(
+      legacyDocuments
+        .filter((document) => document.activeRevisionId == null)
+        .map((document) => document.id)
+    ),
+  ].sort()) {
+    await ensureTargetLedgerProjection(input.ledgerId, documentId);
   }
-  return affectedCount;
+
+  return db.transaction(async (tx) => {
+    const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
+    const candidates = await tx
+      .select({ sourceDocumentId: ledgerEntries.sourceDocumentId })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, input.ledgerId),
+          inArray(ledgerEntries.id, requestedIds),
+          isNull(ledgerEntries.deletedAt)
+        )
+      );
+    const documentIds = [
+      ...new Set(candidates.flatMap((row) => row.sourceDocumentId == null ? [] : [row.sourceDocumentId])),
+    ].sort();
+    for (const documentId of documentIds) {
+      await lockSourceDocumentForUpdate(tx, input.ledgerId, documentId);
+    }
+
+    const rows = await tx
+      .select({
+        id: ledgerEntries.id,
+        amount: ledgerEntries.amount,
+        currency: ledgerEntries.currency,
+        sourceDocumentId: ledgerEntries.sourceDocumentId,
+        sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
+        activeRevisionId: sourceDocuments.activeRevisionId,
+        entryDate: sourceDocuments.entryDate,
+      })
+      .from(ledgerEntries)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+          eq(sourceDocuments.ledgerId, input.ledgerId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, input.ledgerId),
+          inArray(ledgerEntries.id, requestedIds),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      .orderBy(ledgerEntries.id);
+
+    if (
+      rows.length !== requestedIds.length ||
+      rows.some(
+        (row) =>
+          row.sourceDocumentId == null ||
+          row.activeRevisionId == null ||
+          row.sourceDocumentRevisionId !== row.activeRevisionId
+      )
+    ) {
+      throw new ConflictError("Selected ledger entries changed before the batch edit");
+    }
+
+    const mainCurrency = lockedLedger.metadata?.settings?.mainCurrency ?? "CNY";
+    const conversions =
+      input.amount !== undefined || input.currency !== undefined
+        ? await ExchangeRateService.convertBatch(
+            rows.map((row) => ({
+              amount: input.amount ?? row.amount,
+              from: normalizeCurrency(input.currency ?? row.currency),
+              to: mainCurrency,
+              ...(row.entryDate != null && row.entryDate !== "" ? { date: row.entryDate } : {}),
+            })),
+            mainCurrency
+          )
+        : null;
+    const now = new Date();
+    for (const [index, row] of rows.entries()) {
+      const conversion = conversions?.[index];
+      const updated = await tx
+        .update(ledgerEntries)
+        .set({
+          ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+          ...(input.currency !== undefined ? { currency: normalizeCurrency(input.currency) } : {}),
+          ...(input.amount !== undefined ? { amount: round(input.amount, 2) } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.itemName !== undefined ? { itemName: input.itemName } : {}),
+          ...(conversion != null
+            ? {
+                convertedAmount: round(conversion.convertedAmount, 2),
+                exchangeRate: round(conversion.exchangeRate, 6),
+              }
+            : {}),
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(ledgerEntries.ledgerId, input.ledgerId),
+            eq(ledgerEntries.id, row.id),
+            eq(ledgerEntries.sourceDocumentRevisionId, row.activeRevisionId!),
+            isNull(ledgerEntries.deletedAt)
+          )
+        )
+        .returning({ id: ledgerEntries.id });
+      if (updated.length !== 1) {
+        throw new ConflictError("Ledger entry changed during the batch edit");
+      }
+    }
+    return rows.length;
+  });
 }

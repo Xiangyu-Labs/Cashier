@@ -718,6 +718,7 @@ export const postgresUserAccountAdapter: UserAccountPort = {
             image: existing.image,
             passwordHash: existing.passwordHash,
             passwordUpdatedAt: existing.passwordUpdatedAt,
+            interfaceLanguage: existing.preferences.interfaceLanguage,
           },
           isExistingUser: true,
         };
@@ -736,6 +737,7 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           image: created.image,
           passwordHash: created.passwordHash,
           passwordUpdatedAt: created.passwordUpdatedAt,
+          interfaceLanguage: created.preferences.interfaceLanguage,
         },
         isExistingUser: false,
       };
@@ -751,9 +753,20 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         image: true,
         passwordHash: true,
         passwordUpdatedAt: true,
+        preferences: true,
       },
     });
-    return row ?? null;
+    return row == null
+      ? null
+      : {
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          image: row.image,
+          passwordHash: row.passwordHash,
+          passwordUpdatedAt: row.passwordUpdatedAt,
+          interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
+        };
   },
   async findById(id) {
     const row = await db.query.users.findFirst({
@@ -765,8 +778,19 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         image: true,
         passwordHash: true,
         passwordUpdatedAt: true,
+        preferences: true,
       },
     });
-    return row ?? null;
+    return row == null
+      ? null
+      : {
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          image: row.image,
+          passwordHash: row.passwordHash,
+          passwordUpdatedAt: row.passwordUpdatedAt,
+          interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
+        };
   },
 };

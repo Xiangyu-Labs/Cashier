@@ -71,6 +71,13 @@
       "when": 1786377600000,
       "tag": "0009_email_change_challenges",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785215171145,
+      "tag": "0010_user_preferences",
+      "breakpoints": true
     }
   ]
 }

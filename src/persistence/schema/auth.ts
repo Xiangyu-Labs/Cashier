@@ -1,4 +1,4 @@
-import { pgTable, text, integer, index, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, index, timestamp, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { type InferSelectModel } from "drizzle-orm";
 
 export const users = pgTable(
@@ -13,6 +13,10 @@ export const users = pgTable(
     image: text("image"),
     passwordHash: text("password_hash"),
     passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
+    preferences: jsonb("preferences")
+      .$type<UserPreferences>()
+      .notNull()
+      .default({ interfaceLanguage: "auto" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -25,6 +29,12 @@ export const users = pgTable(
 );
 
 export type User = InferSelectModel<typeof users>;
+
+export type InterfaceLanguage = "auto" | "zh" | "en";
+
+export interface UserPreferences {
+  interfaceLanguage: InterfaceLanguage;
+}
 
 export const otpTokens = pgTable(
   "otp_tokens",

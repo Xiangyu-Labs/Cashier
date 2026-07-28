@@ -3,17 +3,22 @@ import { getLocale } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import { resolveAuthenticatedHome } from "@/lib/request-cache";
 import { UnauthorizedError } from "@/lib/errors";
+import { LocalePreferenceSync } from "@/components/LocalePreferenceSync";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   try {
-    await resolveAuthenticatedHome();
+    const context = await resolveAuthenticatedHome();
+    return (
+      <Providers>
+        <LocalePreferenceSync preference={context.session.user?.interfaceLanguage ?? "auto"} />
+        {children}
+      </Providers>
+    );
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       redirect(`/${locale}/login`);
     }
     throw error;
   }
-
-  return <Providers>{children}</Providers>;
 }

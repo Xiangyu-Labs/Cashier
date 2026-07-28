@@ -22,6 +22,7 @@ import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { scheduleProcessingRecovery } from "@/modules/source-document/server-actions/schedule-processing-recovery";
+import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
@@ -69,8 +70,14 @@ export async function getLedgerPageBootstrap(
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
 
   const mainCurrency = ledgerDto.metadata?.settings?.mainCurrency ?? "CNY";
-  const initialStatsDate = new Date();
-  const detailsState = getDetailsInitialQueryState(input.periodParams, input.advancedFilters);
+  const fixedTimeZone = ledgerDto.metadata?.settings?.timeZone ?? undefined;
+  const zonedToday = getDateInTimezone(fixedTimeZone);
+  const initialStatsDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
+  const detailsState = getDetailsInitialQueryState(
+    input.periodParams,
+    input.advancedFilters,
+    fixedTimeZone
+  );
   const statsState = getStatsInitialQueryState(initialStatsDate);
   const canonicalStreamStatuses = canonicalizeSourceDocumentStatuses(
     input.advancedFilters?.statuses

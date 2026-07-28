@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SettingsTab } from "./SettingsTab";
+import type { InterfaceLanguage } from "@/modules/auth/contracts";
 
 interface SettingsPageClientProps {
   ledger: Ledger;
@@ -14,6 +15,7 @@ interface SettingsPageClientProps {
   userEmail?: string;
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
+  interfaceLanguage?: InterfaceLanguage;
 }
 
 export function SettingsPageClient({
@@ -23,12 +25,13 @@ export function SettingsPageClient({
   userEmail,
   hasPassword,
   passwordUpdatedAt,
+  interfaceLanguage,
 }: SettingsPageClientProps) {
   const router = useRouter();
   const t = useTranslations("Settings");
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+    <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-4 sm:px-6 sm:py-8">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
@@ -43,6 +46,7 @@ export function SettingsPageClient({
         {...(userEmail !== undefined ? { userEmail } : {})}
         {...(hasPassword !== undefined ? { hasPassword } : {})}
         {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+        {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
       />
     </div>
   );

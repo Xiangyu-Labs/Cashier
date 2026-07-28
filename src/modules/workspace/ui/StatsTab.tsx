@@ -5,7 +5,7 @@ import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
-import { getDateInTimezone, parseDateString, type DateRangeType } from "@/lib/date-utils";
+import { addPeriod, getDateInTimezone, parseDateString, type DateRangeType } from "@/lib/date-utils";
 import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
 import { useTranslations, useFormatter, useLocale } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
@@ -38,12 +38,19 @@ export function StatsTab({
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
-  // Use initialDate from props to avoid hydration mismatch between server and client
-  const [currentDate, setCurrentDate] = useState(() => {
+  const [periodOffset, setPeriodOffset] = useState(0);
+  const [serverToday] = useState(() => initialDate ?? new Date());
+  // The server anchor keeps hydration stable. An automatic device timezone replaces
+  // only today's anchor after hydration; the user's period offset remains untouched.
+  const today = useMemo(() => {
     const zonedDate = getDateInTimezone(timeZone);
     if (zonedDate != null) return parseDateString(zonedDate);
-    return initialDate ?? new Date();
-  });
+    return serverToday;
+  }, [serverToday, timeZone]);
+  const currentDate = useMemo(
+    () => addPeriod(today, rangeType, periodOffset),
+    [periodOffset, rangeType, today]
+  );
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
 
   const {
@@ -124,15 +131,17 @@ export function StatsTab({
       <div className="space-y-6 pb-24">
         <StatsHeader
           rangeType={rangeType}
-          setRangeType={setRangeType}
-          currentDate={currentDate}
-          setCurrentDate={setCurrentDate}
+          setRangeType={(type) => {
+            setRangeType(type);
+            setPeriodOffset(0);
+          }}
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
           label={label}
           totalExpense={totalExpense}
           averageDaily={averageDaily}
           currencySymbol={currencySymbol}
           {...(trend !== undefined ? { trend } : {})}
-          {...(timeZone != null ? { timeZone } : {})}
         />
 
         <div className="min-w-0 space-y-2 px-2">

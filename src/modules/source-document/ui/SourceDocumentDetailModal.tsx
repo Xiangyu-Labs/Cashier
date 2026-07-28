@@ -53,7 +53,7 @@ interface SourceDocumentDetailModalProps {
       entryDate?: string;
       description?: string;
     }
-  ) => Promise<void>;
+  ) => Promise<{ affectedCount: number } | undefined>;
   onDeleteEntry: (id: string) => Promise<void>;
   onDelete?: () => void | Promise<void>;
   // Recovery action callbacks
@@ -175,8 +175,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     if (selectedIds.length === 0) return;
     setIsSaving(true);
     try {
-      await onBatchUpdate(selectedIds, { categoryId });
-      toast.success(t("batchUpdateSuccess", { count: selectedIds.length }));
+      const result = await onBatchUpdate(selectedIds, { categoryId });
+      toast.success(t("batchUpdateSuccess", { count: result?.affectedCount ?? 0 }));
       clearSelection();
     } catch {
       toast.error(t("batchUpdateError"));
@@ -189,8 +189,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     if (selectedIds.length === 0) return;
     setIsSaving(true);
     try {
-      await onBatchUpdate(selectedIds, { currency });
-      toast.success(t("batchUpdateSuccess", { count: selectedIds.length }));
+      const result = await onBatchUpdate(selectedIds, { currency });
+      toast.success(t("batchUpdateSuccess", { count: result?.affectedCount ?? 0 }));
       clearSelection();
     } catch {
       toast.error(t("batchUpdateError"));

@@ -4,9 +4,10 @@ import {
   batchUpdateSourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
-import { sourceDocuments, ledgers } from "@/persistence";
+import { currencyRates, ledgerEntries, sourceDocuments, ledgers } from "@/persistence";
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
 import { eq } from "drizzle-orm";
+import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 
 // Mock auth module
 vi.mock("@/auth", () => ({
@@ -116,6 +117,49 @@ describe("Source Document Update Actions", () => {
 
       expect(updated1?.status).toBe("completed");
       expect(updated2?.status).toBe("completed");
+    });
+
+    it("recalculates active entry conversions using the new historical date", async () => {
+      const db = getTestDb();
+      const ledgerData = createLedgerData({
+        userId: testUserId,
+        metadata: { settings: { mainCurrency: "USD" } },
+      });
+      await db.insert(ledgers).values(ledgerData);
+      const document = createSourceDocumentData(ledgerData.id, {
+        status: "completed",
+        entryDate: "2024-03-14",
+      });
+      await db.insert(sourceDocuments).values(document);
+      const entryId = crypto.randomUUID();
+      await db.insert(ledgerEntries).values({
+        id: entryId,
+        ledgerId: ledgerData.id,
+        sourceDocumentId: document.id,
+        amount: "100",
+        currency: "CNY",
+        itemName: "Historical item",
+        convertedAmount: "20",
+        exchangeRate: "0.2",
+      });
+      await activateTestSourceDocumentProjection(db, document.id);
+      await db.insert(currencyRates).values({
+        date: "2024-03-15",
+        base: "EUR",
+        rates: { EUR: 1, USD: 1, CNY: 10 },
+      }).onConflictDoNothing();
+
+      await batchUpdateSourceDocumentsAction(ledgerData.id, [document.id], {
+        entryDate: "2024-03-15",
+      });
+
+      const [updatedDocument, updatedEntry] = await Promise.all([
+        db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, document.id) }),
+        db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
+      ]);
+      expect(updatedDocument?.entryDate).toBe("2024-03-15");
+      expect(updatedEntry?.convertedAmount).toBe("10.00");
+      expect(updatedEntry?.exchangeRate).toBe("0.100000");
     });
 
     it("rejects an empty batch", async () => {

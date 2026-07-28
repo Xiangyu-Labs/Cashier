@@ -5,12 +5,15 @@ import type {
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type {
   BatchUpdateSourceDocumentsInput as BatchUpdateSourceDocumentsPayload,
   UpdateSourceDocumentInput as UpdateSourceDocumentPayload,
 } from "@/modules/source-document/contract-schemas";
-import { lockSourceDocumentForUpdate } from "./transaction-locks";
+import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import { ConflictError } from "@/lib/errors";
+import { ExchangeRateService } from "./exchange-rate";
+import { round } from "@/lib/money/decimal";
 
 function whereSourceDocumentNotDeleted(ledgerId: string) {
   return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
@@ -115,16 +118,81 @@ export async function batchUpdateSourceDocuments({
     ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
   };
 
-  const updatedDocuments = await db
-    .update(sourceDocuments)
-    .set(updatePatch)
-    .where(
-      and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, sourceDocumentIds))
-    )
-    .returning({ id: sourceDocuments.id });
+  const requestedIds = [...new Set(sourceDocumentIds)].sort();
+  const updatedDocuments = await db.transaction(async (tx) => {
+    const lockedLedger = await lockLedgerForUpdate(tx, ledgerId);
+    const documents = [];
+    for (const sourceDocumentId of requestedIds) {
+      documents.push(await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId));
+    }
+
+    if (data.entryDate !== undefined) {
+      const projectionEntries = await tx
+        .select({
+          id: ledgerEntries.id,
+          amount: ledgerEntries.amount,
+          currency: ledgerEntries.currency,
+        })
+        .from(ledgerEntries)
+        .innerJoin(
+          sourceDocuments,
+          and(
+            eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+            eq(sourceDocuments.ledgerId, ledgerId),
+            isNull(sourceDocuments.deletedAt),
+            or(
+              eq(ledgerEntries.sourceDocumentRevisionId, sourceDocuments.activeRevisionId),
+              eq(ledgerEntries.sourceDocumentRevisionId, sourceDocuments.pendingRevisionId)
+            )
+          )
+        )
+        .where(
+          and(
+            eq(ledgerEntries.ledgerId, ledgerId),
+            inArray(ledgerEntries.sourceDocumentId, requestedIds),
+            isNull(ledgerEntries.deletedAt)
+          )
+        )
+        .orderBy(ledgerEntries.id);
+      const mainCurrency = lockedLedger.metadata?.settings?.mainCurrency ?? "CNY";
+      const conversions = await ExchangeRateService.convertBatch(
+        projectionEntries.map((entry) => ({
+          amount: entry.amount,
+          from: entry.currency != null && entry.currency !== "" ? entry.currency : "CNY",
+          to: mainCurrency,
+          date: data.entryDate!,
+        })),
+        mainCurrency
+      );
+      for (const [index, entry] of projectionEntries.entries()) {
+        const conversion = conversions[index];
+        if (conversion == null) throw new ConflictError("Missing exchange-rate conversion");
+        await tx
+          .update(ledgerEntries)
+          .set({
+            convertedAmount: round(conversion.convertedAmount, 2),
+            exchangeRate: round(conversion.exchangeRate, 6),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)));
+      }
+    }
+
+    const updated = await tx
+      .update(sourceDocuments)
+      .set(updatePatch)
+      .where(
+        and(whereSourceDocumentNotDeleted(ledgerId), inArray(sourceDocuments.id, requestedIds))
+      )
+      .returning({ id: sourceDocuments.id });
+    if (updated.length !== requestedIds.length) {
+      throw new ConflictError("Source documents changed during the batch edit");
+    }
+    return updated;
+  });
 
   return {
-    sourceDocumentIds,
+    sourceDocumentIds: requestedIds,
     updatedCount: updatedDocuments.length,
   };
 }

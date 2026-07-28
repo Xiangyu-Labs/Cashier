@@ -36,6 +36,47 @@ vi.mock("@/components/ui/date-filter", () => ({
 }));
 
 describe("EntryFilterPanel", () => {
+  it("does not count the default current-month period", () => {
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "thisMonth" }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "筛选" })).toBeDefined();
+  });
+
+  it("counts all time as one active filter", () => {
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        periodParams={{ period: "all" }}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
+  });
+
+  it("keeps search inside the filter panel and uses a mobile-safe font size", () => {
+    render(
+      <EntryFilterPanel
+        filters={{}}
+        onFiltersChange={vi.fn()}
+        showCategory={false}
+        showCurrency={false}
+      />
+    );
+
+    expect(screen.getByPlaceholderText("搜索标题、名称或描述")).toHaveClass("text-base");
+  });
+
   it("centers the mobile filter popover within the viewport", () => {
     render(
       <EntryFilterPanel

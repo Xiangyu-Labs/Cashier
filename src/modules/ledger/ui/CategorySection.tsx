@@ -20,15 +20,15 @@ import { Input } from "@/components/ui/input";
 interface CategorySectionProps {
   categories: EntryCategory[];
   uncategorizedCount?: number;
-  onCreateCategory: (name: string) => void;
+  onCreateCategory: (name: string) => Promise<EntryCategory>;
   onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void | Promise<unknown>;
   onDeleteCategory: (id: string) => void | Promise<unknown>;
   onReorderCategories: (ids: string[]) => void | Promise<unknown>;
-  onCategoryCreated?: () => void;
   generatingCategoryIds?: Set<string>;
   failedCategoryIds?: Set<string>;
   onRetryMetadata?: (id: string) => void;
   isReordering?: boolean;
+  isCreating?: boolean;
 }
 
 interface EditDraft {
@@ -49,6 +49,7 @@ export function CategorySection({
   failedCategoryIds = new Set(),
   onRetryMetadata,
   isReordering = false,
+  isCreating = false,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const common = useTranslations("Common");
@@ -89,10 +90,13 @@ export function CategorySection({
     setManaging(false);
   };
 
-  const createCategory = () => {
+  const createCategory = async () => {
     const name = newCategoryName.trim();
-    if (name === "") return;
-    onCreateCategory(name);
+    if (name === "" || isCreating) return;
+    const category = await onCreateCategory(name);
+    setDraftOrder((current) =>
+      current.some((item) => item.id === category.id) ? current : [...current, category]
+    );
     setNewCategoryName("");
   };
 
@@ -223,11 +227,17 @@ export function CategorySection({
             <Input
               value={newCategoryName}
               onChange={(event) => setNewCategoryName(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && createCategory()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void createCategory();
+              }}
               aria-label={t("newCategoryPlaceholder")}
               placeholder={t("newCategoryPlaceholder")}
             />
-            <Button type="button" onClick={createCategory} disabled={newCategoryName.trim() === ""}>
+            <Button
+              type="button"
+              onClick={() => void createCategory()}
+              disabled={newCategoryName.trim() === "" || isCreating}
+            >
               {t("addCategory")}
             </Button>
           </div>

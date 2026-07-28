@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
+import type { InterfaceLanguage } from "@/modules/auth/contracts";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -75,6 +76,7 @@ interface LedgerPageClientProps {
   userEmail?: string;
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
+  interfaceLanguage?: InterfaceLanguage;
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -98,6 +100,7 @@ function LedgerPageClientContent({
   userEmail,
   hasPassword,
   passwordUpdatedAt,
+  interfaceLanguage,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
   const locale = useLocale();
@@ -147,8 +150,6 @@ function LedgerPageClientContent({
     ledgerId,
   });
 
-  const statusSummaryRef = useRef<HTMLSpanElement | null>(null);
-
   const { isInputOpen, setIsInputOpen, inputMode, setInputMode, handleInputDialogChange } =
     useLedgerDialogState();
   const [isInputSubmitting, setIsInputSubmitting] = useState(false);
@@ -172,7 +173,7 @@ function LedgerPageClientContent({
     <>
       {/* Only mount the active tab — inactive tabs load lazily */}
       {activeTab === "stream" && (
-        <div className="mt-0">
+        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
           <LedgerEntriesTab
             ledgerId={ledgerId}
             categories={categories.length > 0 ? categories : []}
@@ -182,7 +183,6 @@ function LedgerPageClientContent({
             advancedFilters={advancedFilters}
             collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
             onApplyPreset={applyStreamStatusPreset}
-            statusSummaryRef={statusSummaryRef}
             onResetFilters={resetFilters}
             {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
           />
@@ -190,7 +190,7 @@ function LedgerPageClientContent({
       )}
 
       {activeTab === "details" && (
-        <div className="mt-0">
+        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
           <DeferredFeatureMessages
             feature="details"
             locale={locale}
@@ -211,7 +211,7 @@ function LedgerPageClientContent({
       )}
 
       {activeTab === "stats" && (
-        <div className="mt-0">
+        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
           <DeferredFeatureMessages feature="stats" locale={locale} fallback={<StatsTabSkeleton />}>
             <StatsTab
               ledgerId={ledgerId}
@@ -226,7 +226,7 @@ function LedgerPageClientContent({
       )}
 
       {activeTab === "settings" && (
-        <div className="mt-0">
+        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
           <DeferredFeatureMessages
             feature="settings"
             locale={locale}
@@ -239,6 +239,7 @@ function LedgerPageClientContent({
               {...(userEmail !== undefined ? { userEmail } : {})}
               {...(hasPassword !== undefined ? { hasPassword } : {})}
               {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+              {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
             />
           </DeferredFeatureMessages>
         </div>

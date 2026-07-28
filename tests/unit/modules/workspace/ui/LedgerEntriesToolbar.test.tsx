@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { PeriodParams } from "@/lib/period-utils";
 import { LedgerEntriesToolbar } from "@/modules/workspace/ui/LedgerEntriesToolbar";
@@ -50,14 +49,14 @@ describe("LedgerEntriesToolbar", () => {
     expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
   });
 
-  it("renders status summary when statuses are active", () => {
+  it("keeps active status details inside the filter panel", () => {
     render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
 
-    // Status summary should appear
-    expect(screen.getByText(/状态：/)).toBeDefined();
+    expect(screen.queryByText(/状态：/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "筛选 1" })).toBeDefined();
   });
 
-  it("renders preset name in summary when statuses match a known preset", () => {
+  it("does not render preset summaries outside the filter panel", () => {
     render(
       <LedgerEntriesToolbar
         {...defaultProps}
@@ -65,27 +64,17 @@ describe("LedgerEntriesToolbar", () => {
       />
     );
 
-    // Should show the "Needs Attention" preset label
-    expect(screen.getByText(/待处理/)).toBeDefined();
+    expect(screen.queryByText(/待处理/)).not.toBeInTheDocument();
   });
 
-  it("calls onFiltersChange with empty statuses when clear button is clicked", async () => {
-    const onFiltersChange = vi.fn();
-    const user = userEvent.setup();
-
+  it("does not render an external status reset control", () => {
     render(
       <LedgerEntriesToolbar
         {...defaultProps}
         filters={{ statuses: ["completed"] }}
-        onFiltersChange={onFiltersChange}
       />
     );
-
-    // Click the clear (X) button
-    const clearButton = screen.getByRole("button", { name: "全部状态" });
-    await user.click(clearButton);
-
-    expect(onFiltersChange).toHaveBeenCalledWith({ statuses: [] });
+    expect(screen.queryByRole("button", { name: "全部状态" })).not.toBeInTheDocument();
   });
 
   it("passes onApplyPreset to EntryFilterPanel", () => {
@@ -93,14 +82,13 @@ describe("LedgerEntriesToolbar", () => {
 
     render(<LedgerEntriesToolbar {...defaultProps} onApplyPreset={onApplyPreset} />);
 
-    // EntryFilterPanel is rendered (check for more filters button)
-    expect(screen.getByText("更多筛选")).toBeDefined();
+    expect(screen.getByRole("button", { name: "筛选" })).toBeDefined();
   });
 
   it("does not render EntryFilterPanel in selection mode", () => {
     render(<LedgerEntriesToolbar {...defaultProps} isSelectionMode={true} selectedCount={1} />);
 
     // EntryFilterPanel should not be rendered in selection mode
-    expect(screen.queryByText("更多筛选")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "筛选" })).not.toBeInTheDocument();
   });
 });

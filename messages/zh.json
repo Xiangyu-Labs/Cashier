@@ -430,6 +430,7 @@
     "themeDark": "深色模式",
     "uiLanguage": "界面语言",
     "uiLanguageDesc": "设置当前用户使用的 UI 界面语言",
+    "uiLanguageSaveFailed": "界面语言保存失败",
     "uiLanguageAuto": "跟随系统",
     "assistant": "智能助理",
     "aiLanguage": "AI 识别语言",

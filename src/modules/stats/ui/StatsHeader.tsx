@@ -1,13 +1,7 @@
 "use client";
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  type DateRangeType,
-  addPeriod,
-  getDateInTimezone,
-  getDateRange,
-  parseDateString,
-} from "@/lib/date-utils";
+import { type DateRangeType } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
@@ -15,8 +9,8 @@ import { AmountText } from "@/modules/currency/ui";
 interface StatsHeaderProps {
   rangeType: DateRangeType;
   setRangeType: (type: DateRangeType) => void;
-  currentDate: Date;
-  setCurrentDate: (date: Date) => void;
+  periodOffset: number;
+  setPeriodOffset: (offset: number) => void;
   label: string;
   totalExpense: number;
   averageDaily: number;
@@ -25,31 +19,24 @@ interface StatsHeaderProps {
     percent: number;
     amount: number;
   };
-  timeZone?: string;
 }
 
 export function StatsHeader({
   rangeType,
   setRangeType,
-  currentDate,
-  setCurrentDate,
+  periodOffset,
+  setPeriodOffset,
   label,
   totalExpense,
   averageDaily,
   currencySymbol = "CNY",
   trend,
-  timeZone,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
-  const handlePrev = () => setCurrentDate(addPeriod(currentDate, rangeType, -1));
-  const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
-
-  // Check if navigating to next period would exceed today's date
-  const zonedToday = getDateInTimezone(timeZone);
-  const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
-  const { startDate: nextStart } = getDateRange(addPeriod(currentDate, rangeType, 1), rangeType);
-  const canGoNext = nextStart <= today;
+  const handlePrev = () => setPeriodOffset(periodOffset - 1);
+  const handleNext = () => setPeriodOffset(Math.min(0, periodOffset + 1));
+  const canGoNext = periodOffset < 0;
 
   // Trend Logic: Expense Increase = Bad (Red/Danger), Decrease = Good (Green/Primary)
   // But color perception varies. Let's use:
@@ -70,7 +57,6 @@ export function StatsHeader({
             key={type}
             onClick={() => {
               setRangeType(type);
-              setCurrentDate(today);
             }}
             className={cn(
               "flex-1 text-sm py-1.5 rounded-md transition-all font-medium",

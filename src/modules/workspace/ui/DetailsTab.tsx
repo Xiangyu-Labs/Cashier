@@ -5,7 +5,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocuments,
+} from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import {
   useDetailsTabData,
@@ -42,8 +47,6 @@ import {
   previewBatchLedgerEntryDateAction,
 } from "@/modules/ledger/actions";
 import { toast } from "sonner";
-import { FilterSearchControl } from "./FilterSearchControl";
-import { ActiveFilterChips } from "./ActiveFilterChips";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -143,23 +146,24 @@ export function DetailsTab({
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
     ]);
   }, [ledgerId, queryClient]);
 
   const batchUpdate = useMutation({
     mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
       batchUpdateLedgerEntriesAction(ledgerId, selectedIds, data),
-    onSuccess: async () => {
-      await invalidateAfterBatch();
-      toast.success(t("batchUpdated", { count: selectedIds.length }));
+    onSuccess: (result) => {
+      toast.success(t("batchUpdated", { count: result.affectedCount }));
       clearSelection();
     },
     onError: () => toast.error(tCommon("error")),
+    onSettled: invalidateAfterBatch,
   });
   const batchDelete = useMutation({
     mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selectedIds),
-    onSuccess: async (result) => {
-      await invalidateAfterBatch();
+    onSuccess: (result) => {
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
       if (unresolved.length > 0) retainSelection(unresolved);
       else clearSelection();
@@ -168,6 +172,7 @@ export function DetailsTab({
       setDeleteDialogOpen(false);
     },
     onError: () => toast.error(tCommon("deleteFailed")),
+    onSettled: invalidateAfterBatch,
   });
   const previewDate = useMutation({
     mutationFn: () => previewBatchLedgerEntryDateAction(ledgerId, selectedIds),
@@ -179,13 +184,13 @@ export function DetailsTab({
   });
   const updateDates = useMutation({
     mutationFn: () => batchUpdateLedgerEntryDatesAction(ledgerId, selectedIds, selectedDate),
-    onSuccess: async () => {
-      await invalidateAfterBatch();
+    onSuccess: () => {
       toast.success(t("dateUpdated"));
       clearSelection();
       setDateDialogOpen(false);
     },
     onError: () => toast.error(tCommon("error")),
+    onSettled: invalidateAfterBatch,
   });
   const batchPending =
     batchUpdate.isPending ||
@@ -246,20 +251,7 @@ export function DetailsTab({
                 preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
                 showStatus={false}
                 className="flex-1 sm:flex-none"
-              />
-            )}
-            {!isSelectionMode && (
-              <FilterSearchControl
-                value={filters.search}
-                onChange={(search) => onFiltersChange({ ...filters, search })}
-              />
-            )}
-            {!isSelectionMode && (
-              <ActiveFilterChips
-                filters={filters}
-                categories={categories}
-                onChange={onFiltersChange}
-                onReset={onResetFilters}
+                onResetFilters={onResetFilters}
               />
             )}
           </DetailsToolbar>

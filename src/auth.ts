@@ -124,6 +124,7 @@ export const authOptions = {
             image: dbUser.image,
             hasPassword: dbUser.passwordHash != null,
             passwordUpdatedAt: dbUser.passwordUpdatedAt?.toISOString() ?? null,
+            interfaceLanguage: dbUser.interfaceLanguage,
           },
         };
       }
@@ -143,6 +144,7 @@ declare module "next-auth" {
       image?: string | null;
       hasPassword: boolean;
       passwordUpdatedAt: string | null;
+      interfaceLanguage: "auto" | "zh" | "en";
     };
   }
 

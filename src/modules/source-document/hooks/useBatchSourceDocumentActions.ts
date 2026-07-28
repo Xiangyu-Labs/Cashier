@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
+  invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
   invalidateSourceDocumentStreamTotal,
@@ -15,6 +16,7 @@ import {
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import type { BatchActionResult } from "@/lib/batch-ids";
+import type { BatchUpdateSourceDocumentsResultDto } from "@/modules/source-document/contracts";
 
 export function useBatchSourceDocumentActions(
   ledgerId: string,
@@ -52,30 +54,25 @@ export function useBatchSourceDocumentActions(
     },
   });
 
-  const batchUpdateDates = useMutation<void, Error, { ids: string[]; entryDate: string }>({
-    mutationFn: async ({ ids, entryDate }) => {
-      await batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate });
-    },
-    onSuccess: async (_data, { ids }) => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
-      toast.success(tBatch("datesUpdated", { count: ids.length }));
+  const settleDerivedQueries = () => {
+    void queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) });
+  };
+
+  const batchUpdateDates = useMutation<BatchUpdateSourceDocumentsResultDto, Error, { ids: string[]; entryDate: string }>({
+    mutationFn: ({ ids, entryDate }) =>
+      batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
+    onSuccess: (result) => {
+      toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
     },
     onError: () => {
       toast.error(tCommon("error"));
     },
-    onSettled: () => {
-      // Targeted invalidation for derived data
-      queryClient.invalidateQueries({
-        predicate: invalidateLedgerStats(ledgerId),
-      });
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-      });
-      queryClient.invalidateQueries({
-        predicate: invalidateCalendar(ledgerId),
-      });
-    },
+    onSettled: settleDerivedQueries,
   });
 
   const settleBatchResult = async (result: BatchActionResult, successLabel: string) => {
@@ -97,17 +94,14 @@ export function useBatchSourceDocumentActions(
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
     onSuccess: (result) => settleBatchResult(result, tBatch("deleted", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("deleteFailed")),
-    onSettled: () => {
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) });
-      queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) });
-    },
+    onSettled: settleDerivedQueries,
   });
 
   const batchRetry = useMutation<BatchActionResult, Error, string[]>({
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
     onSuccess: (result) => settleBatchResult(result, tBatch("retried", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("error")),
+    onSettled: settleDerivedQueries,
   });
 
   return {

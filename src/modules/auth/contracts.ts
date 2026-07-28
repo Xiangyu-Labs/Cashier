@@ -5,4 +5,11 @@ export interface AuthenticatedUserDto {
   image: string | null;
   hasPassword: boolean;
   passwordUpdatedAt: string | null;
+  interfaceLanguage: InterfaceLanguage;
+}
+
+export type InterfaceLanguage = "auto" | "zh" | "en";
+
+export interface UserPreferences {
+  interfaceLanguage: InterfaceLanguage;
 }

@@ -430,6 +430,7 @@
     "themeDark": "Dark Mode",
     "uiLanguage": "Interface Language",
     "uiLanguageDesc": "Set the UI language for the current user",
+    "uiLanguageSaveFailed": "Failed to save interface language",
     "uiLanguageAuto": "Follow System",
     "assistant": "Smart Assistant",
     "aiLanguage": "AI Recognition Language",

@@ -24,7 +24,10 @@ import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
 import { EmailChangeForm } from "@/modules/auth/ui/EmailChangeForm";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { updateUserPreferencesAction } from "@/modules/auth/actions";
+import type { InterfaceLanguage } from "@/modules/auth/contracts";
+import { toast } from "sonner";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -34,6 +37,7 @@ interface SettingsTabProps {
   userEmail?: string;
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
+  interfaceLanguage?: InterfaceLanguage;
 }
 
 export function SettingsTab({
@@ -43,6 +47,7 @@ export function SettingsTab({
   userEmail,
   hasPassword = false,
   passwordUpdatedAt = null,
+  interfaceLanguage = "auto",
 }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,6 +57,8 @@ export function SettingsTab({
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
   const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
+  const [languagePreference, setLanguagePreference] = useState(interfaceLanguage);
+  const [languagePending, startLanguageTransition] = useTransition();
 
   const queryClient = useQueryClient();
 
@@ -83,7 +90,6 @@ export function SettingsTab({
     updateCategory,
     deleteCategory,
     reorderCategories,
-    categoryCreatedTrigger,
     generatingCategoryIds,
     failedCategoryIds,
     retryCategoryMetadata,
@@ -96,7 +102,7 @@ export function SettingsTab({
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
         <SettingsSection
           title={t("appearanceAndLanguage")}
           description={t("appearanceAndLanguageDesc")}
@@ -122,21 +128,35 @@ export function SettingsTab({
           </SettingsField>
           <SettingsField title={t("uiLanguage")} description={t("uiLanguageDesc")}>
             <select
-              value={locale}
+              value={languagePreference}
               onChange={(e) => {
-                const newLocale = e.target.value;
-                if (newLocale === "auto") {
-                  document.cookie = `NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-                  window.location.reload();
-                  return;
-                }
-                if (newLocale !== locale) {
-                  const queryString = searchParams.toString();
-                  const query = queryString !== "" ? `?${queryString}` : "";
-                  router.push(`${pathname}${query}`, { locale: newLocale as "en-US" | "zh-CN" });
-                }
+                const preference = e.target.value as InterfaceLanguage;
+                startLanguageTransition(async () => {
+                  try {
+                    const saved = await updateUserPreferencesAction({
+                      interfaceLanguage: preference,
+                    });
+                    setLanguagePreference(saved.interfaceLanguage);
+                    const queryString = searchParams.toString();
+                    const query = queryString !== "" ? `?${queryString}` : "";
+                    if (saved.interfaceLanguage === "auto") {
+                      document.cookie =
+                        "NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+                      window.location.assign(`${pathname}${query}`);
+                      return;
+                    }
+                    document.cookie = `NEXT_LOCALE=${saved.interfaceLanguage}; path=/; max-age=31536000; samesite=lax`;
+                    if (saved.interfaceLanguage === locale) router.refresh();
+                    else
+                      router.push(`${pathname}${query}`, {
+                        locale: saved.interfaceLanguage,
+                      });
+                  } catch {
+                    toast.error(t("uiLanguageSaveFailed"));
+                  }
+                });
               }}
-              disabled={isPending}
+              disabled={isPending || languagePending}
               aria-label={t("uiLanguage")}
               className="rounded-md border border-border bg-bg px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             >
@@ -203,15 +223,15 @@ export function SettingsTab({
             <CategorySection
               categories={categories}
               uncategorizedCount={uncategorizedCount}
-              onCreateCategory={(name) => createCategory.mutate({ name })}
+              onCreateCategory={(name) => createCategory.mutateAsync({ name })}
               onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
               onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
               onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
-              onCategoryCreated={categoryCreatedTrigger}
               generatingCategoryIds={generatingCategoryIds}
               failedCategoryIds={failedCategoryIds}
               onRetryMetadata={retryCategoryMetadata}
               isReordering={reorderCategories.isPending}
+              isCreating={createCategory.isPending}
             />
           )}
         </SettingsSection>

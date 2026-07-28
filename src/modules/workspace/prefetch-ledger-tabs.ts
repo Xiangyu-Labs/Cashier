@@ -7,6 +7,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
 import { getDetailsInitialQueryState, getStatsInitialQueryState } from "./initial-query-state";
+import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 type LedgerEntriesPage = Awaited<
   ReturnType<(typeof import("@/modules/ledger/actions"))["getLedgerEntriesAction"]>
@@ -23,7 +24,8 @@ export async function prefetchDetailsTabQuery(
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const { startDateStr, endDateStr, filterKey } = getDetailsInitialQueryState(
     periodParams,
-    advancedFilters
+    advancedFilters,
+    ledger?.metadata?.settings?.timeZone ?? undefined
   );
 
   await Promise.all([
@@ -63,7 +65,11 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
   const { getEnhancedStats } = await import("@/modules/stats/actions");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const state = getStatsInitialQueryState(new Date());
+  const fixedTimeZone = ledger?.metadata?.settings?.timeZone ?? undefined;
+  const zonedToday = getDateInTimezone(fixedTimeZone);
+  const state = getStatsInitialQueryState(
+    zonedToday != null ? parseDateString(zonedToday) : new Date()
+  );
 
   await queryClient.prefetchQuery({
     queryKey: queryKeys.enhancedStats(ledgerId, {

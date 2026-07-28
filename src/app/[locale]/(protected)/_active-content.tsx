@@ -6,6 +6,7 @@ import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-st
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
+import type { InterfaceLanguage } from "@/modules/auth/contracts";
 
 interface ActiveContentProps {
   ledgerId: string;
@@ -16,6 +17,7 @@ interface ActiveContentProps {
   userEmail?: string;
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
+  interfaceLanguage?: InterfaceLanguage;
   locale: string;
 }
 
@@ -28,6 +30,7 @@ export async function ActiveContent({
   userEmail,
   hasPassword,
   passwordUpdatedAt,
+  interfaceLanguage,
   locale,
 }: ActiveContentProps) {
   const pageData = await getLedgerPageBootstrap({
@@ -58,6 +61,7 @@ export async function ActiveContent({
         {...(userEmail !== undefined ? { userEmail } : {})}
         {...(hasPassword !== undefined ? { hasPassword } : {})}
         {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+        {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
       />
     </HydrationBoundary>
   );

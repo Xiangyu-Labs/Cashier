@@ -448,6 +448,7 @@ export interface UserAccountContract {
   image: string | null;
   passwordHash: string | null;
   passwordUpdatedAt: Date | null;
+  interfaceLanguage: "auto" | "zh" | "en";
 }
 
 export interface UserAccountPort {

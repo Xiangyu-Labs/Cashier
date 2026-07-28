@@ -37,7 +37,6 @@ interface LedgerEntriesTabProps {
   advancedFilters?: LedgerAdvancedFilters;
   collapseEntriesDefault?: boolean;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
-  statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
   onResetFilters: () => void;
   timeZone?: string;
 }
@@ -51,7 +50,6 @@ export function LedgerEntriesTab({
   advancedFilters,
   collapseEntriesDefault = false,
   onApplyPreset,
-  statusSummaryRef,
   onResetFilters,
   timeZone,
 }: LedgerEntriesTabProps) {
@@ -231,7 +229,6 @@ export function LedgerEntriesTab({
           filteredTotalLabel={tFilter("filteredTotal")}
           mainCurrency={mainCurrency}
           filteredTotal={filteredTotal}
-          statusSummaryRef={statusSummaryRef}
           onResetFilters={onResetFilters}
           {...(onApplyPreset != null ? { onApplyPreset } : {})}
         />

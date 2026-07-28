@@ -46,9 +46,10 @@ interface EntryFilterPanelProps {
   showStatus?: boolean;
   className?: string;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
+  onResetFilters?: () => void;
 }
 
-const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "week", "month", "custom"];
+const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "all", "week", "month", "custom"];
 
 const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] = [
   { status: "processing", labelKey: "statusProcessing" },
@@ -83,6 +84,7 @@ export function EntryFilterPanel({
   showStatus = true,
   className,
   onApplyPreset,
+  onResetFilters,
 }: EntryFilterPanelProps) {
   const t = useTranslations("EntryFilterPanel");
   const tDateRange = useTranslations("DateRangeFilter");
@@ -103,8 +105,10 @@ export function EntryFilterPanel({
     }
   };
 
-  // Count advanced filters (category, currency, amount)
-  const advancedFilterCount = [
+  const activeFilterCount = [
+    periodParams?.period != null && periodParams.period !== "thisMonth",
+    filters.search != null && filters.search.trim() !== "",
+    showStatus && (filters.statuses?.length ?? 0) > 0,
     showCategory && filters.categoryId != null && filters.categoryId !== "",
     showCurrency && filters.currency != null && filters.currency !== "",
     filters.minAmount !== undefined && filters.minAmount !== null,
@@ -147,7 +151,10 @@ export function EntryFilterPanel({
   const handleDatePreset = (preset: PeriodPreset) => {
     let newFilters = { ...tempFilters };
 
-    if (preset !== "custom") {
+    if (preset === "all") {
+      delete newFilters.startDate;
+      delete newFilters.endDate;
+    } else if (preset !== "custom") {
       const end = new Date();
       const start = new Date();
 
@@ -199,7 +206,11 @@ export function EntryFilterPanel({
   };
 
   const handleReset = () => {
-    // Use thisMonth logic instead of billing period
+    if (onResetFilters != null) {
+      onResetFilters();
+      setOpen(false);
+      return;
+    }
     const now = new Date();
     const defaultFilters: EntryFilters = {
       startDate: new Date(now.getFullYear(), now.getMonth(), 1),
@@ -209,6 +220,7 @@ export function EntryFilterPanel({
       minAmount: null,
       maxAmount: null,
       statuses: [],
+      search: null,
     };
     setTempFilters(defaultFilters);
     setTempPeriod("thisMonth");
@@ -250,14 +262,14 @@ export function EntryFilterPanel({
             size="sm"
             className={cn(
               "h-7 px-2.5 text-xs gap-1.5",
-              advancedFilterCount > 0 && "border-primary/50 text-primary"
+              activeFilterCount > 0 && "border-primary/50 text-primary"
             )}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("moreFilters")}</span>
-            {advancedFilterCount > 0 && (
+            <span>{t("filter")}</span>
+            {activeFilterCount > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-medium">
-                {advancedFilterCount}
+                {activeFilterCount}
               </span>
             )}
             <ChevronDown className="h-3 w-3 opacity-50" />
@@ -270,16 +282,32 @@ export function EntryFilterPanel({
           className="max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none w-[min(420px,calc(100vw-2rem))] max-h-[calc(100svh-8rem)] overflow-y-auto p-0 pb-[env(safe-area-inset-bottom)] sm:w-[420px]"
         >
           <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground">{t("search")}</div>
+              <Input
+                type="search"
+                value={tempFilters.search ?? ""}
+                onChange={(event) =>
+                  setTempFilters((previous) => ({
+                    ...previous,
+                    search: event.target.value === "" ? null : event.target.value,
+                  }))
+                }
+                placeholder={t("searchPlaceholder")}
+                className="h-9 text-base sm:text-sm"
+              />
+            </div>
             {/* Custom Date Range Section */}
             <div className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                 <CalendarIcon className="h-3 w-3" />
                 {t("dateRange")}
               </div>
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
                 {(
                   [
                     { preset: "thisMonth", label: tDateRange("thisMonth") },
+                    { preset: "all", label: t("allTime") },
                     { preset: "week", label: tDateRange("pastWeek") },
                     { preset: "month", label: tDateRange("pastMonth") },
                     { preset: "custom", label: tDateRange("customRange") },
@@ -335,7 +363,7 @@ export function EntryFilterPanel({
                     }))
                   }
                 >
-                  <SelectTrigger className="w-full h-8 text-sm">
+                  <SelectTrigger className="w-full h-9 text-base sm:text-sm">
                     <SelectValue placeholder={t("allCategories")} />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4}>
@@ -365,7 +393,7 @@ export function EntryFilterPanel({
                     }))
                   }
                 >
-                  <SelectTrigger className="w-full h-8 text-sm">
+                  <SelectTrigger className="w-full h-9 text-base sm:text-sm">
                     <SelectValue placeholder={t("allCurrencies")} />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4}>
@@ -394,7 +422,7 @@ export function EntryFilterPanel({
                       minAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
-                  className="flex-1 h-8 text-sm"
+                  className="min-w-0 flex-1 h-9 text-base sm:text-sm"
                   min={0}
                 />
                 <span className="text-muted-foreground text-sm">-</span>
@@ -408,7 +436,7 @@ export function EntryFilterPanel({
                       maxAmount: e.target.value !== "" ? Number(e.target.value) : null,
                     }))
                   }
-                  className="flex-1 h-8 text-sm"
+                  className="min-w-0 flex-1 h-9 text-base sm:text-sm"
                   min={0}
                 />
               </div>

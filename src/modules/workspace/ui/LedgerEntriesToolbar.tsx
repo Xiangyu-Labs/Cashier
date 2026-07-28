@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { ArrowLeft, CheckSquare, RefreshCw, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, CheckSquare, RefreshCw, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,16 +8,10 @@ import type { PeriodParams } from "@/lib/period-utils";
 import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
-import {
-  type StreamStatusPreset,
-  STREAM_STATUS_PRESET_VALUES,
-} from "@/modules/workspace/ledger-filter-state";
+import { type StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FilterSearchControl } from "./FilterSearchControl";
-import { ActiveFilterChips } from "./ActiveFilterChips";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -39,23 +33,7 @@ interface LedgerEntriesToolbarProps {
   mainCurrency: string;
   filteredTotal: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
-  statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
   onResetFilters?: () => void;
-}
-
-function detectActivePreset(
-  statuses: SourceDocumentStatusType[] | undefined
-): StreamStatusPreset | null {
-  if (statuses == null || statuses.length === 0) return null;
-  for (const [preset, values] of Object.entries(STREAM_STATUS_PRESET_VALUES) as [
-    StreamStatusPreset,
-    SourceDocumentStatusType[],
-  ][]) {
-    if (values.length === statuses.length && values.every((v) => statuses.includes(v))) {
-      return preset;
-    }
-  }
-  return null;
 }
 
 export function LedgerEntriesToolbar({
@@ -78,13 +56,11 @@ export function LedgerEntriesToolbar({
   mainCurrency,
   filteredTotal,
   onApplyPreset,
-  statusSummaryRef,
   onResetFilters,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
-  const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -98,15 +74,6 @@ export function LedgerEntriesToolbar({
   const handleUpdateDates = () => {
     if (!onUpdateDates) return;
     return onUpdateDates(formatDateTimeForApi(selectedDate));
-  };
-
-  const activeStatusPreset = useMemo(
-    () => detectActivePreset(filters.statuses),
-    [filters.statuses]
-  );
-
-  const handleClearStatuses = () => {
-    onFiltersChange({ ...filters, statuses: [] });
   };
 
   return (
@@ -199,37 +166,7 @@ export function LedgerEntriesToolbar({
           showCurrency={false}
           className={cn("w-auto", showBatchActions && "sm:ml-auto")}
           {...(onApplyPreset != null ? { onApplyPreset } : {})}
-        />
-      )}
-
-      {!isSelectionMode && filters.statuses != null && filters.statuses.length > 0 && (
-        <span
-          ref={statusSummaryRef}
-          tabIndex={-1}
-          className="inline-flex min-h-7 items-center gap-1 rounded-md bg-surface2 px-2 text-xs text-muted-foreground outline-none"
-        >
-          {activeStatusPreset != null
-            ? tFilter("statusSummary", {
-                label: tFilter(
-                  activeStatusPreset === "needs_attention" ? "needsAttention" : "inProgress"
-                ),
-              })
-            : tFilter("statusSummary", { label: `${filters.statuses.length}` })}
-          <button
-            type="button"
-            onClick={handleClearStatuses}
-            className="inline-flex items-center hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-            aria-label={tFilter("allStatuses")}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
-      )}
-
-      {!isSelectionMode && (
-        <FilterSearchControl
-          value={filters.search}
-          onChange={(search) => onFiltersChange({ ...filters, search })}
+          {...(onResetFilters != null ? { onResetFilters } : {})}
         />
       )}
 
@@ -237,13 +174,6 @@ export function LedgerEntriesToolbar({
         <AmountText variant="summary" className="ml-auto">
           {filteredTotalLabel} {formatCurrencyAmount(filteredTotal, mainCurrency, locale)}
         </AmountText>
-      )}
-      {!isSelectionMode && (
-        <ActiveFilterChips
-          filters={filters}
-          onChange={onFiltersChange}
-          onReset={onResetFilters ?? (() => {})}
-        />
       )}
     </div>
   );
