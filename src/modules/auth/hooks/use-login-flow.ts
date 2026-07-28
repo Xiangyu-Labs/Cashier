@@ -13,6 +13,11 @@ import { OTP_LENGTH } from "@/modules/auth/constants";
 type LoginStep = "email" | "otp";
 export type LoginMode = "password" | "otp";
 
+interface LoginFlowOptions {
+  initialMode?: LoginMode;
+  isDevAuthAvailable?: boolean;
+}
+
 function getSignInErrorMessage(
   result: SignInResponse | undefined,
   t: (key: string, values?: Record<string, string | number>) => string
@@ -55,13 +60,13 @@ function getSendOTPErrorMessage(
 
 export function useLoginFlow(
   t: (key: string, values?: Record<string, string | number>) => string,
-  isDevAuthAvailable = false
+  { initialMode = "password", isDevAuthAvailable = false }: LoginFlowOptions = {}
 ) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
-  const [mode, setModeState] = useState<LoginMode>("password");
+  const [mode, setModeState] = useState<LoginMode>(initialMode);
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,13 +95,27 @@ export function useLoginFlow(
     return false;
   };
 
-  const handlePasswordLogin = async (event: React.FormEvent) => {
+  const handlePasswordLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (email === "" || password === "") return;
+    const formData = new FormData(event.currentTarget);
+    const submittedEmail = formData.get("email");
+    const submittedPassword = formData.get("password");
+    if (typeof submittedEmail !== "string" || typeof submittedPassword !== "string") return;
+    if (submittedEmail === "" || submittedPassword === "") return;
+
+    setEmail(submittedEmail);
+    setPassword(submittedPassword);
     setIsLoading(true);
     setError(null);
     try {
-      finishSignIn(await signIn("password", { email, password, redirect: false, callbackUrl }));
+      finishSignIn(
+        await signIn("password", {
+          email: submittedEmail,
+          password: submittedPassword,
+          redirect: false,
+          callbackUrl,
+        })
+      );
     } catch {
       setError(t("unexpectedError"));
       setIsLoading(false);

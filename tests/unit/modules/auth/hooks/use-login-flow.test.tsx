@@ -33,6 +33,24 @@ import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
 const t = (key: string) => key;
 const submitEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
 
+function createPasswordSubmitEvent(
+  email: string,
+  password: string
+): React.FormEvent<HTMLFormElement> {
+  const form = document.createElement("form");
+  const emailInput = document.createElement("input");
+  emailInput.name = "email";
+  emailInput.value = email;
+  const passwordInput = document.createElement("input");
+  passwordInput.name = "password";
+  passwordInput.value = password;
+  form.append(emailInput, passwordInput);
+  return {
+    preventDefault: vi.fn(),
+    currentTarget: form,
+  } as unknown as React.FormEvent<HTMLFormElement>;
+}
+
 describe("useLoginFlow OTP sending", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,5 +88,31 @@ describe("useLoginFlow OTP sending", () => {
     expect(result.current.expiresAt).toBe(1_800_000_000);
     expect(result.current.canResendAt).toBe(1_799_999_760);
     expect(result.current.error).toBeNull();
+  });
+
+  it("starts in the requested login mode", () => {
+    const { result } = renderHook(() => useLoginFlow(t, { initialMode: "otp" }));
+
+    expect(result.current.mode).toBe("otp");
+  });
+
+  it("submits browser-filled password fields even when React state is empty", async () => {
+    signInMock.mockResolvedValue({ ok: false, error: "CredentialsSignin" });
+    const { result } = renderHook(() => useLoginFlow(t));
+
+    await act(() =>
+      result.current.handlePasswordLogin(
+        createPasswordSubmitEvent("autofill@example.com", "autofilled-password")
+      )
+    );
+
+    expect(signInMock).toHaveBeenCalledWith("password", {
+      email: "autofill@example.com",
+      password: "autofilled-password",
+      redirect: false,
+      callbackUrl: "/",
+    });
+    expect(result.current.email).toBe("autofill@example.com");
+    expect(result.current.password).toBe("autofilled-password");
   });
 });

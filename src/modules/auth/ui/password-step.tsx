@@ -13,7 +13,7 @@ interface PasswordStepProps {
   error: string | null;
   onEmailChange: (email: string) => void;
   onPasswordChange: (password: string) => void;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }
 
 export function PasswordStep(props: PasswordStepProps) {
@@ -28,6 +28,7 @@ export function PasswordStep(props: PasswordStepProps) {
         </label>
         <Input
           id="email"
+          name="email"
           type="email"
           value={props.email}
           onChange={(event) => props.onEmailChange(event.target.value)}
@@ -46,6 +47,7 @@ export function PasswordStep(props: PasswordStepProps) {
         <div className="relative">
           <Input
             id="password"
+            name="password"
             type={visible ? "text" : "password"}
             value={props.password}
             onChange={(event) => props.onPasswordChange(event.target.value)}
@@ -70,11 +72,7 @@ export function PasswordStep(props: PasswordStepProps) {
           {props.error}
         </p>
       ) : null}
-      <Button
-        type="submit"
-        className="h-11 w-full"
-        disabled={props.isLoading || props.email === "" || props.password === ""}
-      >
+      <Button type="submit" className="h-11 w-full" disabled={props.isLoading}>
         {props.isLoading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (

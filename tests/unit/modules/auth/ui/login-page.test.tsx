@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const mockUseLoginFlow = vi.hoisted(() =>
-  vi.fn(() => ({
+  vi.fn((_t, options?: { initialMode?: "password" | "otp"; isDevAuthAvailable?: boolean }) => ({
     callbackUrl: "/",
-    mode: "password",
+    mode: options?.initialMode ?? "password",
     step: "email",
     email: "",
     password: "",
@@ -13,7 +13,7 @@ const mockUseLoginFlow = vi.hoisted(() =>
     error: null,
     expiresAt: null,
     canResendAt: null,
-    isDevAuthAvailable: false,
+    isDevAuthAvailable: options?.isDevAuthAvailable ?? false,
     setEmail: vi.fn(),
     setPassword: vi.fn(),
     setOtp: vi.fn(),
@@ -39,7 +39,7 @@ describe("AuthLoginPage", () => {
 
     expect(screen.getByLabelText("邮箱")).toBeInTheDocument();
     expect(screen.getByLabelText("密码")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "登录" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "邮箱验证码" })).not.toBeInTheDocument();
     expect(screen.getByText("密码登录")).toBeInTheDocument();
   });
@@ -50,6 +50,11 @@ describe("AuthLoginPage", () => {
 
     expect(screen.getByRole("tab", { name: "密码" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "邮箱验证码" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "邮箱验证码" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByText("邮箱登录")).toBeInTheDocument();
   });
 
   it("renders the development sign-in action only when enabled", async () => {
