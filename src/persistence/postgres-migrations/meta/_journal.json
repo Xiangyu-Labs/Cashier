@@ -64,6 +64,13 @@
       "when": 1786300000000,
       "tag": "0008_fair_shard",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786377600000,
+      "tag": "0009_email_change_challenges",
+      "breakpoints": true
     }
   ]
 }

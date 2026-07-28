@@ -18,8 +18,8 @@ export function SettingsSkeleton() {
       </header>
 
       <main className="relative z-content w-full max-w-md md:max-w-3xl lg:max-w-5xl mx-auto p-4 space-y-6">
-        {/* Settings sections skeleton - 4 sections: General, Ledger, AI, Account */}
-        {[1, 2, 3, 4].map((sectionIndex) => (
+        {/* Settings sections skeleton - 5 sections matching SettingsTab */}
+        {[1, 2, 3, 4, 5].map((sectionIndex) => (
           <div key={sectionIndex} className="space-y-4">
             {/* Section title */}
             <div className="h-5 w-28 bg-surface2 rounded animate-pulse" />

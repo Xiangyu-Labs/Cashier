@@ -1,7 +1,7 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Ledger } from "@/modules/ledger/contracts";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -23,6 +23,19 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AnimatePresence, motion } from "framer-motion";
+import { CheckSquare, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSelection } from "@/hooks/use-selection";
+import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
+import {
+  batchDeleteLedgerEntriesAction,
+  batchUpdateLedgerEntriesAction,
+  batchUpdateLedgerEntryDatesAction,
+  previewBatchLedgerEntryDateAction,
+} from "@/modules/ledger/actions";
+import { toast } from "sonner";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -73,6 +86,24 @@ export function DetailsTab({
 
   // Grouping
   const { groupedItems } = useDetailsTabGrouping(entries);
+  const {
+    selectedIds,
+    isSelectionMode,
+    isAllSelected,
+    toggleSelectionMode,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    retainSelection,
+  } = useSelection({ allIds: entries.map((entry) => entry.id) });
+  useEffect(() => {
+    document.documentElement.dataset.batchSelection = String(isSelectionMode);
+    return () => { delete document.documentElement.dataset.batchSelection; };
+  }, [isSelectionMode]);
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateImpact, setDateImpact] = useState<Awaited<ReturnType<typeof previewBatchLedgerEntryDateAction>> | null>(null);
 
   // Filters
   const { filters } = useDetailsTabFilters({
@@ -87,6 +118,55 @@ export function DetailsTab({
     selectedLedgerEntry,
     setSelectedLedgerEntry,
   });
+
+  const invalidateAfterBatch = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
+      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+    ]);
+  }, [ledgerId, queryClient]);
+
+  const batchUpdate = useMutation({
+    mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
+      batchUpdateLedgerEntriesAction(ledgerId, selectedIds, data),
+    onSuccess: async () => {
+      await invalidateAfterBatch();
+      toast.success(t("batchUpdated", { count: selectedIds.length }));
+      clearSelection();
+    },
+    onError: () => toast.error(tCommon("error")),
+  });
+  const batchDelete = useMutation({
+    mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selectedIds),
+    onSuccess: async (result) => {
+      await invalidateAfterBatch();
+      const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
+      if (unresolved.length > 0) retainSelection(unresolved); else clearSelection();
+      toast.success(t("batchDeleted", { count: result.succeededIds.length }));
+      if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
+      setDeleteDialogOpen(false);
+    },
+    onError: () => toast.error(tCommon("deleteFailed")),
+  });
+  const previewDate = useMutation({
+    mutationFn: () => previewBatchLedgerEntryDateAction(ledgerId, selectedIds),
+    onSuccess: (impact) => {
+      setDateImpact(impact);
+      setDateDialogOpen(true);
+    },
+    onError: () => toast.error(tCommon("error")),
+  });
+  const updateDates = useMutation({
+    mutationFn: () => batchUpdateLedgerEntryDatesAction(ledgerId, selectedIds, selectedDate),
+    onSuccess: async () => {
+      await invalidateAfterBatch();
+      toast.success(t("dateUpdated"));
+      clearSelection();
+      setDateDialogOpen(false);
+    },
+    onError: () => toast.error(tCommon("error")),
+  });
+  const batchPending = batchUpdate.isPending || batchDelete.isPending || previewDate.isPending || updateDates.isPending;
 
   // Infinite scroll
   const sentinelRef = useInfiniteScroll({
@@ -107,22 +187,43 @@ export function DetailsTab({
     <PullToRefresh
       onRefresh={handleRefresh}
       header={
-        <DetailsToolbar
-          totalLabel={formatCurrencyAmount(
-            Number(monthStats.mainTotal),
-            monthStats.mainCurrency,
-            locale
+        <>
+          <DetailsToolbar
+            {...(!isSelectionMode ? { totalLabel: formatCurrencyAmount(Number(monthStats.mainTotal), monthStats.mainCurrency, locale) } : {})}
+          >
+            <Button variant="ghost" size="icon" onClick={toggleSelectionMode} className="h-8 w-8" aria-label={isSelectionMode ? t("cancelSelect") : t("select")}>
+              {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+            </Button>
+            {!isSelectionMode && (
+              <EntryFilterPanel
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+                periodParams={periodParams}
+                categories={categories}
+                preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+                className="flex-1 sm:flex-none"
+              />
+            )}
+          </DetailsToolbar>
+          {isSelectionMode && (
+            <LedgerEntriesBatchActionToolbar
+              variant="inline"
+              selectedCount={selectedIds.length}
+              totalCount={entries.length}
+              isAllSelected={isAllSelected}
+              hasMoreData={hasNextPage}
+              onSelectAll={selectAll}
+              onClearSelection={clearSelection}
+              categories={categories}
+              preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+              onChangeCategory={async (categoryId) => { await batchUpdate.mutateAsync({ categoryId }); }}
+              onChangeCurrency={async (currency) => { await batchUpdate.mutateAsync({ currency }); }}
+              onChangeDate={() => previewDate.mutate()}
+              onDelete={() => setDeleteDialogOpen(true)}
+              isProcessing={batchPending}
+            />
           )}
-        >
-          <EntryFilterPanel
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-            periodParams={periodParams}
-            categories={categories}
-            preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
-            className="flex-1 sm:flex-none"
-          />
-        </DetailsToolbar>
+        </>
       }
     >
       <div className="space-y-4">
@@ -155,6 +256,9 @@ export function DetailsTab({
                           onView={() => {
                             handleViewEntry(entry);
                           }}
+                          selectionMode={isSelectionMode}
+                          isSelected={selectedIds.includes(entry.id)}
+                          onToggleSelect={() => toggleSelection(entry.id)}
                         />
                       </motion.div>
                     ))}
@@ -218,6 +322,35 @@ export function DetailsTab({
               : {})}
           />
         )}
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title={t("deleteSelectedTitle")}
+          description={t("deleteSelectedDescription", { count: selectedIds.length })}
+          variant="destructive"
+          confirmLabel={tCommon("delete")}
+          onConfirm={async () => { await batchDelete.mutateAsync(); }}
+        />
+        <Dialog open={dateDialogOpen} onOpenChange={(open) => !updateDates.isPending && setDateDialogOpen(open)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t("changeDateTitle")}</DialogTitle></DialogHeader>
+            {dateImpact != null && (
+              <p className="text-sm text-muted-foreground">
+                {t("changeDateImpact", {
+                  selected: dateImpact.selectedEntryCount,
+                  documents: dateImpact.sourceDocumentCount,
+                  affected: dateImpact.affectedEntryCount,
+                })}
+              </p>
+            )}
+            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-11 rounded-md border border-border bg-bg px-3" />
+            <DialogFooter>
+              <Button variant="outline" disabled={updateDates.isPending} onClick={() => setDateDialogOpen(false)}>{tCommon("cancel")}</Button>
+              <Button disabled={updateDates.isPending || selectedDate === ""} onClick={() => updateDates.mutate()}>{tCommon("confirm")}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </PullToRefresh>
   );

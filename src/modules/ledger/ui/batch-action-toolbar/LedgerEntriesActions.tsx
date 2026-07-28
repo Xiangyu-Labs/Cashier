@@ -1,4 +1,4 @@
-import { ChevronDown, DollarSign, Loader2, Tag } from "lucide-react";
+import { Calendar, ChevronDown, DollarSign, Loader2, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ interface LedgerEntriesActionsProps {
   isChangingCurrency: boolean;
   onChangeCategory: (categoryId: string | null) => void;
   onChangeCurrency: (currency: string) => void;
+  onChangeDate?: () => void;
+  onDelete?: () => void;
 }
 
 export function LedgerEntriesActions({
@@ -31,6 +33,8 @@ export function LedgerEntriesActions({
   isChangingCurrency,
   onChangeCategory,
   onChangeCurrency,
+  onChangeDate,
+  onDelete,
 }: LedgerEntriesActionsProps) {
   const t = useTranslations("BatchActions");
 
@@ -78,6 +82,17 @@ export function LedgerEntriesActions({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {onChangeDate != null && (
+        <Button variant="outline" size="sm" disabled={isProcessing} onClick={onChangeDate} className="flex-1 h-8 text-xs sm:h-9">
+          <Calendar className="mr-1 h-3.5 w-3.5" />{t("setDateShort")}
+        </Button>
+      )}
+      {onDelete != null && (
+        <Button variant="destructive" size="sm" disabled={isProcessing} onClick={onDelete} className="h-8 px-2 sm:h-9">
+          <Trash2 className="h-3.5 w-3.5" /><span className="sr-only">{t("delete")}</span>
+        </Button>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

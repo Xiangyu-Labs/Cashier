@@ -23,6 +23,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
+import { EmailChangeForm } from "@/modules/auth/ui/EmailChangeForm";
+import { useState } from "react";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -49,6 +51,7 @@ export function SettingsTab({
   const ta = useTranslations("Settings.Account");
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
+  const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
 
   const queryClient = useQueryClient();
 
@@ -82,6 +85,9 @@ export function SettingsTab({
     deleteCategory,
     reorderCategories,
     categoryCreatedTrigger,
+    generatingCategoryIds,
+    failedCategoryIds,
+    retryCategoryMetadata,
   } = useCategoryMutations(ledgerId, categories);
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
@@ -172,6 +178,10 @@ export function SettingsTab({
               onDeleteCategory={(id) => deleteCategory.mutate(id)}
               onReorderCategories={(ids) => reorderCategories.mutate(ids)}
               onCategoryCreated={categoryCreatedTrigger}
+              generatingCategoryIds={generatingCategoryIds}
+              failedCategoryIds={failedCategoryIds}
+              onRetryMetadata={retryCategoryMetadata}
+              isReordering={reorderCategories.isPending}
             />
           )}
         </SettingsSection>
@@ -220,7 +230,7 @@ export function SettingsTab({
 
         <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
           <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-            <span className="text-sm text-muted-foreground">{userEmail ?? ""}</span>
+            <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
           </SettingsField>
           <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
             <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />

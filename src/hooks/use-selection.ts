@@ -18,6 +18,7 @@ interface UseSelectionReturn {
   setSelectionMode: (value: boolean) => void;
   toggleSelection: (id: string) => void;
   selectAll: () => void;
+  retainSelection: (ids: string[]) => void;
 }
 
 export function useSelection({ allIds }: UseSelectionOptions): UseSelectionReturn {
@@ -71,6 +72,10 @@ export function useSelection({ allIds }: UseSelectionOptions): UseSelectionRetur
     setSelectedIds([...allIds]);
   }, [allIds]);
 
+  const retainSelection = useCallback((ids: string[]) => {
+    setSelectedIds([...new Set(ids)]);
+  }, []);
+
   return {
     selectedIds,
     isSelectionMode,
@@ -84,5 +89,6 @@ export function useSelection({ allIds }: UseSelectionOptions): UseSelectionRetur
     setSelectionMode,
     toggleSelection,
     selectAll,
+    retainSelection,
   };
 }

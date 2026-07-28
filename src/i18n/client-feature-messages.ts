@@ -44,6 +44,7 @@ export const FEATURE_MESSAGES = {
   ] as readonly string[],
   /** Details tab — loaded lazily when the tab mounts */
   details: [
+    "BatchActions",
     "Calendar",
     "Common",
     "DateFilter",

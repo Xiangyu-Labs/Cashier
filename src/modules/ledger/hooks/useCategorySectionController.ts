@@ -17,6 +17,20 @@ interface UseCategorySectionControllerParams {
   onCreateCategory: (name: string) => void;
   onReorderCategories: (ids: string[]) => void;
   onCategoryCreated?: () => void;
+  isReordering?: boolean;
+}
+
+export function resolveCategoryOrder(
+  categories: EntryCategory[],
+  preview: EntryCategory[] | null,
+  activeId: UniqueIdentifier,
+  overId: UniqueIdentifier
+): string[] | null {
+  const ordered = preview ?? categories;
+  const oldIndex = ordered.findIndex((category) => category.id === activeId);
+  const newIndex = ordered.findIndex((category) => category.id === overId);
+  if (oldIndex < 0 || newIndex < 0) return null;
+  return (oldIndex === newIndex ? ordered : arrayMove(ordered, oldIndex, newIndex)).map((category) => category.id);
 }
 
 export function useCategorySectionController({
@@ -24,12 +38,13 @@ export function useCategorySectionController({
   onCreateCategory,
   onReorderCategories,
   onCategoryCreated,
+  isReordering = false,
 }: UseCategorySectionControllerParams) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [draggedCategories, setDraggedCategories] = useState<EntryCategory[] | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -48,19 +63,19 @@ export function useCategorySectionController({
   }, [onCategoryCreated]);
 
   const handleDragStart = () => {
+    if (isReordering) return;
     setDraggedCategories([...categories]);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const preview = draggedCategories;
     setDraggedCategories(null);
 
-    if (over == null || active.id === over.id) return;
+    if (over == null || isReordering) return;
 
-    const oldIndex = categories.findIndex((category) => category.id === active.id);
-    const newIndex = categories.findIndex((category) => category.id === over.id);
-    const reordered = arrayMove(categories, oldIndex, newIndex);
-    onReorderCategories(reordered.map((category) => category.id));
+    const order = resolveCategoryOrder(categories, preview, active.id, over.id);
+    if (order != null) onReorderCategories(order);
   };
 
   const handleDragOver = (event: {
@@ -69,10 +84,11 @@ export function useCategorySectionController({
   }) => {
     const { active, over } = event;
 
-    if (over == null || active.id === over.id || draggedCategories == null) return;
+    if (over == null || active.id === over.id || draggedCategories == null || isReordering) return;
 
     const oldIndex = draggedCategories.findIndex((category) => category.id === active.id);
     const newIndex = draggedCategories.findIndex((category) => category.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
     setDraggedCategories(arrayMove(draggedCategories, oldIndex, newIndex));
   };
 

@@ -7,6 +7,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import {
   batchUpdateSourceDocumentsInputSchema,
+  sourceDocumentIdsSchema,
   updateSourceDocumentInputSchema,
   type BatchUpdateSourceDocumentsInput,
   type UpdateSourceDocumentInput,
@@ -90,10 +91,11 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
     sourceDocumentIds: string[],
     data: BatchUpdateSourceDocumentsInput
   ): Promise<BatchUpdateSourceDocumentsResultDto> => {
+    const validatedIds = sourceDocumentIdsSchema.parse(sourceDocumentIds);
     const validated = batchUpdateSourceDocumentsInputSchema.parse(data);
     return batchUpdateSourceDocuments({
       ledgerId,
-      sourceDocumentIds,
+      sourceDocumentIds: validatedIds,
       data: validated,
     });
   }

@@ -78,7 +78,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onUpdateSourceDoc,
   onUpdateEntry,
   onBatchUpdate,
-  onDeleteEntry: _onDeleteEntry,
+  onDeleteEntry,
   onDelete,
   onAcceptCandidate,
   onAbandonCandidate,
@@ -111,8 +111,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     handleSelectAll: handleSelectAllEntries,
     toggleSelectionMode: handleToggleSelectionMode,
     clearSelection,
+    retainSelection,
   } = useSelection({ allIds: ledgerEntries.map((e) => e.id) });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
 
@@ -195,6 +197,20 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleBatchDelete = async () => {
+    const failed: string[] = [];
+    setIsSaving(true);
+    try {
+      for (const id of selectedIds) {
+        try { await onDeleteEntry(id); } catch { failed.push(id); }
+      }
+      if (failed.length === 0) clearSelection(); else retainSelection(failed);
+      toast.success(t("batchDeleteSuccess", { count: selectedIds.length - failed.length }));
+      if (failed.length > 0) toast.error(t("batchDeletePartial", { count: failed.length }));
+      setShowBatchDeleteConfirm(false);
+    } finally { setIsSaving(false); }
   };
 
   const handleDeleteDocument = async () => {
@@ -336,11 +352,22 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           onClearSelection={() => handleSelectAllEntries(false)}
           onChangeCategory={handleBatchCategory}
           onChangeCurrency={handleBatchCurrency}
+          onDelete={() => setShowBatchDeleteConfirm(true)}
           categories={categories}
           preferredCurrencies={preferredCurrencies}
           isChangingCategory={isSaving}
           isChangingCurrency={isSaving}
           variant="inline"
+        />
+
+        <ConfirmDialog
+          open={showBatchDeleteConfirm}
+          onOpenChange={setShowBatchDeleteConfirm}
+          title={t("batchDeleteTitle")}
+          description={t("batchDeleteDescription", { count: selectedIds.length })}
+          variant="destructive"
+          confirmLabel={tCommon("delete")}
+          onConfirm={handleBatchDelete}
         />
 
         <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 py-3 backdrop-blur-md sm:bg-surface2/30">

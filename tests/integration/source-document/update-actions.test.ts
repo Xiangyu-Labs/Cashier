@@ -118,7 +118,7 @@ describe("Source Document Update Actions", () => {
       expect(updated2?.status).toBe("completed");
     });
 
-    it("should not execute update when empty array is passed", async () => {
+    it("rejects an empty batch", async () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({ userId: testUserId });
       await db.insert(ledgers).values(ledgerData);
@@ -127,7 +127,7 @@ describe("Source Document Update Actions", () => {
         batchUpdateSourceDocumentsAction(ledgerData.id, [], {
           status: "completed",
         })
-      ).resolves.not.toThrow();
+      ).rejects.toThrow();
     });
   });
 });

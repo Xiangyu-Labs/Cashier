@@ -1,5 +1,5 @@
 "use client";
-import { Trash2, GripVertical } from "lucide-react";
+import { Trash2, GripVertical, RefreshCw } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
 import { IconPicker } from "@/components/ui/icon-picker";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -17,18 +17,27 @@ interface CategorySectionProps {
   onDeleteCategory: (id: string) => void;
   onReorderCategories: (ids: string[]) => void;
   onCategoryCreated?: () => void;
+  generatingCategoryIds?: Set<string>;
+  failedCategoryIds?: Set<string>;
+  onRetryMetadata?: (id: string) => void;
+  isReordering?: boolean;
 }
 
 interface SortableItemProps {
   category: EntryCategory;
   onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
   onDelete: () => void;
+  isGenerating?: boolean;
+  generationFailed?: boolean;
+  onRetryMetadata?: () => void;
+  disabled?: boolean;
 }
 
-function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProps) {
+function SortableItem({ category, onUpdateCategory, onDelete, isGenerating, generationFailed, onRetryMetadata, disabled }: SortableItemProps) {
   const t = useTranslations("Settings");
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: category.id,
+    ...(disabled !== undefined ? { disabled } : {}),
   });
 
   const style = {
@@ -42,7 +51,7 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
       style={style}
       className="group flex items-center gap-3 rounded-[var(--radius)] bg-[var(--surface2)] p-3"
     >
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <div {...attributes} {...listeners} data-tab-swipe-ignore className="cursor-grab touch-none active:cursor-grabbing">
         <GripVertical className="text-[var(--muted)]" size={16} />
       </div>
 
@@ -68,6 +77,12 @@ function SortableItem({ category, onUpdateCategory, onDelete }: SortableItemProp
           )}
           {category.id.toString().startsWith("temp-") && (
             <span className="animate-pulse text-[10px] font-normal text-muted">{t("saving")}</span>
+          )}
+          {isGenerating && <span className="animate-pulse text-[10px] text-muted">{t("generatingMetadata")}</span>}
+          {generationFailed && onRetryMetadata != null && (
+            <button type="button" onClick={onRetryMetadata} className="inline-flex items-center gap-1 text-[10px] text-danger hover:underline">
+              <RefreshCw className="h-3 w-3" />{t("retryMetadata")}
+            </button>
           )}
         </div>
         <EditableField
@@ -99,6 +114,10 @@ export function CategorySection({
   onDeleteCategory,
   onReorderCategories,
   onCategoryCreated,
+  generatingCategoryIds = new Set(),
+  failedCategoryIds = new Set(),
+  onRetryMetadata,
+  isReordering = false,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const {
@@ -114,6 +133,7 @@ export function CategorySection({
     categories,
     onCreateCategory,
     onReorderCategories,
+    isReordering,
     ...(onCategoryCreated !== undefined ? { onCategoryCreated } : {}),
   });
 
@@ -158,6 +178,10 @@ export function CategorySection({
                 category={category}
                 onUpdateCategory={onUpdateCategory}
                 onDelete={() => onDeleteCategory(category.id)}
+                isGenerating={generatingCategoryIds.has(category.id)}
+                generationFailed={failedCategoryIds.has(category.id)}
+                {...(onRetryMetadata != null ? { onRetryMetadata: () => onRetryMetadata(category.id) } : {})}
+                disabled={isReordering}
               />
             ))}
           </SortableContext>

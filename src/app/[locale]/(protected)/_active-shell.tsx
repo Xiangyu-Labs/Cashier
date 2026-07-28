@@ -4,6 +4,7 @@ import { useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
+import { SwipeTabSurface } from "@/modules/workspace/ui/SwipeTabSurface";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { useLedgerTabs } from "@/modules/workspace/hooks";
 import { ShellControllerProvider, useShellController } from "./shell-controller";
@@ -115,7 +116,9 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
         />
       }
     >
-      {children}
+      <SwipeTabSurface key={activeTab} activeTab={activeTab} onTabChange={handleTabChange} onTabIntent={preloadTab}>
+        {children}
+      </SwipeTabSurface>
     </AppShell>
   );
 }

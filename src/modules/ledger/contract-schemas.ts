@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -52,9 +53,13 @@ export const updateEntryCategoryInputSchema = strictObjectSchema({
   sortOrder: z.number().int().min(0).optional(),
 });
 
-export const reorderEntryCategoriesInputSchema = z.array(uuidSchema);
+export const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
 export const ledgerEntryIdSchema = uuidSchema;
-export const ledgerEntryIdsSchema = z.array(uuidSchema);
+export const ledgerEntryIdsSchema = z
+  .preprocess(
+    (value) => Array.isArray(value) ? [...new Set(value)] : value,
+    z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
+  );
 export const entryCategoryIdSchema = uuidSchema;
 export const serviceCredentialIdSchema = uuidSchema;
 

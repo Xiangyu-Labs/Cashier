@@ -257,13 +257,13 @@ export function StatsTabSkeleton() {
 
 /**
  * Skeleton for the Settings tab.
- * Shows 4 collapsible section placeholders matching actual layout.
+ * Shows 5 section placeholders matching actual layout.
  */
 export function SettingsTabSkeleton() {
   return (
     <div className="space-y-6 sm:space-y-8" data-testid="settings-tab-skeleton">
-      {/* 4 Sections: General, Ledger, AI Assistant, Account */}
-      {[1, 2, 3, 4].map((sectionIndex) => (
+      {/* 5 Sections: appearance, bookkeeping, AI, automation, account */}
+      {[1, 2, 3, 4, 5].map((sectionIndex) => (
         <div key={sectionIndex} className="space-y-4">
           {/* Section title */}
           <div className="h-5 w-28 bg-surface2 rounded animate-pulse" />

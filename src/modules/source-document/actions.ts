@@ -14,6 +14,10 @@ export {
   updateSourceDocumentAction,
 } from "./server-actions/update";
 export { deleteSourceDocumentAction } from "./server-actions/delete";
+export {
+  batchDeleteSourceDocumentsAction,
+  batchRetrySourceDocumentsAction,
+} from "./server-actions/batch";
 export { createQuickEntryAction } from "./server-actions/quick-entry";
 export { createSourceDocumentAction } from "./server-actions/create";
 export { createSourceDocumentFromCredentialAction } from "./server-actions/create-from-credential";

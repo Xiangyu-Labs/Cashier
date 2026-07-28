@@ -21,6 +21,9 @@ export interface LedgerEntriesBatchActionToolbarProps {
   preferredCurrencies?: string[];
   isChangingCategory?: boolean;
   isChangingCurrency?: boolean;
+  onChangeDate?: () => void;
+  onDelete?: () => void;
+  isProcessing?: boolean;
   variant?: "fixed" | "inline";
 }
 
@@ -37,6 +40,9 @@ export function LedgerEntriesBatchActionToolbar({
   preferredCurrencies = [],
   isChangingCategory: isChangingCategoryProp,
   isChangingCurrency: isChangingCurrencyProp,
+  onChangeDate,
+  onDelete,
+  isProcessing: externallyProcessing = false,
   variant = "fixed",
 }: LedgerEntriesBatchActionToolbarProps) {
   const t = useTranslations("BatchActions");
@@ -45,7 +51,7 @@ export function LedgerEntriesBatchActionToolbar({
 
   const isChangingCategory = isChangingCategoryProp ?? internalChangingCategory;
   const isChangingCurrency = isChangingCurrencyProp ?? internalChangingCurrency;
-  const isProcessing = isChangingCategory || isChangingCurrency;
+  const isProcessing = isChangingCategory || isChangingCurrency || externallyProcessing;
 
   const handleChangeCategory = useCallback(
     async (categoryId: string | null) => {
@@ -143,6 +149,8 @@ export function LedgerEntriesBatchActionToolbar({
                     isChangingCurrency={isChangingCurrency}
                     onChangeCategory={handleChangeCategory}
                     onChangeCurrency={handleChangeCurrency}
+                    {...(onChangeDate != null ? { onChangeDate } : {})}
+                    {...(onDelete != null ? { onDelete } : {})}
                   />
                 </div>
               </div>

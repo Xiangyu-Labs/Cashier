@@ -1,6 +1,6 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -121,13 +121,19 @@ export function LedgerEntriesTab({
     toggleSelection,
     selectAll,
     clearSelection,
+    retainSelection,
     isAllSelected,
   } = useSelection({ allIds: allSourceDocumentIds });
 
-  const { deleteSourceDocument, batchUpdateDates } = useBatchSourceDocumentActions(
+  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } = useBatchSourceDocumentActions(
     ledgerId,
-    clearSelection
+    clearSelection,
+    retainSelection
   );
+  useEffect(() => {
+    document.documentElement.dataset.batchSelection = String(isSelectionMode);
+    return () => { delete document.documentElement.dataset.batchSelection; };
+  }, [isSelectionMode]);
 
   // C1: Targeted refresh — uses the bounded refresh path via coordinator
   const handleRefresh = useCallback(async () => {
@@ -205,6 +211,10 @@ export function LedgerEntriesTab({
           onClearSelection={clearSelection}
           onUpdateDates={handleBatchUpdateDates}
           isUpdatingDates={batchUpdateDates.isPending}
+          onRetry={async () => { await batchRetry.mutateAsync(selectedIds); }}
+          onDelete={async () => { await batchDelete.mutateAsync(selectedIds); }}
+          isRetrying={batchRetry.isPending}
+          isDeleting={batchDelete.isPending}
           filters={filters}
           onFiltersChange={onFiltersChange}
           periodParams={periodParams}

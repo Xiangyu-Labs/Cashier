@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 import {
   MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
@@ -62,6 +63,11 @@ const imagesSchema = z
   );
 
 export const sourceDocumentIdSchema = uuidSchema;
+export const sourceDocumentIdsSchema = z
+  .preprocess(
+    (value) => Array.isArray(value) ? [...new Set(value)] : value,
+    z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
+  );
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z

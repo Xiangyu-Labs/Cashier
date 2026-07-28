@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
@@ -17,6 +18,7 @@ import {
   updateEntryCategoryAction,
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
+  generateEntryCategoryMetadataAction,
 } from "@/modules/ledger/actions";
 import { fireAndForget } from "@/lib/safe-async";
 import type {
@@ -27,6 +29,22 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 
 export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
   const t = useTranslations("Settings");
+  const queryClient = useQueryClient();
+  const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
+  const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
+
+  const generateMetadata = useMutation({
+    mutationFn: (categoryId: string) => generateEntryCategoryMetadataAction(ledgerId, categoryId),
+    onMutate: (categoryId) => {
+      setGeneratingCategoryIds((ids) => new Set(ids).add(categoryId));
+      setFailedCategoryIds((ids) => { const next = new Set(ids); next.delete(categoryId); return next; });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
+    },
+    onError: (_error, categoryId) => setFailedCategoryIds((ids) => new Set(ids).add(categoryId)),
+    onSettled: (_data, _error, categoryId) => setGeneratingCategoryIds((ids) => { const next = new Set(ids); next.delete(categoryId); return next; }),
+  });
 
   const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => {});
 
@@ -39,8 +57,9 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
     errorMessage: t("createCategoryFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [invalidateEntryCategories(ledgerId)],
-    onSuccessExtra: () => {
+    onSuccessExtra: (category) => {
       setCategoryCreatedTrigger(() => () => {});
+      generateMetadata.mutate(category.id);
     },
   });
 
@@ -63,6 +82,9 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
+    onSettledExtra: (client, _ids, _data, error) => {
+      if (error != null) void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
+    },
   });
 
   const deleteCategory = useLedgerMutation<DeleteEntryCategoryResultDto, string>(ledgerId, {
@@ -106,5 +128,8 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
     deleteCategory,
     reorderCategories,
     categoryCreatedTrigger,
+    generatingCategoryIds,
+    failedCategoryIds,
+    retryCategoryMetadata: (id: string) => generateMetadata.mutate(id),
   };
 }

@@ -76,7 +76,7 @@ beforeEach(async () => {
     rate_limit_buckets, processing_outbox, processing_attempts, revision_entries, revision_files,
     upload_session_files, upload_sessions, stored_files, source_document_revisions,
     idempotency_records, ledger_entries, source_documents, entry_categories,
-    service_credentials, currency_rates, otp_tokens, ledgers, users
+    service_credentials, currency_rates, email_change_challenges, otp_tokens, ledgers, users
     RESTART IDENTITY CASCADE`)
   );
   await db.insert(schema.users).values({

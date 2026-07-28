@@ -10,10 +10,14 @@ export {
   reorderEntryCategoriesAction,
   getUncategorizedCountAction,
 } from "./server-actions/categories";
+export { generateEntryCategoryMetadataAction } from "./server-actions/category-metadata";
 export {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
+  batchDeleteLedgerEntriesAction,
+  previewBatchLedgerEntryDateAction,
+  batchUpdateLedgerEntryDatesAction,
   createLedgerEntryAction,
   getLedgerEntriesAction,
 } from "./server-actions/entries";

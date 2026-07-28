@@ -67,7 +67,7 @@ export default async function LocaleLayout({
     <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`} style={{ backgroundColor: "var(--bg)" }}>
         <NextIntlClientProvider messages={shellMessages} locale={locale}>
-          <main className="max-w-screen-2xl mx-auto min-h-screen pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+          <main className="max-w-screen-2xl mx-auto min-h-screen pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
             {children}
           </main>
         </NextIntlClientProvider>

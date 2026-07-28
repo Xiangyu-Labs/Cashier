@@ -40,6 +40,7 @@ describe("LedgerEntriesToolbar", () => {
     expect(screen.getByText(/已选择 3 项/)).toBeDefined();
     // Cancel button title in selection mode
     expect(screen.getByTitle("取消")).toBeDefined();
+    expect(screen.queryByText("Total ¥123.45")).not.toBeInTheDocument();
   });
 
   it("does not render status summary when no statuses are active", () => {

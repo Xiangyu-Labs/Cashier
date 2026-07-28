@@ -4,9 +4,9 @@ import { type SourceDocumentStatusType } from "@/modules/source-document/contrac
 import { SourceDocumentCard } from "@/modules/source-document/ui";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { AnimatePresence, motion } from "framer-motion";
+import { EntryGroupHeader } from "./EntryGroupHeader";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -135,44 +135,42 @@ function UnifiedGroupHeader({
       // Format submission date for display
       const d = new Date(group.date + "T00:00:00");
       if (isNaN(d.getTime())) return group.date;
-      return d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      return formatLocalizedDate(d, locale, t("today"), t("yesterday"));
     }
     const d = new Date(group.date + "T00:00:00");
     if (isNaN(d.getTime())) return group.date;
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return formatLocalizedDate(d, locale, t("today"), t("yesterday"));
   })();
 
   const provenanceNote =
     group.dateProvenance === "submitted"
-      ? ` ${t("submittedGroupSuffix")}`
+      ? t("submittedGroupSuffix")
       : group.dateProvenance === "unknown"
         ? ""
         : "";
 
   return (
-    <div className="py-2 px-2 flex items-center justify-between">
-      <h3 className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-        {dateLabel}
-        {provenanceNote && (
-          <span className="text-[9px] sm:text-[10px] text-muted-foreground/60 italic ml-1">
-            {provenanceNote}
-          </span>
-        )}
-      </h3>
-      <AmountText variant="group">
-        {formatCurrencyAmount(group.total, mainCurrency, locale)}
-      </AmountText>
-    </div>
+    <EntryGroupHeader
+      title={dateLabel}
+      {...(provenanceNote !== "" ? { subtitle: provenanceNote } : {})}
+      totalLabel={formatCurrencyAmount(group.total, mainCurrency, locale)}
+    />
   );
+}
+
+function formatLocalizedDate(date: Date, locale: string, todayLabel: string, yesterdayLabel: string) {
+  const toLocalKey = (value: Date) => [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+  const value = toLocalKey(date);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (value === toLocalKey(today)) return todayLabel;
+  if (value === toLocalKey(yesterday)) return yesterdayLabel;
+  return date.toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" });
 }
 
 // Inline translations to avoid hook ordering issues when composited with mobile/narrow layouts

@@ -90,7 +90,15 @@
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
     "deleteConfirmTitle": "Delete Confirmation",
-    "deleteConfirmDesc": "Are you sure you want to delete this record? This action cannot be undone."
+    "deleteConfirmDesc": "Are you sure you want to delete this record? This action cannot be undone.",
+    "batchUpdated": "Updated {count} items",
+    "batchDeleted": "Deleted {count} items",
+    "batchUnresolved": "{count} items could not be changed and remain selected",
+    "dateUpdated": "Date updated",
+    "deleteSelectedTitle": "Delete selected items",
+    "deleteSelectedDescription": "Delete the selected {count} items? This cannot be undone.",
+    "changeDateTitle": "Change transaction date",
+    "changeDateImpact": "{selected} selected items across {documents} receipts. {affected} items will be updated because dates belong to receipts."
   },
   "BatchActions": {
     "selected": "{count} selected",
@@ -107,7 +115,14 @@
     "setDate": "Set Date",
     "setDateShort": "Date",
     "datesUpdated": "Updated dates for {count} items",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "delete": "Delete",
+    "deleteTitle": "Delete selected records",
+    "deleteDescription": "Delete the selected {count} records? This cannot be undone.",
+    "deleted": "Deleted {count} records",
+    "retried": "Submitted {count} records for retry",
+    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}"
   },
   "EntryFilterPanel": {
     "filter": "Filter",
@@ -210,6 +225,8 @@
     "dateUnknown": "Date unknown",
     "submittedDateTitle": "Submission date — no transaction date available",
     "submittedGroupSuffix": "(submitted)",
+    "today": "Today",
+    "yesterday": "Yesterday",
     "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
   },
   "QuickEntryForm": {
@@ -339,6 +356,9 @@
     "batchUpdateError": "Failed to update entries",
     "batchDeleteSuccess": "Deleted {count} {count, plural, one {entry} other {entries}}",
     "batchDeleteError": "Failed to delete entries",
+    "batchDeleteTitle": "Delete selected entries",
+    "batchDeleteDescription": "Delete the selected {count} entries? This cannot be undone.",
+    "batchDeletePartial": "{count} entries could not be deleted and remain selected",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "saveAllError": "Failed to save changes",
     "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
@@ -417,8 +437,8 @@
     "cancel": "Cancel",
     "confirmEnable": "Confirm Enable",
     "aiPrompt": "Ledger Prompt",
-    "aiPromptDesc": "Customize AI recognition with specific preferences (e.g., add more emojis to titles)",
-    "aiPromptPlaceholder": "e.g.:\n• Merge similar items into one\n• Add emojis to titles\n• Classify taxi as Transport",
+    "aiPromptDesc": "Customize both parsing rules and how titles and descriptions are presented",
+    "aiPromptPlaceholder": "e.g.:\n• Split service fees into a separate item\n• Classify taxi as Transport\n• Use concise merchant-first titles",
     "notifications": "Notifications",
     "pushNotifications": "Push Notifications",
     "pushNotificationsDesc": "Receive real-time updates when your bills are processed.",
@@ -447,6 +467,8 @@
     "deleteFailed": "Delete failed",
     "categoryDescription": "Category Description",
     "saving": "(Saving...)",
+    "generatingMetadata": "Generating description and icon...",
+    "retryMetadata": "Retry metadata",
     "categoryItemCount": "{count} {count, plural, one {item} other {items}}",
     "uncategorized": "Uncategorized Items",
     "uncategorizedDesc": "{count} {count, plural, one {entry} other {entries}} not yet categorized",
@@ -458,7 +480,7 @@
     "ledgerSettings": "Ledger Settings",
     "Account": {
       "emailSection": "Email",
-      "emailSectionDesc": "View the email address used for sign-in",
+      "emailSectionDesc": "View or change the email address used for sign-in",
       "passwordSection": "Password",
       "passwordSectionDesc": "Manage the password used to sign in",
       "passwordNotSet": "No password set",
@@ -477,7 +499,15 @@
       "savePassword": "Save password",
       "passwordSaved": "Password saved",
       "passwordError": "Could not save the password",
-      "cancel": "Cancel"
+    "cancel": "Cancel",
+    "newEmail": "New email address",
+    "sendCode": "Send code",
+    "resendCode": "Resend",
+    "verificationCode": "6-digit code",
+    "verifyEmail": "Verify",
+    "emailCodeSent": "Verification code sent",
+    "emailChanged": "Email address updated",
+    "emailChangeError": "Could not update the email address"
     }
   },
   "ServiceCredentials": {
