@@ -3,21 +3,68 @@ import { cookies, headers } from "next/headers";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
+import { AppError, RateLimitError } from "@/lib/errors";
 import { parseSendOTPEmail } from "../contract-schemas";
 
-export async function sendOTPAction(email: string, locale?: string) {
-  const validatedEmail = parseSendOTPEmail(email);
-  const requestHeaders = await headers();
-  const cookieStore = await cookies();
-  const resolvedLocale = resolveSupportedLocale({
-    explicitLocale: locale ?? null,
-    cookieLocale: cookieStore.get("NEXT_LOCALE")?.value ?? null,
-    acceptLanguage: requestHeaders.get("accept-language"),
-  });
-  return sendOTP({
-    email: validatedEmail,
-    ip: getClientIPFromHeaders(requestHeaders),
-    host: requestHeaders.get("host") ?? "localhost",
-    locale: resolvedLocale,
-  });
+export type SendOTPActionResult =
+  | {
+      ok: true;
+      expiresIn: number;
+      expiresAt: number;
+      canResendAt: number | null;
+    }
+  | {
+      ok: false;
+      code:
+        | "rate_limited"
+        | "invalid_email"
+        | "email_not_configured"
+        | "email_send_failed"
+        | "unexpected";
+      retryAfter?: number;
+    };
+
+function sendOTPFailure(error: unknown): SendOTPActionResult {
+  if (error instanceof RateLimitError) {
+    return {
+      ok: false,
+      code: "rate_limited",
+      ...(error.retryAfter === undefined ? {} : { retryAfter: error.retryAfter }),
+    };
+  }
+
+  if (error instanceof AppError) {
+    switch (error.code) {
+      case "VALIDATION_ERROR":
+        return { ok: false, code: "invalid_email" };
+      case "EMAIL_NOT_CONFIGURED":
+        return { ok: false, code: "email_not_configured" };
+      case "EMAIL_SEND_FAILED":
+        return { ok: false, code: "email_send_failed" };
+    }
+  }
+
+  return { ok: false, code: "unexpected" };
+}
+
+export async function sendOTPAction(email: string, locale?: string): Promise<SendOTPActionResult> {
+  try {
+    const validatedEmail = parseSendOTPEmail(email);
+    const requestHeaders = await headers();
+    const cookieStore = await cookies();
+    const resolvedLocale = resolveSupportedLocale({
+      explicitLocale: locale ?? null,
+      cookieLocale: cookieStore.get("NEXT_LOCALE")?.value ?? null,
+      acceptLanguage: requestHeaders.get("accept-language"),
+    });
+    const result = await sendOTP({
+      email: validatedEmail,
+      ip: getClientIPFromHeaders(requestHeaders),
+      host: requestHeaders.get("host") ?? "localhost",
+      locale: resolvedLocale,
+    });
+    return { ok: true, ...result };
+  } catch (error) {
+    return sendOTPFailure(error);
+  }
 }

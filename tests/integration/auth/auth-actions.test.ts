@@ -28,8 +28,6 @@ vi.mock("next/headers", () => ({
 }));
 
 import { sendOTPAction } from "@/modules/auth/actions";
-import { ValidationError, RateLimitError } from "@/lib/errors";
-
 const TEST_EMAIL = "test@example.com";
 
 describe("Auth Actions - sendOTPAction", () => {
@@ -43,6 +41,8 @@ describe("Auth Actions - sendOTPAction", () => {
   it("should send OTP successfully with valid email", async () => {
     const result = await sendOTPAction(TEST_EMAIL, "zh");
 
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Expected OTP send to succeed");
     expect(result.expiresIn).toBeDefined();
     expect(result.expiresAt).toBeDefined();
     expect(result.canResendAt).toBeDefined();
@@ -57,26 +57,32 @@ describe("Auth Actions - sendOTPAction", () => {
   });
 
   it("should reject empty email", async () => {
-    await expect(sendOTPAction("", "zh")).rejects.toThrow(ValidationError);
-    await expect(sendOTPAction("", "zh")).rejects.toThrow("Invalid email address");
+    await expect(sendOTPAction("", "zh")).resolves.toEqual({
+      ok: false,
+      code: "invalid_email",
+    });
   });
 
   it("should reject null email", async () => {
-    await expect(sendOTPAction(null as unknown as string, "zh")).rejects.toThrow(ValidationError);
-    await expect(sendOTPAction(null as unknown as string, "zh")).rejects.toThrow(
-      "Invalid email address"
-    );
+    await expect(sendOTPAction(null as unknown as string, "zh")).resolves.toEqual({
+      ok: false,
+      code: "invalid_email",
+    });
   });
 
   it("should reject invalid email format", async () => {
-    await expect(sendOTPAction("not-an-email", "zh")).rejects.toThrow(ValidationError);
-    await expect(sendOTPAction("not-an-email", "zh")).rejects.toThrow("Invalid email format");
+    await expect(sendOTPAction("not-an-email", "zh")).resolves.toEqual({
+      ok: false,
+      code: "invalid_email",
+    });
   });
 
   it("should reject email exceeding max length (254 chars)", async () => {
     const longEmail = "a".repeat(250) + "@test.com";
-    await expect(sendOTPAction(longEmail, "zh")).rejects.toThrow(ValidationError);
-    await expect(sendOTPAction(longEmail, "zh")).rejects.toThrow("Invalid email address");
+    await expect(sendOTPAction(longEmail, "zh")).resolves.toEqual({
+      ok: false,
+      code: "invalid_email",
+    });
   });
 
   it("should normalize email to lowercase", async () => {
@@ -93,10 +99,13 @@ describe("Auth Actions - sendOTPAction", () => {
   it("should enforce resend cooldown", async () => {
     // First send should succeed
     const result1 = await sendOTPAction(TEST_EMAIL, "zh");
-    expect(result1.expiresAt).toBeDefined();
+    expect(result1.ok).toBe(true);
 
     // Immediate second send should fail with cooldown
-    await expect(sendOTPAction(TEST_EMAIL, "zh")).rejects.toThrow(RateLimitError);
-    await expect(sendOTPAction(TEST_EMAIL, "zh")).rejects.toThrow("wait");
+    await expect(sendOTPAction(TEST_EMAIL, "zh")).resolves.toMatchObject({
+      ok: false,
+      code: "rate_limited",
+      retryAfter: expect.any(Number),
+    });
   });
 });

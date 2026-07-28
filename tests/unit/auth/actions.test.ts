@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ValidationError } from "@/lib/errors";
+import { RateLimitError } from "@/lib/errors";
 
 const { headersMock, cookiesMock, sendOTPMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
@@ -41,7 +41,7 @@ describe("sendOTPAction", () => {
       },
     });
 
-    await sendOTPAction("User@Example.com", "zh");
+    await expect(sendOTPAction("User@Example.com", "zh")).resolves.toMatchObject({ ok: true });
 
     expect(sendOTPMock).toHaveBeenCalledWith({
       email: "User@Example.com",
@@ -51,13 +51,29 @@ describe("sendOTPAction", () => {
     });
   });
 
-  it("rejects invalid email before invoking use case", async () => {
+  it("returns invalid_email before invoking use case", async () => {
     headersMock.mockResolvedValue({
       get: (_key: string) => null,
     });
 
-    await expect(sendOTPAction("not-an-email", "en")).rejects.toBeInstanceOf(ValidationError);
+    await expect(sendOTPAction("not-an-email", "en")).resolves.toEqual({
+      ok: false,
+      code: "invalid_email",
+    });
     expect(sendOTPMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a stable rate-limit result with retry timing", async () => {
+    headersMock.mockResolvedValue({
+      get: (_key: string) => null,
+    });
+    sendOTPMock.mockRejectedValueOnce(new RateLimitError("wait", 42));
+
+    await expect(sendOTPAction("test@example.com", "en")).resolves.toEqual({
+      ok: false,
+      code: "rate_limited",
+      retryAfter: 42,
+    });
   });
 
   it("falls back to unknown ip and localhost host", async () => {

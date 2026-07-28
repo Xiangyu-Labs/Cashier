@@ -89,12 +89,13 @@ describe("sendOTPAction edge cases", () => {
     expect(renderedEmail).toContain("Sign in to localhost");
   });
 
-  it("returns user-facing error when email provider send fails", async () => {
+  it("returns a stable error code when email provider send fails", async () => {
     process.env.AUTH_RESEND_KEY = "test-resend-key";
     resendSendMock.mockRejectedValueOnce(new Error("provider down"));
 
-    await expect(sendOTPAction(testEmail, "en")).rejects.toThrow(
-      "Failed to send verification code. Please try again."
-    );
+    await expect(sendOTPAction(testEmail, "en")).resolves.toEqual({
+      ok: false,
+      code: "email_send_failed",
+    });
   });
 });

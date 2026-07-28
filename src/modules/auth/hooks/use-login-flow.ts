@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
+import type { SendOTPActionResult } from "@/modules/auth/server-actions/send-otp";
 import { OTP_LENGTH } from "@/modules/auth/constants";
 
 type LoginStep = "email" | "otp";
@@ -36,6 +37,20 @@ function getSignInErrorMessage(
 
 function sanitizeCallbackUrl(value: string | null): string {
   return value != null && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
+function getSendOTPErrorMessage(
+  result: Extract<SendOTPActionResult, { ok: false }>,
+  t: (key: string, values?: Record<string, string | number>) => string,
+  fallbackKey: "sendCodeFailed" | "resendFailed"
+): string {
+  if (result.code === "rate_limited") {
+    return t("rateLimitedDesc");
+  }
+  if (result.code === "unexpected") {
+    return t("unexpectedError");
+  }
+  return t(fallbackKey);
 }
 
 export function useLoginFlow(
@@ -95,6 +110,10 @@ export function useLoginFlow(
     setError(null);
     try {
       const result = await sendOTPAction(email, locale);
+      if (!result.ok) {
+        setError(getSendOTPErrorMessage(result, t, "sendCodeFailed"));
+        return;
+      }
       setExpiresAt(result.expiresAt ?? null);
       setCanResendAt(result.canResendAt ?? null);
       setStep("otp");
@@ -125,6 +144,10 @@ export function useLoginFlow(
     setOtp("");
     try {
       const result = await sendOTPAction(email, locale);
+      if (!result.ok) {
+        setError(getSendOTPErrorMessage(result, t, "resendFailed"));
+        return;
+      }
       setExpiresAt(result.expiresAt ?? null);
       setCanResendAt(result.canResendAt ?? null);
     } catch {
