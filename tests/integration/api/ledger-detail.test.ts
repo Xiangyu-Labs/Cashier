@@ -27,19 +27,22 @@ describe("Ledger Actions", () => {
       settings: {
         mainCurrency: "USD",
         aiLanguage: "en",
+        currencies: ["USD", "CNY"],
       },
     });
 
-    expect(result).toBeDefined();
-    expect(result.metadata?.settings?.mainCurrency).toBe("USD");
-    expect(result.metadata?.settings?.aiLanguage).toBe("en");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.ledger.metadata?.settings?.mainCurrency).toBe("USD");
+    expect(result.ledger.metadata?.settings?.aiLanguage).toBe("en");
+    expect(result.ledger.metadata?.settings?.currencies).toEqual(["USD", "CNY"]);
   });
 
-  it("should throw error for non-existent ledger (Update)", async () => {
+  it("should return a stable conflict for a non-existent ledger (Update)", async () => {
     await expect(
       updateLedgerAction("00000000-0000-0000-0000-000000000000", {
         settings: { mainCurrency: "USD" },
       })
-    ).rejects.toThrow();
+    ).resolves.toEqual({ ok: false, code: "conflict" });
   });
 });

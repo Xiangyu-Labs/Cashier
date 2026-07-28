@@ -66,7 +66,6 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
       <div className="space-y-4">
         <div>
           <h3 className="text-base font-medium">{t("preferredCurrencies")}</h3>
-          <p className="text-sm text-muted">{t("preferredCurrenciesDesc")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {SUPPORTED_CURRENCIES.map((currency) => {

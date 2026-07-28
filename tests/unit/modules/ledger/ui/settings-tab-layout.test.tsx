@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 import type { Ledger } from "@/modules/ledger/contracts";
@@ -41,7 +41,12 @@ vi.mock("@/modules/ledger/ui/CategorySection", () => ({
 }));
 
 vi.mock("@/modules/ledger/ui/ServiceCredentialSection", () => ({
-  ServiceCredentialSection: () => <div>Service credentials</div>,
+  ServiceCredentialSection: () => (
+    <div>
+      <h3>API 密钥</h3>
+      <div>Service credentials</div>
+    </div>
+  ),
 }));
 
 vi.mock("@/modules/ledger/ui/ExportSection", () => ({
@@ -99,13 +104,26 @@ describe("SettingsTab layout", () => {
       .getAllByRole("heading", { level: 2 })
       .map((node) => node.textContent);
 
-    expect(sectionHeadings).toEqual(["外观与语言", "记账规则", "AI 解析", "自动化", "账号与数据"]);
+    expect(sectionHeadings).toEqual(["外观与语言", "记账规则", "AI 解析", "账户"]);
   });
 
-  it("labels service credentials as automation", () => {
+  it("puts API keys in the account section and removes automation", () => {
     render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
-    expect(screen.getByRole("heading", { name: "自动化" })).toBeInTheDocument();
-    expect(screen.queryByText("账本设置")).not.toBeInTheDocument();
+    const apiKeyHeading = screen.getByRole("heading", { name: "API 密钥" });
+    expect(apiKeyHeading.closest("section")).toHaveTextContent("账户");
+    expect(screen.queryByRole("heading", { name: "自动化" })).not.toBeInTheDocument();
+  });
+
+  it("uses the theme select, detected automatic time zone, and stacked prompt", async () => {
+    render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
+
+    expect(screen.getByRole("combobox", { name: "主题" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "自动（Asia/Shanghai）" })).toBeInTheDocument()
+    );
+    const prompt = screen.getByRole("textbox", { name: "账本提示词" });
+    expect(prompt).toHaveClass("w-full", "resize-y");
+    expect(prompt.parentElement).toHaveClass("w-full");
   });
 });

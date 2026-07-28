@@ -176,6 +176,41 @@ describe("target Settings currency workflow", () => {
     expect(entry?.convertedAmount).toBe("80.00");
     expect(entry?.exchangeRate).toBe("1.000000");
   });
+
+  it("rolls back the entire main-currency change when a historical rate is missing", async () => {
+    await createEntry();
+    const db = getTestDb();
+    const sourceDocumentId = crypto.randomUUID();
+    const activeRevisionId = crypto.randomUUID();
+    await db.insert(sourceDocuments).values({
+      id: sourceDocumentId,
+      ledgerId,
+      entryDate: "2026-07-14",
+      activeRevisionId,
+    });
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId,
+      sourceDocumentRevisionId: activeRevisionId,
+      amount: "40.00",
+      currency: "CNY",
+      itemName: "Missing historical rate",
+      convertedAmount: "40.00",
+      exchangeRate: "1.000000",
+    });
+
+    await expect(
+      updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } })
+    ).rejects.toMatchObject({ code: "EXCHANGE_RATES_UNAVAILABLE" });
+
+    const [storedLedger, entries] = await Promise.all([
+      db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
+      db.query.ledgerEntries.findMany({ where: eq(ledgerEntries.ledgerId, ledgerId) }),
+    ]);
+    expect(storedLedger?.metadata?.settings?.mainCurrency).toBeUndefined();
+    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.00", "80.00"]);
+    expect(entries.every((entry) => entry.exchangeRate === "1.000000")).toBe(true);
+  });
 });
 
 describe("settings concurrency invariants", () => {

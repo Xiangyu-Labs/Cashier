@@ -11,7 +11,7 @@ import type {
   UserAccountPort,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
 import { multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/money/decimal";
 import {
@@ -89,11 +89,17 @@ async function recalculateCurrentEntries(
         )
         .orderBy(desc(currencyRates.date))
         .then((rows) => rows[0]);
-      if (rate == null) throw new ConflictError("No stored currency rates are available");
+      if (rate == null) {
+        throw new AppError(
+          "No stored currency rates are available",
+          "EXCHANGE_RATES_UNAVAILABLE",
+          409
+        );
+      }
       const fromRate = sourceCurrency === rate.base ? 1 : rate.rates[sourceCurrency];
       const toRate = mainCurrency === rate.base ? 1 : rate.rates[mainCurrency];
       if (fromRate == null || toRate == null || fromRate <= 0 || toRate <= 0) {
-        throw new ValidationError("Unsupported currency conversion");
+        throw new AppError("Unsupported currency conversion", "CURRENCY_NOT_FOUND", 400);
       }
       const rateRatio = multiply(String(toRate), divide(String(1), String(fromRate)));
       convertedAmount = decimalRound(multiply(entry.amount, rateRatio), 2);

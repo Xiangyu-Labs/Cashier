@@ -262,7 +262,7 @@ export function StatsTabSkeleton() {
 export function SettingsTabSkeleton() {
   return (
     <div className="space-y-6 sm:space-y-8" data-testid="settings-tab-skeleton">
-      {/* 5 Sections: appearance, bookkeeping, AI, automation, account */}
+      {/* 4 Sections: appearance, bookkeeping, AI, account */}
       {[1, 2, 3, 4, 5].map((sectionIndex) => (
         <div key={sectionIndex} className="space-y-4">
           {/* Section title */}

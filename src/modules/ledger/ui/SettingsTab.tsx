@@ -19,12 +19,19 @@ import {
 import type { Ledger } from "@/modules/ledger/contracts";
 import { Switch } from "@/components/ui/switch";
 import { Monitor, Sun, Moon, LogOut } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
 import { EmailChangeForm } from "@/modules/auth/ui/EmailChangeForm";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/actions";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
@@ -58,7 +65,19 @@ export function SettingsTab({
   const searchParams = useSearchParams();
   const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
   const [languagePreference, setLanguagePreference] = useState(interfaceLanguage);
+  const [deviceTimeZone, setDeviceTimeZone] = useState<string | null>(null);
   const [languagePending, startLanguageTransition] = useTransition();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        setDeviceTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || null);
+      } catch {
+        setDeviceTimeZone(null);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const queryClient = useQueryClient();
 
@@ -103,30 +122,25 @@ export function SettingsTab({
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
-        <SettingsSection
-          title={t("appearanceAndLanguage")}
-          description={t("appearanceAndLanguageDesc")}
-        >
-          <SettingsField title={t("theme")} description={t("themeDescription")}>
-            <div className="flex w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-1 sm:w-auto">
-              {(["system", "light", "dark"] as const).map((tName) => (
-                <button
-                  key={tName}
-                  onClick={() => setTheme(tName)}
-                  className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md p-1.5 transition-all sm:flex-none ${theme === tName ? "bg-[var(--surface)] shadow-sm text-primary" : "text-[var(--muted)] hover:text-text"}`}
-                  title={t(themeKeyMap[tName])}
-                  aria-label={t(themeKeyMap[tName])}
-                  disabled={isPending}
-                >
-                  {tName === "system" && <Monitor className="h-4 w-4" />}
-                  {tName === "light" && <Sun className="h-4 w-4" />}
-                  {tName === "dark" && <Moon className="h-4 w-4" />}
-                  <span className="sm:hidden text-xs">{t(themeKeyMap[tName])}</span>
-                </button>
-              ))}
-            </div>
+        <SettingsSection title={t("appearanceAndLanguage")}>
+          <SettingsField title={t("theme")}>
+            <Select value={theme ?? "system"} onValueChange={setTheme} disabled={isPending}>
+              <SelectTrigger aria-label={t("theme")} className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["system", "light", "dark"] as const).map((themeName) => (
+                  <SelectItem key={themeName} value={themeName}>
+                    {themeName === "system" ? <Monitor /> : null}
+                    {themeName === "light" ? <Sun /> : null}
+                    {themeName === "dark" ? <Moon /> : null}
+                    {t(themeKeyMap[themeName])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </SettingsField>
-          <SettingsField title={t("uiLanguage")} description={t("uiLanguageDesc")}>
+          <SettingsField title={t("uiLanguage")}>
             <select
               value={languagePreference}
               onChange={(e) => {
@@ -167,6 +181,9 @@ export function SettingsTab({
               ))}
             </select>
           </SettingsField>
+        </SettingsSection>
+
+        <SettingsSection title={t("bookkeepingRules")}>
           <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
             <Switch
               aria-label={t("collapseEntries")}
@@ -189,7 +206,11 @@ export function SettingsTab({
               aria-label={t("timeZone")}
               className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
             >
-              <option value="auto">{t("timeZoneAuto")}</option>
+              <option value="auto">
+                {deviceTimeZone == null
+                  ? t("timeZoneAuto")
+                  : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
+              </option>
               {[
                 "Asia/Shanghai",
                 "Asia/Tokyo",
@@ -209,9 +230,6 @@ export function SettingsTab({
               ))}
             </select>
           </SettingsField>
-        </SettingsSection>
-
-        <SettingsSection title={t("bookkeepingRules")} description={t("bookkeepingRulesDesc")}>
           <CurrencySection
             settings={{
               ...settingsLedger.metadata?.settings,
@@ -236,8 +254,8 @@ export function SettingsTab({
           )}
         </SettingsSection>
 
-        <SettingsSection title={t("aiParsing")} description={t("aiParsingDesc")}>
-          <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
+        <SettingsSection title={t("aiParsing")}>
+          <SettingsField title={t("aiLanguage")}>
             <select
               value={settingsLedger.metadata?.settings?.aiLanguage ?? "zh-CN"}
               onChange={(e) => updateLedgerMutation.mutate({ aiLanguage: e.target.value })}
@@ -252,7 +270,7 @@ export function SettingsTab({
               ))}
             </select>
           </SettingsField>
-          <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")}>
+          <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
             <textarea
               defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt ?? ""}
               onBlur={(e) => {
@@ -265,27 +283,24 @@ export function SettingsTab({
               disabled={isPending}
               aria-label={t("aiPrompt")}
               placeholder={t("aiPromptPlaceholder")}
-              className="min-h-[100px] w-full resize-none rounded-md border border-border bg-bg p-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+              className="min-h-[100px] w-full resize-y rounded-md border border-border bg-bg p-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
             />
           </SettingsField>
         </SettingsSection>
 
-        <SettingsSection title={t("automation")} description={t("automationDesc")}>
+        <SettingsSection title={t("account")}>
+          <SettingsField title={ta("emailSection")}>
+            <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
+          </SettingsField>
+          <SettingsField title={ta("passwordSection")}>
+            <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
+          </SettingsField>
           <ServiceCredentialSection
             credentials={credentials ?? []}
             onCreateCredential={(name) => createCredential.mutateAsync(name)}
             onDeleteCredential={(id) => deleteCredential.mutate(id)}
           />
-        </SettingsSection>
-
-        <SettingsSection title={t("accountAndData")} description={t("accountAndDataDesc")}>
-          <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-            <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
-          </SettingsField>
-          <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
-            <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
-          </SettingsField>
-          <SettingsField title={t("signOut")} description={t("signOutDesc")}>
+          <SettingsField title={t("signOut")}>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               disabled={isPending}

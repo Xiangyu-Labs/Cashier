@@ -78,10 +78,9 @@ describe("Multi-User Isolation", () => {
         user: { id: TEST_USER_ID },
       });
 
-      // should throw error in new format
       await expect(
         updateLedgerAction(user2Ledger, { settings: { aiLanguage: "en" } })
-      ).rejects.toThrow();
+      ).resolves.toEqual({ ok: false, code: "conflict" });
     });
   });
 

@@ -10,11 +10,12 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import { updateLedgerAction } from "@/modules/ledger/actions";
-import type { Ledger } from "@/modules/ledger/contracts";
+import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export interface UpdateLedgerData {
-  preferredCurrencies?: string[];
+  currencies?: string[];
   mainCurrency?: string;
   aiLanguage?: string;
   collapseEntriesDefault?: boolean;
@@ -33,13 +34,14 @@ export function useLedgerSettingsMutation({
   successMessage,
   errorMessage,
 }: UseLedgerSettingsMutationParams) {
+  const t = useTranslations("Settings");
   const queryClient = useQueryClient();
   const ledgerQueryKey = queryKeys.ledger(ledgerId);
 
   return useLedgerMutation<Ledger, UpdateLedgerData>(ledgerId, {
     mutationFn: async (data) => {
       const {
-        preferredCurrencies,
+        currencies,
         mainCurrency,
         aiLanguage,
         collapseEntriesDefault,
@@ -49,7 +51,7 @@ export function useLedgerSettingsMutation({
       const payload: { settings?: Record<string, unknown> } = {};
 
       const settings: Record<string, unknown> = {};
-      if (preferredCurrencies !== undefined) settings.currencies = preferredCurrencies;
+      if (currencies !== undefined) settings.currencies = currencies;
       if (mainCurrency !== undefined) settings.mainCurrency = mainCurrency;
       if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
       if (collapseEntriesDefault !== undefined) {
@@ -62,7 +64,9 @@ export function useLedgerSettingsMutation({
         payload.settings = settings;
       }
 
-      return await updateLedgerAction(ledgerId, payload);
+      const result = await updateLedgerAction(ledgerId, payload);
+      if (!result.ok) throw new Error(t(updateLedgerErrorMessageKeys[result.code]));
+      return result.ledger;
     },
     successMessage,
     errorMessage: null,
@@ -82,3 +86,11 @@ export function useLedgerSettingsMutation({
     },
   });
 }
+
+export const updateLedgerErrorMessageKeys = {
+  rates_unavailable: "ratesUnavailable",
+  unsupported_currency: "unsupportedCurrency",
+  validation_failed: "validationFailed",
+  conflict: "updateConflict",
+  unexpected: "updateFailed",
+} as const satisfies Record<UpdateLedgerActionErrorCode, string>;
