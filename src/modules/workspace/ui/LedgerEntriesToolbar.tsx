@@ -16,6 +16,8 @@ import {
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FilterSearchControl } from "./FilterSearchControl";
+import { ActiveFilterChips } from "./ActiveFilterChips";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -38,6 +40,7 @@ interface LedgerEntriesToolbarProps {
   filteredTotal: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
+  onResetFilters?: () => void;
 }
 
 function detectActivePreset(
@@ -76,6 +79,7 @@ export function LedgerEntriesToolbar({
   filteredTotal,
   onApplyPreset,
   statusSummaryRef,
+  onResetFilters,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -151,7 +155,13 @@ export function LedgerEntriesToolbar({
               showUpdateDates={onUpdateDates !== undefined}
             />
             {onRetry != null && (
-              <Button variant="outline" size="sm" disabled={isProcessing} onClick={onRetry} className="ml-1 h-8 text-xs sm:h-9">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isProcessing}
+                onClick={onRetry}
+                className="ml-1 h-8 text-xs sm:h-9"
+              >
                 <RefreshCw className={cn("mr-1 h-3.5 w-3.5", isRetrying && "animate-spin")} />
                 {tBatch("retry")}
               </Button>
@@ -164,8 +174,14 @@ export function LedgerEntriesToolbar({
                 confirmLabel={tCommon("delete")}
                 onConfirm={onDelete}
                 trigger={
-                  <Button variant="destructive" size="sm" disabled={isProcessing} className="ml-1 h-8 text-xs sm:h-9">
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />{tCommon("delete")}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isProcessing}
+                    className="ml-1 h-8 text-xs sm:h-9"
+                  >
+                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                    {tCommon("delete")}
                   </Button>
                 }
               />
@@ -190,7 +206,7 @@ export function LedgerEntriesToolbar({
         <span
           ref={statusSummaryRef}
           tabIndex={-1}
-          className="text-xs text-muted-foreground flex items-center gap-1 outline-none"
+          className="inline-flex min-h-7 items-center gap-1 rounded-md bg-surface2 px-2 text-xs text-muted-foreground outline-none"
         >
           {activeStatusPreset != null
             ? tFilter("statusSummary", {
@@ -211,9 +227,23 @@ export function LedgerEntriesToolbar({
       )}
 
       {!isSelectionMode && (
+        <FilterSearchControl
+          value={filters.search}
+          onChange={(search) => onFiltersChange({ ...filters, search })}
+        />
+      )}
+
+      {!isSelectionMode && (
         <AmountText variant="summary" className="ml-auto">
           {filteredTotalLabel} {formatCurrencyAmount(filteredTotal, mainCurrency, locale)}
         </AmountText>
+      )}
+      {!isSelectionMode && (
+        <ActiveFilterChips
+          filters={filters}
+          onChange={onFiltersChange}
+          onReset={onResetFilters ?? (() => {})}
+        />
       )}
     </div>
   );

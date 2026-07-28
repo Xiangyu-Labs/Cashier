@@ -21,11 +21,13 @@ export function useSourceDocumentInputController({
   sourceDocumentId,
   initialData,
   messages,
+  timeZone,
 }: UseSourceDocumentInputControllerOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draft = useSourceDocumentInputDraft({
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
     ...(initialData != null ? { initialData } : {}),
+    ...(timeZone != null ? { timeZone } : {}),
   });
   const submitMutations = useSourceDocumentSubmitMutations({
     ledgerId,
@@ -83,7 +85,7 @@ export function useSourceDocumentInputController({
   const handleSubmit = () => {
     if (!draft.canSubmit) return;
 
-    submitMutations.submit(buildSubmitPayload(draft.text, draft.images, draft.entryDate));
+    submitMutations.submit(buildSubmitPayload(draft.text, draft.images, draft.entryDate, timeZone));
   };
 
   return {

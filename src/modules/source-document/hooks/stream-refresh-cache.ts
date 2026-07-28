@@ -90,17 +90,19 @@ export function applyStreamRefreshToCache(
 export function queryKeyToFilterSignature(key: readonly unknown[]): string {
   if (!Array.isArray(key) || key.length < 8) return "";
 
-  const [, , , startDate, endDate, minAmount, maxAmount, statuses] = key;
+  const [, , , startDate, endDate, minAmount, maxAmount, statuses, search] = key;
 
   const statusParts = statuses != null && statuses !== "" ? String(statuses).split(",").sort() : [];
-
-  return [
+  const baseParts = [
     startDate ?? "",
     endDate ?? "",
     minAmount != null ? String(minAmount) : "",
     maxAmount != null ? String(maxAmount) : "",
-    ...statusParts,
-  ].join("|");
+  ];
+  if (key.length >= 9) {
+    baseParts.push(search != null ? encodeURIComponent(String(search)) : "");
+  }
+  return [...baseParts, ...statusParts].join("|");
 }
 
 /**

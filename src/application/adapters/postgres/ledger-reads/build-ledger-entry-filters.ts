@@ -16,6 +16,7 @@ export interface LedgerEntryFilterParams {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  search?: string | null;
 }
 
 export function buildLedgerEntryFilterConditions(
@@ -62,6 +63,15 @@ export function buildLedgerEntryFilterConditions(
 
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
     conditions.push(sql`${ledgerEntries.convertedAmount} <= ${filters.maxAmount}`);
+  }
+
+  if (filters.search != null && filters.search !== "") {
+    conditions.push(
+      sql`(
+        position(lower(${filters.search}) in lower(${ledgerEntries.itemName})) > 0
+        OR position(lower(${filters.search}) in lower(COALESCE(${ledgerEntries.description}, ''))) > 0
+      )`
+    );
   }
 
   return conditions;

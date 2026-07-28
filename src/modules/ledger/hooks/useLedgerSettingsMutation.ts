@@ -11,6 +11,7 @@ import {
 } from "@/lib/query-keys";
 import { updateLedgerAction } from "@/modules/ledger/actions";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { toast } from "sonner";
 
 export interface UpdateLedgerData {
   preferredCurrencies?: string[];
@@ -18,6 +19,7 @@ export interface UpdateLedgerData {
   aiLanguage?: string;
   collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
+  timeZone?: string | null;
 }
 
 interface UseLedgerSettingsMutationParams {
@@ -42,6 +44,7 @@ export function useLedgerSettingsMutation({
         aiLanguage,
         collapseEntriesDefault,
         aiCustomPrompt,
+        timeZone,
       } = data;
       const payload: { settings?: Record<string, unknown> } = {};
 
@@ -53,6 +56,7 @@ export function useLedgerSettingsMutation({
         settings.collapseEntriesDefault = collapseEntriesDefault;
       }
       if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
+      if (timeZone !== undefined) settings.timeZone = timeZone;
 
       if (Object.keys(settings).length > 0) {
         payload.settings = settings;
@@ -61,11 +65,12 @@ export function useLedgerSettingsMutation({
       return await updateLedgerAction(ledgerId, payload);
     },
     successMessage,
-    errorMessage,
+    errorMessage: null,
     skipInvalidation: true,
     onSuccessExtra: (data) => {
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
     },
+    onErrorExtra: (error) => toast.error(error.message || errorMessage),
     onSettledExtra: async (qc, variables, _data, error) => {
       if (error != null || variables.mainCurrency === undefined) return;
       await Promise.all([

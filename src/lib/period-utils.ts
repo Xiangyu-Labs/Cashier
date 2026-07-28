@@ -5,7 +5,7 @@
  * consistent date range calculation and query key matching.
  */
 
-import { formatDateTimeForApi, parseDateString } from "./date-utils";
+import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "./date-utils";
 
 export type PeriodPreset =
   | "all"
@@ -32,7 +32,7 @@ export interface DateRange {
  * Convert period preset to actual date range.
  * Works on both server and client.
  */
-export function periodToDateRange(params: PeriodParams): DateRange {
+export function periodToDateRange(params: PeriodParams, timeZone?: string): DateRange {
   const { period, startDate, endDate } = params;
 
   if (period === "all") {
@@ -48,7 +48,8 @@ export function periodToDateRange(params: PeriodParams): DateRange {
     };
   }
 
-  const now = new Date();
+  const zonedDate = getDateInTimezone(timeZone);
+  const now = zonedDate != null ? parseDateString(zonedDate) : new Date();
 
   if (period === "thisMonth") {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

@@ -1,7 +1,13 @@
 "use client";
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type DateRangeType, addPeriod, getDateRange } from "@/lib/date-utils";
+import {
+  type DateRangeType,
+  addPeriod,
+  getDateInTimezone,
+  getDateRange,
+  parseDateString,
+} from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
@@ -19,6 +25,7 @@ interface StatsHeaderProps {
     percent: number;
     amount: number;
   };
+  timeZone?: string;
 }
 
 export function StatsHeader({
@@ -31,6 +38,7 @@ export function StatsHeader({
   averageDaily,
   currencySymbol = "CNY",
   trend,
+  timeZone,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
@@ -38,7 +46,8 @@ export function StatsHeader({
   const handleNext = () => setCurrentDate(addPeriod(currentDate, rangeType, 1));
 
   // Check if navigating to next period would exceed today's date
-  const today = new Date();
+  const zonedToday = getDateInTimezone(timeZone);
+  const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
   const { startDate: nextStart } = getDateRange(addPeriod(currentDate, rangeType, 1), rangeType);
   const canGoNext = nextStart <= today;
 
@@ -61,7 +70,7 @@ export function StatsHeader({
             key={type}
             onClick={() => {
               setRangeType(type);
-              setCurrentDate(new Date());
+              setCurrentDate(today);
             }}
             className={cn(
               "flex-1 text-sm py-1.5 rounded-md transition-all font-medium",

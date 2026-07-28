@@ -38,6 +38,8 @@ interface LedgerEntriesTabProps {
   collapseEntriesDefault?: boolean;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   statusSummaryRef?: React.RefObject<HTMLSpanElement | null> | undefined;
+  onResetFilters: () => void;
+  timeZone?: string;
 }
 
 export function LedgerEntriesTab({
@@ -50,6 +52,8 @@ export function LedgerEntriesTab({
   collapseEntriesDefault = false,
   onApplyPreset,
   statusSummaryRef,
+  onResetFilters,
+  timeZone,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -58,7 +62,8 @@ export function LedgerEntriesTab({
   const pushModal = useModalStackStore((state) => state.push);
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
-    advancedFilters
+    advancedFilters,
+    timeZone
   );
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const [candidateReviewDocument, setCandidateReviewDocument] = useState<SourceDocument | null>(
@@ -77,6 +82,7 @@ export function LedgerEntriesTab({
       minAmount: filters.minAmount,
       maxAmount: filters.maxAmount,
       statuses: statusesKey,
+      search: filters.search,
     }),
     queryFn: () => getStreamTotalAction(ledgerId, streamTotalInput),
   });
@@ -105,6 +111,7 @@ export function LedgerEntriesTab({
       ...(filters.statuses != null && filters.statuses.length > 0
         ? { statuses: filters.statuses }
         : {}),
+      ...(filters.search != null ? { search: filters.search } : {}),
     });
 
   // Build groupedItems from completed groups for useGroupedEntries — no longer needed
@@ -125,14 +132,13 @@ export function LedgerEntriesTab({
     isAllSelected,
   } = useSelection({ allIds: allSourceDocumentIds });
 
-  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } = useBatchSourceDocumentActions(
-    ledgerId,
-    clearSelection,
-    retainSelection
-  );
+  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
+    useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
-    return () => { delete document.documentElement.dataset.batchSelection; };
+    return () => {
+      delete document.documentElement.dataset.batchSelection;
+    };
   }, [isSelectionMode]);
 
   // C1: Targeted refresh — uses the bounded refresh path via coordinator
@@ -211,8 +217,12 @@ export function LedgerEntriesTab({
           onClearSelection={clearSelection}
           onUpdateDates={handleBatchUpdateDates}
           isUpdatingDates={batchUpdateDates.isPending}
-          onRetry={async () => { await batchRetry.mutateAsync(selectedIds); }}
-          onDelete={async () => { await batchDelete.mutateAsync(selectedIds); }}
+          onRetry={async () => {
+            await batchRetry.mutateAsync(selectedIds);
+          }}
+          onDelete={async () => {
+            await batchDelete.mutateAsync(selectedIds);
+          }}
           isRetrying={batchRetry.isPending}
           isDeleting={batchDelete.isPending}
           filters={filters}
@@ -222,6 +232,7 @@ export function LedgerEntriesTab({
           mainCurrency={mainCurrency}
           filteredTotal={filteredTotal}
           statusSummaryRef={statusSummaryRef}
+          onResetFilters={onResetFilters}
           {...(onApplyPreset != null ? { onApplyPreset } : {})}
         />
       }
@@ -246,6 +257,7 @@ export function LedgerEntriesTab({
                 collapseEntriesDefault={collapseEntriesDefault}
                 noRecordsText={tCommon("noRecords")}
                 getItemProps={() => ({})}
+                {...(timeZone != null ? { timeZone } : {})}
               />
             )}
 
@@ -253,7 +265,14 @@ export function LedgerEntriesTab({
             {!isLoading && streamGroups.length === 0 && (
               <div className="space-y-6 px-2 pt-2">
                 <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
-                  <span>{tCommon("noRecords")}</span>
+                  <span>
+                    {filters.search != null ||
+                    filters.minAmount != null ||
+                    filters.maxAmount != null ||
+                    (filters.statuses?.length ?? 0) > 0
+                      ? tFilter("noMatchingResults")
+                      : tCommon("noRecords")}
+                  </span>
                 </div>
               </div>
             )}

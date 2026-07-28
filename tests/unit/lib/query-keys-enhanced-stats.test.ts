@@ -28,7 +28,17 @@ describe("queryKeys enhanced stats and source documents", () => {
         minAmount: 20,
         maxAmount: 100,
       })
-    ).toEqual(["sourceDocuments", "ledger-1", "stream", "2026-03-01", "2026-03-31", 20, 100, null]);
+    ).toEqual([
+      "sourceDocuments",
+      "ledger-1",
+      "stream",
+      "2026-03-01",
+      "2026-03-31",
+      20,
+      100,
+      null,
+      null,
+    ]);
   });
 
   it("keeps stable positions when enhanced stats dimensions are omitted", () => {

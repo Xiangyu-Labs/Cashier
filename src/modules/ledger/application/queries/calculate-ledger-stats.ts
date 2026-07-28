@@ -12,6 +12,7 @@ export async function calculateLedgerStats(
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
+    search?: string | null;
   }
 ): Promise<LedgerSummaryDto> {
   const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
@@ -33,5 +34,6 @@ export async function calculateLedgerStats(
   if (filters?.currency !== undefined) payload.filters.currency = filters.currency;
   if (filters?.minAmount !== undefined) payload.filters.minAmount = filters.minAmount;
   if (filters?.maxAmount !== undefined) payload.filters.maxAmount = filters.maxAmount;
+  if (filters?.search !== undefined) payload.filters.search = filters.search;
   return calculateLedgerEntryStats(payload);
 }

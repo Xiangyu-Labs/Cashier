@@ -32,6 +32,7 @@ export interface EntryFilters {
   minAmount?: number | null;
   maxAmount?: number | null;
   statuses?: SourceDocumentStatusType[];
+  search?: string | null;
 }
 
 interface EntryFilterPanelProps {
@@ -42,6 +43,7 @@ interface EntryFilterPanelProps {
   preferredCurrencies?: string[];
   showCategory?: boolean;
   showCurrency?: boolean;
+  showStatus?: boolean;
   className?: string;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
 }
@@ -78,6 +80,7 @@ export function EntryFilterPanel({
   preferredCurrencies = [],
   showCategory = true,
   showCurrency = true,
+  showStatus = true,
   className,
   onApplyPreset,
 }: EntryFilterPanelProps) {
@@ -264,7 +267,7 @@ export function EntryFilterPanel({
           align="center"
           collisionPadding={16}
           sideOffset={10}
-          className="w-[min(420px,calc(100vw-2rem))] max-h-[calc(100svh-8rem)] overflow-y-auto p-0 sm:w-[420px]"
+          className="max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none w-[min(420px,calc(100vw-2rem))] max-h-[calc(100svh-8rem)] overflow-y-auto p-0 pb-[env(safe-area-inset-bottom)] sm:w-[420px]"
         >
           <div className="p-4 space-y-4">
             {/* Custom Date Range Section */}
@@ -412,44 +415,46 @@ export function EntryFilterPanel({
             </div>
 
             {/* Status */}
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
-              <div className="space-y-1">
-                {STATUS_OPTIONS.map(({ status, labelKey }) => (
-                  <label
-                    key={status}
-                    className="flex items-center gap-2 text-sm cursor-pointer py-0.5"
+            {showStatus && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
+                <div className="space-y-1">
+                  {STATUS_OPTIONS.map(({ status, labelKey }) => (
+                    <label
+                      key={status}
+                      className="flex items-center gap-2 text-sm cursor-pointer py-0.5"
+                    >
+                      <Checkbox
+                        checked={tempFilters.statuses?.includes(status) ?? false}
+                        onCheckedChange={() => toggleStatus(status)}
+                      />
+                      {t(labelKey)}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={resetStatuses}>
+                    {t("allStatuses")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => handlePreset("needs_attention")}
                   >
-                    <Checkbox
-                      checked={tempFilters.statuses?.includes(status) ?? false}
-                      onCheckedChange={() => toggleStatus(status)}
-                    />
-                    {t(labelKey)}
-                  </label>
-                ))}
+                    {t("needsAttention")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => handlePreset("in_progress")}
+                  >
+                    {t("inProgress")}
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1 pt-1">
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={resetStatuses}>
-                  {t("allStatuses")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-7"
-                  onClick={() => handlePreset("needs_attention")}
-                >
-                  {t("needsAttention")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-7"
-                  onClick={() => handlePreset("in_progress")}
-                >
-                  {t("inProgress")}
-                </Button>
-              </div>
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">

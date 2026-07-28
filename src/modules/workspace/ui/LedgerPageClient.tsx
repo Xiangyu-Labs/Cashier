@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -78,6 +78,9 @@ interface LedgerPageClientProps {
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
+const subscribeToDeviceTimeZone = () => () => {};
+const getDeviceTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const getServerTimeZone = () => undefined;
 
 export function LedgerPageClient({ ...props }: LedgerPageClientProps) {
   return (
@@ -121,12 +124,20 @@ function LedgerPageClientContent({
 
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset } =
+  const fixedTimeZone = ledger?.metadata?.settings?.timeZone ?? undefined;
+  const deviceTimeZone = useSyncExternalStore(
+    subscribeToDeviceTimeZone,
+    getDeviceTimeZone,
+    getServerTimeZone
+  );
+  const effectiveTimeZone = fixedTimeZone ?? deviceTimeZone;
+  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset, resetFilters } =
     usePeriodFilter({
       pathname,
       searchParams,
       initialPeriod,
       scope: activeTab === "details" ? "details" : "stream",
+      ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
     });
 
   const advancedFilters = filterParams;
@@ -172,6 +183,8 @@ function LedgerPageClientContent({
             collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
             onApplyPreset={applyStreamStatusPreset}
             statusSummaryRef={statusSummaryRef}
+            onResetFilters={resetFilters}
+            {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
           />
         </div>
       )}
@@ -190,6 +203,8 @@ function LedgerPageClientContent({
               periodParams={periodParams}
               onFiltersChange={handleFiltersChange}
               advancedFilters={advancedFilters}
+              onResetFilters={resetFilters}
+              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
           </DeferredFeatureMessages>
         </div>
@@ -204,6 +219,7 @@ function LedgerPageClientContent({
               onCategoryDrilldown={handleCategoryDrilldown}
               onDateDrilldown={handleDateDrilldown}
               {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
           </DeferredFeatureMessages>
         </div>
@@ -279,6 +295,7 @@ function LedgerPageClientContent({
             <SourceDocumentInput
               ledgerId={ledgerId}
               onPendingChange={setIsInputSubmitting}
+              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
               onSuccess={() => setIsInputOpen(false)}
             />
           ) : (
@@ -287,6 +304,7 @@ function LedgerPageClientContent({
               categories={categories}
               mainCurrency={mainCurrency}
               preferredCurrencies={preferredCurrencies}
+              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
               onSuccess={() => setIsInputOpen(false)}
             />
           )}

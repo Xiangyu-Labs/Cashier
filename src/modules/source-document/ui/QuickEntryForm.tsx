@@ -24,6 +24,7 @@ interface QuickEntryFormProps {
   categories: EntryCategory[];
   mainCurrency?: string;
   preferredCurrencies?: string[];
+  timeZone?: string;
   onSuccess?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function QuickEntryForm({
   categories,
   mainCurrency = "CNY",
   preferredCurrencies = [],
+  timeZone,
   onSuccess,
 }: QuickEntryFormProps) {
   const tCommon = useTranslations("Common");
@@ -54,6 +56,7 @@ export function QuickEntryForm({
     ledgerId,
     categories,
     mainCurrency,
+    ...(timeZone != null ? { timeZone } : {}),
     ...(onSuccess !== undefined ? { onSuccess } : {}),
   });
 

@@ -3,6 +3,7 @@ import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
 import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
+import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 import {
   MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
@@ -27,6 +28,10 @@ const optionalQueryNumberSchema = z.preprocess(
     .optional()
 );
 const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
+const optionalSearchSchema = z.preprocess(
+  (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
+  z.string().max(MAX_SEARCH_LENGTH).optional()
+);
 const sourceDocumentCursorSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}\|.+\|.+$/, "Invalid source document cursor");
@@ -63,11 +68,10 @@ const imagesSchema = z
   );
 
 export const sourceDocumentIdSchema = uuidSchema;
-export const sourceDocumentIdsSchema = z
-  .preprocess(
-    (value) => Array.isArray(value) ? [...new Set(value)] : value,
-    z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
-  );
+export const sourceDocumentIdsSchema = z.preprocess(
+  (value) => (Array.isArray(value) ? [...new Set(value)] : value),
+  z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
+);
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z
@@ -217,6 +221,7 @@ const streamFilterInputShape = {
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
   statuses: z.array(sourceDocumentStatusSchema).optional(),
+  search: optionalSearchSchema,
 };
 
 export const streamTotalInputSchema = strictObjectSchema(streamFilterInputShape);

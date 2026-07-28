@@ -11,7 +11,7 @@ import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-doc
 /**
  * Extract filter parameters from a stream query key.
  * The query key structure is:
- *   ["sourceDocuments", ledgerId, "stream", startDate, endDate, minAmount, maxAmount, statuses]
+ *   ["sourceDocuments", ledgerId, "stream", startDate, endDate, minAmount, maxAmount, statuses, search]
  */
 function extractFiltersFromQueryKey(queryKey: readonly unknown[]): {
   startDate: string | null;
@@ -19,6 +19,7 @@ function extractFiltersFromQueryKey(queryKey: readonly unknown[]): {
   minAmount: number | null;
   maxAmount: number | null;
   statuses: string | null;
+  search: string | null;
 } | null {
   if (
     !Array.isArray(queryKey) ||
@@ -34,6 +35,7 @@ function extractFiltersFromQueryKey(queryKey: readonly unknown[]): {
     minAmount: (queryKey[5] as number) ?? null,
     maxAmount: (queryKey[6] as number) ?? null,
     statuses: (queryKey[7] as string) ?? null,
+    search: (queryKey[8] as string) ?? null,
   };
 }
 
@@ -50,6 +52,7 @@ function itemMatchesFilters(
     statuses: string | null;
     minAmount: number | null;
     maxAmount: number | null;
+    search: string | null;
   }
 ): boolean {
   // Check status filter
@@ -66,6 +69,17 @@ function itemMatchesFilters(
   }
   if (filters.endDate != null && item.entryDate != null) {
     if (item.entryDate > filters.endDate) return false;
+  }
+
+  if (filters.search != null && filters.search !== "") {
+    const needle = filters.search.toLocaleLowerCase();
+    const titleMatch = item.title?.toLocaleLowerCase().includes(needle) ?? false;
+    const entryMatch = (item.ledgerEntries ?? []).some(
+      (entry) =>
+        entry.itemName.toLocaleLowerCase().includes(needle) ||
+        (entry.description?.toLocaleLowerCase().includes(needle) ?? false)
+    );
+    if (!titleMatch && !entryMatch) return false;
   }
 
   // I2: Check amount range — if the item has any ledger entries with amounts

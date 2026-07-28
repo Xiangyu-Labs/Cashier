@@ -27,7 +27,7 @@ import type {
 } from "@/modules/ledger/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
-export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
+export function useCategoryMutations(ledgerId: string, categories: EntryCategory[]) {
   const t = useTranslations("Settings");
   const queryClient = useQueryClient();
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
@@ -37,13 +37,22 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
     mutationFn: (categoryId: string) => generateEntryCategoryMetadataAction(ledgerId, categoryId),
     onMutate: (categoryId) => {
       setGeneratingCategoryIds((ids) => new Set(ids).add(categoryId));
-      setFailedCategoryIds((ids) => { const next = new Set(ids); next.delete(categoryId); return next; });
+      setFailedCategoryIds((ids) => {
+        const next = new Set(ids);
+        next.delete(categoryId);
+        return next;
+      });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
     },
     onError: (_error, categoryId) => setFailedCategoryIds((ids) => new Set(ids).add(categoryId)),
-    onSettled: (_data, _error, categoryId) => setGeneratingCategoryIds((ids) => { const next = new Set(ids); next.delete(categoryId); return next; }),
+    onSettled: (_data, _error, categoryId) =>
+      setGeneratingCategoryIds((ids) => {
+        const next = new Set(ids);
+        next.delete(categoryId);
+        return next;
+      }),
   });
 
   const [categoryCreatedTrigger, setCategoryCreatedTrigger] = useState<() => void>(() => () => {});
@@ -83,7 +92,8 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
       invalidateLedgerStats(ledgerId),
     ],
     onSettledExtra: (client, _ids, _data, error) => {
-      if (error != null) void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
+      if (error != null)
+        void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
     },
   });
 
@@ -114,12 +124,25 @@ export function useCategoryMutations(ledgerId: string, _categories: unknown[]) {
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
-    invalidatePredicates: [
-      invalidateEntryCategories(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-    ],
+    skipInvalidation: true,
+    onSuccessExtra: (_result, categoryIds) => {
+      const positions = new Map(categoryIds.map((id, index) => [id, index]));
+      queryClient.setQueryData<EntryCategory[]>(
+        queryKeys.entryCategories(ledgerId),
+        [...categories]
+          .sort((a, b) => (positions.get(a.id) ?? 0) - (positions.get(b.id) ?? 0))
+          .map((category, index) => ({ ...category, sortOrder: index }))
+      );
+    },
+    onSettledExtra: async (client, _ids, _data, error) => {
+      if (error != null) return;
+      await Promise.all([
+        client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) }),
+        client.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
+        client.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
+        client.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
+      ]);
+    },
   });
 
   return {

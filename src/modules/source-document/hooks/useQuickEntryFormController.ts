@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
@@ -17,6 +17,7 @@ interface UseQuickEntryFormControllerParams {
   ledgerId: string;
   categories: EntryCategory[];
   mainCurrency: string;
+  timeZone?: string;
   onSuccess?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function useQuickEntryFormController({
   ledgerId,
   categories,
   mainCurrency,
+  timeZone,
   onSuccess,
 }: UseQuickEntryFormControllerParams) {
   const t = useTranslations("QuickEntryForm");
@@ -39,7 +41,10 @@ export function useQuickEntryFormController({
   const [amount, setAmount] = useState(0);
   const [currency, setCurrency] = useState(mainCurrency);
   const [itemName, setItemName] = useState("");
-  const [entryDate, setEntryDate] = useState<Date>(new Date());
+  const [entryDate, setEntryDate] = useState<Date>(() => {
+    const zonedDate = getDateInTimezone(timeZone);
+    return zonedDate != null ? parseDateString(zonedDate) : new Date();
+  });
 
   useEffect(() => {
     setCurrency(mainCurrency);

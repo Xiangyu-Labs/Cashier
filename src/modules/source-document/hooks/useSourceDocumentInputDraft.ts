@@ -14,18 +14,20 @@ import {
 interface UseSourceDocumentInputDraftOptions {
   sourceDocumentId?: string;
   initialData?: SourceDocumentInputInitialData;
+  timeZone?: string;
 }
 
 export function useSourceDocumentInputDraft({
   sourceDocumentId,
   initialData,
+  timeZone,
 }: UseSourceDocumentInputDraftOptions) {
   const [text, setText] = useState(initialData?.text ?? "");
   const [images, setImages] = useState<EditableInputImage[]>(() =>
     toEditableImages(initialData?.images)
   );
   const [entryDate, setEntryDate] = useState<Date>(() =>
-    resolveInitialEntryDate(initialData?.entryDate)
+    resolveInitialEntryDate(initialData?.entryDate, timeZone)
   );
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isInitializing, startTransition] = useTransition();
@@ -46,9 +48,9 @@ export function useSourceDocumentInputDraft({
     startTransition(() => {
       setText(initialData.text ?? "");
       setImages(toEditableImages(initialData.images));
-      setEntryDate(resolveInitialEntryDate(initialData.entryDate));
+      setEntryDate(resolveInitialEntryDate(initialData.entryDate, timeZone));
     });
-  }, [initialData, startTransition]);
+  }, [initialData, startTransition, timeZone]);
 
   return {
     text,

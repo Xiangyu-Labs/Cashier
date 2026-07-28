@@ -4,13 +4,15 @@ import {
   parseListLedgerEntriesInput,
 } from "@/modules/ledger/contract-schemas";
 
-describe("retired search param validation", () => {
-  it("rejects search in listLedgerEntriesInputSchema", () => {
-    expect(() => parseListLedgerEntriesInput({ search: "coffee" })).toThrow("Validation failed");
+describe("search param validation", () => {
+  it("normalizes search in listLedgerEntriesInputSchema", () => {
+    expect(parseListLedgerEntriesInput({ search: "  coffee   receipt " }).search).toBe(
+      "coffee receipt"
+    );
   });
 
-  it("rejects search in ledgerStatsQuerySchema", () => {
-    expect(() => ledgerStatsQuerySchema.parse({ search: "grocery" })).toThrow();
+  it("normalizes search in ledgerStatsQuerySchema", () => {
+    expect(ledgerStatsQuerySchema.parse({ search: " grocery " }).search).toBe("grocery");
   });
 
   it("continues to accept supported filter params", () => {

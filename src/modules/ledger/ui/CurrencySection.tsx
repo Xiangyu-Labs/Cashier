@@ -3,21 +3,19 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { cn } from "@/lib/utils";
 import type { Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface CurrencySectionProps {
   settings: Settings;
-  onUpdateSettings: (data: Partial<Settings>) => void;
-  mainCurrencyMutable?: boolean;
+  onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
 }
 
-export function CurrencySection({
-  settings,
-  onUpdateSettings,
-  mainCurrencyMutable = true,
-}: CurrencySectionProps) {
+export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
   const t = useTranslations("Settings");
   const selectedCurrencies = settings.currencies ?? [];
   const mainCurrency = settings.mainCurrency ?? "CNY";
+  const [pendingMainCurrency, setPendingMainCurrency] = useState<string | null>(null);
 
   const toggleCurrency = (currency: string) => {
     const isSelected = selectedCurrencies.includes(currency);
@@ -28,41 +26,40 @@ export function CurrencySection({
     onUpdateSettings({ currencies: newCurrencies });
   };
 
-  const setMainCurrency = (currency: string) => {
-    onUpdateSettings({ mainCurrency: currency });
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 justify-between sm:flex-row sm:items-center">
         <div>
           <h3 className="text-base font-medium">{t("mainCurrency")}</h3>
           <p className="text-sm text-muted">{t("mainCurrencyDesc")}</p>
-          {!mainCurrencyMutable && (
-            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
-              {t("mainCurrencyLocked")}
-            </p>
-          )}
         </div>
-        {mainCurrencyMutable ? (
-          <select
-            aria-label={t("mainCurrency")}
-            value={mainCurrency}
-            onChange={(event) => setMainCurrency(event.target.value)}
-            className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
-          >
-            {SUPPORTED_CURRENCIES.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm sm:w-auto cursor-not-allowed opacity-60">
-            {mainCurrency}
-          </span>
-        )}
+        <select
+          aria-label={t("mainCurrency")}
+          value={mainCurrency}
+          onChange={(event) => setPendingMainCurrency(event.target.value)}
+          className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
+        >
+          {SUPPORTED_CURRENCIES.map((currency) => (
+            <option key={currency} value={currency}>
+              {currency}
+            </option>
+          ))}
+        </select>
       </div>
+
+      <ConfirmDialog
+        open={pendingMainCurrency != null}
+        onOpenChange={(open) => !open && setPendingMainCurrency(null)}
+        title={t("mainCurrencyChangeTitle")}
+        description={t("mainCurrencyChangeDescription", {
+          currency: pendingMainCurrency ?? mainCurrency,
+        })}
+        confirmLabel={t("mainCurrencyChangeConfirm")}
+        onConfirm={async () => {
+          if (pendingMainCurrency == null || pendingMainCurrency === mainCurrency) return;
+          await onUpdateSettings({ mainCurrency: pendingMainCurrency });
+        }}
+      />
 
       <div className="h-px bg-border" />
 

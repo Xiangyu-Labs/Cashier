@@ -12,6 +12,7 @@ export function SourceDocumentInput({
   mode = "create",
   sourceDocumentId,
   initialData,
+  timeZone,
 }: SourceDocumentInputProps) {
   const t = useTranslations("SourceDocumentInput");
   const tCommon = useTranslations("Common");
@@ -21,6 +22,7 @@ export function SourceDocumentInput({
     ...(onSuccess !== undefined ? { onSuccess } : {}),
     ...(sourceDocumentId !== undefined ? { sourceDocumentId } : {}),
     ...(initialData !== undefined ? { initialData } : {}),
+    ...(timeZone !== undefined ? { timeZone } : {}),
     messages: {
       uploadSuccess: t("uploadSuccess"),
       uploadError: t("uploadError"),

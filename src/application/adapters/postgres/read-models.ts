@@ -45,6 +45,7 @@ export interface TargetSourceDocumentFilterInput {
   endDate?: string | null;
   minAmount?: number;
   maxAmount?: number;
+  search?: string;
 }
 
 export interface TargetSourceDocumentListInput extends TargetSourceDocumentFilterInput {
@@ -257,6 +258,23 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
     if (input.maxAmount !== undefined) {
       conditions.push(sql`${totalAmount} <= ${input.maxAmount}`);
     }
+  }
+  if (input.search != null && input.search !== "") {
+    conditions.push(sql`(
+      position(lower(${input.search}) in lower(COALESCE(${sourceDocuments.title}, ''))) > 0
+      OR EXISTS (
+        SELECT 1
+        FROM ledger_entries AS search_entries
+        WHERE search_entries.ledger_id = ${input.ledgerId}
+          AND search_entries.source_document_id = ${sourceDocuments.id}
+          AND search_entries.source_document_revision_id = ${sourceDocuments.activeRevisionId}
+          AND search_entries.deleted_at IS NULL
+          AND (
+            position(lower(${input.search}) in lower(search_entries.item_name)) > 0
+            OR position(lower(${input.search}) in lower(COALESCE(search_entries.description, ''))) > 0
+          )
+      )
+    )`);
   }
   return conditions;
 }

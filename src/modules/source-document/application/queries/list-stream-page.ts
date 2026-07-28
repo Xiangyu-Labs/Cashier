@@ -4,6 +4,7 @@ import { ValidationError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import { normalizeSearchTerm } from "@/lib/search";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -13,6 +14,7 @@ export interface ListStreamPageInput {
   minAmount?: number;
   maxAmount?: number;
   statuses?: string[];
+  search?: string;
   cursor?: string | null | undefined;
   limit: number;
 }
@@ -33,6 +35,7 @@ export function computeFilterFingerprint(input: ListStreamPageInput): string {
     input.endDate ?? "",
     input.minAmount?.toString() ?? "",
     input.maxAmount?.toString() ?? "",
+    input.search ?? "",
     ...sortedStatuses,
   ].join("\0");
   hash.update(parts);
@@ -128,9 +131,13 @@ export async function listStreamPage(
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
+  const search = normalizeSearchTerm(input.search);
 
   // Compute filter fingerprint before cursor validation
-  const filterFingerprint = computeFilterFingerprint(input);
+  const filterFingerprint = computeFilterFingerprint({
+    ...input,
+    ...(search != null ? { search } : {}),
+  });
 
   // Validate cursor against ledger identity and filter compatibility.
   // Throws ValidationError for malformed/incompatible cursors so the client
@@ -154,6 +161,7 @@ export async function listStreamPage(
     ...(input.endDate != null && input.endDate !== "" ? { endDate: input.endDate } : {}),
     ...(input.minAmount != null ? { minAmount: input.minAmount } : {}),
     ...(input.maxAmount != null ? { maxAmount: input.maxAmount } : {}),
+    ...(search != null ? { search } : {}),
     ...(innerCursor != null ? { cursor: innerCursor } : {}),
     limit,
   });

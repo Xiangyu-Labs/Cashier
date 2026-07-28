@@ -99,7 +99,17 @@ describe("queryKeys", () => {
           minAmount: 20,
           maxAmount: 100,
         })
-      ).toEqual(["sourceDocuments", ledgerId, "stream", "2026-03-01", "2026-03-31", 20, 100, null]);
+      ).toEqual([
+        "sourceDocuments",
+        ledgerId,
+        "stream",
+        "2026-03-01",
+        "2026-03-31",
+        20,
+        100,
+        null,
+        null,
+      ]);
     });
 
     it("应该生成正确的sourceDocumentStreamPrefix query key", () => {
@@ -128,6 +138,7 @@ describe("queryKeys", () => {
         10,
         100,
         "completed,failed",
+        null,
       ]);
     });
   });

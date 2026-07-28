@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useCallback } from "react";
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
+import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 export interface DateGroup<T> {
   title: string;
@@ -20,6 +20,7 @@ export interface UseDateGroupingOptions<T> {
   locale: string;
   /** Translation function for "today" and "yesterday" */
   t: (key: "today" | "yesterday") => string;
+  timeZone?: string;
 }
 
 export interface UseDateGroupingReturn<T> {
@@ -39,6 +40,7 @@ export function useDateGrouping<T>({
   getAmount,
   locale,
   t,
+  timeZone,
 }: UseDateGroupingOptions<T>): UseDateGroupingReturn<T> {
   const memoizedGetDateStr = useCallback((item: T) => getDateStr(item), [getDateStr]);
 
@@ -51,9 +53,10 @@ export function useDateGrouping<T>({
 
     const groups: Record<string, DateGroup<T>> = {};
 
-    const today = new Date();
+    const zonedToday = getDateInTimezone(timeZone);
+    const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
     const todayStr = formatDateTimeForApi(today);
-    const yesterdayDate = new Date();
+    const yesterdayDate = new Date(today);
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = formatDateTimeForApi(yesterdayDate);
 
@@ -88,7 +91,7 @@ export function useDateGrouping<T>({
     });
 
     return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-  }, [items, locale, t, memoizedGetDateStr, getAmount]);
+  }, [items, locale, t, memoizedGetDateStr, getAmount, timeZone]);
 
   return { groupedItems, getDateStr: memoizedGetDateStr };
 }

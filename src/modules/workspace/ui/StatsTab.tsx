@@ -5,7 +5,7 @@ import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
-import { type DateRangeType } from "@/lib/date-utils";
+import { getDateInTimezone, parseDateString, type DateRangeType } from "@/lib/date-utils";
 import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
 import { useTranslations, useFormatter, useLocale } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
@@ -22,6 +22,7 @@ interface StatsTabProps {
   onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
   onDateDrilldown?: (date: string) => void;
   initialDate?: Date;
+  timeZone?: string;
 }
 
 export function StatsTab({
@@ -30,6 +31,7 @@ export function StatsTab({
   onCategoryDrilldown,
   onDateDrilldown,
   initialDate,
+  timeZone,
 }: StatsTabProps) {
   const t = useTranslations("StatsTab");
   const format = useFormatter();
@@ -37,7 +39,11 @@ export function StatsTab({
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
   // Use initialDate from props to avoid hydration mismatch between server and client
-  const [currentDate, setCurrentDate] = useState(initialDate || new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const zonedDate = getDateInTimezone(timeZone);
+    if (zonedDate != null) return parseDateString(zonedDate);
+    return initialDate ?? new Date();
+  });
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
 
   const {
@@ -126,6 +132,7 @@ export function StatsTab({
           averageDaily={averageDaily}
           currencySymbol={currencySymbol}
           {...(trend !== undefined ? { trend } : {})}
+          {...(timeZone != null ? { timeZone } : {})}
         />
 
         <div className="min-w-0 space-y-2 px-2">

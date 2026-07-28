@@ -15,6 +15,7 @@ export interface LedgerAdvancedFilters {
   minAmount?: number | null;
   maxAmount?: number | null;
   statuses?: SourceDocumentStatusType[];
+  search?: string | null;
 }
 
 export interface DetailsInitialQueryState {
@@ -47,15 +48,17 @@ export function buildDetailsFilterKey(filters: LedgerAdvancedFilters): string | 
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
     parts.push(`max:${filters.maxAmount}`);
   }
+  if (filters.search != null && filters.search !== "") parts.push(`search:${filters.search}`);
 
   return parts.length > 0 ? parts.join("|") : null;
 }
 
 export function getDetailsInitialQueryState(
   periodParams: PeriodParams,
-  advancedFilters: LedgerAdvancedFilters = {}
+  advancedFilters: LedgerAdvancedFilters = {},
+  timeZone?: string
 ): DetailsInitialQueryState {
-  const dateRange = periodToDateRange(periodParams);
+  const dateRange = periodToDateRange(periodParams, timeZone);
 
   return {
     startDateStr: dateRange.startDate ?? null,

@@ -1,4 +1,4 @@
-import { formatDateTimeForApi } from "@/lib/date-utils";
+import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { currentApplication } from "@/application/current";
 import { round } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
@@ -74,8 +74,8 @@ async function createQuickEntryAtomically(
 
 export async function createQuickEntry<
   TLedger extends {
-    settings?: { mainCurrency?: string };
-    metadata?: { settings?: { mainCurrency?: string } } | null;
+    settings?: { mainCurrency?: string; timeZone?: string | null };
+    metadata?: { settings?: { mainCurrency?: string; timeZone?: string | null } } | null;
   },
 >(
   ledgerId: string,
@@ -85,7 +85,9 @@ export async function createQuickEntry<
   const mainCurrency =
     ledger.settings?.mainCurrency ?? ledger.metadata?.settings?.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
-  const entryDate = payload.entryDate ?? formatDateTimeForApi(new Date());
+  const timeZone = ledger.settings?.timeZone ?? ledger.metadata?.settings?.timeZone ?? undefined;
+  const entryDate =
+    payload.entryDate ?? getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date());
 
   const [categoryName, conversion] = await Promise.all([
     getEntryCategoryName(ledgerId, payload.categoryId),

@@ -1,6 +1,7 @@
 import { currentApplication } from "@/application/current";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import type { StreamTotalDto } from "../../contracts";
+import { normalizeSearchTerm } from "@/lib/search";
 
 export interface GetStreamTotalInput {
   startDate?: string | null;
@@ -8,6 +9,7 @@ export interface GetStreamTotalInput {
   minAmount?: number;
   maxAmount?: number;
   statuses?: readonly SourceDocumentStatusType[];
+  search?: string;
 }
 
 export async function getStreamTotal(
@@ -22,8 +24,12 @@ export async function getStreamTotal(
     return { total: "0" };
   }
 
+  const search = normalizeSearchTerm(input.search);
+  const filters = { ...input };
+  delete filters.search;
   return currentApplication.sourceDocumentReads.calculateCompletedTotal({
     ledgerId,
-    ...input,
+    ...filters,
+    ...(search != null ? { search } : {}),
   });
 }

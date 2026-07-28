@@ -26,7 +26,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useSelection } from "@/hooks/use-selection";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import {
@@ -36,6 +42,8 @@ import {
   previewBatchLedgerEntryDateAction,
 } from "@/modules/ledger/actions";
 import { toast } from "sonner";
+import { FilterSearchControl } from "./FilterSearchControl";
+import { ActiveFilterChips } from "./ActiveFilterChips";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -48,7 +56,10 @@ interface DetailsTabProps {
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
+    search?: string | null;
   };
+  onResetFilters: () => void;
+  timeZone?: string;
 }
 
 export function DetailsTab({
@@ -58,9 +69,12 @@ export function DetailsTab({
   periodParams,
   onFiltersChange,
   advancedFilters,
+  onResetFilters,
+  timeZone,
 }: DetailsTabProps) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
+  const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
   const queryClient = useQueryClient();
   const push = useModalStackStore((state) => state.push);
@@ -81,11 +95,12 @@ export function DetailsTab({
       ledgerId,
       periodParams,
       advancedFilters,
+      ...(timeZone != null ? { timeZone } : {}),
       ...(ledger !== undefined ? { ledger } : {}),
     });
 
   // Grouping
-  const { groupedItems } = useDetailsTabGrouping(entries);
+  const { groupedItems } = useDetailsTabGrouping(entries, timeZone);
   const {
     selectedIds,
     isSelectionMode,
@@ -98,17 +113,22 @@ export function DetailsTab({
   } = useSelection({ allIds: entries.map((entry) => entry.id) });
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
-    return () => { delete document.documentElement.dataset.batchSelection; };
+    return () => {
+      delete document.documentElement.dataset.batchSelection;
+    };
   }, [isSelectionMode]);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dateImpact, setDateImpact] = useState<Awaited<ReturnType<typeof previewBatchLedgerEntryDateAction>> | null>(null);
+  const [dateImpact, setDateImpact] = useState<Awaited<
+    ReturnType<typeof previewBatchLedgerEntryDateAction>
+  > | null>(null);
 
   // Filters
   const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,
+    ...(timeZone != null ? { timeZone } : {}),
   });
 
   // Mutations
@@ -141,7 +161,8 @@ export function DetailsTab({
     onSuccess: async (result) => {
       await invalidateAfterBatch();
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
-      if (unresolved.length > 0) retainSelection(unresolved); else clearSelection();
+      if (unresolved.length > 0) retainSelection(unresolved);
+      else clearSelection();
       toast.success(t("batchDeleted", { count: result.succeededIds.length }));
       if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
       setDeleteDialogOpen(false);
@@ -166,7 +187,11 @@ export function DetailsTab({
     },
     onError: () => toast.error(tCommon("error")),
   });
-  const batchPending = batchUpdate.isPending || batchDelete.isPending || previewDate.isPending || updateDates.isPending;
+  const batchPending =
+    batchUpdate.isPending ||
+    batchDelete.isPending ||
+    previewDate.isPending ||
+    updateDates.isPending;
 
   // Infinite scroll
   const sentinelRef = useInfiniteScroll({
@@ -189,10 +214,28 @@ export function DetailsTab({
       header={
         <>
           <DetailsToolbar
-            {...(!isSelectionMode ? { totalLabel: formatCurrencyAmount(Number(monthStats.mainTotal), monthStats.mainCurrency, locale) } : {})}
+            {...(!isSelectionMode
+              ? {
+                  totalLabel: formatCurrencyAmount(
+                    Number(monthStats.mainTotal),
+                    monthStats.mainCurrency,
+                    locale
+                  ),
+                }
+              : {})}
           >
-            <Button variant="ghost" size="icon" onClick={toggleSelectionMode} className="h-8 w-8" aria-label={isSelectionMode ? t("cancelSelect") : t("select")}>
-              {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSelectionMode}
+              className="h-8 w-8"
+              aria-label={isSelectionMode ? t("cancelSelect") : t("select")}
+            >
+              {isSelectionMode ? (
+                <ArrowLeft className="h-4 w-4" />
+              ) : (
+                <CheckSquare className="h-4 w-4" />
+              )}
             </Button>
             {!isSelectionMode && (
               <EntryFilterPanel
@@ -201,7 +244,22 @@ export function DetailsTab({
                 periodParams={periodParams}
                 categories={categories}
                 preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+                showStatus={false}
                 className="flex-1 sm:flex-none"
+              />
+            )}
+            {!isSelectionMode && (
+              <FilterSearchControl
+                value={filters.search}
+                onChange={(search) => onFiltersChange({ ...filters, search })}
+              />
+            )}
+            {!isSelectionMode && (
+              <ActiveFilterChips
+                filters={filters}
+                categories={categories}
+                onChange={onFiltersChange}
+                onReset={onResetFilters}
               />
             )}
           </DetailsToolbar>
@@ -216,8 +274,12 @@ export function DetailsTab({
               onClearSelection={clearSelection}
               categories={categories}
               preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
-              onChangeCategory={async (categoryId) => { await batchUpdate.mutateAsync({ categoryId }); }}
-              onChangeCurrency={async (currency) => { await batchUpdate.mutateAsync({ currency }); }}
+              onChangeCategory={async (categoryId) => {
+                await batchUpdate.mutateAsync({ categoryId });
+              }}
+              onChangeCurrency={async (currency) => {
+                await batchUpdate.mutateAsync({ currency });
+              }}
               onChangeDate={() => previewDate.mutate()}
               onDelete={() => setDeleteDialogOpen(true)}
               isProcessing={batchPending}
@@ -278,7 +340,19 @@ export function DetailsTab({
           )}
 
           {/* Empty State */}
-          {!isLoading && entries.length === 0 && <EmptyState title={tCommon("noRecords")} />}
+          {!isLoading && entries.length === 0 && (
+            <EmptyState
+              title={
+                advancedFilters.search != null ||
+                advancedFilters.categoryId != null ||
+                advancedFilters.currency != null ||
+                advancedFilters.minAmount != null ||
+                advancedFilters.maxAmount != null
+                  ? tFilter("noMatchingResults")
+                  : tCommon("noRecords")
+              }
+            />
+          )}
 
           {/* Infinite Scroll Sentinel */}
           <div ref={sentinelRef} className="h-1" />
@@ -330,11 +404,18 @@ export function DetailsTab({
           description={t("deleteSelectedDescription", { count: selectedIds.length })}
           variant="destructive"
           confirmLabel={tCommon("delete")}
-          onConfirm={async () => { await batchDelete.mutateAsync(); }}
+          onConfirm={async () => {
+            await batchDelete.mutateAsync();
+          }}
         />
-        <Dialog open={dateDialogOpen} onOpenChange={(open) => !updateDates.isPending && setDateDialogOpen(open)}>
+        <Dialog
+          open={dateDialogOpen}
+          onOpenChange={(open) => !updateDates.isPending && setDateDialogOpen(open)}
+        >
           <DialogContent>
-            <DialogHeader><DialogTitle>{t("changeDateTitle")}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>{t("changeDateTitle")}</DialogTitle>
+            </DialogHeader>
             {dateImpact != null && (
               <p className="text-sm text-muted-foreground">
                 {t("changeDateImpact", {
@@ -344,10 +425,26 @@ export function DetailsTab({
                 })}
               </p>
             )}
-            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-11 rounded-md border border-border bg-bg px-3" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="min-h-11 rounded-md border border-border bg-bg px-3"
+            />
             <DialogFooter>
-              <Button variant="outline" disabled={updateDates.isPending} onClick={() => setDateDialogOpen(false)}>{tCommon("cancel")}</Button>
-              <Button disabled={updateDates.isPending || selectedDate === ""} onClick={() => updateDates.mutate()}>{tCommon("confirm")}</Button>
+              <Button
+                variant="outline"
+                disabled={updateDates.isPending}
+                onClick={() => setDateDialogOpen(false)}
+              >
+                {tCommon("cancel")}
+              </Button>
+              <Button
+                disabled={updateDates.isPending || selectedDate === ""}
+                onClick={() => updateDates.mutate()}
+              >
+                {tCommon("confirm")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

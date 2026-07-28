@@ -49,15 +49,68 @@ describe("target Settings currency workflow", () => {
     expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
   });
 
-  it("rejects main currency change when active entries exist", async () => {
+  it("changes main currency and recalculates active entries atomically", async () => {
     await createEntry();
 
-    await expect(
-      updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } })
-    ).rejects.toThrow("Main currency cannot be changed after the first entry");
+    const updated = await updateLedger(TEST_USER_ID, ledgerId, {
+      settings: { mainCurrency: "USD" },
+    });
+    const entry = await getTestDb().query.ledgerEntries.findFirst({
+      where: eq(ledgerEntries.ledgerId, ledgerId),
+    });
+
+    expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
+    expect(entry?.amount).toBe("80.00");
+    expect(entry?.currency).toBe("CNY");
+    expect(entry?.convertedAmount).toBe("10.00");
+    expect(entry?.exchangeRate).toBe("0.125000");
   });
 
-  it("allows other setting changes when main currency is locked", async () => {
+  it("recalculates both active and pending revision entries", async () => {
+    const db = getTestDb();
+    const sourceDocumentId = crypto.randomUUID();
+    const activeRevisionId = crypto.randomUUID();
+    const pendingRevisionId = crypto.randomUUID();
+    await db.insert(sourceDocuments).values({
+      id: sourceDocumentId,
+      ledgerId,
+      entryDate: "2026-07-15",
+      activeRevisionId,
+      pendingRevisionId,
+    });
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId,
+        sourceDocumentRevisionId: activeRevisionId,
+        amount: "80.00",
+        currency: "CNY",
+        itemName: "Active",
+        convertedAmount: "80.00",
+        exchangeRate: "1.000000",
+      },
+      {
+        ledgerId,
+        sourceDocumentId,
+        sourceDocumentRevisionId: pendingRevisionId,
+        amount: "40.00",
+        currency: "CNY",
+        itemName: "Pending",
+        convertedAmount: "40.00",
+        exchangeRate: "1.000000",
+      },
+    ]);
+
+    await updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } });
+
+    const entries = await db.query.ledgerEntries.findMany({
+      where: eq(ledgerEntries.ledgerId, ledgerId),
+    });
+    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.00", "5.00"]);
+    expect(entries.every((entry) => entry.exchangeRate === "0.125000")).toBe(true);
+  });
+
+  it("allows other setting changes when entries exist", async () => {
     await createEntry();
 
     const updated = await updateLedger(TEST_USER_ID, ledgerId, {
@@ -106,12 +159,22 @@ describe("target Settings currency workflow", () => {
     expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
   });
 
-  it("rejects main currency change with unsupported currency when active entries exist", async () => {
+  it("rolls back settings and conversions when a required rate is unavailable", async () => {
     await createEntry();
 
     await expect(
       updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "ZZZ" } })
-    ).rejects.toThrow("Main currency cannot be changed after the first entry");
+    ).rejects.toThrow("Unsupported currency conversion");
+
+    const [ledger, entry] = await Promise.all([
+      getTestDb().query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
+      getTestDb().query.ledgerEntries.findFirst({
+        where: eq(ledgerEntries.ledgerId, ledgerId),
+      }),
+    ]);
+    expect(ledger?.metadata?.settings?.mainCurrency).toBeUndefined();
+    expect(entry?.convertedAmount).toBe("80.00");
+    expect(entry?.exchangeRate).toBe("1.000000");
   });
 });
 

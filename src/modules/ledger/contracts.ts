@@ -9,6 +9,7 @@ export interface LedgerSettings {
   mainCurrency?: string;
   collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
+  timeZone?: string | null;
 }
 
 export interface LedgerMetadataDto {
@@ -132,7 +133,6 @@ export interface LedgerEntryPageDto {
 export interface LedgerSettingsViewDto {
   uncategorizedCount: number;
   credentials: ServiceCredentialDto[];
-  mainCurrencyMutable: boolean;
 }
 
 export interface DeleteLedgerEntryResultDto {

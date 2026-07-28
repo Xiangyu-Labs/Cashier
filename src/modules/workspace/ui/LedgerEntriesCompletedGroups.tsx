@@ -7,6 +7,7 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { AnimatePresence, motion } from "framer-motion";
 import { EntryGroupHeader } from "./EntryGroupHeader";
+import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -28,6 +29,7 @@ export interface UnifiedStreamGroupProps {
   collapseEntriesDefault: boolean;
   noRecordsText: string;
   getItemProps: () => Record<string, unknown>;
+  timeZone?: string;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -43,6 +45,7 @@ export function LedgerEntriesUnifiedGroups({
   collapseEntriesDefault,
   noRecordsText,
   getItemProps,
+  timeZone,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -67,7 +70,11 @@ export function LedgerEntriesUnifiedGroups({
             transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
             className="space-y-2"
           >
-            <UnifiedGroupHeader group={dateGroup} mainCurrency={mainCurrency} />
+            <UnifiedGroupHeader
+              group={dateGroup}
+              mainCurrency={mainCurrency}
+              {...(timeZone != null ? { timeZone } : {})}
+            />
 
             <div className="space-y-4">
               <AnimatePresence initial={false} mode="popLayout">
@@ -122,9 +129,11 @@ export function LedgerEntriesUnifiedGroups({
 function UnifiedGroupHeader({
   group,
   mainCurrency,
+  timeZone,
 }: {
   group: UnifiedStreamGroup;
   mainCurrency: string;
+  timeZone?: string;
 }) {
   const locale = useLocale();
   const t = useGroupHeaderStrings();
@@ -135,11 +144,11 @@ function UnifiedGroupHeader({
       // Format submission date for display
       const d = new Date(group.date + "T00:00:00");
       if (isNaN(d.getTime())) return group.date;
-      return formatLocalizedDate(d, locale, t("today"), t("yesterday"));
+      return formatLocalizedDate(d, locale, t("today"), t("yesterday"), timeZone);
     }
     const d = new Date(group.date + "T00:00:00");
     if (isNaN(d.getTime())) return group.date;
-    return formatLocalizedDate(d, locale, t("today"), t("yesterday"));
+    return formatLocalizedDate(d, locale, t("today"), t("yesterday"), timeZone);
   })();
 
   const provenanceNote =
@@ -158,15 +167,23 @@ function UnifiedGroupHeader({
   );
 }
 
-function formatLocalizedDate(date: Date, locale: string, todayLabel: string, yesterdayLabel: string) {
-  const toLocalKey = (value: Date) => [
-    value.getFullYear(),
-    String(value.getMonth() + 1).padStart(2, "0"),
-    String(value.getDate()).padStart(2, "0"),
-  ].join("-");
+function formatLocalizedDate(
+  date: Date,
+  locale: string,
+  todayLabel: string,
+  yesterdayLabel: string,
+  timeZone?: string
+) {
+  const toLocalKey = (value: Date) =>
+    [
+      value.getFullYear(),
+      String(value.getMonth() + 1).padStart(2, "0"),
+      String(value.getDate()).padStart(2, "0"),
+    ].join("-");
   const value = toLocalKey(date);
-  const today = new Date();
-  const yesterday = new Date();
+  const zonedToday = getDateInTimezone(timeZone);
+  const today = zonedToday != null ? parseDateString(zonedToday) : new Date();
+  const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (value === toLocalKey(today)) return todayLabel;
   if (value === toLocalKey(yesterday)) return yesterdayLabel;

@@ -14,6 +14,7 @@ const {
 
 vi.mock("@/lib/date-utils", () => ({
   formatDateTimeForApi: formatDateTimeForApiMock,
+  getDateInTimezone: vi.fn(() => undefined),
 }));
 
 vi.mock("@/application/current", () => ({

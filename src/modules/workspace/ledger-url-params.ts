@@ -63,6 +63,7 @@ export interface LedgerFilterParams {
   minAmount: number | null;
   maxAmount: number | null;
   statuses: SourceDocumentStatusType[];
+  search: string | null;
 }
 
 type SearchParamsLike = Pick<URLSearchParams, "get" | "toString">;
@@ -77,6 +78,7 @@ const FILTER_KEYS = [
   "minAmount",
   "maxAmount",
   "statuses",
+  "search",
 ] as const;
 
 type FilterKey = (typeof FILTER_KEYS)[number];
@@ -118,6 +120,7 @@ export interface LedgerUrlUpdate {
   minAmount?: number | null;
   maxAmount?: number | null;
   statuses?: SourceDocumentStatusType[] | null;
+  search?: string | null;
 }
 
 function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchParams {
@@ -170,6 +173,7 @@ export function readLedgerFilterParams(
     minAmount: readNumber("minAmount"),
     maxAmount: readNumber("maxAmount"),
     statuses: parseStatusesParam(readScopedValue(searchParams, STATUSES_URL_PARAM, scope)),
+    search: readScopedValue(searchParams, "search", scope),
   };
 }
 
@@ -226,8 +230,7 @@ export function updateLedgerSearchParams(
       params.delete(keyFor(STATUSES_URL_PARAM));
     }
   }
-
-  params.delete("search");
+  if ("search" in updates) setOrDeleteStringParam(params, keyFor("search"), updates.search);
 
   return params;
 }

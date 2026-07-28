@@ -23,7 +23,7 @@ import { buildAuthoritativeReconciliation } from "./reconciliation";
  */
 export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId },
+    { ledgerId, ledger },
     input: CreateSourceDocumentInputContract,
     operationId?: string,
     clientSubmissionId?: string
@@ -39,7 +39,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     };
 
     const result = await createAndQueueSourceDocument(
-      { ledgerId, ...payload },
+      { ledgerId, ledger, ...payload },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
         storedFiles: currentApplication.storedFiles,

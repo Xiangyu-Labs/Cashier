@@ -13,15 +13,17 @@ export interface UseDetailsTabFiltersReturn {
 interface UseDetailsTabFiltersProps {
   periodParams: PeriodParams;
   advancedFilters: LedgerAdvancedFilters;
+  timeZone?: string;
 }
 
 export function useDetailsTabFilters({
   periodParams,
   advancedFilters,
+  timeZone,
 }: UseDetailsTabFiltersProps): UseDetailsTabFiltersReturn {
   const filters: EntryFilters = useMemo(
-    () => buildLedgerEntryFilters(periodParams, advancedFilters),
-    [advancedFilters, periodParams]
+    () => buildLedgerEntryFilters(periodParams, advancedFilters, timeZone),
+    [advancedFilters, periodParams, timeZone]
   );
 
   const filterKey = useMemo(() => buildLedgerFilterKey(filters), [filters]);

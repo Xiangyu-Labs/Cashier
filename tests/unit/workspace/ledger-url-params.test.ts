@@ -87,6 +87,7 @@ describe("ledger-url-params", () => {
       minAmount: 100,
       maxAmount: 250,
       statuses: [],
+      search: null,
     });
   });
 
@@ -100,13 +101,13 @@ describe("ledger-url-params", () => {
     expect(params.get("maxAmount")).toBe("250");
   });
 
-  it("drops retired search params while preserving unrelated params", () => {
+  it("preserves legacy search params until a scoped update migrates them", () => {
     const params = updateLedgerSearchParams(
       new URLSearchParams("search=coffee&period=thisMonth&foo=bar"),
       { tab: "details" }
     );
 
-    expect(params.get("search")).toBeNull();
+    expect(params.get("search")).toBe("coffee");
     expect(params.get("period")).toBe("thisMonth");
     expect(params.get("foo")).toBe("bar");
     expect(params.get("tab")).toBe("details");
@@ -144,6 +145,20 @@ describe("ledger-url-params", () => {
     expect(next.get("detailsCurrency")).toBe("EUR");
     expect(readLedgerFilterParams(next, "stream").currency).toBeNull();
     expect(readLedgerFilterParams(next, "details").currency).toBe("EUR");
+  });
+
+  it("stores independent streamSearch and detailsSearch parameters", () => {
+    const stream = updateLedgerSearchParams(
+      new URLSearchParams("detailsSearch=latte"),
+      { search: "receipt" },
+      "stream"
+    );
+    const details = updateLedgerSearchParams(stream, { search: "morning" }, "details");
+
+    expect(details.get("streamSearch")).toBe("receipt");
+    expect(details.get("detailsSearch")).toBe("morning");
+    expect(readLedgerFilterParams(details, "stream").search).toBe("receipt");
+    expect(readLedgerFilterParams(details, "details").search).toBe("morning");
   });
 
   it("reads legacy filters for the current scope and migrates them on update", () => {

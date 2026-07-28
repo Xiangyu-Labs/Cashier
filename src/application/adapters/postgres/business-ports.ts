@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   AuthenticationPort,
   CategoryPort,
@@ -48,7 +48,7 @@ function mapCategory(row: typeof entryCategories.$inferSelect) {
 
 type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function recalculateActiveEntries(
+async function recalculateCurrentEntries(
   tx: PostgresTransaction,
   ledgerId: string,
   mainCurrency: string
@@ -66,7 +66,10 @@ async function recalculateActiveEntries(
       and(
         eq(sourceDocuments.ledgerId, ledgerId),
         eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+        or(
+          eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+          eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
+        ),
         isNull(sourceDocuments.deletedAt)
       )
     )
@@ -440,23 +443,7 @@ export const postgresSettingsAdapter: SettingsPort = {
       const previousMainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
       const nextMainCurrency = settings.mainCurrency ?? "CNY";
       if (previousMainCurrency !== nextMainCurrency) {
-        // Re-count active entries inside the lock to prevent race with first-entry creation.
-        const [activeRow] = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(ledgerEntries)
-          .innerJoin(
-            sourceDocuments,
-            and(
-              eq(sourceDocuments.ledgerId, input.ledgerId),
-              eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-              eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
-              isNull(sourceDocuments.deletedAt)
-            )
-          )
-          .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), isNull(ledgerEntries.deletedAt)));
-        if (Number(activeRow?.count ?? 0) > 0) {
-          throw new ConflictError("Main currency cannot be changed after the first entry");
-        }
+        await recalculateCurrentEntries(tx, input.ledgerId, nextMainCurrency);
       }
       const updated = await tx
         .update(ledgers)
@@ -499,7 +486,7 @@ export const postgresCurrencyAdapter: CurrencyPort = {
     return db.transaction(async (tx) => {
       // Lock the ledger to serialise with concurrent settings changes.
       await lockLedgerForUpdate(tx, ledgerId);
-      return recalculateActiveEntries(tx, ledgerId, mainCurrency);
+      return recalculateCurrentEntries(tx, ledgerId, mainCurrency);
     });
   },
 };

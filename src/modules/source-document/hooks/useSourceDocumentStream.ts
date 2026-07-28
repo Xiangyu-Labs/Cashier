@@ -30,6 +30,7 @@ export interface UseSourceDocumentStreamOptions {
   maxAmount?: number;
   /** Canonical selected statuses. Empty/undefined means all statuses. */
   statuses?: SourceDocumentStatusType[];
+  search?: string;
   /** Enable refresh polling for this stream. */
   enableRefresh?: boolean;
 }
@@ -60,6 +61,7 @@ function encodeFilterSignature(params: {
   minAmount: number | null;
   maxAmount: number | null;
   statusesKey: string | null;
+  search: string | null;
 }): string {
   const statusParts = params.statusesKey != null ? params.statusesKey.split(",").sort() : [];
   const parts = [
@@ -67,6 +69,7 @@ function encodeFilterSignature(params: {
     params.endDate ?? "",
     params.minAmount?.toString() ?? "",
     params.maxAmount?.toString() ?? "",
+    params.search != null ? encodeURIComponent(params.search) : "",
     ...statusParts,
   ];
   return parts.join("|");
@@ -77,7 +80,14 @@ export function useSourceDocumentStream(
   options: UseSourceDocumentStreamOptions = {}
 ) {
   const queryClient = useQueryClient();
-  const { dateRange, minAmount, maxAmount, statuses: rawStatuses, enableRefresh = true } = options;
+  const {
+    dateRange,
+    minAmount,
+    maxAmount,
+    statuses: rawStatuses,
+    search,
+    enableRefresh = true,
+  } = options;
 
   const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
   const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
@@ -98,6 +108,7 @@ export function useSourceDocumentStream(
     ...(minAmount != null ? { minAmount } : {}),
     ...(maxAmount != null ? { maxAmount } : {}),
     statuses: statusesKey,
+    search: search ?? null,
   });
 
   // Compute filter signature for refresh coordination
@@ -109,8 +120,9 @@ export function useSourceDocumentStream(
         minAmount: minAmount ?? null,
         maxAmount: maxAmount ?? null,
         statusesKey,
+        search: search ?? null,
       }),
-    [startDate, endDate, minAmount, maxAmount, statusesKey]
+    [startDate, endDate, minAmount, maxAmount, statusesKey, search]
   );
 
   // Track the generation from the first page for cross-page consistency
@@ -131,6 +143,7 @@ export function useSourceDocumentStream(
         ...(stableStatuses != null && stableStatuses.length > 0
           ? { statuses: stableStatuses }
           : {}),
+        ...(search != null && search !== "" ? { search } : {}),
         cursor: pageParam,
         limit: STREAM_PAGE_LIMIT,
       }),

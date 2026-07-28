@@ -32,6 +32,7 @@ export async function createSourceDocumentV2FromCredential(
   }
 ): Promise<CreateSourceDocumentResponseDto> {
   const create = async () => {
+    const settings = await currentApplication.settings.get(input.ledgerId);
     const storedFileIds =
       input.payload.upload == null
         ? []
@@ -45,6 +46,7 @@ export async function createSourceDocumentV2FromCredential(
     return createAndQueueSourceDocument(
       {
         ledgerId: input.ledgerId,
+        ledger: { settings: settings ?? {} },
         entryDate: input.payload.entryDate,
         ...(input.payload.text === undefined ? {} : { text: input.payload.text }),
         ...(storedFileIds.length === 0 ? {} : { storedFileIds }),

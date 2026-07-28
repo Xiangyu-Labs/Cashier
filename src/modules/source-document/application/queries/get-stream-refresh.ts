@@ -168,6 +168,7 @@ export async function getStreamRefresh(
         ...(decoded.endDate !== undefined ? { endDate: decoded.endDate } : {}),
         ...(decoded.minAmount !== undefined ? { minAmount: decoded.minAmount } : {}),
         ...(decoded.maxAmount !== undefined ? { maxAmount: decoded.maxAmount } : {}),
+        ...(decoded.search !== undefined ? { search: decoded.search } : {}),
         ...(decoded.statuses !== undefined ? { statuses: decoded.statuses } : {}),
         limit: 20,
       });
@@ -277,6 +278,7 @@ export function encodeFilterSignature(params: {
   minAmount?: number;
   maxAmount?: number;
   statuses?: string[];
+  search?: string;
 }): string {
   const sortedStatuses = (params.statuses ?? []).slice().sort();
   const parts = [
@@ -284,6 +286,7 @@ export function encodeFilterSignature(params: {
     params.endDate ?? "",
     params.minAmount?.toString() ?? "",
     params.maxAmount?.toString() ?? "",
+    params.search != null ? encodeURIComponent(params.search) : "",
     ...sortedStatuses,
   ];
   return parts.join("|");
@@ -295,6 +298,7 @@ interface DecodedFilter {
   minAmount: number | undefined;
   maxAmount: number | undefined;
   statuses: string[] | undefined;
+  search: string | undefined;
 }
 
 /**
@@ -302,9 +306,9 @@ interface DecodedFilter {
  */
 function decodeFilterSignature(signature: string): DecodedFilter | null {
   const parts = signature.split("|");
-  if (parts.length < 4) return null;
+  if (parts.length < 5) return null;
 
-  const [startDate, endDate, minAmountStr, maxAmountStr, ...statusParts] = parts;
+  const [startDate, endDate, minAmountStr, maxAmountStr, search, ...statusParts] = parts;
 
   const minAmount = minAmountStr !== "" ? Number(minAmountStr) : undefined;
   const maxAmount = maxAmountStr !== "" ? Number(maxAmountStr) : undefined;
@@ -318,6 +322,7 @@ function decodeFilterSignature(signature: string): DecodedFilter | null {
     endDate: endDate !== "" ? endDate : undefined,
     minAmount,
     maxAmount,
+    search: search != null && search !== "" ? decodeURIComponent(search) : undefined,
     statuses: statusParts.length > 0 ? statusParts : undefined,
   };
 }

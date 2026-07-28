@@ -44,6 +44,7 @@ export async function listLedgerEntriesFromValidatedInput(
   if (validated.currency !== undefined) filters.currency = validated.currency;
   if (validated.minAmount !== undefined) filters.minAmount = validated.minAmount;
   if (validated.maxAmount !== undefined) filters.maxAmount = validated.maxAmount;
+  if (validated.search !== undefined) filters.search = validated.search;
   if (options?.uncategorizedOnly) {
     filters.uncategorizedOnly = true;
   }

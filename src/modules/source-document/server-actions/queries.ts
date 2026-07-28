@@ -96,7 +96,8 @@ export const listStreamPageAction = withLedgerAccess(
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
 
-    const { startDate, endDate, minAmount, maxAmount, statuses, cursor, limit } = parsed.data;
+    const { startDate, endDate, minAmount, maxAmount, statuses, search, cursor, limit } =
+      parsed.data;
 
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
@@ -105,6 +106,7 @@ export const listStreamPageAction = withLedgerAccess(
       ...(endDate != null ? { endDate } : {}),
       ...(minAmount != null ? { minAmount } : {}),
       ...(maxAmount != null ? { maxAmount } : {}),
+      ...(search != null ? { search } : {}),
       ...(statuses != null && statuses.length > 0 ? { statuses: statuses as string[] } : {}),
       ...(cursor != null && cursor !== "" ? { cursor } : {}),
       limit,
@@ -119,12 +121,13 @@ export const getStreamTotalAction = withLedgerAccess(
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
 
-    const { startDate, endDate, minAmount, maxAmount, statuses } = parsed.data;
+    const { startDate, endDate, minAmount, maxAmount, statuses, search } = parsed.data;
     return getStreamTotal(ledgerId, {
       ...(startDate != null ? { startDate } : {}),
       ...(endDate != null ? { endDate } : {}),
       ...(minAmount != null ? { minAmount } : {}),
       ...(maxAmount != null ? { maxAmount } : {}),
+      ...(search != null ? { search } : {}),
       ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     });
   }

@@ -68,7 +68,6 @@ export function SettingsTab({
     categories,
     uncategorizedCount,
     credentials,
-    mainCurrencyMutable,
     updateLedgerMutation,
     isPending,
   } = useLedgerSettings({ ledgerId, ledger, initialCategories });
@@ -158,6 +157,38 @@ export function SettingsTab({
               disabled={isPending}
             />
           </SettingsField>
+          <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
+            <select
+              value={settingsLedger.metadata?.settings?.timeZone ?? "auto"}
+              onChange={(event) => {
+                updateLedgerMutation.mutate({
+                  timeZone: event.target.value === "auto" ? null : event.target.value,
+                });
+              }}
+              disabled={isPending}
+              aria-label={t("timeZone")}
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-auto"
+            >
+              <option value="auto">{t("timeZoneAuto")}</option>
+              {[
+                "Asia/Shanghai",
+                "Asia/Tokyo",
+                "Asia/Singapore",
+                "Europe/London",
+                "Europe/Paris",
+                "America/New_York",
+                "America/Chicago",
+                "America/Denver",
+                "America/Los_Angeles",
+                "Australia/Sydney",
+                "UTC",
+              ].map((timeZone) => (
+                <option key={timeZone} value={timeZone}>
+                  {timeZone}
+                </option>
+              ))}
+            </select>
+          </SettingsField>
         </SettingsSection>
 
         <SettingsSection title={t("bookkeepingRules")} description={t("bookkeepingRulesDesc")}>
@@ -166,17 +197,16 @@ export function SettingsTab({
               ...settingsLedger.metadata?.settings,
               currencies: settingsLedger.metadata?.settings?.currencies || [],
             }}
-            onUpdateSettings={(data) => updateLedgerMutation.mutate(data)}
-            mainCurrencyMutable={mainCurrencyMutable}
+            onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
           />
           {categories.length > 0 && (
             <CategorySection
               categories={categories}
               uncategorizedCount={uncategorizedCount}
               onCreateCategory={(name) => createCategory.mutate({ name })}
-              onUpdateCategory={(id, data) => updateCategory.mutate({ id, data })}
-              onDeleteCategory={(id) => deleteCategory.mutate(id)}
-              onReorderCategories={(ids) => reorderCategories.mutate(ids)}
+              onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
+              onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
+              onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
               onCategoryCreated={categoryCreatedTrigger}
               generatingCategoryIds={generatingCategoryIds}
               failedCategoryIds={failedCategoryIds}

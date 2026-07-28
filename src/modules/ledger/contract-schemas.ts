@@ -2,6 +2,8 @@ import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
 import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
+import { isValidTimeZone } from "@/lib/date-utils";
+import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -15,6 +17,10 @@ const optionalQueryNumberSchema = z.preprocess(
     .union([z.number(), z.string().min(1)])
     .pipe(z.coerce.number())
     .optional()
+);
+const optionalSearchSchema = z.preprocess(
+  (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
+  z.string().max(MAX_SEARCH_LENGTH).optional()
 );
 
 function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -36,6 +42,12 @@ export const updateLedgerInputSchema = strictObjectSchema({
     mainCurrency: optionalCurrencyCodeSchema,
     collapseEntriesDefault: z.boolean().optional(),
     aiCustomPrompt: z.string().max(2000).optional(),
+    timeZone: z
+      .string()
+      .max(100)
+      .refine(isValidTimeZone, "Invalid IANA time zone")
+      .nullable()
+      .optional(),
   }).optional(),
 });
 
@@ -55,11 +67,10 @@ export const updateEntryCategoryInputSchema = strictObjectSchema({
 
 export const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
 export const ledgerEntryIdSchema = uuidSchema;
-export const ledgerEntryIdsSchema = z
-  .preprocess(
-    (value) => Array.isArray(value) ? [...new Set(value)] : value,
-    z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
-  );
+export const ledgerEntryIdsSchema = z.preprocess(
+  (value) => (Array.isArray(value) ? [...new Set(value)] : value),
+  z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
+);
 export const entryCategoryIdSchema = uuidSchema;
 export const serviceCredentialIdSchema = uuidSchema;
 
@@ -106,6 +117,7 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
   currency: optionalCurrencyCodeSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
+  search: optionalSearchSchema,
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -115,6 +127,7 @@ export const ledgerStatsQuerySchema = strictObjectSchema({
   endDate: optionalDateStringSchema,
   categoryId: uuidSchema.optional(),
   currency: optionalCurrencyCodeSchema,
+  search: optionalSearchSchema,
 });
 
 export const parseCreateLedgerInput = (input: unknown) =>

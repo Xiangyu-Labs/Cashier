@@ -1,21 +1,29 @@
 "use client";
-import { Trash2, GripVertical, RefreshCw } from "lucide-react";
-import { EditableField } from "@/components/ui/editable-field";
-import { IconPicker } from "@/components/ui/icon-picker";
-import type { EntryCategory } from "@/modules/ledger/contracts";
+
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Pencil, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { useCategorySectionController } from "@/modules/ledger/hooks/useCategorySectionController";
+import type { EntryCategory } from "@/modules/ledger/contracts";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { IconPicker } from "@/components/ui/icon-picker";
+import { Input } from "@/components/ui/input";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
   uncategorizedCount?: number;
   onCreateCategory: (name: string) => void;
-  onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
-  onDeleteCategory: (id: string) => void;
-  onReorderCategories: (ids: string[]) => void;
+  onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void | Promise<unknown>;
+  onDeleteCategory: (id: string) => void | Promise<unknown>;
+  onReorderCategories: (ids: string[]) => void | Promise<unknown>;
   onCategoryCreated?: () => void;
   generatingCategoryIds?: Set<string>;
   failedCategoryIds?: Set<string>;
@@ -23,87 +31,11 @@ interface CategorySectionProps {
   isReordering?: boolean;
 }
 
-interface SortableItemProps {
-  category: EntryCategory;
-  onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void;
-  onDelete: () => void;
-  isGenerating?: boolean;
-  generationFailed?: boolean;
-  onRetryMetadata?: () => void;
-  disabled?: boolean;
-}
-
-function SortableItem({ category, onUpdateCategory, onDelete, isGenerating, generationFailed, onRetryMetadata, disabled }: SortableItemProps) {
-  const t = useTranslations("Settings");
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: category.id,
-    ...(disabled !== undefined ? { disabled } : {}),
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group flex items-center gap-3 rounded-[var(--radius)] bg-[var(--surface2)] p-3"
-    >
-      <div {...attributes} {...listeners} data-tab-swipe-ignore className="cursor-grab touch-none active:cursor-grabbing">
-        <GripVertical className="text-[var(--muted)]" size={16} />
-      </div>
-
-      <div className="flex w-8 justify-center">
-        <IconPicker
-          value={category.icon}
-          onChange={(icon) => onUpdateCategory(category.id, { icon })}
-        />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <EditableField
-            value={category.name}
-            onChange={(name) => onUpdateCategory(category.id, { name })}
-            displayClassName="text-sm font-medium"
-            inputClassName="text-sm"
-          />
-          {"entryCount" in category && typeof category.entryCount === "number" && (
-            <span className="shrink-0 text-[10px] font-normal text-[var(--muted)]">
-              {t("categoryItemCount", { count: category.entryCount })}
-            </span>
-          )}
-          {category.id.toString().startsWith("temp-") && (
-            <span className="animate-pulse text-[10px] font-normal text-muted">{t("saving")}</span>
-          )}
-          {isGenerating && <span className="animate-pulse text-[10px] text-muted">{t("generatingMetadata")}</span>}
-          {generationFailed && onRetryMetadata != null && (
-            <button type="button" onClick={onRetryMetadata} className="inline-flex items-center gap-1 text-[10px] text-danger hover:underline">
-              <RefreshCw className="h-3 w-3" />{t("retryMetadata")}
-            </button>
-          )}
-        </div>
-        <EditableField
-          value={category.description ?? ""}
-          onChange={(description) => onUpdateCategory(category.id, { description })}
-          placeholder={t("categoryDescription")}
-          displayClassName="text-xs text-[var(--muted)]"
-          inputClassName="text-xs"
-        />
-      </div>
-
-      <div className="opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          onClick={onDelete}
-          className="rounded p-1.5 text-[var(--muted)] transition-colors hover:bg-surface hover:text-[var(--danger)]"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-    </div>
-  );
+interface EditDraft {
+  id: string;
+  name: string;
+  description: string;
+  icon: string | null;
 }
 
 export function CategorySection({
@@ -113,98 +45,287 @@ export function CategorySection({
   onUpdateCategory,
   onDeleteCategory,
   onReorderCategories,
-  onCategoryCreated,
   generatingCategoryIds = new Set(),
   failedCategoryIds = new Set(),
   onRetryMetadata,
   isReordering = false,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
-  const {
-    sensors,
-    newCategoryName,
-    setNewCategoryName,
-    displayCategories,
-    handleCreate,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-  } = useCategorySectionController({
-    categories,
-    onCreateCategory,
-    onReorderCategories,
-    isReordering,
-    ...(onCategoryCreated !== undefined ? { onCategoryCreated } : {}),
-  });
+  const common = useTranslations("Common");
+  const [managing, setManaging] = useState(false);
+  const [draftOrder, setDraftOrder] = useState<EntryCategory[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EntryCategory | null>(null);
+
+  const displayedCategories = managing ? draftOrder : categories;
+  const orderChanged = useMemo(
+    () =>
+      managing &&
+      draftOrder.map((category) => category.id).join("|") !==
+        categories.map((category) => category.id).join("|"),
+    [categories, draftOrder, managing]
+  );
+
+  const enterManagement = () => {
+    setDraftOrder([...categories]);
+    setManaging(true);
+  };
+
+  const move = (index: number, direction: -1 | 1) => {
+    setDraftOrder((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      if (item == null) return current;
+      next.splice(target, 0, item);
+      return next;
+    });
+  };
+
+  const saveOrder = async () => {
+    await onReorderCategories(draftOrder.map((category) => category.id));
+    setManaging(false);
+  };
+
+  const createCategory = () => {
+    const name = newCategoryName.trim();
+    if (name === "") return;
+    onCreateCategory(name);
+    setNewCategoryName("");
+  };
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-base font-medium">{t("categories")}</h3>
-        <p className="text-sm text-muted">{t("categoriesDesc")}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-medium">{t("categories")}</h3>
+          <p className="text-sm text-muted">{t("categoriesDesc")}</p>
+        </div>
+        {!managing ? (
+          <Button type="button" variant="outline" size="sm" onClick={enterManagement}>
+            <Settings2 className="mr-1.5 h-4 w-4" />
+            {t("manageCategories")}
+          </Button>
+        ) : null}
       </div>
 
-      <div className="mb-4 space-y-2">
-        {uncategorizedCount > 0 && (
-          <div className="flex items-center gap-3 rounded-[var(--radius)] border border-amber-500/20 bg-amber-500/10 p-3">
-            <div className="flex w-8 justify-center">
-              <span className="text-amber-600 dark:text-amber-400">!</span>
+      {uncategorizedCount > 0 ? (
+        <div className="flex items-center gap-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-3">
+          <span className="flex h-8 w-8 items-center justify-center text-amber-600">!</span>
+          <div>
+            <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              {t("uncategorized")}
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                {t("uncategorized")}
-              </div>
-              <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                {t("uncategorizedDesc", { count: uncategorizedCount })}
-              </div>
+            <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
+              {t("uncategorizedDesc", { count: uncategorizedCount })}
             </div>
           </div>
-        )}
+        </div>
+      ) : null}
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={displayCategories.map((category) => category.id)}
-            strategy={verticalListSortingStrategy}
+      <div className="space-y-2">
+        {displayedCategories.map((category, index) => (
+          <div
+            key={category.id}
+            className="flex min-h-14 items-center gap-3 rounded-md bg-surface2 p-3"
           >
-            {displayCategories.map((category) => (
-              <SortableItem
-                key={category.id}
-                category={category}
-                onUpdateCategory={onUpdateCategory}
-                onDelete={() => onDeleteCategory(category.id)}
-                isGenerating={generatingCategoryIds.has(category.id)}
-                generationFailed={failedCategoryIds.has(category.id)}
-                {...(onRetryMetadata != null ? { onRetryMetadata: () => onRetryMetadata(category.id) } : {})}
-                disabled={isReordering}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+              <CategoryIcon iconName={category.icon} className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-medium">{category.name}</span>
+                {"entryCount" in category && typeof category.entryCount === "number" ? (
+                  <span className="text-[10px] text-muted">
+                    {t("categoryItemCount", { count: category.entryCount })}
+                  </span>
+                ) : null}
+                {generatingCategoryIds.has(category.id) ? (
+                  <span className="text-[10px] text-muted">{t("generatingMetadata")}</span>
+                ) : null}
+                {failedCategoryIds.has(category.id) && onRetryMetadata != null ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetryMetadata(category.id)}
+                    className="inline-flex items-center gap-1 text-[10px] text-danger"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    {t("retryMetadata")}
+                  </button>
+                ) : null}
+              </div>
+              {category.description ? (
+                <p className="truncate text-xs text-muted">{category.description}</p>
+              ) : null}
+            </div>
+            {managing ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={index === 0 || isReordering}
+                  onClick={() => move(index, -1)}
+                  aria-label={t("moveCategoryUp", { name: category.name })}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={index === displayedCategories.length - 1 || isReordering}
+                  onClick={() => move(index, 1)}
+                  aria-label={t("moveCategoryDown", { name: category.name })}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() =>
+                    setEditDraft({
+                      id: category.id,
+                      name: category.name,
+                      description: category.description ?? "",
+                      icon: category.icon,
+                    })
+                  }
+                  aria-label={t("editCategory", { name: category.name })}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-danger"
+                  onClick={() => setDeleteTarget(category)}
+                  aria-label={t("deleteCategory", { name: category.name })}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          aria-label={t("newCategoryPlaceholder")}
-          placeholder={t("newCategoryPlaceholder")}
-          value={newCategoryName}
-          onChange={(event) => setNewCategoryName(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && handleCreate()}
-          className="flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-        />
-        <button
-          onClick={handleCreate}
-          className="min-h-11 rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          {t("addCategory")}
-        </button>
-      </div>
+      {managing ? (
+        <>
+          <div className="flex gap-2">
+            <Input
+              value={newCategoryName}
+              onChange={(event) => setNewCategoryName(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && createCategory()}
+              aria-label={t("newCategoryPlaceholder")}
+              placeholder={t("newCategoryPlaceholder")}
+            />
+            <Button type="button" onClick={createCategory} disabled={newCategoryName.trim() === ""}>
+              {t("addCategory")}
+            </Button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isReordering}
+              onClick={() => setManaging(false)}
+            >
+              {common("cancel")}
+            </Button>
+            <Button
+              type="button"
+              disabled={!orderChanged || isReordering}
+              onClick={async () => {
+                try {
+                  await saveOrder();
+                } catch {
+                  // The mutation reports the error and the draft remains available to retry.
+                }
+              }}
+            >
+              {isReordering ? t("savingOrder") : t("saveOrder")}
+            </Button>
+          </div>
+        </>
+      ) : null}
+
+      <Dialog open={editDraft != null} onOpenChange={(open) => !open && setEditDraft(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
+          </DialogHeader>
+          {editDraft != null ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <IconPicker
+                  value={editDraft.icon}
+                  onChange={(icon) => setEditDraft((draft) => (draft ? { ...draft, icon } : draft))}
+                />
+                <Input
+                  value={editDraft.name}
+                  onChange={(event) =>
+                    setEditDraft((draft) =>
+                      draft ? { ...draft, name: event.target.value } : draft
+                    )
+                  }
+                  aria-label={t("categoryName")}
+                />
+              </div>
+              <textarea
+                value={editDraft.description}
+                onChange={(event) =>
+                  setEditDraft((draft) =>
+                    draft ? { ...draft, description: event.target.value } : draft
+                  )
+                }
+                aria-label={t("categoryDescription")}
+                className="min-h-24 w-full rounded-md border border-border bg-bg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditDraft(null)}>
+              {common("cancel")}
+            </Button>
+            <Button
+              type="button"
+              disabled={editDraft?.name.trim() === ""}
+              onClick={async () => {
+                if (editDraft == null) return;
+                await onUpdateCategory(editDraft.id, {
+                  name: editDraft.name.trim(),
+                  description: editDraft.description.trim() || null,
+                  icon: editDraft.icon,
+                });
+                setEditDraft(null);
+              }}
+            >
+              {common("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={t("deleteCategoryDialog")}
+        description={t("deleteCategoryDescription", { name: deleteTarget?.name ?? "" })}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteTarget == null) return;
+          await onDeleteCategory(deleteTarget.id);
+          setDraftOrder((current) => current.filter((item) => item.id !== deleteTarget.id));
+        }}
+      />
     </div>
   );
 }

@@ -19,6 +19,7 @@ export function buildStreamTotalQuery(
       ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
       ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
       ...(statuses != null ? { statuses } : {}),
+      ...(filters.search != null && filters.search !== "" ? { search: filters.search } : {}),
     },
     statusesKey: statuses?.join(",") ?? null,
   };
@@ -26,11 +27,12 @@ export function buildStreamTotalQuery(
 
 export function useLedgerEntriesFilters(
   periodParams: PeriodParams,
-  advancedFilters?: LedgerAdvancedFilters
+  advancedFilters?: LedgerAdvancedFilters,
+  timeZone?: string
 ) {
   const filters = useMemo(
-    () => buildLedgerEntryFilters(periodParams, advancedFilters),
-    [periodParams, advancedFilters]
+    () => buildLedgerEntryFilters(periodParams, advancedFilters, timeZone),
+    [periodParams, advancedFilters, timeZone]
   );
 
   return {

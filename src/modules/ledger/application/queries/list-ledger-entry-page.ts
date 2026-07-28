@@ -8,6 +8,7 @@ export interface LedgerEntryFilterParams {
   currency?: string | null;
   minAmount?: number | null;
   maxAmount?: number | null;
+  search?: string | null;
 }
 
 export function listLedgerEntryPage(input: {

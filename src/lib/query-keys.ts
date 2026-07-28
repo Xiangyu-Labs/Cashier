@@ -31,6 +31,7 @@ export const queryKeys = {
       minAmount?: number | null | undefined;
       maxAmount?: number | null | undefined;
       statuses?: string | null | undefined;
+      search?: string | null | undefined;
     }
   ) =>
     [
@@ -42,6 +43,7 @@ export const queryKeys = {
       filters?.minAmount ?? null,
       filters?.maxAmount ?? null,
       filters?.statuses ?? null,
+      filters?.search ?? null,
     ] as const,
   sourceDocumentStreamPrefix: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "stream"] as const,
@@ -53,6 +55,7 @@ export const queryKeys = {
       minAmount?: number | null | undefined;
       maxAmount?: number | null | undefined;
       statuses?: string | null | undefined;
+      search?: string | null | undefined;
     }
   ) =>
     [
@@ -64,6 +67,7 @@ export const queryKeys = {
       filters?.minAmount ?? null,
       filters?.maxAmount ?? null,
       filters?.statuses ?? null,
+      filters?.search ?? null,
     ] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,

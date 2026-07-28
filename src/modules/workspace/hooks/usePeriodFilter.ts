@@ -29,6 +29,7 @@ export interface FilterParams {
   minAmount: number | null;
   maxAmount: number | null;
   statuses: SourceDocumentStatusType[];
+  search: string | null;
 }
 
 interface UsePeriodFilterParams {
@@ -36,6 +37,7 @@ interface UsePeriodFilterParams {
   searchParams: URLSearchParams;
   initialPeriod: PeriodParams;
   scope?: LedgerFilterScope;
+  timeZone?: string;
 }
 
 interface UsePeriodFilterReturn {
@@ -48,6 +50,7 @@ interface UsePeriodFilterReturn {
   handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
   handleFiltersChange: (newFilters: EntryFilters) => void;
   applyStreamStatusPreset: (preset: StreamStatusPreset) => void;
+  resetFilters: () => void;
 }
 
 function buildPeriodUrlUpdate(
@@ -74,6 +77,7 @@ export function usePeriodFilter({
   searchParams,
   initialPeriod: _initialPeriod,
   scope = "stream",
+  timeZone,
 }: UsePeriodFilterParams): UsePeriodFilterReturn {
   const scopedSearchParams = useMemo(
     () => getScopedLedgerSearchParams(searchParams, scope),
@@ -84,7 +88,10 @@ export function usePeriodFilter({
     return parsed;
   }, [scopedSearchParams]);
 
-  const dateRange = useMemo(() => periodToDateRange(periodParams), [periodParams]);
+  const dateRange = useMemo(
+    () => periodToDateRange(periodParams, timeZone),
+    [periodParams, timeZone]
+  );
 
   const filterParams = useMemo<FilterParams>(
     () => readLedgerFilterParams(searchParams, scope),
@@ -92,8 +99,8 @@ export function usePeriodFilter({
   );
 
   const filters: EntryFilters = useMemo(
-    () => buildLedgerEntryFilters(periodParams, filterParams),
-    [filterParams, periodParams]
+    () => buildLedgerEntryFilters(periodParams, filterParams, timeZone),
+    [filterParams, periodParams, timeZone]
   );
 
   const statuses: SourceDocumentStatusType[] = useMemo(
@@ -159,6 +166,23 @@ export function usePeriodFilter({
     [pathname, searchParams]
   );
 
+  const resetFilters = useCallback(() => {
+    const params = updateLedgerSearchParams(
+      searchParams,
+      {
+        period: "thisMonth",
+        categoryId: null,
+        currency: null,
+        minAmount: null,
+        maxAmount: null,
+        statuses: null,
+        search: null,
+      },
+      scope
+    );
+    replaceLedgerUrl(pathname, params);
+  }, [pathname, scope, searchParams]);
+
   return {
     periodParams,
     dateRange,
@@ -169,5 +193,6 @@ export function usePeriodFilter({
     handleAdvancedFiltersChange,
     handleFiltersChange,
     applyStreamStatusPreset,
+    resetFilters,
   };
 }

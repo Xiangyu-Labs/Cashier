@@ -15,7 +15,6 @@ import type { InlineImageUploader } from "./prepare-inline-images";
 
 export interface CreateAndQueueSourceDocumentInput {
   ledgerId: string;
-  /** Retained input compatibility; target submission does not inspect persistence rows. */
   ledger?: unknown;
   text?: string;
   storedFileIds?: string[];
@@ -36,6 +35,16 @@ interface CreateAndQueueSourceDocumentDependencies {
 function resolveEntryDate(entryDate?: string, timezone?: string): string {
   if (entryDate != null && entryDate !== "") return entryDate;
   return getDateInTimezone(timezone) ?? formatDateTimeForApi(new Date());
+}
+
+function readLedgerTimeZone(ledger: unknown): string | undefined {
+  if (typeof ledger !== "object" || ledger == null) return undefined;
+  const value = ledger as {
+    settings?: { timeZone?: unknown };
+    metadata?: { settings?: { timeZone?: unknown } } | null;
+  };
+  const timeZone = value.settings?.timeZone ?? value.metadata?.settings?.timeZone;
+  return typeof timeZone === "string" && timeZone !== "" ? timeZone : undefined;
 }
 
 export async function createAndQueueSourceDocument(
@@ -84,7 +93,10 @@ export async function createAndQueueSourceDocument(
     ledgerId: input.ledgerId,
     submittedText: validated.text ?? null,
     storedFileIds: allStoredFileIds,
-    entryDate: resolveEntryDate(validated.entryDate, validated.timezone),
+    entryDate: resolveEntryDate(
+      validated.entryDate,
+      validated.timezone ?? readLedgerTimeZone(input.ledger)
+    ),
   });
   dependencies.scheduleProcessing(pending.intent);
   return toSourceDocumentSubmissionContract(pending.document, pending.revision);

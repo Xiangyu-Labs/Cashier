@@ -36,7 +36,9 @@ interface UseDetailsTabDataProps {
     currency?: string | null;
     minAmount?: number | null;
     maxAmount?: number | null;
+    search?: string | null;
   };
+  timeZone?: string;
 }
 
 export function useDetailsTabData({
@@ -44,11 +46,12 @@ export function useDetailsTabData({
   ledger,
   periodParams,
   advancedFilters,
+  timeZone,
 }: UseDetailsTabDataProps): UseDetailsTabDataReturn {
   const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
   const { startDateStr, endDateStr, filterKey } = useMemo(
-    () => getDetailsInitialQueryState(periodParams, advancedFilters),
-    [periodParams, advancedFilters]
+    () => getDetailsInitialQueryState(periodParams, advancedFilters, timeZone),
+    [periodParams, advancedFilters, timeZone]
   );
 
   const { data: summaryData } = useQuery({
@@ -70,6 +73,7 @@ export function useDetailsTabData({
           ...(advancedFilters.maxAmount !== undefined
             ? { maxAmount: advancedFilters.maxAmount }
             : {}),
+          ...(advancedFilters.search !== undefined ? { search: advancedFilters.search } : {}),
         }
       ),
     enabled: true,
@@ -87,6 +91,7 @@ export function useDetailsTabData({
         ...(advancedFilters.currency != null ? { currency: advancedFilters.currency } : {}),
         ...(advancedFilters.minAmount != null ? { minAmount: advancedFilters.minAmount } : {}),
         ...(advancedFilters.maxAmount != null ? { maxAmount: advancedFilters.maxAmount } : {}),
+        ...(advancedFilters.search != null ? { search: advancedFilters.search } : {}),
         ...(pageParam !== undefined ? { cursor: pageParam } : {}),
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
