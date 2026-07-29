@@ -25,6 +25,7 @@ import { useLedgerDialogState } from "./useLedgerDialogState";
 import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
+import { OfflineSnapshotSync } from "@/modules/offline/OfflineSnapshotSync";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -231,6 +232,7 @@ function LedgerPageClientContent({
 
   return (
     <>
+      <OfflineSnapshotSync userId={ledger.userId} ledgerId={ledgerId} locale={locale} />
       {/* Only mount the active tab — inactive tabs load lazily */}
       {activeTab === "stream" && (
         <div className="mt-0 min-w-0 max-w-full overflow-x-clip">

@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { MotionConfig } from "framer-motion";
+import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -35,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           {children}
+          <ServiceWorkerUpdate />
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>
       </MotionConfig>

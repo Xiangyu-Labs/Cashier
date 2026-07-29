@@ -16,6 +16,7 @@ export default defineConfig([
     "public/sw.js",
     "public/workbox-*.js",
     "public/worker-*.js",
+    "public/fallback-*.js",
   ]),
   {
     files: ["**/*.ts", "**/*.tsx"],

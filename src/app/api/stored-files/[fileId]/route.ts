@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth-actions";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
-const CACHE_CONTROL = "private, max-age=3600";
+const CACHE_CONTROL = "private, no-store";
 
 export async function GET(
   _request: NextRequest,

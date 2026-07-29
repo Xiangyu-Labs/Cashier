@@ -103,7 +103,7 @@ export interface SourceDocumentListItemDto {
   ledgerId: string;
   title: string | null;
   text: null;
-  files: [];
+  files: SourceDocumentStoredFileDto[];
   status: SourceDocumentStatusType;
   type: SourceDocumentTypeValue;
   anomalyReason: string | null;

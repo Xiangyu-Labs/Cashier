@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#10a37f" />
+    <title>Cashier</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: Canvas; color: CanvasText; }
+      header { position: sticky; top: 0; z-index: 2; border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, transparent); background: color-mix(in srgb, Canvas 94%, transparent); backdrop-filter: blur(12px); }
+      .bar, main { width: min(100% - 24px, 760px); margin: 0 auto; }
+      .bar { min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      h1 { margin: 0; font-size: 18px; }
+      button { min-height: 40px; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 6px; padding: 0 14px; background: Canvas; color: CanvasText; font: inherit; cursor: pointer; }
+      main { padding: 18px 0 calc(32px + env(safe-area-inset-bottom)); }
+      .status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; color: color-mix(in srgb, CanvasText 66%, transparent); font-size: 13px; }
+      .badge { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, #10a37f 16%, Canvas); color: #08795e; font-weight: 600; }
+      input { width: 100%; min-height: 44px; margin-bottom: 16px; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 6px; padding: 0 12px; background: Canvas; color: CanvasText; font: inherit; }
+      #list { display: grid; gap: 10px; }
+      article { border-bottom: 1px solid color-mix(in srgb, CanvasText 13%, transparent); padding: 12px 2px 16px; }
+      .headline { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+      h2 { margin: 0; font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+      time { flex: none; color: color-mix(in srgb, CanvasText 55%, transparent); font-size: 12px; }
+      .entries { display: grid; gap: 6px; margin-top: 10px; }
+      .entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; font-size: 14px; }
+      .entry span:first-child { overflow-wrap: anywhere; }
+      .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+      .images { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; }
+      .images img { width: 88px; height: 88px; flex: none; border-radius: 6px; object-fit: cover; border: 1px solid color-mix(in srgb, CanvasText 12%, transparent); }
+      .images button { min-height: 0; border: 0; padding: 0; background: transparent; }
+      dialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; background: #111; }
+      dialog::backdrop { background: #111; }
+      dialog img { width: 100%; height: 100%; object-fit: contain; }
+      dialog button { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 3; width: 44px; padding: 0; border-color: #ffffff55; background: #0009; color: white; font-size: 24px; }
+      .empty { padding: 56px 12px; text-align: center; color: color-mix(in srgb, CanvasText 58%, transparent); }
+      @media (prefers-color-scheme: dark) { .badge { color: #55d6b1; } }
+    </style>
+  </head>
+  <body>
+    <header><div class="bar"><h1>Cashier</h1><button id="retry" type="button">重试在线版</button></div></header>
+    <main>
+      <div class="status"><span class="badge" id="mode">离线只读</span><span id="synced"></span></div>
+      <input id="search" type="search" placeholder="搜索账单" autocomplete="off" />
+      <div id="list"><div class="empty">正在读取本地账单...</div></div>
+    </main>
+    <dialog id="viewer"><button id="closeViewer" type="button" aria-label="Close">&times;</button><img id="viewerImage" alt="" /></dialog>
+    <script>
+      (() => {
+        const DB_NAME = "cashier-offline";
+        const DB_VERSION = 1;
+        const activeKey = localStorage.getItem("cashier.offline.activeSnapshot");
+        const language = navigator.language.toLowerCase().startsWith("en") ? "en" : "zh";
+        const copy = language === "en" ? {
+          retry: "Try online", mode: "Offline read-only", search: "Search transactions",
+          loading: "Reading saved transactions...", empty: "No saved transactions yet.",
+          synced: "Last synced", unavailable: "Offline storage is unavailable"
+        } : {
+          retry: "重试在线版", mode: "离线只读", search: "搜索账单",
+          loading: "正在读取本地账单...", empty: "暂无已保存的账单",
+          synced: "最后同步", unavailable: "无法读取离线存储"
+        };
+        document.documentElement.lang = language;
+        document.getElementById("retry").textContent = copy.retry;
+        document.getElementById("mode").textContent = copy.mode;
+        document.getElementById("search").placeholder = copy.search;
+        let documents = [];
+        let imageRecords = [];
+        const objectUrls = [];
+
+        function openDb() {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        }
+        function req(request) {
+          return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        }
+        function formatDate(value) {
+          if (!value) return "";
+          const date = new Date(value.length === 10 ? value + "T00:00:00" : value);
+          return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(date);
+        }
+        function formatAmount(entry) {
+          const amount = Number(entry.amount);
+          if (!Number.isFinite(amount)) return entry.amount + " " + (entry.currency || "");
+          try { return new Intl.NumberFormat(language, { style: "currency", currency: entry.currency || "CNY" }).format(amount); }
+          catch { return entry.amount + " " + (entry.currency || ""); }
+        }
+        function text(node, value) { node.textContent = value == null ? "" : String(value); return node; }
+        function searchable(item) {
+          return [item.title, item.entryDate, ...(item.ledgerEntries || []).flatMap((entry) => [entry.itemName, entry.description, entry.amount, entry.currency])]
+            .filter(Boolean).join(" ").toLowerCase();
+        }
+        function render(query = "") {
+          objectUrls.splice(0).forEach((url) => URL.revokeObjectURL(url));
+          const list = document.getElementById("list");
+          list.replaceChildren();
+          const normalized = query.trim().toLowerCase();
+          const filtered = normalized ? documents.filter((item) => searchable(item).includes(normalized)) : documents;
+          if (filtered.length === 0) { list.append(text(document.createElement("div"), copy.empty)); list.firstChild.className = "empty"; return; }
+          for (const item of filtered) {
+            const article = document.createElement("article");
+            const headline = document.createElement("div"); headline.className = "headline";
+            headline.append(text(document.createElement("h2"), item.title || (item.ledgerEntries && item.ledgerEntries[0] && item.ledgerEntries[0].itemName) || "Cashier"));
+            headline.append(text(document.createElement("time"), formatDate(item.entryDate || item.createdAt)));
+            article.append(headline);
+            const entries = document.createElement("div"); entries.className = "entries";
+            for (const entry of item.ledgerEntries || []) {
+              const row = document.createElement("div"); row.className = "entry";
+              row.append(text(document.createElement("span"), entry.itemName || entry.description || "-"));
+              const amount = text(document.createElement("span"), formatAmount(entry)); amount.className = "amount"; row.append(amount); entries.append(row);
+            }
+            article.append(entries);
+            const images = imageRecords.filter((image) => image.documentId === item.id);
+            if (images.length > 0) {
+              const strip = document.createElement("div"); strip.className = "images";
+              for (const image of images) {
+                const url = URL.createObjectURL(image.blob); objectUrls.push(url);
+                const button = document.createElement("button"); button.type = "button";
+                const img = document.createElement("img"); img.src = url; img.alt = ""; button.append(img);
+                button.addEventListener("click", () => { document.getElementById("viewerImage").src = url; document.getElementById("viewer").showModal(); });
+                strip.append(button);
+              }
+              article.append(strip);
+            }
+            list.append(article);
+          }
+        }
+        document.getElementById("retry").addEventListener("click", () => {
+          const locale = window.__snapshotLocale || language;
+          location.href = "/" + (locale === "en" ? "en" : "zh");
+        });
+        document.getElementById("search").addEventListener("input", (event) => render(event.target.value));
+        document.getElementById("closeViewer").addEventListener("click", () => document.getElementById("viewer").close());
+        window.addEventListener("online", () => { document.getElementById("mode").textContent = language === "en" ? "Connection restored" : "网络已恢复"; });
+        if (!activeKey || !("indexedDB" in window)) { document.getElementById("list").innerHTML = '<div class="empty">' + copy.empty + '</div>'; return; }
+        openDb().then(async (db) => {
+          const snapshot = await req(db.transaction("snapshots", "readonly").objectStore("snapshots").get(activeKey));
+          imageRecords = await req(db.transaction("images", "readonly").objectStore("images").index("snapshotKey").getAll(activeKey));
+          db.close();
+          if (!snapshot) throw new Error("No snapshot");
+          window.__snapshotLocale = snapshot.locale;
+          const seen = new Set();
+          documents = [...snapshot.items, ...snapshot.viewedItems].filter((item) => !seen.has(item.id) && seen.add(item.id));
+          document.getElementById("synced").textContent = copy.synced + " " + new Date(snapshot.lastSyncedAt).toLocaleString(language);
+          render();
+        }).catch(() => { document.getElementById("list").innerHTML = '<div class="empty">' + copy.unavailable + '</div>'; });
+      })();
+    </script>
+  </body>
+</html>

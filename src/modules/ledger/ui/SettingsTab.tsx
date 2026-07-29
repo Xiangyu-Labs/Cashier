@@ -35,6 +35,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/actions";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
+import { clearOfflineData } from "@/modules/offline/offline-store";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -311,7 +312,10 @@ export function SettingsTab({
           />
           <SettingsField title={t("signOut")}>
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={async () => {
+                await clearOfflineData(ledger.userId).catch(() => {});
+                await signOut({ callbackUrl: "/login" });
+              }}
               disabled={isPending}
               className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 py-2 transition-colors hover:bg-surface2 disabled:opacity-50"
             >

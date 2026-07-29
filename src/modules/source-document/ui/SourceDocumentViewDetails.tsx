@@ -2,7 +2,7 @@
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import Image from "next/image";
-import { type ReactNode, useMemo, useState, memo } from "react";
+import { type ReactNode, useEffect, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,11 @@ import {
   type SourceDocumentDetailDisplayEntry,
 } from "./source-document-detail-view-model";
 import { storedFileReadUrl } from "../stored-file-read";
+import {
+  cacheOfflineImage,
+  getActiveOfflineSnapshotKey,
+  rememberViewedDocument,
+} from "@/modules/offline/offline-store";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
@@ -141,6 +146,24 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const files = sourceDocument.files;
   const hasImages = files.length > 0;
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
+
+  useEffect(() => {
+    if (files.length === 0) return;
+    const snapshotKey = getActiveOfflineSnapshotKey();
+    if (snapshotKey == null || !snapshotKey.endsWith(`:${sourceDocument.ledgerId}`)) return;
+    void rememberViewedDocument({ snapshotKey, document: sourceDocument, ledgerEntries }).catch(
+      () => {}
+    );
+    for (const file of files) {
+      void cacheOfflineImage({
+        snapshotKey,
+        documentId: sourceDocument.id,
+        documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
+        file,
+        viewed: true,
+      }).catch(() => false);
+    }
+  }, [files, ledgerEntries, sourceDocument]);
 
   return (
     <div className="h-full flex flex-col gap-4">

@@ -34,7 +34,17 @@ describe("contract schema omission semantics", () => {
 
     expect(parsed.limit).toBe(10);
     expect(parsed.includeEntries).toBe(false);
+    expect(parsed.includeFiles).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(parsed, "status")).toBe(false);
+  });
+
+  it("allows the authenticated offline snapshot reader to request file metadata", () => {
+    const parsed = listSourceDocumentsInputSchema.parse({
+      limit: 100,
+      includeEntries: true,
+      includeFiles: true,
+    });
+    expect(parsed).toMatchObject({ limit: 100, includeEntries: true, includeFiles: true });
   });
 
   it("keeps the API v1 Shortcut contract compact and normalizes ISO entry dates", () => {

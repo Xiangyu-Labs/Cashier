@@ -208,6 +208,7 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   maxAmount: optionalQueryNumberSchema,
   cursor: sourceDocumentCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  includeFiles: z.boolean().optional().default(false),
   includeEntries: z.coerce.boolean().default(false),
 });
 

@@ -19,6 +19,7 @@ export interface ListSourceDocumentsParams {
   minAmount?: number | undefined;
   maxAmount?: number | undefined;
   includeLedgerEntries?: boolean;
+  includeFiles?: boolean;
 }
 
 export async function listEntriesBySourceDocumentIds(
@@ -55,6 +56,7 @@ export async function querySourceDocumentPage(
     maxAmount,
     cursor,
     includeLedgerEntries,
+    includeFiles,
   } = params;
 
   const statuses = status
@@ -71,6 +73,7 @@ export async function querySourceDocumentPage(
     ...(maxAmount !== undefined ? { maxAmount } : {}),
     ...(cursor !== undefined ? { cursor } : {}),
     limit,
+    ...(includeFiles !== undefined ? { includeFiles } : {}),
   });
 
   const entriesByDocId =
@@ -106,5 +109,6 @@ export async function listSourceDocuments(
     cursor: validated.cursor ?? null,
     limit: validated.limit,
     includeLedgerEntries: validated.includeEntries,
+    includeFiles: validated.includeFiles,
   });
 }

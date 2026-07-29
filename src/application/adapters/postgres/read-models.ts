@@ -51,6 +51,7 @@ export interface TargetSourceDocumentFilterInput {
 export interface TargetSourceDocumentListInput extends TargetSourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
+  includeFiles?: boolean;
 }
 
 export async function getTargetSourceDocumentAccessContext(sourceDocumentId: string) {
@@ -445,7 +446,8 @@ async function loadFiles(
 function mapListItem(
   row: SourceDocumentRow,
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>,
-  files: ReadonlyMap<string, readonly SourceDocumentStoredFileDto[]>
+  files: ReadonlyMap<string, readonly SourceDocumentStoredFileDto[]>,
+  includeFiles = false
 ): SourceDocumentListItemDto {
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const revision = revisionId == null ? null : revisions.get(revisionId);
@@ -454,7 +456,7 @@ function mapListItem(
     ledgerId: row.ledgerId,
     title: row.title,
     text: null,
-    files: [],
+    files: includeFiles ? [...(files.get(row.id) ?? [])] : [],
     status: statusForRow(row, revisions),
     type: row.type,
     anomalyReason: revision?.anomalyReason ?? null,
@@ -670,7 +672,7 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => {
-      const item = mapListItem(row, revisions, files);
+      const item = mapListItem(row, revisions, files, input.includeFiles === true);
       if (item.status === "candidate_pending") {
         const comparison = candidateComparisonMap.get(row.id);
         if (comparison !== undefined) {
