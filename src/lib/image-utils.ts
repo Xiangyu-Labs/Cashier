@@ -81,8 +81,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 export async function compressImage(
   file: File,
-  maxWidth = 1600,
-  maxHeight = 1600,
+  maxWidth = 1080,
+  maxHeight = 1080,
   quality = 0.8
 ): Promise<CompressionResult> {
   return workerPool.execute(async () => {

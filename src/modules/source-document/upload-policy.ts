@@ -24,16 +24,16 @@ import { ValidationError } from "@/lib/errors";
 // ---------------------------------------------------------------------------
 
 /** Maximum number of files per upload revision. */
-export const MAX_FILES = 10;
+export const MAX_FILES = 3;
 
 /** Maximum original (raw uploaded) bytes per individual file. */
-export const MAX_ORIGINAL_BYTES_PER_FILE = 4 * 1024 * 1024; // 4 MB
+export const MAX_ORIGINAL_BYTES_PER_FILE = 3 * 1024 * 1024; // 3 MB
 
 /** Maximum normalized (post-processing) bytes per individual file. */
 export const MAX_NORMALIZED_BYTES_PER_FILE = 4 * 1024 * 1024; // 4 MB
 
 /** Maximum total normalized bytes across all files in a single revision. */
-export const MAX_NORMALIZED_BYTES_PER_REVISION = 20 * 1024 * 1024; // 20 MB
+export const MAX_NORMALIZED_BYTES_PER_REVISION = 3 * 1024 * 1024; // 3 MB
 
 /** Maximum megapixels per image file (width * height / 1_000_000). */
 export const MAX_MEGAPIXELS_PER_FILE = 16;

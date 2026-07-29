@@ -22,9 +22,7 @@ export const SourceDocumentCardEntries = memo(function SourceDocumentCardEntries
         <LedgerEntryItem
           key={entry.id}
           ledgerEntry={entry}
-          onView={() => {
-            onViewLedgerEntry?.(entry);
-          }}
+          {...(onViewLedgerEntry == null ? {} : { onView: () => onViewLedgerEntry(entry) })}
           mainCurrency={mainCurrency}
           variant="default"
           {...(sourceDocumentEntryDate !== undefined ? { sourceDocumentEntryDate } : {})}

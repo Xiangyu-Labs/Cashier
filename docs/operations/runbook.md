@@ -69,8 +69,7 @@ npm run docker:external
 ```
 
 外部 S3 bucket 必须预先存在。R2 使用账户 endpoint、`S3_REGION=auto` 和
-`S3_FORCE_PATH_STYLE=false`。如果 API v2 客户端需要直接上传，还要将
-`S3_PUBLIC_ENDPOINT` 设置为客户端可访问的 endpoint。
+`S3_FORCE_PATH_STYLE=false`。
 
 ## 本地开发与检查
 

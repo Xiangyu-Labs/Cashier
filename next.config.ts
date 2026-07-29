@@ -25,11 +25,12 @@ const withPWA = withPWAInit({
   dynamicStartUrl: false,
   reloadOnOnline: false,
   fallbacks: {
-    document: "/offline.html",
+    document: "/zh/offline",
   },
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
+    additionalManifestEntries: [{ url: "/en/offline", revision: null }],
     runtimeCaching: [],
   },
 });

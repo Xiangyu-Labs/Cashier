@@ -16,6 +16,7 @@ import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
+import { processImage } from "@/lib/storage/image-processing";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -43,6 +44,8 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       { ledgerId, sourceDocumentId },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
+        storedFiles: currentApplication.storedFiles,
+        processImage,
         scheduleProcessing,
       }
     );
@@ -98,6 +101,8 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
+        storedFiles: currentApplication.storedFiles,
+        processImage,
         scheduleProcessing,
       }
     );

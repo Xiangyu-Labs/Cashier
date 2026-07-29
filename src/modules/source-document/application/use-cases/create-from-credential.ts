@@ -9,9 +9,22 @@ import { currentApplication } from "@/application/current";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { resolveLedgerForServiceCredential } from "@/modules/ledger/credential-access";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
+import { createHash } from "crypto";
+import { decodeBase64Image } from "@/modules/source-document/base64-image";
+import {
+  API_V1_MAX_DECODED_BATCH_BYTES,
+  API_V1_MAX_DECODED_IMAGE_BYTES,
+} from "@/app/api/v1/_shared/limits";
 
-/** API v1 max decoded bytes per file (narrower than the Web policy). */
-const API_V1_MAX_ORIGINAL_BYTES = 10 * 1024 * 1024;
+function contentFingerprint(images: readonly { data: string; mimeType: string }[]): string {
+  const hash = createHash("sha256");
+  hash.update("cashier-api-v1\0");
+  for (const image of images) {
+    const bytes = decodeBase64Image(image.data, image.mimeType).bytes;
+    hash.update(createHash("sha256").update(bytes).digest());
+  }
+  return hash.digest("hex");
+}
 
 export async function createSourceDocumentFromCredential(
   input: {
@@ -27,12 +40,20 @@ export async function createSourceDocumentFromCredential(
   const ledger =
     input.ledgerId == null
       ? await resolveLedgerForServiceCredential(input.credentialId)
-      : { id: input.ledgerId };
+      : {
+          id: input.ledgerId,
+          settings: (await currentApplication.settings.get(input.ledgerId)) ?? {},
+        };
   if (ledger == null) throw new ValidationError("Service credential or ledger not found");
 
   const create = () =>
     createAndQueueSourceDocument(
-      { ledgerId: ledger.id, ledger, ...payload, maxDecodedImageBytes: API_V1_MAX_ORIGINAL_BYTES },
+      {
+        ledgerId: ledger.id,
+        ledger,
+        ...payload,
+        maxDecodedImageBytes: API_V1_MAX_DECODED_IMAGE_BYTES,
+      },
       {
         submissions: currentApplication.sourceDocumentSubmissions,
         storedFiles: currentApplication.storedFiles,
@@ -42,5 +63,13 @@ export async function createSourceDocumentFromCredential(
     );
   if (input.idempotencyKey == null) return create();
   const key = `api-v1:${input.credentialId}:${input.idempotencyKey}`;
-  return dependencies.idempotency.execute(key, create);
+  const images = payload.images ?? [];
+  const totalBytes = images.reduce(
+    (total, image) => total + decodeBase64Image(image.data, image.mimeType).bytes.length,
+    0
+  );
+  if (totalBytes > API_V1_MAX_DECODED_BATCH_BYTES) {
+    throw new ValidationError("Decoded image batch exceeds 3 MiB");
+  }
+  return dependencies.idempotency.execute(key, create, contentFingerprint(images));
 }

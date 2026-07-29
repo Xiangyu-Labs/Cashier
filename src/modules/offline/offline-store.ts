@@ -10,7 +10,7 @@ import type {
 import { storedFileReadUrl } from "@/modules/source-document/stored-file-read";
 
 const DB_NAME = "cashier-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const SNAPSHOT_STORE = "snapshots";
 const IMAGE_STORE = "images";
 const ACTIVE_SNAPSHOT_KEY = "cashier.offline.activeSnapshot";
@@ -22,10 +22,15 @@ export const OFFLINE_FULL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export interface OfflineLedgerSnapshot {
   key: string;
-  schemaVersion: 1;
+  schemaVersion: 2;
   userId: string;
   ledgerId: string;
   locale: string;
+  mainCurrency: string;
+  ledgerSettings: {
+    collapseEntriesDefault: boolean;
+    timeZone: string | null;
+  };
   items: SourceDocumentListItemDto[];
   viewedItems: SourceDocumentListItemDto[];
   lastSyncedAt: string;
@@ -93,6 +98,21 @@ export async function readOfflineSnapshot(key: string): Promise<OfflineLedgerSna
       (await requestResult(
         tx.objectStore(SNAPSHOT_STORE).get(key) as IDBRequest<OfflineLedgerSnapshot | undefined>
       )) ?? null
+    );
+  } finally {
+    db.close();
+  }
+}
+
+export async function readOfflineImages(snapshotKey: string): Promise<OfflineImageRecord[]> {
+  if (typeof indexedDB === "undefined") return [];
+  const db = await openOfflineDb();
+  try {
+    const tx = db.transaction(IMAGE_STORE, "readonly");
+    return await requestResult(
+      tx.objectStore(IMAGE_STORE).index("snapshotKey").getAll(snapshotKey) as IDBRequest<
+        OfflineImageRecord[]
+      >
     );
   } finally {
     db.close();

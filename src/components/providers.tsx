@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { MotionConfig } from "framer-motion";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
+import { ConnectionStateProvider } from "@/modules/offline/connection-state";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -35,7 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <ConnectionStateProvider>{children}</ConnectionStateProvider>
           <ServiceWorkerUpdate />
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>

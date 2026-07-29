@@ -16,7 +16,8 @@ async function fetchNavigation(request: Request): Promise<Response> {
   try {
     return await fetch(request, { signal: controller.signal });
   } catch {
-    return (await caches.match("/offline.html", { ignoreSearch: true })) ?? Response.error();
+    const locale = new URL(request.url).pathname.startsWith("/en/") ? "en" : "zh";
+    return (await caches.match(`/${locale}/offline`, { ignoreSearch: true })) ?? Response.error();
   } finally {
     clearTimeout(timeout);
   }

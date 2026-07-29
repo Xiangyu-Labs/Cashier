@@ -14,7 +14,7 @@ Cashier 当前使用 Postgres/Drizzle 保存账本、source document、revision�
 
 当前 contracts 已以 string 表达多数持久化金额，但多个应用服务和 UI view model 仍用 JavaScript `number` 参与账务计算。Service Credential 仍持久化完整 key，API v1 在认证成功后才按完整 key 使用进程内限流。成功重解析会立即激活并替换 projection，Stream 主路径一次读取最多 1000 条，上传验证、乐观插入、刷新退避、Header counts 和 request-triggered intent recovery 均不完整。
 
-本计划只实现 approved spec 中的产品与运行时能力。不实施 Cloudflare Worker/Queue、Vercel Cron、API v2、API v1 breaking change、生产数据跨 provider 迁移或正式流量切换。
+本计划只实现 approved spec 中的产品与运行时能力。不实施 Cloudflare Worker/Queue、Vercel Cron、额外 API 版本、API v1 breaking change、生产数据跨 provider 迁移或正式流量切换。
 
 ## Architecture
 

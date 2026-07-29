@@ -26,6 +26,7 @@ import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/re
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { OfflineSnapshotSync } from "@/modules/offline/OfflineSnapshotSync";
+import { useConnectionState } from "@/modules/offline/connection-state";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -43,6 +44,10 @@ const StatsTab = dynamic(() => import("@/modules/workspace/ui/StatsTab").then((m
 const SettingsTab = dynamic(
   () => import("@/modules/ledger/ui/SettingsTab").then((m) => m.SettingsTab),
   { loading: () => <SettingsTabSkeleton /> }
+);
+const OfflineLedgerView = dynamic(
+  () => import("@/modules/offline/OfflineLedgerView").then((module) => module.OfflineLedgerView),
+  { ssr: false }
 );
 
 // Keep dynamic imports for dialog-only components that aren't on the default path
@@ -163,17 +168,21 @@ function LedgerPageClientContent({
   const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { status: connectionStatus } = useConnectionState();
+  const offline = connectionStatus === "offline" || connectionStatus === "checking";
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
     staleTime: STALE_TIME,
+    enabled: !offline,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
     staleTime: STALE_TIME,
+    enabled: !offline,
   });
 
   const { activeTab, handleTabChange: _handleTabChange } = useLedgerTabs({
@@ -222,6 +231,8 @@ function LedgerPageClientContent({
     setInputIntent(() => preloadNewRecordModules);
   }, [setInputIntent]);
 
+  if (offline) return <OfflineLedgerView />;
+
   if (ledger == null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -232,7 +243,14 @@ function LedgerPageClientContent({
 
   return (
     <>
-      <OfflineSnapshotSync userId={ledger.userId} ledgerId={ledgerId} locale={locale} />
+      <OfflineSnapshotSync
+        userId={ledger.userId}
+        ledgerId={ledgerId}
+        locale={locale}
+        mainCurrency={mainCurrency}
+        collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+        timeZone={fixedTimeZone ?? null}
+      />
       {/* Only mount the active tab — inactive tabs load lazily */}
       {activeTab === "stream" && (
         <div className="mt-0 min-w-0 max-w-full overflow-x-clip">

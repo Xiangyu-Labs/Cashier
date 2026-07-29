@@ -26,7 +26,7 @@ Cashier 已完成 Postgres 数据层、R2 文件存储、source-document revisio
 ## Non-Goals
 
 - Cloudflare Worker、Cloudflare Queue、DLQ、跨服务签名或任何 Cloudflare 后台处理运行时。
-- 新增 API v2，或将 API v1 改为 `multipart/form-data`、`202 Accepted` 或新的响应结构。
+- 新增兼容 API 版本，或将 API v1 改为 `multipart/form-data`、`202 Accepted` 或新的响应结构。
 - 改变 API v1 已有业务请求和响应契约。
 - Vercel Cron、常驻进程或无人访问时的后台处理时效保证。
 - SQLite 到 Postgres、local files 到 R2 的一次性生产数据迁移、域名切换、正式流量切换或生产回滚执行。
@@ -279,7 +279,7 @@ API v1 请求格式、成功状态码和响应结构保持不变。凭证列表�
 - Header counts 使用独立聚合查询，并在相关状态转换后正确更新而不加载完整 Stream。
 - 模拟 `after()` 未运行或 lease 过期后，下一次相关账本请求能有界重新调度 intent，并最终只应用一次有效 completion。
 - 模拟连续 request-bound 执行失败后，revision 在配置上限处转为稳定、可重试的失败状态。
-- 自动化测试证明系统运行和验收不需要 Cloudflare Worker、Cloudflare Queue、Vercel Cron 或 API v2。
+- 自动化测试证明系统运行和验收不需要 Cloudflare Worker、Cloudflare Queue、Vercel Cron 或额外 API 版本。
 - 桌面和移动 viewport 的 Stream、Header、candidate actions、错误文案和对话框不存在不可操作的遮挡或文本溢出。
 
 ## Open Questions

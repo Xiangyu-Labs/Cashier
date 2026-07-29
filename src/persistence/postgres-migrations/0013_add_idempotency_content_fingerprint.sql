@@ -1,0 +1,1 @@
+ALTER TABLE "idempotency_records" ADD COLUMN "content_fingerprint" text;

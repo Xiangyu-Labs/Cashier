@@ -100,11 +100,14 @@ export async function handleApiV1Route(
       throw new RateLimitError("Rate limit exceeded");
     }
 
-    return await handler({ request, key, credential });
+    const response = await handler({ request, key, credential });
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   } catch (error) {
     logError(logContext, error);
     return NextResponse.json(toSanitizedErrorResponse(error), {
       status: getErrorStatusCode(error),
+      headers: { "Cache-Control": "private, no-store" },
     });
   }
 }

@@ -19,6 +19,9 @@ interface OfflineSnapshotSyncProps {
   userId: string;
   ledgerId: string;
   locale: string;
+  mainCurrency: string;
+  collapseEntriesDefault: boolean;
+  timeZone: string | null;
 }
 
 interface NetworkInformationLike {
@@ -27,7 +30,7 @@ interface NetworkInformationLike {
 }
 
 function canPrefetchImages() {
-  if (!navigator.onLine || document.visibilityState !== "visible") return false;
+  if (document.visibilityState !== "visible") return false;
   const connection = (navigator as Navigator & { connection?: NetworkInformationLike }).connection;
   return (
     connection?.saveData !== true && !["slow-2g", "2g"].includes(connection?.effectiveType ?? "")
@@ -81,7 +84,7 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
   let cursor: string | null = null;
 
   do {
-    if (signal.aborted || !navigator.onLine || document.visibilityState !== "visible") return;
+    if (signal.aborted || document.visibilityState !== "visible") return;
     const page = await getSourceDocumentsAction(input.ledgerId, {
       limit: 100,
       includeEntries: true,
@@ -98,10 +101,15 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     : mergeFirstPage(pages, previous?.items ?? []);
   await writeOfflineSnapshot({
     key,
-    schemaVersion: 1,
+    schemaVersion: 2,
     userId: input.userId,
     ledgerId: input.ledgerId,
     locale: input.locale,
+    mainCurrency: input.mainCurrency,
+    ledgerSettings: {
+      collapseEntriesDefault: input.collapseEntriesDefault,
+      timeZone: input.timeZone,
+    },
     items,
     viewedItems: previous?.viewedItems ?? [],
     lastSyncedAt: now,
@@ -111,12 +119,15 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
 }
 
 export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
-  const { userId, ledgerId, locale } = props;
+  const { userId, ledgerId, locale, mainCurrency, collapseEntriesDefault, timeZone } = props;
   useEffect(() => {
     if (typeof indexedDB === "undefined") return;
     const controller = new AbortController();
     const run = () =>
-      void syncSnapshot({ userId, ledgerId, locale }, controller.signal).catch(() => {});
+      void syncSnapshot(
+        { userId, ledgerId, locale, mainCurrency, collapseEntriesDefault, timeZone },
+        controller.signal
+      ).catch(() => {});
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
     if ("requestIdleCallback" in window) {
@@ -124,15 +135,12 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
     } else {
       timerId = setTimeout(run, 1500);
     }
-    const handleOnline = () => run();
-    window.addEventListener("online", handleOnline);
     return () => {
       controller.abort();
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);
-      window.removeEventListener("online", handleOnline);
     };
-  }, [ledgerId, locale, userId]);
+  }, [collapseEntriesDefault, ledgerId, locale, mainCurrency, timeZone, userId]);
 
   return null;
 }

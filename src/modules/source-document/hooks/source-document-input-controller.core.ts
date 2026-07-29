@@ -67,11 +67,6 @@ export function buildSubmitPayload(
   const storedFileIds = images.flatMap((image) =>
     image.storedFileId == null ? [] : [image.storedFileId]
   );
-  const originalImages = images.map(({ originalData, originalMimeType }) => ({
-    data: originalData,
-    mimeType: originalMimeType,
-  }));
-
   return {
     entryDate: formatDateTimeForApi(entryDate),
     ...(timeZone != null
@@ -82,6 +77,5 @@ export function buildSubmitPayload(
     ...(text !== "" ? { text } : {}),
     ...(newImages.length > 0 ? { images: newImages } : {}),
     ...(storedFileIds.length > 0 ? { storedFileIds } : {}),
-    ...(images.some((image) => image.isEdited) ? { originalImages } : {}),
   };
 }

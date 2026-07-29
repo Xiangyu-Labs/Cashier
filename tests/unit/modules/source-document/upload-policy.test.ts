@@ -22,10 +22,10 @@ import {
 
 describe("upload-policy constants", () => {
   it("has the designed Web defaults", () => {
-    expect(MAX_FILES).toBe(10);
-    expect(MAX_ORIGINAL_BYTES_PER_FILE).toBe(4 * 1024 * 1024);
+    expect(MAX_FILES).toBe(3);
+    expect(MAX_ORIGINAL_BYTES_PER_FILE).toBe(3 * 1024 * 1024);
     expect(MAX_NORMALIZED_BYTES_PER_FILE).toBe(4 * 1024 * 1024);
-    expect(MAX_NORMALIZED_BYTES_PER_REVISION).toBe(20 * 1024 * 1024);
+    expect(MAX_NORMALIZED_BYTES_PER_REVISION).toBe(3 * 1024 * 1024);
     expect(MAX_MEGAPIXELS_PER_FILE).toBe(16);
     expect(MAX_TEXT_CHARACTERS).toBe(20000);
   });
@@ -149,7 +149,7 @@ describe("validateFileCount", () => {
   it("accepts valid file counts", () => {
     expect(() => validateFileCount(1)).not.toThrow();
     expect(() => validateFileCount(MAX_FILES)).not.toThrow();
-    expect(() => validateFileCount(5)).not.toThrow();
+    expect(() => validateFileCount(2)).not.toThrow();
   });
 
   it("rejects zero or negative counts", () => {
@@ -164,18 +164,16 @@ describe("validateFileCount", () => {
 
 describe("validateAggregateFileCount", () => {
   it("accepts valid combined counts within MAX_FILES", () => {
-    expect(() => validateAggregateFileCount(0, 10, 0)).not.toThrow();
-    expect(() => validateAggregateFileCount(10, 0, 0)).not.toThrow();
-    expect(() => validateAggregateFileCount(5, 5, 0)).not.toThrow();
-    expect(() => validateAggregateFileCount(3, 3, 4)).not.toThrow();
-    expect(() => validateAggregateFileCount(10, 0, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(0, 3, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(3, 0, 0)).not.toThrow();
+    expect(() => validateAggregateFileCount(1, 2, 0)).not.toThrow();
   });
 
   it("rejects combined counts exceeding MAX_FILES", () => {
-    expect(() => validateAggregateFileCount(10, 1, 0)).toThrow("exceeds maximum of 10 files");
-    expect(() => validateAggregateFileCount(6, 5, 0)).toThrow("exceeds maximum of 10 files");
-    expect(() => validateAggregateFileCount(5, 5, 1)).toThrow("exceeds maximum of 10 files");
-    expect(() => validateAggregateFileCount(0, 0, 11)).toThrow("exceeds maximum of 10 files");
+    expect(() => validateAggregateFileCount(3, 1, 0)).toThrow("exceeds maximum of 3 files");
+    expect(() => validateAggregateFileCount(2, 2, 0)).toThrow("exceeds maximum of 3 files");
+    expect(() => validateAggregateFileCount(1, 2, 1)).toThrow("exceeds maximum of 3 files");
+    expect(() => validateAggregateFileCount(0, 0, 4)).toThrow("exceeds maximum of 3 files");
   });
 
   it("accepts zero counts across all categories", () => {
@@ -184,7 +182,7 @@ describe("validateAggregateFileCount", () => {
 
   it("rejects count just above MAX_FILES", () => {
     expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow(
-      "exceeds maximum of 10 files"
+      "exceeds maximum of 3 files"
     );
   });
 });

@@ -113,11 +113,11 @@ describe("contract schema omission semantics", () => {
       })
     ).not.toThrow();
 
-    // 5+5 success
+    // 1+2 success
     expect(() =>
       createSourceDocumentInputSchema.parse({
-        storedFileIds: Array.from({ length: 5 }, () => uuid()),
-        images: Array.from({ length: 5 }, () => ({
+        storedFileIds: [uuid()],
+        images: Array.from({ length: 2 }, () => ({
           data: "dGVzdA==",
           mimeType: "image/jpeg",
         })),

@@ -32,9 +32,47 @@ interface SourceDocumentCardProps {
   onToggleSelect?: () => void;
   /** Date provenance from the unified stream grouping model. */
   dateProvenance?: DateProvenance;
+  readOnly?: boolean;
 }
 
-export const SourceDocumentCard = memo(function SourceDocumentCard({
+interface RecoveryControls {
+  isRetrying: boolean;
+  isCancelling: boolean;
+  isAbandoning: boolean;
+  retry: () => Promise<unknown>;
+  cancelProcessing: () => void;
+  abandonCandidate: () => void;
+}
+
+const READ_ONLY_RECOVERY: RecoveryControls = {
+  isRetrying: false,
+  isCancelling: false,
+  isAbandoning: false,
+  retry: async () => undefined,
+  cancelProcessing: () => {},
+  abandonCandidate: () => {},
+};
+
+export const SourceDocumentCard = memo(function SourceDocumentCard(props: SourceDocumentCardProps) {
+  return props.readOnly === true ? (
+    <SourceDocumentCardBody {...props} recovery={READ_ONLY_RECOVERY} />
+  ) : (
+    <InteractiveSourceDocumentCard {...props} />
+  );
+});
+
+function InteractiveSourceDocumentCard(props: SourceDocumentCardProps) {
+  const recovery = useSourceDocumentRecoveryMutations({
+    ledgerId: props.sourceDocument.ledgerId,
+    sourceDocumentId: props.sourceDocument.id,
+    ...(props.sourceDocument.pendingRevisionId == null
+      ? {}
+      : { revisionId: props.sourceDocument.pendingRevisionId }),
+  });
+  return <SourceDocumentCardBody {...props} recovery={recovery} />;
+}
+
+function SourceDocumentCardBody({
   sourceDocument,
   ledgerEntries,
   mainCurrency = "CNY",
@@ -51,15 +89,10 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
   isSelected = false,
   onToggleSelect,
   dateProvenance,
-}: SourceDocumentCardProps) {
+  readOnly = false,
+  recovery,
+}: SourceDocumentCardProps & { recovery: RecoveryControls }) {
   const [isItemsExpanded, setIsItemsExpanded] = useState(defaultExpanded);
-  const recovery = useSourceDocumentRecoveryMutations({
-    ledgerId: sourceDocument.ledgerId,
-    sourceDocumentId: sourceDocument.id,
-    ...(sourceDocument.pendingRevisionId == null
-      ? {}
-      : { revisionId: sourceDocument.pendingRevisionId }),
-  });
 
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
   const { text, images } = useMemo(
@@ -67,8 +100,9 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
     [sourceDocument]
   );
 
-  const supportedActions: readonly SupportedSourceDocumentAction[] =
-    "supportedActions" in sourceDocument
+  const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
+    ? []
+    : "supportedActions" in sourceDocument
       ? ((sourceDocument as SourceDocument).supportedActions ?? [])
       : ((sourceDocument as SourceDocumentLight).supportedActions ?? []);
 
@@ -111,6 +145,7 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
         selectionMode={selectionMode}
         isSelected={isSelected}
         supportedActions={supportedActions}
+        showActions={!readOnly}
         {...(dateProvenance !== undefined ? { dateProvenance } : {})}
         onToggleExpanded={() => setIsItemsExpanded(!isItemsExpanded)}
         onViewDetails={onViewDetails}
@@ -157,4 +192,4 @@ export const SourceDocumentCard = memo(function SourceDocumentCard({
       </AnimatePresence>
     </div>
   );
-});
+}

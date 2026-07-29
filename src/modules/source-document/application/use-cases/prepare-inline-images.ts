@@ -6,6 +6,7 @@ import type {
 } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
 import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
+import { decodeBase64Image } from "@/modules/source-document/base64-image";
 
 /**
  * Interface for the stored-files operations needed by prepareInlineImages.
@@ -42,41 +43,7 @@ const DEFAULT_MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
  * Throws ValidationError for any decode-level failure.
  */
 function decodeImageData(data: string, mimeType: string, maxDecodedSize?: number): Buffer {
-  let base64Data = data;
-
-  // Handle data:image/... URLs
-  if (data.startsWith("data:")) {
-    const match = data.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!match) {
-      throw new ValidationError("Invalid image data URL format");
-    }
-    const urlMime = `image/${match[1]}`;
-    if (urlMime !== mimeType) {
-      throw new ValidationError(
-        `MIME type mismatch between data URL (${urlMime}) and mimeType field (${mimeType})`
-      );
-    }
-    base64Data = match[2]!;
-  }
-
-  // Strip whitespace — Buffer.from silently ignores it but our regex does not
-  base64Data = base64Data.replace(/\s+/g, "");
-
-  if (base64Data.length === 0) {
-    throw new ValidationError("Image data is empty");
-  }
-
-  // Validate base64 encoding
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Data)) {
-    throw new ValidationError("Invalid base64 encoding in image data");
-  }
-
-  const buffer = Buffer.from(base64Data, "base64");
-  if (buffer.length === 0) {
-    throw new ValidationError("Decoded image data is empty");
-  }
-
-  // Safety net — schema already enforces this for published payloads
+  const buffer = decodeBase64Image(data, mimeType).bytes;
   const effectiveMax = maxDecodedSize ?? DEFAULT_MAX_DECODED_SIZE;
   if (buffer.length > effectiveMax) {
     throw new ValidationError(

@@ -10,12 +10,12 @@ import {
   MAX_TEXT_CHARACTERS,
   SUPPORTED_MIME_TYPES,
 } from "@/modules/source-document/upload-policy";
-
-/**
- * API v1 has narrower limits than the Web submission flow.
- * These constants keep the boundary explicit and prevent policy creep.
- */
-const API_V1_MAX_ORIGINAL_BYTES = 10 * 1024 * 1024; // 10 MB
+import {
+  API_V1_MAX_DECODED_BATCH_BYTES,
+  API_V1_MAX_DECODED_IMAGE_BYTES,
+  API_V1_MAX_IMAGES,
+} from "@/app/api/v1/_shared/limits";
+import { decodeBase64Image } from "@/modules/source-document/base64-image";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -50,22 +50,31 @@ const imagePayloadSchema = strictObjectSchema({
 const imagesSchema = z
   .array(imagePayloadSchema)
   .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`)
-  .refine(
-    (images) => {
-      if (images.length === 0) {
-        return true;
+  .superRefine((images, ctx) => {
+    let total = 0;
+    images.forEach((image, index) => {
+      try {
+        const size = decodeBase64Image(image.data, image.mimeType).bytes.length;
+        total += size;
+        if (size > MAX_ORIGINAL_BYTES_PER_FILE) {
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "data"],
+            message: `Image exceeds ${MAX_ORIGINAL_BYTES_PER_FILE / 1024 / 1024}MB`,
+          });
+        }
+      } catch (error) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index, "data"],
+          message: error instanceof Error ? error.message : "Invalid base64 image data",
+        });
       }
-
-      return images.every((img) => {
-        const base64Data = img.data.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        return buffer.length <= MAX_ORIGINAL_BYTES_PER_FILE;
-      });
-    },
-    {
-      message: `Image size exceeds maximum allowed size of ${MAX_ORIGINAL_BYTES_PER_FILE / 1024 / 1024}MB`,
+    });
+    if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
+      ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
     }
-  );
+  });
 
 export const sourceDocumentIdSchema = uuidSchema;
 export const sourceDocumentIdsSchema = z.preprocess(
@@ -119,47 +128,36 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
 
 /** API v1 is the compact Shortcut contract: inline images plus an optional business date. */
 const API_V1_TIMESTAMP_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+  /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
 const apiV1EntryDateSchema = z.preprocess((value) => {
-  if (typeof value !== "string" || !API_V1_TIMESTAMP_PATTERN.test(value)) return value;
-  return Number.isNaN(Date.parse(value)) ? value : value.slice(0, 10);
+  if (typeof value !== "string") return value;
+  const match = API_V1_TIMESTAMP_PATTERN.exec(value);
+  if (match == null) return value;
+  const validTime = Number(match[2]) <= 23 && Number(match[3]) <= 59 && Number(match[4]) <= 59;
+  const validOffset = match[5] == null || (Number(match[6]) <= 23 && Number(match[7]) <= 59);
+  if (!validTime || !validOffset || Number.isNaN(Date.parse(value))) return value;
+  return match[1];
 }, optionalDateStringSchema);
 
 const apiV1ImageSchema = strictObjectSchema({
   data: z.string().min(1, "Image data is required"),
   mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
 }).superRefine((image, ctx) => {
-  let encoded = image.data;
-  if (encoded.startsWith("data:")) {
-    const match = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(encoded);
-    if (match == null) {
-      ctx.addIssue({ code: "custom", path: ["data"], message: "Invalid image data URL" });
-      return;
-    }
-    if (match[1]?.toLowerCase() !== image.mimeType.toLowerCase()) {
+  try {
+    const decodedBytes = decodeBase64Image(image.data, image.mimeType).bytes.length;
+    if (decodedBytes > API_V1_MAX_DECODED_IMAGE_BYTES) {
       ctx.addIssue({
         code: "custom",
-        path: ["mimeType"],
-        message: "MIME type does not match the image data URL",
+        path: ["data"],
+        message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
       });
     }
-    encoded = match[2] ?? "";
-  }
-
-  encoded = encoded.replace(/\s+/g, "");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
-    ctx.addIssue({ code: "custom", path: ["data"], message: "Invalid base64 image data" });
-    return;
-  }
-  const decodedBytes = Buffer.from(encoded, "base64").length;
-  if (decodedBytes === 0) {
-    ctx.addIssue({ code: "custom", path: ["data"], message: "Image data is empty" });
-  } else if (decodedBytes > API_V1_MAX_ORIGINAL_BYTES) {
+  } catch (error) {
     ctx.addIssue({
       code: "custom",
       path: ["data"],
-      message: `Image exceeds ${API_V1_MAX_ORIGINAL_BYTES / 1024 / 1024}MB`,
+      message: error instanceof Error ? error.message : "Invalid base64 image data",
     });
   }
 });
@@ -167,7 +165,20 @@ const apiV1ImageSchema = strictObjectSchema({
 const imagesSchemaV1 = z
   .array(apiV1ImageSchema)
   .min(1, "At least one image is required")
-  .max(MAX_FILES, `Maximum ${MAX_FILES} images allowed`);
+  .max(API_V1_MAX_IMAGES, `Maximum ${API_V1_MAX_IMAGES} images allowed`)
+  .superRefine((images, ctx) => {
+    let total = 0;
+    for (const image of images) {
+      try {
+        total += decodeBase64Image(image.data, image.mimeType).bytes.length;
+      } catch {
+        return;
+      }
+    }
+    if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
+      ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
+    }
+  });
 
 const sourceDocumentPayloadSchemaV1 = strictObjectSchema({
   images: imagesSchemaV1,

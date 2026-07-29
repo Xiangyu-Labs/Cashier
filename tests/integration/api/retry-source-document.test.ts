@@ -115,7 +115,7 @@ describe("source-document retry action", () => {
       editRetrySourceDocumentAction(ledgerId, created.sourceDocumentId, {
         images: [{ data: "/api/uploads/private.jpg", mimeType: "image/jpeg" }],
       })
-    ).rejects.toThrow("Images must be finalized");
+    ).rejects.toThrow("Invalid base64 image data");
   });
 
   it("retry succeeds despite a previous failed revision, preserving the original active revision", async () => {

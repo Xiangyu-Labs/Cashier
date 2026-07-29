@@ -48,6 +48,7 @@ interface SourceDocumentCardHeaderProps {
   selectionMode: boolean;
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
+  showActions?: boolean;
   /** Date provenance from the unified stream grouping model. */
   dateProvenance?: DateProvenance;
   onToggleExpanded: () => void;
@@ -91,6 +92,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   selectionMode,
   isSelected,
   supportedActions,
+  showActions = true,
   dateProvenance,
   onToggleExpanded,
   onViewDetails,
@@ -229,10 +231,11 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           status
         ) && <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />}
 
-        <div
-          className="ml-1 flex items-center gap-1.5"
-          onClick={(event) => event.stopPropagation()}
-        >
+        {showActions && (
+          <div
+            className="ml-1 flex items-center gap-1.5"
+            onClick={(event) => event.stopPropagation()}
+          >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -285,7 +288,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

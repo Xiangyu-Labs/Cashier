@@ -412,7 +412,7 @@ export interface ServiceCredentialPort {
   revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
 }
 export interface IdempotencyPort {
-  execute<T>(key: string, operation: () => Promise<T>): Promise<T>;
+  execute<T>(key: string, operation: () => Promise<T>, contentFingerprint?: string): Promise<T>;
 }
 
 export interface EmailDeliveryPort {

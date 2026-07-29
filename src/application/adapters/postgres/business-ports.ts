@@ -611,14 +611,18 @@ function wait(ms: number): Promise<void> {
 }
 
 export const postgresIdempotencyAdapter: IdempotencyPort = {
-  async execute<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  async execute<T>(
+    key: string,
+    operation: () => Promise<T>,
+    contentFingerprint?: string
+  ): Promise<T> {
     if (key.trim() === "" || key.length > 512) {
       throw new ValidationError("Idempotency key must contain between 1 and 512 characters");
     }
 
     const claimed = await db
       .insert(idempotencyRecords)
-      .values({ key, status: "pending" })
+      .values({ key, status: "pending", contentFingerprint: contentFingerprint ?? null })
       .onConflictDoNothing()
       .returning({ key: idempotencyRecords.key });
     if (claimed.length === 1) {
@@ -642,10 +646,17 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
         where: eq(idempotencyRecords.key, key),
       });
       if (record?.status === "completed") {
+        if (
+          record.contentFingerprint != null &&
+          contentFingerprint != null &&
+          record.contentFingerprint !== contentFingerprint
+        ) {
+          throw new ConflictError("Idempotency key was already used with different content");
+        }
         return (record.result as { value: T }).value;
       }
       if (record == null) {
-        return this.execute(key, operation);
+        return this.execute(key, operation, contentFingerprint);
       }
       await wait(IDEMPOTENCY_WAIT_MS);
     }

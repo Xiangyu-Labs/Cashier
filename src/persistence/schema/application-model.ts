@@ -317,6 +317,7 @@ export const idempotencyRecords = pgTable(
     key: text("key").primaryKey(),
     status: text("status").notNull().default("pending"),
     result: jsonb("result").$type<unknown>(),
+    contentFingerprint: text("content_fingerprint"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },

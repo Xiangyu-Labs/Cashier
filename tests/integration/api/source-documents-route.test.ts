@@ -3,15 +3,18 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { POST } from "@/app/api/v1/source-documents/route";
+import { GET } from "@/app/api/v1/source-documents/[sourceDocumentId]/route";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import {
   ledgers,
+  ledgerEntries,
   processingOutbox,
   revisionFiles,
   serviceCredentials,
   sourceDocumentRevisions,
   sourceDocuments,
+  revisionEntries,
   storedFiles,
   uploadSessions,
 } from "@/persistence";
@@ -120,6 +123,108 @@ describe("API v1 source-documents route", () => {
       .returning();
   });
 
+  it("GET returns processing status with retry and private no-store headers", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("retry-after")).toBe("5");
+    expect(await response.json()).toMatchObject({
+      sourceDocumentId: created.sourceDocumentId,
+      revisionId: created.revisionId,
+      status: "processing",
+      result: null,
+      error: null,
+    });
+  });
+
+  it("GET returns only the stable completed result projection and hides unknown IDs", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const db = getTestDb();
+    const [entry] = await db
+      .insert(ledgerEntries)
+      .values({
+        ledgerId,
+        sourceDocumentId: created.sourceDocumentId,
+        sourceDocumentRevisionId: created.revisionId,
+        itemName: "Lunch",
+        description: "Noodles",
+        amount: "12.50",
+        currency: "CNY",
+      })
+      .returning();
+    await db.insert(revisionEntries).values({
+      ledgerId,
+      revisionId: created.revisionId,
+      ledgerEntryId: entry!.id,
+      position: 0,
+    });
+    await db
+      .update(sourceDocumentRevisions)
+      .set({ outcome: "completed", finalizedAt: new Date() })
+      .where(eq(sourceDocumentRevisions.id, created.revisionId));
+    await db
+      .update(sourceDocuments)
+      .set({
+        status: "completed",
+        title: "Lunch receipt",
+        activeRevisionId: created.revisionId,
+        pendingRevisionId: null,
+      })
+      .where(eq(sourceDocuments.id, created.sourceDocumentId));
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    const body = await response.json();
+    expect(body.result).toEqual({
+      title: "Lunch receipt",
+      total: "12.50",
+      entries: [
+        {
+          name: "Lunch",
+          description: "Noodles",
+          amount: "12.50",
+          currency: "CNY",
+          category: null,
+        },
+      ],
+    });
+    expect(JSON.stringify(body)).not.toMatch(/fileId|metadata|outbox|stack|storageKey/);
+
+    const unknownId = crypto.randomUUID();
+    const missing = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${unknownId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: unknownId }) }
+    );
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("POST /api/v1/source-documents returns 201 for valid credential request", async () => {
     const image = await validJpegBase64();
     const request = new NextRequest("http://localhost/api/v1/source-documents", {
@@ -180,6 +285,37 @@ describe("API v1 source-documents route", () => {
     expect(documents).toHaveLength(1);
     expect(revisions).toHaveLength(1);
     expect(intents).toHaveLength(1);
+  });
+
+  it("normalizes equivalent Base64 for idempotency and rejects different image content", async () => {
+    const image = await validJpegBase64();
+    const key = "content-aware-request";
+    const submit = (data: string) =>
+      POST(
+        new NextRequest("http://localhost/api/v1/source-documents", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${credentialKey}`,
+            "Idempotency-Key": key,
+          },
+          body: JSON.stringify({ images: [{ data, mimeType: "image/jpeg" }] }),
+        })
+      );
+    const first = await submit(image);
+    const equivalent = `data:image/jpeg;base64,${image.replace(/=/g, "").replace(/(.{40})/g, "$1\n")}`;
+    const second = await submit(equivalent);
+    expect(second.status).toBe(201);
+    expect(await second.json()).toEqual(await first.json());
+
+    const different = (
+      await sharp({
+        create: { width: 2, height: 1, channels: 3, background: { r: 0, g: 0, b: 255 } },
+      })
+        .jpeg()
+        .toBuffer()
+    ).toString("base64");
+    const conflict = await submit(different);
+    expect(conflict.status).toBe(409);
   });
 
   describe("inline image ingestion", () => {

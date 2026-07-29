@@ -1,0 +1,4 @@
+export const API_V1_MAX_REQUEST_BYTES = 4 * 1024 * 1024;
+export const API_V1_MAX_IMAGES = 3;
+export const API_V1_MAX_DECODED_IMAGE_BYTES = 3 * 1024 * 1024;
+export const API_V1_MAX_DECODED_BATCH_BYTES = 3 * 1024 * 1024;
