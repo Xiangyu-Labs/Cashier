@@ -244,37 +244,28 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
   if (input.endDate != null && input.endDate !== "") {
     conditions.push(sql`${EFFECTIVE_DATE} <= ${input.endDate}`);
   }
-  if (input.minAmount !== undefined || input.maxAmount !== undefined) {
-    const totalAmount = sql<string>`COALESCE((
-      SELECT SUM(ABS(COALESCE(entries.converted_amount, entries.amount)))
-      FROM ledger_entries AS entries
-      WHERE entries.ledger_id = ${input.ledgerId}
-        AND entries.source_document_id = ${sourceDocuments.id}
-        AND entries.source_document_revision_id = ${sourceDocuments.activeRevisionId}
-        AND entries.deleted_at IS NULL
-    ), 0)`;
-    if (input.minAmount !== undefined) {
-      conditions.push(sql`${totalAmount} >= ${input.minAmount}`);
-    }
-    if (input.maxAmount !== undefined) {
-      conditions.push(sql`${totalAmount} <= ${input.maxAmount}`);
-    }
-  }
-  if (input.search != null && input.search !== "") {
-    conditions.push(sql`(
-      position(lower(${input.search}) in lower(COALESCE(${sourceDocuments.title}, ''))) > 0
-      OR EXISTS (
-        SELECT 1
-        FROM ledger_entries AS search_entries
-        WHERE search_entries.ledger_id = ${input.ledgerId}
-          AND search_entries.source_document_id = ${sourceDocuments.id}
-          AND search_entries.source_document_revision_id = ${sourceDocuments.activeRevisionId}
-          AND search_entries.deleted_at IS NULL
-          AND (
-            position(lower(${input.search}) in lower(search_entries.item_name)) > 0
-            OR position(lower(${input.search}) in lower(COALESCE(search_entries.description, ''))) > 0
-          )
-      )
+  if (
+    input.minAmount !== undefined ||
+    input.maxAmount !== undefined ||
+    (input.search != null && input.search !== "")
+  ) {
+    conditions.push(sql`EXISTS (
+      SELECT 1
+      FROM ledger_entries AS matched_entries
+      WHERE matched_entries.ledger_id = ${input.ledgerId}
+        AND matched_entries.source_document_id = ${sourceDocuments.id}
+        AND matched_entries.source_document_revision_id = ${sourceDocuments.activeRevisionId}
+        AND matched_entries.deleted_at IS NULL
+        ${input.minAmount !== undefined ? sql`AND COALESCE(matched_entries.converted_amount, matched_entries.amount) >= ${input.minAmount}` : sql``}
+        ${input.maxAmount !== undefined ? sql`AND COALESCE(matched_entries.converted_amount, matched_entries.amount) <= ${input.maxAmount}` : sql``}
+        ${
+          input.search != null && input.search !== ""
+            ? sql`AND (
+          position(lower(${input.search}) in lower(matched_entries.item_name)) > 0
+          OR position(lower(${input.search}) in lower(COALESCE(matched_entries.description, ''))) > 0
+        )`
+            : sql``
+        }
     )`);
   }
   return conditions;
@@ -289,6 +280,23 @@ export async function calculateCompletedSourceDocumentTotal(
   input: TargetSourceDocumentFilterInput
 ): Promise<{ total: string }> {
   const derivedStatus = derivedStatusExpression();
+  const matchedEntryConditions: SQL<unknown>[] = [];
+  if (input.minAmount !== undefined) {
+    matchedEntryConditions.push(
+      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) >= ${input.minAmount}`
+    );
+  }
+  if (input.maxAmount !== undefined) {
+    matchedEntryConditions.push(
+      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) <= ${input.maxAmount}`
+    );
+  }
+  if (input.search != null && input.search !== "") {
+    matchedEntryConditions.push(sql`(
+      position(lower(${input.search}) in lower(${ledgerEntries.itemName})) > 0
+      OR position(lower(${input.search}) in lower(COALESCE(${ledgerEntries.description}, ''))) > 0
+    )`);
+  }
   const result = await db
     .select({
       total: sql<string>`SUM(COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}))`,
@@ -300,7 +308,8 @@ export async function calculateCompletedSourceDocumentTotal(
         eq(ledgerEntries.ledgerId, sourceDocuments.ledgerId),
         eq(ledgerEntries.sourceDocumentId, sourceDocuments.id),
         eq(ledgerEntries.sourceDocumentRevisionId, sourceDocuments.activeRevisionId),
-        isNull(ledgerEntries.deletedAt)
+        isNull(ledgerEntries.deletedAt),
+        ...matchedEntryConditions
       )
     )
     .where(and(...baseConditions(input), eq(derivedStatus, "completed")))

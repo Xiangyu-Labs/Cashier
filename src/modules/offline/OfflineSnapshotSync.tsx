@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
-import { getSourceDocumentsAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import {
-  OFFLINE_DOCUMENT_LIMIT,
-  OFFLINE_FULL_SYNC_INTERVAL_MS,
   cacheOfflineImage,
   clearOfflineData,
   getActiveOfflineSnapshotKey,
   hasOfflineImage,
   offlineSnapshotKey,
   readOfflineSnapshot,
-  writeOfflineSnapshot,
+  replaceOfflineSnapshot,
 } from "./offline-store";
+import { getOfflineLedgerSnapshot, getOfflineSnapshotVersion } from "./server-actions";
+
+export type OfflineSyncStatus = "idle" | "checking" | "downloading" | "updated" | "error";
 
 interface OfflineSnapshotSyncProps {
   userId: string;
@@ -36,17 +36,6 @@ function canPrefetchImages() {
   const connection = (navigator as Navigator & { connection?: NetworkInformationLike }).connection;
   return (
     connection?.saveData !== true && !["slow-2g", "2g"].includes(connection?.effectiveType ?? "")
-  );
-}
-
-function mergeFirstPage(
-  firstPage: SourceDocumentListItemDto[],
-  previous: SourceDocumentListItemDto[]
-) {
-  const firstPageIds = new Set(firstPage.map((item) => item.id));
-  return [...firstPage, ...previous.filter((item) => !firstPageIds.has(item.id))].slice(
-    0,
-    OFFLINE_DOCUMENT_LIMIT
   );
 }
 
@@ -79,31 +68,34 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
   }
   const key = offlineSnapshotKey(input.userId, input.ledgerId);
   const previous = await readOfflineSnapshot(key);
-  const needsFullSync =
-    previous?.fullSyncAt == null ||
-    Date.now() - Date.parse(previous.fullSyncAt) >= OFFLINE_FULL_SYNC_INTERVAL_MS;
-  const pages: SourceDocumentListItemDto[] = [];
-  let cursor: string | null = null;
-
-  do {
-    if (signal.aborted || document.visibilityState !== "visible") return;
-    const page = await getSourceDocumentsAction(input.ledgerId, {
-      limit: 100,
-      includeEntries: true,
-      includeFiles: true,
-      ...(cursor != null ? { cursor } : {}),
-    });
-    pages.push(...page.items);
-    cursor = page.nextCursor;
-  } while (needsFullSync && cursor != null && pages.length < OFFLINE_DOCUMENT_LIMIT);
-
-  const now = new Date().toISOString();
-  const items = needsFullSync
-    ? pages.slice(0, OFFLINE_DOCUMENT_LIMIT)
-    : mergeFirstPage(pages, previous?.items ?? []);
-  await writeOfflineSnapshot({
+  const version = await getOfflineSnapshotVersion(input.ledgerId);
+  if (signal.aborted) return false;
+  if (version.version === previous?.syncVersion) {
+    if (
+      previous != null &&
+      (previous.locale !== input.locale ||
+        previous.mainCurrency !== input.mainCurrency ||
+        previous.ledgerSettings?.timeZone !== input.timeZone ||
+        JSON.stringify(previous.preferredCurrencies ?? []) !==
+          JSON.stringify(input.preferredCurrencies) ||
+        JSON.stringify(previous.categories ?? []) !== JSON.stringify(input.categories))
+    ) {
+      await replaceOfflineSnapshot({
+        ...previous,
+        locale: input.locale,
+        mainCurrency: input.mainCurrency,
+        preferredCurrencies: input.preferredCurrencies,
+        categories: input.categories,
+        ledgerSettings: { timeZone: input.timeZone },
+      });
+    }
+    return false;
+  }
+  const payload = await getOfflineLedgerSnapshot(input.ledgerId, version.version);
+  if (signal.aborted) return false;
+  await replaceOfflineSnapshot({
     key,
-    schemaVersion: 2,
+    schemaVersion: 3,
     userId: input.userId,
     ledgerId: input.ledgerId,
     locale: input.locale,
@@ -113,28 +105,40 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     ledgerSettings: {
       timeZone: input.timeZone,
     },
-    items,
+    items: payload.items,
     viewedItems: previous?.viewedItems ?? [],
-    lastSyncedAt: now,
-    fullSyncAt: needsFullSync ? now : (previous?.fullSyncAt ?? null),
+    syncVersion: payload.version,
+    recordCount: payload.recordCount,
+    complete: payload.complete,
+    truncated: payload.truncated,
+    coverageLimit: payload.coverageLimit,
+    lastSyncedAt: payload.generatedAt,
+    fullSyncAt: payload.generatedAt,
   });
-  await prefetchLatestImages(key, items, signal);
+  await prefetchLatestImages(key, payload.items, signal);
+  return true;
 }
 
-export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
-  const {
-    userId,
-    ledgerId,
-    locale,
-    mainCurrency,
-    timeZone,
-    preferredCurrencies,
-    categories,
-  } = props;
+export function OfflineSnapshotSync({
+  onStatusChange,
+  ...props
+}: OfflineSnapshotSyncProps & {
+  onStatusChange?: (status: OfflineSyncStatus) => void;
+}) {
+  const { userId, ledgerId, locale, mainCurrency, timeZone, preferredCurrencies, categories } =
+    props;
   useEffect(() => {
     if (typeof indexedDB === "undefined") return;
     const controller = new AbortController();
-    const run = () =>
+    let running = false;
+    let rerunRequested = false;
+    const run = () => {
+      if (running) {
+        rerunRequested = true;
+        return;
+      }
+      running = true;
+      const statusTimer = setTimeout(() => onStatusChange?.("checking"), 150);
       void syncSnapshot(
         {
           userId,
@@ -146,7 +150,23 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
           categories,
         },
         controller.signal
-      ).catch(() => {});
+      )
+        .then((updated) => {
+          clearTimeout(statusTimer);
+          onStatusChange?.(updated ? "updated" : "idle");
+        })
+        .catch(() => {
+          clearTimeout(statusTimer);
+          onStatusChange?.("error");
+        })
+        .finally(() => {
+          running = false;
+          if (rerunRequested && !controller.signal.aborted) {
+            rerunRequested = false;
+            run();
+          }
+        });
+    };
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
     if ("requestIdleCallback" in window) {
@@ -154,8 +174,13 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
     } else {
       timerId = setTimeout(run, 1500);
     }
+    const onMutation = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === ledgerId) run();
+    };
+    window.addEventListener("cashier:ledger-mutated", onMutation);
     return () => {
       controller.abort();
+      window.removeEventListener("cashier:ledger-mutated", onMutation);
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);
     };
@@ -167,6 +192,7 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
     preferredCurrencies,
     timeZone,
     userId,
+    onStatusChange,
   ]);
 
   return null;

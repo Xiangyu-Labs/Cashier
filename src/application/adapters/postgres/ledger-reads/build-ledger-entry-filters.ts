@@ -58,11 +58,15 @@ export function buildLedgerEntryFilterConditions(
   }
 
   if (filters.minAmount !== undefined && filters.minAmount !== null) {
-    conditions.push(sql`${ledgerEntries.convertedAmount} >= ${filters.minAmount}`);
+    conditions.push(
+      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) >= ${filters.minAmount}`
+    );
   }
 
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
-    conditions.push(sql`${ledgerEntries.convertedAmount} <= ${filters.maxAmount}`);
+    conditions.push(
+      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) <= ${filters.maxAmount}`
+    );
   }
 
   if (filters.search != null && filters.search !== "") {

@@ -6,14 +6,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
-import {
-  CircleStop,
-  MoreVertical,
-  Pencil,
-  RefreshCw,
-  Trash2,
-  XCircle,
-} from "lucide-react";
+import { CircleStop, MoreVertical, Pencil, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +38,7 @@ interface SourceDocumentCardHeaderProps {
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
+  filteredSubtotal?: boolean;
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
@@ -84,6 +78,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isSelected,
   supportedActions,
   showActions = true,
+  filteredSubtotal = false,
   onToggleSelect,
   onDirectRetry,
   onCancelProcessing,
@@ -161,7 +156,16 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
         {!["processing", "anomaly", "failed", "candidate_pending", "cancelled"].includes(
           status
-        ) && <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />}
+        ) && (
+          <div className="text-right">
+            {filteredSubtotal ? (
+              <div className="text-[10px] leading-none text-muted-foreground">
+                {t("filteredSubtotal")}
+              </div>
+            ) : null}
+            <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
+          </div>
+        )}
 
         {showActions && (
           <div

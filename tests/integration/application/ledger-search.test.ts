@@ -46,7 +46,7 @@ describe("ledger search", () => {
     const titleMatch = await listStreamPage(ledgerId, { search: "  coffee   receipt ", limit: 20 });
     const entryMatch = await listStreamPage(ledgerId, { search: "MORNING", limit: 20 });
     const literalMatch = await listStreamPage(ledgerId, { search: "_100%", limit: 20 });
-    expect(titleMatch.items.map((item) => item.title)).toEqual(["Coffee Receipt"]);
+    expect(titleMatch.items).toEqual([]);
     expect(entryMatch.items.map((item) => item.title)).toEqual(["Coffee Receipt"]);
     expect(literalMatch.items.map((item) => item.title)).toEqual(["Literal % Store"]);
 

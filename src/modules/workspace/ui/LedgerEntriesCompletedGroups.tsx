@@ -29,6 +29,7 @@ export interface UnifiedStreamGroupProps {
   getItemProps: () => Record<string, unknown>;
   timeZone?: string;
   readOnly?: boolean;
+  filteredSubtotal?: boolean;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -44,6 +45,7 @@ export function LedgerEntriesUnifiedGroups({
   getItemProps,
   timeZone,
   readOnly = false,
+  filteredSubtotal = false,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -110,6 +112,7 @@ export function LedgerEntriesUnifiedGroups({
                       isSelected={selectedIds.includes(item.sourceDocument.id)}
                       onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
                       readOnly={readOnly}
+                      filteredSubtotal={filteredSubtotal}
                     />
                   </motion.div>
                 ))}

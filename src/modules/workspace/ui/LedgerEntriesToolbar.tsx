@@ -12,6 +12,7 @@ import { type StreamStatusPreset } from "@/modules/workspace/ledger-filter-state
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
+import type { ReactNode } from "react";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -35,6 +36,7 @@ interface LedgerEntriesToolbarProps {
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   onResetFilters?: () => void;
   readOnly?: boolean;
+  syncStatus?: ReactNode;
 }
 
 export function LedgerEntriesToolbar({
@@ -59,6 +61,7 @@ export function LedgerEntriesToolbar({
   onApplyPreset,
   onResetFilters,
   readOnly = false,
+  syncStatus,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -80,6 +83,7 @@ export function LedgerEntriesToolbar({
 
   return (
     <EntriesToolbarShell
+      syncStatus={syncStatus}
       totalLabel={
         !isSelectionMode
           ? `${filteredTotalLabel} ${formatCurrencyAmount(filteredTotal, mainCurrency, locale)}`
@@ -186,7 +190,6 @@ export function LedgerEntriesToolbar({
           {...(onResetFilters != null ? { onResetFilters } : {})}
         />
       )}
-
     </EntriesToolbarShell>
   );
 }

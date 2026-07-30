@@ -27,6 +27,7 @@ import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { OfflineSnapshotSync } from "@/modules/offline/OfflineSnapshotSync";
 import { useConnectionState } from "@/modules/offline/connection-state";
+import { offlineSnapshotKey } from "@/modules/offline/offline-store";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -132,6 +133,7 @@ function Skeleton({ className }: { className?: string }) {
 
 interface LedgerPageClientProps {
   ledgerId: string;
+  userId: string;
   initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
@@ -157,6 +159,7 @@ export function LedgerPageClient({ ...props }: LedgerPageClientProps) {
 
 function LedgerPageClientContent({
   ledgerId,
+  userId,
   initialTab,
   initialPeriod,
   initialStatsDate,
@@ -169,7 +172,7 @@ function LedgerPageClientContent({
   const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { status: connectionStatus } = useConnectionState();
+  const { networkStatus: connectionStatus, setSyncStatus } = useConnectionState();
   const offline = connectionStatus === "offline" || connectionStatus === "checking";
 
   const { data: ledger } = useQuery({
@@ -201,14 +204,20 @@ function LedgerPageClientContent({
     getServerTimeZone
   );
   const effectiveTimeZone = fixedTimeZone ?? deviceTimeZone;
-  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset, resetFilters } =
-    usePeriodFilter({
-      pathname,
-      searchParams,
-      initialPeriod,
-      scope: activeTab === "details" ? "details" : "stream",
-      ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
-    });
+  const {
+    periodParams,
+    filters,
+    filterParams,
+    handleFiltersChange,
+    applyStreamStatusPreset,
+    resetFilters,
+  } = usePeriodFilter({
+    pathname,
+    searchParams,
+    initialPeriod,
+    scope: activeTab === "details" ? "details" : "stream",
+    ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
+  });
 
   const advancedFilters = filterParams;
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
@@ -232,9 +241,17 @@ function LedgerPageClientContent({
     setInputIntent(() => preloadNewRecordModules);
   }, [setInputIntent]);
 
-  if (offline) return <OfflineLedgerView />;
-
   if (ledger == null) {
+    if (offline) {
+      return (
+        <OfflineLedgerView
+          snapshotKey={offlineSnapshotKey(userId, ledgerId)}
+          activeTab={activeTab}
+          initialFilters={filters}
+          onFiltersChange={handleFiltersChange}
+        />
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
         <p className="text-muted">{t("notFound")}</p>
@@ -244,159 +261,175 @@ function LedgerPageClientContent({
 
   return (
     <>
-      <OfflineSnapshotSync
-        userId={ledger.userId}
-        ledgerId={ledgerId}
-        locale={locale}
-        mainCurrency={mainCurrency}
-        timeZone={fixedTimeZone ?? null}
-        preferredCurrencies={preferredCurrencies}
-        categories={categories}
-      />
-      {/* Only mount the active tab — inactive tabs load lazily */}
-      {activeTab === "stream" && (
-        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <LedgerEntriesTab
-            ledgerId={ledgerId}
-            categories={categories.length > 0 ? categories : []}
-            ledger={ledger}
-            periodParams={periodParams}
-            onFiltersChange={handleFiltersChange}
-            advancedFilters={advancedFilters}
-            onApplyPreset={applyStreamStatusPreset}
-            onResetFilters={resetFilters}
-            {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-          />
-        </div>
+      {offline ? (
+        <OfflineLedgerView
+          snapshotKey={offlineSnapshotKey(userId, ledgerId)}
+          activeTab={activeTab}
+          initialFilters={filters}
+          onFiltersChange={handleFiltersChange}
+        />
+      ) : (
+        <OfflineSnapshotSync
+          userId={ledger.userId}
+          ledgerId={ledgerId}
+          locale={locale}
+          mainCurrency={mainCurrency}
+          timeZone={fixedTimeZone ?? null}
+          preferredCurrencies={preferredCurrencies}
+          categories={categories}
+          onStatusChange={setSyncStatus}
+        />
       )}
-
-      {activeTab === "details" && (
-        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <DeferredFeatureMessages
-            feature="details"
-            locale={locale}
-            fallback={<DetailsTabSkeleton />}
-          >
-            <DetailsTab
+      <div className={offline ? "hidden" : undefined} aria-hidden={offline || undefined}>
+        {/* Only mount the active tab — inactive tabs load lazily */}
+        {activeTab === "stream" && (
+          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+            <LedgerEntriesTab
               ledgerId={ledgerId}
               categories={categories.length > 0 ? categories : []}
               ledger={ledger}
               periodParams={periodParams}
               onFiltersChange={handleFiltersChange}
               advancedFilters={advancedFilters}
+              onApplyPreset={applyStreamStatusPreset}
               onResetFilters={resetFilters}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
             />
-          </DeferredFeatureMessages>
-        </div>
-      )}
+          </div>
+        )}
 
-      {activeTab === "stats" && (
-        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <DeferredFeatureMessages feature="stats" locale={locale} fallback={<StatsTabSkeleton />}>
-            <StatsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              onCategoryDrilldown={handleCategoryDrilldown}
-              onDateDrilldown={handleDateDrilldown}
-              {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
-              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-            />
-          </DeferredFeatureMessages>
-        </div>
-      )}
+        {activeTab === "details" && (
+          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+            <DeferredFeatureMessages
+              feature="details"
+              locale={locale}
+              fallback={<DetailsTabSkeleton />}
+            >
+              <DetailsTab
+                ledgerId={ledgerId}
+                categories={categories.length > 0 ? categories : []}
+                ledger={ledger}
+                periodParams={periodParams}
+                onFiltersChange={handleFiltersChange}
+                advancedFilters={advancedFilters}
+                onResetFilters={resetFilters}
+                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+              />
+            </DeferredFeatureMessages>
+          </div>
+        )}
 
-      {activeTab === "settings" && (
-        <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-          <DeferredFeatureMessages
-            feature="settings"
-            locale={locale}
-            fallback={<SettingsTabSkeleton />}
-          >
-            <SettingsTab
-              ledgerId={ledgerId}
-              ledger={ledger}
-              initialCategories={categories}
-              {...(userEmail !== undefined ? { userEmail } : {})}
-              {...(hasPassword !== undefined ? { hasPassword } : {})}
-              {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
-              {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
-            />
-          </DeferredFeatureMessages>
-        </div>
-      )}
+        {activeTab === "stats" && (
+          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+            <DeferredFeatureMessages
+              feature="stats"
+              locale={locale}
+              fallback={<StatsTabSkeleton />}
+            >
+              <StatsTab
+                ledgerId={ledgerId}
+                ledger={ledger}
+                onCategoryDrilldown={handleCategoryDrilldown}
+                onDateDrilldown={handleDateDrilldown}
+                {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+              />
+            </DeferredFeatureMessages>
+          </div>
+        )}
 
-      <Dialog
-        open={isInputOpen}
-        onOpenChange={(open) => {
-          if (!open && isInputSubmitting) return;
-          handleInputDialogChange(open);
-        }}
-      >
-        <DialogContent
-          variant="sheet"
-          className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6"
-          aria-describedby={undefined}
-          hideCloseButton={isInputSubmitting}
-          onEscapeKeyDown={(event) => {
-            if (isInputSubmitting) event.preventDefault();
-          }}
-          onPointerDownOutside={(event) => {
-            if (isInputSubmitting) event.preventDefault();
+        {activeTab === "settings" && (
+          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+            <DeferredFeatureMessages
+              feature="settings"
+              locale={locale}
+              fallback={<SettingsTabSkeleton />}
+            >
+              <SettingsTab
+                ledgerId={ledgerId}
+                ledger={ledger}
+                initialCategories={categories}
+                {...(userEmail !== undefined ? { userEmail } : {})}
+                {...(hasPassword !== undefined ? { hasPassword } : {})}
+                {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+                {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
+              />
+            </DeferredFeatureMessages>
+          </div>
+        )}
+
+        <Dialog
+          open={isInputOpen}
+          onOpenChange={(open) => {
+            if (!open && isInputSubmitting) return;
+            handleInputDialogChange(open);
           }}
         >
-          <DialogHeader>
-            <DialogTitle>{t("newRecord")}</DialogTitle>
-          </DialogHeader>
+          <DialogContent
+            variant="sheet"
+            className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6"
+            aria-describedby={undefined}
+            hideCloseButton={isInputSubmitting}
+            onEscapeKeyDown={(event) => {
+              if (isInputSubmitting) event.preventDefault();
+            }}
+            onPointerDownOutside={(event) => {
+              if (isInputSubmitting) event.preventDefault();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>{t("newRecord")}</DialogTitle>
+            </DialogHeader>
 
-          <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
-            <button
-              onClick={() => setInputMode("ai")}
-              className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
-                inputMode === "ai"
-                  ? "bg-surface text-text shadow-sm"
-                  : "text-muted-foreground hover:text-text"
+            <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
+              <button
+                onClick={() => setInputMode("ai")}
+                className={cn(
+                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                  inputMode === "ai"
+                    ? "bg-surface text-text shadow-sm"
+                    : "text-muted-foreground hover:text-text"
+                )}
+              >
+                {t("aiParse")}
+              </button>
+              <button
+                onClick={() => setInputMode("quick")}
+                className={cn(
+                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                  inputMode === "quick"
+                    ? "bg-surface text-text shadow-sm"
+                    : "text-muted-foreground hover:text-text"
+                )}
+              >
+                {t("quickEntry")}
+              </button>
+            </div>
+
+            <div className="min-h-[26rem]">
+              {inputMode === "ai" ? (
+                <SourceDocumentInput
+                  ledgerId={ledgerId}
+                  onPendingChange={setIsInputSubmitting}
+                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                  onSuccess={() => setIsInputOpen(false)}
+                />
+              ) : (
+                <QuickEntryForm
+                  ledgerId={ledgerId}
+                  categories={categories}
+                  mainCurrency={mainCurrency}
+                  preferredCurrencies={preferredCurrencies}
+                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                  onSuccess={() => setIsInputOpen(false)}
+                />
               )}
-            >
-              {t("aiParse")}
-            </button>
-            <button
-              onClick={() => setInputMode("quick")}
-              className={cn(
-                "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
-                inputMode === "quick"
-                  ? "bg-surface text-text shadow-sm"
-                  : "text-muted-foreground hover:text-text"
-              )}
-            >
-              {t("quickEntry")}
-            </button>
-          </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-          <div className="min-h-[26rem]">
-            {inputMode === "ai" ? (
-              <SourceDocumentInput
-                ledgerId={ledgerId}
-                onPendingChange={setIsInputSubmitting}
-                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                onSuccess={() => setIsInputOpen(false)}
-              />
-            ) : (
-              <QuickEntryForm
-                ledgerId={ledgerId}
-                categories={categories}
-                mainCurrency={mainCurrency}
-                preferredCurrencies={preferredCurrencies}
-                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                onSuccess={() => setIsInputOpen(false)}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <ModalStackRenderer categories={categories} />
+        <ModalStackRenderer categories={categories} />
+      </div>
     </>
   );
 }

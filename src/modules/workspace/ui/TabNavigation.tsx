@@ -47,7 +47,7 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          disabled={offline && value !== "stream"}
+          disabled={false}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
           }
@@ -75,7 +75,7 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          disabled={offline}
+          disabled={offline && value === "settings"}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
           }

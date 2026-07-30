@@ -220,7 +220,16 @@ export function LedgerEntriesTab({
           filters={filters}
           onFiltersChange={onFiltersChange}
           periodParams={periodParams}
-          filteredTotalLabel={tFilter("filteredTotal")}
+          filteredTotalLabel={
+            filters.startDate != null ||
+            filters.endDate != null ||
+            filters.minAmount != null ||
+            filters.maxAmount != null ||
+            (filters.statuses?.length ?? 0) > 0 ||
+            (filters.search?.trim().length ?? 0) > 0
+              ? tFilter("filteredTotal")
+              : tFilter("total")
+          }
           mainCurrency={mainCurrency}
           filteredTotal={filteredTotal}
           onResetFilters={onResetFilters}
@@ -247,6 +256,11 @@ export function LedgerEntriesTab({
                 noRecordsText={tCommon("noRecords")}
                 getItemProps={() => ({})}
                 {...(timeZone != null ? { timeZone } : {})}
+                filteredSubtotal={
+                  filters.minAmount != null ||
+                  filters.maxAmount != null ||
+                  (filters.search?.trim().length ?? 0) > 0
+                }
               />
             )}
 

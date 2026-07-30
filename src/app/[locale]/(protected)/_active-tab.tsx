@@ -6,7 +6,6 @@ import { resolveAuthenticatedHome } from "@/lib/request-cache";
 import { UnauthorizedError } from "@/lib/errors";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
-import { EntriesTabSkeleton } from "@/components/skeletons/TabSkeletons";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import {
   getScopedLedgerSearchParams,
@@ -14,6 +13,9 @@ import {
 } from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
+import { OfflineLedgerView } from "@/modules/offline/OfflineLedgerView";
+import { offlineSnapshotKey } from "@/modules/offline/offline-store";
+import { periodToDateRange } from "@/lib/period-utils";
 
 interface ActiveTabProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -44,6 +46,10 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
     getScopedLedgerSearchParams(urlSearchParams, filterScope)
   );
   const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
+  const dateRange = periodToDateRange(
+    periodParams,
+    ledgerDto.metadata?.settings?.timeZone ?? undefined
+  );
 
   const allMessages = await messagesPromise;
   const streamMessages = pickMessages(allMessages, [
@@ -59,7 +65,19 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
          * getLedgerPageBootstrap. The shell (AppShell, Header,
          * TabNavigation) is inside ActiveShell and renders immediately.
          */}
-        <Suspense fallback={<EntriesTabSkeleton />}>
+        <Suspense
+          fallback={
+            <OfflineLedgerView
+              snapshotKey={offlineSnapshotKey(ledgerDto.userId, ledgerId)}
+              activeTab={activeTab}
+              initialFilters={{
+                ...advancedFilters,
+                ...(dateRange.startDate != null ? { startDate: dateRange.startDate } : {}),
+                ...(dateRange.endDate != null ? { endDate: dateRange.endDate } : {}),
+              }}
+            />
+          }
+        >
           <ActiveContent
             ledgerId={ledgerId}
             ledgerDto={ledgerDto}

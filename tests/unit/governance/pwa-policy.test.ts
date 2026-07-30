@@ -12,10 +12,21 @@ describe("PWA policy", () => {
     expect(config).toContain('document: "/zh/offline"');
     expect(config).toContain('url: "/en/offline"');
     expect(config).toContain("runtimeCaching: []");
-    expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 5000");
-    expect(worker).toContain("caches.match(`/${locale}/offline`");
+    expect(config).toContain("/chunks\\/app\\/api\\//");
+    expect(config).toContain("/chunks\\/app\\/.*\\(protected\\)\\//");
+    expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 1500");
+    expect(worker).toContain("caches.match(fallbackUrl");
+    expect(worker).toContain("/\\/offline\\/?$/.test");
     expect(worker).not.toContain("caches.put");
     expect(config).not.toContain("cacheStartUrl: true");
+  });
+
+  it("uses locale-specific installed-app entry points", () => {
+    const manifest = read("src/app/[locale]/manifest.webmanifest/route.ts");
+    const layout = read("src/app/[locale]/layout.tsx");
+    expect(manifest).toContain("start_url: `/${locale}/offline`");
+    expect(manifest).toContain("scope: `/${locale}/`");
+    expect(layout).toContain("manifest: `/${locale}/manifest.webmanifest`");
   });
 
   it("keeps protected stored files out of the browser HTTP cache", () => {

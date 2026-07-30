@@ -81,6 +81,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const preloadTab = useCallback(
     (tab: LedgerTab) => {
       preloadTabCode(tab);
+      if (offline) return;
       if (tab === "details") {
         const scoped = getScopedLedgerSearchParams(searchParams, "details");
         void prefetchDetailsTabQuery(
@@ -93,7 +94,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
         void prefetchStatsTabQuery(queryClient, ledgerId);
       }
     },
-    [ledgerId, preloadTabCode, queryClient, searchParams]
+    [ledgerId, offline, preloadTabCode, queryClient, searchParams]
   );
 
   useEffect(() => {

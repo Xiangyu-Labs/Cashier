@@ -24,6 +24,7 @@ interface SourceDocumentCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
+  filteredSubtotal?: boolean;
 }
 
 interface RecoveryControls {
@@ -78,6 +79,7 @@ function SourceDocumentCardBody({
   isSelected = false,
   onToggleSelect,
   readOnly = false,
+  filteredSubtotal = false,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
@@ -120,6 +122,7 @@ function SourceDocumentCardBody({
         isSelected={isSelected}
         supportedActions={supportedActions}
         showActions={!readOnly}
+        filteredSubtotal={filteredSubtotal}
         onToggleSelect={onToggleSelect}
         onDirectRetry={handleDirectRetry}
         onCancelProcessing={recovery.cancelProcessing}

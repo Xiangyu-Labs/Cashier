@@ -32,6 +32,14 @@ const withPWA = withPWAInit({
     disableDevLogs: true,
     additionalManifestEntries: [{ url: "/en/offline", revision: null }],
     runtimeCaching: [],
+    exclude: [
+      /middleware-manifest\.json$/,
+      /app-build-manifest\.json$/,
+      /chunks\/app\/api\//,
+      /chunks\/app\/.*\(protected\)\//,
+      /chunks\/app\/.*\/login\//,
+      /chunks\/app\/.*\/settings\//,
+    ],
   },
 });
 

@@ -146,6 +146,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       if (onSuccessExtra) {
         onSuccessExtra(data, variables, context);
       }
+      if (ledgerId != null && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("cashier:ledger-mutated", { detail: ledgerId }));
+      }
     },
 
     onError: (error, variables) => {

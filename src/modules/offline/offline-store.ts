@@ -9,21 +9,28 @@ import type {
 } from "@/modules/source-document/contracts";
 import { storedFileReadUrl } from "@/modules/source-document/stored-file-read";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import {
+  OFFLINE_DOCUMENT_LIMIT,
+  OFFLINE_IMAGE_BYTES_LIMIT,
+  OFFLINE_IMAGE_COUNT_LIMIT,
+} from "./offline-constants";
+
+export {
+  OFFLINE_DOCUMENT_LIMIT,
+  OFFLINE_FULL_SYNC_INTERVAL_MS,
+  OFFLINE_IMAGE_BYTES_LIMIT,
+  OFFLINE_IMAGE_COUNT_LIMIT,
+} from "./offline-constants";
 
 const DB_NAME = "cashier-offline";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const SNAPSHOT_STORE = "snapshots";
 const IMAGE_STORE = "images";
 const ACTIVE_SNAPSHOT_KEY = "cashier.offline.activeSnapshot";
 
-export const OFFLINE_DOCUMENT_LIMIT = 1000;
-export const OFFLINE_IMAGE_COUNT_LIMIT = 100;
-export const OFFLINE_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024;
-export const OFFLINE_FULL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
-
-export interface OfflineLedgerSnapshot {
+export interface OfflineLedgerSnapshotV3 {
   key: string;
-  schemaVersion?: 1 | 2;
+  schemaVersion: 3;
   userId: string;
   ledgerId: string;
   locale?: string;
@@ -35,9 +42,23 @@ export interface OfflineLedgerSnapshot {
   };
   items: SourceDocumentListItemDto[];
   viewedItems?: SourceDocumentListItemDto[];
+  syncVersion: string;
+  recordCount: number;
+  complete: boolean;
+  truncated: boolean;
+  coverageLimit: number;
   lastSyncedAt: string;
   fullSyncAt: string | null;
 }
+
+export type OfflineLedgerSnapshot = OfflineLedgerSnapshotV3;
+
+type LegacyOfflineLedgerSnapshot = Omit<
+  OfflineLedgerSnapshotV3,
+  "schemaVersion" | "syncVersion" | "recordCount" | "complete" | "truncated" | "coverageLimit"
+> & {
+  schemaVersion?: 1 | 2;
+};
 
 export interface OfflineImageRecord {
   key: string;
@@ -96,14 +117,33 @@ export async function readOfflineSnapshot(key: string): Promise<OfflineLedgerSna
   const db = await openOfflineDb();
   try {
     const tx = db.transaction(SNAPSHOT_STORE, "readonly");
-    return (
-      (await requestResult(
-        tx.objectStore(SNAPSHOT_STORE).get(key) as IDBRequest<OfflineLedgerSnapshot | undefined>
-      )) ?? null
+    const stored = await requestResult(
+      tx.objectStore(SNAPSHOT_STORE).get(key) as IDBRequest<
+        OfflineLedgerSnapshot | LegacyOfflineLedgerSnapshot | undefined
+      >
     );
+    return stored == null ? null : migrateOfflineSnapshot(stored);
   } finally {
     db.close();
   }
+}
+
+export function migrateOfflineSnapshot(
+  snapshot: OfflineLedgerSnapshot | LegacyOfflineLedgerSnapshot
+): OfflineLedgerSnapshotV3 {
+  if (snapshot.schemaVersion === 3) return snapshot;
+  const items = snapshot.items.slice(0, OFFLINE_DOCUMENT_LIMIT);
+  const recordCount = snapshot.items.length;
+  return {
+    ...snapshot,
+    schemaVersion: 3,
+    items,
+    syncVersion: `legacy:${snapshot.lastSyncedAt}`,
+    recordCount,
+    complete: recordCount <= OFFLINE_DOCUMENT_LIMIT,
+    truncated: recordCount > OFFLINE_DOCUMENT_LIMIT,
+    coverageLimit: OFFLINE_DOCUMENT_LIMIT,
+  };
 }
 
 export async function readOfflineImages(snapshotKey: string): Promise<OfflineImageRecord[]> {
@@ -131,6 +171,12 @@ export async function writeOfflineSnapshot(snapshot: OfflineLedgerSnapshot): Pro
   } finally {
     db.close();
   }
+}
+
+/** Replaces the visible snapshot only after the complete payload has been received. */
+export async function replaceOfflineSnapshot(snapshot: OfflineLedgerSnapshotV3): Promise<void> {
+  await writeOfflineSnapshot(snapshot);
+  window.dispatchEvent(new CustomEvent("cashier:offline-snapshot", { detail: snapshot.key }));
 }
 
 export async function clearOfflineData(userId?: string): Promise<void> {

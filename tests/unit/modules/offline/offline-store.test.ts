@@ -3,6 +3,7 @@ import {
   OFFLINE_IMAGE_BYTES_LIMIT,
   type OfflineImageRecord,
   selectOfflineImageEvictions,
+  migrateOfflineSnapshot,
 } from "@/modules/offline/offline-store";
 
 function image(overrides: Partial<OfflineImageRecord> & Pick<OfflineImageRecord, "key">) {
@@ -55,5 +56,28 @@ describe("offline image eviction", () => {
     expect(
       selectOfflineImageEvictions(records, 1024, undefined, { viewed: false, priorityAt: 10 })
     ).toEqual([]);
+  });
+});
+
+describe("offline snapshot migration", () => {
+  it("migrates a v2 snapshot without restoring removed preferences", () => {
+    const migrated = migrateOfflineSnapshot({
+      key: "user:ledger",
+      schemaVersion: 2,
+      userId: "user",
+      ledgerId: "ledger",
+      items: [],
+      lastSyncedAt: "2026-07-30T00:00:00.000Z",
+      fullSyncAt: null,
+    });
+    expect(migrated).toMatchObject({
+      schemaVersion: 3,
+      syncVersion: "legacy:2026-07-30T00:00:00.000Z",
+      recordCount: 0,
+      complete: true,
+      truncated: false,
+      coverageLimit: 1000,
+    });
+    expect(migrated).not.toHaveProperty("collapseEntriesDefault");
   });
 });

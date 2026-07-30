@@ -499,6 +499,55 @@ describe("source-document-queries", () => {
     expect(page.items[0]?.id).toBe(completedInRange.id);
   });
 
+  it("uses matching-entry subtotals in Stream while preserving complete document details", async () => {
+    const db = getTestDb();
+    const [document] = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        title: "Coffee and cake",
+        status: "completed",
+        imageUrls: [],
+        entryDate: "2026-03-20",
+      })
+      .returning();
+    const sourceDocument = requireDefined(document, "filtered subtotal document");
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId: sourceDocument.id,
+        amount: "20.00",
+        convertedAmount: null,
+        currency: "CNY",
+        itemName: "Coffee",
+        categoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: sourceDocument.id,
+        amount: "80.00",
+        convertedAmount: "80.00",
+        currency: "CNY",
+        itemName: "Cake",
+        categoryId,
+      },
+    ]);
+    await activateTestSourceDocumentProjection(db, sourceDocument.id);
+
+    const stream = await listStreamPage(ledgerId, { maxAmount: 30, limit: 10 });
+    expect(stream.items).toHaveLength(1);
+    expect(stream.items[0]?.ledgerEntries?.map((entry) => entry.itemName)).toEqual(["Coffee"]);
+    await expect(getStreamTotal(ledgerId, { maxAmount: 30 })).resolves.toEqual({ total: "20" });
+
+    const detail = await listSourceDocuments(ledgerId, {
+      limit: 10,
+      includeEntries: true,
+    });
+    expect(detail.items.find((item) => item.id === sourceDocument.id)?.ledgerEntries).toHaveLength(
+      2
+    );
+  });
+
   it("totals only completed documents across the full Stream filter", async () => {
     const db = getTestDb();
     const docs = await db

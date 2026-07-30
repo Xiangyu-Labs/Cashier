@@ -2,33 +2,47 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-export type ConnectionStatus = "online" | "checking" | "offline" | "recovered";
+export type NetworkStatus = "online" | "checking" | "offline" | "recovered";
+export type SyncStatus = "idle" | "checking" | "downloading" | "updated" | "error";
+export type ConnectionStatus = NetworkStatus;
 
 interface ConnectionState {
-  status: ConnectionStatus;
+  networkStatus: NetworkStatus;
+  syncStatus: SyncStatus;
+  /** Compatibility alias for consumers that only care about connectivity. */
+  status: NetworkStatus;
   retryInSeconds: number | null;
   retry: () => void;
+  setSyncStatus: (status: SyncStatus) => void;
 }
 
 const ConnectionContext = createContext<ConnectionState>({
+  networkStatus: "online",
+  syncStatus: "idle",
   status: "online",
   retryInSeconds: null,
   retry: () => {},
+  setSyncStatus: () => {},
 });
 
 const RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000] as const;
 const PROBE_TIMEOUT_MS = 4_000;
 
 export function ConnectionStateProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<ConnectionStatus>("online");
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(() =>
+    typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "online"
+  );
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [retryAt, setRetryAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const failureCountRef = useRef(0);
   const wasOfflineRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<Promise<boolean> | null>(null);
-  const statusRef = useRef(status);
-  statusRef.current = status;
+  const probeGenerationRef = useRef(0);
+  const probeControllerRef = useRef<AbortController | null>(null);
+  const statusRef = useRef(networkStatus);
+  statusRef.current = networkStatus;
 
   const clearScheduledProbe = useCallback(() => {
     if (timerRef.current != null) clearTimeout(timerRef.current);
@@ -37,11 +51,17 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
   }, []);
 
   const probe = useCallback(async (): Promise<boolean> => {
+    if (!navigator.onLine) {
+      setNetworkStatus("offline");
+      return false;
+    }
     if (inFlightRef.current != null) return inFlightRef.current;
     clearScheduledProbe();
-    if (statusRef.current !== "online") setStatus("checking");
+    if (statusRef.current !== "online") setNetworkStatus("checking");
+    const generation = ++probeGenerationRef.current;
     const run = (async () => {
       const controller = new AbortController();
+      probeControllerRef.current = controller;
       const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
       try {
         const response = await fetch(`/api/health?t=${Date.now()}`, {
@@ -50,22 +70,24 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Health probe failed");
+        if (generation !== probeGenerationRef.current || !navigator.onLine) return false;
         failureCountRef.current = 0;
         setRetryAt(null);
         if (wasOfflineRef.current) {
           wasOfflineRef.current = false;
-          setStatus("recovered");
+          setNetworkStatus("recovered");
           setTimeout(
-            () => setStatus((current) => (current === "recovered" ? "online" : current)),
+            () => setNetworkStatus((current) => (current === "recovered" ? "online" : current)),
             2500
           );
         } else {
-          setStatus("online");
+          setNetworkStatus("online");
         }
         return true;
       } catch {
+        if (generation !== probeGenerationRef.current) return false;
         wasOfflineRef.current = true;
-        setStatus("offline");
+        setNetworkStatus("offline");
         const index = Math.min(failureCountRef.current, RETRY_DELAYS_MS.length - 1);
         const delay = RETRY_DELAYS_MS[index]!;
         failureCountRef.current += 1;
@@ -76,7 +98,10 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
         return false;
       } finally {
         clearTimeout(timeout);
-        inFlightRef.current = null;
+        if (generation === probeGenerationRef.current) {
+          inFlightRef.current = null;
+          probeControllerRef.current = null;
+        }
       }
     })();
     inFlightRef.current = run;
@@ -84,18 +109,37 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
   }, [clearScheduledProbe]);
 
   useEffect(() => {
-    void probe();
+    if (navigator.onLine) void probe();
+    const online = () => {
+      probeGenerationRef.current += 1;
+      inFlightRef.current = null;
+      void probe();
+    };
+    const offline = () => {
+      probeGenerationRef.current += 1;
+      probeControllerRef.current?.abort();
+      probeControllerRef.current = null;
+      inFlightRef.current = null;
+      wasOfflineRef.current = true;
+      failureCountRef.current = 0;
+      clearScheduledProbe();
+      setNetworkStatus("offline");
+    };
     const immediate = () => void probe();
     const visibility = () => {
       if (document.visibilityState === "visible") immediate();
       else clearScheduledProbe();
     };
-    window.addEventListener("online", immediate);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
     window.addEventListener("focus", immediate);
     document.addEventListener("visibilitychange", visibility);
     return () => {
       clearScheduledProbe();
-      window.removeEventListener("online", immediate);
+      probeGenerationRef.current += 1;
+      probeControllerRef.current?.abort();
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
       window.removeEventListener("focus", immediate);
       document.removeEventListener("visibilitychange", visibility);
     };
@@ -109,7 +153,16 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
 
   const retryInSeconds = retryAt == null ? null : Math.max(0, Math.ceil((retryAt - now) / 1000));
   return (
-    <ConnectionContext.Provider value={{ status, retryInSeconds, retry: () => void probe() }}>
+    <ConnectionContext.Provider
+      value={{
+        networkStatus,
+        syncStatus,
+        status: networkStatus,
+        retryInSeconds,
+        retry: () => void probe(),
+        setSyncStatus,
+      }}
+    >
       {children}
     </ConnectionContext.Provider>
   );
