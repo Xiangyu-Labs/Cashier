@@ -31,7 +31,11 @@ export function ConnectionBanner() {
       <Icon className={status === "checking" ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
       <span>{label}</span>
       {status !== "recovered" && (
-        <button type="button" onClick={retry} className="ml-1 font-medium text-primary hover:underline">
+        <button
+          type="button"
+          onClick={retry}
+          className="ml-1 font-medium text-primary hover:underline"
+        >
           {zh ? "立即重试" : "Retry now"}
         </button>
       )}

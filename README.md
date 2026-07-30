@@ -66,8 +66,8 @@ permanently removes them.
 
 ## Local Development
 
-Local Node development requires PostgreSQL and S3-compatible storage. Start the bundled services,
-install dependencies, migrate, and run Next.js:
+Local Node development requires Node.js 24, PostgreSQL, and S3-compatible storage. Start the bundled
+services, install dependencies, migrate, and run Next.js:
 
 ```bash
 npm install

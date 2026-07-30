@@ -265,7 +265,9 @@ export async function batchUpdateLedgerEntries(input: {
         )
       );
     const documentIds = [
-      ...new Set(candidates.flatMap((row) => row.sourceDocumentId == null ? [] : [row.sourceDocumentId])),
+      ...new Set(
+        candidates.flatMap((row) => (row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))
+      ),
     ].sort();
     for (const documentId of documentIds) {
       await lockSourceDocumentForUpdate(tx, input.ledgerId, documentId);

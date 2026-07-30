@@ -55,7 +55,10 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
         if (wasOfflineRef.current) {
           wasOfflineRef.current = false;
           setStatus("recovered");
-          setTimeout(() => setStatus((current) => (current === "recovered" ? "online" : current)), 2500);
+          setTimeout(
+            () => setStatus((current) => (current === "recovered" ? "online" : current)),
+            2500
+          );
         } else {
           setStatus("online");
         }

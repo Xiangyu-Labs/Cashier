@@ -236,58 +236,58 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             className="ml-1 flex items-center gap-1.5"
             onClick={(event) => event.stopPropagation()}
           >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-11 w-11 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
-                aria-label="source-document-card-actions"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              {/* Recovery actions for anomaly/failed */}
-              {hasAction("retry") && onDirectRetry != null && (
-                <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
-                  <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
-                  {tActions("retry")}
-                </DropdownMenuItem>
-              )}
-              {hasAction("edit_retry") && onEditRetry != null && (
-                <DropdownMenuItem onClick={onEditRetry}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {tActions("editRetry")}
-                </DropdownMenuItem>
-              )}
-
-              {hasAction("cancel_processing") && onCancelProcessing != null && (
-                <DropdownMenuItem onClick={onCancelProcessing} disabled={isCancelling}>
-                  <CircleStop className="mr-2 h-4 w-4" />
-                  {tActions("cancelProcessing")}
-                </DropdownMenuItem>
-              )}
-
-              {hasAction("abandon_candidate") &&
-                status !== "candidate_pending" &&
-                onAbandonCandidate != null && (
-                  <DropdownMenuItem onClick={onAbandonCandidate} disabled={isAbandoning}>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    {tActions("abandon")}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-11 w-11 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
+                  aria-label="source-document-card-actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {/* Recovery actions for anomaly/failed */}
+                {hasAction("retry") && onDirectRetry != null && (
+                  <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>
+                    <RefreshCw className={cn("mr-2 h-4 w-4", isRetrying && "animate-spin")} />
+                    {tActions("retry")}
+                  </DropdownMenuItem>
+                )}
+                {hasAction("edit_retry") && onEditRetry != null && (
+                  <DropdownMenuItem onClick={onEditRetry}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    {tActions("editRetry")}
                   </DropdownMenuItem>
                 )}
 
-              {hasAction("retry") && onDelete != null && <DropdownMenuSeparator />}
+                {hasAction("cancel_processing") && onCancelProcessing != null && (
+                  <DropdownMenuItem onClick={onCancelProcessing} disabled={isCancelling}>
+                    <CircleStop className="mr-2 h-4 w-4" />
+                    {tActions("cancelProcessing")}
+                  </DropdownMenuItem>
+                )}
 
-              {onDelete != null && (
-                <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {tCommon("delete")}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {hasAction("abandon_candidate") &&
+                  status !== "candidate_pending" &&
+                  onAbandonCandidate != null && (
+                    <DropdownMenuItem onClick={onAbandonCandidate} disabled={isAbandoning}>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      {tActions("abandon")}
+                    </DropdownMenuItem>
+                  )}
+
+                {hasAction("retry") && onDelete != null && <DropdownMenuSeparator />}
+
+                {onDelete != null && (
+                  <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {tCommon("delete")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>

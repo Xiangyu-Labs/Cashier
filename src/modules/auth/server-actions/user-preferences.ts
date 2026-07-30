@@ -5,10 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UnauthorizedError, ValidationError } from "@/lib/errors";
 import { users } from "@/persistence";
-import type {
-  InterfaceLanguage,
-  UserPreferences,
-} from "@/modules/auth/contracts";
+import type { InterfaceLanguage, UserPreferences } from "@/modules/auth/contracts";
 
 const INTERFACE_LANGUAGES = new Set<InterfaceLanguage>(["auto", "zh", "en"]);
 

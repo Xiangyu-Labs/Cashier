@@ -20,8 +20,8 @@ describe("decodeBase64Image", () => {
   });
 
   it("rejects a mismatched data URL MIME type", () => {
-    expect(() =>
-      decodeBase64Image("data:image/png;base64,aGVsbG8=", "image/jpeg")
-    ).toThrow("MIME type does not match");
+    expect(() => decodeBase64Image("data:image/png;base64,aGVsbG8=", "image/jpeg")).toThrow(
+      "MIME type does not match"
+    );
   });
 });

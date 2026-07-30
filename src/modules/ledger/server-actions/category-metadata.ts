@@ -31,9 +31,15 @@ export const generateEntryCategoryMetadataAction = withLedgerAccess(
     const categoryId = parseEntryCategoryId(inputCategoryId);
     const [category, ledger, existing] = await Promise.all([
       db.query.entryCategories.findFirst({
-        where: and(eq(entryCategories.id, categoryId), eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)),
+        where: and(
+          eq(entryCategories.id, categoryId),
+          eq(entryCategories.ledgerId, ledgerId),
+          isNull(entryCategories.deletedAt)
+        ),
       }),
-      db.query.ledgers.findFirst({ where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)) }),
+      db.query.ledgers.findFirst({
+        where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
+      }),
       db.query.entryCategories.findMany({
         where: and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)),
         columns: { name: true },
@@ -49,32 +55,52 @@ ${buildAiOutputLocaleInstruction(language)}
 Only the category description is user-visible in this response; apply the mandatory output locale to it.`;
     const result = await getOpenAIClient().generateContent(
       prompt,
-      [{
-        role: "user",
-        content: JSON.stringify({
-          category: category.name,
-          existingCategories: existing.map((item) => item.name),
-          language,
-          allowedIcons: COMMON_LUCIDE_ICONS,
-          output: { icon: "Lucide icon name", description: "maximum 120 characters" },
-        }),
-      }],
+      [
+        {
+          role: "user",
+          content: JSON.stringify({
+            category: category.name,
+            existingCategories: existing.map((item) => item.name),
+            language,
+            allowedIcons: COMMON_LUCIDE_ICONS,
+            output: { icon: "Lucide icon name", description: "maximum 120 characters" },
+          }),
+        },
+      ],
       runtimeEnv.aiModel,
       180,
       0.2
     );
     const metadata = metadataSchema.parse(JSON.parse(extractJson(result.content)));
     const now = new Date();
-    const [iconRows, descriptionRows] = await db.transaction(async (tx) => Promise.all([
-      tx.update(entryCategories)
-        .set({ icon: metadata.icon, updatedAt: now })
-        .where(and(eq(entryCategories.id, categoryId), eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt), or(isNull(entryCategories.icon), eq(entryCategories.icon, ""))))
-        .returning({ id: entryCategories.id }),
-      tx.update(entryCategories)
-        .set({ description: metadata.description, updatedAt: now })
-        .where(and(eq(entryCategories.id, categoryId), eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt), or(isNull(entryCategories.description), eq(entryCategories.description, ""))))
-        .returning({ id: entryCategories.id }),
-    ]));
+    const [iconRows, descriptionRows] = await db.transaction(async (tx) =>
+      Promise.all([
+        tx
+          .update(entryCategories)
+          .set({ icon: metadata.icon, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.id, categoryId),
+              eq(entryCategories.ledgerId, ledgerId),
+              isNull(entryCategories.deletedAt),
+              or(isNull(entryCategories.icon), eq(entryCategories.icon, ""))
+            )
+          )
+          .returning({ id: entryCategories.id }),
+        tx
+          .update(entryCategories)
+          .set({ description: metadata.description, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.id, categoryId),
+              eq(entryCategories.ledgerId, ledgerId),
+              isNull(entryCategories.deletedAt),
+              or(isNull(entryCategories.description), eq(entryCategories.description, ""))
+            )
+          )
+          .returning({ id: entryCategories.id }),
+      ])
+    );
     return {
       categoryId,
       icon: metadata.icon,

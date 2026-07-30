@@ -143,11 +143,14 @@ describe("Source Document Update Actions", () => {
         exchangeRate: "0.2",
       });
       await activateTestSourceDocumentProjection(db, document.id);
-      await db.insert(currencyRates).values({
-        date: "2024-03-15",
-        base: "EUR",
-        rates: { EUR: 1, USD: 1, CNY: 10 },
-      }).onConflictDoNothing();
+      await db
+        .insert(currencyRates)
+        .values({
+          date: "2024-03-15",
+          base: "EUR",
+          rates: { EUR: 1, USD: 1, CNY: 10 },
+        })
+        .onConflictDoNothing();
 
       await batchUpdateSourceDocumentsAction(ledgerData.id, [document.id], {
         entryDate: "2024-03-15",

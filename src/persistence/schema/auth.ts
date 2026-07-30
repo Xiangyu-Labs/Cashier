@@ -66,14 +66,20 @@ export type OTPToken = InferSelectModel<typeof otpTokens>;
 export const emailChangeChallenges = pgTable(
   "email_change_challenges",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     newEmail: text("new_email").notNull(),
     tokenHash: text("token_hash").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     attempts: integer("attempts").notNull().default(0),
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().$defaultFn(() => new Date()),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   },
   (table) => [

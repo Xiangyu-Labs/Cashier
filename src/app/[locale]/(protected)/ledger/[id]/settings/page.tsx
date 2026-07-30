@@ -66,9 +66,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           {...(session?.user?.email != null ? { userEmail: session.user.email } : {})}
           {...(session?.user != null ? { hasPassword: session.user.hasPassword } : {})}
           {...(session?.user != null ? { passwordUpdatedAt: session.user.passwordUpdatedAt } : {})}
-          {...(session?.user != null
-            ? { interfaceLanguage: session.user.interfaceLanguage }
-            : {})}
+          {...(session?.user != null ? { interfaceLanguage: session.user.interfaceLanguage } : {})}
         />
       </HydrationBoundary>
     </NextIntlClientProvider>

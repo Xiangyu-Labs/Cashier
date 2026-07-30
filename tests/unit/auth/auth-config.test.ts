@@ -108,10 +108,6 @@ describe("auth runtime config", () => {
         }
       | undefined;
 
-    expect(config?.providers?.map((provider) => provider.id)).toEqual([
-      "otp",
-      "password",
-      "dev",
-    ]);
+    expect(config?.providers?.map((provider) => provider.id)).toEqual(["otp", "password", "dev"]);
   });
 });

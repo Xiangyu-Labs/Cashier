@@ -111,8 +111,8 @@ function NavButton({ active, icon: Icon, label, onClick, onIntent, disabled }: N
         disabled
           ? "cursor-not-allowed text-muted-foreground/45"
           : active
-          ? "bg-surface2/60 text-text after:bg-primary"
-          : "text-muted-foreground hover:bg-surface2/40 hover:text-text"
+            ? "bg-surface2/60 text-text after:bg-primary"
+            : "text-muted-foreground hover:bg-surface2/40 hover:text-text"
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

@@ -30,7 +30,9 @@ export function resolveCategoryOrder(
   const oldIndex = ordered.findIndex((category) => category.id === activeId);
   const newIndex = ordered.findIndex((category) => category.id === overId);
   if (oldIndex < 0 || newIndex < 0) return null;
-  return (oldIndex === newIndex ? ordered : arrayMove(ordered, oldIndex, newIndex)).map((category) => category.id);
+  return (oldIndex === newIndex ? ordered : arrayMove(ordered, oldIndex, newIndex)).map(
+    (category) => category.id
+  );
 }
 
 export function useCategorySectionController({

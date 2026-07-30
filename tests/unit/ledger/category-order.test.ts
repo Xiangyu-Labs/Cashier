@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { resolveCategoryOrder } from "@/modules/ledger/hooks/useCategorySectionController";
 
-const category = (id: string) => ({ id } as EntryCategory);
+const category = (id: string) => ({ id }) as EntryCategory;
 
 describe("resolveCategoryOrder", () => {
   it("submits the final drag preview order", () => {

@@ -31,10 +31,17 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
 import { NotFoundError } from "@/lib/errors";
 
-async function assertCategoryBelongsToLedger(ledgerId: string, categoryId: string | null | undefined) {
+async function assertCategoryBelongsToLedger(
+  ledgerId: string,
+  categoryId: string | null | undefined
+) {
   if (categoryId == null) return;
   const category = await db.query.entryCategories.findFirst({
-    where: and(eq(entryCategories.id, categoryId), eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)),
+    where: and(
+      eq(entryCategories.id, categoryId),
+      eq(entryCategories.ledgerId, ledgerId),
+      isNull(entryCategories.deletedAt)
+    ),
     columns: { id: true },
   });
   if (category == null) throw new NotFoundError("Category");
@@ -152,14 +159,22 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
 export const batchDeleteLedgerEntriesAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[]): Promise<BatchActionResult> => {
     const ids = parseLedgerEntryIds(inputIds);
-    const result: BatchActionResult = { requestedCount: ids.length, succeededIds: [], skipped: [], failed: [] };
+    const result: BatchActionResult = {
+      requestedCount: ids.length,
+      succeededIds: [],
+      skipped: [],
+      failed: [],
+    };
     for (const id of ids) {
       try {
         const deleted = await deleteLedgerEntry(ledgerId, id);
         if (deleted.deleted) result.succeededIds.push(id);
         else result.skipped.push({ id, reason: "not_available" });
       } catch (error) {
-        result.failed.push({ id, reason: error instanceof Error ? error.message : "unknown_error" });
+        result.failed.push({
+          id,
+          reason: error instanceof Error ? error.message : "unknown_error",
+        });
       }
     }
     return result;
@@ -173,33 +188,63 @@ export interface BatchEntryDateImpact {
   sourceDocumentIds: string[];
 }
 
-async function getBatchEntryDateImpact(ledgerId: string, inputIds: string[]): Promise<BatchEntryDateImpact> {
+async function getBatchEntryDateImpact(
+  ledgerId: string,
+  inputIds: string[]
+): Promise<BatchEntryDateImpact> {
   const ids = parseLedgerEntryIds(inputIds);
   const selected = await db
     .select({ id: ledgerEntries.id, sourceDocumentId: ledgerEntries.sourceDocumentId })
     .from(ledgerEntries)
-    .innerJoin(sourceDocuments, and(
-      eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-      eq(sourceDocuments.ledgerId, ledgerId),
-      isNull(sourceDocuments.deletedAt)
-    ))
-    .where(and(eq(ledgerEntries.ledgerId, ledgerId), inArray(ledgerEntries.id, ids), isNull(ledgerEntries.deletedAt)));
-  const sourceDocumentIds = [...new Set(selected.flatMap((row) => row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))];
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        inArray(ledgerEntries.id, ids),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+  const sourceDocumentIds = [
+    ...new Set(
+      selected.flatMap((row) => (row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))
+    ),
+  ];
   if (selected.length !== ids.length) {
     throw new NotFoundError("Selected ledger entry");
   }
   if (sourceDocumentIds.length === 0) {
-    return { selectedEntryCount: selected.length, sourceDocumentCount: 0, affectedEntryCount: 0, sourceDocumentIds: [] };
+    return {
+      selectedEntryCount: selected.length,
+      sourceDocumentCount: 0,
+      affectedEntryCount: 0,
+      sourceDocumentIds: [],
+    };
   }
   const affected = await db
     .select({ id: ledgerEntries.id })
     .from(ledgerEntries)
-    .innerJoin(sourceDocuments, and(
-      eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-      eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
-      isNull(sourceDocuments.deletedAt)
-    ))
-    .where(and(eq(ledgerEntries.ledgerId, ledgerId), inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds), isNull(ledgerEntries.deletedAt)));
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
   return {
     selectedEntryCount: selected.length,
     sourceDocumentCount: sourceDocumentIds.length,
@@ -214,7 +259,11 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[], entryDate: string) => {
     const impact = await getBatchEntryDateImpact(ledgerId, inputIds);
     if (impact.sourceDocumentIds.length > 0) {
-      await batchUpdateSourceDocuments({ ledgerId, sourceDocumentIds: impact.sourceDocumentIds, data: { entryDate } });
+      await batchUpdateSourceDocuments({
+        ledgerId,
+        sourceDocumentIds: impact.sourceDocumentIds,
+        data: { entryDate },
+      });
     }
     return impact;
   }

@@ -12,7 +12,12 @@ interface SwipeTabSurfaceProps {
   children: ReactNode;
 }
 
-export function SwipeTabSurface({ activeTab, onTabChange, onTabIntent, children }: SwipeTabSurfaceProps) {
+export function SwipeTabSurface({
+  activeTab,
+  onTabChange,
+  onTabIntent,
+  children,
+}: SwipeTabSurfaceProps) {
   const reducedMotion = useReducedMotion();
   const start = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);
   const horizontal = useRef(false);
@@ -20,11 +25,23 @@ export function SwipeTabSurface({ activeTab, onTabChange, onTabIntent, children 
   const [settling, setSettling] = useState(false);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" || shouldIgnoreTabSwipe(event.target) || document.documentElement.dataset.batchSelection === "true") return;
-    start.current = { x: event.clientX, y: event.clientY, time: performance.now(), pointerId: event.pointerId };
+    if (
+      event.pointerType === "mouse" ||
+      shouldIgnoreTabSwipe(event.target) ||
+      document.documentElement.dataset.batchSelection === "true"
+    )
+      return;
+    start.current = {
+      x: event.clientX,
+      y: event.clientY,
+      time: performance.now(),
+      pointerId: event.pointerId,
+    };
     horizontal.current = false;
     const index = LEDGER_TAB_ORDER.indexOf(activeTab);
-    const neighbors = [LEDGER_TAB_ORDER[index - 1], LEDGER_TAB_ORDER[index + 1]].filter(Boolean) as LedgerTab[];
+    const neighbors = [LEDGER_TAB_ORDER[index - 1], LEDGER_TAB_ORDER[index + 1]].filter(
+      Boolean
+    ) as LedgerTab[];
     neighbors.forEach(onTabIntent);
   };
 
@@ -77,7 +94,11 @@ export function SwipeTabSurface({ activeTab, onTabChange, onTabIntent, children 
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finish}
-      onPointerCancel={() => { start.current = null; horizontal.current = false; setOffset(0); }}
+      onPointerCancel={() => {
+        start.current = null;
+        horizontal.current = false;
+        setOffset(0);
+      }}
       style={{
         transform: `translate3d(${offset}px,0,0)`,
         transition: settling && !reducedMotion ? "transform 180ms cubic-bezier(.2,0,0,1)" : "none",

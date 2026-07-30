@@ -68,12 +68,7 @@ describe("LedgerEntriesToolbar", () => {
   });
 
   it("does not render an external status reset control", () => {
-    render(
-      <LedgerEntriesToolbar
-        {...defaultProps}
-        filters={{ statuses: ["completed"] }}
-      />
-    );
+    render(<LedgerEntriesToolbar {...defaultProps} filters={{ statuses: ["completed"] }} />);
     expect(screen.queryByRole("button", { name: "全部状态" })).not.toBeInTheDocument();
   });
 

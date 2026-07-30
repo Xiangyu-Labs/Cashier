@@ -4,7 +4,11 @@ import type {
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
 import type { RetrySourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { prepareInlineImages, type ImageProcessor, type InlineImageUploader } from "./prepare-inline-images";
+import {
+  prepareInlineImages,
+  type ImageProcessor,
+  type InlineImageUploader,
+} from "./prepare-inline-images";
 
 interface SourceDocumentRetryPayload {
   text?: string;
@@ -36,7 +40,10 @@ export async function retrySourceDocument(
     throw new ValidationError("Images must be finalized before source-document retry");
   }
   const inlineImages = input?.images ?? [];
-  if (inlineImages.length > 0 && (dependencies.storedFiles == null || dependencies.processImage == null)) {
+  if (
+    inlineImages.length > 0 &&
+    (dependencies.storedFiles == null || dependencies.processImage == null)
+  ) {
     throw new ValidationError("Images must be finalized before source-document retry");
   }
   const inlineFileIds =

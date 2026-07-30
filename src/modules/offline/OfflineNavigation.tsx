@@ -20,12 +20,5 @@ export function OfflineNavigation() {
       window.location.replace(returnUrl.current);
     }
   }, [status]);
-  return (
-    <TabNavigation
-      activeTab="stream"
-      onTabChange={() => {}}
-      onOpenInput={() => {}}
-      offline
-    />
-  );
+  return <TabNavigation activeTab="stream" onTabChange={() => {}} onOpenInput={() => {}} offline />;
 }

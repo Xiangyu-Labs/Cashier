@@ -2,6 +2,9 @@
   "name": "cashier",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack && node scripts/check-protected-route-bundle.mjs",
@@ -9,7 +12,7 @@
     "lint": "eslint",
     "tsc": "tsc --noEmit",
     "validate:i18n": "node scripts/validate-i18n-catalogs.mjs",
-    "check": "npm run test:prepare && eslint && tsc --noEmit && vitest run --config vitest.unit.config.ts && vitest run --config vitest.integration.config.ts --reporter=dot && node scripts/run-test-coverage.mjs && next build --webpack && node scripts/validate-i18n-catalogs.mjs",
+    "check": "npm run format:check && npm run test:prepare && npm run lint && npm run tsc && vitest run --config vitest.unit.config.ts && vitest run --config vitest.integration.config.ts --reporter=dot && npm run test:coverage && npm run build && npm run validate:i18n",
     "test:prepare": "node scripts/prepare-test-postgres.mjs",
     "test": "npm run test:prepare && vitest --config vitest.config.ts",
     "test:run": "npm run test:prepare && vitest run --config vitest.config.ts",

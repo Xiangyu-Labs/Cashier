@@ -181,9 +181,7 @@ describe("validateAggregateFileCount", () => {
   });
 
   it("rejects count just above MAX_FILES", () => {
-    expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow(
-      "exceeds maximum of 3 files"
-    );
+    expect(() => validateAggregateFileCount(MAX_FILES, 1, 0)).toThrow("exceeds maximum of 3 files");
   });
 });
 

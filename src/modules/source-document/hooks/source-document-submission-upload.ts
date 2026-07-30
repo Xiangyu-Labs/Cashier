@@ -52,7 +52,8 @@ function dataUrlToFile(dataUrl: string, index: number): File {
     throw new SourceDocumentSubmissionUploadError("Image data is empty", "prepare");
   }
   const bytes = new Uint8Array(binary.length);
-  for (let offset = 0; offset < binary.length; offset += 1) bytes[offset] = binary.charCodeAt(offset);
+  for (let offset = 0; offset < binary.length; offset += 1)
+    bytes[offset] = binary.charCodeAt(offset);
   return new File([bytes], `source-${index}.jpg`, { type: "image/jpeg" });
 }
 
@@ -96,9 +97,7 @@ export async function uploadSourceDocumentSubmissionImages(
     const quality = QUALITY_STEPS[qualityIndex]!;
     let compressed;
     try {
-      compressed = await Promise.all(
-        originals.map((file) => compress(file, 1080, 1080, quality))
-      );
+      compressed = await Promise.all(originals.map((file) => compress(file, 1080, 1080, quality)));
     } catch (error) {
       throw new SourceDocumentSubmissionUploadError("Failed to compress source image", "prepare", {
         cause: error,
