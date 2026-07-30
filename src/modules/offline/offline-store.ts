@@ -13,6 +13,7 @@ import {
   OFFLINE_DOCUMENT_LIMIT,
   OFFLINE_IMAGE_BYTES_LIMIT,
   OFFLINE_IMAGE_COUNT_LIMIT,
+  offlineSnapshotKey,
 } from "./offline-constants";
 
 export {
@@ -20,6 +21,7 @@ export {
   OFFLINE_FULL_SYNC_INTERVAL_MS,
   OFFLINE_IMAGE_BYTES_LIMIT,
   OFFLINE_IMAGE_COUNT_LIMIT,
+  offlineSnapshotKey,
 } from "./offline-constants";
 
 const DB_NAME = "cashier-offline";
@@ -71,10 +73,6 @@ export interface OfflineImageRecord {
   viewed: boolean;
   priorityAt: number;
   lastAccessedAt: number;
-}
-
-export function offlineSnapshotKey(userId: string, ledgerId: string) {
-  return `${userId}:${ledgerId}`;
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {

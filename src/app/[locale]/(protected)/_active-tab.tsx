@@ -14,7 +14,7 @@ import {
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
 import { OfflineLedgerView } from "@/modules/offline/OfflineLedgerView";
-import { offlineSnapshotKey } from "@/modules/offline/offline-store";
+import { offlineSnapshotKey } from "@/modules/offline/offline-constants";
 import { periodToDateRange } from "@/lib/period-utils";
 
 interface ActiveTabProps {

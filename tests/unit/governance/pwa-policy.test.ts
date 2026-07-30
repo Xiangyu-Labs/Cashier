@@ -46,4 +46,10 @@ describe("PWA policy", () => {
     expect(card).toContain("READ_ONLY_RECOVERY");
     expect(offline).not.toContain("useMutation");
   });
+
+  it("keeps server-rendered snapshot keys outside the client IndexedDB module", () => {
+    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
+    expect(activeTab).toContain('from "@/modules/offline/offline-constants"');
+    expect(activeTab).not.toContain('from "@/modules/offline/offline-store"');
+  });
 });
