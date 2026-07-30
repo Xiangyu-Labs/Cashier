@@ -14,7 +14,8 @@ Locked design system. Future UI work reads this file first and amends it intenti
 - Brand accent: `#10a37f`; use it for primary actions and focus, not decoration
 - Danger: `#b24c5a`; warning: `#9a6b1f`; info: `#4f6f7a`; success: `#24836e`
 - Dark-mode accent: `#69cdb3`; highlights: danger `#f0a5af`, warning `#e2b96f`, info `#a9c6cd`, success `#8cc6b7`
-- Surfaces stay neutral; semantic colors appear only where state or action requires them
+- Dark surfaces use a near-black neutral scale: background `#101112`, surface `#181a1b`, secondary surface `#202223`, raised surface `#2a2d2e`, border `#343839`
+- Surfaces stay neutral; semantic colors appear only where state or action requires them, including toast feedback
 
 ## Typography
 

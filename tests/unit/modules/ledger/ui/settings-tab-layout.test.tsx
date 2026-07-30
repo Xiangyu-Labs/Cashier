@@ -116,6 +116,7 @@ describe("SettingsTab layout", () => {
   });
 
   it("uses the theme select, detected automatic time zone, and stacked prompt", async () => {
+    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
     expect(screen.getByRole("combobox", { name: "主题" })).toBeInTheDocument();
@@ -124,7 +125,7 @@ describe("SettingsTab layout", () => {
       ?.parentElement;
     await waitFor(() =>
       expect(timeZoneField?.querySelector("[data-slot='select-trigger']")).toHaveTextContent(
-        "自动（Asia/Shanghai）"
+        `自动（${detectedTimeZone}）`
       )
     );
     expect(screen.getByRole("combobox", { name: "界面语言" })).toBeInTheDocument();

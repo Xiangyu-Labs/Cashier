@@ -126,21 +126,34 @@
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+
+  --toast-success-bg: color-mix(in srgb, var(--success) 10%, var(--surface));
+  --toast-success-border: color-mix(in srgb, var(--success) 32%, var(--border));
+  --toast-success-text: var(--success);
+  --toast-info-bg: color-mix(in srgb, var(--info) 10%, var(--surface));
+  --toast-info-border: color-mix(in srgb, var(--info) 32%, var(--border));
+  --toast-info-text: var(--info);
+  --toast-warning-bg: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  --toast-warning-border: color-mix(in srgb, var(--warning) 32%, var(--border));
+  --toast-warning-text: var(--warning);
+  --toast-error-bg: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  --toast-error-border: color-mix(in srgb, var(--danger) 32%, var(--border));
+  --toast-error-text: var(--danger);
 }
 
 .dark {
   color-scheme: dark;
   --primary: #69cdb3;
   --ring: #69cdb3;
-  --bg: #343541;
-  --surface: #444654;
-  --surface2: #202123;
-  --surface3: #565869;
+  --bg: #101112;
+  --surface: #181a1b;
+  --surface2: #202223;
+  --surface3: #2a2d2e;
 
-  --text: #ececf1;
-  --muted: #8e8ea0;
+  --text: #f2f4f3;
+  --muted: #a2aaa6;
 
-  --border: #565869;
+  --border: #343839;
   --danger: var(--color-danger);
   --warning: var(--color-warning);
   --success: var(--color-success);
