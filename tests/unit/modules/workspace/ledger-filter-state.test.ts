@@ -38,8 +38,8 @@ describe("ledger-filter-state", () => {
       currentPeriod: { period: "thisMonth" },
       currentFilters: {},
       nextFilters: {
-        startDate: new Date("2026-03-01T00:00:00.000Z"),
-        endDate: new Date("2026-03-31T00:00:00.000Z"),
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
         currency: "USD",
       },
     });

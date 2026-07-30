@@ -87,6 +87,9 @@ export const queryKeys = {
     ledgerId: string,
     params?: {
       startDate?: string | null | undefined;
+      endDate?: string | null | undefined;
+      compareStartDate?: string | null | undefined;
+      compareEndDate?: string | null | undefined;
       rangeType?: string | null | undefined;
       mainCurrency?: string | null | undefined;
     }
@@ -95,6 +98,9 @@ export const queryKeys = {
       "enhanced-stats",
       ledgerId,
       params?.startDate ?? null,
+      params?.endDate ?? null,
+      params?.compareStartDate ?? null,
+      params?.compareEndDate ?? null,
       params?.rangeType ?? null,
       params?.mainCurrency ?? null,
     ] as const,

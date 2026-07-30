@@ -173,8 +173,8 @@ describe("useSourceDocumentStream", () => {
   });
 
   it("passes date filter options to the server action", async () => {
-    const startDate = new Date("2026-07-01");
-    const endDate = new Date("2026-07-31");
+    const startDate = "2026-07-01";
+    const endDate = "2026-07-31";
 
     renderHook(
       () =>

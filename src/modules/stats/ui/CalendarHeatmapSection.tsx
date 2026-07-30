@@ -59,7 +59,7 @@ export function CalendarHeatmapSection({
   const legend = useMemo(() => getHeatmapLegend(), []);
 
   // No data state
-  if (days.length === 0) {
+  if (days.length === 0 && queryRange == null) {
     return (
       <div
         className={cn(

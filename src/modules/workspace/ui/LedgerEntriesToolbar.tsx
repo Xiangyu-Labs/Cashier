@@ -34,6 +34,7 @@ interface LedgerEntriesToolbarProps {
   filteredTotal: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   onResetFilters?: () => void;
+  readOnly?: boolean;
 }
 
 export function LedgerEntriesToolbar({
@@ -57,6 +58,7 @@ export function LedgerEntriesToolbar({
   filteredTotal,
   onApplyPreset,
   onResetFilters,
+  readOnly = false,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -82,8 +84,17 @@ export function LedgerEntriesToolbar({
         variant="ghost"
         size="icon"
         onClick={onToggleSelectionMode}
+        disabled={readOnly}
         className="shrink-0 h-8 w-8"
-        title={isSelectionMode ? t("cancelSelect") : t("select")}
+        title={
+          readOnly
+            ? locale.startsWith("zh")
+              ? "需要联网"
+              : "Requires a connection"
+            : isSelectionMode
+              ? t("cancelSelect")
+              : t("select")
+        }
       >
         {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
       </Button>

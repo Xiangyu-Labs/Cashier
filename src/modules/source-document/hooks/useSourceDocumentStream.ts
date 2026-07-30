@@ -9,7 +9,6 @@ import type {
 } from "@/modules/source-document/contracts";
 import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
-import { formatDateTimeForApi } from "@/lib/date-utils";
 import {
   buildUnifiedStreamGroups,
   type UnifiedStreamGroup,
@@ -23,8 +22,8 @@ const STREAM_PAGE_LIMIT = 20;
 
 export interface UseSourceDocumentStreamOptions {
   dateRange?: {
-    start?: Date;
-    end?: Date;
+    start?: string;
+    end?: string;
   };
   minAmount?: number;
   maxAmount?: number;
@@ -89,8 +88,8 @@ export function useSourceDocumentStream(
     enableRefresh = true,
   } = options;
 
-  const startDate = formatDateTimeForApi(dateRange?.start) ?? null;
-  const endDate = formatDateTimeForApi(dateRange?.end) ?? null;
+  const startDate = dateRange?.start ?? null;
+  const endDate = dateRange?.end ?? null;
 
   // Normalize statuses: sort and deduplicate for stable cache keys and
   // consistent filter fingerprints (Fix 6).

@@ -30,6 +30,7 @@ export interface UnifiedStreamGroupProps {
   noRecordsText: string;
   getItemProps: () => Record<string, unknown>;
   timeZone?: string;
+  readOnly?: boolean;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -46,6 +47,7 @@ export function LedgerEntriesUnifiedGroups({
   noRecordsText,
   getItemProps,
   timeZone,
+  readOnly = false,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -114,6 +116,7 @@ export function LedgerEntriesUnifiedGroups({
                       onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
                       defaultExpanded={!collapseEntriesDefault}
                       dateProvenance={item.dateProvenance}
+                      readOnly={readOnly}
                     />
                   </motion.div>
                 ))}

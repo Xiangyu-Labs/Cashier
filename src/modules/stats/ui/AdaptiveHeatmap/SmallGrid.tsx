@@ -4,10 +4,11 @@
  */
 
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
 import { formatDate, parseDate } from "../../lib/date-utils";
+import { resolveHeatmapRange } from "../../lib/heatmap-range";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
 import { DayCellSmall } from "./DayCellSmall";
 
@@ -41,28 +42,10 @@ export function SmallGridHeatmap({
 
   // Generate weeks from query start to max(latest data, today)
   const weeks = useMemo(() => {
-    if (days.length === 0) return [];
-
-    const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-    const firstDay = sortedDays[0];
-    const lastDay = sortedDays[sortedDays.length - 1];
-    if (firstDay == null || lastDay == null) {
-      return [];
-    }
-
-    // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate ?? firstDay.date;
-
-    // End is the later of: today or latest data date (capped by query end)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const latestDataDate = parseDate(lastDay.date);
-    const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
-
-    // Cap by query end if provided
-    const queryEnd = queryRange?.endDate != null ? parseDate(queryRange.endDate) : null;
-    const endDate = queryEnd != null && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
+    const range = resolveHeatmapRange(days, queryRange);
+    if (range == null) return [];
+    const startDate = range.startDate;
+    const endDate = parseDate(range.endDate);
 
     // Find the Monday of the week containing startDate
     const start = parseDate(startDate);
@@ -99,8 +82,31 @@ export function SmallGridHeatmap({
     return result;
   }, [days, dayMap, queryRange]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rangeKey = `${queryRange?.startDate ?? ""}:${queryRange?.endDate ?? ""}`;
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (container == null || weeks.length === 0) return;
+    const today = formatDate(new Date());
+    const start = queryRange?.startDate ?? weeks[0]?.days[0]?.date ?? today;
+    const end = queryRange?.endDate ?? weeks.at(-1)?.days.at(-1)?.date ?? today;
+    const latestData = days.reduce((latest, day) => (day.date > latest ? day.date : latest), "");
+    const targetDate = today >= start && today <= end ? today : latestData || end;
+    const target = container.querySelector<HTMLElement>(`[data-heatmap-date="${targetDate}"]`);
+    if (target != null) {
+      container.scrollLeft = Math.max(
+        0,
+        target.offsetLeft - container.clientWidth + target.offsetWidth
+      );
+    } else {
+      container.scrollLeft = container.scrollWidth;
+    }
+    // Only reposition when the requested interval changes; data refreshes preserve manual scrolling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeKey]);
+
   return (
-    <div className={cn("w-full overflow-x-auto pb-2", className)}>
+    <div ref={scrollRef} className={cn("w-full overflow-x-auto pb-2", className)}>
       {/* Inner container with overflow-visible to allow tooltip to show outside */}
       <div className="flex gap-[2px] min-h-[100px]">
         {weeks.map((week) => (
@@ -111,16 +117,17 @@ export function SmallGridHeatmap({
               const level = getHeatmapLevel(amount, stats);
 
               return (
-                <DayCellSmall
-                  key={date}
-                  date={date}
-                  amount={amount}
-                  count={count}
-                  level={level}
-                  currency={currency}
-                  locale={locale}
-                  onClick={() => onDayClick?.(date)}
-                />
+                <div key={date} data-heatmap-date={date}>
+                  <DayCellSmall
+                    date={date}
+                    amount={amount}
+                    count={count}
+                    level={level}
+                    currency={currency}
+                    locale={locale}
+                    onClick={() => onDayClick?.(date)}
+                  />
+                </div>
               );
             })}
           </div>

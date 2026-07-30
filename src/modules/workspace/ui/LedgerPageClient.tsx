@@ -250,6 +250,8 @@ function LedgerPageClientContent({
         mainCurrency={mainCurrency}
         collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
         timeZone={fixedTimeZone ?? null}
+        preferredCurrencies={preferredCurrencies}
+        categories={categories}
       />
       {/* Only mount the active tab — inactive tabs load lazily */}
       {activeTab === "stream" && (

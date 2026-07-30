@@ -63,6 +63,8 @@ interface SourceDocumentDetailModalProps {
   isAccepting?: boolean;
   isAbandoning?: boolean;
   isCancelling?: boolean;
+  readOnly?: boolean;
+  offlineImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -88,6 +90,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   isAccepting = false,
   isAbandoning = false,
   isCancelling = false,
+  readOnly = false,
+  offlineImageUrls,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -256,6 +260,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               placeholder={t("untitled")}
               displayClassName="font-semibold text-text text-base truncate"
               inputClassName="font-semibold text-base"
+              disabled={readOnly}
             />
           </div>
         </DialogHeader>
@@ -350,26 +355,30 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 onSelectEntry={handleSelectEntry}
                 onSelectAllEntries={handleSelectAllEntries}
                 onToggleSelectionMode={handleToggleSelectionMode}
+                readOnly={readOnly}
+                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
               />
             </>
           )}
         </div>
 
-        <LedgerEntriesBatchActionToolbar
-          selectedCount={selectedIds.length}
-          totalCount={ledgerEntries.length}
-          isAllSelected={isAllSelected}
-          onSelectAll={() => handleSelectAllEntries(true)}
-          onClearSelection={() => handleSelectAllEntries(false)}
-          onChangeCategory={handleBatchCategory}
-          onChangeCurrency={handleBatchCurrency}
-          onDelete={() => setShowBatchDeleteConfirm(true)}
-          categories={categories}
-          preferredCurrencies={preferredCurrencies}
-          isChangingCategory={isSaving}
-          isChangingCurrency={isSaving}
-          variant="inline"
-        />
+        {!readOnly && (
+          <LedgerEntriesBatchActionToolbar
+            selectedCount={selectedIds.length}
+            totalCount={ledgerEntries.length}
+            isAllSelected={isAllSelected}
+            onSelectAll={() => handleSelectAllEntries(true)}
+            onClearSelection={() => handleSelectAllEntries(false)}
+            onChangeCategory={handleBatchCategory}
+            onChangeCurrency={handleBatchCurrency}
+            onDelete={() => setShowBatchDeleteConfirm(true)}
+            categories={categories}
+            preferredCurrencies={preferredCurrencies}
+            isChangingCategory={isSaving}
+            isChangingCurrency={isSaving}
+            variant="inline"
+          />
+        )}
 
         <ConfirmDialog
           open={showBatchDeleteConfirm}
@@ -381,118 +390,120 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           onConfirm={handleBatchDelete}
         />
 
-        <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 py-3 backdrop-blur-md sm:bg-surface2/30">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {/* Candidate actions: Accept / Abandon */}
-            {sourceDocument?.supportedActions.includes("accept_candidate") &&
-              onAcceptCandidate != null && (
-                <>
+        {!readOnly && (
+          <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 py-3 backdrop-blur-md sm:bg-surface2/30">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {/* Candidate actions: Accept / Abandon */}
+              {sourceDocument?.supportedActions.includes("accept_candidate") &&
+                onAcceptCandidate != null && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-9 px-3 gap-1.5"
+                      onClick={onAcceptCandidate}
+                      disabled={isAccepting}
+                    >
+                      <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
+                      <span className="hidden sm:inline">{tActions("accept")}</span>
+                    </Button>
+                    {sourceDocument.supportedActions.includes("abandon_candidate") &&
+                      onAbandonCandidate != null && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3 gap-1.5 text-muted-foreground"
+                          onClick={onAbandonCandidate}
+                          disabled={isAbandoning}
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">{tActions("abandon")}</span>
+                        </Button>
+                      )}
+                  </>
+                )}
+
+              {sourceDocument?.supportedActions.includes("abandon_candidate") &&
+                !sourceDocument.supportedActions.includes("accept_candidate") &&
+                onAbandonCandidate != null && (
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
-                    className="h-9 px-3 gap-1.5"
-                    onClick={onAcceptCandidate}
-                    disabled={isAccepting}
+                    className="h-9 gap-1.5 px-3 text-muted-foreground"
+                    onClick={onAbandonCandidate}
+                    disabled={isAbandoning}
                   >
-                    <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
-                    <span className="hidden sm:inline">{tActions("accept")}</span>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{tActions("abandon")}</span>
                   </Button>
-                  {sourceDocument.supportedActions.includes("abandon_candidate") &&
-                    onAbandonCandidate != null && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 px-3 gap-1.5 text-muted-foreground"
-                        onClick={onAbandonCandidate}
-                        disabled={isAbandoning}
-                      >
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{tActions("abandon")}</span>
-                      </Button>
-                    )}
-                </>
-              )}
+                )}
 
-            {sourceDocument?.supportedActions.includes("abandon_candidate") &&
-              !sourceDocument.supportedActions.includes("accept_candidate") &&
-              onAbandonCandidate != null && (
+              {sourceDocument?.supportedActions.includes("cancel_processing") &&
+                onCancelProcessing != null && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 px-3 text-muted-foreground"
+                    onClick={onCancelProcessing}
+                    disabled={isCancelling}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
+                  </Button>
+                )}
+
+              {/* Edit & Retry */}
+              {sourceDocument?.supportedActions.includes("edit_retry") && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 gap-1.5 px-3 text-muted-foreground"
-                  onClick={onAbandonCandidate}
-                  disabled={isAbandoning}
+                  className="h-9 px-3 gap-1.5 text-muted-foreground"
+                  onClick={() => setShowRetryDialog(true)}
                 >
-                  <XCircle className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{tActions("abandon")}</span>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("editRetry")}</span>
                 </Button>
               )}
 
-            {sourceDocument?.supportedActions.includes("cancel_processing") &&
-              onCancelProcessing != null && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 px-3 text-muted-foreground"
-                  onClick={onCancelProcessing}
-                  disabled={isCancelling}
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
-                </Button>
-              )}
-
-            {/* Edit & Retry */}
-            {sourceDocument?.supportedActions.includes("edit_retry") && (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-3 gap-1.5 text-muted-foreground"
-                onClick={() => setShowRetryDialog(true)}
+                className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+                onClick={() => setShowDeleteConfirm(true)}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("editRetry")}</span>
+                <Trash2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{tCommon("delete")}</span>
               </Button>
-            )}
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{tCommon("delete")}</span>
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <AnimatePresence>
-              {hasPendingChanges && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex items-center gap-2"
-                >
-                  <Button variant="ghost" size="sm" className="h-9" onClick={discardAllChanges}>
-                    <X className="h-3.5 w-3.5 mr-1.5" />
-                    {t("discardChanges")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-9 gap-1.5 shadow-lg shadow-primary/20"
-                    onClick={handleSaveAll}
-                    disabled={isSaving}
+            <div className="flex items-center gap-2">
+              <AnimatePresence>
+                {hasPendingChanges && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex items-center gap-2"
                   >
-                    <Save className="h-3.5 w-3.5" />
-                    {t("saveChanges", { count: pendingChangesCount })}
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    <Button variant="ghost" size="sm" className="h-9" onClick={discardAllChanges}>
+                      <X className="h-3.5 w-3.5 mr-1.5" />
+                      {t("discardChanges")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-9 gap-1.5 shadow-lg shadow-primary/20"
+                      onClick={handleSaveAll}
+                      disabled={isSaving}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      {t("saveChanges", { count: pendingChangesCount })}
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
+        )}
       </DialogContent>
 
       <ConfirmDialog
@@ -518,7 +529,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         discardLabel={t("discardChanges")}
       />
 
-      {sourceDocument && (
+      {sourceDocument && !readOnly && (
         <SourceDocumentEditRetryDialog
           ledgerId={ledgerId}
           sourceDocument={sourceDocument}

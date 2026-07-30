@@ -88,6 +88,8 @@ interface SourceDocumentViewDetailsProps {
   onSelectEntry: (entryId: string, selected: boolean) => void;
   onSelectAllEntries: (selected: boolean) => void;
   onToggleSelectionMode: () => void;
+  readOnly?: boolean;
+  offlineImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -105,6 +107,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onSelectEntry,
   onSelectAllEntries: _onSelectAllEntries,
   onToggleSelectionMode,
+  readOnly = false,
+  offlineImageUrls,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const t = useTranslations("SourceDocumentDetail");
   const tCard = useTranslations("SourceDocumentCard");
@@ -148,7 +152,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
 
   useEffect(() => {
-    if (files.length === 0) return;
+    if (readOnly || files.length === 0) return;
     const snapshotKey = getActiveOfflineSnapshotKey();
     if (snapshotKey == null || !snapshotKey.endsWith(`:${sourceDocument.ledgerId}`)) return;
     void rememberViewedDocument({ snapshotKey, document: sourceDocument, ledgerEntries }).catch(
@@ -163,7 +167,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         viewed: true,
       }).catch(() => false);
     }
-  }, [files, ledgerEntries, sourceDocument]);
+  }, [files, ledgerEntries, readOnly, sourceDocument]);
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -181,6 +185,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
               size="sm"
               className="h-8 min-w-fit shrink-0"
               truncate={false}
+              disabled={readOnly}
             />
             {isAnomaly && (
               <Badge variant="error" className="h-5 rounded-full px-1.5 text-xs font-medium">
@@ -226,7 +231,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       <div className="min-w-0">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <div className="flex items-center gap-2">
-            {sortedEntries.length > 0 && (
+            {sortedEntries.length > 0 && !readOnly && (
               <Button
                 variant={isSelectionMode ? "secondary" : "ghost"}
                 size="icon"
@@ -268,6 +273,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                   selected={selectedEntryIds.includes(entry.id)}
                   onChange={(changes) => onEntryChange(entry.id, changes)}
                   sourceDocumentEntryDate={displayEntryDate}
+                  readOnly={readOnly}
                   {...(isSelectionMode
                     ? { onSelect: (selected: boolean) => onSelectEntry(entry.id, selected) }
                     : {})}
@@ -325,12 +331,22 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
                         onClick={() => setViewerIndex(idx)}
                       >
-                        <Image
-                          src={storedFileReadUrl(file.id)}
-                          alt={tCard("imageAlt", { index: idx + 1 })}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
+                        {offlineImageUrls?.get(file.id) != null ? (
+                          <Image
+                            src={offlineImageUrls.get(file.id)!}
+                            alt={tCard("imageAlt", { index: idx + 1 })}
+                            fill
+                            unoptimized
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : !readOnly ? (
+                          <Image
+                            src={storedFileReadUrl(file.id)}
+                            alt={tCard("imageAlt", { index: idx + 1 })}
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : null}
                         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <div className="bg-black/40 text-white h-6 w-6 rounded-full flex items-center justify-center backdrop-blur-md">
                             <Maximize2 className="h-3 w-3" />
@@ -359,9 +375,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
       <SourceDocumentImageModal
         images={files.map((file) => ({
-          data: "",
+          data: offlineImageUrls?.get(file.id) ?? "",
           mimeType: file.contentType,
-          storedFileId: file.id,
+          ...(!readOnly ? { storedFileId: file.id } : {}),
         }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}

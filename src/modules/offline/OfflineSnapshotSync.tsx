@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { getSourceDocumentsAction } from "@/modules/source-document/actions";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 import {
   OFFLINE_DOCUMENT_LIMIT,
   OFFLINE_FULL_SYNC_INTERVAL_MS,
@@ -22,6 +23,8 @@ interface OfflineSnapshotSyncProps {
   mainCurrency: string;
   collapseEntriesDefault: boolean;
   timeZone: string | null;
+  preferredCurrencies: string[];
+  categories: EntryCategory[];
 }
 
 interface NetworkInformationLike {
@@ -106,6 +109,8 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     ledgerId: input.ledgerId,
     locale: input.locale,
     mainCurrency: input.mainCurrency,
+    preferredCurrencies: input.preferredCurrencies,
+    categories: input.categories,
     ledgerSettings: {
       collapseEntriesDefault: input.collapseEntriesDefault,
       timeZone: input.timeZone,
@@ -119,13 +124,31 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
 }
 
 export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
-  const { userId, ledgerId, locale, mainCurrency, collapseEntriesDefault, timeZone } = props;
+  const {
+    userId,
+    ledgerId,
+    locale,
+    mainCurrency,
+    collapseEntriesDefault,
+    timeZone,
+    preferredCurrencies,
+    categories,
+  } = props;
   useEffect(() => {
     if (typeof indexedDB === "undefined") return;
     const controller = new AbortController();
     const run = () =>
       void syncSnapshot(
-        { userId, ledgerId, locale, mainCurrency, collapseEntriesDefault, timeZone },
+        {
+          userId,
+          ledgerId,
+          locale,
+          mainCurrency,
+          collapseEntriesDefault,
+          timeZone,
+          preferredCurrencies,
+          categories,
+        },
         controller.signal
       ).catch(() => {});
     let idleId: number | null = null;
@@ -140,7 +163,16 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);
     };
-  }, [collapseEntriesDefault, ledgerId, locale, mainCurrency, timeZone, userId]);
+  }, [
+    categories,
+    collapseEntriesDefault,
+    ledgerId,
+    locale,
+    mainCurrency,
+    preferredCurrencies,
+    timeZone,
+    userId,
+  ]);
 
   return null;
 }

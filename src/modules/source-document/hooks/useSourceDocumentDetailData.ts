@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -10,6 +10,7 @@ import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/strea
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
+import { applyDetailToStreamCaches } from "./source-document-optimistic-cache";
 
 interface UseSourceDocumentDetailDataOptions {
   ledgerId: string;
@@ -41,6 +42,12 @@ export function useSourceDocumentDetailData({
   });
 
   const pending = sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
+
+  useEffect(() => {
+    if (sourceDocument != null) {
+      applyDetailToStreamCaches(queryClient, ledgerId, sourceDocument);
+    }
+  }, [ledgerId, queryClient, sourceDocument]);
 
   // C3: Persist watched entity fingerprint for refresh comparison
   const watchedFingerprintRef = useRef<string>("");

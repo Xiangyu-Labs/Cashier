@@ -2,7 +2,6 @@
 
 import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import { useTranslations } from "next-intl";
@@ -59,8 +58,8 @@ export function ActiveFilterChips({
       clear: () => onChange({ ...filters, maxAmount: null }),
     });
   }
-  const startDate = formatDateTimeForApi(filters.startDate);
-  const endDate = formatDateTimeForApi(filters.endDate);
+  const startDate = filters.startDate;
+  const endDate = filters.endDate;
   if (startDate != null || endDate != null) {
     chips.unshift({
       key: "date",

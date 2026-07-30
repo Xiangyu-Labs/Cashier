@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
+import type { EntryFilters } from "@/modules/ledger/ui";
+import type {
+  SourceDocument,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
+import { buildUnifiedStreamGroups } from "@/modules/source-document/stream-grouping";
+import { SourceDocumentDetailModal } from "@/modules/source-document/ui/SourceDocumentDetailModal";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { LedgerEntriesToolbar } from "@/modules/workspace/ui/LedgerEntriesToolbar";
+import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/LedgerEntriesCompletedGroups";
+import { STREAM_STATUS_PRESET_VALUES } from "@/modules/workspace/ledger-filter-state";
+import { useConnectionState } from "./connection-state";
 import {
   getActiveOfflineSnapshotKey,
   readOfflineImages,
@@ -28,11 +37,47 @@ function searchable(item: SourceDocumentListItemDto) {
     .toLocaleLowerCase();
 }
 
+function matchesFilters(item: SourceDocumentListItemDto, filters: EntryFilters) {
+  if (filters.startDate != null && (item.entryDate == null || item.entryDate < filters.startDate)) {
+    return false;
+  }
+  if (filters.endDate != null && (item.entryDate == null || item.entryDate > filters.endDate)) {
+    return false;
+  }
+  if ((filters.statuses?.length ?? 0) > 0 && !filters.statuses!.includes(item.status)) return false;
+  const query = filters.search?.trim().toLocaleLowerCase();
+  if (query != null && query !== "" && !searchable(item).includes(query)) return false;
+  if (filters.minAmount != null || filters.maxAmount != null) {
+    const amounts = (item.ledgerEntries ?? [])
+      .map((entry) => Number(entry.convertedAmount ?? entry.amount))
+      .filter(Number.isFinite);
+    if (amounts.length === 0) return false;
+    if (filters.minAmount != null && Math.max(...amounts) < filters.minAmount) return false;
+    if (filters.maxAmount != null && Math.min(...amounts) > filters.maxAmount) return false;
+  }
+  return true;
+}
+
+function totalFor(items: SourceDocumentListItemDto[]) {
+  return items.reduce(
+    (total, item) =>
+      total +
+      (item.status === "completed"
+        ? (item.ledgerEntries ?? []).reduce((sum, entry) => {
+            const amount = Number(entry.convertedAmount ?? entry.amount);
+            return sum + (Number.isFinite(amount) ? amount : 0);
+          }, 0)
+        : 0),
+    0
+  );
+}
+
 export function OfflineLedgerView() {
+  const { retry } = useConnectionState();
   const [snapshot, setSnapshot] = useState<OfflineLedgerSnapshot | null>(null);
   const [items, setItems] = useState<SourceDocumentListItemDto[]>([]);
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<EntryFilters>({});
   const [selected, setSelected] = useState<SourceDocumentListItemDto | null>(null);
 
   useEffect(() => {
@@ -49,7 +94,7 @@ export function OfflineLedgerView() {
       const seen = new Set<string>();
       setSnapshot(nextSnapshot);
       setItems(
-        [...nextSnapshot.items, ...nextSnapshot.viewedItems].filter(
+        [...nextSnapshot.items, ...(nextSnapshot.viewedItems ?? [])].filter(
           (item) => !seen.has(item.id) && seen.add(item.id)
         )
       );
@@ -68,91 +113,89 @@ export function OfflineLedgerView() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return normalized === "" ? items : items.filter((item) => searchable(item).includes(normalized));
-  }, [items, query]);
+  const filtered = useMemo(
+    () => items.filter((item) => matchesFilters(item, filters)),
+    [filters, items]
+  );
+  const streamGroups = useMemo(() => buildUnifiedStreamGroups(filtered), [filtered]);
   const zh = (snapshot?.locale ?? navigator.language).startsWith("zh");
   const mainCurrency = snapshot?.mainCurrency ?? "CNY";
+  const periodParams =
+    filters.startDate != null || filters.endDate != null
+      ? {
+          period: "custom" as const,
+          ...(filters.startDate != null ? { startDate: filters.startDate } : {}),
+          ...(filters.endDate != null ? { endDate: filters.endDate } : {}),
+        }
+      : { period: "all" as const };
+
+  const openEntryDocument = (entry: LedgerEntry) => {
+    setSelected(
+      items.find((item) => item.ledgerEntries?.some((value) => value.id === entry.id)) ?? null
+    );
+  };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={zh ? "搜索账单" : "Search transactions"}
-          className="h-11 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+    <PullToRefresh
+      onRefresh={async () => retry()}
+      header={
+        <LedgerEntriesToolbar
+          isSelectionMode={false}
+          isAllSelected={false}
+          selectedCount={0}
+          onToggleSelectionMode={() => {}}
+          onSelectAll={() => {}}
+          onClearSelection={() => {}}
+          filters={filters}
+          onFiltersChange={setFilters}
+          periodParams={periodParams}
+          filteredTotalLabel={zh ? "筛选合计" : "Filtered total"}
+          mainCurrency={mainCurrency}
+          filteredTotal={totalFor(filtered)}
+          onApplyPreset={(preset) =>
+            setFilters((current) => ({ ...current, statuses: STREAM_STATUS_PRESET_VALUES[preset] }))
+          }
+          onResetFilters={() => setFilters({})}
+          readOnly
         />
-      </div>
+      }
+    >
+      <LedgerEntriesUnifiedGroups
+        streamGroups={streamGroups}
+        mainCurrency={mainCurrency}
+        onViewLedgerEntry={openEntryDocument}
+        onViewSourceDetail={({ sourceDocument }) =>
+          setSelected(items.find((item) => item.id === sourceDocument.id) ?? null)
+        }
+        onDeleteSourceConfirm={() => {}}
+        isSelectionMode={false}
+        selectedIds={[]}
+        onToggleSelection={() => {}}
+        collapseEntriesDefault={snapshot?.ledgerSettings?.collapseEntriesDefault ?? false}
+        noRecordsText={zh ? "暂无已缓存账单" : "No cached transactions"}
+        getItemProps={() => ({})}
+        {...(snapshot?.ledgerSettings?.timeZone != null
+          ? { timeZone: snapshot.ledgerSettings.timeZone }
+          : {})}
+        readOnly
+      />
 
-      {filtered.length === 0 ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">
-          {zh ? "暂无已缓存账单" : "No cached transactions"}
-        </div>
-      ) : (
-        filtered.map((item) => (
-          <SourceDocumentCard
-            key={item.id}
-            sourceDocument={item}
-            ledgerEntries={(item.ledgerEntries ?? []) as LedgerEntry[]}
-            mainCurrency={mainCurrency}
-            status={item.status}
-            anomalyReason={item.anomalyReason}
-            errorCode={item.errorCode}
-            defaultExpanded={!(snapshot?.ledgerSettings?.collapseEntriesDefault ?? false)}
-            onViewDetails={() => setSelected(item)}
-            readOnly
-          />
-        ))
-      )}
-
-      {selected != null && (
-        <div className="fixed inset-0 z-[80] overflow-y-auto bg-bg/95 p-4 backdrop-blur-sm">
-          <div className="mx-auto max-w-2xl space-y-4 pt-[env(safe-area-inset-top)]">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">{selected.title ?? (zh ? "账单详情" : "Details")}</h2>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface"
-                aria-label={zh ? "关闭" : "Close"}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {selected.files.flatMap((file, index) => {
-                const url = imageUrls.get(file.id);
-                return url == null
-                  ? []
-                  : [
-                      <a key={file.id} href={url} target="_blank" rel="noreferrer">
-                        {/* Cached Blob URLs intentionally bypass Next image optimization. */}
-                        <img
-                          src={url}
-                          alt={`${zh ? "账单图片" : "Receipt image"} ${index + 1}`}
-                          className="aspect-square w-full rounded-md border border-border object-cover"
-                        />
-                      </a>,
-                    ];
-              })}
-            </div>
-            <SourceDocumentCard
-              sourceDocument={selected}
-              ledgerEntries={(selected.ledgerEntries ?? []) as LedgerEntry[]}
-              mainCurrency={mainCurrency}
-              status={selected.status}
-              anomalyReason={selected.anomalyReason}
-              errorCode={selected.errorCode}
-              defaultExpanded
-              readOnly
-            />
-          </div>
-        </div>
-      )}
-    </div>
+      <SourceDocumentDetailModal
+        ledgerId={snapshot?.ledgerId ?? selected?.ledgerId ?? "offline"}
+        sourceDocument={selected as SourceDocument | null}
+        ledgerEntries={(selected?.ledgerEntries ?? []) as LedgerEntry[]}
+        categories={snapshot?.categories ?? []}
+        preferredCurrencies={snapshot?.preferredCurrencies ?? []}
+        mainCurrency={mainCurrency}
+        open={selected != null}
+        onClose={() => setSelected(null)}
+        onUpdateSourceDoc={async () => {}}
+        onUpdateEntry={async () => {}}
+        onBatchUpdate={async () => undefined}
+        onDeleteEntry={async () => {}}
+        readOnly
+        offlineImageUrls={imageUrls}
+      />
+    </PullToRefresh>
   );
 }

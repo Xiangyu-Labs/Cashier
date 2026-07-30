@@ -74,6 +74,9 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
   await queryClient.prefetchQuery({
     queryKey: queryKeys.enhancedStats(ledgerId, {
       startDate: state.startDateStr,
+      endDate: state.endDateStr,
+      compareStartDate: state.prevDateStartStr,
+      compareEndDate: state.prevDateEndStr,
       rangeType: state.rangeType,
       mainCurrency,
     }),

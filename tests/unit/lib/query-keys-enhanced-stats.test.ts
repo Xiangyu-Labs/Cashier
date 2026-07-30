@@ -6,10 +6,22 @@ describe("queryKeys enhanced stats and source documents", () => {
     expect(
       queryKeys.enhancedStats("ledger-1", {
         startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        compareStartDate: "2026-02-01",
+        compareEndDate: "2026-02-28",
         rangeType: "month",
         mainCurrency: "USD",
       })
-    ).toEqual(["enhanced-stats", "ledger-1", "2026-03-01", "month", "USD"]);
+    ).toEqual([
+      "enhanced-stats",
+      "ledger-1",
+      "2026-03-01",
+      "2026-03-31",
+      "2026-02-01",
+      "2026-02-28",
+      "month",
+      "USD",
+    ]);
   });
 
   it("builds source document counts key", () => {
@@ -45,6 +57,9 @@ describe("queryKeys enhanced stats and source documents", () => {
     expect(queryKeys.enhancedStats("ledger-1")).toEqual([
       "enhanced-stats",
       "ledger-1",
+      null,
+      null,
+      null,
       null,
       null,
       null,

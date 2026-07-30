@@ -8,6 +8,7 @@ import type {
   SourceDocumentStoredFileDto,
 } from "@/modules/source-document/contracts";
 import { storedFileReadUrl } from "@/modules/source-document/stored-file-read";
+import type { EntryCategory } from "@/modules/ledger/contracts";
 
 const DB_NAME = "cashier-offline";
 const DB_VERSION = 2;
@@ -22,17 +23,19 @@ export const OFFLINE_FULL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export interface OfflineLedgerSnapshot {
   key: string;
-  schemaVersion: 2;
+  schemaVersion?: 1 | 2;
   userId: string;
   ledgerId: string;
-  locale: string;
-  mainCurrency: string;
-  ledgerSettings: {
+  locale?: string;
+  mainCurrency?: string;
+  preferredCurrencies?: string[];
+  categories?: EntryCategory[];
+  ledgerSettings?: {
     collapseEntriesDefault: boolean;
     timeZone: string | null;
   };
   items: SourceDocumentListItemDto[];
-  viewedItems: SourceDocumentListItemDto[];
+  viewedItems?: SourceDocumentListItemDto[];
   lastSyncedAt: string;
   fullSyncAt: string | null;
 }
@@ -323,7 +326,7 @@ export async function rememberViewedDocument(input: {
   };
   snapshot.viewedItems = [
     item,
-    ...snapshot.viewedItems.filter((entry) => entry.id !== item.id),
+    ...(snapshot.viewedItems ?? []).filter((entry) => entry.id !== item.id),
   ].slice(0, OFFLINE_IMAGE_COUNT_LIMIT);
   await writeOfflineSnapshot(snapshot);
 }

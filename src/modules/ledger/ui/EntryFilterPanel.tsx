@@ -19,6 +19,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { DateFilter } from "@/components/ui/date-filter";
 import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
+import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
   type StreamStatusPreset,
@@ -26,8 +27,9 @@ import {
 } from "@/modules/workspace/ledger-filter-state";
 
 export interface EntryFilters {
-  startDate?: Date;
-  endDate?: Date;
+  /** Civil dates. Never convert these values through UTC. */
+  startDate?: string;
+  endDate?: string;
   categoryId?: string | null;
   currency?: string | null;
   minAmount?: number | null;
@@ -145,8 +147,8 @@ export function EntryFilterPanel({
       : undefined) ??
     (() => {
       const now = new Date();
-      const start = filters.startDate;
-      const end = filters.endDate;
+      const start = filters.startDate != null ? parseDateString(filters.startDate) : undefined;
+      const end = filters.endDate != null ? parseDateString(filters.endDate) : undefined;
 
       if (start == null || end == null) return "thisMonth";
 
@@ -196,7 +198,11 @@ export function EntryFilterPanel({
           break;
       }
 
-      newFilters = { ...newFilters, startDate: start, endDate: end };
+      newFilters = {
+        ...newFilters,
+        startDate: formatDateTimeForApi(start),
+        endDate: formatDateTimeForApi(end),
+      };
     }
 
     setTempFilters(newFilters);
@@ -210,12 +216,12 @@ export function EntryFilterPanel({
         if (date == null) {
           delete next.startDate;
         } else {
-          next.startDate = date;
+          next.startDate = formatDateTimeForApi(date);
         }
       } else if (date == null) {
         delete next.endDate;
       } else {
-        next.endDate = date;
+        next.endDate = formatDateTimeForApi(date);
       }
       return next;
     });
@@ -236,8 +242,8 @@ export function EntryFilterPanel({
     }
     const now = new Date();
     const defaultFilters: EntryFilters = {
-      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
-      endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      startDate: formatDateTimeForApi(new Date(now.getFullYear(), now.getMonth(), 1)),
+      endDate: formatDateTimeForApi(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
       categoryId: null,
       currency: null,
       minAmount: null,

@@ -7,6 +7,7 @@
  */
 
 "use client";
+import { generateHeatmapDateKeys, resolveHeatmapRange } from "../../lib/heatmap-range";
 import { LargeGridHeatmap } from "./LargeGrid";
 import { SmallGridHeatmap } from "./SmallGrid";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
@@ -37,7 +38,7 @@ export function AdaptiveHeatmap({
   currency = "CNY",
   locale = "zh-CN",
 }: AdaptiveHeatmapProps) {
-  const dayCount = days.length;
+  const dayCount = generateHeatmapDateKeys(resolveHeatmapRange(days, queryRange)).length;
   const optionalProps = {
     ...(onDayClick !== undefined ? { onDayClick } : {}),
     ...(className !== undefined ? { className } : {}),

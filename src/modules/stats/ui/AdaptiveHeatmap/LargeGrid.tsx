@@ -7,7 +7,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
-import { formatDate, parseDate } from "../../lib/date-utils";
+import { generateHeatmapDateKeys, resolveHeatmapRange } from "../../lib/heatmap-range";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
 import { DayCellLarge } from "./DayCellLarge";
 
@@ -41,41 +41,10 @@ export function LargeGridHeatmap({
 
   // Generate continuous grid from query start to max(latest data, today)
   const gridDays = useMemo(() => {
-    if (days.length === 0) return [];
-
-    const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-    const firstDay = sortedDays[0];
-    const lastDay = sortedDays[sortedDays.length - 1];
-    if (firstDay == null || lastDay == null) {
-      return [];
-    }
-
-    // Start from query range if provided, otherwise from earliest data
-    const startDate = queryRange?.startDate ?? firstDay.date;
-
-    // End is the later of: today or latest data date (capped by query end)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const latestDataDate = parseDate(lastDay.date);
-    const effectiveEndDate = latestDataDate > today ? latestDataDate : today;
-
-    // Cap by query end if provided
-    const queryEnd = queryRange?.endDate != null ? parseDate(queryRange.endDate) : null;
-    const endDate = queryEnd != null && effectiveEndDate > queryEnd ? queryEnd : effectiveEndDate;
-
-    const result: { date: string; dayData?: CalendarDayData }[] = [];
-    const current = parseDate(startDate);
-    const end = endDate;
-
-    while (current <= end) {
-      const dateStr = formatDate(current);
-      const dayData = dayMap.get(dateStr);
-      result.push(dayData != null ? { date: dateStr, dayData } : { date: dateStr });
-      current.setDate(current.getDate() + 1);
-    }
-
-    return result;
+    return generateHeatmapDateKeys(resolveHeatmapRange(days, queryRange)).map((date) => {
+      const dayData = dayMap.get(date);
+      return dayData != null ? { date, dayData } : { date };
+    });
   }, [days, dayMap, queryRange]);
 
   return (

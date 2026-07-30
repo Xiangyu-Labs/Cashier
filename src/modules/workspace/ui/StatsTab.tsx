@@ -1,11 +1,17 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
-import { addPeriod, getDateInTimezone, parseDateString, type DateRangeType } from "@/lib/date-utils";
+import {
+  addPeriod,
+  formatDateTimeForApi,
+  getDateInTimezone,
+  parseDateString,
+  type DateRangeType,
+} from "@/lib/date-utils";
 import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
 import { useTranslations, useFormatter, useLocale } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
@@ -39,14 +45,27 @@ export function StatsTab({
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
   const [periodOffset, setPeriodOffset] = useState(0);
-  const [serverToday] = useState(() => initialDate ?? new Date());
-  // The server anchor keeps hydration stable. An automatic device timezone replaces
-  // only today's anchor after hydration; the user's period offset remains untouched.
-  const today = useMemo(() => {
-    const zonedDate = getDateInTimezone(timeZone);
-    if (zonedDate != null) return parseDateString(zonedDate);
-    return serverToday;
-  }, [serverToday, timeZone]);
+  const [todayKey, setTodayKey] = useState(
+    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(initialDate ?? new Date())
+  );
+  useEffect(() => {
+    const updateToday = () => {
+      setTodayKey(getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date()));
+    };
+    updateToday();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") updateToday();
+    };
+    const interval = window.setInterval(updateToday, 60_000);
+    window.addEventListener("focus", updateToday);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", updateToday);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [timeZone]);
+  const today = useMemo(() => parseDateString(todayKey), [todayKey]);
   const currentDate = useMemo(
     () => addPeriod(today, rangeType, periodOffset),
     [periodOffset, rangeType, today]
@@ -79,6 +98,9 @@ export function StatsTab({
 
   const enhancedStatsKey = queryKeys.enhancedStats(ledgerId ?? "", {
     startDate: startDateStr,
+    endDate: endDateStr,
+    compareStartDate: prevDateStartStr,
+    compareEndDate: prevDateEndStr,
     rangeType,
     ...(ledger?.metadata?.settings?.mainCurrency !== undefined
       ? { mainCurrency: ledger.metadata.settings.mainCurrency }

@@ -1,4 +1,3 @@
-import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
@@ -27,10 +26,10 @@ export function buildLedgerEntryFilters(
   const nextFilters: EntryFilters = {};
 
   if (dateRange.startDate != null) {
-    nextFilters.startDate = parseDateString(dateRange.startDate);
+    nextFilters.startDate = dateRange.startDate;
   }
   if (dateRange.endDate != null) {
-    nextFilters.endDate = parseDateString(dateRange.endDate);
+    nextFilters.endDate = dateRange.endDate;
   }
   if (advancedFilters.categoryId !== undefined) {
     nextFilters.categoryId = advancedFilters.categoryId;
@@ -80,10 +79,10 @@ export function splitLedgerFilterChange(args: {
   periodUpdate?: PeriodParams;
   advancedFilterUpdate: LedgerAdvancedFilters;
 } {
-  const currentStartDate = formatDateTimeForApi(args.currentFilters.startDate) ?? null;
-  const currentEndDate = formatDateTimeForApi(args.currentFilters.endDate) ?? null;
-  const nextStartDate = formatDateTimeForApi(args.nextFilters.startDate) ?? null;
-  const nextEndDate = formatDateTimeForApi(args.nextFilters.endDate) ?? null;
+  const currentStartDate = args.currentFilters.startDate ?? null;
+  const currentEndDate = args.currentFilters.endDate ?? null;
+  const nextStartDate = args.nextFilters.startDate ?? null;
+  const nextEndDate = args.nextFilters.endDate ?? null;
 
   let periodUpdate: PeriodParams | undefined;
   if (nextStartDate !== currentStartDate || nextEndDate !== currentEndDate) {

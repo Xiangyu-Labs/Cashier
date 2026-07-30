@@ -7,6 +7,7 @@ import {
 import { invalidateSourceDocumentCounts, invalidateSourceDocuments } from "@/lib/query-keys";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { applyOptimisticUpsert } from "./source-document-optimistic-cache";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -45,8 +46,11 @@ export function useSourceDocumentRecordMutations({
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       if (ledgerId == null) return;
+      if (result.reconciliation?.entity != null) {
+        applyOptimisticUpsert(queryClient, ledgerId, result.reconciliation.entity);
+      }
       await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
     },
     onSettled: () => {

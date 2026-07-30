@@ -47,6 +47,7 @@ export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVa
   pendingChanges?: Partial<EntryEditData>;
   /** The entryDate of the parent source document, used to detect date differences */
   sourceDocumentEntryDate?: string;
+  readOnly?: boolean;
 }
 
 export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
@@ -62,6 +63,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   onChange,
   pendingChanges,
   sourceDocumentEntryDate,
+  readOnly = false,
 }: EditableLedgerEntryItemProps) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
@@ -107,6 +109,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         categories={categories}
         onChange={(categoryId) => handleChange("categoryId", categoryId)}
         placeholder={categoryPlaceholder}
+        disabled={readOnly}
       />
 
       {/* Name + Description */}
@@ -118,6 +121,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
             placeholder={t("productName")}
             displayClassName="font-medium text-text text-sm"
             inputClassName="text-sm font-medium"
+            disabled={readOnly}
           />
         </div>
 
@@ -133,6 +137,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
                   placeholder={t("notes")}
                   displayClassName="truncate text-muted-foreground/60 text-[11px] italic"
                   inputClassName="text-[11px]"
+                  disabled={readOnly}
                 />
               </>
             )}
@@ -142,9 +147,12 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
 
       {/* Amount + Currency */}
       <div className="flex items-center gap-1 shrink-0">
-        <Popover modal={true}>
+        <Popover modal={true} {...(readOnly ? { open: false } : {})}>
           <PopoverTrigger asChild>
-            <button className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5">
+            <button
+              disabled={readOnly}
+              className="text-xs text-muted-foreground hover:text-text transition-colors flex items-center gap-0.5 disabled:cursor-default"
+            >
               {getCurrencySymbol(displayData.currency ?? "unknown", locale)}
               <ChevronDown className="h-2.5 w-2.5 opacity-50" />
             </button>
@@ -171,6 +179,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
           value={parseAmount(displayData.amount)}
           onChange={(v) => handleChange("amount", v.toFixed(2))}
           displayClassName={amountTextClassName("item")}
+          disabled={readOnly}
         />
       </div>
 

@@ -115,7 +115,8 @@ function itemMatchesFilters(
 export function applyOptimisticUpsert(
   queryClient: QueryClient,
   ledgerId: string,
-  item: SourceDocumentListItemDto
+  item: SourceDocumentListItemDto,
+  updateDetail = true
 ): void {
   const matches = getStreamQueryMatches(queryClient, ledgerId);
 
@@ -124,28 +125,27 @@ export function applyOptimisticUpsert(
     const { pages, pageParams } = data;
     if (!pages || pages.length === 0) continue;
 
-    // I1: Check if the item belongs in this filter window
     const filters = extractFiltersFromQueryKey(queryKey);
-    if (filters != null && !itemMatchesFilters(item, filters)) {
-      // Item doesn't belong in this filtered view — skip
-      continue;
-    }
+    const belongs = filters == null || itemMatchesFilters(item, filters);
+    let replaced = false;
 
-    const updatedPages = pages.map((page, pageIndex) => {
+    const updatedPages = pages.map((page) => {
       const existingIdx = page.items.findIndex((i) => i.id === item.id);
       if (existingIdx !== -1) {
-        if (pageIndex === 0) {
+        if (belongs && !replaced) {
           const updatedItems = [...page.items];
           updatedItems[existingIdx] = item;
+          replaced = true;
           return { ...page, items: updatedItems };
         }
+        return { ...page, items: page.items.filter((i) => i.id !== item.id) };
       }
       return page;
     });
 
-    // If the entity doesn't exist in any page, prepend to the first page
-    const existsInAny = pages.some((p) => p.items.some((i) => i.id === item.id));
-    if (!existsInAny) {
+    // Membership may change after a date/status edit. Populate matching cached
+    // windows immediately and remove the entity from windows it no longer matches.
+    if (belongs && !replaced) {
       const firstPage = updatedPages[0];
       if (firstPage) {
         updatedPages[0] = {
@@ -162,7 +162,7 @@ export function applyOptimisticUpsert(
   }
 
   // Also update detail cache if it exists
-  upsertDetailCache(queryClient, ledgerId, item);
+  if (updateDetail) upsertDetailCache(queryClient, ledgerId, item);
 }
 
 /**
@@ -261,6 +261,41 @@ export function getStreamQueryMatches(
   return queryClient.getQueriesData<InfiniteData<StreamPage>>({
     queryKey: streamPrefix,
   });
+}
+
+export function applyDetailToStreamCaches(
+  queryClient: QueryClient,
+  ledgerId: string,
+  detail: {
+    id: string;
+    title: string | null;
+    entryDate: string | null;
+    status: SourceDocumentListItemDto["status"];
+    ledgerEntries?: SourceDocumentListItemDto["ledgerEntries"];
+    files: SourceDocumentListItemDto["files"];
+    supportedActions: SourceDocumentListItemDto["supportedActions"];
+    errorCode: SourceDocumentListItemDto["errorCode"];
+  }
+): void {
+  for (const [, data] of getStreamQueryMatches(queryClient, ledgerId)) {
+    const existing = data?.pages
+      .flatMap((page) => page.items)
+      .find((item) => item.id === detail.id);
+    if (existing != null) {
+      const { ledgerEntries, ...detailWithoutEntries } = detail;
+      applyOptimisticUpsert(
+        queryClient,
+        ledgerId,
+        {
+          ...existing,
+          ...detailWithoutEntries,
+          ...(ledgerEntries != null ? { ledgerEntries } : {}),
+        },
+        false
+      );
+      return;
+    }
+  }
 }
 
 /**
