@@ -124,7 +124,7 @@ export function ServiceCredentialSection({
       </div>
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="modal">
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
             <DialogDescription>{t("createDesc")}</DialogDescription>
@@ -152,7 +152,7 @@ export function ServiceCredentialSection({
         open={createdCredential != null}
         onOpenChange={(open) => !open && setCreatedCredential(null)}
       >
-        <DialogContent>
+        <DialogContent variant="modal">
           <DialogHeader>
             <DialogTitle>{t("createSuccessTitle")}</DialogTitle>
             <DialogDescription>{t("createSuccessDesc")}</DialogDescription>
@@ -193,7 +193,7 @@ export function ServiceCredentialSection({
         open={credentialToDelete != null}
         onOpenChange={(open) => !open && setCredentialToDelete(null)}
       >
-        <DialogContent>
+        <DialogContent variant="modal">
           <DialogHeader>
             <DialogTitle>{t("deleteTitle")}</DialogTitle>
             <DialogDescription>{t("deleteDesc")}</DialogDescription>

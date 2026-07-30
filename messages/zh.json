@@ -264,6 +264,7 @@
     "categoryRequired": "请选择分类"
   },
   "Common": {
+    "back": "返回",
     "close": "关闭",
     "confirm": "确认",
     "delete": "删除",

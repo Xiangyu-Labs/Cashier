@@ -93,13 +93,14 @@ const ModalStackRenderer = dynamic(
 
 function ModalStackLoadingFallback() {
   const item = useModalStackStore((state) => state.stack.at(-1));
-  const pop = useModalStackStore((state) => state.pop);
+  const closeAll = useModalStackStore((state) => state.closeAll);
   const tCommon = useTranslations("Common");
   if (item == null) return null;
 
   return (
-    <Dialog open onOpenChange={(open) => !open && pop()}>
+    <Dialog open onOpenChange={(open) => !open && closeAll()}>
       <DialogContent
+        variant="detail"
         className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,800px)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:rounded-lg"
         aria-describedby={undefined}
       >
@@ -335,6 +336,7 @@ function LedgerPageClientContent({
         }}
       >
         <DialogContent
+          variant="sheet"
           className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6"
           aria-describedby={undefined}
           hideCloseButton={isInputSubmitting}

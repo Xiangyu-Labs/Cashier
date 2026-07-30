@@ -23,6 +23,7 @@ interface LedgerEntryDetailWrapperProps {
   ledgerId: string;
   open: boolean;
   onClose: () => void;
+  onBack?: () => void;
   onExitComplete?: () => void;
   categories: EntryCategory[];
 }
@@ -32,6 +33,7 @@ export function LedgerEntryDetailWrapper({
   ledgerId,
   open,
   onClose,
+  onBack,
   onExitComplete,
   categories,
 }: LedgerEntryDetailWrapperProps) {
@@ -106,6 +108,7 @@ export function LedgerEntryDetailWrapper({
       categories={categories}
       open={open}
       onClose={onClose}
+      {...(onBack !== undefined ? { onBack } : {})}
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
       onUpdate={async (data) => await updateMutation.mutateAsync(data)}
       onDelete={async () => await deleteMutation.mutateAsync()}

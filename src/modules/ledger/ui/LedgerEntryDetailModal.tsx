@@ -7,6 +7,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
 
 interface LedgerEntryDetailModalProps {
@@ -17,6 +19,7 @@ interface LedgerEntryDetailModalProps {
   mainCurrency?: string;
   open: boolean;
   onClose: () => void;
+  onBack?: () => void;
   onExitComplete?: () => void;
   onUpdate: (data: {
     categoryId?: string | null;
@@ -37,6 +40,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   mainCurrency = "CNY",
   open,
   onClose,
+  onBack,
   onExitComplete,
   onUpdate,
   onDelete,
@@ -184,6 +188,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
     <>
       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
         <DialogContent
+          variant="detail"
           {...(onExitComplete !== undefined ? { onExitComplete } : {})}
           className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg"
           aria-describedby={undefined}
@@ -191,6 +196,21 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
           <VisuallyHidden.Root>
             <DialogTitle>{t("unsavedChanges")}</DialogTitle>
           </VisuallyHidden.Root>
+
+          {onBack != null && (
+            <div className="shrink-0 border-b px-3 py-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={onBack}
+                aria-label={tCommon("back")}
+                title={tCommon("back")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           {isLoading && !ledgerEntry && (
             <div className="p-6 space-y-4 animate-pulse">
@@ -232,30 +252,30 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
             />
           )}
         </DialogContent>
+
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title={tTab("deleteConfirmTitle")}
+          description={tTab("deleteConfirmDesc")}
+          onConfirm={handleDelete}
+          variant="destructive"
+          confirmLabel={tCommon("delete")}
+        />
+
+        <ConfirmDialog
+          open={showUnsavedConfirm}
+          onOpenChange={setShowUnsavedConfirm}
+          title={t("unsavedChanges")}
+          description={t("unsavedChangesDesc")}
+          onConfirm={() => setShowUnsavedConfirm(false)}
+          cancelLabel={tCommon("cancel")}
+          onSave={handleSaveAndClose}
+          saveLabel={tCommon("save")}
+          onDiscard={handleDiscardAndClose}
+          discardLabel={t("discardChanges")}
+        />
       </Dialog>
-
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        title={tTab("deleteConfirmTitle")}
-        description={tTab("deleteConfirmDesc")}
-        onConfirm={handleDelete}
-        variant="destructive"
-        confirmLabel={tCommon("delete")}
-      />
-
-      <ConfirmDialog
-        open={showUnsavedConfirm}
-        onOpenChange={setShowUnsavedConfirm}
-        title={t("unsavedChanges")}
-        description={t("unsavedChangesDesc")}
-        onConfirm={() => setShowUnsavedConfirm(false)}
-        cancelLabel={tCommon("cancel")}
-        onSave={handleSaveAndClose}
-        saveLabel={tCommon("save")}
-        onDiscard={handleDiscardAndClose}
-        discardLabel={t("discardChanges")}
-      />
     </>
   );
 });

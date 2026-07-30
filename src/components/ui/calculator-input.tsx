@@ -357,6 +357,7 @@ export function CalculatorInput({
   return (
     <Dialog open={mode === "calculator"} onOpenChange={(open) => !open && setMode("display")}>
       <DialogContent
+        variant="modal"
         className="w-72 max-w-[calc(100vw-2rem)] p-4 gap-0 [&>button:last-child]:hidden"
         aria-describedby={undefined}
       >

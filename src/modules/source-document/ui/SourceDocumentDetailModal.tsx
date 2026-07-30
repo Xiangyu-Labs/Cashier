@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Trash2,
   FileText,
+  ArrowLeft,
   X,
   Save,
   XCircle,
@@ -42,6 +43,7 @@ interface SourceDocumentDetailModalProps {
   mainCurrency?: string;
   open: boolean;
   onClose: () => void;
+  onBack?: () => void;
   onExitComplete?: () => void;
   onUpdateSourceDoc: (data: { title?: string; entryDate?: string }) => Promise<void>;
   onUpdateEntry: (id: string, data: Partial<EntryEditData>) => Promise<void>;
@@ -78,6 +80,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   mainCurrency: _mainCurrency = "CNY",
   open,
   onClose,
+  onBack,
   onExitComplete,
   onUpdateSourceDoc,
   onUpdateEntry,
@@ -237,6 +240,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
       <DialogContent
+        variant="detail"
         {...(onExitComplete !== undefined ? { onExitComplete } : {})}
         className="flex h-[100dvh] max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-auto sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:rounded-lg"
         onOpenAutoFocus={() => {
@@ -250,6 +254,18 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       >
         <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
           <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
+          {onBack != null && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onBack}
+              aria-label={tCommon("back")}
+              title={tCommon("back")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
             <FileText className="h-5 w-5" />
           </div>

@@ -7,15 +7,18 @@ vi.mock("@/modules/ledger/ui", () => ({
   LedgerEntryDetailWrapper: ({
     open,
     onClose,
+    onBack,
     onExitComplete,
   }: {
     open: boolean;
     onClose: () => void;
+    onBack?: () => void;
     onExitComplete?: () => void;
   }) => (
     <div data-testid="ledger-modal" data-open={open}>
       <button onClick={onClose}>close</button>
-      {!open && <button onClick={onExitComplete}>exit complete</button>}
+      {onBack != null && <button onClick={onBack}>back</button>}
+      {!open && onExitComplete != null && <button onClick={onExitComplete}>exit complete</button>}
     </div>
   ),
 }));
@@ -25,7 +28,7 @@ vi.mock("@/modules/source-document/ui", () => ({
 }));
 
 describe("ModalStackRenderer", () => {
-  beforeEach(() => useModalStackStore.setState({ stack: [] }));
+  beforeEach(() => useModalStackStore.setState({ stack: [], canGoBack: false }));
 
   it("keeps the stack item mounted until its exit animation completes", async () => {
     render(<ModalStackRenderer categories={[]} />);
@@ -54,6 +57,27 @@ describe("ModalStackRenderer", () => {
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
     act(() => useModalStackStore.getState().push(item));
 
+    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+  });
+
+  it("returns to the previous detail only after the top exit completes", async () => {
+    render(<ModalStackRenderer categories={[]} />);
+    act(() => {
+      useModalStackStore
+        .getState()
+        .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+      useModalStackStore
+        .getState()
+        .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "back" }));
+    expect(useModalStackStore.getState().stack).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
+
+    expect(useModalStackStore.getState().stack).toEqual([
+      { type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" },
+    ]);
     expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
   });
 });

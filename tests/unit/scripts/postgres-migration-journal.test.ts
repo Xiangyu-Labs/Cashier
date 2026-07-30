@@ -29,7 +29,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0013_add_idempotency_content_fingerprint");
+    expect(journal.entries.at(-1)?.tag).toBe("0014_revision_title_transaction");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

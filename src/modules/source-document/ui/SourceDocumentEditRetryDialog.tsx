@@ -59,6 +59,7 @@ export function SourceDocumentEditRetryDialog({
       onOpenChange={(next) => (!next && isSubmitting ? undefined : onOpenChange(next))}
     >
       <DialogContent
+        variant="modal"
         className="max-w-lg max-h-[90vh] overflow-y-auto"
         aria-describedby={undefined}
         hideCloseButton={isSubmitting}

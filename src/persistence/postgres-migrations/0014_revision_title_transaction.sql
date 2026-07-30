@@ -1,0 +1,1 @@
+ALTER TABLE "source_document_revisions" ADD COLUMN "title" text;

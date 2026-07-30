@@ -3,7 +3,7 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 
 describe("Modal Stack Store", () => {
   beforeEach(() => {
-    useModalStackStore.setState({ stack: [] });
+    useModalStackStore.setState({ stack: [], canGoBack: false });
   });
 
   it("should start with an empty stack", () => {
@@ -25,6 +25,7 @@ describe("Modal Stack Store", () => {
     expect(state.stack).toHaveLength(2);
     expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
     expect(state.stack[1]).toEqual({ type: "source-document", id: "2", ledgerId: "ledger-1" });
+    expect(state.canGoBack).toBe(true);
   });
 
   it("should pop the top modal", () => {
@@ -36,6 +37,7 @@ describe("Modal Stack Store", () => {
     const state = useModalStackStore.getState();
     expect(state.stack).toHaveLength(1);
     expect(state.stack[0]).toEqual({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    expect(state.canGoBack).toBe(false);
   });
 
   it("should close all modals", () => {
@@ -46,6 +48,20 @@ describe("Modal Stack Store", () => {
 
     const state = useModalStackStore.getState();
     expect(state.stack).toEqual([]);
+    expect(state.canGoBack).toBe(false);
+  });
+
+  it("truncates the stack when revisiting an existing entity", () => {
+    const state = useModalStackStore.getState();
+    state.push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+    state.push({ type: "source-document", id: "2", ledgerId: "ledger-1" });
+    state.push({ type: "ledger-entry", id: "3", ledgerId: "ledger-1" });
+    state.push({ type: "ledger-entry", id: "1", ledgerId: "ledger-1" });
+
+    expect(useModalStackStore.getState().stack).toEqual([
+      { type: "ledger-entry", id: "1", ledgerId: "ledger-1" },
+    ]);
+    expect(useModalStackStore.getState().canGoBack).toBe(false);
   });
 
   it("should check if a modal is open", () => {

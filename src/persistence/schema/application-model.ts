@@ -24,6 +24,7 @@ export const sourceDocumentRevisions = pgTable(
     ledgerId: text("ledger_id").notNull(),
     sourceDocumentId: text("source_document_id").notNull(),
     revisionNumber: integer("revision_number").notNull(),
+    title: text("title"),
     submittedText: text("submitted_text"),
     outcome: text("outcome").notNull().default("processing"),
     anomalyReason: text("anomaly_reason"),

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
@@ -11,46 +11,60 @@ interface ModalStackRendererProps {
 export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
   const stack = useModalStackStore((state) => state.stack);
   const pop = useModalStackStore((state) => state.pop);
+  const closeAll = useModalStackStore((state) => state.closeAll);
   const item = stack.at(-1);
-  const itemKey = item == null ? null : `${item.type}:${item.id}`;
+  const itemKey = item == null ? null : `${item.type}:${item.ledgerId}:${item.id}`;
   const [closingKey, setClosingKey] = useState<string | null>(null);
+  const closingActionRef = useRef<"back" | "close-all">("close-all");
+  const initialTriggerRef = useRef<HTMLElement | null>(null);
+  const previousLengthRef = useRef(0);
+
+  useEffect(() => {
+    if (previousLengthRef.current === 0 && stack.length > 0) {
+      initialTriggerRef.current = document.activeElement as HTMLElement | null;
+    }
+    previousLengthRef.current = stack.length;
+  }, [stack.length]);
 
   if (item == null) return null;
   const open = closingKey !== itemKey;
-  const onClose = () => setClosingKey(itemKey);
+  const startExit = (action: "back" | "close-all") => {
+    closingActionRef.current = action;
+    setClosingKey(itemKey);
+  };
   const onExitComplete = () => {
     const current = useModalStackStore.getState().stack.at(-1);
-    if (current != null && `${current.type}:${current.id}` === itemKey) pop();
+    if (current == null || `${current.type}:${current.ledgerId}:${current.id}` !== itemKey) {
+      setClosingKey(null);
+      return;
+    }
+    if (closingActionRef.current === "back") {
+      pop();
+    } else {
+      closeAll();
+      const trigger = initialTriggerRef.current;
+      window.requestAnimationFrame(() => trigger?.focus());
+      initialTriggerRef.current = null;
+    }
     setClosingKey(null);
   };
 
-  if (item.type === "source-document") {
-    return (
-      <SourceDocumentDetailWrapper
-        key={`source-doc-${item.id}`}
-        id={item.id}
-        ledgerId={item.ledgerId}
-        open={open}
-        onClose={onClose}
-        onExitComplete={onExitComplete}
-        categories={categories}
-      />
+  return stack.map((stackItem, index) => {
+    const key = `${stackItem.type}:${stackItem.ledgerId}:${stackItem.id}`;
+    const isTop = index === stack.length - 1;
+    const sharedProps = {
+      id: stackItem.id,
+      ledgerId: stackItem.ledgerId,
+      open: isTop && open,
+      onClose: isTop ? () => startExit("close-all") : () => {},
+      ...(isTop ? { onExitComplete } : {}),
+      ...(isTop && stack.length > 1 ? { onBack: () => startExit("back") } : {}),
+      categories,
+    };
+    return stackItem.type === "source-document" ? (
+      <SourceDocumentDetailWrapper key={key} {...sharedProps} />
+    ) : (
+      <LedgerEntryDetailWrapper key={key} {...sharedProps} />
     );
-  }
-
-  if (item.type === "ledger-entry") {
-    return (
-      <LedgerEntryDetailWrapper
-        key={`ledger-entry-${item.id}`}
-        id={item.id}
-        ledgerId={item.ledgerId}
-        open={open}
-        onClose={onClose}
-        onExitComplete={onExitComplete}
-        categories={categories}
-      />
-    );
-  }
-
-  return null;
+  });
 }

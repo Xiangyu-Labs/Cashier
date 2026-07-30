@@ -268,7 +268,7 @@ export function CategorySection({
       ) : null}
 
       <Dialog open={editDraft != null} onOpenChange={(open) => !open && setEditDraft(null)}>
-        <DialogContent>
+        <DialogContent variant="modal">
           <DialogHeader>
             <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
           </DialogHeader>

@@ -51,6 +51,7 @@ export function SourceDocumentCandidateReviewDialog({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
       <DialogContent
+        variant="detail"
         className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-lg"
         aria-describedby={undefined}
         hideCloseButton={isPending}

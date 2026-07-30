@@ -264,6 +264,7 @@
     "categoryRequired": "Please select a category"
   },
   "Common": {
+    "back": "Back",
     "close": "Close",
     "deselectAll": "Deselect All",
     "edit": "Edit",

@@ -404,7 +404,7 @@ export function DetailsTab({
           open={dateDialogOpen}
           onOpenChange={(open) => !updateDates.isPending && setDateDialogOpen(open)}
         >
-          <DialogContent>
+          <DialogContent variant="modal">
             <DialogHeader>
               <DialogTitle>{t("changeDateTitle")}</DialogTitle>
             </DialogHeader>

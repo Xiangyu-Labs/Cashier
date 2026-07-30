@@ -69,6 +69,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
     <Dialog {...dialogProps}>
       {trigger != null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
+        variant="modal"
         onEscapeKeyDown={(event) => isPending && event.preventDefault()}
         onPointerDownOutside={(event) => isPending && event.preventDefault()}
       >

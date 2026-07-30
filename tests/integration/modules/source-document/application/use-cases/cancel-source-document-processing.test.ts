@@ -88,6 +88,11 @@ describe("cancel source-document processing", () => {
       inheritEvidence: true,
     });
 
+    await db
+      .update(sourceDocuments)
+      .set({ title: "Edited during retry" })
+      .where(eq(sourceDocuments.id, active.document.id));
+
     const result = await cancelPendingRevision(ledgerId, active.document.id, retry.revision.id);
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, active.document.id),
@@ -95,6 +100,7 @@ describe("cancel source-document processing", () => {
     expect(result).toMatchObject({ status: "cancelled", restoredActiveResult: true });
     expect(document?.activeRevisionId).toBe(active.revision.id);
     expect(document?.pendingRevisionId).toBeNull();
+    expect(document?.title).toBe("Edited during retry");
   });
 
   it("abandons a candidate when completion wins the cancellation race", async () => {
@@ -121,6 +127,10 @@ describe("cancel source-document processing", () => {
     await expect(
       cancelPendingRevision(ledgerId, active.document.id, retry.revision.id)
     ).resolves.toMatchObject({ status: "abandoned", restoredActiveResult: true });
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, active.document.id),
+    });
+    expect(document?.title).toBe("Original");
   });
 
   it("keeps pointers consistent when cancellation races candidate storage", async () => {

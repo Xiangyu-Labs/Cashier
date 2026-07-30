@@ -180,15 +180,15 @@ export async function storeCandidateRevision(
     await insertRevisionEntries(tx, { ledgerId, sourceDocumentId, revisionId, entries });
     await tx
       .update(sourceDocumentRevisions)
-      .set({ outcome: "completed", finalizedAt: now, anomalyReason: null, failureCode: null })
+      .set({
+        title: title ?? null,
+        outcome: "completed",
+        finalizedAt: now,
+        anomalyReason: null,
+        failureCode: null,
+      })
       .where(eq(sourceDocumentRevisions.id, revisionId));
-    // Do NOT update activeRevisionId or clear pendingRevisionId
-    if (title != null && title !== "") {
-      await tx
-        .update(sourceDocuments)
-        .set({ title, updatedAt: now })
-        .where(activeDocumentWhere(ledgerId, sourceDocumentId));
-    }
+    // The candidate title is committed only if this revision is accepted.
     return true;
   });
 }
@@ -260,6 +260,7 @@ export async function acceptCandidateRevision(
       .set({
         activeRevisionId: candidateRevisionId,
         pendingRevisionId: null,
+        ...(revision.title == null || revision.title === "" ? {} : { title: revision.title }),
         updatedAt: now,
       })
       .where(
@@ -759,7 +760,13 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       const now = new Date();
       await tx
         .update(sourceDocumentRevisions)
-        .set({ outcome: "completed", finalizedAt: now, anomalyReason: null, failureCode: null })
+        .set({
+          title: input.title ?? null,
+          outcome: "completed",
+          finalizedAt: now,
+          anomalyReason: null,
+          failureCode: null,
+        })
         .where(eq(sourceDocumentRevisions.id, input.revisionId));
       await tx
         .update(sourceDocuments)

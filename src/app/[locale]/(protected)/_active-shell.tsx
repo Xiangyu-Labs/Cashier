@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { SwipeTabSurface } from "@/modules/workspace/ui/SwipeTabSurface";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
-import { useLedgerTabs } from "@/modules/workspace/hooks";
+import { useLedgerTabs, useTabScrollRestoration } from "@/modules/workspace/hooks";
 import { ShellControllerProvider, useShellController } from "./shell-controller";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { preloadFeatureMessages } from "@/i18n/use-feature-messages";
@@ -61,6 +61,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
     searchParams,
     pathname,
   });
+  useTabScrollRestoration(ledgerId, activeTab);
 
   const preloadTabCode = useCallback(
     (tab: LedgerTab) => {

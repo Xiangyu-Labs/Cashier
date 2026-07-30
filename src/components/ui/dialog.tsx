@@ -5,7 +5,16 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+const DialogDepthContext = React.createContext(0);
+
+function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const parentDepth = React.useContext(DialogDepthContext);
+  return (
+    <DialogDepthContext.Provider value={parentDepth + 1}>
+      <DialogPrimitive.Root {...props} />
+    </DialogDepthContext.Provider>
+  );
+}
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
@@ -16,39 +25,68 @@ const DialogClose = DialogPrimitive.Close;
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-modal-overlay bg-black/50  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-));
+>(({ className, style, ...props }, ref) => {
+  const depth = React.useContext(DialogDepthContext) - 1;
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      className={cn(
+        "fixed inset-0 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        className
+      )}
+      style={{ ...style, zIndex: 100 + depth * 20 }}
+      {...props}
+    />
+  );
+});
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+export type DialogLayout = "modal" | "sheet" | "detail" | "viewer";
+
+const dialogLayoutClasses: Record<DialogLayout, string> = {
+  modal:
+    "left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+  sheet:
+    "bottom-0 left-0 w-full max-w-none rounded-t-lg data-[state=closed]:slide-out-to-bottom-3 data-[state=open]:slide-in-from-bottom-3 sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+  detail:
+    "inset-0 h-[100dvh] w-screen max-w-none rounded-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+  viewer: "inset-0 h-[100dvh] w-screen max-w-none rounded-none",
+};
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    variant: DialogLayout;
     hideCloseButton?: boolean;
     onExitComplete?: () => void;
   }
 >(
   (
-    { className, children, hideCloseButton = false, onExitComplete, onAnimationEnd, ...props },
+    {
+      className,
+      children,
+      variant,
+      hideCloseButton = false,
+      onExitComplete,
+      onAnimationEnd,
+      style,
+      ...props
+    },
     ref
   ) => {
     const tCommon = useTranslations("Common");
+    const depth = React.useContext(DialogDepthContext) - 1;
     return (
       <DialogPortal>
         <DialogOverlay className="duration-200" />
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed bottom-0 left-0 z-modal grid w-full max-w-none gap-4 border border-border bg-surface p-6 shadow-modal duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-3 data-[state=open]:slide-in-from-bottom-3 sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+            "fixed grid gap-4 border border-border bg-surface p-6 shadow-modal duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            dialogLayoutClasses[variant],
             className
           )}
+          style={{ ...style, zIndex: 110 + depth * 20 }}
           onAnimationEnd={(event) => {
             onAnimationEnd?.(event);
             if (

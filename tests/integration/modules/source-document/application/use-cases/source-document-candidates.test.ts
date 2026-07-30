@@ -261,6 +261,15 @@ describe("source document candidates", () => {
     const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
       await setupDocumentWithCandidate(db, ledgerId);
 
+    const pendingDocument = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    const candidateRevision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, candidateRevisionId),
+    });
+    expect(pendingDocument?.title).toBe("Original");
+    expect(candidateRevision?.title).toBe("Updated Title");
+
     // Accept the candidate
     const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
     expect(accepted).toBe(true);
@@ -271,6 +280,7 @@ describe("source document candidates", () => {
     });
     expect(document?.activeRevisionId).toBe(candidateRevisionId);
     expect(document?.pendingRevisionId).toBeNull();
+    expect(document?.title).toBe("Updated Title");
 
     // Verify: old active entries are soft-deleted
     const oldEntries = await db.query.ledgerEntries.findMany({
@@ -318,6 +328,11 @@ describe("source document candidates", () => {
     const { sourceDocumentId, originalActiveRevisionId, candidateRevisionId } =
       await setupDocumentWithCandidate(db, ledgerId);
 
+    await db
+      .update(sourceDocuments)
+      .set({ title: "User edited while reviewing" })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+
     // Abandon the candidate
     const abandoned = await abandonCandidateRevision(
       ledgerId,
@@ -332,6 +347,7 @@ describe("source document candidates", () => {
     });
     expect(document?.activeRevisionId).toBe(originalActiveRevisionId);
     expect(document?.pendingRevisionId).toBeNull();
+    expect(document?.title).toBe("User edited while reviewing");
 
     // Verify: candidate revision is marked as abandoned
     const candidateRevision = await db.query.sourceDocumentRevisions.findFirst({
@@ -349,6 +365,30 @@ describe("source document candidates", () => {
     });
     expect(activeEntries).toHaveLength(1);
     expect(activeEntries[0]?.itemName).toBe("Lunch");
+  });
+
+  it("preserves the current title when accepting a candidate with an empty title", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "candidate-empty-title");
+    const { sourceDocumentId, candidateRevisionId } = await setupDocumentWithCandidate(
+      db,
+      ledgerId
+    );
+    await db
+      .update(sourceDocumentRevisions)
+      .set({ title: null })
+      .where(eq(sourceDocumentRevisions.id, candidateRevisionId));
+    await db
+      .update(sourceDocuments)
+      .set({ title: "Current title" })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+
+    await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
+
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    expect(document?.title).toBe("Current title");
   });
 
   it("abandon candidate is idempotent when already abandoned", async () => {

@@ -117,7 +117,7 @@ describe("UI Core Components", () => {
         render(
           <Dialog open>
             <DialogTrigger />
-            <DialogContent>
+            <DialogContent variant="modal">
               <p>Dialog body</p>
             </DialogContent>
           </Dialog>
@@ -126,6 +126,27 @@ describe("UI Core Components", () => {
         const expected = locale === "en" ? "Close" : "关闭";
         const closeButton = screen.getByRole("button", { name: expected });
         expect(closeButton).toBeDefined();
+      });
+
+      it("increments the layer for a nested task dialog", () => {
+        render(
+          <Dialog open>
+            <DialogContent variant="detail">
+              <p>Detail body</p>
+              <Dialog open>
+                <DialogContent variant="modal">
+                  <p>Task body</p>
+                </DialogContent>
+              </Dialog>
+            </DialogContent>
+          </Dialog>
+        );
+
+        const detail = screen.getByText("Detail body").parentElement;
+        const task = screen.getByText("Task body").parentElement;
+        expect(detail?.style.zIndex).toBe("110");
+        expect(task?.style.zIndex).toBe("130");
+        expect(task?.className).toContain("top-1/2");
       });
     });
   });

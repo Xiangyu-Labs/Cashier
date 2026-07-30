@@ -522,6 +522,7 @@ export function EntryFilterPanel({
           {trigger}
           <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent
+              variant="sheet"
               className="max-h-[calc(100svh-1rem)] overflow-y-auto rounded-b-none rounded-t-lg p-0 pb-[env(safe-area-inset-bottom)]"
               aria-describedby={undefined}
             >

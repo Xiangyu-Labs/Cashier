@@ -66,6 +66,7 @@ export function SourceDocumentImageModal({
       }}
     >
       <DialogContent
+        variant="viewer"
         aria-describedby={undefined}
         className="flex h-[90vh] w-[95vw] max-w-5xl flex-col p-0 [&>button]:hidden"
         onOpenAutoFocus={() => {
