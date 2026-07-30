@@ -1,10 +1,14 @@
 "use client";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { cn } from "@/lib/utils";
 import type { Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,25 +22,99 @@ interface CurrencySectionProps {
   onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
 }
 
-export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+function PreferredCurrenciesMenu({
+  initialCurrencies,
+  onUpdateSettings,
+}: {
+  initialCurrencies: string[];
+  onUpdateSettings: CurrencySectionProps["onUpdateSettings"];
+}) {
   const t = useTranslations("Settings");
-  const selectedCurrencies = settings.currencies ?? [];
-  const mainCurrency = settings.mainCurrency ?? "CNY";
-  const [pendingMainCurrency, setPendingMainCurrency] = useState<string | null>(null);
+  const [selectedCurrencies, setSelectedCurrencies] = useState(initialCurrencies);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const filteredCurrencies = SUPPORTED_CURRENCIES.filter((currency) =>
+    currency.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   const toggleCurrency = (currency: string) => {
-    const isSelected = selectedCurrencies.includes(currency);
-    const newCurrencies = isSelected
+    const newCurrencies = selectedCurrencies.includes(currency)
       ? selectedCurrencies.filter((current) => current !== currency)
       : [...selectedCurrencies, currency];
-
-    onUpdateSettings({ currencies: newCurrencies });
+    setSelectedCurrencies(newCurrencies);
+    void onUpdateSettings({ currencies: newCurrencies });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 justify-between sm:flex-row sm:items-center">
-        <div>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setSearch("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between font-normal sm:w-64"
+          aria-label={t("preferredCurrencies")}
+        >
+          <span className="truncate">
+            {selectedCurrencies.length === 0
+              ? t("preferredCurrenciesNone")
+              : t("preferredCurrenciesSummary", {
+                  currencies: selectedCurrencies.slice(0, 3).join(", "),
+                  count: selectedCurrencies.length,
+                })}
+          </span>
+          <ChevronDown className="text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-2">
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("preferredCurrenciesSearch")}
+            aria-label={t("preferredCurrenciesSearch")}
+            className="h-10 pl-9"
+          />
+        </div>
+        <div className="max-h-64 overflow-y-auto">
+          {filteredCurrencies.map((currency) => {
+            const isSelected = selectedCurrencies.includes(currency);
+            return (
+              <label
+                key={currency}
+                className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-surface2"
+              >
+                <Checkbox checked={isSelected} onCheckedChange={() => toggleCurrency(currency)} />
+                <span>{currency}</span>
+              </label>
+            );
+          })}
+          {filteredCurrencies.length === 0 ? (
+            <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+              {t("preferredCurrenciesNoResults")}
+            </p>
+          ) : null}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+  const t = useTranslations("Settings");
+  const settingsCurrencies = settings.currencies ?? [];
+  const mainCurrency = settings.mainCurrency ?? "CNY";
+  const [pendingMainCurrency, setPendingMainCurrency] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-sm font-medium text-text">{t("mainCurrency")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("mainCurrencyDesc")}</p>
         </div>
@@ -70,32 +148,16 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
 
       <div className="h-px bg-border" />
 
-      <div className="space-y-4">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-sm font-medium text-text">{t("preferredCurrencies")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("preferredCurrenciesDesc")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {SUPPORTED_CURRENCIES.map((currency) => {
-            const isSelected = selectedCurrencies.includes(currency);
-
-            return (
-              <button
-                key={`preferred-${currency}`}
-                type="button"
-                onClick={() => toggleCurrency(currency)}
-                className={cn(
-                  "min-h-11 rounded-lg border px-4 py-2 text-sm font-medium transition-all",
-                  isSelected
-                    ? "border-primary bg-primary text-white shadow-sm"
-                    : "border-border bg-surface text-muted-foreground hover:border-primary/50"
-                )}
-                aria-pressed={isSelected}
-              >
-                {currency}
-              </button>
-            );
-          })}
-        </div>
+        <PreferredCurrenciesMenu
+          key={settingsCurrencies.join(",")}
+          initialCurrencies={settingsCurrencies}
+          onUpdateSettings={onUpdateSettings}
+        />
       </div>
     </div>
   );

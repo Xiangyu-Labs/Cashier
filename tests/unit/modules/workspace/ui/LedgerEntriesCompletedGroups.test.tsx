@@ -32,13 +32,11 @@ describe("LedgerEntriesUnifiedGroups", () => {
       <LedgerEntriesUnifiedGroups
         streamGroups={[group]}
         mainCurrency="CNY"
-        onViewLedgerEntry={vi.fn()}
         onViewSourceDetail={vi.fn()}
         onDeleteSourceConfirm={vi.fn()}
         isSelectionMode={false}
         selectedIds={[]}
         onToggleSelection={vi.fn()}
-        collapseEntriesDefault={false}
         noRecordsText="No records"
         getItemProps={() => ({})}
       />

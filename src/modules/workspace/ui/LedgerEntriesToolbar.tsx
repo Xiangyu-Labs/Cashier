@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { type StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EntriesToolbarShell } from "./EntriesToolbarShell";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -79,7 +79,13 @@ export function LedgerEntriesToolbar({
   };
 
   return (
-    <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-2 py-2 sm:mb-4">
+    <EntriesToolbarShell
+      totalLabel={
+        !isSelectionMode
+          ? `${filteredTotalLabel} ${formatCurrencyAmount(filteredTotal, mainCurrency, locale)}`
+          : undefined
+      }
+    >
       <Button
         variant="ghost"
         size="icon"
@@ -181,11 +187,6 @@ export function LedgerEntriesToolbar({
         />
       )}
 
-      {!isSelectionMode && (
-        <AmountText variant="summary" className="ml-auto">
-          {filteredTotalLabel} {formatCurrencyAmount(filteredTotal, mainCurrency, locale)}
-        </AmountText>
-      )}
-    </div>
+    </EntriesToolbarShell>
   );
 }

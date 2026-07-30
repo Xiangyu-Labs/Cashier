@@ -44,7 +44,6 @@ export interface LedgerMetadata {
     aiLanguage?: string;
     currencies?: string[];
     mainCurrency?: string;
-    collapseEntriesDefault?: boolean;
     aiCustomPrompt?: string;
     timeZone?: string | null;
   };

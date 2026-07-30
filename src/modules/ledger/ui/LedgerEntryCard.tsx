@@ -1,24 +1,12 @@
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EntryCardShell } from "@/components/entry-card-shell";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
 import { AmountDisplay } from "@/modules/currency/ui";
 
-// Card styling variants
-const cardVariants = cva("transition-all", {
-  variants: {
-    status: {
-      default: "hover:border-primary/50",
-    },
-  },
-  defaultVariants: {
-    status: "default",
-  },
-});
 import { useTranslations } from "next-intl";
 
 interface LedgerEntryCardProps {
@@ -45,14 +33,13 @@ export function LedgerEntryCard({
   const tSourceDocumentCard = useTranslations("SourceDocumentCard");
 
   return (
-    <Card
-      className={cn(
-        cardVariants({ status: "default" }),
-        isSelected && "border-primary bg-primary/5",
-        className
-      )}
+    <EntryCardShell
+      selected={isSelected}
+      interactive={onView != null || selectionMode}
+      className={className}
+      data-testid="ledger-entry-card-root"
     >
-      <CardContent className="py-2.5 px-3">
+      <div className="px-3 py-3 sm:px-4">
         <div
           className={cn(
             (onView || selectionMode) && "cursor-pointer hover:opacity-80 transition-opacity"
@@ -133,7 +120,7 @@ export function LedgerEntryCard({
             />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </EntryCardShell>
   );
 }

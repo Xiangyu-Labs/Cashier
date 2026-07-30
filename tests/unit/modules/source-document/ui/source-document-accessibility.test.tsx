@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ProcessingStatus } from "@/modules/source-document/ui/processing-status";
 import { SourceDocumentImageModal } from "@/modules/source-document/ui/SourceDocumentImageModal";
-import { SourceDocumentCardPreview } from "@/modules/source-document/ui/SourceDocumentCardPreview";
 
 function ImageDialogHarness() {
   const [open, setOpen] = useState(false);
@@ -57,27 +56,4 @@ describe("source document accessibility", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("opens image previews from the keyboard", async () => {
-    const user = userEvent.setup();
-    const onViewDetails = vi.fn();
-    render(
-      <SourceDocumentCardPreview
-        text=""
-        images={[
-          {
-            id: "11111111-1111-4111-8111-111111111111",
-            contentType: "image/png",
-            byteSize: 1,
-            originalFilename: null,
-          },
-        ]}
-        onViewDetails={onViewDetails}
-      />
-    );
-
-    const preview = screen.getByRole("button", { name: /image 1|图片 1/i });
-    preview.focus();
-    await user.keyboard("{Enter}");
-    expect(onViewDetails).toHaveBeenCalledTimes(1);
-  });
 });

@@ -221,13 +221,35 @@ export function DetailsTab({
           <DetailsToolbar
             {...(!isSelectionMode
               ? {
-                  totalLabel: formatCurrencyAmount(
-                    Number(monthStats.mainTotal),
-                    monthStats.mainCurrency,
-                    locale
-                  ),
+                  totalLabel: `${tFilter("filteredTotal")} ${formatCurrencyAmount(
+                    Number(monthStats.mainTotal), monthStats.mainCurrency, locale
+                  )}`,
                 }
               : {})}
+            batchActions={
+              isSelectionMode ? (
+                <LedgerEntriesBatchActionToolbar
+                  variant="inline"
+                  selectedCount={selectedIds.length}
+                  totalCount={entries.length}
+                  isAllSelected={isAllSelected}
+                  hasMoreData={hasNextPage}
+                  onSelectAll={selectAll}
+                  onClearSelection={clearSelection}
+                  categories={categories}
+                  preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+                  onChangeCategory={async (categoryId) => {
+                    await batchUpdate.mutateAsync({ categoryId });
+                  }}
+                  onChangeCurrency={async (currency) => {
+                    await batchUpdate.mutateAsync({ currency });
+                  }}
+                  onChangeDate={() => previewDate.mutate()}
+                  onDelete={() => setDeleteDialogOpen(true)}
+                  isProcessing={batchPending}
+                />
+              ) : undefined
+            }
           >
             <Button
               variant="ghost"
@@ -255,28 +277,6 @@ export function DetailsTab({
               />
             )}
           </DetailsToolbar>
-          {isSelectionMode && (
-            <LedgerEntriesBatchActionToolbar
-              variant="inline"
-              selectedCount={selectedIds.length}
-              totalCount={entries.length}
-              isAllSelected={isAllSelected}
-              hasMoreData={hasNextPage}
-              onSelectAll={selectAll}
-              onClearSelection={clearSelection}
-              categories={categories}
-              preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
-              onChangeCategory={async (categoryId) => {
-                await batchUpdate.mutateAsync({ categoryId });
-              }}
-              onChangeCurrency={async (currency) => {
-                await batchUpdate.mutateAsync({ currency });
-              }}
-              onChangeDate={() => previewDate.mutate()}
-              onDelete={() => setDeleteDialogOpen(true)}
-              isProcessing={batchPending}
-            />
-          )}
         </>
       }
     >

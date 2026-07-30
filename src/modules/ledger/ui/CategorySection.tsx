@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Pencil, RefreshCw, Settings2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
@@ -109,7 +110,6 @@ export function CategorySection({
         </div>
         {!managing ? (
           <Button type="button" variant="outline" size="sm" onClick={enterManagement}>
-            <Settings2 className="mr-1.5 h-4 w-4" />
             {t("manageCategories")}
           </Button>
         ) : null}
@@ -150,14 +150,16 @@ export function CategorySection({
                   <span className="text-[10px] text-muted">{t("generatingMetadata")}</span>
                 ) : null}
                 {failedCategoryIds.has(category.id) && onRetryMetadata != null ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onRetryMetadata(category.id)}
-                    className="inline-flex items-center gap-1 text-[10px] text-danger"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] text-danger"
                   >
                     <RefreshCw className="h-3 w-3" />
                     {t("retryMetadata")}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               {category.description ? (
@@ -289,7 +291,7 @@ export function CategorySection({
                   aria-label={t("categoryName")}
                 />
               </div>
-              <textarea
+              <Textarea
                 value={editDraft.description}
                 onChange={(event) =>
                   setEditDraft((draft) =>
@@ -297,7 +299,7 @@ export function CategorySection({
                   )
                 }
                 aria-label={t("categoryDescription")}
-                className="min-h-24 w-full rounded-md border border-border bg-bg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="min-h-24 w-full"
               />
             </div>
           ) : null}

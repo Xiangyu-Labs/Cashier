@@ -21,7 +21,6 @@ interface OfflineSnapshotSyncProps {
   ledgerId: string;
   locale: string;
   mainCurrency: string;
-  collapseEntriesDefault: boolean;
   timeZone: string | null;
   preferredCurrencies: string[];
   categories: EntryCategory[];
@@ -112,7 +111,6 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     preferredCurrencies: input.preferredCurrencies,
     categories: input.categories,
     ledgerSettings: {
-      collapseEntriesDefault: input.collapseEntriesDefault,
       timeZone: input.timeZone,
     },
     items,
@@ -129,7 +127,6 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
     ledgerId,
     locale,
     mainCurrency,
-    collapseEntriesDefault,
     timeZone,
     preferredCurrencies,
     categories,
@@ -144,7 +141,6 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
           ledgerId,
           locale,
           mainCurrency,
-          collapseEntriesDefault,
           timeZone,
           preferredCurrencies,
           categories,
@@ -165,7 +161,6 @@ export function OfflineSnapshotSync(props: OfflineSnapshotSyncProps) {
     };
   }, [
     categories,
-    collapseEntriesDefault,
     ledgerId,
     locale,
     mainCurrency,

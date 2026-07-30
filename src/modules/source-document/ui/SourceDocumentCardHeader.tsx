@@ -7,7 +7,6 @@ import type {
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import { memo } from "react";
 import {
-  ChevronDown,
   CircleStop,
   MoreVertical,
   Pencil,
@@ -15,7 +14,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,13 +25,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCivilDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
-import type { DateProvenance } from "@/modules/source-document/stream-grouping";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -41,7 +38,6 @@ interface SourceDocumentCardHeaderProps {
   errorCode?: ApplicationErrorCode | ProcessingFailureCode | null | undefined;
   ledgerEntries: LedgerEntry[];
   mainCurrency: string;
-  isExpanded: boolean;
   isRetrying: boolean;
   isCancelling: boolean;
   isAbandoning: boolean;
@@ -49,10 +45,6 @@ interface SourceDocumentCardHeaderProps {
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
-  /** Date provenance from the unified stream grouping model. */
-  dateProvenance?: DateProvenance;
-  onToggleExpanded: () => void;
-  onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
@@ -85,7 +77,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   errorCode,
   ledgerEntries,
   mainCurrency,
-  isExpanded,
   isRetrying,
   isCancelling,
   isAbandoning,
@@ -93,9 +84,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isSelected,
   supportedActions,
   showActions = true,
-  dateProvenance,
-  onToggleExpanded,
-  onViewDetails,
   onToggleSelect,
   onDirectRetry,
   onCancelProcessing,
@@ -107,7 +95,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const tCommon = useTranslations("Common");
   const tActions = useTranslations("CandidateAction");
   const tDiag = useTranslations("DiagnosticCode");
-  const locale = useLocale();
 
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
@@ -130,28 +117,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
   const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
 
-  // Build date label from provenance
-  const dateLabel = (() => {
-    if (dateProvenance === "submitted") {
-      const d = new Date(sourceDocument.createdAt);
-      return `${t("submittedOn")} ${d.toLocaleDateString(locale, { month: "long", day: "numeric" })}`;
-    }
-    if (dateProvenance === "unknown") {
-      return t("dateUnknown");
-    }
-    const entryDate = sourceDocument.entryDate;
-    if (entryDate != null && entryDate !== "") {
-      return formatCivilDate(entryDate, locale, {
-        month: "long",
-        day: "numeric",
-      });
-    }
-    const d = new Date(sourceDocument.createdAt);
-    return `${t("submittedOn")} ${d.toLocaleDateString(locale, { month: "long", day: "numeric" })}`;
-  })();
-
   return (
-    <div className="flex items-center gap-1 px-3 py-2.5 sm:px-4">
+    <div className="flex min-h-[68px] items-center gap-3 px-3 py-3 sm:px-4">
       {selectionMode && (
         <div className="mr-2 shrink-0" onClick={(event) => event.stopPropagation()}>
           <Checkbox
@@ -162,47 +129,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         </div>
       )}
 
-      <button
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggleExpanded();
-        }}
-        className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:-ml-1.5 sm:h-8 sm:w-8"
-        aria-label={isExpanded ? t("collapse") : t("expand")}
-      >
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 transition-transform text-muted-foreground hover:text-text",
-            isExpanded && "rotate-180"
-          )}
-        />
-      </button>
-
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          if (!selectionMode) onViewDetails?.();
-        }}
-        disabled={selectionMode || onViewDetails == null}
-        className={cn(
-          "flex min-h-11 flex-1 items-center gap-2 overflow-hidden rounded px-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8",
-          onViewDetails && !selectionMode && "cursor-pointer hover:bg-accent/5 active:bg-accent/10"
-        )}
-      >
-        <span className="hidden sm:inline text-sm font-medium shrink-0">
-          <DateDisplay
-            dateLabel={dateLabel}
-            {...(dateProvenance !== undefined ? { dateProvenance } : {})}
-            t={t}
-          />
-        </span>
+      <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
         {status !== "processing" &&
           status !== "failed" &&
           sourceDocument.title != null &&
           sourceDocument.title !== "" && (
             <>
-              <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
               <span className="text-sm font-semibold text-text truncate">
                 {sourceDocument.title}
               </span>
@@ -213,7 +145,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             {t("quickEntry")}
           </span>
         )}
-      </button>
+      </div>
 
       <div className="flex items-center gap-2 shrink-0">
         {shouldShowProcessingStatus && (
@@ -294,33 +226,3 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
     </div>
   );
 });
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function DateDisplay({
-  dateLabel,
-  dateProvenance,
-  t,
-}: {
-  dateLabel: string;
-  dateProvenance?: DateProvenance;
-  t: ReturnType<typeof useTranslations<"SourceDocumentCard">>;
-}) {
-  if (dateProvenance === "unknown") {
-    return (
-      <span className="text-muted-foreground italic" title={t("dateUnknown")}>
-        {t("dateUnknown")}
-      </span>
-    );
-  }
-  if (dateProvenance === "submitted") {
-    return (
-      <span className="text-muted-foreground" title={t("submittedDateTitle")}>
-        {dateLabel}
-      </span>
-    );
-  }
-  return <span className="text-muted-foreground">{dateLabel}</span>;
-}

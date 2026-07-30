@@ -31,7 +31,6 @@ export interface OfflineLedgerSnapshot {
   preferredCurrencies?: string[];
   categories?: EntryCategory[];
   ledgerSettings?: {
-    collapseEntriesDefault: boolean;
     timeZone: string | null;
   };
   items: SourceDocumentListItemDto[];

@@ -16,7 +16,6 @@ import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 export interface UnifiedStreamGroupProps {
   streamGroups: UnifiedStreamGroup[];
   mainCurrency: string;
-  onViewLedgerEntry: (entry: LedgerEntry) => void;
   onViewSourceDetail: (group: {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
@@ -26,7 +25,6 @@ export interface UnifiedStreamGroupProps {
   isSelectionMode: boolean;
   selectedIds: string[];
   onToggleSelection: (id: string) => void;
-  collapseEntriesDefault: boolean;
   noRecordsText: string;
   getItemProps: () => Record<string, unknown>;
   timeZone?: string;
@@ -36,14 +34,12 @@ export interface UnifiedStreamGroupProps {
 export function LedgerEntriesUnifiedGroups({
   streamGroups,
   mainCurrency,
-  onViewLedgerEntry,
   onViewSourceDetail,
   onEditRetry,
   onDeleteSourceConfirm,
   isSelectionMode,
   selectedIds,
   onToggleSelection,
-  collapseEntriesDefault,
   noRecordsText,
   getItemProps,
   timeZone,
@@ -94,7 +90,6 @@ export function LedgerEntriesUnifiedGroups({
                       sourceDocument={item.sourceDocument}
                       ledgerEntries={item.ledgerEntries}
                       mainCurrency={mainCurrency}
-                      onViewLedgerEntry={onViewLedgerEntry}
                       onViewDetails={() =>
                         onViewSourceDetail({
                           sourceDocument: item.sourceDocument as SourceDocument,
@@ -114,8 +109,6 @@ export function LedgerEntriesUnifiedGroups({
                       selectionMode={isSelectionMode}
                       isSelected={selectedIds.includes(item.sourceDocument.id)}
                       onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
-                      defaultExpanded={!collapseEntriesDefault}
-                      dateProvenance={item.dateProvenance}
                       readOnly={readOnly}
                     />
                   </motion.div>

@@ -40,7 +40,6 @@ export const updateLedgerInputSchema = strictObjectSchema({
     aiLanguage: z.string().max(32).optional(),
     currencies: z.array(currencyCodeSchema).max(32).optional(),
     mainCurrency: optionalCurrencyCodeSchema,
-    collapseEntriesDefault: z.boolean().optional(),
     aiCustomPrompt: z.string().max(2000).optional(),
     timeZone: z
       .string()

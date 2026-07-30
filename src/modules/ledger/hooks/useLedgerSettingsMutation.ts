@@ -18,7 +18,6 @@ export interface UpdateLedgerData {
   currencies?: string[];
   mainCurrency?: string;
   aiLanguage?: string;
-  collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
   timeZone?: string | null;
 }
@@ -44,7 +43,6 @@ export function useLedgerSettingsMutation({
         currencies,
         mainCurrency,
         aiLanguage,
-        collapseEntriesDefault,
         aiCustomPrompt,
         timeZone,
       } = data;
@@ -54,9 +52,6 @@ export function useLedgerSettingsMutation({
       if (currencies !== undefined) settings.currencies = currencies;
       if (mainCurrency !== undefined) settings.mainCurrency = mainCurrency;
       if (aiLanguage !== undefined) settings.aiLanguage = aiLanguage;
-      if (collapseEntriesDefault !== undefined) {
-        settings.collapseEntriesDefault = collapseEntriesDefault;
-      }
       if (aiCustomPrompt !== undefined) settings.aiCustomPrompt = aiCustomPrompt;
       if (timeZone !== undefined) settings.timeZone = timeZone;
 

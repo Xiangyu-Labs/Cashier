@@ -49,7 +49,6 @@ describe("ledger single-owner race and rollback", () => {
         aiLanguage: "zh-CN",
         currencies: ["CNY", "USD"],
         mainCurrency: "CNY",
-        collapseEntriesDefault: false,
         aiCustomPrompt: "",
       },
       categories: [

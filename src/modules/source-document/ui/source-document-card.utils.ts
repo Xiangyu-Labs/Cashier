@@ -1,36 +1,10 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { parseAmount } from "@/lib/formatters";
 
-import type {
-  SourceDocumentCardPreviewData,
-  SourceDocumentCardTotals,
-} from "./source-document-card.types";
+import type { SourceDocumentCardTotals } from "./source-document-card.types";
 
 function getEntryCurrency(entry: LedgerEntry, mainCurrency: string): string {
   return entry.currency != null && entry.currency !== "" ? entry.currency : mainCurrency;
-}
-
-export function getSourceDocumentPreview(
-  sourceDocument: SourceDocument | SourceDocumentLight
-): SourceDocumentCardPreviewData {
-  return {
-    text: sourceDocument.text ?? "",
-    images: sourceDocument.files,
-  };
-}
-
-export function sortSourceDocumentEntries(entries: LedgerEntry[]): LedgerEntry[] {
-  return [...entries].sort((a, b) => {
-    const aOrder = a.category?.sortOrder ?? 999999;
-    const bOrder = b.category?.sortOrder ?? 999999;
-
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-
-    return parseAmount(b.amount) - parseAmount(a.amount);
-  });
 }
 
 export function buildSourceDocumentCardTotals(

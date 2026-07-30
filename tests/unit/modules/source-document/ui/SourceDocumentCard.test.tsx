@@ -35,7 +35,7 @@ const sourceDocument: SourceDocument = {
 };
 
 describe("SourceDocumentCard interactions", () => {
-  it("opens details from the card surface and only once from the header button", () => {
+  it("opens details from the card surface", () => {
     const onViewDetails = vi.fn();
     render(
       <SourceDocumentCard
@@ -49,11 +49,11 @@ describe("SourceDocumentCard interactions", () => {
     fireEvent.click(screen.getByTestId("source-document-card-root"));
     expect(onViewDetails).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /receipt/i }));
-    expect(onViewDetails).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: /展开|expand/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
   });
 
-  it("does not open details when the expand control is used", () => {
+  it("does not open details from the actions menu", () => {
     const onViewDetails = vi.fn();
     render(
       <SourceDocumentCard
@@ -64,7 +64,26 @@ describe("SourceDocumentCard interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /展开|expand/i }));
+    fireEvent.click(screen.getByRole("button", { name: "source-document-card-actions" }));
+    expect(onViewDetails).not.toHaveBeenCalled();
+  });
+
+  it("does not open details when its selection checkbox is used", () => {
+    const onViewDetails = vi.fn();
+    const onToggleSelect = vi.fn();
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[]}
+        status="completed"
+        onViewDetails={onViewDetails}
+        selectionMode
+        onToggleSelect={onToggleSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(onToggleSelect).toHaveBeenCalled();
     expect(onViewDetails).not.toHaveBeenCalled();
   });
 });

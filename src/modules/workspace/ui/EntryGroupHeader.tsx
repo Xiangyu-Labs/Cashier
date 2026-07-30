@@ -10,7 +10,7 @@ export function EntryGroupHeader({ title, totalLabel, subtitle }: EntryGroupHead
       <h3 className="min-w-0 text-xs font-medium text-muted-foreground">
         {title}
         {subtitle != null && subtitle !== "" && (
-          <span className="ml-1.5 text-[10px] font-normal italic text-muted-foreground/60">
+          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
             {subtitle}
           </span>
         )}

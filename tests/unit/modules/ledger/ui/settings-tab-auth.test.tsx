@@ -82,7 +82,7 @@ vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 
 describe("SettingsTab account authentication controls", () => {
-  it("renders email and sign-out, but not retired account mutations", () => {
+  it("renders email change and sign-out, but not destructive account mutations", () => {
     const ledger = {
       id: "ledger-1",
       userId: "user-1",
@@ -102,10 +102,9 @@ describe("SettingsTab account authentication controls", () => {
     expect(screen.getAllByText("person@example.com").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: /sign out|退出登录/i })).toBeInTheDocument();
 
-    // Retired commands must be absent
     expect(
-      screen.queryByRole("button", { name: /change email|修改邮箱/i })
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /clear data|清空数据/i })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /delete account|删除账户/i })

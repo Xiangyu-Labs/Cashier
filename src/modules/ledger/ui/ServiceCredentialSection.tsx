@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Trash2, Copy, Plus, Key, Check } from "lucide-react";
+import { Trash2, Copy, Check } from "lucide-react";
 import type { ServiceCredential, CreatedServiceCredentialDto } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -77,8 +77,7 @@ export function ServiceCredentialSection({
           <h3 className="text-sm font-medium text-text">{t("title")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
-          <Plus size={16} />
+        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
           {t("newCredential")}
         </Button>
       </div>
@@ -95,9 +94,6 @@ export function ServiceCredentialSection({
               className="flex items-center justify-between rounded-[var(--radius)] border border-border bg-surface2 p-4"
             >
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="rounded-full bg-surface p-2">
-                  <Key size={16} className="text-primary" />
-                </div>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{credential.name}</div>
                   <div className="truncate font-mono text-xs text-muted">

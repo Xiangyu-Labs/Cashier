@@ -119,7 +119,7 @@ export function PasswordForm({
             {hasPassword ? t("changePasswordButton") : t("setPasswordButton")}
           </Button>
         </DialogTrigger>
-        <DialogContent variant="modal">
+        <DialogContent variant="modal" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {hasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}

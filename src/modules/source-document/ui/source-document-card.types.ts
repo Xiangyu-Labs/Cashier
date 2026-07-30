@@ -1,10 +1,3 @@
-import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
-
-export interface SourceDocumentCardPreviewData {
-  text: string;
-  images: SourceDocumentStoredFileDto[];
-}
-
 export interface SourceDocumentCardCurrencyBreakdown {
   currency: string;
   amount: number;

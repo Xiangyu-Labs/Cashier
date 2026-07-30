@@ -1,22 +1,16 @@
 import type { ReactNode } from "react";
-import { AmountText } from "@/modules/currency/ui";
+import { EntriesToolbarShell } from "./EntriesToolbarShell";
 
 interface DetailsToolbarProps {
   totalLabel?: string;
   children?: ReactNode;
+  batchActions?: ReactNode;
 }
 
-export function DetailsToolbar({ totalLabel, children }: DetailsToolbarProps) {
+export function DetailsToolbar({ totalLabel, children, batchActions }: DetailsToolbarProps) {
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
-        {children}
-        {totalLabel != null && (
-          <AmountText variant="summary" className="ml-auto">
-            {totalLabel}
-          </AmountText>
-        )}
-      </div>
-    </div>
+    <EntriesToolbarShell totalLabel={totalLabel} batchActions={batchActions}>
+      {children}
+    </EntriesToolbarShell>
   );
 }

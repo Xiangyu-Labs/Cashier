@@ -129,12 +129,6 @@ export function OfflineLedgerView() {
         }
       : { period: "all" as const };
 
-  const openEntryDocument = (entry: LedgerEntry) => {
-    setSelected(
-      items.find((item) => item.ledgerEntries?.some((value) => value.id === entry.id)) ?? null
-    );
-  };
-
   return (
     <PullToRefresh
       onRefresh={async () => retry()}
@@ -149,7 +143,7 @@ export function OfflineLedgerView() {
           filters={filters}
           onFiltersChange={setFilters}
           periodParams={periodParams}
-          filteredTotalLabel={zh ? "筛选合计" : "Filtered total"}
+          filteredTotalLabel={zh ? "合计" : "Total"}
           mainCurrency={mainCurrency}
           filteredTotal={totalFor(filtered)}
           onApplyPreset={(preset) =>
@@ -163,7 +157,6 @@ export function OfflineLedgerView() {
       <LedgerEntriesUnifiedGroups
         streamGroups={streamGroups}
         mainCurrency={mainCurrency}
-        onViewLedgerEntry={openEntryDocument}
         onViewSourceDetail={({ sourceDocument }) =>
           setSelected(items.find((item) => item.id === sourceDocument.id) ?? null)
         }
@@ -171,7 +164,6 @@ export function OfflineLedgerView() {
         isSelectionMode={false}
         selectedIds={[]}
         onToggleSelection={() => {}}
-        collapseEntriesDefault={snapshot?.ledgerSettings?.collapseEntriesDefault ?? false}
         noRecordsText={zh ? "暂无已缓存账单" : "No cached transactions"}
         getItemProps={() => ({})}
         {...(snapshot?.ledgerSettings?.timeZone != null

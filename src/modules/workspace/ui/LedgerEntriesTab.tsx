@@ -36,7 +36,6 @@ interface LedgerEntriesTabProps {
   periodParams: PeriodParams;
   onFiltersChange: (filters: EntryFilters) => void;
   advancedFilters?: LedgerAdvancedFilters;
-  collapseEntriesDefault?: boolean;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   onResetFilters: () => void;
   timeZone?: string;
@@ -49,7 +48,6 @@ export function LedgerEntriesTab({
   periodParams,
   onFiltersChange,
   advancedFilters,
-  collapseEntriesDefault = false,
   onApplyPreset,
   onResetFilters,
   timeZone,
@@ -171,13 +169,6 @@ export function LedgerEntriesTab({
     [pushModal, queryClient]
   );
 
-  const handleViewLedgerEntry = useCallback(
-    (entry: LedgerEntry) => {
-      pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
-    },
-    [pushModal]
-  );
-
   const handleDeleteSourceConfirm = useCallback(
     (doc: SourceDocument) =>
       openSourceDocumentDeleteConfirm(doc.id, t("deleteConfirmTitle"), t("deleteConfirmDesc")),
@@ -247,14 +238,12 @@ export function LedgerEntriesTab({
               <LedgerEntriesUnifiedGroups
                 streamGroups={streamGroups}
                 mainCurrency={mainCurrency}
-                onViewLedgerEntry={handleViewLedgerEntry}
                 onViewSourceDetail={handleViewSourceDetail}
                 onEditRetry={setRetrySourceDocument}
                 onDeleteSourceConfirm={handleDeleteSourceConfirm}
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
                 onToggleSelection={toggleSelection}
-                collapseEntriesDefault={collapseEntriesDefault}
                 noRecordsText={tCommon("noRecords")}
                 getItemProps={() => ({})}
                 {...(timeZone != null ? { timeZone } : {})}

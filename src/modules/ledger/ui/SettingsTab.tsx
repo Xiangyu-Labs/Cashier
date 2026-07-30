@@ -17,8 +17,6 @@ import {
   useLedgerSettings,
 } from "@/modules/ledger/hooks";
 import type { Ledger } from "@/modules/ledger/contracts";
-import { Switch } from "@/components/ui/switch";
-import { Monitor, Sun, Moon, LogOut } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -36,6 +34,8 @@ import { updateUserPreferencesAction } from "@/modules/auth/actions";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
 import { clearOfflineData } from "@/modules/offline/offline-store";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -132,9 +132,6 @@ export function SettingsTab({
               <SelectContent>
                 {(["system", "light", "dark"] as const).map((themeName) => (
                   <SelectItem key={themeName} value={themeName}>
-                    {themeName === "system" ? <Monitor /> : null}
-                    {themeName === "light" ? <Sun /> : null}
-                    {themeName === "dark" ? <Moon /> : null}
                     {t(themeKeyMap[themeName])}
                   </SelectItem>
                 ))}
@@ -188,16 +185,6 @@ export function SettingsTab({
         </SettingsSection>
 
         <SettingsSection title={t("bookkeepingRules")}>
-          <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
-            <Switch
-              aria-label={t("collapseEntries")}
-              checked={settingsLedger.metadata?.settings?.collapseEntriesDefault ?? false}
-              onCheckedChange={(checked: boolean) => {
-                updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
-              }}
-              disabled={isPending}
-            />
-          </SettingsField>
           <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
             <Select
               value={settingsLedger.metadata?.settings?.timeZone ?? "auto"}
@@ -281,7 +268,7 @@ export function SettingsTab({
             </Select>
           </SettingsField>
           <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
-            <textarea
+            <Textarea
               defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt ?? ""}
               onBlur={(e) => {
                 const newValue = e.target.value;
@@ -293,16 +280,16 @@ export function SettingsTab({
               disabled={isPending}
               aria-label={t("aiPrompt")}
               placeholder={t("aiPromptPlaceholder")}
-              className="min-h-[100px] w-full resize-y rounded-md border border-border bg-bg p-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+              className="min-h-[100px] w-full resize-y"
             />
           </SettingsField>
         </SettingsSection>
 
         <SettingsSection title={t("account")}>
-          <SettingsField title={ta("emailSection")}>
+          <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
             <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
           </SettingsField>
-          <SettingsField title={ta("passwordSection")}>
+          <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
             <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
           </SettingsField>
           <ServiceCredentialSection
@@ -311,17 +298,16 @@ export function SettingsTab({
             onDeleteCredential={(id) => deleteCredential.mutate(id)}
           />
           <SettingsField title={t("signOut")}>
-            <button
+            <Button
+              variant="outline"
               onClick={async () => {
                 await clearOfflineData(ledger.userId).catch(() => {});
                 await signOut({ callbackUrl: "/login" });
               }}
               disabled={isPending}
-              className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 py-2 transition-colors hover:bg-surface2 disabled:opacity-50"
             >
-              <LogOut className="h-4 w-4" />
-              <span>{t("signOut")}</span>
-            </button>
+              {t("signOut")}
+            </Button>
           </SettingsField>
         </SettingsSection>
       </div>

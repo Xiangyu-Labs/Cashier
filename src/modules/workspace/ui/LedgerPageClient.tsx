@@ -249,7 +249,6 @@ function LedgerPageClientContent({
         ledgerId={ledgerId}
         locale={locale}
         mainCurrency={mainCurrency}
-        collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
         timeZone={fixedTimeZone ?? null}
         preferredCurrencies={preferredCurrencies}
         categories={categories}
@@ -264,7 +263,6 @@ function LedgerPageClientContent({
             periodParams={periodParams}
             onFiltersChange={handleFiltersChange}
             advancedFilters={advancedFilters}
-            collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
             onApplyPreset={applyStreamStatusPreset}
             onResetFilters={resetFilters}
             {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
