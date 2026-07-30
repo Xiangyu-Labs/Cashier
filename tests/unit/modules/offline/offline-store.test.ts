@@ -79,5 +79,25 @@ describe("offline snapshot migration", () => {
       coverageLimit: 1000,
     });
     expect(migrated).not.toHaveProperty("collapseEntriesDefault");
+    expect(migrated.ledgerSettings?.collapseEntriesDefault ?? false).toBe(false);
+  });
+
+  it("preserves the optional collapse preference in v3 snapshots", () => {
+    const snapshot = {
+      key: "user:ledger",
+      schemaVersion: 3 as const,
+      userId: "user",
+      ledgerId: "ledger",
+      ledgerSettings: { timeZone: null, collapseEntriesDefault: true },
+      items: [],
+      syncVersion: "3",
+      recordCount: 0,
+      complete: true,
+      truncated: false,
+      coverageLimit: 1000,
+      lastSyncedAt: "2026-07-30T00:00:00.000Z",
+      fullSyncAt: null,
+    };
+    expect(migrateOfflineSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault).toBe(true);
   });
 });

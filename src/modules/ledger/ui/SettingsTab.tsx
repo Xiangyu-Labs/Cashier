@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { clearOfflineData } from "@/modules/offline/offline-store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -185,6 +186,16 @@ export function SettingsTab({
         </SettingsSection>
 
         <SettingsSection title={t("bookkeepingRules")}>
+          <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
+            <Switch
+              aria-label={t("collapseEntries")}
+              checked={settingsLedger.metadata?.settings?.collapseEntriesDefault ?? false}
+              onCheckedChange={(checked) => {
+                updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
+              }}
+              disabled={isPending}
+            />
+          </SettingsField>
           <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
             <Select
               value={settingsLedger.metadata?.settings?.timeZone ?? "auto"}

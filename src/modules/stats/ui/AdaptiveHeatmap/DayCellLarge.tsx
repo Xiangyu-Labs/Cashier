@@ -40,9 +40,9 @@ export function DayCellLarge({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "w-full min-w-0 aspect-square overflow-hidden rounded-lg transition-all duration-150",
+          "aspect-square w-full min-w-0 overflow-hidden rounded-lg transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
           "flex flex-col items-center justify-center gap-0.5",
-          "hover:scale-[1.02] hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          "hover:ring-1 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         )}
         style={{
           backgroundColor: getHeatmapColor(level),

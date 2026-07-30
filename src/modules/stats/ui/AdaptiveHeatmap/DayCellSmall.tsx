@@ -40,8 +40,8 @@ export function DayCellSmall({
             aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
             onClick={onClick}
             className={cn(
-              "w-3 h-3 rounded-sm transition-all duration-150 flex-shrink-0",
-              "hover:scale-125 hover:ring-1 hover:ring-primary/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              "h-3 w-3 flex-shrink-0 rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+              "hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             )}
             style={{ backgroundColor: getHeatmapColor(level) }}
           />

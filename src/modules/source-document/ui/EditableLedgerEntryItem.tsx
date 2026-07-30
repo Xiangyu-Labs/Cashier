@@ -18,19 +18,22 @@ import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
 import { AmountText, amountTextClassName } from "@/modules/currency/ui";
 
-const itemVariants = cva("flex items-center py-2 px-3 rounded-lg transition-all", {
-  variants: {
-    variant: {
-      default: "bg-surface hover:bg-surface2/50",
-      warning: "bg-warning/5 border border-warning/20",
-      error: "bg-destructive/5 border border-destructive/20",
-      info: "bg-primary/5 border border-primary/20",
+const itemVariants = cva(
+  "flex items-center rounded-lg px-3 py-2 transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+  {
+    variants: {
+      variant: {
+        default: "bg-surface hover:bg-surface2/50",
+        warning: "bg-warning/5 border border-warning/20",
+        error: "bg-destructive/5 border border-destructive/20",
+        info: "bg-primary/5 border border-primary/20",
+      },
     },
-  },
-  defaultVariants: {
-    variant: "default",
-  },
-});
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
 
 export { type EntryEditData };
 

@@ -122,8 +122,8 @@ export function StatsRanking({
                   {/* Progress Bar */}
                   <div className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${percent}%` }}
+                      className="h-full origin-left rounded-full bg-primary transition-transform duration-[var(--motion-expand)] ease-[var(--motion-enter)]"
+                      style={{ transform: `scaleX(${percent / 100})` }}
                     />
                   </div>
 

@@ -451,6 +451,8 @@
     "mainCurrencyChangeConfirm": "Change and recalculate",
     "timeZone": "Ledger time zone",
     "timeZoneDesc": "Used for default dates, ranges, and statistics. Existing entry dates do not change.",
+    "collapseEntries": "Collapse records by default",
+    "collapseEntriesDesc": "Start with each record's details collapsed in the stream.",
     "timeZoneAuto": "Automatic",
     "timeZoneAutoDetected": "Automatic ({timeZone})",
     "preferredCurrencies": "Preferred Currencies",

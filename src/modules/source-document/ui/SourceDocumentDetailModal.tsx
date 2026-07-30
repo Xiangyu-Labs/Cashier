@@ -17,7 +17,6 @@ import {
   Save,
   XCircle,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
@@ -493,30 +492,23 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             </div>
 
             <div className="flex items-center gap-2">
-              <AnimatePresence>
-                {hasPendingChanges && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="flex items-center gap-2"
+              {hasPendingChanges ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="h-9" onClick={discardAllChanges}>
+                    <X className="h-3.5 w-3.5 mr-1.5" />
+                    {t("discardChanges")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-9 gap-1.5 shadow-lg shadow-primary/20"
+                    onClick={handleSaveAll}
+                    disabled={isSaving}
                   >
-                    <Button variant="ghost" size="sm" className="h-9" onClick={discardAllChanges}>
-                      <X className="h-3.5 w-3.5 mr-1.5" />
-                      {t("discardChanges")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-9 gap-1.5 shadow-lg shadow-primary/20"
-                      onClick={handleSaveAll}
-                      disabled={isSaving}
-                    >
-                      <Save className="h-3.5 w-3.5" />
-                      {t("saveChanges", { count: pendingChangesCount })}
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <Save className="h-3.5 w-3.5" />
+                    {t("saveChanges", { count: pendingChangesCount })}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

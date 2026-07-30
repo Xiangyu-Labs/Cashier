@@ -55,5 +55,4 @@ describe("source document accessibility", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
   });
-
 });

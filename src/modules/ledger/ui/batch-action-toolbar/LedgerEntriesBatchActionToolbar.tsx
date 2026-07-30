@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { LedgerEntriesActions } from "./LedgerEntriesActions";
+import { MOTION_DURATION, MOTION_EASING, REDUCED_MOTION_TRANSITION } from "@/lib/motion";
 
 export interface LedgerEntriesBatchActionToolbarProps {
   selectedCount: number;
@@ -46,6 +47,7 @@ export function LedgerEntriesBatchActionToolbar({
   variant = "fixed",
 }: LedgerEntriesBatchActionToolbarProps) {
   const t = useTranslations("BatchActions");
+  const prefersReducedMotion = useReducedMotion();
   const [internalChangingCategory, setInternalChangingCategory] = useState(false);
   const [internalChangingCurrency, setInternalChangingCurrency] = useState(false);
 
@@ -102,10 +104,16 @@ export function LedgerEntriesBatchActionToolbar({
       <AnimatePresence>
         {selectedCount > 0 && (
           <motion.div
-            initial={variant === "fixed" ? { y: 100, opacity: 0 } : { height: 0, opacity: 0 }}
-            animate={variant === "fixed" ? { y: 0, opacity: 1 } : { height: "auto", opacity: 1 }}
-            exit={variant === "fixed" ? { y: 100, opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            initial={prefersReducedMotion ? false : { y: variant === "fixed" ? 12 : 6, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={
+              prefersReducedMotion ? { opacity: 0 } : { y: variant === "fixed" ? 8 : 4, opacity: 0 }
+            }
+            transition={
+              prefersReducedMotion
+                ? REDUCED_MOTION_TRANSITION
+                : { duration: MOTION_DURATION.state, ease: MOTION_EASING.enter }
+            }
             className={containerClasses}
           >
             <div

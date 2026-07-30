@@ -117,7 +117,7 @@ export function OTPInput({
           disabled={disabled}
           className={cn(
             "w-12 h-14 text-center text-2xl font-bold",
-            "transition-all duration-200",
+            "transition-[color,background-color,border-color,opacity] duration-[var(--motion-state)]",
             focusedIndex === index && "ring-2 ring-ring ring-offset-2",
             digit !== " " && "border-primary"
           )}

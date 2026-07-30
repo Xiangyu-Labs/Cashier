@@ -76,10 +76,17 @@
   --space-lg: 24px;
   --space-xl: 32px;
 
-  --motion-fast: 160ms;
-  --motion-base: 200ms;
-  --motion-slow: 240ms;
-  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --motion-press: 100ms;
+  --motion-feedback: 160ms;
+  --motion-state: 200ms;
+  --motion-expand: 280ms;
+  --motion-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --motion-state-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-fast: var(--motion-feedback);
+  --motion-base: var(--motion-state);
+  --motion-slow: var(--motion-expand);
+  --motion-ease: var(--motion-enter);
 
   --background: var(--bg);
   --foreground: var(--text);
@@ -217,7 +224,7 @@ body {
   ::-webkit-scrollbar-thumb {
     background: color-mix(in srgb, var(--muted), transparent 50%);
     border-radius: 10px;
-    transition: background 0.2s ease;
+    transition: background-color var(--motion-state) var(--motion-enter);
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -228,6 +235,12 @@ body {
   /* This is a common premium pattern */
   .subtle-scrollbar {
     scrollbar-gutter: stable;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .fine-pointer-reveal {
+    opacity: 1;
   }
 }
 

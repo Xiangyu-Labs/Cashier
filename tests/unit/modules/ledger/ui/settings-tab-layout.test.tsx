@@ -119,6 +119,7 @@ describe("SettingsTab layout", () => {
     render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
     expect(screen.getByRole("combobox", { name: "主题" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "默认折叠记录" })).not.toBeChecked();
     const timeZoneField = screen.getByRole("heading", { name: "账本时区" }).parentElement
       ?.parentElement;
     await waitFor(() =>

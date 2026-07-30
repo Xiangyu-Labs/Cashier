@@ -76,7 +76,10 @@ export function EmailChangeForm({
   };
 
   return (
-    <div className="flex w-full flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between" data-tab-swipe-ignore>
+    <div
+      className="flex w-full flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between"
+      data-tab-swipe-ignore
+    >
       <span className="min-w-0 truncate text-sm text-muted-foreground">{currentEmail}</span>
       <Dialog
         open={open}
@@ -133,7 +136,11 @@ export function EmailChangeForm({
                 />
               </div>
             ) : null}
-            {error != null ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+            {error != null ? (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={close} disabled={pending}>

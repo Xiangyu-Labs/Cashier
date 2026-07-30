@@ -7,6 +7,7 @@ export interface LedgerSettings {
   aiLanguage?: string;
   currencies?: string[];
   mainCurrency?: string;
+  collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
   timeZone?: string | null;
 }

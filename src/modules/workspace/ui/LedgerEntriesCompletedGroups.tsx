@@ -5,7 +5,6 @@ import { SourceDocumentCard } from "@/modules/source-document/ui";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
-import { AnimatePresence, motion } from "framer-motion";
 import { EntryGroupHeader } from "./EntryGroupHeader";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
@@ -16,6 +15,7 @@ import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 export interface UnifiedStreamGroupProps {
   streamGroups: UnifiedStreamGroup[];
   mainCurrency: string;
+  onViewLedgerEntry?: (entry: LedgerEntry) => void;
   onViewSourceDetail: (group: {
     sourceDocument: SourceDocument;
     ledgerEntries: LedgerEntry[];
@@ -30,11 +30,14 @@ export interface UnifiedStreamGroupProps {
   timeZone?: string;
   readOnly?: boolean;
   filteredSubtotal?: boolean;
+  collapseEntriesDefault?: boolean;
+  offlineImageUrls?: ReadonlyMap<string, string>;
 }
 
 export function LedgerEntriesUnifiedGroups({
   streamGroups,
   mainCurrency,
+  onViewLedgerEntry,
   onViewSourceDetail,
   onEditRetry,
   onDeleteSourceConfirm,
@@ -46,10 +49,12 @@ export function LedgerEntriesUnifiedGroups({
   timeZone,
   readOnly = false,
   filteredSubtotal = false,
+  collapseEntriesDefault = false,
+  offlineImageUrls,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
-      <div className="space-y-6 px-2 pt-2">
+      <div className="space-y-6 pt-2">
         <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-2">
           <span>{noRecordsText}</span>
         </div>
@@ -58,69 +63,52 @@ export function LedgerEntriesUnifiedGroups({
   }
 
   return (
-    <div className="space-y-6 px-2 pt-2">
-      <AnimatePresence initial={false} mode="popLayout">
-        {streamGroups.map((dateGroup) => (
-          <motion.div
-            key={dateGroup.date}
-            layout
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-            className="space-y-2"
-          >
-            <UnifiedGroupHeader
-              group={dateGroup}
-              mainCurrency={mainCurrency}
-              {...(timeZone != null ? { timeZone } : {})}
-            />
+    <div className="space-y-6 pt-2">
+      {streamGroups.map((dateGroup) => (
+        <div key={dateGroup.date} className="ledger-list-group space-y-2">
+          <UnifiedGroupHeader
+            group={dateGroup}
+            mainCurrency={mainCurrency}
+            {...(timeZone != null ? { timeZone } : {})}
+          />
 
-            <div className="space-y-4">
-              <AnimatePresence initial={false} mode="popLayout">
-                {dateGroup.items.map((item) => (
-                  <motion.div
-                    key={item.sourceDocument.id}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-                    {...getItemProps()}
-                  >
-                    <SourceDocumentCard
-                      sourceDocument={item.sourceDocument}
-                      ledgerEntries={item.ledgerEntries}
-                      mainCurrency={mainCurrency}
-                      onViewDetails={() =>
-                        onViewSourceDetail({
-                          sourceDocument: item.sourceDocument as SourceDocument,
-                          ledgerEntries: item.ledgerEntries as LedgerEntry[],
-                        })
+          <div className="space-y-4 px-2">
+            {dateGroup.items.map((item) => (
+              <div key={item.sourceDocument.id} {...getItemProps()}>
+                <SourceDocumentCard
+                  sourceDocument={item.sourceDocument}
+                  ledgerEntries={item.ledgerEntries}
+                  mainCurrency={mainCurrency}
+                  {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+                  onViewDetails={() =>
+                    onViewSourceDetail({
+                      sourceDocument: item.sourceDocument as SourceDocument,
+                      ledgerEntries: item.ledgerEntries as LedgerEntry[],
+                    })
+                  }
+                  {...(onEditRetry != null
+                    ? {
+                        onEditRetry: () => {
+                          onEditRetry(item.sourceDocument as SourceDocument);
+                        },
                       }
-                      {...(onEditRetry != null
-                        ? {
-                            onEditRetry: () => {
-                              onEditRetry(item.sourceDocument as SourceDocument);
-                            },
-                          }
-                        : {})}
-                      onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
-                      status={item.sourceDocument.status as SourceDocumentStatusType}
-                      anomalyReason={item.sourceDocument.anomalyReason}
-                      selectionMode={isSelectionMode}
-                      isSelected={selectedIds.includes(item.sourceDocument.id)}
-                      onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
-                      readOnly={readOnly}
-                      filteredSubtotal={filteredSubtotal}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+                    : {})}
+                  onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
+                  status={item.sourceDocument.status as SourceDocumentStatusType}
+                  anomalyReason={item.sourceDocument.anomalyReason}
+                  selectionMode={isSelectionMode}
+                  isSelected={selectedIds.includes(item.sourceDocument.id)}
+                  onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
+                  readOnly={readOnly}
+                  filteredSubtotal={filteredSubtotal}
+                  defaultExpanded={!collapseEntriesDefault}
+                  {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

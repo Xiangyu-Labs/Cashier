@@ -11,7 +11,7 @@ import { AmountDisplay } from "@/modules/currency/ui";
  * The source document container determines the variant, and entries inherit the theme.
  */
 const itemVariants = cva(
-  "flex items-center justify-between py-2 px-3 rounded-lg transition-all cursor-pointer hover:opacity-80",
+  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
   {
     variants: {
       variant: {
@@ -50,7 +50,12 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
   className,
 }: LedgerEntryItemProps) {
   return (
-    <div className={cn(itemVariants({ variant }), className)} onClick={onView}>
+    <button
+      type="button"
+      className={cn(itemVariants({ variant }), className)}
+      onClick={onView}
+      disabled={onView == null}
+    >
       {/* Left: Icon + Name */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <div className="h-8 w-8 flex items-center justify-center bg-surface2 rounded-full text-lg shrink-0">
@@ -89,6 +94,6 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
         variant="item"
         className="shrink-0 ml-3"
       />
-    </div>
+    </button>
   );
 });

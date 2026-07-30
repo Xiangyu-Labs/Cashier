@@ -495,6 +495,7 @@ export interface LedgerSettingsContract {
   aiLanguage?: string;
   currencies?: string[];
   mainCurrency?: string;
+  collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
   timeZone?: string | null;
 }

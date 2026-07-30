@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Trash2, FileText, Save, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface EntryActionsProps {
   hasPendingChanges: boolean;
@@ -47,25 +46,18 @@ export function EntryActions({
         </Button>
       </div>
 
-      <AnimatePresence>
-        {hasPendingChanges && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="flex items-center gap-2"
-          >
-            <Button variant="ghost" size="sm" onClick={onDiscard} className="h-9">
-              <X className="h-3.5 w-3.5 mr-1.5" />
-              {t("discardChanges")}
-            </Button>
-            <Button size="sm" onClick={onSave} className="h-9 gap-1.5 shadow-lg shadow-primary/20">
-              <Save className="h-3.5 w-3.5" />
-              {tCommon("save")}
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {hasPendingChanges ? (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onDiscard} className="h-9">
+            <X className="h-3.5 w-3.5 mr-1.5" />
+            {t("discardChanges")}
+          </Button>
+          <Button size="sm" onClick={onSave} className="h-9 gap-1.5 shadow-lg shadow-primary/20">
+            <Save className="h-3.5 w-3.5" />
+            {tCommon("save")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

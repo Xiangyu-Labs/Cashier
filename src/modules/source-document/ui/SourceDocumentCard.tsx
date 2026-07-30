@@ -1,20 +1,27 @@
 /* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V3 */
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
-import { memo } from "react";
+import { memo, useId, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { EntryCardShell } from "@/components/entry-card-shell";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
+import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
+import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
+import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
+import { EXPAND_TRANSITION, REDUCED_MOTION_TRANSITION } from "@/lib/motion";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
   ledgerEntries: LedgerEntry[];
   mainCurrency?: string;
   onDelete?: () => void;
+  onViewLedgerEntry?: (ledgerEntry: LedgerEntry) => void;
   onViewDetails?: () => void;
+  defaultExpanded?: boolean;
   onEditRetry?: () => void | Promise<void>;
   status: SourceDocumentStatusType;
   anomalyReason?: string | null;
@@ -25,6 +32,7 @@ interface SourceDocumentCardProps {
   onToggleSelect?: () => void;
   readOnly?: boolean;
   filteredSubtotal?: boolean;
+  offlineImageUrls?: ReadonlyMap<string, string>;
 }
 
 interface RecoveryControls {
@@ -69,7 +77,9 @@ function SourceDocumentCardBody({
   ledgerEntries,
   mainCurrency = "CNY",
   onDelete,
+  onViewLedgerEntry,
   onViewDetails,
+  defaultExpanded = true,
   onEditRetry,
   status,
   anomalyReason,
@@ -80,8 +90,14 @@ function SourceDocumentCardBody({
   onToggleSelect,
   readOnly = false,
   filteredSubtotal = false,
+  offlineImageUrls,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
+  const prefersReducedMotion = useReducedMotion();
+  const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
+  const preview = useMemo(() => getSourceDocumentPreview(sourceDocument), [sourceDocument]);
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
     : "supportedActions" in sourceDocument
@@ -92,21 +108,11 @@ function SourceDocumentCardBody({
     await recovery.retry();
   }
 
-  const handleCardClick = () => {
-    if (selectionMode) {
-      onToggleSelect?.();
-      return;
-    }
-    onViewDetails?.();
-  };
-
   return (
     <EntryCardShell
       data-testid="source-document-card-root"
       selected={isSelected}
-      interactive={!selectionMode && onViewDetails != null}
       className={className}
-      onClick={handleCardClick}
     >
       <SourceDocumentCardHeader
         sourceDocument={sourceDocument}
@@ -123,6 +129,10 @@ function SourceDocumentCardBody({
         supportedActions={supportedActions}
         showActions={!readOnly}
         filteredSubtotal={filteredSubtotal}
+        isExpanded={isExpanded}
+        contentId={contentId}
+        onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}
+        onViewDetails={onViewDetails}
         onToggleSelect={onToggleSelect}
         onDirectRetry={handleDirectRetry}
         onCancelProcessing={recovery.cancelProcessing}
@@ -130,6 +140,36 @@ function SourceDocumentCardBody({
         onEditRetry={onEditRetry}
         onDelete={onDelete}
       />
+      <AnimatePresence initial={false}>
+        {isExpanded ? (
+          <motion.div
+            id={contentId}
+            data-testid="source-document-card-body"
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={prefersReducedMotion ? REDUCED_MOTION_TRANSITION : EXPAND_TRANSITION}
+            className="overflow-hidden"
+          >
+            {status === "completed" && sortedEntries.length > 0 ? (
+              <SourceDocumentCardEntries
+                entries={sortedEntries}
+                mainCurrency={mainCurrency}
+                sourceDocumentEntryDate={sourceDocument.entryDate}
+                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+              />
+            ) : status !== "completed" ? (
+              <SourceDocumentCardPreview
+                text={preview.text}
+                images={preview.images}
+                {...(onViewDetails != null ? { onViewDetails } : {})}
+                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                readOnly={readOnly}
+              />
+            ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </EntryCardShell>
   );
 }

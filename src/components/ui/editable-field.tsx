@@ -124,7 +124,7 @@ export function EditableField({
   const containerStyles = cn(
     "relative inline-flex items-center w-full",
     "rounded px-0.5 py-0 -mx-0.5 -my-0",
-    "transition-all duration-150 ease-out",
+    "transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)] ease-[var(--motion-enter)]",
     className
   );
 

@@ -451,6 +451,8 @@
     "mainCurrencyChangeConfirm": "更改并重新计算",
     "timeZone": "账本时区",
     "timeZoneDesc": "用于默认日期、区间和统计；不改变已有记录日期。",
+    "collapseEntries": "默认折叠记录",
+    "collapseEntriesDesc": "进入流水时默认收起每张记录的明细。",
     "timeZoneAuto": "自动",
     "timeZoneAutoDetected": "自动（{timeZone}）",
     "preferredCurrencies": "偏好货币",

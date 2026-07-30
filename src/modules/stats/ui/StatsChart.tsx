@@ -208,7 +208,7 @@ export function StatsChart({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className="text-primary transition-all duration-300 ease-in-out"
+              className="text-primary transition-[color,stroke] duration-[var(--motion-state)] ease-[var(--motion-state-ease)]"
               strokeLinejoin="round"
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
@@ -258,11 +258,11 @@ export function StatsChart({
                 onClick={() => setHoveredIndex(isHovered ? null : i)}
                 className={`
                     w-[7px] h-[7px] rounded-full bg-bg -translate-x-1/2 -translate-y-1/2
-                    transition-all duration-300 cursor-pointer
+                    cursor-pointer transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]
                     ${
                       isCapped
                         ? 'border-2 border-danger after:content-["↑"] after:absolute after:-top-4 after:left-1/2 after:-translate-x-1/2 after:text-[10px] after:text-danger'
-                        : "border-2 border-primary hover:scale-125"
+                        : "border-2 border-primary hover:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/50"
                     }
                   `}
               />

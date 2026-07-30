@@ -8,7 +8,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { parseISO } from "date-fns";
 import { useConvertedAmount } from "@/modules/currency/client";
-import { AnimatePresence, motion } from "framer-motion";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { EntryHeader } from "./LedgerEntryViewDetails/components/EntryHeader";
@@ -167,15 +166,12 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 const hasValue = value.length > 0;
                 return hasValue ? (
                   <div className="text-sm text-text">
-                    <AnimatePresence initial={false}>
-                      <motion.div
-                        ref={contentRef}
-                        initial={false}
-                        className={`break-words whitespace-pre-wrap ${!isExpanded ? "line-clamp-3" : ""}`}
-                      >
-                        {value}
-                      </motion.div>
-                    </AnimatePresence>
+                    <div
+                      ref={contentRef}
+                      className={`break-words whitespace-pre-wrap ${!isExpanded ? "line-clamp-3" : ""}`}
+                    >
+                      {value}
+                    </div>
                     {needsFolding === true && (
                       <Button
                         variant="ghost"

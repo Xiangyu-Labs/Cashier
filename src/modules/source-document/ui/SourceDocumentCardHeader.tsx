@@ -5,8 +5,16 @@ import type {
   SourceDocumentStatusType,
 } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
-import { memo } from "react";
-import { CircleStop, MoreVertical, Pencil, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { memo, useRef } from "react";
+import {
+  ChevronDown,
+  CircleStop,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +47,10 @@ interface SourceDocumentCardHeaderProps {
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
   filteredSubtotal?: boolean;
+  isExpanded: boolean;
+  contentId: string;
+  onToggleExpanded: () => void;
+  onViewDetails?: (() => void) | undefined;
   onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
@@ -79,6 +91,10 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   supportedActions,
   showActions = true,
   filteredSubtotal = false,
+  isExpanded,
+  contentId,
+  onToggleExpanded,
+  onViewDetails,
   onToggleSelect,
   onDirectRetry,
   onCancelProcessing,
@@ -90,6 +106,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const tCommon = useTranslations("Common");
   const tActions = useTranslations("CandidateAction");
   const tDiag = useTranslations("DiagnosticCode");
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   const processingStatus = getProcessingStatus(status);
   const shouldShowProcessingStatus =
@@ -113,7 +130,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
 
   return (
-    <div className="flex min-h-[68px] items-center gap-3 px-3 py-3 sm:px-4">
+    <div className="flex min-h-[68px] items-center gap-1 px-2 py-2 sm:px-3">
       {selectionMode && (
         <div className="mr-2 shrink-0" onClick={(event) => event.stopPropagation()}>
           <Checkbox
@@ -124,7 +141,28 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
+      <button
+        type="button"
+        onClick={onToggleExpanded}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-9 sm:w-9"
+        aria-label={isExpanded ? t("collapse") : t("expand")}
+        aria-expanded={isExpanded}
+        aria-controls={contentId}
+      >
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 transition-transform duration-[var(--motion-feedback)] ease-[var(--motion-state-ease)]",
+            isExpanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => (selectionMode ? onToggleSelect?.() : onViewDetails?.())}
+        disabled={!selectionMode && onViewDetails == null}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:min-h-9"
+      >
         {status !== "processing" &&
           status !== "failed" &&
           sourceDocument.title != null &&
@@ -140,7 +178,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             {t("quickEntry")}
           </span>
         )}
-      </div>
+      </button>
 
       <div className="flex items-center gap-2 shrink-0">
         {shouldShowProcessingStatus && (
@@ -172,18 +210,26 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             className="ml-1 flex items-center gap-1.5"
             onClick={(event) => event.stopPropagation()}
           >
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
+                  ref={menuTriggerRef}
                   variant="ghost"
                   size="icon-sm"
                   className="h-11 w-11 text-muted-foreground hover:text-text sm:h-8 sm:w-8"
-                  aria-label="source-document-card-actions"
+                  aria-label={t("moreActions")}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent
+                align="end"
+                className="w-44"
+                onCloseAutoFocus={(event) => {
+                  event.preventDefault();
+                  menuTriggerRef.current?.focus();
+                }}
+              >
                 {/* Recovery actions for anomaly/failed */}
                 {hasAction("retry") && onDirectRetry != null && (
                   <DropdownMenuItem onClick={onDirectRetry} disabled={isRetrying}>

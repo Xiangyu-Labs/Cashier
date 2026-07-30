@@ -218,6 +218,10 @@ export function OfflineLedgerView({
           <LedgerEntriesUnifiedGroups
             streamGroups={streamGroups}
             mainCurrency={mainCurrency}
+            onViewLedgerEntry={(entry) => {
+              const document = items.find((item) => item.id === entry.sourceDocumentId);
+              if (document != null) setSelected(document);
+            }}
             onViewSourceDetail={({ sourceDocument }) =>
               setSelected(items.find((item) => item.id === sourceDocument.id) ?? null)
             }
@@ -234,6 +238,8 @@ export function OfflineLedgerView({
               : {})}
             readOnly
             filteredSubtotal={filteredSubtotal}
+            collapseEntriesDefault={snapshot.ledgerSettings?.collapseEntriesDefault ?? false}
+            offlineImageUrls={imageUrls}
           />
         </PullToRefresh>
       ) : activeTab === "details" ? (

@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { SourceDocumentCard } from "@/modules/source-document/ui/SourceDocumentCard";
 
@@ -12,6 +14,11 @@ vi.mock("@/modules/source-document/hooks/useSourceDocumentRecoveryMutations", ()
     isCancelling: false,
     isAbandoning: false,
   }),
+}));
+
+vi.mock("@/modules/currency/ui", () => ({
+  AmountDisplay: () => <span>CNY 12.00</span>,
+  AmountText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
 const sourceDocument: SourceDocument = {
@@ -34,23 +41,77 @@ const sourceDocument: SourceDocument = {
   pendingRevisionId: null,
 };
 
+const ledgerEntry: LedgerEntry = {
+  id: "entry-1",
+  ledgerId: "ledger-1",
+  categoryId: null,
+  sourceDocumentId: "doc-1",
+  amount: "12.00",
+  currency: "CNY",
+  itemName: "Lunch",
+  description: null,
+  convertedAmount: "12.00",
+  exchangeRate: "1",
+  createdAt: "2026-07-28T00:00:00.000Z",
+  updatedAt: "2026-07-28T00:00:00.000Z",
+  deletedAt: null,
+};
+
 describe("SourceDocumentCard interactions", () => {
-  it("opens details from the card surface", () => {
+  it("starts expanded by default and opens details only from the main region", () => {
     const onViewDetails = vi.fn();
     render(
       <SourceDocumentCard
         sourceDocument={sourceDocument}
-        ledgerEntries={[]}
+        ledgerEntries={[ledgerEntry]}
         status="completed"
         onViewDetails={onViewDetails}
       />
     );
 
+    expect(screen.getByTestId("source-document-card-body")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Receipt/i }));
+    expect(onViewDetails).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId("source-document-card-root"));
     expect(onViewDetails).toHaveBeenCalledTimes(1);
+  });
 
-    expect(screen.queryByRole("button", { name: /展开|expand/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
+  it("supports a collapsed default and repeated expansion", async () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[ledgerEntry]}
+        status="completed"
+        defaultExpanded={false}
+      />
+    );
+
+    const toggle = screen.getByRole("button", { name: /展开|expand/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("source-document-card-body")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /折叠|collapse/i }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument()
+    );
+  });
+
+  it("opens an expanded ledger entry without opening the document", () => {
+    const onViewDetails = vi.fn();
+    const onViewLedgerEntry = vi.fn();
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[ledgerEntry]}
+        status="completed"
+        onViewDetails={onViewDetails}
+        onViewLedgerEntry={onViewLedgerEntry}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Lunch/i }));
+    expect(onViewLedgerEntry).toHaveBeenCalledWith(ledgerEntry);
+    expect(onViewDetails).not.toHaveBeenCalled();
   });
 
   it("does not open details from the actions menu", () => {
@@ -64,8 +125,31 @@ describe("SourceDocumentCard interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "source-document-card-actions" }));
+    fireEvent.click(screen.getByRole("button", { name: /更多操作|more actions/i }));
     expect(onViewDetails).not.toHaveBeenCalled();
+  });
+
+  it("closes the non-modal actions menu with Escape and restores trigger focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[]}
+        status="completed"
+        onDelete={vi.fn()}
+      />
+    );
+    const trigger = screen.getByRole("button", { name: /更多操作|more actions/i });
+    await user.click(trigger);
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+
+    await user.click(trigger);
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    await user.click(document.body);
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 
   it("does not open details when its selection checkbox is used", () => {

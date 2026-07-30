@@ -23,34 +23,46 @@ describe("EmailChangeForm", () => {
     const onChanged = vi.fn();
     render(<EmailChangeForm currentEmail="old@example.com" onChanged={onChanged} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    );
     const email = screen.getByLabelText(/newEmail|new email|新邮箱/i);
     fireEvent.change(email, { target: { value: "next@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: /sendCode|send code|发送验证码/i }));
-    await waitFor(() => expect(sendCode).toHaveBeenCalledWith("next@example.com", expect.any(String)));
+    await waitFor(() =>
+      expect(sendCode).toHaveBeenCalledWith("next@example.com", expect.any(String))
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /resendCode|resend|重新发送/i }));
     await waitFor(() => expect(sendCode).toHaveBeenCalledTimes(2));
 
-    fireEvent.change(screen.getByLabelText(/verificationCode|6-digit|6 位/i), { target: { value: "123456" } });
+    fireEvent.change(screen.getByLabelText(/verificationCode|6-digit|6 位/i), {
+      target: { value: "123456" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /verifyEmail|verify|验证/i }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("next@example.com"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    );
     expect(screen.getByLabelText(/newEmail|new email|新邮箱/i)).toHaveValue("");
     fireEvent.change(screen.getByLabelText(/newEmail|new email|新邮箱/i), {
       target: { value: "draft@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: /cancel|取消/i }));
-    fireEvent.click(screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    );
     expect(screen.getByLabelText(/newEmail|new email|新邮箱/i)).toHaveValue("");
   });
 
   it("shows an error in the dialog when sending fails", async () => {
     sendCode.mockRejectedValueOnce(new Error("failed"));
     render(<EmailChangeForm currentEmail="old@example.com" />);
-    fireEvent.click(screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    );
     fireEvent.change(screen.getByLabelText(/newEmail|new email|新邮箱/i), {
       target: { value: "next@example.com" },
     });

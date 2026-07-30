@@ -59,7 +59,7 @@ export function StatsHeader({
               setRangeType(type);
             }}
             className={cn(
-              "flex-1 text-sm py-1.5 rounded-md transition-all font-medium",
+              "flex-1 rounded-md py-1.5 text-sm font-medium transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
               rangeType === type
                 ? "bg-surface text-primary shadow-sm"
                 : "text-muted-foreground hover:text-text"

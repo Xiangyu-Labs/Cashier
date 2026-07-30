@@ -43,6 +43,17 @@ function setup() {
 }
 
 describe("useLedgerSettingsMutation", () => {
+  it("submits the stream collapse preference", async () => {
+    updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
+    const { result } = setup();
+
+    await act(async () => result.current.mutateAsync({ collapseEntriesDefault: true }));
+
+    expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+      settings: { collapseEntriesDefault: true },
+    });
+  });
+
   it("submits preferred currencies through the currencies field", async () => {
     updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
     const { result } = setup();

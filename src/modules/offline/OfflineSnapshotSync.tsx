@@ -22,6 +22,7 @@ interface OfflineSnapshotSyncProps {
   locale: string;
   mainCurrency: string;
   timeZone: string | null;
+  collapseEntriesDefault: boolean;
   preferredCurrencies: string[];
   categories: EntryCategory[];
 }
@@ -76,6 +77,7 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
       (previous.locale !== input.locale ||
         previous.mainCurrency !== input.mainCurrency ||
         previous.ledgerSettings?.timeZone !== input.timeZone ||
+        previous.ledgerSettings?.collapseEntriesDefault !== input.collapseEntriesDefault ||
         JSON.stringify(previous.preferredCurrencies ?? []) !==
           JSON.stringify(input.preferredCurrencies) ||
         JSON.stringify(previous.categories ?? []) !== JSON.stringify(input.categories))
@@ -86,7 +88,10 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
         mainCurrency: input.mainCurrency,
         preferredCurrencies: input.preferredCurrencies,
         categories: input.categories,
-        ledgerSettings: { timeZone: input.timeZone },
+        ledgerSettings: {
+          timeZone: input.timeZone,
+          collapseEntriesDefault: input.collapseEntriesDefault,
+        },
       });
     }
     return false;
@@ -104,6 +109,7 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     categories: input.categories,
     ledgerSettings: {
       timeZone: input.timeZone,
+      collapseEntriesDefault: input.collapseEntriesDefault,
     },
     items: payload.items,
     viewedItems: previous?.viewedItems ?? [],
@@ -125,8 +131,16 @@ export function OfflineSnapshotSync({
 }: OfflineSnapshotSyncProps & {
   onStatusChange?: (status: OfflineSyncStatus) => void;
 }) {
-  const { userId, ledgerId, locale, mainCurrency, timeZone, preferredCurrencies, categories } =
-    props;
+  const {
+    userId,
+    ledgerId,
+    locale,
+    mainCurrency,
+    timeZone,
+    collapseEntriesDefault,
+    preferredCurrencies,
+    categories,
+  } = props;
   useEffect(() => {
     if (typeof indexedDB === "undefined") return;
     const controller = new AbortController();
@@ -146,6 +160,7 @@ export function OfflineSnapshotSync({
           locale,
           mainCurrency,
           timeZone,
+          collapseEntriesDefault,
           preferredCurrencies,
           categories,
         },
@@ -186,6 +201,7 @@ export function OfflineSnapshotSync({
     };
   }, [
     categories,
+    collapseEntriesDefault,
     ledgerId,
     locale,
     mainCurrency,

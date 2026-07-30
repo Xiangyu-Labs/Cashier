@@ -16,6 +16,16 @@ describe("ledger settings, search, and time zones", () => {
     );
   });
 
+  it("accepts the optional default-collapse preference", () => {
+    expect(
+      parseUpdateLedgerInput({ settings: { collapseEntriesDefault: true } }).settings
+        ?.collapseEntriesDefault
+    ).toBe(true);
+    expect(
+      parseUpdateLedgerInput({ settings: {} }).settings?.collapseEntriesDefault
+    ).toBeUndefined();
+  });
+
   it("normalizes whitespace and caps search terms", () => {
     expect(normalizeSearchTerm("  Coffee\n\tReceipt  ")).toBe("Coffee Receipt");
     expect(normalizeSearchTerm("   ")).toBeUndefined();

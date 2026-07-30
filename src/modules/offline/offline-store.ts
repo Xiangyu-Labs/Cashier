@@ -13,7 +13,6 @@ import {
   OFFLINE_DOCUMENT_LIMIT,
   OFFLINE_IMAGE_BYTES_LIMIT,
   OFFLINE_IMAGE_COUNT_LIMIT,
-  offlineSnapshotKey,
 } from "./offline-constants";
 
 export {
@@ -41,6 +40,7 @@ export interface OfflineLedgerSnapshotV3 {
   categories?: EntryCategory[];
   ledgerSettings?: {
     timeZone: string | null;
+    collapseEntriesDefault?: boolean;
   };
   items: SourceDocumentListItemDto[];
   viewedItems?: SourceDocumentListItemDto[];

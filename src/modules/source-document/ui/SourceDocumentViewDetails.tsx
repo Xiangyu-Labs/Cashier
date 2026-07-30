@@ -114,6 +114,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const tCard = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
@@ -150,6 +151,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const files = sourceDocument.files;
   const hasImages = files.length > 0;
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
+  const selectedImageIndex = Math.min(activeImageIndex, Math.max(files.length - 1, 0));
 
   useEffect(() => {
     if (readOnly || files.length === 0) return;
@@ -312,50 +314,78 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                   <ImagePlay className="h-3 w-3 text-primary/60" />
                   {tCard("image")}
                 </h5>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                  {isLoadingImages ? (
-                    <>
-                      {[1, 2, 3, 4].map((i) => (
-                        <div
-                          key={i}
-                          className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 animate-pulse"
-                        >
-                          <div className="absolute inset-0 bg-border/60" />
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    files.map((file, idx) => (
+                {isLoadingImages ? (
+                  <div
+                    data-testid="source-document-image-stage-loading"
+                    className="aspect-[4/3] w-full animate-pulse rounded-md border border-border/50 bg-border/40 sm:max-h-[52dvh]"
+                  />
+                ) : files[selectedImageIndex] != null ? (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="source-document-image-stage"
+                      className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md border border-border/60 bg-surface2/70 transition-[border-color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-h-[52dvh]"
+                      onClick={() => setViewerIndex(selectedImageIndex)}
+                      aria-label={tCard("imageAlt", { index: selectedImageIndex + 1 })}
+                    >
+                      {offlineImageUrls?.get(files[selectedImageIndex].id) != null ? (
+                        <Image
+                          src={offlineImageUrls.get(files[selectedImageIndex].id)!}
+                          alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
+                          fill
+                          unoptimized
+                          className="object-contain p-2"
+                        />
+                      ) : !readOnly ? (
+                        <Image
+                          src={storedFileReadUrl(files[selectedImageIndex].id)}
+                          alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
+                          fill
+                          className="object-contain p-2"
+                        />
+                      ) : null}
+                      <span className="fine-pointer-reveal absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-md bg-text/70 text-bg opacity-0 transition-opacity duration-[var(--motion-feedback)] group-focus-visible:opacity-100 group-active:opacity-100">
+                        <Maximize2 className="h-4 w-4" />
+                      </span>
+                    </button>
+                    {files.length > 1 ? (
                       <div
-                        key={file.id}
-                        className="aspect-square relative rounded-lg overflow-hidden border border-border/50 bg-surface/50 cursor-pointer group transition-all hover:ring-2 hover:ring-primary/20 hover:border-primary/30"
-                        onClick={() => setViewerIndex(idx)}
+                        className="mt-2 flex gap-2 overflow-x-auto pb-1"
+                        aria-label={tCard("image")}
                       >
-                        {offlineImageUrls?.get(file.id) != null ? (
-                          <Image
-                            src={offlineImageUrls.get(file.id)!}
-                            alt={tCard("imageAlt", { index: idx + 1 })}
-                            fill
-                            unoptimized
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : !readOnly ? (
-                          <Image
-                            src={storedFileReadUrl(file.id)}
-                            alt={tCard("imageAlt", { index: idx + 1 })}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : null}
-                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="bg-black/40 text-white h-6 w-6 rounded-full flex items-center justify-center backdrop-blur-md">
-                            <Maximize2 className="h-3 w-3" />
-                          </div>
-                        </div>
+                        {files.map((file, index) => {
+                          const offlineUrl = offlineImageUrls?.get(file.id);
+                          const src = offlineUrl ?? (!readOnly ? storedFileReadUrl(file.id) : null);
+                          return (
+                            <button
+                              key={file.id}
+                              type="button"
+                              className={cn(
+                                "relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-surface2 transition-[border-color,opacity] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                selectedImageIndex === index
+                                  ? "border-primary ring-1 ring-primary"
+                                  : "border-border opacity-75"
+                              )}
+                              onClick={() => setActiveImageIndex(index)}
+                              aria-label={tCard("imageAlt", { index: index + 1 })}
+                              aria-current={selectedImageIndex === index ? "true" : undefined}
+                            >
+                              {src != null ? (
+                                <Image
+                                  src={src}
+                                  alt=""
+                                  fill
+                                  unoptimized={offlineUrl != null}
+                                  className="object-cover"
+                                />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))
-                  )}
-                </div>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             )}
 

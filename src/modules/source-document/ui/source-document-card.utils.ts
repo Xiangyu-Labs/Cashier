@@ -1,7 +1,19 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
+import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { parseAmount } from "@/lib/formatters";
 
 import type { SourceDocumentCardTotals } from "./source-document-card.types";
+
+export function getSourceDocumentPreview(sourceDocument: SourceDocument | SourceDocumentLight) {
+  return { text: sourceDocument.text ?? "", images: sourceDocument.files };
+}
+
+export function sortSourceDocumentEntries(entries: LedgerEntry[]): LedgerEntry[] {
+  return [...entries].sort((a, b) => {
+    const categoryOrder = (a.category?.sortOrder ?? 999999) - (b.category?.sortOrder ?? 999999);
+    return categoryOrder !== 0 ? categoryOrder : parseAmount(b.amount) - parseAmount(a.amount);
+  });
+}
 
 function getEntryCurrency(entry: LedgerEntry, mainCurrency: string): string {
   return entry.currency != null && entry.currency !== "" ? entry.currency : mainCurrency;

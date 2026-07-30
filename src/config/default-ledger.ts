@@ -3,6 +3,7 @@ const zhLedger = {
     aiLanguage: "zh-CN",
     currencies: ["CNY", "USD"] as string[],
     mainCurrency: "CNY",
+    collapseEntriesDefault: false,
     aiCustomPrompt: "",
   },
   categories: [
@@ -75,6 +76,7 @@ const enLedger = {
     aiLanguage: "en",
     currencies: ["USD", "EUR", "GBP"] as string[],
     mainCurrency: "USD",
+    collapseEntriesDefault: false,
     aiCustomPrompt: "",
   },
   categories: [

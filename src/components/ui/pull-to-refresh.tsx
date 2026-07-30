@@ -159,7 +159,7 @@ export function PullToRefresh({
       {/* Pull-down indicator — CSS transitions replace Framer Motion */}
       <div
         data-testid="pull-to-refresh-indicator"
-        className="overflow-hidden transition-all duration-200 ease-out"
+        className="overflow-hidden transition-opacity duration-[var(--motion-state)] ease-[var(--motion-enter)]"
         style={{
           opacity: isVisible ? 1 : 0,
           height: isVisible ? (isRefreshing ? 44 : pullDistance) : 0,
@@ -172,7 +172,7 @@ export function PullToRefresh({
               <div
                 style={{
                   transform: `scale(${indicatorScale})`,
-                  transition: "transform 0.2s ease-out",
+                  transition: "transform var(--motion-state) var(--motion-enter)",
                 }}
               >
                 <div
