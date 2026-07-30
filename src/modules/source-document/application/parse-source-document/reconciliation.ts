@@ -1,43 +1,11 @@
 import Decimal from "decimal.js";
 import { add, subtract, compare, round } from "@/lib/money/decimal";
+import { getAiOutputCopy } from "@/config/ai-output-locales";
 import type {
   NormalizedLedgerEntry,
   NormalizedParseOutput,
   NormalizedReceiptTotal,
 } from "./parser-schema";
-
-const GENERIC_ITEM_LABELS = {
-  zh: "其他商品",
-  default: "Other items",
-} as const;
-
-const GENERIC_ADJUSTMENT_LABELS = {
-  zh: "未归因账单调整",
-  default: "Unattributed bill adjustment",
-} as const;
-
-const RECONCILIATION_NOTES = {
-  zh: "根据账单总额自动补齐的差额项目。",
-  default: "Created during receipt-total reconciliation.",
-} as const;
-
-function isZhLanguage(aiLanguage?: string): boolean {
-  return aiLanguage?.toLowerCase().startsWith("zh") ?? false;
-}
-
-function genericItemName(aiLanguage?: string): string {
-  return isZhLanguage(aiLanguage) ? GENERIC_ITEM_LABELS.zh : GENERIC_ITEM_LABELS.default;
-}
-
-function genericAdjustmentName(aiLanguage?: string): string {
-  return isZhLanguage(aiLanguage)
-    ? GENERIC_ADJUSTMENT_LABELS.zh
-    : GENERIC_ADJUSTMENT_LABELS.default;
-}
-
-function reconciliationNotes(aiLanguage?: string): string {
-  return isZhLanguage(aiLanguage) ? RECONCILIATION_NOTES.zh : RECONCILIATION_NOTES.default;
-}
 
 function determineTargetTotal(
   receiptIndex: number,
@@ -106,6 +74,8 @@ export function reconcileParseOutput({
     return { kind: "anomaly", reason: "reconciliation requires success result" };
   }
 
+  const copy = getAiOutputCopy(aiLanguage);
+
   const receiptIndices = new Set<number>();
   for (const total of result.receipt_totals) receiptIndices.add(total.receipt_index);
   for (const entry of result.ledger_entries) receiptIndices.add(entry.receipt_index);
@@ -144,11 +114,11 @@ export function reconcileParseOutput({
     if (compare(delta, "0") > 0) {
       reconciledEntries.push({
         receipt_index: receiptIndex,
-        item_name: genericItemName(aiLanguage),
+        item_name: copy.otherItems,
         amount: delta,
         currency: target.total.currency,
         category_index: dominantCategoryIndex(entriesForReceipt),
-        notes: reconciliationNotes(aiLanguage),
+        notes: copy.reconciliationNote,
       });
       continue;
     }
@@ -156,7 +126,7 @@ export function reconcileParseOutput({
     // delta is negative — synthesize an adjustment
     reconciledAdjustments.push({
       receipt_index: receiptIndex,
-      item_name: genericAdjustmentName(aiLanguage),
+      item_name: copy.unattributedAdjustment,
       amount: delta,
       currency: target.total.currency,
     });

@@ -71,6 +71,15 @@ describe("stage0-schema", () => {
     expect(parsed.title).toBe("Unparseable document");
   });
 
+  it("uses a localized fallback title for the target AI language", () => {
+    const parsed = normalizeResult(
+      stage0ParseOutputSchema.parse({ ...simpleSuccess, title: null }),
+      "ja-JP"
+    );
+
+    expect(parsed.title).toBe("名称未設定の明細");
+  });
+
   it("treats <=3 entries with one currency and no adjustments as simple", () => {
     const parsed = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
     expect(shouldDualRun(parsed)).toBe(false);

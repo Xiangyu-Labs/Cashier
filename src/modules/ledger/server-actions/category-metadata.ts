@@ -11,6 +11,7 @@ import { extractJson } from "@/lib/tasks/json-utils";
 import { entryCategories, ledgers } from "@/persistence";
 import { parseEntryCategoryId } from "../contract-schemas";
 import { withLedgerAccess } from "../access";
+import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
 
 const metadataSchema = z.object({
   icon: z.enum(COMMON_LUCIDE_ICONS as [string, ...string[]]),
@@ -41,8 +42,13 @@ export const generateEntryCategoryMetadataAction = withLedgerAccess(
     if (category == null || ledger == null) throw new NotFoundError("Category");
 
     const language = ledger.metadata?.settings?.aiLanguage ?? "zh-CN";
+    const customPrompt = ledger.metadata?.settings?.aiCustomPrompt;
+    const prompt = `Generate bookkeeping category metadata. Return JSON only. The icon must be selected from the provided Lucide icon names. Keep the description short and concrete.
+${customPrompt == null || customPrompt === "" ? "" : `\n### Additional Instructions\n${customPrompt}\n`}
+${buildAiOutputLocaleInstruction(language)}
+Only the category description is user-visible in this response; apply the mandatory output locale to it.`;
     const result = await getOpenAIClient().generateContent(
-      "Generate bookkeeping category metadata. Return JSON only. The icon must be selected from the provided Lucide icon names. Keep the description short and concrete in the requested language.",
+      prompt,
       [{
         role: "user",
         content: JSON.stringify({

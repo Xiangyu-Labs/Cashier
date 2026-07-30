@@ -434,7 +434,7 @@
     "uiLanguageAuto": "跟随系统",
     "assistant": "智能助理",
     "aiLanguage": "AI 输出语言",
-    "aiLanguageDesc": "控制解析结果中的项目名、补差项和摘要语言，不限制票据原文语言",
+    "aiLanguageDesc": "使 AI 生成的标题、项目名、补差项和备注符合该语言母语者的记账表达，不限制票据原文语言",
     "collapseEntries": "默认折叠记录",
     "collapseEntriesDesc": "已入账记录默认收起明细。",
     "aiSettings": "AI 设置",

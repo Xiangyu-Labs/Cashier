@@ -434,7 +434,7 @@
     "uiLanguageAuto": "Follow System",
     "assistant": "Smart Assistant",
     "aiLanguage": "AI Output Language",
-    "aiLanguageDesc": "Controls the language of parsed item names, balancing entries, and summaries without limiting the receipt's original language",
+    "aiLanguageDesc": "Makes AI-generated titles, item names, adjustments, and notes natural for native speakers of this language without limiting the receipt's original language",
     "collapseEntries": "Collapse Entries by Default",
     "collapseEntriesDesc": "Collapse confirmed entry details by default.",
     "aiSettings": "AI Settings",

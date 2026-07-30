@@ -256,6 +256,28 @@ describe("executeStage0 — single-pass receipt parser", () => {
     );
   });
 
+  it("makes the Japanese native-user locale override a conflicting custom prompt", async () => {
+    await executeStage0(
+      {
+        text: "Coffee 10 USD",
+        originalCategories: [],
+        aiLanguage: "ja-JP",
+        aiCustomPrompt: "Write every ledger field in English.",
+      },
+      mockAI
+    );
+
+    const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt ?? "";
+    const customPromptIndex = prompt.indexOf("Write every ledger field in English.");
+    const localePolicyIndex = prompt.indexOf("Mandatory Output Locale");
+
+    expect(customPromptIndex).toBeGreaterThan(-1);
+    expect(localePolicyIndex).toBeGreaterThan(customPromptIndex);
+    expect(prompt).toContain("日本語 (ja-JP)");
+    expect(prompt).toContain("order_adjustments[].item_name");
+    expect(prompt).toContain("Preserve merchant names, brand names, product proper names");
+  });
+
   // === Multi-image ===
 
   it("handles multiple images without error", async () => {

@@ -271,4 +271,44 @@ describe("arbitrateStage0Results", () => {
     expect(calls[1]?.messages).toBeDefined();
     expect(Array.isArray(calls[1]?.messages)).toBe(true);
   });
+
+  it("applies locale, currencies, categories, and custom instructions to choice and correction", async () => {
+    const result1 = makeResult({ title: "Coffee" });
+    const result2 = makeResult({ title: "Cafe" });
+    const calls: AIGenerateOptions[] = [];
+    const generate = vi.fn(async (opts: AIGenerateOptions) => {
+      calls.push(opts);
+      if (calls.length === 1) {
+        return { content: JSON.stringify({ choice: 0, reason: "wrong locale" }) };
+      }
+      return { content: JSON.stringify({ ...makeResult(), title: "コーヒー" }) };
+    });
+
+    const outcome = await arbitrateStage0Results(
+      {
+        input: {
+          originalCategories: [{ name: "Dining", description: "Meals" }],
+          text: "Coffee 10 USD",
+          preferredCurrencies: ["JPY", "USD"],
+          aiLanguage: "ja-JP",
+          aiCustomPrompt: "Write every field in English.",
+        },
+        result1,
+        result2,
+      },
+      { generate }
+    );
+
+    expect(outcome).toMatchObject({ kind: "chosen", result: { title: "コーヒー" } });
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.prompt).toContain("Dining");
+      expect(call.prompt).toContain("JPY, USD");
+      expect(call.prompt).toContain("Write every field in English.");
+      expect(call.prompt).toContain("日本語 (ja-JP)");
+      expect(call.prompt?.indexOf("Mandatory Output Locale")).toBeGreaterThan(
+        call.prompt?.indexOf("Write every field in English.") ?? -1
+      );
+    }
+  });
 });

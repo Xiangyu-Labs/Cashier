@@ -108,6 +108,27 @@ describe("reconcileParseOutput", () => {
     }
   });
 
+  it("uses native Japanese copy for synthetic reconciliation entries", () => {
+    const result = reconcileParseOutput({
+      aiLanguage: "ja-JP",
+      result: successResult({
+        receipt_totals: [receiptTotal({ amount: "12", currency: "JPY" })],
+        ledger_entries: [
+          entry({ item_name: "コーヒー", amount: "10", currency: "JPY", category_index: 1 }),
+        ],
+        order_adjustments: [],
+      }),
+    });
+
+    expect(result.kind).toBe("success");
+    if (result.kind === "success") {
+      expect(result.result.ledger_entries[1]).toMatchObject({
+        item_name: "その他の商品",
+        notes: "レシート合計との差額を調整するために自動作成されました。",
+      });
+    }
+  });
+
   it("assigns the synthetic ledger entry to the dominant category by amount, then count, then lowest category index", () => {
     const result = reconcileParseOutput({
       aiLanguage: "zh-CN",

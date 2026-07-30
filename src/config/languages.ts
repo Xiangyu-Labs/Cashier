@@ -35,4 +35,6 @@ export const AI_LANGUAGES = [
   { label: "Magyar", value: "hu-HU" },
   { label: "Čeština", value: "cs-CZ" },
   { label: "Română", value: "ro-RO" },
-];
+] as const;
+
+export type AiLanguage = (typeof AI_LANGUAGES)[number]["value"];

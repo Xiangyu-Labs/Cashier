@@ -1,6 +1,7 @@
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { isValidDecimal, compare } from "@/lib/money/decimal";
+import { getAiOutputCopy } from "@/config/ai-output-locales";
 
 // ===== Decimal string validation =====
 
@@ -82,20 +83,24 @@ export interface NormalizedParseOutput {
   reasoning: string;
 }
 
-function fallbackTitleForOutcome(output: z.infer<typeof parserOutputSchema>): string {
+function fallbackTitleForOutcome(
+  output: z.infer<typeof parserOutputSchema>,
+  aiLanguage?: string
+): string {
+  const copy = getAiOutputCopy(aiLanguage);
   switch (output.outcome) {
     case "invalid":
-      return "Invalid content";
+      return copy.invalidContent;
     case "anomaly":
-      return "Unparseable document";
+      return copy.unparseableDocument;
     default:
-      return "Untitled document";
+      return copy.untitledDocument;
   }
 }
 
-function normalizeTitle(output: z.infer<typeof parserOutputSchema>): string {
+function normalizeTitle(output: z.infer<typeof parserOutputSchema>, aiLanguage?: string): string {
   const title = output.title?.trim();
-  return title != null && title !== "" ? title : fallbackTitleForOutcome(output);
+  return title != null && title !== "" ? title : fallbackTitleForOutcome(output, aiLanguage);
 }
 
 function normalizeSuccessfulExpenseAmount(amount: string): string {
@@ -104,7 +109,10 @@ function normalizeSuccessfulExpenseAmount(amount: string): string {
 
 // ===== Normalization =====
 
-export function normalizeResult(output: z.infer<typeof parserOutputSchema>): NormalizedParseOutput {
+export function normalizeResult(
+  output: z.infer<typeof parserOutputSchema>,
+  aiLanguage?: string
+): NormalizedParseOutput {
   // A debit is frequently rendered with a minus sign in banking and app UIs.
   // For a successful expense parse the sign is presentation, not an expense direction.
   const ledgerEntries =
@@ -129,7 +137,7 @@ export function normalizeResult(output: z.infer<typeof parserOutputSchema>): Nor
     return {
       outcome: "anomaly",
       anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
-      title: normalizeTitle(output),
+      title: normalizeTitle(output, aiLanguage),
       receipt_count: output.receipt_count,
       receipt_totals: receiptTotals,
       ledger_entries: [],
@@ -141,7 +149,7 @@ export function normalizeResult(output: z.infer<typeof parserOutputSchema>): Nor
   return {
     outcome: output.outcome,
     ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
-    title: normalizeTitle(output),
+    title: normalizeTitle(output, aiLanguage),
     receipt_count: output.receipt_count,
     receipt_totals: receiptTotals,
     ledger_entries: ledgerEntries.map((e) => ({

@@ -11,6 +11,7 @@
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { isSuccessfulLoadImageResult, loadStoredFilesForAI } from "@/lib/storage/utils";
+import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
 import type { AiContextContract, AiMessageContentPart as AIMessageContentPart } from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 
@@ -65,10 +66,10 @@ function buildPrompt(input: ParserInput, aiLanguage: string): string {
   const textSection =
     input.text != null && input.text !== "" ? `\n### Document Text\n${input.text}\n` : "";
 
-  return `You are an expense evidence parser. Extract all expense line items from the provided document(s) and return structured JSON.
+  const localeSection = `\n${buildAiOutputLocaleInstruction(aiLanguage)}\n`;
 
-Respond in the user's preferred language for item names (language: ${aiLanguage}), but keep all JSON keys in English.
-${categorySection}${currencySection}${customSection}${textSection}
+  return `You are an expense evidence parser. Extract all expense line items from the provided document(s) and return structured JSON.
+${categorySection}${currencySection}${customSection}${textSection}${localeSection}
 ### Output Format
 
 Return a single JSON object:
@@ -201,7 +202,7 @@ export async function executeParser(
     );
   }
 
-  const result = normalizeResult(parsed.data);
+  const result = normalizeResult(parsed.data, aiLanguage);
   logger.debug(
     { outcome: result.outcome, entries: result.ledger_entries.length },
     "parser: complete"

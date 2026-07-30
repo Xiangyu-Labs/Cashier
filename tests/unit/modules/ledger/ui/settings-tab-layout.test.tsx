@@ -129,7 +129,9 @@ describe("SettingsTab layout", () => {
     expect(screen.getByRole("combobox", { name: "界面语言" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "AI 输出语言" })).toBeInTheDocument();
     expect(
-      screen.getByText("控制解析结果中的项目名、补差项和摘要语言，不限制票据原文语言")
+      screen.getByText(
+        "使 AI 生成的标题、项目名、补差项和备注符合该语言母语者的记账表达，不限制票据原文语言"
+      )
     ).toBeInTheDocument();
     const prompt = screen.getByRole("textbox", { name: "账本提示词" });
     expect(prompt).toHaveClass("w-full", "resize-y");

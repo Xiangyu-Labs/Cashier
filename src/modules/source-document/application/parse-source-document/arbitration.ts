@@ -14,11 +14,26 @@ import { z } from "zod";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";
 import type { ParserInput } from "./parser";
+import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
 
 const arbitrationChoiceSchema = z.object({
-  choice: z.number().int().min(1).max(2),
+  choice: z.number().int().min(0).max(2),
   reason: z.string(),
 });
+
+function buildArbitrationContext(input: ParserInput): string {
+  const categorySection = `\nExpense categories:\n${JSON.stringify(input.originalCategories, null, 2)}\n`;
+  const currencySection =
+    (input.preferredCurrencies?.length ?? 0) > 0
+      ? `\nPreferred currencies when ambiguous: ${input.preferredCurrencies!.join(", ")}\n`
+      : "";
+  const customSection =
+    input.aiCustomPrompt != null && input.aiCustomPrompt !== ""
+      ? `\nAdditional Instructions:\n${input.aiCustomPrompt}\n`
+      : "";
+
+  return `${categorySection}${currencySection}${customSection}\n${buildAiOutputLocaleInstruction(input.aiLanguage)}\n`;
+}
 
 function buildArbitrationPrompt(
   input: ParserInput,
@@ -27,19 +42,22 @@ function buildArbitrationPrompt(
 ): string {
   const textSection =
     input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
+  const context = buildArbitrationContext(input);
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced different results for the same document. Choose the more accurate result.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
 
 Result 2:
 ${JSON.stringify(result2, null, 2)}
+${context}
+Choose a result only if it is factually correct and can be used unchanged under all instructions above. Choose 0 if neither result qualifies, including when neither follows the mandatory output locale.
 
 Respond with JSON only:
 \`\`\`json
 { "choice": 1, "reason": "brief explanation" }
 \`\`\`
 
-Set "choice" to 1 or 2. Do not choose 0 or any other value.`;
+Set "choice" to 0, 1, or 2.`;
 }
 
 function buildArbitrationResultPrompt(
@@ -49,12 +67,14 @@ function buildArbitrationResultPrompt(
 ): string {
   const textSection =
     input.text != null && input.text !== "" ? `\nDocument Text:\n${input.text}\n` : "";
+  const context = buildArbitrationContext(input);
   return `You are a receipt and invoice parser arbitration AI. Two independent parsers produced conflicting results. Produce the correct final parse result by reviewing the original document and both attempts.${textSection}
 Result 1:
 ${JSON.stringify(result1, null, 2)}
 
 Result 2:
 ${JSON.stringify(result2, null, 2)}
+${context}
 
 Return the corrected final result as a JSON block matching the parser output format. Return only the JSON block, no other text.`;
 }
@@ -133,7 +153,7 @@ export async function arbitrateResults(
       { error: parsedChoice.error.message },
       "arbitration: invalid choice schema, falling back to result correction"
     );
-  } else {
+  } else if (parsedChoice.data.choice !== 0) {
     const chosen = parsedChoice.data.choice === 1 ? result1 : result2;
     logger.info(
       { choice: parsedChoice.data.choice, reason: parsedChoice.data.reason },
@@ -172,7 +192,7 @@ export async function arbitrateResults(
     };
   }
 
-  const normalized = normalizeResult(parsedCorrected.data);
+  const normalized = normalizeResult(parsedCorrected.data, input.aiLanguage);
   if (normalized.outcome === "anomaly") {
     return {
       kind: "anomaly",
