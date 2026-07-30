@@ -30,7 +30,7 @@ interface LedgerEntriesToolbarProps {
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams: PeriodParams;
-  filteredTotalLabel: string;
+  totalPrefix?: string;
   mainCurrency: string;
   filteredTotal: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
@@ -55,7 +55,7 @@ export function LedgerEntriesToolbar({
   filters,
   onFiltersChange,
   periodParams,
-  filteredTotalLabel,
+  totalPrefix,
   mainCurrency,
   filteredTotal,
   onApplyPreset,
@@ -86,7 +86,9 @@ export function LedgerEntriesToolbar({
       syncStatus={syncStatus}
       totalLabel={
         !isSelectionMode
-          ? `${filteredTotalLabel} ${formatCurrencyAmount(filteredTotal, mainCurrency, locale)}`
+          ? [totalPrefix, formatCurrencyAmount(filteredTotal, mainCurrency, locale)]
+              .filter(Boolean)
+              .join(" ")
           : undefined
       }
     >

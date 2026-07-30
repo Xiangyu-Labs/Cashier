@@ -1,5 +1,5 @@
 "use client";
-import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type DateRangeType } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
@@ -113,13 +113,6 @@ export function StatsHeader({
                   : "bg-surface2 text-muted-foreground"
             )}
           >
-            {isIncrease ? (
-              <TrendingUp size={14} />
-            ) : isDecrease ? (
-              <TrendingDown size={14} />
-            ) : (
-              <Minus size={14} />
-            )}
             <span>
               {isIncrease ? "+" : isDecrease ? "-" : ""}
               {trendPercent}% {t("vsPreviousPeriod")}

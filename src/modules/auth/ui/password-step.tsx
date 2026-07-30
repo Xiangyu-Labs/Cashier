@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -73,11 +73,7 @@ export function PasswordStep(props: PasswordStepProps) {
         </p>
       ) : null}
       <Button type="submit" className="h-11 w-full" disabled={props.isLoading}>
-        {props.isLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <KeyRound className="mr-2 h-4 w-4" />
-        )}
+        {props.isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
         {props.isLoading ? t("signingIn") : t("signIn")}
       </Button>
     </form>

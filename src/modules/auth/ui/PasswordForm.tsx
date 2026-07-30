@@ -119,14 +119,17 @@ export function PasswordForm({
             {hasPassword ? t("changePasswordButton") : t("setPasswordButton")}
           </Button>
         </DialogTrigger>
-        <DialogContent variant="modal" className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent
+          variant="detail"
+          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-md sm:rounded-lg"
+        >
+          <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
             <DialogTitle>
               {hasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}
             </DialogTitle>
             <DialogDescription>{t("passwordRequirements")}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
             {hasPassword ? (
               <PasswordField
                 id="current-password"
@@ -164,7 +167,7 @@ export function PasswordForm({
               </p>
             ) : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-4">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
               {t("cancel")}
             </Button>

@@ -21,7 +21,7 @@ export function EntryActions({
   const tCommon = useTranslations("Common");
 
   return (
-    <div className="shrink-0 flex justify-between items-center gap-3 p-4 border-t border-border/50 bg-surface/50 backdrop-blur-sm sm:rounded-b-lg">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/50 bg-surface/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm sm:rounded-b-lg sm:p-4">
       <div className="flex gap-2">
         {onViewSourceDocument && (
           <Button

@@ -53,7 +53,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const queryClient = useQueryClient();
   const { onInputIntent, onOpenInput } = useShellController();
   const { status } = useConnectionState();
-  const offline = status === "offline" || status === "checking";
+  const offline = status === "offline";
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.

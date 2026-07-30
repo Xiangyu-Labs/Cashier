@@ -27,6 +27,7 @@ const ConnectionContext = createContext<ConnectionState>({
 
 const RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000] as const;
 const PROBE_TIMEOUT_MS = 4_000;
+const CONFIRMATION_DELAY_MS = 1_000;
 
 export function ConnectionStateProvider({ children }: { children: React.ReactNode }) {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(() =>
@@ -86,9 +87,19 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
         return true;
       } catch {
         if (generation !== probeGenerationRef.current) return false;
+        if (!wasOfflineRef.current && failureCountRef.current === 0) {
+          failureCountRef.current = 1;
+          setNetworkStatus("checking");
+          setRetryAt(Date.now() + CONFIRMATION_DELAY_MS);
+          timerRef.current = setTimeout(() => void probe(), CONFIRMATION_DELAY_MS);
+          return false;
+        }
         wasOfflineRef.current = true;
         setNetworkStatus("offline");
-        const index = Math.min(failureCountRef.current, RETRY_DELAYS_MS.length - 1);
+        const index = Math.min(
+          Math.max(0, failureCountRef.current - 1),
+          RETRY_DELAYS_MS.length - 1
+        );
         const delay = RETRY_DELAYS_MS[index]!;
         failureCountRef.current += 1;
         if (document.visibilityState === "visible") {

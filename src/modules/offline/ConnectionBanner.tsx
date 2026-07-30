@@ -1,6 +1,5 @@
 "use client";
 
-import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useConnectionState } from "./connection-state";
 
@@ -25,10 +24,16 @@ export function ConnectionBanner() {
           : zh
             ? `离线，下次重试 ${retryInSeconds} 秒`
             : `Offline, retrying in ${retryInSeconds}s`;
-  const Icon = status === "recovered" ? Wifi : status === "offline" ? WifiOff : RefreshCw;
   return (
     <div className="sticky top-0 z-[60] flex min-h-10 items-center justify-center gap-2 border-b border-border bg-surface px-3 text-sm text-text">
-      <Icon className={status === "checking" ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+      <span
+        aria-hidden
+        className={
+          status === "checking"
+            ? "size-3 animate-spin rounded-full border-2 border-info/25 border-t-info"
+            : `size-2 rounded-full ${status === "offline" ? "bg-warning" : "bg-success"}`
+        }
+      />
       <span>{label}</span>
       {status !== "recovered" && (
         <button

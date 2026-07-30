@@ -59,8 +59,8 @@ export function SourceDocumentEditRetryDialog({
       onOpenChange={(next) => (!next && isSubmitting ? undefined : onOpenChange(next))}
     >
       <DialogContent
-        variant="modal"
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        variant="detail"
+        className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:rounded-lg"
         aria-describedby={undefined}
         hideCloseButton={isSubmitting}
         onEscapeKeyDown={(event) => {
@@ -70,24 +70,26 @@ export function SourceDocumentEditRetryDialog({
           if (isSubmitting) event.preventDefault();
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        {isLoading ? (
-          <EditRetryDialogSkeleton />
-        ) : (
-          <SourceDocumentInput
-            ledgerId={ledgerId}
-            mode="retry"
-            sourceDocumentId={sourceDocument.id}
-            initialData={initialData}
-            onPendingChange={setIsSubmitting}
-            onSuccess={() => {
-              onOpenChange(false);
-              onSuccess?.();
-            }}
-          />
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+          {isLoading ? (
+            <EditRetryDialogSkeleton />
+          ) : (
+            <SourceDocumentInput
+              ledgerId={ledgerId}
+              mode="retry"
+              sourceDocumentId={sourceDocument.id}
+              initialData={initialData}
+              onPendingChange={setIsSubmitting}
+              onSuccess={() => {
+                onOpenChange(false);
+                onSuccess?.();
+              }}
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

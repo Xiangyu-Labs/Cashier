@@ -1,0 +1,14 @@
+{
+  "date": "2026-07-30",
+  "framework": "Next.js 16 App Router",
+  "font": "Inter via next/font",
+  "palette": "Tailwind v4 semantic CSS variables anchored on #10a37f",
+  "motion": "low motion with Framer Motion available and reduced-motion support",
+  "spacing": "4/8pt scale",
+  "sources": [
+    "package.json",
+    "components.json",
+    "src/app/globals.css",
+    "src/app/[locale]/layout.tsx"
+  ]
+}

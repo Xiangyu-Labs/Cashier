@@ -6,17 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import {
-  AlertCircle,
-  CheckCheck,
-  RefreshCw,
-  Trash2,
-  FileText,
-  ArrowLeft,
-  X,
-  Save,
-  XCircle,
-} from "lucide-react";
+import { CheckCheck, RefreshCw, Trash2, ArrowLeft, X, Save, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
@@ -241,7 +231,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       <DialogContent
         variant="detail"
         {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-        className="flex h-[100dvh] max-h-none w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-auto sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:rounded-lg"
+        className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         onOpenAutoFocus={() => {
           restoreFocusRef.current = document.activeElement as HTMLElement | null;
         }}
@@ -251,7 +241,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         }}
         aria-describedby={undefined}
       >
-        <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center gap-3 space-y-0">
+        <DialogHeader className="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-3">
           <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
           {onBack != null && (
             <Button
@@ -265,9 +255,6 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <FileText className="h-5 w-5" />
-          </div>
           <div className="flex-1 min-w-0 pr-8">
             <EditableField
               value={displayTitle}
@@ -321,7 +308,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                         : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
                     return (
                       <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
-                        <AlertCircle className="h-4 w-4 text-danger shrink-0 mt-0.5" />
+                        <span className="mt-1 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium text-danger">
                             {tDiag(stableCode as string)}
@@ -406,7 +393,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         />
 
         {!readOnly && (
-          <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 py-3 backdrop-blur-md sm:bg-surface2/30">
+          <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:bg-surface2/30 sm:py-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {/* Candidate actions: Accept / Abandon */}
               {sourceDocument?.supportedActions.includes("accept_candidate") &&

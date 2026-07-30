@@ -8,7 +8,7 @@ interface ServiceWorkerScope {
 }
 
 const workerScope = globalThis as unknown as ServiceWorkerScope;
-const NAVIGATION_TIMEOUT_MS = 1500;
+const NAVIGATION_TIMEOUT_MS = 8_000;
 
 function offlineEntry(request: Request) {
   const locale = new URL(request.url).pathname.startsWith("/en/") ? "en" : "zh";

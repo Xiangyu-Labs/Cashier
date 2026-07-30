@@ -2,7 +2,7 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface EmailStepProps {
   callbackUrl: string;
@@ -53,10 +53,7 @@ export function EmailStep({
               {t("sending")}
             </>
           ) : (
-            <>
-              <Mail className="mr-2 h-4 w-4" />
-              {t("sendVerificationCode")}
-            </>
+            t("sendVerificationCode")
           )}
         </Button>
       </form>

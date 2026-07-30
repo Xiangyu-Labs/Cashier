@@ -16,7 +16,7 @@ const defaultProps = {
   onFiltersChange: vi.fn(),
   periodParams: defaultPeriodParams,
   onPeriodChange: vi.fn(),
-  filteredTotalLabel: "Total",
+  totalPrefix: "Total",
   mainCurrency: "CNY",
   filteredTotal: 123.45,
 };
@@ -85,5 +85,20 @@ describe("LedgerEntriesToolbar", () => {
 
     // EntryFilterPanel should not be rendered in selection mode
     expect(screen.queryByRole("button", { name: "筛选" })).not.toBeInTheDocument();
+  });
+
+  it("renders only the amount when a filtered result omits the prefix", () => {
+    const { totalPrefix: _totalPrefix, ...filteredProps } = defaultProps;
+    render(<LedgerEntriesToolbar {...filteredProps} />);
+
+    expect(screen.getByText("¥123.45")).toBeInTheDocument();
+    expect(screen.queryByText(/Filtered total/i)).not.toBeInTheDocument();
+  });
+
+  it("places synchronization status in its own mobile row", () => {
+    render(<LedgerEntriesToolbar {...defaultProps} syncStatus="Updated just now" />);
+
+    expect(screen.getByTestId("toolbar-sync-status")).toHaveClass("basis-full");
+    expect(screen.getByTestId("toolbar-sync-status")).toHaveTextContent("Updated just now");
   });
 });

@@ -14,7 +14,7 @@ describe("PWA policy", () => {
     expect(config).toContain("runtimeCaching: []");
     expect(config).toContain("/chunks\\/app\\/api\\//");
     expect(config).toContain("/chunks\\/app\\/.*\\(protected\\)\\//");
-    expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 1500");
+    expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 8_000");
     expect(worker).toContain("caches.match(fallbackUrl");
     expect(worker).toContain("/\\/offline\\/?$/.test");
     expect(worker).not.toContain("caches.put");
@@ -24,9 +24,12 @@ describe("PWA policy", () => {
   it("uses locale-specific installed-app entry points", () => {
     const manifest = read("src/app/[locale]/manifest.webmanifest/route.ts");
     const layout = read("src/app/[locale]/layout.tsx");
-    expect(manifest).toContain("start_url: `/${locale}/offline`");
+    expect(manifest).toContain("start_url: `/${locale}`");
     expect(manifest).toContain("scope: `/${locale}/`");
     expect(layout).toContain("manifest: `/${locale}/manifest.webmanifest`");
+    const navigation = read("src/modules/offline/OfflineNavigation.tsx");
+    expect(navigation).toContain('status === "online" || status === "recovered"');
+    expect(navigation).toContain("returnUrl.current ?? `/${locale}`");
   });
 
   it("keeps protected stored files out of the browser HTTP cache", () => {
@@ -51,5 +54,18 @@ describe("PWA policy", () => {
     const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
     expect(activeTab).toContain('from "@/modules/offline/offline-constants"');
     expect(activeTab).not.toContain('from "@/modules/offline/offline-store"');
+  });
+
+  it("keeps checking content online and uses a connection-aware streaming fallback", () => {
+    const shell = read("src/app/[locale]/(protected)/_active-shell.tsx");
+    const client = read("src/modules/workspace/ui/LedgerPageClient.tsx");
+    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
+    const fallback = read("src/modules/offline/ConnectionAwareLedgerFallback.tsx");
+    expect(shell).toContain('status === "offline"');
+    expect(shell).not.toContain('status === "offline" || status === "checking"');
+    expect(client).toContain('connectionStatus === "offline"');
+    expect(activeTab).toContain("ConnectionAwareLedgerFallback");
+    expect(fallback).toContain('networkStatus === "offline"');
+    expect(fallback).toContain("EntriesTabSkeleton");
   });
 });

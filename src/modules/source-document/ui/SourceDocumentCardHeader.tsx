@@ -46,7 +46,6 @@ interface SourceDocumentCardHeaderProps {
   isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
-  filteredSubtotal?: boolean;
   isExpanded: boolean;
   contentId: string;
   onToggleExpanded: () => void;
@@ -90,7 +89,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isSelected,
   supportedActions,
   showActions = true,
-  filteredSubtotal = false,
   isExpanded,
   contentId,
   onToggleExpanded,
@@ -163,16 +161,9 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         disabled={!selectionMode && onViewDetails == null}
         className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:min-h-9"
       >
-        {status !== "processing" &&
-          status !== "failed" &&
-          sourceDocument.title != null &&
-          sourceDocument.title !== "" && (
-            <>
-              <span className="text-sm font-semibold text-text truncate">
-                {sourceDocument.title}
-              </span>
-            </>
-          )}
+        <span className="truncate text-sm font-semibold text-text">
+          {sourceDocument.title?.trim() || t("untitled")}
+        </span>
         {sourceDocument.type === "manual" && (
           <span className="text-xs text-muted-foreground bg-surface2 px-1.5 py-0.5 rounded shrink-0">
             {t("quickEntry")}
@@ -196,11 +187,6 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           status
         ) && (
           <div className="text-right">
-            {filteredSubtotal ? (
-              <div className="text-[10px] leading-none text-muted-foreground">
-                {t("filteredSubtotal")}
-              </div>
-            ) : null}
             <SourceDocumentCardTotal entries={ledgerEntries} mainCurrency={mainCurrency} />
           </div>
         )}

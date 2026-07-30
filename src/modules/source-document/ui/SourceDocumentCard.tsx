@@ -31,7 +31,6 @@ interface SourceDocumentCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
-  filteredSubtotal?: boolean;
   offlineImageUrls?: ReadonlyMap<string, string>;
 }
 
@@ -89,7 +88,6 @@ function SourceDocumentCardBody({
   isSelected = false,
   onToggleSelect,
   readOnly = false,
-  filteredSubtotal = false,
   offlineImageUrls,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
@@ -128,7 +126,6 @@ function SourceDocumentCardBody({
         isSelected={isSelected}
         supportedActions={supportedActions}
         showActions={!readOnly}
-        filteredSubtotal={filteredSubtotal}
         isExpanded={isExpanded}
         contentId={contentId}
         onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}

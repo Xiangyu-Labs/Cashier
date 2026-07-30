@@ -1,4 +1,3 @@
-import { AlertCircle, Ban, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -22,31 +21,26 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
   const config = {
     processing: {
       label: t("processing"),
-      icon: Loader2,
       colorClass: "text-primary/70",
       bgClass: "bg-primary/70",
     },
     completed: {
       label: t("completed"),
-      icon: CheckCircle2,
       colorClass: "text-primary",
       bgClass: "bg-primary",
     },
     error: {
       label: tCommon("error"),
-      icon: AlertCircle,
       colorClass: "text-danger",
       bgClass: "bg-danger",
     },
     candidate_pending: {
       label: t("candidatePendingTitle"),
-      icon: Clock,
       colorClass: "text-warning",
       bgClass: "bg-warning",
     },
     cancelled: {
       label: t("cancelled"),
-      icon: Ban,
       colorClass: "text-muted-foreground",
       bgClass: "bg-muted-foreground",
     },
@@ -61,7 +55,7 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
   }
 
   const configItem = config[status];
-  const { label: configLabel, icon: Icon, colorClass, bgClass } = configItem;
+  const { label: configLabel, colorClass, bgClass } = configItem;
   const displayLabel = label ?? configLabel;
 
   return (
@@ -75,13 +69,15 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       aria-atomic="true"
     >
       <div className="relative flex items-center justify-center">
-        {status === "processing" ? (
-          <Icon className={cn("w-3.5 h-3.5 animate-spin", colorClass)} />
-        ) : status === "candidate_pending" || status === "cancelled" ? (
-          <Icon className={cn("w-3.5 h-3.5", colorClass)} />
-        ) : (
-          <div className={cn("w-2 h-2 rounded-full", bgClass)} />
-        )}
+        <span
+          className={cn(
+            "block size-2 rounded-full",
+            status === "processing"
+              ? "size-3 animate-spin border-2 border-primary/25 border-t-primary"
+              : bgClass
+          )}
+          aria-hidden
+        />
       </div>
       <span
         className={cn("max-w-32 truncate text-xs font-medium sm:max-w-48", colorClass)}

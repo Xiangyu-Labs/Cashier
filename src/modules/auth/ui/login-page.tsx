@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Mail, KeyRound } from "lucide-react";
 import { useLoginFlow } from "../hooks/use-login-flow";
 import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
@@ -42,7 +41,6 @@ export function AuthLoginPage({
                 onClick={() => flow.setMode("password")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}
               >
-                <KeyRound className="h-4 w-4" />
                 {t("password")}
               </button>
               <button
@@ -52,7 +50,6 @@ export function AuthLoginPage({
                 onClick={() => flow.setMode("otp")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${!passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}
               >
-                <Mail className="h-4 w-4" />
                 {t("emailCode")}
               </button>
             </div>

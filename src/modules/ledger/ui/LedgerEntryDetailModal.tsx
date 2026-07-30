@@ -190,7 +190,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
         <DialogContent
           variant="detail"
           {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-          className="max-h-[90vh] flex flex-col p-0 overflow-hidden w-full max-w-lg"
+          className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
           aria-describedby={undefined}
         >
           <VisuallyHidden.Root>
@@ -198,7 +198,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
           </VisuallyHidden.Root>
 
           {onBack != null && (
-            <div className="shrink-0 border-b px-3 py-2">
+            <div className="shrink-0 border-b px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:py-2">
               <Button
                 type="button"
                 variant="ghost"

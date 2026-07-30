@@ -23,7 +23,12 @@ export function EntriesToolbarShell({
     >
       {children}
       {syncStatus != null ? (
-        <div className="text-xs text-muted-foreground">{syncStatus}</div>
+        <div
+          className="order-last min-w-0 basis-full text-xs text-muted-foreground sm:order-none sm:basis-auto"
+          data-testid="toolbar-sync-status"
+        >
+          {syncStatus}
+        </div>
       ) : null}
       {totalLabel != null && totalLabel !== "" ? (
         <AmountText variant="summary" className="ml-auto whitespace-nowrap">

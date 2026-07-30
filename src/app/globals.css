@@ -1,3 +1,5 @@
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app */
+@import "../../tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -55,14 +57,14 @@
   --border: #e5e5e5;
   --ring: #10a37f;
 
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --success: #16a34a;
-  --info: #3b82f6;
+  --danger: var(--color-danger);
+  --warning: var(--color-warning);
+  --success: var(--color-success);
+  --info: var(--color-info);
 
-  --income: #16a34a;
-  --expense: #ef4444;
-  --pending: #f59e0b;
+  --income: var(--success);
+  --expense: var(--danger);
+  --pending: var(--warning);
 
   --radius: 8px;
   --radius-sm: 4px;
@@ -105,9 +107,9 @@
   --input: var(--surface);
 
   --chart-1: #10a37f;
-  --chart-2: #3b82f6;
-  --chart-3: #f59e0b;
-  --chart-4: #ef4444;
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--danger);
   --chart-5: #71717a;
   --heatmap-0: var(--surface2);
   --heatmap-1: color-mix(in srgb, var(--primary), transparent 86%);
@@ -128,6 +130,8 @@
 
 .dark {
   color-scheme: dark;
+  --primary: #69cdb3;
+  --ring: #69cdb3;
   --bg: #343541;
   --surface: #444654;
   --surface2: #202123;
@@ -137,19 +141,19 @@
   --muted: #8e8ea0;
 
   --border: #565869;
-  --danger: #f87171;
-  --warning: #fbbf24;
-  --success: #4ade80;
-  --info: #60a5fa;
+  --danger: var(--color-danger);
+  --warning: var(--color-warning);
+  --success: var(--color-success);
+  --info: var(--color-info);
 
-  --income: #4ade80;
-  --expense: #f87171;
-  --pending: #fbbf24;
+  --income: var(--success);
+  --expense: var(--danger);
+  --pending: var(--warning);
 
-  --chart-1: #4ade80;
-  --chart-2: #60a5fa;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
+  --chart-1: var(--success);
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--danger);
   --chart-5: #8e8ea0;
   --heatmap-0: var(--surface2);
   --heatmap-1: color-mix(in srgb, var(--primary), transparent 78%);
@@ -196,7 +200,7 @@ body {
 }
 
 .input-error:focus {
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger), transparent 80%);
 }
 
 .ledger-list-group {

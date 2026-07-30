@@ -11,7 +11,7 @@ export async function GET(
     name: zh ? "Cashier - AI 记账助手" : "Cashier - AI Bookkeeping",
     short_name: "Cashier",
     description: zh ? "AI 驱动的智能记账工具" : "AI-powered bookkeeping",
-    start_url: `/${locale}/offline`,
+    start_url: `/${locale}`,
     scope: `/${locale}/`,
     display: "standalone",
     background_color: "#ffffff",

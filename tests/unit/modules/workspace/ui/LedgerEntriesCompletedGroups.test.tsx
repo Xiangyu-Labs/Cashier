@@ -48,9 +48,7 @@ describe("LedgerEntriesUnifiedGroups", () => {
     );
 
     expect(screen.getByText("Source document")).toBeInTheDocument();
-    expect(cardProps).toHaveBeenCalledWith(
-      expect.objectContaining({ defaultExpanded: true, filteredSubtotal: false })
-    );
+    expect(cardProps).toHaveBeenCalledWith(expect.objectContaining({ defaultExpanded: true }));
   });
 
   it("passes the ledger collapse preference to cards", () => {

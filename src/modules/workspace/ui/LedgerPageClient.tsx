@@ -173,7 +173,7 @@ function LedgerPageClientContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { networkStatus: connectionStatus, setSyncStatus } = useConnectionState();
-  const offline = connectionStatus === "offline" || connectionStatus === "checking";
+  const offline = connectionStatus === "offline";
 
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
@@ -368,8 +368,8 @@ function LedgerPageClientContent({
           }}
         >
           <DialogContent
-            variant="sheet"
-            className="bottom-0 top-auto mx-auto max-h-[calc(100svh-1rem)] w-full translate-y-0 overflow-y-auto rounded-b-none rounded-t-lg border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6"
+            variant="detail"
+            className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-md sm:rounded-lg"
             aria-describedby={undefined}
             hideCloseButton={isInputSubmitting}
             onEscapeKeyDown={(event) => {
@@ -379,53 +379,54 @@ function LedgerPageClientContent({
               if (isInputSubmitting) event.preventDefault();
             }}
           >
-            <DialogHeader>
+            <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
               <DialogTitle>{t("newRecord")}</DialogTitle>
             </DialogHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+              <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
+                <button
+                  onClick={() => setInputMode("ai")}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                    inputMode === "ai"
+                      ? "bg-surface text-text shadow-sm"
+                      : "text-muted-foreground hover:text-text"
+                  )}
+                >
+                  {t("aiParse")}
+                </button>
+                <button
+                  onClick={() => setInputMode("quick")}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                    inputMode === "quick"
+                      ? "bg-surface text-text shadow-sm"
+                      : "text-muted-foreground hover:text-text"
+                  )}
+                >
+                  {t("quickEntry")}
+                </button>
+              </div>
 
-            <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
-              <button
-                onClick={() => setInputMode("ai")}
-                className={cn(
-                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
-                  inputMode === "ai"
-                    ? "bg-surface text-text shadow-sm"
-                    : "text-muted-foreground hover:text-text"
+              <div className="min-h-[26rem]">
+                {inputMode === "ai" ? (
+                  <SourceDocumentInput
+                    ledgerId={ledgerId}
+                    onPendingChange={setIsInputSubmitting}
+                    {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                    onSuccess={() => setIsInputOpen(false)}
+                  />
+                ) : (
+                  <QuickEntryForm
+                    ledgerId={ledgerId}
+                    categories={categories}
+                    mainCurrency={mainCurrency}
+                    preferredCurrencies={preferredCurrencies}
+                    {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                    onSuccess={() => setIsInputOpen(false)}
+                  />
                 )}
-              >
-                {t("aiParse")}
-              </button>
-              <button
-                onClick={() => setInputMode("quick")}
-                className={cn(
-                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
-                  inputMode === "quick"
-                    ? "bg-surface text-text shadow-sm"
-                    : "text-muted-foreground hover:text-text"
-                )}
-              >
-                {t("quickEntry")}
-              </button>
-            </div>
-
-            <div className="min-h-[26rem]">
-              {inputMode === "ai" ? (
-                <SourceDocumentInput
-                  ledgerId={ledgerId}
-                  onPendingChange={setIsInputSubmitting}
-                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                  onSuccess={() => setIsInputOpen(false)}
-                />
-              ) : (
-                <QuickEntryForm
-                  ledgerId={ledgerId}
-                  categories={categories}
-                  mainCurrency={mainCurrency}
-                  preferredCurrencies={preferredCurrencies}
-                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                  onSuccess={() => setIsInputOpen(false)}
-                />
-              )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>

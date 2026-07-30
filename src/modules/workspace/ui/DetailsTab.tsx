@@ -220,11 +220,11 @@ export function DetailsTab({
           <DetailsToolbar
             {...(!isSelectionMode
               ? {
-                  totalLabel: `${tFilter("filteredTotal")} ${formatCurrencyAmount(
+                  totalLabel: formatCurrencyAmount(
                     Number(monthStats.mainTotal),
                     monthStats.mainCurrency,
                     locale
-                  )}`,
+                  ),
                 }
               : {})}
             batchActions={

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { CloudOff, Database, TriangleAlert } from "lucide-react";
 import Decimal from "decimal.js";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { LedgerEntryCard } from "@/modules/ledger/ui/LedgerEntryCard";
@@ -24,7 +23,7 @@ import { EntriesToolbarShell } from "@/modules/workspace/ui/EntriesToolbarShell"
 import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
 import { STREAM_STATUS_PRESET_VALUES } from "@/modules/workspace/ledger-filter-state";
 import { useConnectionState } from "./connection-state";
-import { hasEntryFilters, selectOfflineDocuments, totalOfflineMatches } from "./offline-selectors";
+import { selectOfflineDocuments, totalOfflineMatches } from "./offline-selectors";
 import {
   getActiveOfflineSnapshotKey,
   readOfflineImages,
@@ -120,7 +119,6 @@ export function OfflineLedgerView({
     () => selectOfflineDocuments(items, effectiveFilters),
     [effectiveFilters, items]
   );
-  const filteredSubtotal = hasEntryFilters(effectiveFilters);
   const displayDocuments = useMemo(
     () =>
       matches.map(({ document, displayEntries }) => ({
@@ -167,7 +165,7 @@ export function OfflineLedgerView({
     <>
       {snapshot != null && (snapshot.truncated || isStale(snapshot.lastSyncedAt)) ? (
         <div className="mx-2 mb-2 flex items-center gap-2 border-b border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text">
-          <TriangleAlert className="h-4 w-4 shrink-0 text-warning" />
+          <span className="size-2 shrink-0 rounded-full bg-warning" aria-hidden />
           {snapshot.truncated
             ? locale.startsWith("zh")
               ? `统计和合计基于最近 ${snapshot.coverageLimit} 条缓存`
@@ -192,15 +190,9 @@ export function OfflineLedgerView({
               filters={effectiveFilters}
               onFiltersChange={setNextFilters}
               periodParams={periodParams}
-              filteredTotalLabel={
-                locale.startsWith("zh")
-                  ? hasAnyFilter
-                    ? "筛选合计"
-                    : "合计"
-                  : hasAnyFilter
-                    ? "Filtered total"
-                    : "Total"
-              }
+              {...(!hasAnyFilter
+                ? { totalPrefix: locale.startsWith("zh") ? "合计" : "Total" }
+                : {})}
               mainCurrency={mainCurrency}
               filteredTotal={totalOfflineMatches(matches)}
               onApplyPreset={(preset) =>
@@ -237,7 +229,6 @@ export function OfflineLedgerView({
               ? { timeZone: snapshot.ledgerSettings.timeZone }
               : {})}
             readOnly
-            filteredSubtotal={filteredSubtotal}
             collapseEntriesDefault={snapshot.ledgerSettings?.collapseEntriesDefault ?? false}
             offlineImageUrls={imageUrls}
           />
@@ -318,7 +309,7 @@ function OfflineDetails({
       header={
         <EntriesToolbarShell
           syncStatus={syncStatus}
-          totalLabel={`${locale.startsWith("zh") ? "筛选合计" : "Filtered total"} ${formatCurrencyAmount(totalOfflineMatches(matches), mainCurrency, locale)}`}
+          totalLabel={formatCurrencyAmount(totalOfflineMatches(matches), mainCurrency, locale)}
         >
           <EntryFilterPanel
             filters={filters}
@@ -497,7 +488,6 @@ function buildHeatmapDays(dailyTotals: ReadonlyMap<string, Decimal>) {
 }
 
 function SnapshotState({ state, zh }: { state: LoadState; zh: boolean }) {
-  const Icon = state === "error" ? TriangleAlert : state === "loading" ? Database : CloudOff;
   const label =
     state === "loading"
       ? zh
@@ -516,7 +506,12 @@ function SnapshotState({ state, zh }: { state: LoadState; zh: boolean }) {
             : "No local cache exists for this ledger";
   return (
     <div className="flex min-h-[50dvh] flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
-      <Icon className="h-6 w-6" />
+      {state === "loading" ? (
+        <span
+          className="size-4 animate-spin rounded-full border-2 border-info/25 border-t-info"
+          aria-hidden
+        />
+      ) : null}
       <p className="text-sm">{label}</p>
     </div>
   );

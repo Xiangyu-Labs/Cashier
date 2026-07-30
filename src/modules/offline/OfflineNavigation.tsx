@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 import { useConnectionState } from "./connection-state";
@@ -10,6 +11,7 @@ export function OfflineNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const { status } = useConnectionState();
   const activeTab = parseLedgerTab(searchParams);
   const returnUrl = useRef<string | null>(null);
@@ -22,10 +24,10 @@ export function OfflineNavigation() {
       : current;
   }, []);
   useEffect(() => {
-    if (status === "recovered" && returnUrl.current != null) {
-      window.location.replace(returnUrl.current);
+    if (status === "online" || status === "recovered") {
+      window.location.replace(returnUrl.current ?? `/${locale}`);
     }
-  }, [status]);
+  }, [locale, status]);
   const onTabChange = (tab: LedgerTab) => {
     if (tab === "settings") return;
     const next = new URLSearchParams(searchParams);

@@ -58,7 +58,7 @@ export function SourceDocumentCandidateReviewDialog({
         onEscapeKeyDown={(event) => isPending && event.preventDefault()}
         onPointerDownOutside={(event) => isPending && event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
+        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle className="text-base">{t("title")}</DialogTitle>
         </DialogHeader>
 
@@ -104,7 +104,7 @@ export function SourceDocumentCandidateReviewDialog({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap-reverse justify-end gap-2 border-t bg-surface px-4 py-3 sm:px-6">
+        <div className="flex shrink-0 flex-wrap-reverse justify-end gap-2 border-t bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-3">
           <Button
             variant="outline"
             onClick={() => recovery.abandonCandidate()}

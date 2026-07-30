@@ -2,7 +2,6 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown } from "lucide-react";
 import { EmptyState } from "@/modules/workspace/ui/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
@@ -138,11 +137,6 @@ export function StatsRanking({
                           cat.trend.amount > 0 ? "text-destructive" : "text-primary"
                         )}
                       >
-                        {cat.trend.amount > 0 ? (
-                          <TrendingUp size={10} />
-                        ) : (
-                          <TrendingDown size={10} />
-                        )}
                         <AmountText variant="secondary">
                           {formatCurrencyAmount(
                             Math.abs(cat.trend.amount),

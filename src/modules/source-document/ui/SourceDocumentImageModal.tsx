@@ -68,7 +68,7 @@ export function SourceDocumentImageModal({
       <DialogContent
         variant="viewer"
         aria-describedby={undefined}
-        className="flex h-[90vh] w-[95vw] max-w-5xl flex-col p-0 [&>button]:hidden"
+        className="flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-none [&>button]:hidden sm:border sm:shadow-modal"
         onOpenAutoFocus={() => {
           restoreFocusRef.current = document.activeElement as HTMLElement | null;
         }}
@@ -86,7 +86,7 @@ export function SourceDocumentImageModal({
           }
         }}
       >
-        <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
+        <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle>{title}</DialogTitle>
           <div className="flex items-center gap-2">
             <Button
@@ -103,7 +103,7 @@ export function SourceDocumentImageModal({
         </DialogHeader>
 
         <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
-          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
+          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden sm:p-4">
             {images.length > 1 && (
               <Button
                 variant="ghost"
@@ -142,7 +142,7 @@ export function SourceDocumentImageModal({
           </div>
 
           {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto border-t px-4 py-3">
+            <div className="flex gap-2 overflow-x-auto border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:py-3">
               {images.map((image, index) => (
                 <button
                   key={`${image.storedFileId ?? image.data}-${index}`}

@@ -29,7 +29,6 @@ export interface UnifiedStreamGroupProps {
   getItemProps: () => Record<string, unknown>;
   timeZone?: string;
   readOnly?: boolean;
-  filteredSubtotal?: boolean;
   collapseEntriesDefault?: boolean;
   offlineImageUrls?: ReadonlyMap<string, string>;
 }
@@ -48,7 +47,6 @@ export function LedgerEntriesUnifiedGroups({
   getItemProps,
   timeZone,
   readOnly = false,
-  filteredSubtotal = false,
   collapseEntriesDefault = false,
   offlineImageUrls,
 }: UnifiedStreamGroupProps) {
@@ -100,7 +98,6 @@ export function LedgerEntriesUnifiedGroups({
                   isSelected={selectedIds.includes(item.sourceDocument.id)}
                   onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
                   readOnly={readOnly}
-                  filteredSubtotal={filteredSubtotal}
                   defaultExpanded={!collapseEntriesDefault}
                   {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
                 />

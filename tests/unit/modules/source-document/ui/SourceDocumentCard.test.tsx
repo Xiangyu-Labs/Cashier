@@ -170,4 +170,19 @@ describe("SourceDocumentCard interactions", () => {
     expect(onToggleSelect).toHaveBeenCalled();
     expect(onViewDetails).not.toHaveBeenCalled();
   });
+
+  it.each(["processing", "failed"] as const)(
+    "shows the localized untitled fallback while %s",
+    (status) => {
+      render(
+        <SourceDocumentCard
+          sourceDocument={{ ...sourceDocument, title: null, status }}
+          ledgerEntries={[]}
+          status={status}
+        />
+      );
+
+      expect(screen.getByText(/Untitled Bill|未命名账单/i)).toBeInTheDocument();
+    }
+  );
 });
