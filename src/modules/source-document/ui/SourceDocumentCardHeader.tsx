@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { parseDateString } from "@/lib/date-utils";
+import { formatCivilDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
@@ -141,7 +141,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
     }
     const entryDate = sourceDocument.entryDate;
     if (entryDate != null && entryDate !== "") {
-      return parseDateString(entryDate).toLocaleDateString(locale, {
+      return formatCivilDate(entryDate, locale, {
         month: "long",
         day: "numeric",
       });

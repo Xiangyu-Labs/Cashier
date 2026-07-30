@@ -63,13 +63,10 @@ function itemMatchesFilters(
     }
   }
 
-  // Check date range
-  if (filters.startDate != null && item.entryDate != null) {
-    if (item.entryDate < filters.startDate) return false;
-  }
-  if (filters.endDate != null && item.entryDate != null) {
-    if (item.entryDate > filters.endDate) return false;
-  }
+  // Stream filtering uses the business date, falling back to the submission date.
+  const effectiveDate = item.entryDate ?? item.createdAt.slice(0, 10);
+  if (filters.startDate != null && effectiveDate < filters.startDate) return false;
+  if (filters.endDate != null && effectiveDate > filters.endDate) return false;
 
   if (filters.search != null && filters.search !== "") {
     const needle = filters.search.toLocaleLowerCase();

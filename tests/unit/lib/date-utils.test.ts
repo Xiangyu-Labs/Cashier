@@ -8,6 +8,7 @@ import {
   getEndOfYear,
   getDateRange,
   addPeriod,
+  formatCivilDate,
   formatDateTimeForApi,
   parseDateRangeStart,
   parseDateRangeEnd,
@@ -148,6 +149,32 @@ describe("date-utils", () => {
       const date = new Date(2026, 0, 5); // Jan 5
       const result = formatDateTimeForApi(date);
       expect(result).toBe("2026-01-05");
+    });
+  });
+
+  describe("formatCivilDate", () => {
+    it("keeps a civil date stable regardless of the runtime timezone", () => {
+      const originalTimeZone = process.env.TZ;
+      try {
+        for (const timeZone of ["UTC", "Asia/Shanghai", "America/Los_Angeles"]) {
+          process.env.TZ = timeZone;
+          expect(
+            formatCivilDate("2026-07-28", "en-US", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            })
+          ).toBe("07/28/2026");
+        }
+      } finally {
+        if (originalTimeZone === undefined) delete process.env.TZ;
+        else process.env.TZ = originalTimeZone;
+      }
+    });
+
+    it("rejects malformed and impossible dates", () => {
+      expect(() => formatCivilDate("2026-7-28", "en-US", {})).toThrow(RangeError);
+      expect(() => formatCivilDate("2026-02-30", "en-US", {})).toThrow(RangeError);
     });
   });
 

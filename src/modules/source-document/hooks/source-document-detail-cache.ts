@@ -17,6 +17,33 @@ export type BatchEntryUpdateData = Partial<Omit<LedgerEntry, "amount">> & {
   amount?: number;
 };
 
+/** Refresh an existing detail snapshot from the list item the user just clicked. */
+export function patchExistingSourceDocumentDetail(
+  queryClient: QueryClient,
+  item: SourceDocumentListItemDto | SourceDocumentDto
+): void {
+  const patch = <T extends SourceDocumentQueryData | SourceDocumentLightQueryData>(
+    old: T | undefined
+  ): T | undefined => {
+    if (old == null) return old;
+    return {
+      ...old,
+      title: item.title,
+      status: item.status,
+      entryDate: item.entryDate,
+      files: item.files,
+      ledgerEntries: item.ledgerEntries ?? [],
+      hasImages: item.hasImages,
+      supportedActions: item.supportedActions,
+      errorCode: item.errorCode,
+      pendingRevisionId: item.pendingRevisionId,
+    };
+  };
+
+  queryClient.setQueryData(queryKeys.sourceDocument(item.id), patch);
+  queryClient.setQueryData(queryKeys.sourceDocumentLight(item.id), patch);
+}
+
 function updateDetailDocumentEntries(
   queryClient: QueryClient,
   documentId: string,

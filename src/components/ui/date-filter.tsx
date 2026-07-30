@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { useTranslations, useFormatter } from "next-intl";
-import { parseDateString } from "@/lib/date-utils";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  formatCivilDate,
+  formatDateTimeForApi,
+  isValidDateString,
+  parseDateString,
+} from "@/lib/date-utils";
 
 interface DateFilterProps {
   /** Selected date */
@@ -36,16 +41,21 @@ export function DateFilter({
   disabled = false,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
-  const format = useFormatter();
+  const locale = useLocale();
   const [open, setOpen] = React.useState(false);
 
-  // Parse value to Date
-  const dateValue = React.useMemo(() => {
+  const civilDateString = React.useMemo(() => {
     if (value == null) return null;
-    if (value instanceof Date) return value;
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseDateString(value) : new Date(value);
-    return isNaN(parsed.getTime()) ? null : parsed;
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : formatDateTimeForApi(value);
+    }
+    return isValidDateString(value) ? value : null;
   }, [value]);
+
+  const dateValue = React.useMemo(
+    () => (civilDateString == null ? null : parseDateString(civilDateString)),
+    [civilDateString]
+  );
 
   const handleDateChange = (date: Date | null) => {
     onChange(date);
@@ -77,8 +87,12 @@ export function DateFilter({
         >
           <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
           <span className={cn(truncate ? "truncate" : "whitespace-nowrap", "flex-1")}>
-            {dateValue != null
-              ? format.dateTime(dateValue, { year: "numeric", month: "short", day: "numeric" })
+            {civilDateString != null
+              ? formatCivilDate(civilDateString, locale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
               : (placeholder ?? t("selectDate"))}
           </span>
           {showClear && dateValue ? (

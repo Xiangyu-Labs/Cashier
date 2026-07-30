@@ -7,13 +7,14 @@ import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import {
   addPeriod,
+  formatCivilDate,
   formatDateTimeForApi,
   getDateInTimezone,
   parseDateString,
   type DateRangeType,
 } from "@/lib/date-utils";
 import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
-import { useTranslations, useFormatter, useLocale } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { BarChart3, Grid3X3 } from "lucide-react";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
@@ -40,7 +41,6 @@ export function StatsTab({
   timeZone,
 }: StatsTabProps) {
   const t = useTranslations("StatsTab");
-  const format = useFormatter();
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
@@ -86,15 +86,15 @@ export function StatsTab({
   const label = useMemo(() => {
     switch (rangeType) {
       case "week":
-        return `${format.dateTime(startDate, { month: "numeric", day: "numeric" })} - ${format.dateTime(endDate, { month: "numeric", day: "numeric" })}`;
+        return `${formatCivilDate(startDateStr, locale, { month: "numeric", day: "numeric" })} - ${formatCivilDate(endDateStr, locale, { month: "numeric", day: "numeric" })}`;
       case "month":
-        return format.dateTime(startDate, { year: "numeric", month: "long" });
+        return formatCivilDate(startDateStr, locale, { year: "numeric", month: "long" });
       case "year":
-        return format.dateTime(startDate, { year: "numeric" });
+        return formatCivilDate(startDateStr, locale, { year: "numeric" });
       default:
         return "";
     }
-  }, [startDate, endDate, rangeType, format]);
+  }, [endDateStr, locale, rangeType, startDateStr]);
 
   const enhancedStatsKey = queryKeys.enhancedStats(ledgerId ?? "", {
     startDate: startDateStr,

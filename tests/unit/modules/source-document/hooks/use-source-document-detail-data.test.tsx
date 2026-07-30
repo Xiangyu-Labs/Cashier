@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSourceDocumentDetailData } from "@/modules/source-document/hooks/useSourceDocumentDetailData";
+import { queryKeys } from "@/lib/query-keys";
 
 const getSourceDocumentLightAction = vi.fn();
 
@@ -57,5 +58,45 @@ describe("useSourceDocumentDetailData", () => {
       "ledger-1",
       "11111111-1111-4111-8111-111111111111"
     );
+  });
+
+  it("shows cached data immediately and refreshes it whenever detail opens", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    queryClient.setQueryData(queryKeys.sourceDocument("11111111-1111-4111-8111-111111111111"), {
+      id: "11111111-1111-4111-8111-111111111111",
+      ledgerId: "ledger-1",
+      title: "Cached",
+      text: "receipt",
+      files: [],
+      status: "completed",
+      type: "text",
+      anomalyReason: null,
+      entryDate: "2026-07-28",
+      createdAt: "2026-07-15T00:00:00.000Z",
+      ledgerEntries: [],
+      hasImages: false,
+      supportedActions: [],
+      errorCode: null,
+      pendingRevisionId: null,
+    });
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentDetailData({
+          ledgerId: "ledger-1",
+          id: "11111111-1111-4111-8111-111111111111",
+          open: true,
+        }),
+      { wrapper }
+    );
+
+    expect(result.current.sourceDocument?.entryDate).toBe("2026-07-28");
+    await waitFor(() => expect(getSourceDocumentLightAction).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.sourceDocument?.title).toBe("Lunch"));
   });
 });

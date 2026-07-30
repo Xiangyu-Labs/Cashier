@@ -4,19 +4,12 @@ import { DateFilter } from "@/components/ui/date-filter";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
-  useFormatter: () => ({
-    dateTime: (date: Date) =>
-      date.toLocaleDateString("zh-CN", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-  }),
+  useLocale: () => "zh-CN",
 }));
 
 describe("DateFilter", () => {
   it("applies truncate class by default", () => {
-    render(<DateFilter value={new Date("2026-04-17")} onChange={() => {}} />);
+    render(<DateFilter value={new Date(2026, 3, 17)} onChange={() => {}} />);
 
     const dateText = screen.getByText("2026年4月17日");
     expect(dateText.tagName.toLowerCase()).toBe("span");
@@ -24,7 +17,7 @@ describe("DateFilter", () => {
   });
 
   it("does not apply truncate class when truncate prop is false", () => {
-    render(<DateFilter value={new Date("2026-04-17")} onChange={() => {}} truncate={false} />);
+    render(<DateFilter value={new Date(2026, 3, 17)} onChange={() => {}} truncate={false} />);
 
     const dateText = screen.getByText("2026年4月17日");
     expect(dateText.classList.contains("truncate")).toBe(false);
@@ -35,5 +28,11 @@ describe("DateFilter", () => {
     render(<DateFilter value="2026-04-17" onChange={() => {}} />);
 
     expect(screen.getByText("2026年4月17日")).toBeInTheDocument();
+  });
+
+  it("renders a date-only string without shifting it to the previous day", () => {
+    render(<DateFilter value="2026-07-28" onChange={() => {}} />);
+
+    expect(screen.getByText("2026年7月28日")).toBeInTheDocument();
   });
 });

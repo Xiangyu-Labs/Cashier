@@ -99,6 +99,33 @@ export function formatDateTimeForApi(date: Date | undefined): string | undefined
   return `${year}-${month}-${day}`;
 }
 
+/** Format a date-only value without interpreting it as an instant in time. */
+export function formatCivilDate(
+  dateString: string,
+  locale: string,
+  options: Intl.DateTimeFormatOptions
+): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+  if (match == null) throw new RangeError(`Invalid civil date: ${dateString}`);
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new RangeError(`Invalid civil date: ${dateString}`);
+  }
+
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(date);
+}
+
 /**
  * Parse a date string as the START of day (00:00:00.000).
  * Used by backend to construct query conditions for startDate parameters.

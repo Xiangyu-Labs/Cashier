@@ -1,7 +1,7 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
@@ -27,6 +27,7 @@ import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { buildStreamTotalQuery, useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
+import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -57,6 +58,7 @@ export function LedgerEntriesTab({
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const notifyRefresh = useNotifyRevisionRefresh();
+  const queryClient = useQueryClient();
   const pushModal = useModalStackStore((state) => state.push);
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
@@ -159,13 +161,14 @@ export function LedgerEntriesTab({
         setCandidateReviewDocument(group.sourceDocument);
         return;
       }
+      patchExistingSourceDocumentDetail(queryClient, group.sourceDocument);
       pushModal({
         type: "source-document",
         id: group.sourceDocument.id,
         ledgerId: group.sourceDocument.ledgerId,
       });
     },
-    [pushModal]
+    [pushModal, queryClient]
   );
 
   const handleViewLedgerEntry = useCallback(
