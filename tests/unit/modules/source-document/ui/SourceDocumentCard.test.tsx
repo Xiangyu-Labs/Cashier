@@ -152,13 +152,14 @@ describe("SourceDocumentCard interactions", () => {
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 
-  it("does not open details when its selection checkbox is used", () => {
+  it("uses one full-card selection control and preserves expansion state", async () => {
+    const user = userEvent.setup();
     const onViewDetails = vi.fn();
     const onToggleSelect = vi.fn();
-    render(
+    const { rerender } = render(
       <SourceDocumentCard
         sourceDocument={sourceDocument}
-        ledgerEntries={[]}
+        ledgerEntries={[ledgerEntry]}
         status="completed"
         onViewDetails={onViewDetails}
         selectionMode
@@ -166,9 +167,26 @@ describe("SourceDocumentCard interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("checkbox"));
-    expect(onToggleSelect).toHaveBeenCalled();
+    expect(screen.getByTestId("source-document-card-body")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    const selectionControl = screen.getByRole("checkbox", { name: /Receipt/ });
+    await user.click(selectionControl);
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
     expect(onViewDetails).not.toHaveBeenCalled();
+
+    rerender(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[ledgerEntry]}
+        status="completed"
+        onViewDetails={onViewDetails}
+      />
+    );
+    expect(screen.getByTestId("source-document-card-body")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /折叠|collapse/i }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument()
+    );
   });
 
   it.each(["processing", "failed"] as const)(

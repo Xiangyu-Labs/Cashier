@@ -82,4 +82,69 @@ describe("LedgerEntriesUnifiedGroups", () => {
     );
     expect(cardProps).toHaveBeenCalledWith(expect.objectContaining({ defaultExpanded: false }));
   });
+
+  it("only rerenders the stream row whose selected state changed", () => {
+    const firstItem = {
+      sourceDocument: { id: "document-1", ledgerId: "ledger-1", status: "completed" },
+      ledgerEntries: [],
+      effectiveDate: "2026-07-15",
+      dateProvenance: "transaction" as const,
+    };
+    const secondItem = {
+      sourceDocument: { id: "document-2", ledgerId: "ledger-1", status: "completed" },
+      ledgerEntries: [],
+      effectiveDate: "2026-07-15",
+      dateProvenance: "transaction" as const,
+    };
+    const groups = [
+      {
+        date: "2026-07-15",
+        dateProvenance: "transaction" as const,
+        total: 0,
+        items: [firstItem, secondItem],
+      },
+    ] as unknown as UnifiedStreamGroup[];
+    const onViewSourceDetail = vi.fn();
+    const onDeleteSourceConfirm = vi.fn();
+    const onToggleSelection = vi.fn();
+    const getItemProps = () => ({});
+    cardProps.mockClear();
+
+    const { rerender } = render(
+      <LedgerEntriesUnifiedGroups
+        streamGroups={groups}
+        mainCurrency="CNY"
+        onViewSourceDetail={onViewSourceDetail}
+        onDeleteSourceConfirm={onDeleteSourceConfirm}
+        isSelectionMode
+        selectedIds={[]}
+        onToggleSelection={onToggleSelection}
+        noRecordsText="No records"
+        getItemProps={getItemProps}
+      />
+    );
+    expect(cardProps).toHaveBeenCalledTimes(2);
+
+    rerender(
+      <LedgerEntriesUnifiedGroups
+        streamGroups={groups}
+        mainCurrency="CNY"
+        onViewSourceDetail={onViewSourceDetail}
+        onDeleteSourceConfirm={onDeleteSourceConfirm}
+        isSelectionMode
+        selectedIds={["document-1"]}
+        onToggleSelection={onToggleSelection}
+        noRecordsText="No records"
+        getItemProps={getItemProps}
+      />
+    );
+
+    expect(cardProps).toHaveBeenCalledTimes(3);
+    expect(cardProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        sourceDocument: firstItem.sourceDocument,
+        isSelected: true,
+      })
+    );
+  });
 });

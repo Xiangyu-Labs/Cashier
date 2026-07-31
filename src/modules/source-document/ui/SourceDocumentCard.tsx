@@ -3,10 +3,12 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { memo, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { EntryCardShell } from "@/components/entry-card-shell";
+import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
 import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
@@ -91,6 +93,8 @@ function SourceDocumentCardBody({
   offlineImageUrls,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
+  const tCommon = useTranslations("Common");
+  const tCard = useTranslations("SourceDocumentCard");
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
   const prefersReducedMotion = useReducedMotion();
@@ -107,66 +111,74 @@ function SourceDocumentCardBody({
   }
 
   return (
-    <EntryCardShell
-      data-testid="source-document-card-root"
+    <SelectableCardSurface
+      selectionMode={selectionMode}
       selected={isSelected}
-      className={className}
+      selectionLabel={tCommon("selectItem", {
+        item: sourceDocument.title?.trim() || tCard("untitled"),
+      })}
+      onToggleSelection={() => onToggleSelect?.()}
     >
-      <SourceDocumentCardHeader
-        sourceDocument={sourceDocument}
-        status={status}
-        anomalyReason={anomalyReason}
-        errorCode={errorCode}
-        ledgerEntries={ledgerEntries}
-        mainCurrency={mainCurrency}
-        isRetrying={recovery.isRetrying}
-        isCancelling={recovery.isCancelling}
-        isAbandoning={recovery.isAbandoning}
-        selectionMode={selectionMode}
-        isSelected={isSelected}
-        supportedActions={supportedActions}
-        showActions={!readOnly}
-        isExpanded={isExpanded}
-        contentId={contentId}
-        onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}
-        onViewDetails={onViewDetails}
-        onToggleSelect={onToggleSelect}
-        onDirectRetry={handleDirectRetry}
-        onCancelProcessing={recovery.cancelProcessing}
-        onAbandonCandidate={recovery.abandonCandidate}
-        onEditRetry={onEditRetry}
-        onDelete={onDelete}
-      />
-      <AnimatePresence initial={false}>
-        {isExpanded ? (
-          <motion.div
-            id={contentId}
-            data-testid="source-document-card-body"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={prefersReducedMotion ? REDUCED_MOTION_TRANSITION : EXPAND_TRANSITION}
-            className="overflow-hidden"
-          >
-            {status === "completed" && sortedEntries.length > 0 ? (
-              <SourceDocumentCardEntries
-                entries={sortedEntries}
-                mainCurrency={mainCurrency}
-                sourceDocumentEntryDate={sourceDocument.entryDate}
-                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
-              />
-            ) : status !== "completed" ? (
-              <SourceDocumentCardPreview
-                text={preview.text}
-                images={preview.images}
-                {...(onViewDetails != null ? { onViewDetails } : {})}
-                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
-                readOnly={readOnly}
-              />
-            ) : null}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </EntryCardShell>
+      <EntryCardShell
+        data-testid="source-document-card-root"
+        selected={selectionMode && isSelected}
+        interactive={selectionMode}
+        className={className}
+      >
+        <SourceDocumentCardHeader
+          sourceDocument={sourceDocument}
+          status={status}
+          anomalyReason={anomalyReason}
+          errorCode={errorCode}
+          ledgerEntries={ledgerEntries}
+          mainCurrency={mainCurrency}
+          isRetrying={recovery.isRetrying}
+          isCancelling={recovery.isCancelling}
+          isAbandoning={recovery.isAbandoning}
+          selectionMode={selectionMode}
+          supportedActions={supportedActions}
+          showActions={!readOnly}
+          isExpanded={isExpanded}
+          contentId={contentId}
+          onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}
+          onViewDetails={onViewDetails}
+          onDirectRetry={handleDirectRetry}
+          onCancelProcessing={recovery.cancelProcessing}
+          onAbandonCandidate={recovery.abandonCandidate}
+          onEditRetry={onEditRetry}
+          onDelete={onDelete}
+        />
+        <AnimatePresence initial={false}>
+          {isExpanded ? (
+            <motion.div
+              id={contentId}
+              data-testid="source-document-card-body"
+              initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={prefersReducedMotion ? REDUCED_MOTION_TRANSITION : EXPAND_TRANSITION}
+              className="overflow-hidden"
+            >
+              {status === "completed" && sortedEntries.length > 0 ? (
+                <SourceDocumentCardEntries
+                  entries={sortedEntries}
+                  mainCurrency={mainCurrency}
+                  sourceDocumentEntryDate={sourceDocument.entryDate}
+                  {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+                />
+              ) : status !== "completed" ? (
+                <SourceDocumentCardPreview
+                  text={preview.text}
+                  images={preview.images}
+                  {...(onViewDetails != null ? { onViewDetails } : {})}
+                  {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                  readOnly={readOnly}
+                />
+              ) : null}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </EntryCardShell>
+    </SelectableCardSurface>
   );
 }

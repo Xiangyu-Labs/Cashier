@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 interface UseSelectionOptions {
   allIds: string[];
@@ -24,19 +24,23 @@ interface UseSelectionReturn {
 export function useSelection({ allIds }: UseSelectionOptions): UseSelectionReturn {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const uniqueAllIds = useMemo(() => [...new Set(allIds)], [allIds]);
 
-  const isAllSelected = selectedIds.length === allIds.length && allIds.length > 0;
+  const isAllSelected = selectedIds.length === uniqueAllIds.length && uniqueAllIds.length > 0;
   const selectedCount = selectedIds.length;
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
-    setSelectedIds((prev) => (selected ? [...prev, id] : prev.filter((i) => i !== id)));
+    setSelectedIds((prev) => {
+      if (selected) return prev.includes(id) ? prev : [...prev, id];
+      return prev.includes(id) ? prev.filter((itemId) => itemId !== id) : prev;
+    });
   }, []);
 
   const handleSelectAll = useCallback(
     (selected: boolean) => {
-      setSelectedIds(selected ? [...allIds] : []);
+      setSelectedIds(selected ? uniqueAllIds : []);
     },
-    [allIds]
+    [uniqueAllIds]
   );
 
   const toggleSelectionMode = useCallback(() => {
@@ -69,8 +73,8 @@ export function useSelection({ allIds }: UseSelectionOptions): UseSelectionRetur
   }, []);
 
   const selectAll = useCallback(() => {
-    setSelectedIds([...allIds]);
-  }, [allIds]);
+    setSelectedIds(uniqueAllIds);
+  }, [uniqueAllIds]);
 
   const retainSelection = useCallback((ids: string[]) => {
     setSelectedIds([...new Set(ids)]);

@@ -12,6 +12,7 @@ import { formatDateTimeForApi } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import { Card } from "@/components/ui/card";
+import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { cn } from "@/lib/utils";
 import { parseAmount } from "@/lib/formatters";
 import { EditableLedgerEntryItem } from "./EditableLedgerEntryItem";
@@ -257,33 +258,24 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
             </div>
           ) : (
             sortedEntries.map((entry) => (
-              <Card
+              <SelectableEditableEntryCard
                 key={entry.id}
-                className={cn(
-                  "overflow-hidden",
-                  selectedEntryIds.includes(entry.id) &&
-                    isSelectionMode &&
-                    "border-primary bg-primary/5"
-                )}
-              >
-                <EditableLedgerEntryItem
-                  ledgerEntry={entry}
-                  categories={categories}
-                  categoryPlaceholder={t("selectCategory")}
-                  preferredCurrencies={preferredCurrencies}
-                  mainCurrency={mainCurrency}
-                  selected={selectedEntryIds.includes(entry.id)}
-                  onChange={(changes) => onEntryChange(entry.id, changes)}
-                  sourceDocumentEntryDate={displayEntryDate}
-                  readOnly={readOnly}
-                  {...(isSelectionMode
-                    ? { onSelect: (selected: boolean) => onSelectEntry(entry.id, selected) }
-                    : {})}
-                  {...(pendingChanges.entries[entry.id] !== undefined
-                    ? { pendingChanges: pendingChanges.entries[entry.id] }
-                    : {})}
-                />
-              </Card>
+                entry={entry}
+                categories={categories}
+                categoryPlaceholder={t("selectCategory")}
+                preferredCurrencies={preferredCurrencies}
+                mainCurrency={mainCurrency}
+                selectionMode={isSelectionMode}
+                selected={selectedEntryIds.includes(entry.id)}
+                selectionLabel={tCommon("selectItem", { item: entry.itemName })}
+                onEntryChange={onEntryChange}
+                onSelectEntry={onSelectEntry}
+                sourceDocumentEntryDate={displayEntryDate}
+                readOnly={readOnly}
+                {...(pendingChanges.entries[entry.id] !== undefined
+                  ? { pendingChanges: pendingChanges.entries[entry.id] }
+                  : {})}
+              />
             ))
           )}
         </div>
@@ -414,5 +406,66 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
         onOpenChange={(open: boolean) => !open && setViewerIndex(null)}
       />
     </div>
+  );
+});
+
+interface SelectableEditableEntryCardProps {
+  entry: LedgerEntry;
+  categories: EntryCategory[];
+  categoryPlaceholder: string;
+  preferredCurrencies: string[];
+  mainCurrency: string;
+  selectionMode: boolean;
+  selected: boolean;
+  selectionLabel: string;
+  onEntryChange: (entryId: string, changes: Partial<EntryEditData>) => void;
+  onSelectEntry: (entryId: string, selected: boolean) => void;
+  sourceDocumentEntryDate: string;
+  readOnly: boolean;
+  pendingChanges?: Partial<EntryEditData>;
+}
+
+const SelectableEditableEntryCard = memo(function SelectableEditableEntryCard({
+  entry,
+  categories,
+  categoryPlaceholder,
+  preferredCurrencies,
+  mainCurrency,
+  selectionMode,
+  selected,
+  selectionLabel,
+  onEntryChange,
+  onSelectEntry,
+  sourceDocumentEntryDate,
+  readOnly,
+  pendingChanges,
+}: SelectableEditableEntryCardProps) {
+  return (
+    <SelectableCardSurface
+      selectionMode={selectionMode}
+      selected={selected}
+      selectionLabel={selectionLabel}
+      onToggleSelection={() => onSelectEntry(entry.id, !selected)}
+    >
+      <Card
+        className={cn(
+          "overflow-hidden",
+          selectionMode && selected && "border-primary bg-primary/5"
+        )}
+      >
+        <EditableLedgerEntryItem
+          ledgerEntry={entry}
+          categories={categories}
+          categoryPlaceholder={categoryPlaceholder}
+          preferredCurrencies={preferredCurrencies}
+          mainCurrency={mainCurrency}
+          className={cn(selectionMode && "pl-11")}
+          onChange={(changes) => onEntryChange(entry.id, changes)}
+          sourceDocumentEntryDate={sourceDocumentEntryDate}
+          readOnly={readOnly}
+          {...(pendingChanges !== undefined ? { pendingChanges } : {})}
+        />
+      </Card>
+    </SelectableCardSurface>
   );
 });

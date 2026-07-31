@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations, useLocale } from "next-intl";
@@ -103,6 +103,7 @@ export function DetailsTab({
 
   // Grouping
   const { groupedItems } = useDetailsTabGrouping(entries, timeZone);
+  const allEntryIds = useMemo(() => entries.map((entry) => entry.id), [entries]);
   const {
     selectedIds,
     isSelectionMode,
@@ -112,7 +113,7 @@ export function DetailsTab({
     selectAll,
     clearSelection,
     retainSelection,
-  } = useSelection({ allIds: entries.map((entry) => entry.id) });
+  } = useSelection({ allIds: allEntryIds });
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
     return () => {
@@ -292,21 +293,18 @@ export function DetailsTab({
               />
               <div className="space-y-4 px-2">
                 {group.items.map((entry) => (
-                  <div key={entry.id}>
-                    <LedgerEntryCard
-                      ledgerEntry={entry}
-                      categories={categories}
-                      {...(ledger?.metadata?.settings?.mainCurrency !== undefined
-                        ? { mainCurrency: ledger.metadata.settings.mainCurrency }
-                        : {})}
-                      onView={() => {
-                        handleViewEntry(entry);
-                      }}
-                      selectionMode={isSelectionMode}
-                      isSelected={selectedIds.includes(entry.id)}
-                      onToggleSelect={() => toggleSelection(entry.id)}
-                    />
-                  </div>
+                  <LedgerEntryCard
+                    key={entry.id}
+                    ledgerEntry={entry}
+                    categories={categories}
+                    {...(ledger?.metadata?.settings?.mainCurrency !== undefined
+                      ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+                      : {})}
+                    onView={handleViewEntry}
+                    selectionMode={isSelectionMode}
+                    isSelected={selectedIds.includes(entry.id)}
+                    onToggleSelect={toggleSelection}
+                  />
                 ))}
               </div>
             </div>

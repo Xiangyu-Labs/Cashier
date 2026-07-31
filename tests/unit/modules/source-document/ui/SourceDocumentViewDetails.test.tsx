@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { SourceDocumentViewDetails } from "@/modules/source-document/ui/SourceDocumentViewDetails";
 
@@ -21,6 +22,22 @@ vi.mock("next/image", () => ({
 vi.mock("@/modules/source-document/ui/SourceDocumentImageModal", () => ({
   SourceDocumentImageModal: ({ open, initialIndex }: { open: boolean; initialIndex: number }) => (
     <div data-testid="image-viewer-state" data-open={open} data-index={initialIndex} />
+  ),
+}));
+
+vi.mock("@/modules/source-document/ui/EditableLedgerEntryItem", () => ({
+  EditableLedgerEntryItem: ({
+    ledgerEntry,
+    pendingChanges,
+  }: {
+    ledgerEntry: LedgerEntry;
+    pendingChanges?: { itemName?: string };
+  }) => (
+    <input
+      aria-label="Entry name"
+      value={pendingChanges?.itemName ?? ledgerEntry.itemName}
+      readOnly
+    />
   ),
 }));
 
@@ -97,5 +114,53 @@ describe("SourceDocumentViewDetails image stage", () => {
     fireEvent.click(screen.getByTestId("source-document-image-stage"));
     expect(screen.getByTestId("image-viewer-state")).toHaveAttribute("data-open", "true");
     expect(screen.getByTestId("image-viewer-state")).toHaveAttribute("data-index", "1");
+  });
+});
+
+describe("SourceDocumentViewDetails selection", () => {
+  it("freezes the editable card and keeps pending changes when selection mode exits", () => {
+    const entry: LedgerEntry = {
+      id: "entry-1",
+      ledgerId: "ledger-1",
+      categoryId: null,
+      sourceDocumentId: "doc-1",
+      amount: "12.00",
+      currency: "CNY",
+      itemName: "Lunch",
+      description: null,
+      convertedAmount: "12.00",
+      exchangeRate: "1",
+      createdAt: "2026-07-28T00:00:00.000Z",
+      updatedAt: "2026-07-28T00:00:00.000Z",
+      deletedAt: null,
+    };
+    const pendingChanges = {
+      sourceDoc: {},
+      entries: { "entry-1": { itemName: "Edited lunch" } },
+    };
+    const onSelectEntry = vi.fn();
+    const commonProps = {
+      sourceDocument: documentWithFiles(0),
+      ledgerEntries: [entry],
+      categories: [],
+      pendingChanges,
+      selectedEntryIds: [],
+      onSourceDocChange: vi.fn(),
+      onEntryChange: vi.fn(),
+      onSelectEntry,
+      onSelectAllEntries: vi.fn(),
+      onToggleSelectionMode: vi.fn(),
+    };
+    const { rerender } = render(<SourceDocumentViewDetails {...commonProps} isSelectionMode />);
+
+    const input = screen.getByDisplayValue("Edited lunch");
+    expect(input.closest("[inert]")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Lunch/i }));
+    expect(onSelectEntry).toHaveBeenCalledTimes(1);
+    expect(onSelectEntry).toHaveBeenCalledWith("entry-1", true);
+
+    rerender(<SourceDocumentViewDetails {...commonProps} isSelectionMode={false} />);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Edited lunch").closest("[inert]")).toBeNull();
   });
 });

@@ -271,6 +271,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "retry": "Edit & Retry",
+    "selectItem": "Select {item}",
     "selectAll": "Select All",
     "cancel": "Cancel",
     "save": "Save",

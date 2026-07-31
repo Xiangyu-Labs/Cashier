@@ -18,7 +18,6 @@ import {
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,14 +42,12 @@ interface SourceDocumentCardHeaderProps {
   isCancelling: boolean;
   isAbandoning: boolean;
   selectionMode: boolean;
-  isSelected: boolean;
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
   isExpanded: boolean;
   contentId: string;
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
-  onToggleSelect?: (() => void) | undefined;
   onDirectRetry?: (() => void | Promise<void>) | undefined;
   onCancelProcessing?: (() => void | Promise<void>) | undefined;
   onAbandonCandidate?: (() => void | Promise<void>) | undefined;
@@ -86,14 +83,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   isCancelling,
   isAbandoning,
   selectionMode,
-  isSelected,
   supportedActions,
   showActions = true,
   isExpanded,
   contentId,
   onToggleExpanded,
   onViewDetails,
-  onToggleSelect,
   onDirectRetry,
   onCancelProcessing,
   onAbandonCandidate,
@@ -128,17 +123,12 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const hasAction = (action: SupportedSourceDocumentAction) => supportedActions.includes(action);
 
   return (
-    <div className="flex min-h-[68px] items-center gap-1 px-2 py-2 sm:px-3">
-      {selectionMode && (
-        <div className="mr-2 shrink-0" onClick={(event) => event.stopPropagation()}>
-          <Checkbox
-            checked={isSelected}
-            className="h-5 w-5"
-            {...(onToggleSelect !== undefined ? { onCheckedChange: onToggleSelect } : {})}
-          />
-        </div>
+    <div
+      className={cn(
+        "flex min-h-[68px] items-center gap-1 py-2 pr-2 sm:pr-3",
+        selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
-
+    >
       <button
         type="button"
         onClick={onToggleExpanded}
@@ -157,8 +147,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
 
       <button
         type="button"
-        onClick={() => (selectionMode ? onToggleSelect?.() : onViewDetails?.())}
-        disabled={!selectionMode && onViewDetails == null}
+        onClick={onViewDetails}
+        disabled={onViewDetails == null}
         className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default sm:min-h-9"
       >
         <span className="truncate text-sm font-semibold text-text">

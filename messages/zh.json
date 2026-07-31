@@ -270,6 +270,7 @@
     "confirm": "确认",
     "delete": "删除",
     "retry": "编辑重试",
+    "selectItem": "选择{item}",
     "cancel": "取消",
     "save": "保存",
     "saveSuccess": "保存成功",

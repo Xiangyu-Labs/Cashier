@@ -10,7 +10,6 @@ import { parseAmount } from "@/lib/formatters";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -44,8 +43,6 @@ export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVa
   preferredCurrencies?: string[];
   mainCurrency?: string;
   className?: string;
-  selected?: boolean;
-  onSelect?: (selected: boolean) => void;
   onChange?: (data: Partial<EntryEditData>) => void;
   pendingChanges?: Partial<EntryEditData>;
   /** The entryDate of the parent source document, used to detect date differences */
@@ -61,8 +58,6 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   mainCurrency = "CNY",
   variant = "default",
   className,
-  selected = false,
-  onSelect,
   onChange,
   pendingChanges,
   sourceDocumentEntryDate,
@@ -101,11 +96,6 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
 
   return (
     <div className={cn(itemVariants({ variant }), "gap-1.5 sm:gap-2", className)}>
-      {/* Checkbox */}
-      {onSelect && (
-        <Checkbox checked={selected} onCheckedChange={onSelect} className="h-5 w-5 shrink-0" />
-      )}
-
       {/* Category Icon */}
       <EditableCategorySelect
         value={displayData.categoryId}

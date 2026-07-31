@@ -7,6 +7,7 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { EntryGroupHeader } from "./EntryGroupHeader";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { memo } from "react";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -72,36 +73,22 @@ export function LedgerEntriesUnifiedGroups({
 
           <div className="space-y-4 px-2">
             {dateGroup.items.map((item) => (
-              <div key={item.sourceDocument.id} {...getItemProps()}>
-                <SourceDocumentCard
-                  sourceDocument={item.sourceDocument}
-                  ledgerEntries={item.ledgerEntries}
-                  mainCurrency={mainCurrency}
-                  {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
-                  onViewDetails={() =>
-                    onViewSourceDetail({
-                      sourceDocument: item.sourceDocument as SourceDocument,
-                      ledgerEntries: item.ledgerEntries as LedgerEntry[],
-                    })
-                  }
-                  {...(onEditRetry != null
-                    ? {
-                        onEditRetry: () => {
-                          onEditRetry(item.sourceDocument as SourceDocument);
-                        },
-                      }
-                    : {})}
-                  onDelete={() => onDeleteSourceConfirm(item.sourceDocument as SourceDocument)}
-                  status={item.sourceDocument.status as SourceDocumentStatusType}
-                  anomalyReason={item.sourceDocument.anomalyReason}
-                  selectionMode={isSelectionMode}
-                  isSelected={selectedIds.includes(item.sourceDocument.id)}
-                  onToggleSelect={() => onToggleSelection(item.sourceDocument.id)}
-                  readOnly={readOnly}
-                  defaultExpanded={!collapseEntriesDefault}
-                  {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
-                />
-              </div>
+              <UnifiedStreamItemRow
+                key={item.sourceDocument.id}
+                item={item}
+                mainCurrency={mainCurrency}
+                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+                onViewSourceDetail={onViewSourceDetail}
+                {...(onEditRetry != null ? { onEditRetry } : {})}
+                onDeleteSourceConfirm={onDeleteSourceConfirm}
+                selectionMode={isSelectionMode}
+                selected={selectedIds.includes(item.sourceDocument.id)}
+                onToggleSelection={onToggleSelection}
+                getItemProps={getItemProps}
+                readOnly={readOnly}
+                defaultExpanded={!collapseEntriesDefault}
+                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+              />
             ))}
           </div>
         </div>
@@ -109,6 +96,63 @@ export function LedgerEntriesUnifiedGroups({
     </div>
   );
 }
+
+interface UnifiedStreamItemRowProps {
+  item: UnifiedStreamGroup["items"][number];
+  mainCurrency: string;
+  onViewLedgerEntry?: (entry: LedgerEntry) => void;
+  onViewSourceDetail: UnifiedStreamGroupProps["onViewSourceDetail"];
+  onEditRetry?: (doc: SourceDocument) => void;
+  onDeleteSourceConfirm: (doc: SourceDocument) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelection: (id: string) => void;
+  getItemProps: () => Record<string, unknown>;
+  readOnly: boolean;
+  defaultExpanded: boolean;
+  offlineImageUrls?: ReadonlyMap<string, string>;
+}
+
+const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
+  item,
+  mainCurrency,
+  onViewLedgerEntry,
+  onViewSourceDetail,
+  onEditRetry,
+  onDeleteSourceConfirm,
+  selectionMode,
+  selected,
+  onToggleSelection,
+  getItemProps,
+  readOnly,
+  defaultExpanded,
+  offlineImageUrls,
+}: UnifiedStreamItemRowProps) {
+  const sourceDocument = item.sourceDocument as SourceDocument;
+  const ledgerEntries = item.ledgerEntries as LedgerEntry[];
+
+  return (
+    <div {...getItemProps()}>
+      <SourceDocumentCard
+        sourceDocument={item.sourceDocument}
+        ledgerEntries={item.ledgerEntries}
+        mainCurrency={mainCurrency}
+        {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+        onViewDetails={() => onViewSourceDetail({ sourceDocument, ledgerEntries })}
+        {...(onEditRetry != null ? { onEditRetry: () => onEditRetry(sourceDocument) } : {})}
+        onDelete={() => onDeleteSourceConfirm(sourceDocument)}
+        status={item.sourceDocument.status as SourceDocumentStatusType}
+        anomalyReason={item.sourceDocument.anomalyReason}
+        selectionMode={selectionMode}
+        isSelected={selected}
+        onToggleSelect={() => onToggleSelection(sourceDocument.id)}
+        readOnly={readOnly}
+        defaultExpanded={defaultExpanded}
+        {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+      />
+    </div>
+  );
+});
 
 function UnifiedGroupHeader({
   group,
