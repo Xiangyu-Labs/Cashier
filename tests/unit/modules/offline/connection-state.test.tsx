@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConnectionStateProvider, useConnectionState } from "@/modules/offline/connection-state";
 
@@ -35,6 +37,42 @@ function mockOnline(value = true) {
 }
 
 describe("connection state", () => {
+  it("hydrates without a mismatch when the client starts offline", async () => {
+    const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: undefined,
+    });
+    const serverHtml = renderToString(
+      <ConnectionStateProvider>
+        <Status />
+      </ConnectionStateProvider>
+    );
+    if (navigatorDescriptor != null) {
+      Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+    }
+
+    mockOnline(false);
+    const container = document.createElement("div");
+    container.innerHTML = serverHtml;
+    document.body.appendChild(container);
+    const recoverableErrors: unknown[] = [];
+    const root = hydrateRoot(
+      container,
+      <ConnectionStateProvider>
+        <Status />
+      </ConnectionStateProvider>,
+      { onRecoverableError: (error) => recoverableErrors.push(error) }
+    );
+
+    await act(async () => Promise.resolve());
+
+    expect(recoverableErrors).toEqual([]);
+    expect(container.querySelector('[data-testid="status"]')).toHaveTextContent("offline");
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it("makes an offline event immediate and ignores the stale successful probe", async () => {
     let resolveProbe: ((response: Response) => void) | undefined;
     vi.stubGlobal(

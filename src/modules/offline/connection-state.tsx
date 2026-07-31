@@ -30,9 +30,7 @@ const PROBE_TIMEOUT_MS = 4_000;
 const CONFIRMATION_DELAY_MS = 1_000;
 
 export function ConnectionStateProvider({ children }: { children: React.ReactNode }) {
-  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(() =>
-    typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "online"
-  );
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>("online");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [retryAt, setRetryAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -121,6 +119,7 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (navigator.onLine) void probe();
+    else setNetworkStatus("offline");
     const online = () => {
       probeGenerationRef.current += 1;
       inFlightRef.current = null;
