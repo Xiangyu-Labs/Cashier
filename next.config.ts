@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import withSerwistInit from "@serwist/next";
 
 const withNextIntl = createNextIntlPlugin();
 
@@ -15,32 +16,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
-  cacheStartUrl: false,
-  dynamicStartUrl: false,
+const withSerwist = withSerwistInit({
+  swSrc: "worker/index.ts",
+  swDest: "public/sw.js",
+  swUrl: "/sw.js",
+  cacheOnNavigation: false,
   reloadOnOnline: false,
-  fallbacks: {
-    document: "/zh/offline",
-  },
   disable: process.env.NODE_ENV === "development",
-  workboxOptions: {
-    disableDevLogs: true,
-    additionalManifestEntries: [{ url: "/en/offline", revision: null }],
-    runtimeCaching: [],
-    exclude: [
-      /middleware-manifest\.json$/,
-      /app-build-manifest\.json$/,
-      /chunks\/app\/api\//,
-      /chunks\/app\/.*\(protected\)\//,
-      /chunks\/app\/.*\/login\//,
-      /chunks\/app\/.*\/settings\//,
-    ],
-  },
+  additionalPrecacheEntries: [
+    { url: "/zh/offline", revision: null },
+    { url: "/en/offline", revision: null },
+  ],
+  exclude: [
+    /middleware-manifest\.json$/,
+    /app-build-manifest\.json$/,
+    /chunks\/app\/api\//,
+    /chunks\/app\/.*\(protected\)\//,
+    /chunks\/app\/.*\/login\//,
+    /chunks\/app\/.*\/settings\//,
+  ],
 });
 
-export default withPWA(withNextIntl(nextConfig));
+export default withSerwist(withNextIntl(nextConfig));

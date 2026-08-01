@@ -37,11 +37,21 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
   const failureCountRef = useRef(0);
   const wasOfflineRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoveredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<Promise<boolean> | null>(null);
   const probeGenerationRef = useRef(0);
   const probeControllerRef = useRef<AbortController | null>(null);
-  const statusRef = useRef(networkStatus);
-  statusRef.current = networkStatus;
+  const statusRef = useRef<NetworkStatus>("online");
+
+  const updateNetworkStatus = useCallback((status: NetworkStatus) => {
+    statusRef.current = status;
+    setNetworkStatus(status);
+  }, []);
+
+  const clearRecoveredTimer = useCallback(() => {
+    if (recoveredTimerRef.current != null) clearTimeout(recoveredTimerRef.current);
+    recoveredTimerRef.current = null;
+  }, []);
 
   const clearScheduledProbe = useCallback(() => {
     if (timerRef.current != null) clearTimeout(timerRef.current);
@@ -51,12 +61,12 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
 
   const probe = useCallback(async (): Promise<boolean> => {
     if (!navigator.onLine) {
-      setNetworkStatus("offline");
+      updateNetworkStatus("offline");
       return false;
     }
     if (inFlightRef.current != null) return inFlightRef.current;
     clearScheduledProbe();
-    if (statusRef.current !== "online") setNetworkStatus("checking");
+    if (statusRef.current !== "online") updateNetworkStatus("checking");
     const generation = ++probeGenerationRef.current;
     const run = (async () => {
       const controller = new AbortController();
@@ -74,26 +84,27 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
         setRetryAt(null);
         if (wasOfflineRef.current) {
           wasOfflineRef.current = false;
-          setNetworkStatus("recovered");
-          setTimeout(
-            () => setNetworkStatus((current) => (current === "recovered" ? "online" : current)),
-            2500
-          );
+          updateNetworkStatus("recovered");
+          clearRecoveredTimer();
+          recoveredTimerRef.current = setTimeout(() => {
+            if (statusRef.current === "recovered") updateNetworkStatus("online");
+          }, 2500);
         } else {
-          setNetworkStatus("online");
+          updateNetworkStatus("online");
         }
         return true;
       } catch {
         if (generation !== probeGenerationRef.current) return false;
         if (!wasOfflineRef.current && failureCountRef.current === 0) {
           failureCountRef.current = 1;
-          setNetworkStatus("checking");
+          updateNetworkStatus("checking");
           setRetryAt(Date.now() + CONFIRMATION_DELAY_MS);
           timerRef.current = setTimeout(() => void probe(), CONFIRMATION_DELAY_MS);
           return false;
         }
         wasOfflineRef.current = true;
-        setNetworkStatus("offline");
+        clearRecoveredTimer();
+        updateNetworkStatus("offline");
         const index = Math.min(
           Math.max(0, failureCountRef.current - 1),
           RETRY_DELAYS_MS.length - 1
@@ -115,13 +126,15 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
     })();
     inFlightRef.current = run;
     return run;
-  }, [clearScheduledProbe]);
+  }, [clearRecoveredTimer, clearScheduledProbe, updateNetworkStatus]);
 
   useEffect(() => {
     if (navigator.onLine) void probe();
-    else setNetworkStatus("offline");
+    else updateNetworkStatus("offline");
     const online = () => {
       probeGenerationRef.current += 1;
+      probeControllerRef.current?.abort();
+      probeControllerRef.current = null;
       inFlightRef.current = null;
       void probe();
     };
@@ -132,8 +145,9 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
       inFlightRef.current = null;
       wasOfflineRef.current = true;
       failureCountRef.current = 0;
+      clearRecoveredTimer();
       clearScheduledProbe();
-      setNetworkStatus("offline");
+      updateNetworkStatus("offline");
     };
     const immediate = () => void probe();
     const visibility = () => {
@@ -145,15 +159,19 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
     window.addEventListener("focus", immediate);
     document.addEventListener("visibilitychange", visibility);
     return () => {
-      clearScheduledProbe();
+      if (timerRef.current != null) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      clearRecoveredTimer();
       probeGenerationRef.current += 1;
       probeControllerRef.current?.abort();
+      probeControllerRef.current = null;
+      inFlightRef.current = null;
       window.removeEventListener("online", online);
       window.removeEventListener("offline", offline);
       window.removeEventListener("focus", immediate);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [clearScheduledProbe, probe]);
+  }, [clearRecoveredTimer, clearScheduledProbe, probe, updateNetworkStatus]);
 
   useEffect(() => {
     if (retryAt == null) return;
@@ -162,6 +180,7 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
   }, [retryAt]);
 
   const retryInSeconds = retryAt == null ? null : Math.max(0, Math.ceil((retryAt - now) / 1000));
+  const retry = useCallback(() => void probe(), [probe]);
   return (
     <ConnectionContext.Provider
       value={{
@@ -169,7 +188,7 @@ export function ConnectionStateProvider({ children }: { children: React.ReactNod
         syncStatus,
         status: networkStatus,
         retryInSeconds,
-        retry: () => void probe(),
+        retry,
         setSyncStatus,
       }}
     >

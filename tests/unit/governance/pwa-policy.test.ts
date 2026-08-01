@@ -9,15 +9,19 @@ describe("PWA policy", () => {
   it("keeps authenticated navigation out of persistent service-worker caches", () => {
     const config = read("next.config.ts");
     const worker = read("worker/index.ts");
-    expect(config).toContain('document: "/zh/offline"');
+    expect(config).toContain('withSerwistInit from "@serwist/next"');
+    expect(config).toContain('url: "/zh/offline"');
     expect(config).toContain('url: "/en/offline"');
-    expect(config).toContain("runtimeCaching: []");
+    expect(config).toContain("cacheOnNavigation: false");
     expect(config).toContain("/chunks\\/app\\/api\\//");
     expect(config).toContain("/chunks\\/app\\/.*\\(protected\\)\\//");
     expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 8_000");
+    expect(worker).toContain('request.mode === "navigate"');
+    expect(worker).toContain("handler: ({ request }) => fetchNavigation(request)");
     expect(worker).toContain("caches.match(fallbackUrl");
     expect(worker).toContain("/\\/offline\\/?$/.test");
     expect(worker).not.toContain("caches.put");
+    expect(config).not.toContain("next-pwa");
     expect(config).not.toContain("cacheStartUrl: true");
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
@@ -39,27 +39,24 @@ export function useQuickEntryFormController({
   const t = useTranslations("QuickEntryForm");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(mainCurrency);
+  const [currencyDraft, setCurrencyDraft] = useState(() => ({
+    mainCurrency,
+    value: mainCurrency,
+  }));
   const [itemName, setItemName] = useState("");
-  const [entryDate, setEntryDateState] = useState(
-    () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date())
+  const [editedEntryDate, setEditedEntryDate] = useState<string | null>(null);
+  const currency = currencyDraft.mainCurrency === mainCurrency ? currencyDraft.value : mainCurrency;
+  const entryDate =
+    editedEntryDate ?? getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date());
+
+  const setCurrency = useCallback(
+    (value: string) => setCurrencyDraft({ mainCurrency, value }),
+    [mainCurrency]
   );
-  const entryDateWasEdited = useRef(false);
 
   const setEntryDate = useCallback((date: string) => {
-    entryDateWasEdited.current = true;
-    setEntryDateState(date);
+    setEditedEntryDate(date);
   }, []);
-
-  useEffect(() => {
-    setCurrency(mainCurrency);
-  }, [mainCurrency]);
-
-  useEffect(() => {
-    if (entryDateWasEdited.current) return;
-    const zonedDate = getDateInTimezone(timeZone);
-    if (zonedDate != null) setEntryDateState(zonedDate);
-  }, [timeZone]);
 
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 

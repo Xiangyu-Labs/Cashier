@@ -1,8 +1,7 @@
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 
 export type AiMessageContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
 export interface AiContextContract {
   generate(options: {

@@ -74,29 +74,6 @@ export function CalculatorInput({
     }
   }, [mode]);
 
-  // Initialize input value when entering input mode
-  React.useEffect(() => {
-    if (mode === "input") {
-      if (inlineInputMode === "minor-unit") {
-        setInputValue(value === 0 ? "" : amountToMinorUnitDigits(value));
-      } else {
-        setInputValue(value === 0 ? "" : value.toFixed(2));
-      }
-    }
-  }, [inlineInputMode, mode, value]);
-
-  // Reset calculator state when opening calculator
-  React.useEffect(() => {
-    if (mode === "calculator") {
-      setCalcState({
-        displayValue: value === 0 ? "0" : value.toFixed(2),
-        operator: null,
-        operand: "",
-        hasResult: false,
-      });
-    }
-  }, [mode, value]);
-
   // Handle click outside to cancel input mode
   React.useEffect(() => {
     if (mode !== "input") return;
@@ -123,6 +100,29 @@ export function CalculatorInput({
       onChange(parseFloat(numValue.toFixed(2)));
     }
     setMode("display");
+  };
+
+  const handleStartInput = () => {
+    setInputValue(
+      inlineInputMode === "minor-unit"
+        ? value === 0
+          ? ""
+          : amountToMinorUnitDigits(value)
+        : value === 0
+          ? ""
+          : value.toFixed(2)
+    );
+    setMode("input");
+  };
+
+  const handleOpenCalculator = () => {
+    setCalcState({
+      displayValue: value === 0 ? "0" : value.toFixed(2),
+      operator: null,
+      operand: "",
+      hasResult: false,
+    });
+    setMode("calculator");
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -314,7 +314,7 @@ export function CalculatorInput({
           disabled && "pointer-events-none opacity-50"
         )}
         disabled={disabled}
-        onClick={() => setMode("input")}
+        onClick={handleStartInput}
         aria-label={ariaLabel}
       >
         <span className="font-mono">{value.toFixed(2)}</span>
@@ -342,7 +342,7 @@ export function CalculatorInput({
           )}
         />
         <button
-          onClick={() => setMode("calculator")}
+          onClick={handleOpenCalculator}
           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
           title={t("openCalculator")}
           aria-label={t("openCalculator")}

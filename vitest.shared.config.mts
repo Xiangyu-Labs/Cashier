@@ -1,10 +1,13 @@
 import path from "path";
+import { fileURLToPath } from "node:url";
 import { defineProject } from "vitest/config";
 
+const configDirectory = path.dirname(fileURLToPath(import.meta.url));
+
 export const resolveAliases = {
-  "@": path.resolve(__dirname, "src"),
-  messages: path.resolve(__dirname, "messages"),
-  tests: path.resolve(__dirname, "tests"),
+  "@": path.resolve(configDirectory, "src"),
+  messages: path.resolve(configDirectory, "messages"),
+  tests: path.resolve(configDirectory, "tests"),
 };
 
 export const coverageConfig = {

@@ -2,11 +2,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export type ProcessingStatusType =
-  | "processing"
-  | "completed"
-  | "error"
-  | "candidate_pending"
-  | "cancelled";
+  "processing" | "completed" | "error" | "candidate_pending" | "cancelled";
 
 interface ProcessingStatusProps {
   status: ProcessingStatusType;

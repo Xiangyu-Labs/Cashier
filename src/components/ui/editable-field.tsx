@@ -42,11 +42,6 @@ export function EditableField({
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync local value when prop changes
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
   // Auto-resize textarea
   const autoResizeTextarea = useCallback(() => {
     const textarea = textareaRef.current;
@@ -98,6 +93,11 @@ export function EditableField({
   const handleCancel = () => {
     setLocalValue(value);
     setIsEditing(false);
+  };
+
+  const handleStartEditing = () => {
+    setLocalValue(value);
+    setIsEditing(true);
   };
 
   const handleBlur = () => {
@@ -231,7 +231,7 @@ export function EditableField({
 
   return (
     <div
-      onClick={() => setIsEditing(true)}
+      onClick={handleStartEditing}
       className={cn(containerStyles, interactiveStyles, displayClassName)}
     >
       {renderDisplay ? (

@@ -44,6 +44,15 @@ vi.mock("next-intl", async () => {
 });
 
 describe("CalculatorInput", () => {
+  it("initializes a new inline draft from the latest controlled value", () => {
+    const { rerender } = render(<CalculatorInput value={12} onChange={() => {}} />);
+
+    rerender(<CalculatorInput value={34.5} onChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "金额" }));
+
+    expect(screen.getByRole("textbox")).toHaveValue("34.50");
+  });
+
   it("keeps the same typography when switching into inline edit mode", () => {
     render(
       <CalculatorInput

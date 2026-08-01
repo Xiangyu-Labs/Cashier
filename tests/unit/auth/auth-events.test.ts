@@ -119,8 +119,7 @@ describe("auth.ts adapter wiring", () => {
   it("delegates createUser events to the auth user-created use case", async () => {
     const { authModule, authOptions } = await loadAuthOptions();
     const createUserEvent = authOptions?.events?.createUser as
-      | ((params: { user: { id?: string | null } }) => Promise<void>)
-      | undefined;
+      ((params: { user: { id?: string | null } }) => Promise<void>) | undefined;
 
     expect(authModule).toBeDefined();
     expect(createUserEvent).toBeTypeOf("function");
@@ -155,8 +154,7 @@ describe("auth.ts adapter wiring", () => {
   it("delegates signIn callbacks to the auth sign-in guard use case", async () => {
     const { authOptions } = await loadAuthOptions();
     const signInCallback = authOptions?.callbacks?.signIn as
-      | ((params: { user: { email?: string | null } }) => Promise<boolean>)
-      | undefined;
+      ((params: { user: { email?: string | null } }) => Promise<boolean>) | undefined;
 
     isAuthSignInAllowedMock.mockResolvedValueOnce(false);
     const result = await signInCallback?.({ user: { email: "blocked@example.com" } });

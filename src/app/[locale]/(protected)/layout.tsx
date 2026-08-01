@@ -7,18 +7,20 @@ import { LocalePreferenceSync } from "@/components/LocalePreferenceSync";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
+  let context;
   try {
-    const context = await resolveAuthenticatedHome();
-    return (
-      <Providers>
-        <LocalePreferenceSync preference={context.session.user?.interfaceLanguage ?? "auto"} />
-        {children}
-      </Providers>
-    );
+    context = await resolveAuthenticatedHome();
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       redirect(`/${locale}/login`);
     }
     throw error;
   }
+
+  return (
+    <Providers>
+      <LocalePreferenceSync preference={context.session.user?.interfaceLanguage ?? "auto"} />
+      {children}
+    </Providers>
+  );
 }

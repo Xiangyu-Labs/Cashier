@@ -4,7 +4,7 @@ import {
   integrationProjects,
   resolveAliases,
   unitProjects,
-} from "./vitest.shared.config";
+} from "./vitest.shared.config.mjs";
 
 export default defineConfig({
   resolve: {

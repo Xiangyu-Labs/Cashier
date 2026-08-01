@@ -92,6 +92,24 @@ describe("connection state", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("offline");
   });
 
+  it("aborts an in-flight probe when the provider unmounts", () => {
+    mockOnline();
+    let probeSignal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+        probeSignal = init?.signal ?? undefined;
+        return new Promise<Response>(() => {});
+      })
+    );
+
+    const { unmount } = renderProvider();
+    expect(probeSignal?.aborted).toBe(false);
+
+    unmount();
+    expect(probeSignal?.aborted).toBe(true);
+  });
+
   it("keeps online content available while confirming the first failed probe", async () => {
     vi.useFakeTimers();
     mockOnline();

@@ -38,15 +38,36 @@ export function Calendar({
   maxDate,
   className,
 }: CalendarProps) {
+  return (
+    <CalendarView
+      key={value?.getTime() ?? "empty"}
+      value={value}
+      onChange={onChange}
+      showShortcuts={showShortcuts}
+      minDate={minDate}
+      maxDate={maxDate}
+      className={className}
+    />
+  );
+}
+
+function CalendarView({
+  value,
+  onChange,
+  showShortcuts,
+  minDate,
+  maxDate,
+  className,
+}: {
+  value: Date | null | undefined;
+  onChange: (date: Date | null) => void;
+  showShortcuts: boolean;
+  minDate: Date | undefined;
+  maxDate: Date | undefined;
+  className: string | undefined;
+}) {
   const t = useTranslations("Calendar");
   const [viewDate, setViewDate] = React.useState(value || new Date());
-
-  // Sync view date when value changes from outside
-  React.useEffect(() => {
-    if (value) {
-      setViewDate(value);
-    }
-  }, [value]);
 
   // Generate calendar grid
   const calendarDays = React.useMemo(() => {

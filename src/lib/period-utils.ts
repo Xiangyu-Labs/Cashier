@@ -8,14 +8,7 @@
 import { formatDateTimeForApi, getDateInTimezone, parseDateString } from "./date-utils";
 
 export type PeriodPreset =
-  | "all"
-  | "thisMonth"
-  | "week"
-  | "month"
-  | "3months"
-  | "6months"
-  | "year"
-  | "custom";
+  "all" | "thisMonth" | "week" | "month" | "3months" | "6months" | "year" | "custom";
 
 export interface PeriodParams {
   period: PeriodPreset;

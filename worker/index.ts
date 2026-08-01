@@ -1,13 +1,15 @@
-interface ServiceWorkerFetchEvent extends Event {
-  request: Request;
-  respondWith(response: Response | Promise<Response>): void;
+/// <reference lib="webworker" />
+
+import { Serwist, type PrecacheEntry, type SerwistGlobalConfig } from "serwist";
+
+declare global {
+  interface WorkerGlobalScope extends SerwistGlobalConfig {
+    __SW_MANIFEST: (PrecacheEntry | string)[];
+  }
 }
 
-interface ServiceWorkerScope {
-  addEventListener(type: "fetch", listener: (event: ServiceWorkerFetchEvent) => void): void;
-}
+declare const self: ServiceWorkerGlobalScope;
 
-const workerScope = globalThis as unknown as ServiceWorkerScope;
 const NAVIGATION_TIMEOUT_MS = 8_000;
 
 function offlineEntry(request: Request) {
@@ -32,8 +34,17 @@ async function fetchNavigation(request: Request): Promise<Response> {
   }
 }
 
-workerScope.addEventListener("fetch", (event) => {
-  if (event.request.method === "GET" && event.request.mode === "navigate") {
-    event.respondWith(fetchNavigation(event.request));
-  }
+const serwist = new Serwist({
+  precacheEntries: self.__SW_MANIFEST,
+  skipWaiting: true,
+  clientsClaim: true,
+  disableDevLogs: true,
+  runtimeCaching: [
+    {
+      matcher: ({ request }) => request.method === "GET" && request.mode === "navigate",
+      handler: ({ request }) => fetchNavigation(request),
+    },
+  ],
 });
+
+serwist.addEventListeners();

@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { coverageConfig, integrationProjects, resolveAliases } from "./vitest.shared.config";
+import { coverageConfig, resolveAliases, unitProjects } from "./vitest.shared.config.mjs";
 
 export default defineConfig({
   resolve: {
@@ -7,6 +7,6 @@ export default defineConfig({
   },
   test: {
     coverage: coverageConfig,
-    projects: integrationProjects,
+    projects: unitProjects,
   },
 });

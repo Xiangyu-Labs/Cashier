@@ -64,6 +64,24 @@ describe("useQuickEntryFormController", () => {
     expect(result.current.entryDate).toBe("2026-07-20");
   });
 
+  it("derives the default currency from the latest ledger currency", () => {
+    const { result, rerender } = renderHook(
+      ({ mainCurrency }: { mainCurrency: string }) =>
+        useQuickEntryFormController({
+          ledgerId: "ledger-1",
+          categories,
+          mainCurrency,
+        }),
+      { initialProps: { mainCurrency: "CNY" } }
+    );
+
+    act(() => result.current.setCurrency("EUR"));
+    expect(result.current.currency).toBe("EUR");
+
+    rerender({ mainCurrency: "USD" });
+    expect(result.current.currency).toBe("USD");
+  });
+
   it("submits a positive decimal amount with the unchanged date contract", () => {
     const { result } = renderHook(() =>
       useQuickEntryFormController({

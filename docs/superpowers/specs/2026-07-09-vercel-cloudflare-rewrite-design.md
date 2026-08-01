@@ -705,10 +705,7 @@ type ParseResult =
     };
 
 type AnomalyCode =
-  | "insufficient_evidence"
-  | "currency_required"
-  | "amount_conflict"
-  | "unsupported_document";
+  "insufficient_evidence" | "currency_required" | "amount_conflict" | "unsupported_document";
 ```
 
 Parsed entries must use explicit ISO 4217 currency codes. The parsed branch must never use `unknown`, `null`, empty

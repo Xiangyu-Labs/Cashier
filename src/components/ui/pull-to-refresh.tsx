@@ -28,7 +28,6 @@ export function PullToRefresh({
   const t = useTranslations("PullToRefresh");
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const startYRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastRefreshTime = useRef(0);
@@ -37,18 +36,13 @@ export function PullToRefresh({
   // Keep the latest refresh callback available without re-registering touch listeners.
   const onRefreshRef = useRef(onRefresh);
 
-  // Detect touch device on mount
-  useEffect(() => {
-    setIsTouchDevice("ontouchstart" in window);
-  }, []);
-
   useLayoutEffect(() => {
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
 
   useEffect(() => {
     // If disabled or non-touch device, don't add listeners
-    if (disabled || !isTouchDevice) return;
+    if (disabled || !("ontouchstart" in window)) return;
 
     const container = containerRef.current;
     if (!container) return;
@@ -136,10 +130,9 @@ export function PullToRefresh({
       container.removeEventListener("touchmove", handleTouchMove);
       container.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [threshold, isRefreshing, disabled, isTouchDevice]);
+  }, [threshold, isRefreshing, disabled]);
 
-  // 如果禁用或非触摸设备，直接渲染子元素
-  if (disabled || !isTouchDevice) {
+  if (disabled) {
     return (
       <div className={className}>
         {header}
