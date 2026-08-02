@@ -6,10 +6,12 @@
  * original input, then returns the chosen result as a NormalizedParseOutput.
  */
 
-import type { AiContextContract, AiMessageContentPart as AIMessageContentPart } from "./contracts";
-import { AppError } from "@/lib/errors";
+import {
+  ProcessingFailure,
+  type AiContextContract,
+  type AiMessageContentPart as AIMessageContentPart,
+} from "./contracts";
 import { logger } from "@/lib/logger";
-import { isSuccessfulLoadImageResult, loadStoredFilesForAI } from "@/lib/storage/utils";
 import { z } from "zod";
 import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";
@@ -79,21 +81,13 @@ ${context}
 Return the corrected final result as a JSON block matching the parser output format. Return only the JSON block, no other text.`;
 }
 
-async function buildArbitrationMessageContent(input: ParserInput): Promise<AIMessageContentPart[]> {
+function buildArbitrationMessageContent(input: ParserInput): AIMessageContentPart[] {
   const content: AIMessageContentPart[] = [
     { type: "text", text: "Please arbitrate these parse results." },
   ];
 
-  const hasStoredFiles = (input.storedFileIds?.length ?? 0) > 0;
-  if (hasStoredFiles) {
-    if (input.ledgerId == null || input.ledgerId === "") {
-      throw new AppError(
-        "arbitration: stored-file evidence requires ledger identity",
-        "VALIDATION_ERROR"
-      );
-    }
-    const loaded = await loadStoredFilesForAI(input.ledgerId, input.storedFileIds!);
-    const images = loaded.filter(isSuccessfulLoadImageResult).map((r) => ({ dataUrl: r.dataUrl }));
+  const images = input.evidence?.images ?? [];
+  if (images.length > 0) {
     content.push(
       ...images.map((image) => ({
         type: "image_url" as const,
@@ -109,6 +103,20 @@ export type ArbitrationResult =
   | { kind: "chosen"; result: NormalizedParseOutput; wasArbitrated: boolean }
   | { kind: "anomaly"; reason: string };
 
+async function generateForArbitration(
+  ai: AiContextContract,
+  options: Parameters<AiContextContract["generate"]>[0]
+) {
+  try {
+    return await ai.generate(options);
+  } catch (error) {
+    if (error instanceof ProcessingFailure) throw error;
+    throw new ProcessingFailure("ai_provider_unavailable", "Arbitration AI request failed", {
+      cause: error,
+    });
+  }
+}
+
 export async function arbitrateResults(
   {
     input,
@@ -121,13 +129,13 @@ export async function arbitrateResults(
   },
   ai: AiContextContract
 ): Promise<ArbitrationResult> {
-  const hasImages = (input.storedFileIds?.length ?? 0) > 0;
+  const hasImages = (input.evidence?.images.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
-  const messageContent = await buildArbitrationMessageContent(input);
+  const messageContent = buildArbitrationMessageContent(input);
 
   // Step 1: choose which result is better
   const choicePrompt = buildArbitrationPrompt(input, result1, result2);
-  const choiceResponse = await ai.generate({
+  const choiceResponse = await generateForArbitration(ai, {
     model,
     prompt: choicePrompt,
     messages: [{ role: "user", content: messageContent }],
@@ -141,9 +149,10 @@ export async function arbitrateResults(
       .trim();
     choiceRaw = JSON.parse(content);
   } catch (e) {
-    throw new AppError(
-      `arbitration: failed to parse choice response: ${String(e)}`,
-      "AI_PARSE_ERROR"
+    throw new ProcessingFailure(
+      "ai_schema_invalid",
+      "Arbitration choice response was not valid JSON",
+      { cause: e }
     );
   }
 
@@ -164,7 +173,7 @@ export async function arbitrateResults(
 
   // Step 2: fallback — ask AI to produce corrected result
   const correctionPrompt = buildArbitrationResultPrompt(input, result1, result2);
-  const correctedResponse = await ai.generate({
+  const correctedResponse = await generateForArbitration(ai, {
     model,
     prompt: correctionPrompt,
     messages: [{ role: "user", content: messageContent }],
@@ -178,18 +187,20 @@ export async function arbitrateResults(
       .trim();
     raw = JSON.parse(content);
   } catch (e) {
-    throw new AppError(
-      `arbitration: failed to parse corrected result: ${String(e)}`,
-      "AI_PARSE_ERROR"
+    throw new ProcessingFailure(
+      "ai_schema_invalid",
+      "Arbitration corrected response was not valid JSON",
+      { cause: e }
     );
   }
 
   const parsedCorrected = parserOutputSchema.safeParse(raw);
   if (!parsedCorrected.success) {
-    return {
-      kind: "anomaly",
-      reason: "Arbitration produced an invalid result",
-    };
+    throw new ProcessingFailure(
+      "ai_schema_invalid",
+      "Arbitration corrected response failed schema validation",
+      { cause: parsedCorrected.error }
+    );
   }
 
   const normalized = normalizeResult(parsedCorrected.data, input.aiLanguage);

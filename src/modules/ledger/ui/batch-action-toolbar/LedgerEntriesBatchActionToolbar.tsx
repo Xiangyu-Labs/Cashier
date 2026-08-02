@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { LedgerEntriesActions } from "./LedgerEntriesActions";
-import { MOTION_DURATION, MOTION_EASING, REDUCED_MOTION_TRANSITION } from "@/lib/motion";
 
 export interface LedgerEntriesBatchActionToolbarProps {
   selectedCount: number;
@@ -47,7 +45,6 @@ export function LedgerEntriesBatchActionToolbar({
   variant = "fixed",
 }: LedgerEntriesBatchActionToolbarProps) {
   const t = useTranslations("BatchActions");
-  const prefersReducedMotion = useReducedMotion();
   const [internalChangingCategory, setInternalChangingCategory] = useState(false);
   const [internalChangingCurrency, setInternalChangingCurrency] = useState(false);
 
@@ -101,71 +98,62 @@ export function LedgerEntriesBatchActionToolbar({
 
   return (
     <>
-      <AnimatePresence>
-        {selectedCount > 0 && (
-          <motion.div
-            initial={prefersReducedMotion ? false : { y: variant === "fixed" ? 12 : 6, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={
-              prefersReducedMotion ? { opacity: 0 } : { y: variant === "fixed" ? 8 : 4, opacity: 0 }
-            }
-            transition={
-              prefersReducedMotion
-                ? REDUCED_MOTION_TRANSITION
-                : { duration: MOTION_DURATION.state, ease: MOTION_EASING.enter }
-            }
-            className={containerClasses}
+      {selectedCount > 0 ? (
+        <div
+          className={cn(
+            containerClasses,
+            "animate-in fade-in-0 slide-in-from-bottom-2 duration-[var(--motion-state)] ease-[var(--motion-enter)] motion-reduce:animate-none"
+          )}
+        >
+          <div
+            className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}
           >
             <div
-              className={cn(innerWrapperClasses, variant === "inline" && "border-t bg-surface/95")}
+              className={cn(
+                "border border-border shadow-lg p-2 sm:p-3 bg-surface2",
+                variant === "fixed" && "rounded-xl",
+                variant === "inline" && "border-x-0 border-b-0"
+              )}
             >
-              <div
-                className={cn(
-                  "border border-border shadow-lg p-2 sm:p-3 bg-surface2",
-                  variant === "fixed" && "rounded-xl",
-                  variant === "inline" && "border-x-0 border-b-0"
-                )}
-              >
-                <div className="flex items-center justify-between mb-2 sm:mb-3">
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm font-medium">
-                      {t("selected", { count: selectedCount })}
-                    </span>
-                    {isAllSelected && hasMoreData && (
-                      <span className="text-[10px] text-muted-foreground">{t("loadedOnly")}</span>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={isAllSelected ? onClearSelection : onSelectAll}
-                    className="text-xs h-7 px-2"
-                  >
-                    {isAllSelected ? t("deselectAll") : t("selectAll")}
-                    {!isAllSelected && (
-                      <span className="ml-1 text-muted-foreground">({totalCount})</span>
-                    )}
-                  </Button>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex flex-col">
+                  <span className="text-xs sm:text-sm font-medium">
+                    {t("selected", { count: selectedCount })}
+                  </span>
+                  {isAllSelected && hasMoreData && (
+                    <span className="text-[10px] text-muted-foreground">{t("loadedOnly")}</span>
+                  )}
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={isAllSelected ? onClearSelection : onSelectAll}
+                  className="text-xs h-7 px-2"
+                >
+                  {isAllSelected ? t("deselectAll") : t("selectAll")}
+                  {!isAllSelected && (
+                    <span className="ml-1 text-muted-foreground">({totalCount})</span>
+                  )}
+                </Button>
+              </div>
 
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <LedgerEntriesActions
-                    categories={categories}
-                    preferredCurrencies={preferredCurrencies}
-                    isProcessing={isProcessing}
-                    isChangingCategory={isChangingCategory}
-                    isChangingCurrency={isChangingCurrency}
-                    onChangeCategory={handleChangeCategory}
-                    onChangeCurrency={handleChangeCurrency}
-                    {...(onChangeDate != null ? { onChangeDate } : {})}
-                    {...(onDelete != null ? { onDelete } : {})}
-                  />
-                </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <LedgerEntriesActions
+                  categories={categories}
+                  preferredCurrencies={preferredCurrencies}
+                  isProcessing={isProcessing}
+                  isChangingCategory={isChangingCategory}
+                  isChangingCurrency={isChangingCurrency}
+                  onChangeCategory={handleChangeCategory}
+                  onChangeCurrency={handleChangeCurrency}
+                  {...(onChangeDate != null ? { onChangeDate } : {})}
+                  {...(onDelete != null ? { onDelete } : {})}
+                />
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -3,10 +3,16 @@ import { getTestDb } from "tests/setup";
 import { users } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import {
-  assertRegistrationAllowed,
-  isRegistrationAllowed,
+  assertRegistrationAllowed as assertRegistrationAllowedWithPort,
+  isRegistrationAllowed as isRegistrationAllowedWithPort,
   RegistrationDisabledError,
 } from "@/modules/auth/application/use-cases/registration-policy";
+import { serverComposition } from "@/application/server-composition-root";
+
+const isRegistrationAllowed = (email: string) =>
+  isRegistrationAllowedWithPort(email, serverComposition.userAccounts);
+const assertRegistrationAllowed = (email: string) =>
+  assertRegistrationAllowedWithPort(email, serverComposition.userAccounts);
 
 describe("registration policy use-case", () => {
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;

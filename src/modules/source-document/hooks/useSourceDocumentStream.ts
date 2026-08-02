@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useCallback } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/actions";
 import type {
   SourceDocumentListItemDto,
@@ -20,6 +20,10 @@ import {
 } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { useRevisionStateRefresh } from "./revision-state-refresh";
+import {
+  seedSourceDocumentEntities,
+  type SourceDocumentEntityStore,
+} from "./source-document-optimistic-cache";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -151,6 +155,17 @@ export function useSourceDocumentStream(
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  const { data: entities = {} } = useQuery<SourceDocumentEntityStore>({
+    queryKey: queryKeys.sourceDocumentEntities(ledgerId),
+    queryFn: async () => ({}),
+    initialData: {},
+    enabled: false,
+  });
+
+  useEffect(() => {
+    const pageItems = data?.pages.flatMap((page) => page.items) ?? [];
+    if (pageItems.length > 0) seedSourceDocumentEntities(queryClient, ledgerId, pageItems);
+  }, [data, ledgerId, queryClient]);
 
   // Check generation consistency across pages (Fix 3).
   // If a subsequent page has a different generation than the first page,
@@ -204,20 +219,28 @@ export function useSourceDocumentStream(
     return { changed, ...(result === undefined ? {} : { result }) };
   }, [ledgerId, queryClient]);
 
-  // Register with the refresh coordinator for polling
+  const windowItemIds = useMemo(
+    () => deduplicate(data?.pages.flatMap((page) => page.items) ?? []).map((item) => item.id),
+    [data]
+  );
+  const items = useMemo(() => {
+    const pageFallbacks = new Map(
+      (data?.pages.flatMap((page) => page.items) ?? []).map((item) => [item.id, item])
+    );
+    return windowItemIds.flatMap((id) => {
+      const item = entities[id] ?? pageFallbacks.get(id);
+      return item == null ? [] : [item];
+    });
+  }, [data, entities, windowItemIds]);
+  const hasProcessingItems = items.some((item) => item.status === "processing");
+
+  // Fast polling is active only while this window contains transitional work.
   useRevisionStateRefresh({
     scope: `stream:${ledgerId}:${filterSignature}`,
     enabled: enableRefresh,
-    pending: true, // Always pending for stream refresh
+    pending: hasProcessingItems,
     refresh,
   });
-
-  // Flatten pages and deduplicate by ID preserving server order
-  const items = useMemo(() => {
-    const pages = data?.pages ?? [];
-    const allItems = pages.flatMap((page) => page.items);
-    return deduplicate(allItems);
-  }, [data]);
 
   // Build unified stream groups (preserving server order)
   const streamGroups: UnifiedStreamGroup[] = useMemo(() => {

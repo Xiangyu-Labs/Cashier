@@ -76,6 +76,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   };
 
   const { converted, isDifferentCurrency } = useAmountDisplay({
+    ledgerId: ledgerEntry.ledgerId,
     amount: parseAmount(displayData.amount),
     currency: displayData.currency,
     mainCurrency,

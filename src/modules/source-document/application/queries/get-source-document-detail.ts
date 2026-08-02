@@ -1,23 +1,29 @@
-import { currentApplication } from "@/application/current";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
+import type { SourceDocumentQueryPorts } from "../ports";
 
 export async function getSourceDocumentDetail(
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  ports: SourceDocumentQueryPorts,
+  authorizeLedger: (ledgerId: string) => Promise<unknown>
 ): Promise<SourceDocumentDto | null> {
-  const accessContext = await getAccessibleSourceDocumentContext(sourceDocumentId);
+  const accessContext = await getAccessibleSourceDocumentContext(
+    sourceDocumentId,
+    ports.documents,
+    authorizeLedger
+  );
 
   if (accessContext == null) {
     return null;
   }
 
   const [document, entriesByDocId] = await Promise.all([
-    currentApplication.sourceDocumentReads.get(accessContext.ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds({
-      ledgerId: accessContext.ledgerId,
-      sourceDocumentIds: [sourceDocumentId],
-    }),
+    ports.documents.get(accessContext.ledgerId, sourceDocumentId),
+    listLedgerEntryViewsBySourceDocumentIds(
+      { ledgerId: accessContext.ledgerId, sourceDocumentIds: [sourceDocumentId] },
+      ports.ledgerReads
+    ),
   ]);
 
   if (document == null) {

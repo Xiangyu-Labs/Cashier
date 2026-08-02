@@ -7,13 +7,13 @@ import {
   type S3Client,
 } from "@aws-sdk/client-s3";
 import { describe, expect, it, vi } from "vitest";
-import { R2StorageProvider } from "@/lib/storage/r2";
+import { S3StorageProvider } from "@/lib/storage/s3";
 
-function provider(send: ReturnType<typeof vi.fn>): R2StorageProvider {
-  return new R2StorageProvider({ send } as unknown as Pick<S3Client, "send">, "cashier-images");
+function provider(send: ReturnType<typeof vi.fn>): S3StorageProvider {
+  return new S3StorageProvider({ send } as unknown as Pick<S3Client, "send">, "cashier-images");
 }
 
-describe("R2StorageProvider", () => {
+describe("S3StorageProvider", () => {
   it("puts, gets, and idempotently deletes private objects", async () => {
     const send = vi
       .fn()
@@ -63,7 +63,7 @@ describe("R2StorageProvider", () => {
       })
       .mockResolvedValueOnce({});
     const signer = vi.fn().mockResolvedValue("https://signed.example/upload");
-    const storage = new R2StorageProvider(
+    const storage = new S3StorageProvider(
       { send } as unknown as Pick<S3Client, "send">,
       "cashier-images",
       signer as never

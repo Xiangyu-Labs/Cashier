@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { currencyRates } from "@/persistence";
 import { eq } from "drizzle-orm";
+import type { FxRateBook } from "@/modules/currency/application/ports";
 
 // Current exchange-rate cache and provider adapter.
 
@@ -236,3 +237,11 @@ export class ExchangeRateService {
     );
   }
 }
+
+export const postgresFxRateBook: FxRateBook = {
+  getRates: (date) => ExchangeRateService.getRates(date),
+  convert: (amount, fromCurrency, toCurrency, date) =>
+    ExchangeRateService.convert(amount, fromCurrency, toCurrency, date),
+  convertBatch: (items, targetCurrency) => ExchangeRateService.convertBatch(items, targetCurrency),
+  registerRatesStoredHandler: (handler) => ExchangeRateService.registerRatesStoredHandler(handler),
+};

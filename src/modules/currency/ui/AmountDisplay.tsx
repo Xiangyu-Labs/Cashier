@@ -31,6 +31,7 @@ export function AmountText({
 }
 
 interface AmountDisplayProps {
+  ledgerId: string;
   amount: number;
   currency: string | null | undefined;
   mainCurrency: string;
@@ -41,6 +42,7 @@ interface AmountDisplayProps {
 }
 
 export function AmountDisplay({
+  ledgerId,
   amount,
   currency,
   mainCurrency,
@@ -51,7 +53,9 @@ export function AmountDisplay({
 }: AmountDisplayProps) {
   const locale = useLocale();
   const amountDisplayInput =
-    date == null ? { amount, currency, mainCurrency } : { amount, currency, mainCurrency, date };
+    date == null
+      ? { ledgerId, amount, currency, mainCurrency }
+      : { ledgerId, amount, currency, mainCurrency, date };
 
   const { displayAmount, isDifferentCurrency, originalCurrency } = useAmountDisplay({
     ...amountDisplayInput,

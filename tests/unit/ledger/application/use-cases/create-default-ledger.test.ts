@@ -10,7 +10,11 @@ vi.mock("@/config/default-ledger", () => ({
   getDefaultLedger: getDefaultLedgerMock,
 }));
 
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { createDefaultLedger as createDefaultLedgerUseCase } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { serverComposition } from "@/application/server-composition-root";
+
+const createDefaultLedger = (input: Parameters<typeof createDefaultLedgerUseCase>[0]) =>
+  createDefaultLedgerUseCase(input, serverComposition.ledgers);
 
 describe("createDefaultLedger", () => {
   beforeEach(() => {

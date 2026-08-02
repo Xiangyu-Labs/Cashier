@@ -79,7 +79,18 @@ import {
   createLedgerAction,
   updateLedgerEntryAction,
 } from "@/modules/ledger/actions";
-import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
+import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
+import type { LedgerReadPort } from "@/modules/ledger/application/ports";
+
+const calculateLedgerStats = (ledgerId: string) =>
+  calculateLedgerStatsUseCase(
+    ledgerId,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {} as LedgerReadPort
+  );
 
 describe("ledger server action omission semantics", () => {
   beforeEach(() => {

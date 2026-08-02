@@ -31,7 +31,11 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { render } from "@react-email/render";
-import { sendLoginNotification } from "@/modules/auth/services/notifications";
+import { sendLoginNotification as sendLoginNotificationWithPort } from "@/modules/auth/services/notifications";
+import { serverComposition } from "@/application/server-composition-root";
+
+const sendLoginNotification = (input: Parameters<typeof sendLoginNotificationWithPort>[0]) =>
+  sendLoginNotificationWithPort(input, serverComposition.email);
 
 describe("sendLoginNotification", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;
@@ -104,7 +108,7 @@ describe("sendLoginNotification", () => {
       })
     );
     expect(loggerInfoMock).toHaveBeenCalledWith(
-      { email: "notify@example.com" },
+      { subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
       "Login notification sent"
     );
   });
@@ -131,7 +135,7 @@ describe("sendLoginNotification", () => {
       sendLoginNotification({ email: "notify@example.com", locale: "zh" })
     ).resolves.toBeUndefined();
     expect(loggerErrorMock).toHaveBeenCalledWith(
-      { error: sendError, email: "notify@example.com" },
+      { error: sendError, subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
       "Failed to send login notification"
     );
   });

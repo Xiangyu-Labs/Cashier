@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import type { AuthenticatedServiceCredentialContract } from "@/application/contracts";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { UnauthorizedError, RateLimitError } from "@/lib/errors";
@@ -68,7 +68,7 @@ export async function handleApiV1Route(
     const key = getBearerKey(request);
 
     // Authenticate first
-    const credential = await currentApplication.serviceCredentials.authenticate(key);
+    const credential = await serverComposition.serviceCredentials.authenticate(key);
 
     const clientIp = getClientIPFromHeaders(request.headers);
 

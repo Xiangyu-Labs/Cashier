@@ -25,27 +25,35 @@ function createWrapper() {
 }
 
 describe("useConvertedAmount", () => {
+  const ledgerId = "10000000-0000-4000-8000-000000000001";
   beforeEach(() => {
     mockConvertCurrencyAction.mockClear();
   });
 
   it("delegates conversion requests through currency actions", async () => {
-    const { result } = renderHook(() => useConvertedAmount(100, "CNY", "USD", "2026-02-04"), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () => useConvertedAmount(ledgerId, 100, "CNY", "USD", "2026-02-04"),
+      { wrapper: createWrapper() }
+    );
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
 
     expect(mockConvertCurrencyAction).toHaveBeenCalledTimes(1);
-    expect(mockConvertCurrencyAction).toHaveBeenCalledWith(100, "CNY", "USD", "2026-02-04");
+    expect(mockConvertCurrencyAction).toHaveBeenCalledWith(
+      ledgerId,
+      100,
+      "CNY",
+      "USD",
+      "2026-02-04"
+    );
     expect(result.current.converted).toBe(42);
     expect(result.current.error).toBeNull();
   });
 
   it("returns amount directly when conversion input is missing", () => {
-    const { result } = renderHook(() => useConvertedAmount(88, null, "USD"), {
+    const { result } = renderHook(() => useConvertedAmount(ledgerId, 88, null, "USD"), {
       wrapper: createWrapper(),
     });
 

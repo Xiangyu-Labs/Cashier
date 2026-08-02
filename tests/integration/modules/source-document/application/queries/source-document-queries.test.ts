@@ -13,15 +13,37 @@ import {
   sourceDocuments,
 } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
+import { getSourceDocumentFullQuery as getSourceDocumentFullQueryUseCase } from "@/modules/source-document/application/queries/get-source-document-full";
 import {
-  listSourceDocuments,
-  querySourceDocumentPage,
+  listSourceDocuments as listSourceDocumentsUseCase,
+  querySourceDocumentPage as querySourceDocumentPageUseCase,
 } from "@/modules/source-document/application/queries/list-source-document-page";
-import { getPendingSourceDocuments } from "@/modules/source-document/application/queries/get-pending-source-documents";
-import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
-import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
+import { getPendingSourceDocuments as getPendingSourceDocumentsUseCase } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
+import { getStreamTotal as getStreamTotalUseCase } from "@/modules/source-document/application/queries/get-stream-total";
 import { countSourceDocumentsByStatus } from "@/application/adapters/postgres/read-models";
+import { serverComposition } from "@/application/server-composition-root";
+
+const queryPorts = {
+  documents: serverComposition.sourceDocumentReads,
+  ledgerReads: serverComposition.ledgerReads,
+};
+const querySourceDocumentPage = (
+  ledgerId: string,
+  params: Parameters<typeof querySourceDocumentPageUseCase>[1]
+) => querySourceDocumentPageUseCase(ledgerId, params, queryPorts);
+const listSourceDocuments = (
+  ledgerId: string,
+  params: Parameters<typeof listSourceDocumentsUseCase>[1]
+) => listSourceDocumentsUseCase(ledgerId, params, queryPorts);
+const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) =>
+  getSourceDocumentFullQueryUseCase(ledgerId, sourceDocumentId, queryPorts.documents);
+const getPendingSourceDocuments = (ledgerId: string) =>
+  getPendingSourceDocumentsUseCase(ledgerId, queryPorts);
+const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
+  listStreamPageUseCase(ledgerId, input, queryPorts);
+const getStreamTotal = (ledgerId: string, input: Parameters<typeof getStreamTotalUseCase>[1]) =>
+  getStreamTotalUseCase(ledgerId, input, queryPorts.documents);
 
 function requireDefined<T>(value: T | undefined, label: string): T {
   if (value === undefined) {

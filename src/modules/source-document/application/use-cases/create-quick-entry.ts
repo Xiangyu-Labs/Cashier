@@ -1,9 +1,10 @@
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { currentApplication } from "@/application/current";
 import { round } from "@/lib/money/decimal";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
+import type { FxRateBook } from "@/modules/currency/application/ports";
+import type { QuickEntryPorts } from "../ports";
 
 export interface CreateQuickEntryPayload {
   categoryId: string;
@@ -15,8 +16,8 @@ export interface CreateQuickEntryPayload {
 }
 
 interface ConversionResult {
-  convertedAmount: string | null;
-  exchangeRate: string | null;
+  convertedAmount: string;
+  exchangeRate: string;
 }
 
 interface QuickEntryInsertData {
@@ -31,16 +32,20 @@ async function resolveConversion(
   amount: number,
   fromCurrency: string,
   toCurrency: string,
-  date: string
+  date: string,
+  rates: FxRateBook
 ): Promise<ConversionResult> {
-  const result = await convertEntryAmount({
-    amount: String(amount),
-    fromCurrency,
-    toCurrency,
-    date,
-  });
+  const result = await convertEntryAmount(
+    {
+      amount: String(amount),
+      fromCurrency,
+      toCurrency,
+      date,
+    },
+    rates
+  );
 
-  return result ?? { convertedAmount: null, exchangeRate: null };
+  return result;
 }
 
 async function createQuickEntryAtomically(
@@ -48,11 +53,12 @@ async function createQuickEntryAtomically(
   categoryName: string,
   currency: string,
   conversion: ConversionResult,
-  data: QuickEntryInsertData
+  data: QuickEntryInsertData,
+  ports: QuickEntryPorts
 ): Promise<{ sourceDocumentId: string; ledgerEntryId: string }> {
   const ledgerEntryId = crypto.randomUUID();
   const itemName = data.itemName ?? categoryName;
-  const created = await currentApplication.ledgerProjections.createManual({
+  const created = await ports.projections.createManual({
     ledgerId,
     title: categoryName,
     entryDate: data.entryDate,
@@ -79,7 +85,8 @@ export async function createQuickEntry<
 >(
   ledgerId: string,
   ledger: TLedger,
-  payload: CreateQuickEntryPayload
+  payload: CreateQuickEntryPayload,
+  ports: QuickEntryPorts
 ): Promise<QuickEntryResponseDto> {
   const mainCurrency = ledger.settings.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
@@ -88,8 +95,8 @@ export async function createQuickEntry<
     payload.entryDate ?? getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date());
 
   const [categoryName, conversion] = await Promise.all([
-    getEntryCategoryName(ledgerId, payload.categoryId),
-    resolveConversion(payload.amount, entryCurrency, mainCurrency, entryDate),
+    getEntryCategoryName(ledgerId, payload.categoryId, ports.categories),
+    resolveConversion(payload.amount, entryCurrency, mainCurrency, entryDate, ports.rates),
   ]);
 
   const result = await createQuickEntryAtomically(
@@ -103,7 +110,8 @@ export async function createQuickEntry<
       description: payload.description ?? null,
       amount: payload.amount,
       entryDate,
-    }
+    },
+    ports
   );
 
   return {

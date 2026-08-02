@@ -4,14 +4,14 @@ import { useEffect } from "react";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import {
-  cacheOfflineImage,
+  cacheOfflineImages,
   clearOfflineData,
   getActiveOfflineSnapshotKey,
-  hasOfflineImage,
   mergeOfflineDeltaItems,
   offlineSnapshotKey,
   readOfflineSnapshot,
   replaceOfflineSnapshot,
+  OFFLINE_FULL_SYNC_INTERVAL_MS,
 } from "./offline-store";
 import { getOfflineLedgerSnapshot, getOfflineSnapshotVersion } from "./server-actions";
 import { getStreamRefreshAction } from "@/modules/source-document/actions";
@@ -49,19 +49,18 @@ async function prefetchLatestImages(
   signal: AbortSignal
 ) {
   if (!canPrefetchImages()) return;
-  for (const item of items) {
-    for (const file of item.files) {
-      if (signal.aborted || !canPrefetchImages()) return;
-      if (await hasOfflineImage(snapshotKey, file.id)) continue;
-      await cacheOfflineImage({
-        snapshotKey,
-        documentId: item.id,
-        documentTimestamp: item.entryDate ?? item.createdAt,
-        file,
-        viewed: false,
-      }).catch(() => false);
-    }
-  }
+  const candidates = items.flatMap((item) => item.files.map((file) => ({ item, file })));
+  if (signal.aborted || !canPrefetchImages()) return;
+  await cacheOfflineImages(
+    candidates.map(({ item, file }) => ({
+      snapshotKey,
+      documentId: item.id,
+      documentTimestamp: item.entryDate ?? item.createdAt,
+      file,
+      viewed: false,
+    })),
+    signal
+  ).catch(() => 0);
 }
 
 async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal) {
@@ -74,7 +73,10 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
   const previous = await readOfflineSnapshot(key);
   const version = await getOfflineSnapshotVersion(input.ledgerId);
   if (signal.aborted) return false;
-  if (version.version === previous?.syncVersion) {
+  const fullSyncDue =
+    previous?.fullSyncAt == null ||
+    Date.now() - Date.parse(previous.fullSyncAt) >= OFFLINE_FULL_SYNC_INTERVAL_MS;
+  if (version.version === previous?.syncVersion && !fullSyncDue) {
     if (
       previous != null &&
       (previous.locale !== input.locale ||
@@ -112,6 +114,11 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
         break;
       }
       const items = mergeOfflineDeltaItems(snapshot.items, delta, version.coverageLimit);
+      const expectedCoverage = Math.min(version.recordCount, version.coverageLimit);
+      if (delta.tombstones.length > 0 && items.length < expectedCoverage) {
+        resetRequired = true;
+        break;
+      }
       snapshot = {
         ...snapshot,
         locale: input.locale,
@@ -141,7 +148,7 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
   if (signal.aborted) return false;
   await replaceOfflineSnapshot({
     key,
-    schemaVersion: 4,
+    schemaVersion: 5,
     userId: input.userId,
     ledgerId: input.ledgerId,
     locale: input.locale,
@@ -225,6 +232,7 @@ export function OfflineSnapshotSync({
     };
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
+    const periodicId = setInterval(run, OFFLINE_FULL_SYNC_INTERVAL_MS);
     if ("requestIdleCallback" in window) {
       idleId = window.requestIdleCallback(run, { timeout: 5000 });
     } else {
@@ -239,6 +247,7 @@ export function OfflineSnapshotSync({
       window.removeEventListener("cashier:ledger-mutated", onMutation);
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);
+      clearInterval(periodicId);
     };
   }, [
     categories,

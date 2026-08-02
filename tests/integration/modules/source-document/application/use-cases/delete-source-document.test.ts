@@ -7,6 +7,7 @@ import {
   createTestUserWithLedger,
 } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres";
 
 describe("deleteSourceDocument", () => {
   let ledgerId: string;
@@ -50,10 +51,10 @@ describe("deleteSourceDocument", () => {
     }
     await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
-    const result = await deleteSourceDocument({
-      ledgerId,
-      sourceDocumentId: sourceDocument.id,
-    });
+    const result = await deleteSourceDocument(
+      { ledgerId, sourceDocumentId: sourceDocument.id },
+      postgresRevisionAdapter
+    );
 
     expect(result).toEqual({
       sourceDocumentId: sourceDocument.id,

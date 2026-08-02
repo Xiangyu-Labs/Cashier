@@ -1,6 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { getLedgerPageBootstrap as getLedgerPageBootstrapUseCase } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import type { CategoryPort } from "@/application/contracts";
+import type { LedgerReadPort } from "@/modules/ledger/application/ports";
+import type { StatsReadPort } from "@/modules/stats/application/ports";
+import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+import type { ServiceCredentialPort } from "@/application/contracts";
+
+const bootstrapDependencies = {
+  categories: {} as CategoryPort,
+  ledgerReads: {} as LedgerReadPort,
+  stats: {} as StatsReadPort,
+  sourceDocuments: { documents: {}, ledgerReads: {} } as SourceDocumentQueryPorts,
+  credentials: {} as ServiceCredentialPort,
+};
+const getLedgerPageBootstrap = (input: Parameters<typeof getLedgerPageBootstrapUseCase>[0]) =>
+  getLedgerPageBootstrapUseCase(input, bootstrapDependencies);
 
 const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
@@ -138,10 +153,11 @@ describe("getLedgerPageBootstrap", () => {
     expect(result).not.toBeNull();
     expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listStreamPageMock).toHaveBeenCalled();
-    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-    });
+    expect(getStreamTotalMock).toHaveBeenCalledWith(
+      "ledger-1",
+      { startDate: "2026-03-01", endDate: "2026-03-31" },
+      bootstrapDependencies.sourceDocuments.documents
+    );
     expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
@@ -164,20 +180,23 @@ describe("getLedgerPageBootstrap", () => {
       ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
-    expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      minAmount: 20,
-      maxAmount: 100,
-      cursor: undefined,
-      limit: 20,
-    });
-    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      minAmount: 20,
-      maxAmount: 100,
-    });
+    expect(listStreamPageMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        minAmount: 20,
+        maxAmount: 100,
+        cursor: undefined,
+        limit: 20,
+      },
+      bootstrapDependencies.sourceDocuments
+    );
+    expect(getStreamTotalMock).toHaveBeenCalledWith(
+      "ledger-1",
+      { startDate: "2026-03-01", endDate: "2026-03-31", minAmount: 20, maxAmount: 100 },
+      bootstrapDependencies.sourceDocuments.documents
+    );
   });
 
   it("passes status filters into stream page prefetch", async () => {
@@ -195,18 +214,22 @@ describe("getLedgerPageBootstrap", () => {
       ledgerDto: createPreAuthorizedLedgerDto(),
     });
 
-    expect(listStreamPageMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-07-01",
-      endDate: "2026-07-31",
-      statuses: ["failed", "processing"],
-      cursor: undefined,
-      limit: 20,
-    });
-    expect(getStreamTotalMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-07-01",
-      endDate: "2026-07-31",
-      statuses: ["failed", "processing"],
-    });
+    expect(listStreamPageMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        startDate: "2026-07-01",
+        endDate: "2026-07-31",
+        statuses: ["failed", "processing"],
+        cursor: undefined,
+        limit: 20,
+      },
+      bootstrapDependencies.sourceDocuments
+    );
+    expect(getStreamTotalMock).toHaveBeenCalledWith(
+      "ledger-1",
+      { startDate: "2026-07-01", endDate: "2026-07-31", statuses: ["failed", "processing"] },
+      bootstrapDependencies.sourceDocuments.documents
+    );
   });
 
   it("prefetches details tab summary and paged entries", async () => {
@@ -251,18 +274,23 @@ describe("getLedgerPageBootstrap", () => {
         currency: "USD",
         minAmount: 20,
         maxAmount: 100,
-      }
+      },
+      bootstrapDependencies.ledgerReads
     );
-    expect(listLedgerEntriesMock).toHaveBeenCalledWith("ledger-1", {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      categoryId: "cat-1",
-      currency: "USD",
-      minAmount: 20,
-      maxAmount: 100,
-      cursor: undefined,
-      limit: 50,
-    });
+    expect(listLedgerEntriesMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        categoryId: "cat-1",
+        currency: "USD",
+        minAmount: 20,
+        maxAmount: 100,
+        cursor: undefined,
+        limit: 50,
+      },
+      bootstrapDependencies.ledgerReads
+    );
   });
 
   it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {

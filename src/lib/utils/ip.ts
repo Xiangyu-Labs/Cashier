@@ -7,7 +7,7 @@ export type HeadersLike = Pick<Headers, "get">;
  *
  * Priority order:
  * 1. X-Real-IP (if TRUSTED_PROXY is configured) - most reliable with trusted proxies
- * 2. X-Forwarded-For first entry (with validation) - common with reverse proxies
+ * 2. X-Forwarded-For first entry (only in trusted proxy mode)
  * 3. "unknown" - fallback when no proxy headers available
  *
  * Security: Only trusts X-Real-IP when TRUSTED_PROXY environment variable is set.
@@ -25,13 +25,14 @@ export function getClientIPFromHeaders(headersList: HeadersLike): string {
     }
   }
 
-  // Fallback to X-Forwarded-For (take the first hop)
-  const forwarded = headersList.get("x-forwarded-for");
-  if (forwarded != null && forwarded !== "") {
-    const [firstHopRaw = ""] = forwarded.split(",");
-    const firstHop = firstHopRaw.trim();
-    if (isValidIP(firstHop)) {
-      return firstHop;
+  if (runtimeTrustedProxyEnabled()) {
+    const forwarded = headersList.get("x-forwarded-for");
+    if (forwarded != null && forwarded !== "") {
+      const [firstHopRaw = ""] = forwarded.split(",");
+      const firstHop = firstHopRaw.trim();
+      if (isValidIP(firstHop)) {
+        return firstHop;
+      }
     }
   }
 

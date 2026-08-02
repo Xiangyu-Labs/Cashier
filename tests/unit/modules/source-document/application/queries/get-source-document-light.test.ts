@@ -12,20 +12,18 @@ const {
   listLedgerEntryViewsBySourceDocumentIdsMock: vi.fn(),
 }));
 
-vi.mock("@/application/current", () => ({
-  currentApplication: {
-    sourceDocumentReads: {
-      getAccessContext: getAccessContextMock,
-      get: getTargetSourceDocumentMock,
-    },
-  },
-}));
-vi.mock("@/modules/ledger/access", () => ({ requireLedgerAccess: requireLedgerAccessMock }));
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
 
 import { getSourceDocumentLight } from "@/modules/source-document/application/queries/get-source-document-light";
+import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+
+const queryPorts = {
+  documents: { getAccessContext: getAccessContextMock, get: getTargetSourceDocumentMock },
+  ledgerReads: {},
+} as unknown as SourceDocumentQueryPorts;
+const getLight = (id: string) => getSourceDocumentLight(id, queryPorts, requireLedgerAccessMock);
 
 describe("getSourceDocumentLight", () => {
   beforeEach(() => {
@@ -58,7 +56,7 @@ describe("getSourceDocumentLight", () => {
       errorCode: null,
     });
 
-    const result = await getSourceDocumentLight("doc-1");
+    const result = await getLight("doc-1");
     expect(result?.files.map((file) => file.id)).toEqual(["file-1"]);
     expect(result).not.toHaveProperty("imageUrls");
     expect(result).not.toHaveProperty("metadata");
@@ -69,7 +67,7 @@ describe("getSourceDocumentLight", () => {
 
   it("returns null without exposing hidden document existence", async () => {
     getAccessContextMock.mockResolvedValue(null);
-    await expect(getSourceDocumentLight("doc-1")).resolves.toBeNull();
+    await expect(getLight("doc-1")).resolves.toBeNull();
     expect(requireLedgerAccessMock).not.toHaveBeenCalled();
   });
 });

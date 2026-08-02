@@ -4,8 +4,14 @@ import { getTestDb } from "tests/setup";
 import { createTestUser } from "tests/helpers/schema-setup";
 import { ledgers } from "@/persistence";
 import { ConflictError } from "@/lib/errors";
-import { createDefaultLedger } from "@/modules/ledger/application/use-cases/create-default-ledger";
-import { createLedger } from "@/modules/ledger/application/use-cases/create-ledger";
+import { createDefaultLedger as createDefaultLedgerUseCase } from "@/modules/ledger/application/use-cases/create-default-ledger";
+import { createLedger as createLedgerUseCase } from "@/modules/ledger/application/use-cases/create-ledger";
+import { serverComposition } from "@/application/server-composition-root";
+
+const createDefaultLedger = (input: Parameters<typeof createDefaultLedgerUseCase>[0]) =>
+  createDefaultLedgerUseCase(input, serverComposition.ledgers);
+const createLedger = (input: Parameters<typeof createLedgerUseCase>[0]) =>
+  createLedgerUseCase(input, serverComposition.ledgers);
 
 describe("ledger single-owner race and rollback", () => {
   beforeEach(() => {

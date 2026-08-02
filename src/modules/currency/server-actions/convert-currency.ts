@@ -8,44 +8,49 @@ import type {
   BatchConvertCurrencyResult,
   ConvertCurrencyResult,
 } from "../contracts";
+import { withLedgerAccess } from "@/modules/ledger/access";
+import { serverComposition } from "@/application/server-composition-root";
 
-export async function convertCurrencyAction(
-  amount: number,
-  from: string,
-  to: string,
-  date?: string
-): Promise<ConvertCurrencyResult> {
-  return convertCurrency(
-    parseConvertCurrencyInput({
-      amount,
-      from,
-      to,
-      ...(date != null ? { date } : {}),
-    })
-  );
-}
+export const convertCurrencyAction = withLedgerAccess(
+  async (
+    _ledgerId: string,
+    amount: number,
+    from: string,
+    to: string,
+    date?: string
+  ): Promise<ConvertCurrencyResult> =>
+    convertCurrency(
+      parseConvertCurrencyInput({
+        amount,
+        from,
+        to,
+        ...(date != null ? { date } : {}),
+      }),
+      serverComposition.exchangeRates
+    )
+);
 
-export async function batchConvertCurrencyAction(
-  items: BatchConversionItem[],
-  targetCurrency: string
-): Promise<BatchConvertCurrencyResult> {
-  if (items.length === 0 || targetCurrency === "") {
-    throw new ValidationError("Missing required parameters");
-  }
-
-  const results = await convertAmountsBatch(
-    items.map((item) => ({
-      amount: String(item.amount),
-      fromCurrency: item.currency,
-      toCurrency: targetCurrency,
-      ...(item.date != null ? { date: item.date } : {}),
-    })),
-    targetCurrency,
-    {
-      allowBlankSourceCurrency: true,
-      fallbackToOriginalAmountOnMissingRate: true,
+export const batchConvertCurrencyAction = withLedgerAccess(
+  async (
+    _ledgerId: string,
+    items: BatchConversionItem[],
+    targetCurrency: string
+  ): Promise<BatchConvertCurrencyResult> => {
+    if (items.length === 0 || targetCurrency === "") {
+      throw new ValidationError("Missing required parameters");
     }
-  );
 
-  return { results: results.map((item) => item.convertedAmount) };
-}
+    const results = await convertAmountsBatch(
+      items.map((item) => ({
+        amount: String(item.amount),
+        fromCurrency: item.currency,
+        toCurrency: targetCurrency,
+        ...(item.date != null ? { date: item.date } : {}),
+      })),
+      targetCurrency,
+      serverComposition.exchangeRates
+    );
+
+    return { results: results.map((item) => item.convertedAmount) };
+  }
+);

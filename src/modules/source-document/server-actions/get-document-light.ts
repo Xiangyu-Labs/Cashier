@@ -5,6 +5,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import type { SourceDocumentLedgerActionContext } from "./access";
 import { sourceDocumentIdSchema } from "../contract-schemas";
 import { ValidationError } from "@/lib/errors";
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Fetch a source document with the normalized light payload used by detail/retry surfaces.
@@ -18,6 +19,9 @@ export const getSourceDocumentLightAction = withSourceDocumentLedgerAccess(
     if (!parsed.success) {
       throw new ValidationError("Validation failed", { issues: parsed.error.issues });
     }
-    return getSourceDocumentLightForLedger(context.ledgerId, parsed.data);
+    return getSourceDocumentLightForLedger(context.ledgerId, parsed.data, {
+      documents: serverComposition.sourceDocumentReads,
+      ledgerReads: serverComposition.ledgerReads,
+    });
   }
 );

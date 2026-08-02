@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth-actions";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import { parseCreateLedgerInput, type CreateLedgerInput } from "@/modules/ledger/contract-schemas";
 import { createLedger } from "@/modules/ledger/application/use-cases/create-ledger";
+import { serverComposition } from "@/application/server-composition-root";
 
 export const createLedgerAction = withAuth(
   async (userId: string, data: CreateLedgerInput): Promise<LedgerDto> => {
@@ -11,6 +12,6 @@ export const createLedgerAction = withAuth(
     if (validated.aiLanguage !== undefined) {
       payload.locale = validated.aiLanguage;
     }
-    return createLedger(payload);
+    return createLedger(payload, serverComposition.ledgers);
   }
 );

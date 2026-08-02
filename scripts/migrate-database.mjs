@@ -26,10 +26,15 @@ async function main() {
   const client = new pg.Client({ connectionString });
   await client.connect();
   try {
-    await migrate(drizzle(client), {
-      migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
-    });
-    console.log(JSON.stringify({ mode: "migrate", database: "postgresql", status: "complete" }));
+    await client.query("select pg_advisory_lock($1)", [112835438754]);
+    try {
+      await migrate(drizzle(client), {
+        migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
+      });
+      console.log(JSON.stringify({ mode: "migrate", database: "postgresql", status: "complete" }));
+    } finally {
+      await client.query("select pg_advisory_unlock($1)", [112835438754]);
+    }
   } finally {
     await client.end();
   }

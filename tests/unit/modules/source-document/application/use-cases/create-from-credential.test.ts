@@ -18,6 +18,14 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 import { ValidationError } from "@/lib/errors";
 import type { CreateSourceDocumentInput } from "@/modules/source-document/contracts";
 import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
+import type { SourceDocumentCredentialPorts } from "@/modules/source-document/application/ports";
+
+const ports = {
+  ledgers: {},
+  settings: {},
+  submissions: {},
+  storedFiles: {},
+} as unknown as SourceDocumentCredentialPorts;
 
 describe("createSourceDocumentFromCredential", () => {
   const scheduleProcessing = vi.fn();
@@ -41,7 +49,8 @@ describe("createSourceDocumentFromCredential", () => {
             text: "hello",
           },
         },
-        scheduleProcessing
+        scheduleProcessing,
+        ports
       )
     ).rejects.toThrow(ValidationError);
     expect(scheduleProcessing).not.toHaveBeenCalled();
@@ -63,7 +72,8 @@ describe("createSourceDocumentFromCredential", () => {
 
     await createSourceDocumentFromCredential(
       { credentialId: "cred-1", payload },
-      scheduleProcessing
+      scheduleProcessing,
+      ports
     );
 
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0];
@@ -83,7 +93,8 @@ describe("createSourceDocumentFromCredential", () => {
 
     await createSourceDocumentFromCredential(
       { credentialId: "cred-1", payload: { text: "hello" } },
-      scheduleProcessing
+      scheduleProcessing,
+      ports
     );
 
     const deps = createAndQueueSourceDocumentMock.mock.calls[0]?.[1];

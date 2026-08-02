@@ -1,10 +1,13 @@
-import { currentApplication } from "@/application/current";
 import type { LedgerEntryFilterParams } from "./list-ledger-entry-page";
+import type { LedgerReadPort } from "../ports";
 
-export function calculateLedgerEntryStats(input: {
-  ledgerId: string;
-  filters: LedgerEntryFilterParams;
-  mainCurrency?: string;
-}) {
-  return currentApplication.ledgerReads.calculateStats(input);
+export function calculateLedgerEntryStats(
+  input: {
+    ledgerId: string;
+    filters: LedgerEntryFilterParams;
+    mainCurrency?: string;
+  },
+  reads: LedgerReadPort
+) {
+  return reads.calculateStats(input);
 }

@@ -2,6 +2,7 @@
 import { withLedgerAccess } from "../access";
 import type { LedgerSettingsViewDto } from "@/modules/ledger/contracts";
 import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Batch fetch settings data in a single server action.
@@ -10,5 +11,9 @@ import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-
  * optimistic updates work correctly (shared query key with useCategoryMutations).
  */
 export const getLedgerSettingsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<LedgerSettingsViewDto> => getLedgerSettingsView(ledgerId)
+  async (ledgerId: string): Promise<LedgerSettingsViewDto> =>
+    getLedgerSettingsView(ledgerId, {
+      categories: serverComposition.categories,
+      credentials: serverComposition.serviceCredentials,
+    })
 );

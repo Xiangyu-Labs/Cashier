@@ -11,6 +11,7 @@ import { getSessionUser } from "@/modules/auth/application/queries/get-session-u
 import { isDevAuthBypassEnabled } from "@/modules/auth/dev-auth";
 import { TIME_SECONDS } from "@/lib/constants";
 import { runtimeEnv } from "@/lib/env/runtime";
+import { serverComposition } from "@/application/server-composition-root";
 
 const providers: NextAuthConfig["providers"] = [
   Credentials({
@@ -35,12 +36,20 @@ const providers: NextAuthConfig["providers"] = [
         return null;
       }
 
-      return authenticateWithOTP({
-        email: credentials.email,
-        otp: credentials.otp,
-        locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
-        requestHeaders: request.headers,
-      });
+      return authenticateWithOTP(
+        {
+          email: credentials.email,
+          otp: credentials.otp,
+          locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
+          requestHeaders: request.headers,
+        },
+        {
+          userAccounts: serverComposition.userAccounts,
+          otpTokens: serverComposition.otpTokens,
+          ledgers: serverComposition.ledgers,
+          rateLimiter: serverComposition.rateLimiter,
+        }
+      );
     },
   }),
   Credentials({
@@ -54,7 +63,10 @@ const providers: NextAuthConfig["providers"] = [
       if (typeof credentials?.email !== "string" || typeof credentials.password !== "string") {
         return null;
       }
-      return authenticateWithPassword({ email: credentials.email, password: credentials.password });
+      return authenticateWithPassword(
+        { email: credentials.email, password: credentials.password },
+        serverComposition.userAccounts
+      );
     },
   }),
 ];
@@ -68,9 +80,12 @@ if (isDevAuthBypassEnabled()) {
         locale: { type: "text" },
       },
       async authorize(credentials) {
-        return authenticateDevUser({
-          locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
-        });
+        return authenticateDevUser(
+          {
+            locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
+          },
+          { users: serverComposition.userAccounts, ledgers: serverComposition.ledgers }
+        );
       },
     })
   );
@@ -87,21 +102,30 @@ export const authOptions = {
   pages: authConfig.pages,
   events: {
     async createUser({ user }) {
-      await handleAuthUserCreated(user.id != null ? { userId: user.id } : {});
+      await handleAuthUserCreated(
+        user.id != null ? { userId: user.id } : {},
+        serverComposition.ledgers
+      );
     },
     async signIn({ user, isNewUser }) {
-      await handleAuthUserSignedIn({
-        ...(user.id != null ? { userId: user.id } : {}),
-        ...(user.email != null ? { email: user.email } : {}),
-        ...(typeof user.locale === "string" ? { locale: user.locale } : {}),
-        ...(isNewUser != null ? { isNewUser } : {}),
-      });
+      await handleAuthUserSignedIn(
+        {
+          ...(user.id != null ? { userId: user.id } : {}),
+          ...(user.email != null ? { email: user.email } : {}),
+          ...(typeof user.locale === "string" ? { locale: user.locale } : {}),
+          ...(isNewUser != null ? { isNewUser } : {}),
+        },
+        { ledgers: serverComposition.ledgers, emailDelivery: serverComposition.email }
+      );
     },
   },
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user }) {
-      return isAuthSignInAllowed(user.email != null ? { email: user.email } : {});
+      return isAuthSignInAllowed(
+        user.email != null ? { email: user.email } : {},
+        serverComposition.userAccounts
+      );
     },
     async jwt({ token, user }) {
       if (user != null && user.id != null && user.id !== "") {
@@ -112,7 +136,7 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (token.sub != null && token.sub !== "" && session.user != null) {
-        const dbUser = await getSessionUser(token.sub);
+        const dbUser = await getSessionUser(token.sub, serverComposition.userAccounts);
 
         return {
           ...session,

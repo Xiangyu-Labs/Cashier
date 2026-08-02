@@ -4,13 +4,14 @@ import {
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
-import { getLedgerEntryDetail } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
-import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { getLedgerEntryDetail as getLedgerEntryDetailUseCase } from "@/modules/ledger/application/queries/get-ledger-entry-detail";
+import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
+import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
 import { getEnhancedStatsQuery } from "@/modules/stats/application/queries/get-enhanced-stats";
-import { querySourceDocumentPage } from "@/modules/source-document/application/queries/list-source-document-page";
-import { updateLedgerEntryWithConversion } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
-import { deleteLedgerEntry } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
+import { querySourceDocumentPage as querySourceDocumentPageUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
+import { updateLedgerEntryWithConversion as updateLedgerEntryWithConversionUseCase } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
+import { deleteLedgerEntry as deleteLedgerEntryUseCase } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
+import { serverComposition } from "@/application/server-composition-root";
 import {
   entryCategories,
   ledgerEntries,
@@ -19,6 +20,41 @@ import {
 } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
+
+const getLedgerEntryDetail = (id: string, ledgerId: string) =>
+  getLedgerEntryDetailUseCase(id, ledgerId, serverComposition.ledgerReads);
+const listLedgerEntries = (
+  ledgerId: string,
+  input: Parameters<typeof listLedgerEntriesUseCase>[1]
+) => listLedgerEntriesUseCase(ledgerId, input, serverComposition.ledgerReads);
+const calculateLedgerStats = (
+  ledgerId: string,
+  startDate?: string,
+  endDate?: string,
+  mainCurrency?: string,
+  filters?: Parameters<typeof calculateLedgerStatsUseCase>[4]
+) =>
+  calculateLedgerStatsUseCase(
+    ledgerId,
+    startDate,
+    endDate,
+    mainCurrency,
+    filters,
+    serverComposition.ledgerReads
+  );
+const updateLedgerEntryWithConversion = (
+  input: Parameters<typeof updateLedgerEntryWithConversionUseCase>[0]
+) => updateLedgerEntryWithConversionUseCase(input, serverComposition.ledgerMutations);
+const deleteLedgerEntry = (ledgerId: string, entryId: string) =>
+  deleteLedgerEntryUseCase(ledgerId, entryId, serverComposition.ledgerMutations);
+const querySourceDocumentPage = (
+  ledgerId: string,
+  input: Parameters<typeof querySourceDocumentPageUseCase>[1]
+) =>
+  querySourceDocumentPageUseCase(ledgerId, input, {
+    documents: serverComposition.sourceDocumentReads,
+    ledgerReads: serverComposition.ledgerReads,
+  });
 
 const entry = {
   categoryId: null,
@@ -101,11 +137,14 @@ describe("target upper workflows", () => {
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
     const detail = await getLedgerEntryDetail(activeEntry!.id, ledgerId);
     const summary = await calculateLedgerStats(ledgerId, "2026-07-15", "2026-07-15", "CNY");
-    const enhanced = await getEnhancedStatsQuery({
-      ledgerId,
-      queryRange: { from: "2026-07-15", to: "2026-07-15" },
-      compareRange: { from: "2026-07-14", to: "2026-07-14" },
-    });
+    const enhanced = await getEnhancedStatsQuery(
+      {
+        ledgerId,
+        queryRange: { from: "2026-07-15", to: "2026-07-15" },
+        compareRange: { from: "2026-07-14", to: "2026-07-14" },
+      },
+      serverComposition.stats
+    );
 
     expect(stream.items).toHaveLength(1);
     expect(stream.items[0]).toMatchObject({

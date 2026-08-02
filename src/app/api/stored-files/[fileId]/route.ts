@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { requireAuth } from "@/lib/auth-actions";
 import { AppError, UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -13,7 +13,7 @@ export async function GET(
   try {
     const userId = await requireAuth();
     const { fileId } = await params;
-    const read = await currentApplication.storedFiles.readAuthorizedStreamForUser(userId, fileId);
+    const read = await serverComposition.storedFiles.readAuthorizedStreamForUser(userId, fileId);
     if (read == null) return new NextResponse("Not Found", { status: 404 });
     return new NextResponse(read.body, {
       status: 200,

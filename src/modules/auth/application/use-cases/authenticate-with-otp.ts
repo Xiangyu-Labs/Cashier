@@ -1,17 +1,22 @@
 import { CredentialsSignin } from "@auth/core/errors";
 import type { User } from "next-auth";
-import { deleteOTPToken } from "@/modules/auth/repositories/otp-repository";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { isValidOTPFormat } from "@/modules/auth/services/otp";
 import { checkVerifyRateLimit } from "@/modules/auth/services/otp-rate-limit";
-import { findOTPRecord, verifyOTPWithPolicy } from "@/modules/auth/services/otp-verification";
+import {
+  consumeOTPClaim,
+  findOTPRecord,
+  releaseOTPClaim,
+  verifyOTPWithPolicy,
+} from "@/modules/auth/services/otp-verification";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
 import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { assertRegistrationAllowed } from "./registration-policy";
-import type { UserAccountPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
+import type { LedgerPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
+import type { RateLimitPort } from "../ports";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,35 +76,57 @@ export async function authenticateWithOTP(
     locale?: string;
     requestHeaders: HeadersLike;
   },
-  userAccounts: UserAccountPort = currentApplication.userAccounts
+  dependencies: {
+    userAccounts: UserAccountPort;
+    otpTokens: OtpTokenPort;
+    ledgers: LedgerPort;
+    rateLimiter: RateLimitPort;
+  }
 ): Promise<User> {
   const normalizedEmail = validateCredentials(params.email, params.otp);
   const locale = params.locale ?? "zh";
 
-  const record = await findOTPRecord(normalizedEmail);
+  const record = await findOTPRecord(normalizedEmail, dependencies.otpTokens);
   if (record == null) {
-    logger.warn({ email: normalizedEmail }, "OTP token not found during sign-in");
+    logger.warn(
+      { subject: logIdentifier("email", normalizedEmail) },
+      "OTP token not found during sign-in"
+    );
     throw new OTPInvalidSignInError();
   }
 
   if (record.lockedUntil != null && record.lockedUntil > new Date()) {
-    logger.warn({ email: normalizedEmail, lockedUntil: record.lockedUntil }, "OTP account locked");
+    logger.warn(
+      { subject: logIdentifier("email", normalizedEmail), lockedUntil: record.lockedUntil },
+      "OTP account locked"
+    );
     throw new OTPLockedSignInError();
   }
 
   const ip = getClientIPFromHeaders(params.requestHeaders);
-  const isAllowed = await checkVerifyRateLimit(ip);
+  const isAllowed = await checkVerifyRateLimit(ip, dependencies.rateLimiter);
   if (!isAllowed) {
-    logger.warn({ ip, email: normalizedEmail }, "OTP verify rate limit exceeded during sign-in");
+    logger.warn(
+      {
+        ipSubject: logIdentifier("ip", ip),
+        emailSubject: logIdentifier("email", normalizedEmail),
+      },
+      "OTP verify rate limit exceeded during sign-in"
+    );
     throw new OTPRateLimitedSignInError();
   }
 
-  const result = await verifyOTPWithPolicy(normalizedEmail, params.otp, record);
+  const result = await verifyOTPWithPolicy(
+    normalizedEmail,
+    params.otp,
+    record,
+    dependencies.otpTokens
+  );
 
   if (!result.success) {
     logger.warn(
       {
-        email: normalizedEmail,
+        subject: logIdentifier("email", normalizedEmail),
         reason: result.reason,
         attemptsRemaining: result.attemptsRemaining,
       },
@@ -117,24 +144,36 @@ export async function authenticateWithOTP(
     }
   }
 
-  await assertRegistrationAllowed(normalizedEmail);
+  const claim = { email: normalizedEmail, tokenHash: record.tokenHash };
+  try {
+    await assertRegistrationAllowed(normalizedEmail, dependencies.userAccounts);
+    const { user } = await dependencies.userAccounts.findOrCreate(normalizedEmail);
 
-  const { user, isExistingUser } = await userAccounts.findOrCreate(normalizedEmail);
+    await ensureUserLedger(
+      {
+        userId: user.id,
+        locale,
+      },
+      dependencies.ledgers
+    );
+    if (!(await consumeOTPClaim(claim, dependencies.otpTokens))) {
+      throw new OTPInvalidSignInError();
+    }
 
-  if (!isExistingUser) {
-    await ensureUserLedger({
-      userId: user.id,
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
       locale,
+    };
+  } catch (error) {
+    await releaseOTPClaim(claim, dependencies.otpTokens).catch((releaseError) => {
+      logger.error(
+        { error: releaseError, subject: logIdentifier("email", normalizedEmail) },
+        "Failed to release OTP claim"
+      );
     });
+    throw error;
   }
-
-  await deleteOTPToken(normalizedEmail);
-
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    image: user.image,
-    locale,
-  };
 }

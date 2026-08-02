@@ -7,7 +7,10 @@ import {
   queryKeys,
 } from "@/lib/query-keys";
 import type { LedgerDeltaResult } from "../contract-refresh";
-import { applyOptimisticDelete, applyOptimisticUpsert } from "./source-document-optimistic-cache";
+import {
+  applyOptimisticDelete,
+  applyServerRefreshUpsert,
+} from "./source-document-optimistic-cache";
 
 const VERSION_PREFIX = "cashier-ledger-sync-v2:";
 
@@ -41,7 +44,7 @@ export function applyStreamRefreshToCache(
 
   for (const id of result.tombstones) applyOptimisticDelete(queryClient, ledgerId, id);
   for (const document of result.documents) {
-    applyOptimisticUpsert(queryClient, ledgerId, document);
+    applyServerRefreshUpsert(queryClient, ledgerId, document);
   }
   if (result.counts != null) {
     queryClient.setQueryData(queryKeys.sourceDocumentCounts(ledgerId), result.counts);

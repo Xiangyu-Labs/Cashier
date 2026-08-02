@@ -1,5 +1,4 @@
 import type { CategoryPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import type { EntryCategoryDto } from "@/modules/ledger/contracts";
 
 interface CreateEntryCategoryInput {
@@ -12,7 +11,7 @@ interface CreateEntryCategoryInput {
 export async function createEntryCategory(
   ledgerId: string,
   data: CreateEntryCategoryInput,
-  categories: CategoryPort = currentApplication.categories
+  categories: CategoryPort
 ): Promise<EntryCategoryDto> {
   const created = await categories.create(ledgerId, data);
   return { ...created, deletedAt: null };

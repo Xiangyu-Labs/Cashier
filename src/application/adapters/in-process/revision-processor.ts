@@ -6,9 +6,10 @@ import type {
 } from "@/application/contracts";
 import {
   postgresLedgerProjectionAdapter,
-  postgresRevisionAdapter,
   storeCandidateRevision,
-} from "@/application/adapters/postgres";
+} from "@/application/adapters/postgres/ledger-projections";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
+import { postgresSettingsAdapter } from "@/application/adapters/postgres/business-ports";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
@@ -18,9 +19,8 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { currentApplication } from "@/application/current";
-import { getLedgerMainCurrency } from "@/modules/ledger/source-document-queries";
-import { compare } from "@/lib/money/decimal";
+import { compare, divide, round } from "@/lib/money/decimal";
+import { postgresFxRateBook } from "@/application/adapters/postgres/exchange-rate";
 import {
   buildEntriesForInsert,
   getEntryFallbackDate,
@@ -31,6 +31,12 @@ import {
   runParsePipeline,
 } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { toParseSourceDocumentOutput } from "@/modules/source-document/application/parse-source-document/result-mapper";
+import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
+import {
+  isFailedLoadImageResult,
+  isSuccessfulLoadImageResult,
+  loadStoredFilesForAI,
+} from "@/lib/storage/utils";
 
 export interface CurrentRevisionProcessorOptions {
   createAIContext: (signal: AbortSignal) => AIContext;
@@ -65,7 +71,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     }
 
     // Load current ledger settings for parser input
-    const ledgerSettings = await currentApplication.settings.get(request.ledgerId);
+    const ledgerSettings = await postgresSettingsAdapter.get(request.ledgerId);
 
     const [files, categories] = await Promise.all([
       db
@@ -90,12 +96,25 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         ),
     ]);
     const controller = new AbortController();
+    const loadedEvidence = await loadStoredFilesForAI(
+      request.ledgerId,
+      files.map((file) => file.id)
+    );
+    const failedEvidence = loadedEvidence.filter(isFailedLoadImageResult);
+    if (failedEvidence.length > 0) {
+      throw new ProcessingFailure(
+        "storage_failure",
+        `Failed to load ${failedEvidence.length} source document evidence file(s)`,
+        { cause: failedEvidence[0]?.error }
+      );
+    }
+    const evidence = loadedEvidence.filter(isSuccessfulLoadImageResult);
     const pipeline = await runParsePipeline(
       {
-        ledgerId: request.ledgerId,
-        sourceDocumentId: request.sourceDocumentId,
         ...(revision.submittedText == null ? {} : { text: revision.submittedText }),
-        ...(files.length === 0 ? {} : { storedFileIds: files.map((file) => file.id) }),
+        ...(evidence.length === 0
+          ? {}
+          : { evidence: { images: evidence.map((item) => ({ dataUrl: item.dataUrl })) } }),
         categories,
         ...(ledgerSettings?.aiCustomPrompt !== undefined
           ? { settings: { aiCustomPrompt: ledgerSettings.aiCustomPrompt } }
@@ -138,7 +157,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       });
       return { outcome: "anomaly", anomalyReason };
     }
-    const mainCurrency = await getLedgerMainCurrency(request.ledgerId);
+    const mainCurrency = ledgerSettings?.mainCurrency ?? "CNY";
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
     const entries = await buildEntriesForInsert({
       validEntries: output.ledgerEntries.filter(
@@ -149,6 +168,18 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       ledgerId: request.ledgerId,
       mainCurrency,
       fallbackDate,
+      convertAmount: async ({ amount, fromCurrency, toCurrency, date }) => {
+        const convertedAmount = await postgresFxRateBook.convert(
+          amount,
+          fromCurrency,
+          toCurrency,
+          date
+        );
+        return {
+          convertedAmount: round(convertedAmount, 2),
+          exchangeRate: round(divide(convertedAmount, amount), 6),
+        };
+      },
     });
     const entryInputs = entries.map((entry) => ({
       categoryId: entry.categoryId,

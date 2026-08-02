@@ -5,6 +5,7 @@ import type { UpdateLedgerActionResult } from "@/modules/ledger/contracts";
 import { parseUpdateLedgerInput, type UpdateLedgerInput } from "@/modules/ledger/contract-schemas";
 import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
 import { toUpdateLedgerActionErrorCode } from "./update-error";
+import { serverComposition } from "@/application/server-composition-root";
 
 export const updateLedgerAction = withAuth(
   async (
@@ -14,7 +15,10 @@ export const updateLedgerAction = withAuth(
   ): Promise<UpdateLedgerActionResult> => {
     try {
       const validated = parseUpdateLedgerInput(data);
-      return { ok: true, ledger: await updateLedger(userId, id, validated) };
+      return {
+        ok: true,
+        ledger: await updateLedger(userId, id, validated, serverComposition.settings),
+      };
     } catch (error) {
       const code = toUpdateLedgerActionErrorCode(error);
       if (code === "unexpected") logError("updateLedgerAction", error);

@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { isValidUuid } from "@/lib/validation";
 
@@ -8,7 +8,7 @@ export async function requireLedgerAccess(ledgerId: string) {
   const userId = session?.user?.id;
   if (userId == null || userId === "") throw new UnauthorizedError();
   if (!isValidUuid(ledgerId)) throw new NotFoundError("Ledger");
-  const ledger = await currentApplication.ledgers.getOwned(ledgerId, userId);
+  const ledger = await serverComposition.ledgers.getOwned(ledgerId, userId);
   if (ledger == null) throw new NotFoundError("Ledger");
   return { userId, ledger };
 }

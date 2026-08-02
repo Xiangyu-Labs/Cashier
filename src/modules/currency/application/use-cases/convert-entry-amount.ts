@@ -1,7 +1,6 @@
-import { logger } from "@/lib/logger";
 import { round } from "@/lib/money/decimal";
 import { CurrencyService } from "../services/currency";
-import { ExchangeRateService } from "../services/exchange-rate";
+import type { FxRateBook } from "../ports";
 
 export interface ConvertEntryAmountInput {
   amount: string;
@@ -16,8 +15,9 @@ export interface ConvertEntryAmountResult {
 }
 
 export async function convertEntryAmount(
-  input: ConvertEntryAmountInput
-): Promise<ConvertEntryAmountResult | null> {
+  input: ConvertEntryAmountInput,
+  rates: FxRateBook
+): Promise<ConvertEntryAmountResult> {
   const { amount, fromCurrency, toCurrency, date } = input;
 
   if (fromCurrency === toCurrency) {
@@ -27,20 +27,15 @@ export async function convertEntryAmount(
     };
   }
 
-  try {
-    const converted = await ExchangeRateService.convert(
-      amount,
-      fromCurrency,
-      toCurrency,
-      date != null && date !== "" ? date : undefined
-    );
+  const converted = await rates.convert(
+    amount,
+    fromCurrency,
+    toCurrency,
+    date != null && date !== "" ? date : undefined
+  );
 
-    return {
-      convertedAmount: round(converted, 2),
-      exchangeRate: CurrencyService.calculateExchangeRate(amount, converted),
-    };
-  } catch (err) {
-    logger.warn({ err, fromCurrency, toCurrency, date }, "Currency conversion failed");
-    return null;
-  }
+  return {
+    convertedAmount: round(converted, 2),
+    exchangeRate: CurrencyService.calculateExchangeRate(amount, converted),
+  };
 }

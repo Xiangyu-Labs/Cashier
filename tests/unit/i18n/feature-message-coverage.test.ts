@@ -34,7 +34,16 @@ const CATALOGS = [
  *   which inherits only the Shell manifest.
  */
 const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
-  shell: ["Auth", "AuthEmail", "Common", "Error", "LedgerError", "Metadata", "NotFound"],
+  shell: [
+    "Auth",
+    "AuthEmail",
+    "Common",
+    "Error",
+    "LedgerError",
+    "LedgerPage",
+    "Metadata",
+    "NotFound",
+  ],
   stream: [
     "AnomalyCode",
     "BatchActions",
@@ -94,6 +103,7 @@ const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
   "Common",
   "Error",
   "LedgerError",
+  "LedgerPage",
   "Metadata",
   "NotFound",
   // From Settings manifest
@@ -110,6 +120,7 @@ const LEDGER_ERROR_REQUIRED: readonly string[] = [
   "Common",
   "Error",
   "LedgerError",
+  "LedgerPage",
   "Metadata",
   "NotFound",
 ];

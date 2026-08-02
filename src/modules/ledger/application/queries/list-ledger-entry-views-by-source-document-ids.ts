@@ -1,8 +1,8 @@
-import { currentApplication } from "@/application/current";
+import type { LedgerReadPort } from "../ports";
 
-export function listLedgerEntryViewsBySourceDocumentIds(input: {
-  ledgerId: string;
-  sourceDocumentIds: string[];
-}) {
-  return currentApplication.ledgerReads.listEntriesBySourceDocumentIds(input);
+export function listLedgerEntryViewsBySourceDocumentIds(
+  input: { ledgerId: string; sourceDocumentIds: string[] },
+  reads: LedgerReadPort
+) {
+  return reads.listEntriesBySourceDocumentIds(input);
 }

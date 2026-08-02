@@ -1,5 +1,5 @@
-import { abandonCandidateRevision } from "@/application/adapters/postgres";
 import type { AbandonCandidateResponseDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentLifecyclePort } from "../ports";
 
 interface AbandonCandidateInput {
   ledgerId: string;
@@ -21,12 +21,11 @@ interface AbandonCandidateInput {
  *
  * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
-export async function abandonSourceDocumentCandidate({
-  ledgerId,
-  sourceDocumentId,
-  revisionId,
-}: AbandonCandidateInput): Promise<AbandonCandidateResponseDto> {
-  await abandonCandidateRevision(ledgerId, sourceDocumentId, revisionId);
+export async function abandonSourceDocumentCandidate(
+  { ledgerId, sourceDocumentId, revisionId }: AbandonCandidateInput,
+  lifecycle: SourceDocumentLifecyclePort
+): Promise<AbandonCandidateResponseDto> {
+  await lifecycle.abandonCandidate(ledgerId, sourceDocumentId, revisionId);
 
   return {
     sourceDocumentId,

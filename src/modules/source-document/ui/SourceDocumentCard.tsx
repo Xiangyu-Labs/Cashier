@@ -2,7 +2,6 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { memo, useId, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { type SourceDocumentStatusType } from "@/modules/source-document/contracts";
 import type { SupportedSourceDocumentAction } from "@/application/contracts";
@@ -14,7 +13,6 @@ import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/ho
 import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
 import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
-import { EXPAND_TRANSITION, REDUCED_MOTION_TRANSITION } from "@/lib/motion";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -97,7 +95,6 @@ function SourceDocumentCardBody({
   const tCard = useTranslations("SourceDocumentCard");
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
-  const prefersReducedMotion = useReducedMotion();
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
   const preview = useMemo(() => getSourceDocumentPreview(sourceDocument), [sourceDocument]);
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
@@ -148,36 +145,30 @@ function SourceDocumentCardBody({
           onEditRetry={onEditRetry}
           onDelete={onDelete}
         />
-        <AnimatePresence initial={false}>
-          {isExpanded ? (
-            <motion.div
-              id={contentId}
-              data-testid="source-document-card-body"
-              initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-              transition={prefersReducedMotion ? REDUCED_MOTION_TRANSITION : EXPAND_TRANSITION}
-              className="overflow-hidden"
-            >
-              {status === "completed" && sortedEntries.length > 0 ? (
-                <SourceDocumentCardEntries
-                  entries={sortedEntries}
-                  mainCurrency={mainCurrency}
-                  sourceDocumentEntryDate={sourceDocument.entryDate}
-                  {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
-                />
-              ) : status !== "completed" ? (
-                <SourceDocumentCardPreview
-                  text={preview.text}
-                  images={preview.images}
-                  {...(onViewDetails != null ? { onViewDetails } : {})}
-                  {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
-                  readOnly={readOnly}
-                />
-              ) : null}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {isExpanded ? (
+          <div
+            id={contentId}
+            data-testid="source-document-card-body"
+            className="animate-in overflow-hidden fade-in-0 slide-in-from-top-1 duration-[var(--motion-expand)] ease-[var(--motion-state-ease)] motion-reduce:animate-none"
+          >
+            {status === "completed" && sortedEntries.length > 0 ? (
+              <SourceDocumentCardEntries
+                entries={sortedEntries}
+                mainCurrency={mainCurrency}
+                sourceDocumentEntryDate={sourceDocument.entryDate}
+                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+              />
+            ) : status !== "completed" ? (
+              <SourceDocumentCardPreview
+                text={preview.text}
+                images={preview.images}
+                {...(onViewDetails != null ? { onViewDetails } : {})}
+                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                readOnly={readOnly}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </EntryCardShell>
     </SelectableCardSurface>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ExchangeRateService } from "@/modules/currency/application/services/exchange-rate";
+import { ExchangeRateService } from "@/application/adapters/postgres/exchange-rate";
 import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence/schema/currency";
 

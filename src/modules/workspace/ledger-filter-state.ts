@@ -1,16 +1,14 @@
 import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
-import type { EntryFilters } from "@/modules/ledger/ui";
-import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import {
+  type EntryFilters,
+  type StreamStatusPreset,
+  STREAM_STATUS_PRESETS,
+  STREAM_STATUS_PRESET_VALUES,
+} from "@/modules/ledger/filters";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
 
-export const STREAM_STATUS_PRESETS = ["needs_attention", "in_progress"] as const;
-
-export type StreamStatusPreset = (typeof STREAM_STATUS_PRESETS)[number];
-
-export const STREAM_STATUS_PRESET_VALUES: Record<StreamStatusPreset, SourceDocumentStatusType[]> = {
-  needs_attention: ["candidate_pending", "anomaly", "failed"],
-  in_progress: ["processing"],
-};
+export { STREAM_STATUS_PRESETS, STREAM_STATUS_PRESET_VALUES };
+export type { StreamStatusPreset };
 
 type LedgerFilterKeyInput = Pick<
   EntryFilters,

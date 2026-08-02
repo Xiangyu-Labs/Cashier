@@ -100,21 +100,30 @@ async function recalculateCurrentEntries(
       )
     )
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
-  for (const entry of entries) {
+  if (entries.length === 0) return 0;
+  const exactDates = [
+    ...new Set(entries.flatMap((entry) => (entry.entryDate == null ? [] : [entry.entryDate]))),
+  ];
+  const [datedRates, latestRate] = await Promise.all([
+    exactDates.length === 0
+      ? Promise.resolve([])
+      : tx.select().from(currencyRates).where(inArray(currencyRates.date, exactDates)),
+    entries.some((entry) => entry.entryDate == null)
+      ? tx
+          .select()
+          .from(currencyRates)
+          .orderBy(desc(currencyRates.date))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
+      : Promise.resolve(null),
+  ]);
+  const ratesByDate = new Map(datedRates.map((rate) => [rate.date, rate]));
+  const changes = entries.map((entry) => {
     const sourceCurrency = entry.currency ?? "CNY";
     let convertedAmount: string;
     let exchangeRate: string;
     if (sourceCurrency !== mainCurrency) {
-      const rate = await tx
-        .select()
-        .from(currencyRates)
-        .where(
-          entry.entryDate == null
-            ? undefined
-            : eq(currencyRates.date, entry.entryDate.split("T")[0] ?? entry.entryDate)
-        )
-        .orderBy(desc(currencyRates.date))
-        .then((rows) => rows[0]);
+      const rate = entry.entryDate == null ? latestRate : ratesByDate.get(entry.entryDate);
       if (rate == null) {
         throw new AppError(
           "No stored currency rates are available",
@@ -134,14 +143,32 @@ async function recalculateCurrentEntries(
       convertedAmount = decimalRound(entry.amount, 2);
       exchangeRate = "1";
     }
-    await tx
-      .update(ledgerEntries)
-      .set({
-        convertedAmount,
-        exchangeRate,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(ledgerEntries.ledgerId, ledgerId), eq(ledgerEntries.id, entry.id)));
+    return {
+      id: entry.id,
+      converted_amount: convertedAmount,
+      exchange_rate: exchangeRate,
+    };
+  });
+  const updated = await tx.execute(sql`
+    WITH amounts AS (
+      SELECT * FROM jsonb_to_recordset(${JSON.stringify(changes)}::jsonb) AS value(
+        id uuid,
+        converted_amount numeric,
+        exchange_rate numeric
+      )
+    )
+    UPDATE ledger_entries AS entry
+    SET converted_amount = amounts.converted_amount,
+        exchange_rate = amounts.exchange_rate,
+        updated_at = ${new Date()}
+    FROM amounts
+    WHERE entry.id = amounts.id
+      AND entry.ledger_id = ${ledgerId}
+      AND entry.deleted_at IS NULL
+    RETURNING entry.id
+  `);
+  if (updated.rows.length !== entries.length) {
+    throw new ConflictError("Ledger entries changed during currency recalculation");
   }
   return entries.length;
 }
@@ -410,11 +437,27 @@ export const postgresCategoryAdapter: CategoryPort = {
       if (owned.length !== new Set(categoryIds).size) {
         throw new ValidationError("Category reorder contains an inaccessible category");
       }
-      for (const [sortOrder, id] of categoryIds.entries()) {
-        await tx
-          .update(entryCategories)
-          .set({ sortOrder, updatedAt: new Date() })
-          .where(and(eq(entryCategories.ledgerId, ledgerId), eq(entryCategories.id, id)));
+      const ordering = JSON.stringify(
+        categoryIds.map((id, sortOrder) => ({ id, sort_order: sortOrder }))
+      );
+      const updated = await tx.execute(sql`
+        WITH positions AS (
+          SELECT * FROM jsonb_to_recordset(${ordering}::jsonb) AS value(
+            id uuid,
+            sort_order integer
+          )
+        )
+        UPDATE entry_categories AS category
+        SET sort_order = positions.sort_order,
+            updated_at = ${new Date()}
+        FROM positions
+        WHERE category.id = positions.id
+          AND category.ledger_id = ${ledgerId}
+          AND category.deleted_at IS NULL
+        RETURNING category.id
+      `);
+      if (updated.rows.length !== categoryIds.length) {
+        throw new ConflictError("Category reorder changed during update");
       }
       return categoryIds.length;
     });
@@ -673,17 +716,17 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
         set: {
           leaseToken,
           leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
-          contentFingerprint: contentFingerprint ?? null,
           expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
         },
         setWhere: sql`${idempotencyRecords.status} = 'pending'
-          AND ${idempotencyRecords.leaseExpiresAt} < ${now}`,
+          AND ${idempotencyRecords.leaseExpiresAt} < ${now}
+          AND ${idempotencyRecords.contentFingerprint} IS NOT DISTINCT FROM ${contentFingerprint ?? null}`,
       })
       .returning({ key: idempotencyRecords.key });
     if (claimed.length === 1) {
       try {
         const result = await operation();
-        await db
+        const committed = await db
           .update(idempotencyRecords)
           .set({
             status: "completed",
@@ -698,7 +741,11 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
               eq(idempotencyRecords.key, key),
               eq(idempotencyRecords.leaseToken, leaseToken)
             )
-          );
+          )
+          .returning({ key: idempotencyRecords.key });
+        if (committed.length !== 1) {
+          throw new ConflictError("The idempotency lease expired before the result was committed");
+        }
         return result;
       } catch (error) {
         await db
@@ -721,14 +768,10 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
           eq(idempotencyRecords.key, key)
         ),
       });
+      if (record != null && record.contentFingerprint !== (contentFingerprint ?? null)) {
+        throw new ConflictError("Idempotency key was already used with different content");
+      }
       if (record?.status === "completed") {
-        if (
-          record.contentFingerprint != null &&
-          contentFingerprint != null &&
-          record.contentFingerprint !== contentFingerprint
-        ) {
-          throw new ConflictError("Idempotency key was already used with different content");
-        }
         return (record.result as { value: T }).value;
       }
       if (record == null) {
@@ -767,20 +810,64 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
           expiresAt: row.expires,
           attempts: row.attempts,
           lockedUntil: row.lockedUntil,
+          verifiedAt: row.verifiedAt,
         };
   },
   async recordFailure(input) {
-    await db
+    const rows = await db
       .update(otpTokens)
       .set({
-        attempts: input.attempts,
+        attempts: sql`${otpTokens.attempts} + 1`,
         lastAttemptAt: new Date(),
-        ...(input.lockedUntil === undefined ? {} : { lockedUntil: input.lockedUntil }),
+        lockedUntil: sql`case
+          when ${otpTokens.attempts} + 1 >= ${input.maxAttempts} then ${input.lockedUntil}
+          else ${otpTokens.lockedUntil}
+        end`,
       })
-      .where(eq(otpTokens.email, input.email));
+      .where(eq(otpTokens.email, input.email))
+      .returning({ attempts: otpTokens.attempts, lockedUntil: otpTokens.lockedUntil });
+    return rows[0] ?? null;
   },
-  async markVerified(email) {
-    await db.update(otpTokens).set({ verifiedAt: new Date() }).where(eq(otpTokens.email, email));
+  async claim(input) {
+    const rows = await db
+      .update(otpTokens)
+      .set({ verifiedAt: input.now })
+      .where(
+        and(
+          eq(otpTokens.email, input.email),
+          eq(otpTokens.tokenHash, input.tokenHash),
+          isNull(otpTokens.verifiedAt)
+        )
+      )
+      .returning({ id: otpTokens.id });
+    return rows.length === 1;
+  },
+  async release(input) {
+    const rows = await db
+      .update(otpTokens)
+      .set({ verifiedAt: null })
+      .where(
+        and(
+          eq(otpTokens.email, input.email),
+          eq(otpTokens.tokenHash, input.tokenHash),
+          sql`${otpTokens.verifiedAt} is not null`
+        )
+      )
+      .returning({ id: otpTokens.id });
+    return rows.length === 1;
+  },
+  async consume(input) {
+    const rows = await db
+      .delete(otpTokens)
+      .where(
+        and(
+          eq(otpTokens.email, input.email),
+          eq(otpTokens.tokenHash, input.tokenHash),
+          sql`${otpTokens.verifiedAt} is not null`
+        )
+      )
+      .returning({ id: otpTokens.id });
+    return rows.length === 1;
   },
   async delete(email) {
     await db.delete(otpTokens).where(eq(otpTokens.email, email));

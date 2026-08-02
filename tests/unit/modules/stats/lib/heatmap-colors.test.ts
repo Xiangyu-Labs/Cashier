@@ -31,8 +31,8 @@ describe("heatmap-colors", () => {
     const legend = getHeatmapLegend();
 
     expect(legend).toHaveLength(6);
-    expect(legend[0]?.level).toBe(0);
-    expect(legend[5]?.level).toBe(5);
+    expect(legend[0]).toEqual({ level: 0, color: "var(--heatmap-0)" });
+    expect(legend[5]).toEqual({ level: 5, color: "var(--heatmap-5)" });
   });
 
   it("formats localized compact amounts without currency markers", () => {

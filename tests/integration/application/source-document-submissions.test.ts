@@ -10,9 +10,11 @@ import {
 } from "@/application/adapters/postgres";
 import {
   ledgerEntries,
+  idempotencyRecords,
   processingAttempts,
   processingOutbox,
   revisionFiles,
+  serviceCredentials,
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
@@ -70,6 +72,55 @@ const entry = {
 } as const;
 
 describe("target source-document submissions", () => {
+  it("rolls back a fencing loser after an expired idempotency lease is taken over", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const credentialId = crypto.randomUUID();
+    await db.insert(serviceCredentials).values({
+      id: credentialId,
+      ledgerId,
+      name: "fencing-test",
+      tokenHash: "f".repeat(64),
+      tokenPrefix: "cashier_test",
+      tokenSuffix: "test",
+    });
+    const idempotency = {
+      credentialId,
+      key: "fencing-takeover",
+      contentFingerprint: "same-content",
+    };
+    let signalStarted!: () => void;
+    let releaseFirst!: () => void;
+    const started = new Promise<void>((resolve) => (signalStarted = resolve));
+    const gate = new Promise<void>((resolve) => (releaseFirst = resolve));
+
+    const first = postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+      idempotency,
+      async () => {
+        signalStarted();
+        await gate;
+        return { ledgerId, submittedText: "receipt" };
+      }
+    );
+    await started;
+    await db
+      .update(idempotencyRecords)
+      .set({ leaseExpiresAt: new Date(Date.now() - 1) })
+      .where(eq(idempotencyRecords.key, idempotency.key));
+
+    const winner = await postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+      idempotency,
+      async () => ({ ledgerId, submittedText: "receipt" })
+    );
+    releaseFirst();
+    await expect(first).rejects.toThrow("idempotency lease expired");
+
+    expect(await db.select().from(sourceDocuments)).toHaveLength(1);
+    expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(1);
+    expect(await db.select().from(processingOutbox)).toHaveLength(1);
+    expect(winner.document.id).toBe((await db.select().from(sourceDocuments))[0]?.id);
+  });
+
   it("atomically creates text, image, and mixed pending revisions with durable intents", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);

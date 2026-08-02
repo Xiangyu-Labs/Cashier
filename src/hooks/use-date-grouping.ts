@@ -21,6 +21,7 @@ export interface UseDateGroupingOptions<T> {
   /** Translation function for "today" and "yesterday" */
   t: (key: "today" | "yesterday") => string;
   timeZone?: string;
+  preserveOrder?: boolean;
 }
 
 export interface UseDateGroupingReturn<T> {
@@ -41,15 +42,18 @@ export function useDateGrouping<T>({
   locale,
   t,
   timeZone,
+  preserveOrder = false,
 }: UseDateGroupingOptions<T>): UseDateGroupingReturn<T> {
   const memoizedGetDateStr = useCallback((item: T) => getDateStr(item), [getDateStr]);
 
   const groupedItems = useMemo(() => {
-    const sortedItems = [...items].sort((a, b) => {
-      const dateA = memoizedGetDateStr(a);
-      const dateB = memoizedGetDateStr(b);
-      return dateB.localeCompare(dateA);
-    });
+    const sortedItems = preserveOrder
+      ? items
+      : [...items].sort((a, b) => {
+          const dateA = memoizedGetDateStr(a);
+          const dateB = memoizedGetDateStr(b);
+          return dateB.localeCompare(dateA);
+        });
 
     const groups: Record<string, DateGroup<T>> = {};
 
@@ -90,8 +94,9 @@ export function useDateGrouping<T>({
       group.total += getAmount(item);
     });
 
-    return Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
-  }, [items, locale, t, memoizedGetDateStr, getAmount, timeZone]);
+    const grouped = Object.values(groups);
+    return preserveOrder ? grouped : grouped.sort((a, b) => b.timestamp - a.timestamp);
+  }, [items, locale, t, memoizedGetDateStr, getAmount, timeZone, preserveOrder]);
 
   return { groupedItems, getDateStr: memoizedGetDateStr };
 }

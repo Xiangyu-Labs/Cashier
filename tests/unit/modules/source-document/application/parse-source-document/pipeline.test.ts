@@ -23,17 +23,6 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-// Mock image loading so pipeline tests don't need real storage
-vi.mock("@/lib/storage/utils", () => ({
-  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
-  loadImagesForAI: vi.fn(async (urls: string[]) =>
-    urls.map((url) => ({ url, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
-  ),
-  loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
-    ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,FAKE`, success: true }))
-  ),
-}));
-
 const SIMPLE_ENTRY = {
   receipt_index: 0,
   item_name: "Lunch",
@@ -159,8 +148,6 @@ type ParseSourceDocumentInputOverrides = {
 
 function createInput(overrides: ParseSourceDocumentInputOverrides = {}): ParseSourceDocumentInput {
   return {
-    ledgerId: overrides.ledgerId ?? "ledger-1",
-    sourceDocumentId: overrides.sourceDocumentId ?? "doc-1",
     categories: overrides.categories ?? [{ id: "cat-1", name: "Food", description: null }],
     settings: overrides.settings ?? {},
     ...("text" in overrides
@@ -168,11 +155,11 @@ function createInput(overrides: ParseSourceDocumentInputOverrides = {}): ParseSo
         ? { text: overrides.text }
         : {}
       : { text: "Lunch 10 USD" }),
-    ...("storedFileIds" in overrides
-      ? overrides.storedFileIds !== undefined
-        ? { storedFileIds: overrides.storedFileIds }
+    ...("evidence" in overrides
+      ? overrides.evidence !== undefined
+        ? { evidence: overrides.evidence }
         : {}
-      : { storedFileIds: ["file-1"] }),
+      : { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,FAKE" }] } }),
     ...("aiLanguage" in overrides
       ? overrides.aiLanguage !== undefined
         ? { aiLanguage: overrides.aiLanguage }
@@ -351,7 +338,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   it("text-only input uses text model (no vision call)", async () => {
     const { ai, generate } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
     await runParsePipeline(
-      createInput({ storedFileIds: undefined, text: "Lunch 10 USD" }),
+      createInput({ evidence: undefined, text: "Lunch 10 USD" }),
       buildCtx(ai)
     );
 
@@ -485,10 +472,10 @@ describe("runParsePipeline — new single-pass flow", () => {
 });
 
 describe("buildParserInput", () => {
-  it("includes categories, text, storedFileIds, aiLanguage, currencies, and custom prompt", () => {
+  it("includes categories, text, evidence, aiLanguage, currencies, and custom prompt", () => {
     const input = createInput({
       text: "user text",
-      storedFileIds: ["file-1"],
+      evidence: { images: [{ dataUrl: "data:image/jpeg;base64,FAKE" }] },
       aiLanguage: "en-US",
       preferredCurrencies: ["USD"],
       settings: { aiCustomPrompt: "Prefer food-related detail" },
@@ -498,7 +485,9 @@ describe("buildParserInput", () => {
     const stage0Input = buildParserInput(input);
 
     expect(stage0Input.text).toBe("user text");
-    expect(stage0Input.storedFileIds).toEqual(["file-1"]);
+    expect(stage0Input.evidence).toEqual({
+      images: [{ dataUrl: "data:image/jpeg;base64,FAKE" }],
+    });
     expect(stage0Input.aiLanguage).toBe("en-US");
     expect(stage0Input.preferredCurrencies).toEqual(["USD"]);
     expect(stage0Input.aiCustomPrompt).toBe("Prefer food-related detail");

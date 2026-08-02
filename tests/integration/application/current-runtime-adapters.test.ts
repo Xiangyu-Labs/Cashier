@@ -292,10 +292,16 @@ describe("current-runtime target adapters", () => {
     const fileLinkCount = (await db.select().from(revisionFiles)).length;
 
     await expect(
-      deleteSourceDocument({ ledgerId, sourceDocumentId: active.sourceDocumentId })
+      deleteSourceDocument(
+        { ledgerId, sourceDocumentId: active.sourceDocumentId },
+        postgresRevisionAdapter
+      )
     ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: true });
     await expect(
-      deleteSourceDocument({ ledgerId, sourceDocumentId: active.sourceDocumentId })
+      deleteSourceDocument(
+        { ledgerId, sourceDocumentId: active.sourceDocumentId },
+        postgresRevisionAdapter
+      )
     ).resolves.toEqual({ sourceDocumentId: active.sourceDocumentId, deleted: false });
     await expect(
       postgresLedgerProjectionAdapter.activateRevision({
@@ -456,6 +462,52 @@ describe("current-runtime target adapters", () => {
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects a different fingerprint while an idempotent request is pending", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const credentialId = crypto.randomUUID();
+    await db.insert(serviceCredentials).values({
+      id: credentialId,
+      ledgerId,
+      tokenHash: computeHash("fingerprint-secret"),
+      tokenPrefix: "fingerpr",
+      tokenSuffix: "cret",
+      name: "Fingerprint API",
+    });
+
+    let releaseOperation!: () => void;
+    let markStarted!: () => void;
+    const operationStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const operationGate = new Promise<void>((resolve) => {
+      releaseOperation = resolve;
+    });
+    const first = postgresIdempotencyAdapter.execute(
+      credentialId,
+      "pending-fingerprint-key",
+      async () => {
+        markStarted();
+        await operationGate;
+        return { id: "created-once" };
+      },
+      "fingerprint-a"
+    );
+    await operationStarted;
+
+    await expect(
+      postgresIdempotencyAdapter.execute(
+        credentialId,
+        "pending-fingerprint-key",
+        async () => ({ id: "must-not-run" }),
+        "fingerprint-b"
+      )
+    ).rejects.toThrow("Idempotency key was already used with different content");
+
+    releaseOperation();
+    await expect(first).resolves.toEqual({ id: "created-once" });
+  });
+
   it("plans, validates, finalizes, expires, and authorizes R2 stored files", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
@@ -499,6 +551,18 @@ describe("current-runtime target adapters", () => {
         targetIds: [plan.targets[0]!.id],
       })
     ).resolves.toMatchObject([{ id: uploaded.id }]);
+    const concurrentFinalize = () =>
+      adapter.finalizeUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: [plan.targets[0]!.id],
+      });
+    const concurrentResults = await Promise.all([concurrentFinalize(), concurrentFinalize()]);
+    expect(concurrentResults).toEqual([
+      [expect.objectContaining({ id: uploaded.id })],
+      [expect.objectContaining({ id: uploaded.id })],
+    ]);
     await expect(
       adapter.finalizeUpload({
         ownerLedgerId: otherLedgerId,

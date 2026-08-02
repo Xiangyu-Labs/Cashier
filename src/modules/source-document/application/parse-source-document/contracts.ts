@@ -19,14 +19,34 @@ export interface AiContextContract {
 }
 
 export interface ParseSourceDocumentInput {
-  ledgerId: string;
-  sourceDocumentId: string;
   text?: string;
-  storedFileIds?: string[];
+  evidence?: ParseEvidence;
   categories: CategoryInfo[];
   aiLanguage?: string;
   settings: { aiCustomPrompt?: string };
   preferredCurrencies?: string[];
+}
+
+export interface ParseEvidence {
+  images: readonly { dataUrl: string }[];
+}
+
+export type ProcessingFailureCode =
+  | "storage_failure"
+  | "ai_provider_unavailable"
+  | "ai_schema_invalid"
+  | "exchange_rate_failure"
+  | "processing_unavailable";
+
+export class ProcessingFailure extends Error {
+  constructor(
+    readonly code: ProcessingFailureCode,
+    message: string,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = "ProcessingFailure";
+  }
 }
 
 export interface ParseSourceDocumentOutput {
@@ -35,6 +55,12 @@ export interface ParseSourceDocumentOutput {
   anomalyReason?: string;
   verificationStatus: "passed" | "anomaly" | "invalid";
 }
+
+export type ParsePipelineResult =
+  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
+  | { kind: "invalid"; title: string }
+  | { kind: "anomaly"; title: string; anomalyReason: string }
+  | { kind: "cancelled" };
 
 export class ProcessingCancelledError extends Error {
   constructor() {

@@ -2,8 +2,8 @@ import type {
   RecoverableProcessingIntentContract,
   ProcessingRecoveryConfig,
 } from "@/application/contracts";
-import { PostgresProcessingIntentAdapter } from "@/application/adapters/postgres/processing-intents";
 import { logger } from "@/lib/logger";
+import type { ProcessingRecoveryPort } from "../ports";
 
 /**
  * Selects recoverable processing intents for the given ledger and atomically
@@ -23,28 +23,22 @@ import { logger } from "@/lib/logger";
 export async function selectRecoverableProcessingIntents(
   ledgerId: string,
   config: ProcessingRecoveryConfig,
-  adapter?: PostgresProcessingIntentAdapter
+  adapter: ProcessingRecoveryPort
 ): Promise<readonly RecoverableProcessingIntentContract[]> {
-  const intentsAdapter = adapter ?? new PostgresProcessingIntentAdapter();
-
   // Step 1: Exhaust intents whose scheduleAttemptCount already reached
   // maxAttempts on a previous request and are still non-terminal.
   // These would not be selected by selectRecoverable because the filter
   // is scheduleAttemptCount < maxAttempts.
-  await intentsAdapter.exhaustStaleIntents(ledgerId, config.maxAttempts, config.maxBatch);
+  await adapter.exhaustStaleIntents(ledgerId, config.maxAttempts, config.maxBatch);
 
   // Step 2: Select recoverable intents (scheduleAttemptCount < maxAttempts)
-  const candidates = await intentsAdapter.selectRecoverable(
-    ledgerId,
-    config.maxAttempts,
-    config.maxBatch
-  );
+  const candidates = await adapter.selectRecoverable(ledgerId, config.maxAttempts, config.maxBatch);
   if (candidates.length === 0) return [];
 
   // Step 3: Atomically schedule each candidate
   const scheduled: RecoverableProcessingIntentContract[] = [];
   for (const candidate of candidates) {
-    const success = await intentsAdapter.scheduleRecovery(
+    const success = await adapter.scheduleRecovery(
       candidate.revisionId,
       candidate.id,
       ledgerId,

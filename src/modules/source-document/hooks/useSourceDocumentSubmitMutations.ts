@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import {
   createSourceDocumentAction,
@@ -34,11 +34,13 @@ interface CreateVariables {
   payload: SourceDocumentSubmitPayload;
   operationId: string;
   clientSubmissionId: string;
+  signal: AbortSignal;
 }
 
 interface RetryVariables {
   payload: SourceDocumentSubmitPayload;
   operationId: string;
+  signal: AbortSignal;
 }
 
 interface UseSourceDocumentSubmitMutationsOptions {
@@ -73,6 +75,8 @@ export function useSourceDocumentSubmitMutations({
   const queryClient = useQueryClient();
   const notifyRefresh = useNotifyRevisionRefresh();
   const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
+  const uploadControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadControllerRef.current?.abort(), []);
   const setMonotonicProgress = (next: SourceDocumentSubmissionProgress) => {
     setProgress((current) =>
       current != null && current.percent > next.percent
@@ -100,7 +104,7 @@ export function useSourceDocumentSubmitMutations({
       const uploadedPayload = await uploadSourceDocumentSubmissionImages(
         ledgerId,
         payload,
-        undefined,
+        { signal: variables.signal },
         setMonotonicProgress
       );
       setMonotonicProgress({ phase: "submitting", percent: 90 });
@@ -154,7 +158,7 @@ export function useSourceDocumentSubmitMutations({
       const uploadedPayload = await uploadSourceDocumentSubmissionImages(
         ledgerId,
         payload,
-        undefined,
+        { signal: variables.signal },
         setMonotonicProgress
       );
       setMonotonicProgress({ phase: "submitting", percent: 90 });
@@ -205,16 +209,24 @@ export function useSourceDocumentSubmitMutations({
     if (mode === "retry" && sourceDocumentId == null) return false;
     setProgress({ phase: "preparing", percent: 0 });
     const startMutation = () => {
+      uploadControllerRef.current?.abort();
+      const controller = new AbortController();
+      uploadControllerRef.current = controller;
       if (mode === "retry") {
         if (sourceDocumentId == null) return;
         const operationId = crypto.randomUUID();
-        retryMutation.mutate({ payload, operationId });
+        retryMutation.mutate({ payload, operationId, signal: controller.signal });
         return;
       }
 
       const operationId = crypto.randomUUID();
       const clientSubmissionId = crypto.randomUUID();
-      createMutation.mutate({ payload, operationId, clientSubmissionId });
+      createMutation.mutate({
+        payload,
+        operationId,
+        clientSubmissionId,
+        signal: controller.signal,
+      });
     };
 
     if (typeof globalThis.requestAnimationFrame === "function") {
@@ -229,5 +241,6 @@ export function useSourceDocumentSubmitMutations({
     isPending: activeMutation.isPending || progress != null,
     progress,
     submit,
+    cancel: () => uploadControllerRef.current?.abort(),
   };
 }

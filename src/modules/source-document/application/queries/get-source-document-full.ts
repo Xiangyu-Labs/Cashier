@@ -1,12 +1,13 @@
-import { currentApplication } from "@/application/current";
 import { NotFoundError } from "@/lib/errors";
 import type { SourceDocumentFullDto } from "../../contracts";
+import type { SourceDocumentReadPort } from "../ports";
 
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  documents: SourceDocumentReadPort
 ): Promise<SourceDocumentFullDto> {
-  const document = await currentApplication.sourceDocumentReads.get(ledgerId, sourceDocumentId);
+  const document = await documents.get(ledgerId, sourceDocumentId);
 
   if (document == null) {
     throw new NotFoundError("Source document");
@@ -23,7 +24,8 @@ export async function getSourceDocumentFullQuery(
 
 export async function getSourceDocumentFull(
   ledgerId: string,
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  documents: SourceDocumentReadPort
 ): Promise<SourceDocumentFullDto> {
-  return getSourceDocumentFullQuery(ledgerId, sourceDocumentId);
+  return getSourceDocumentFullQuery(ledgerId, sourceDocumentId, documents);
 }

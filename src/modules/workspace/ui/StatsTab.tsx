@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { Button } from "@/components/ui/button";
 import {
   addPeriod,
   formatCivilDate,
@@ -13,9 +12,8 @@ import {
   parseDateString,
   type DateRangeType,
 } from "@/lib/date-utils";
-import { CalendarHeatmapSection, StatsChart, StatsHeader, StatsRanking } from "@/modules/stats/ui";
-import { useTranslations, useLocale } from "next-intl";
-import { BarChart3, Grid3X3 } from "lucide-react";
+import { StatsContentView } from "@/modules/stats/ui";
+import { useLocale } from "next-intl";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
 import {
@@ -40,7 +38,6 @@ export function StatsTab({
   initialDate,
   timeZone,
 }: StatsTabProps) {
-  const t = useTranslations("StatsTab");
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
@@ -124,15 +121,6 @@ export function StatsTab({
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
-  const totalExpense = Number(stats?.summary.total ?? 0);
-  const currencySymbol = stats?.summary.currency ?? ledger?.settings.mainCurrency ?? "CNY";
-  const averageDaily = stats?.summary.dailyAverage ?? 0;
-  const statsTrend = stats?.summary.trend;
-  const trend =
-    statsTrend !== undefined
-      ? { percent: statsTrend.percent, amount: Number(statsTrend.amount) }
-      : undefined;
-
   const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";
     await Promise.all([
@@ -141,101 +129,29 @@ export function StatsTab({
     ]);
   }, [queryClient, ledgerId]);
 
-  const handleCategoryClick = (categoryId: string) => {
-    if (onCategoryDrilldown !== undefined) {
-      onCategoryDrilldown(categoryId, startDateStr, endDateStr);
-    }
-  };
-
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div className="space-y-6 pb-24">
-        <StatsHeader
-          rangeType={rangeType}
-          setRangeType={(type) => {
-            setRangeType(type);
-            setPeriodOffset(0);
-          }}
-          periodOffset={periodOffset}
-          setPeriodOffset={setPeriodOffset}
-          label={label}
-          totalExpense={totalExpense}
-          averageDaily={averageDaily}
-          currencySymbol={currencySymbol}
-          {...(trend !== undefined ? { trend } : {})}
-        />
-
-        <div className="min-w-0 space-y-2 px-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              {chartView === "trend" ? t("expenseTrend") : t("dailyHeatmap")}
-            </h3>
-            <div className="flex items-center gap-1">
-              <Button
-                variant={chartView === "heatmap" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setChartView("heatmap")}
-                className="h-7 px-2"
-              >
-                <Grid3X3 className="h-4 w-4 mr-1" />
-                {t("heatmap")}
-              </Button>
-              <Button
-                variant={chartView === "trend" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setChartView("trend")}
-                className="h-7 px-2"
-              >
-                <BarChart3 className="h-4 w-4 mr-1" />
-                {t("trend")}
-              </Button>
-            </div>
-          </div>
-          {chartView === "trend" ? (
-            <StatsChart
-              data={stats?.chart || []}
-              rangeType={rangeType}
-              startDate={startDate}
-              endDate={endDate}
-              isLoading={isLoading}
-              currencySymbol={currencySymbol}
-            />
-          ) : (
-            <CalendarHeatmapSection
-              days={stats?.heatmap?.days || []}
-              stats={
-                stats?.heatmap?.stats || { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 }
-              }
-              {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
-              currency={currencySymbol}
-              locale={locale}
-              queryRange={{
-                startDate: startDateStr,
-                endDate: endDateStr,
-              }}
-            />
-          )}
-        </div>
-
-        <StatsRanking
-          data={(stats?.categories ?? []).map((c) => {
-            const base = {
-              id: c.id,
-              name: c.name,
-              icon: c.icon,
-              totalConverted: Number(c.totalConverted),
-              percent: c.percent,
-              count: c.count,
-            };
-            return c.trend
-              ? { ...base, trend: { percent: c.trend.percent, amount: Number(c.trend.amount) } }
-              : base;
-          })}
-          isLoading={isLoading}
-          currencySymbol={currencySymbol}
-          onCategoryClick={handleCategoryClick}
-        />
-      </div>
+      <StatsContentView
+        rangeType={rangeType}
+        onRangeTypeChange={(type) => {
+          setRangeType(type);
+          setPeriodOffset(0);
+        }}
+        periodOffset={periodOffset}
+        onPeriodOffsetChange={setPeriodOffset}
+        label={label}
+        startDate={startDate}
+        endDate={endDate}
+        startDateStr={startDateStr}
+        endDateStr={endDateStr}
+        stats={stats}
+        isLoading={isLoading}
+        chartView={chartView}
+        onChartViewChange={setChartView}
+        fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}
+        {...(onCategoryDrilldown !== undefined ? { onCategoryDrilldown } : {})}
+        {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
+      />
     </PullToRefresh>
   );
 }

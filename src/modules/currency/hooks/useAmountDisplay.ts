@@ -3,6 +3,7 @@
 import { useConvertedAmount } from "./useConvertedAmount";
 
 interface UseAmountDisplayOptions {
+  ledgerId: string;
   amount: number;
   currency: string | null | undefined;
   mainCurrency: string;
@@ -29,12 +30,19 @@ interface UseAmountDisplayReturn {
  * Handles conversion logic and currency difference detection.
  */
 export function useAmountDisplay({
+  ledgerId,
   amount,
   currency,
   mainCurrency,
   date,
 }: UseAmountDisplayOptions): UseAmountDisplayReturn {
-  const { converted, isLoading } = useConvertedAmount(amount, currency, mainCurrency, date);
+  const { converted, isLoading } = useConvertedAmount(
+    ledgerId,
+    amount,
+    currency,
+    mainCurrency,
+    date
+  );
 
   const isDifferentCurrency = Boolean(
     currency != null && currency !== "" && currency !== mainCurrency && currency !== "unknown"

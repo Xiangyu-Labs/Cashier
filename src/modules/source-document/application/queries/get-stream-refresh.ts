@@ -1,6 +1,3 @@
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { ledgerChangeBatches, ledgerChangeItems, ledgerSyncState } from "@/persistence";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import { getSourceDocumentCountsQuery } from "./get-source-document-counts";
 import type { LedgerDeltaRequest, LedgerDeltaResult } from "../../contract-refresh";
@@ -9,7 +6,7 @@ import {
   MAX_DELTA_DOCUMENTS,
   MAX_DELTA_VERSIONS,
 } from "../../contract-refresh";
-import { currentApplication } from "@/application/current";
+import type { LedgerDeltaPorts } from "../ports";
 
 function parseVersion(value: string): bigint | null {
   if (!/^\d+$/.test(value)) return null;
@@ -20,13 +17,13 @@ function parseVersion(value: string): bigint | null {
   }
 }
 
-export async function getLedgerDelta(request: LedgerDeltaRequest): Promise<LedgerDeltaResult> {
+export async function getLedgerDelta(
+  request: LedgerDeltaRequest,
+  ports: LedgerDeltaPorts
+): Promise<LedgerDeltaResult> {
   const afterVersion = parseVersion(request.afterVersion);
-  const state = await db.query.ledgerSyncState.findFirst({
-    where: eq(ledgerSyncState.ledgerId, request.ledgerId),
-  });
-  const currentVersion = state?.version ?? BigInt(0);
-  const counts = await getSourceDocumentCountsQuery(request.ledgerId);
+  const currentVersion = await ports.changes.getVersion(request.ledgerId);
+  const counts = await getSourceDocumentCountsQuery(request.ledgerId, ports.documents);
 
   const reset = (): LedgerDeltaResult => ({
     protocolVersion: LEDGER_DELTA_PROTOCOL_VERSION,
@@ -61,17 +58,11 @@ export async function getLedgerDelta(request: LedgerDeltaRequest): Promise<Ledge
     };
   }
 
-  const batches = await db
-    .select()
-    .from(ledgerChangeBatches)
-    .where(
-      and(
-        eq(ledgerChangeBatches.ledgerId, request.ledgerId),
-        gt(ledgerChangeBatches.version, afterVersion)
-      )
-    )
-    .orderBy(asc(ledgerChangeBatches.version))
-    .limit(MAX_DELTA_VERSIONS);
+  const batches = await ports.changes.listBatches({
+    ledgerId: request.ledgerId,
+    afterVersion,
+    limit: MAX_DELTA_VERSIONS,
+  });
   if (
     batches.length === 0 ||
     batches.some((batch, index) => batch.version !== afterVersion + BigInt(index + 1))
@@ -81,34 +72,28 @@ export async function getLedgerDelta(request: LedgerDeltaRequest): Promise<Ledge
 
   const toVersion = batches.at(-1)!.version;
   const versions = batches.map((batch) => batch.version);
-  const itemRows = await db
-    .selectDistinct({ id: ledgerChangeItems.sourceDocumentId })
-    .from(ledgerChangeItems)
-    .where(
-      and(
-        eq(ledgerChangeItems.ledgerId, request.ledgerId),
-        inArray(ledgerChangeItems.version, versions)
-      )
-    )
-    .limit(MAX_DELTA_DOCUMENTS + 1);
-  if (itemRows.length > MAX_DELTA_DOCUMENTS || batches.some((batch) => batch.resetRequired)) {
+  const ids = await ports.changes.listChangedSourceDocumentIds({
+    ledgerId: request.ledgerId,
+    versions,
+    limit: MAX_DELTA_DOCUMENTS + 1,
+  });
+  if (ids.length > MAX_DELTA_DOCUMENTS || batches.some((batch) => batch.resetRequired)) {
     return reset();
   }
 
-  const ids = itemRows.map((row) => row.id);
   const page =
     ids.length === 0
       ? { items: [] }
-      : await currentApplication.sourceDocumentReads.list({
+      : await ports.documents.list({
           ledgerId: request.ledgerId,
           ids,
           limit: ids.length,
           includeFiles: true,
         });
-  const entries = await listLedgerEntryViewsBySourceDocumentIds({
-    ledgerId: request.ledgerId,
-    sourceDocumentIds: page.items.map((item) => item.id),
-  });
+  const entries = await listLedgerEntryViewsBySourceDocumentIds(
+    { ledgerId: request.ledgerId, sourceDocumentIds: page.items.map((item) => item.id) },
+    ports.ledgerReads
+  );
   const documents = page.items.map((item) => ({
     ...item,
     ledgerEntries: entries.get(item.id) ?? [],

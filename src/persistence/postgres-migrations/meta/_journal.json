@@ -120,6 +120,20 @@
       "when": 1786886400000,
       "tag": "0016_incremental_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786972800000,
+      "tag": "0017_object_cleanup_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787059200000,
+      "tag": "0018_accounting_projection_backfill",
+      "breakpoints": true
     }
   ]
 }

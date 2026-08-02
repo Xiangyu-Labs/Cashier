@@ -409,23 +409,29 @@ function LedgerPageClientContent({
               </div>
 
               <div className="min-h-[26rem]">
-                {inputMode === "ai" ? (
-                  <SourceDocumentInput
-                    ledgerId={ledgerId}
-                    onPendingChange={setIsInputSubmitting}
-                    {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                    onSuccess={() => setIsInputOpen(false)}
-                  />
-                ) : (
-                  <QuickEntryForm
-                    ledgerId={ledgerId}
-                    categories={categories}
-                    mainCurrency={mainCurrency}
-                    preferredCurrencies={preferredCurrencies}
-                    {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                    onSuccess={() => setIsInputOpen(false)}
-                  />
-                )}
+                <DeferredFeatureMessages
+                  feature="stream"
+                  locale={locale}
+                  fallback={<InputFormLoadingFallback />}
+                >
+                  {inputMode === "ai" ? (
+                    <SourceDocumentInput
+                      ledgerId={ledgerId}
+                      onPendingChange={setIsInputSubmitting}
+                      {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                      onSuccess={() => setIsInputOpen(false)}
+                    />
+                  ) : (
+                    <QuickEntryForm
+                      ledgerId={ledgerId}
+                      categories={categories}
+                      mainCurrency={mainCurrency}
+                      preferredCurrencies={preferredCurrencies}
+                      {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                      onSuccess={() => setIsInputOpen(false)}
+                    />
+                  )}
+                </DeferredFeatureMessages>
               </div>
             </div>
           </DialogContent>

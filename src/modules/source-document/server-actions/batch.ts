@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { sourceDocumentIdsSchema } from "@/modules/source-document/contract-schemas";
@@ -21,7 +21,10 @@ export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
     };
     for (const id of ids) {
       try {
-        const deleted = await deleteSourceDocument({ ledgerId, sourceDocumentId: id });
+        const deleted = await deleteSourceDocument(
+          { ledgerId, sourceDocumentId: id },
+          serverComposition.sourceDocumentRevisions
+        );
         if (deleted.deleted) result.succeededIds.push(id);
         else result.skipped.push({ id, reason: "not_available" });
       } catch (error) {
@@ -50,7 +53,7 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
         await retrySourceDocument(
           { ledgerId, sourceDocumentId: id },
           {
-            submissions: currentApplication.sourceDocumentSubmissions,
+            submissions: serverComposition.sourceDocumentSubmissions,
             scheduleProcessing: (intent) => intents.push(intent),
           }
         );

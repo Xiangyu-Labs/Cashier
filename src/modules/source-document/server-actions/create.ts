@@ -2,7 +2,7 @@
 import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
@@ -42,8 +42,8 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     const result = await createAndQueueSourceDocument(
       { ledgerId, ledger, ...payload },
       {
-        submissions: currentApplication.sourceDocumentSubmissions,
-        storedFiles: currentApplication.storedFiles,
+        submissions: serverComposition.sourceDocumentSubmissions,
+        storedFiles: serverComposition.storedFiles,
         processImage: processImageFn,
         scheduleProcessing,
       }

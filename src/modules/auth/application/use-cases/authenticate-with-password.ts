@@ -1,11 +1,11 @@
 import { CredentialsSignin } from "@auth/core/errors";
 import type { User } from "next-auth";
 import type { UserAccountPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { verifyPassword } from "@/modules/auth/services/password";
 import { normalizeEmail } from "@/lib/utils/email";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 
 class InvalidCredentialsSignInError extends CredentialsSignin {
   code = AUTH_ERROR_CODES.INVALID_CREDENTIALS;
@@ -13,7 +13,7 @@ class InvalidCredentialsSignInError extends CredentialsSignin {
 
 export async function authenticateWithPassword(
   params: { email: string; password: string },
-  users: UserAccountPort = currentApplication.userAccounts
+  users: UserAccountPort
 ): Promise<User> {
   const email = normalizeEmail(params.email);
   const user = email === "" ? null : await users.findByEmail(email);
@@ -21,7 +21,7 @@ export async function authenticateWithPassword(
     user?.passwordHash != null && (await verifyPassword(params.password, user.passwordHash));
 
   if (user == null || !valid) {
-    logger.warn({ email }, "Password sign-in failed");
+    logger.warn({ subject: logIdentifier("email", email) }, "Password sign-in failed");
     throw new InvalidCredentialsSignInError();
   }
 

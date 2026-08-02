@@ -1,23 +1,18 @@
-import { and, eq, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { eq, isNull, sql, type SQL } from "drizzle-orm";
+import { ValidationError } from "@/lib/errors";
 import { forLedger } from "@/lib/db/scoped-query";
-import { ledgerEntries } from "@/persistence";
+import { ledgerEntries, sourceDocuments } from "@/persistence";
 import {
   buildLedgerEntrySourceDocumentDateCondition,
   buildLedgerEntryVisibilityCondition,
 } from "./ledger-entry-visibility";
+import type { LedgerEntryFilterParams } from "@/modules/ledger/filters";
+import { serializeLedgerQuery } from "@/modules/ledger/ledger-query";
 
 // PostgreSQL query construction remains private to the adapter.
 
-export interface LedgerEntryFilterParams {
-  startDate?: string | null;
-  endDate?: string | null;
-  categoryId?: string | null;
-  uncategorizedOnly?: boolean;
-  currency?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
-  search?: string | null;
-}
+export type { LedgerEntryFilterParams } from "@/modules/ledger/filters";
 
 export function buildLedgerEntryFilterConditions(
   ledgerId: string,
@@ -70,44 +65,91 @@ export function buildLedgerEntryFilterConditions(
   }
 
   if (filters.search != null && filters.search !== "") {
+    const literalPattern = `%${filters.search.toLocaleLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
     conditions.push(
-      sql`(
-        position(lower(${filters.search}) in lower(${ledgerEntries.itemName})) > 0
-        OR position(lower(${filters.search}) in lower(COALESCE(${ledgerEntries.description}, ''))) > 0
-      )`
+      sql`lower(${ledgerEntries.itemName} || ' ' || COALESCE(${ledgerEntries.description}, ''))
+        LIKE ${literalPattern} ESCAPE '\'`
     );
   }
 
   return conditions;
 }
 
+function queryFingerprint(filters: LedgerEntryFilterParams): string {
+  return createHash("sha256")
+    .update(serializeLedgerQuery(filters))
+    .digest("base64url")
+    .slice(0, 16);
+}
+
+export function ledgerEntryOrderingExpressions(ledgerId: string) {
+  const effectiveDate = sql<string>`(
+    SELECT COALESCE(document.entry_date, document.created_at::date)::text
+    FROM ${sourceDocuments} document
+    WHERE document.id = ${ledgerEntries.sourceDocumentId}
+      AND document.ledger_id = ${ledgerId}
+  )`;
+  const documentCreatedAt = sql<Date>`(
+    SELECT document.created_at FROM ${sourceDocuments} document
+    WHERE document.id = ${ledgerEntries.sourceDocumentId}
+      AND document.ledger_id = ${ledgerId}
+  )`;
+  return { effectiveDate, documentCreatedAt };
+}
+
+interface LedgerEntryCursor {
+  effectiveDate: string;
+  documentCreatedAt: string;
+  documentId: string;
+  position: number;
+  entryId: string;
+  fingerprint: string;
+}
+
+export function encodeLedgerEntryCursor(
+  value: Omit<LedgerEntryCursor, "fingerprint">,
+  filters: LedgerEntryFilterParams
+): string {
+  return Buffer.from(JSON.stringify({ ...value, fingerprint: queryFingerprint(filters) })).toString(
+    "base64url"
+  );
+}
+
 export function buildLedgerEntryCursorCondition(
-  cursor: string | null | undefined
+  cursor: string | null | undefined,
+  ledgerId: string,
+  filters: LedgerEntryFilterParams
 ): SQL<unknown> | null {
   if (cursor == null || cursor === "") {
     return null;
   }
 
-  const [cursorCreated, cursorId, ...rest] = cursor.split("|");
+  let value: LedgerEntryCursor;
+  try {
+    value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as LedgerEntryCursor;
+  } catch {
+    throw new ValidationError("Invalid ledger entry cursor");
+  }
   if (
-    rest.length > 0 ||
-    cursorCreated == null ||
-    cursorCreated === "" ||
-    cursorId == null ||
-    cursorId === ""
+    value.fingerprint !== queryFingerprint(filters) ||
+    value.effectiveDate === "" ||
+    value.documentId === "" ||
+    value.entryId === "" ||
+    !Number.isInteger(value.position) ||
+    Number.isNaN(new Date(value.documentCreatedAt).getTime())
   ) {
-    return null;
+    throw new ValidationError("Ledger entry cursor does not match the query");
   }
-
-  const createdAt = new Date(cursorCreated);
-  if (Number.isNaN(createdAt.getTime())) {
-    return null;
-  }
-
-  return (
-    or(
-      lt(ledgerEntries.createdAt, createdAt),
-      and(eq(ledgerEntries.createdAt, createdAt), lt(ledgerEntries.id, cursorId))
-    ) ?? null
-  );
+  const { effectiveDate, documentCreatedAt } = ledgerEntryOrderingExpressions(ledgerId);
+  return sql`(
+    ${effectiveDate} < ${value.effectiveDate}
+    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} < ${new Date(value.documentCreatedAt)})
+    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${ledgerEntries.sourceDocumentId} < ${value.documentId})
+    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${ledgerEntries.sourceDocumentId} = ${value.documentId} AND ${ledgerEntries.position} > ${value.position})
+    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${ledgerEntries.sourceDocumentId} = ${value.documentId} AND ${ledgerEntries.position} = ${value.position}
+      AND ${ledgerEntries.id} > ${value.entryId})
+  )`;
 }

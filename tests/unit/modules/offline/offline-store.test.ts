@@ -85,7 +85,7 @@ describe("offline image eviction", () => {
 });
 
 describe("offline snapshot migration", () => {
-  it("invalidates a v2 snapshot for a v4 rebuild", () => {
+  it("invalidates a v2 snapshot for a v5 rebuild", () => {
     const migrated = migrateOfflineSnapshot({
       key: "user:ledger",
       schemaVersion: 2,
@@ -96,7 +96,7 @@ describe("offline snapshot migration", () => {
       fullSyncAt: null,
     });
     expect(migrated).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       syncVersion: "0",
       recordCount: 0,
       complete: false,
@@ -105,6 +105,27 @@ describe("offline snapshot migration", () => {
     });
     expect(migrated).not.toHaveProperty("collapseEntriesDefault");
     expect(migrated.ledgerSettings?.collapseEntriesDefault ?? false).toBe(false);
+  });
+
+  it("preserves a complete v4 snapshot while upgrading metadata to v5", () => {
+    const item = document("preserved", "2026-08-01");
+    const migrated = migrateOfflineSnapshot({
+      key: "user:ledger",
+      schemaVersion: 4,
+      userId: "user",
+      ledgerId: "ledger",
+      items: [item],
+      syncVersion: "9",
+      recordCount: 1,
+      complete: true,
+      truncated: false,
+      coverageLimit: 1000,
+      lastSyncedAt: "2026-08-01T00:00:00.000Z",
+      fullSyncAt: "2026-08-01T00:00:00.000Z",
+    });
+    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.items).toEqual([item]);
+    expect(migrated.syncVersion).toBe("9");
   });
 
   it("invalidates v3 preferences with the old snapshot", () => {

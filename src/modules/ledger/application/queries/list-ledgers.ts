@@ -1,8 +1,8 @@
-import { currentApplication } from "@/application/current";
+import type { LedgerPort } from "@/application/contracts";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 
-export async function getLedgers(userId: string): Promise<LedgerDto[]> {
-  return (await currentApplication.ledgers.listForUser(userId)).map((ledger) => ({
+export async function getLedgers(userId: string, ledgers: LedgerPort): Promise<LedgerDto[]> {
+  return (await ledgers.listForUser(userId)).map((ledger) => ({
     id: ledger.id,
     userId: ledger.userId,
     settings: ledger.settings,

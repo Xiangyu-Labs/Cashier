@@ -4,12 +4,13 @@ import { getTestDb } from "../../setup";
 import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import {
-  authenticateWithOTP,
+  authenticateWithOTP as authenticateWithOTPUseCase,
   OTPExpiredSignInError,
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
 } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { serverComposition } from "@/application/server-composition-root";
 import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
 
@@ -23,6 +24,13 @@ vi.mock("resend", () => ({
 
 const TEST_EMAIL = "test@example.com";
 const REQUEST_HEADERS = new Headers({ "x-forwarded-for": "127.0.0.1" });
+const authenticateWithOTP = (input: Parameters<typeof authenticateWithOTPUseCase>[0]) =>
+  authenticateWithOTPUseCase(input, {
+    userAccounts: serverComposition.userAccounts,
+    otpTokens: serverComposition.otpTokens,
+    ledgers: serverComposition.ledgers,
+    rateLimiter: serverComposition.rateLimiter,
+  });
 
 async function createTestOTP(email: string, otp: string, expiresAt?: Date) {
   const db = getTestDb();
@@ -38,6 +46,7 @@ async function createTestOTP(email: string, otp: string, expiresAt?: Date) {
 describe("authenticateWithOTP", () => {
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;
   const originalOTPMaxAttempts = process.env.OTP_MAX_ATTEMPTS;
+  const originalTrustedProxy = process.env.TRUSTED_PROXY;
 
   beforeEach(async () => {
     delete process.env.DISABLE_REGISTRATION;
@@ -56,6 +65,12 @@ describe("authenticateWithOTP", () => {
       delete process.env.OTP_MAX_ATTEMPTS;
     } else {
       process.env.OTP_MAX_ATTEMPTS = originalOTPMaxAttempts;
+    }
+
+    if (originalTrustedProxy == null) {
+      delete process.env.TRUSTED_PROXY;
+    } else {
+      process.env.TRUSTED_PROXY = originalTrustedProxy;
     }
   });
 
@@ -156,6 +171,7 @@ describe("authenticateWithOTP", () => {
 
   it("returns otp_rate_limited when verify attempts exceed the IP limit", async () => {
     process.env.OTP_MAX_ATTEMPTS = "10";
+    process.env.TRUSTED_PROXY = "loopback";
     await createTestOTP(TEST_EMAIL, "123456");
 
     for (let i = 0; i < 5; i++) {

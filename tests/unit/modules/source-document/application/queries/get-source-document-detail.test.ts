@@ -13,19 +13,17 @@ const {
   listLedgerEntryViewsBySourceDocumentIdsMock: vi.fn(),
 }));
 
-vi.mock("@/application/current", () => ({
-  currentApplication: {
-    sourceDocumentReads: {
-      getAccessContext: getAccessContextMock,
-      get: getTargetSourceDocumentMock,
-    },
-  },
-}));
-vi.mock("@/modules/ledger/access", () => ({ requireLedgerAccess: requireLedgerAccessMock }));
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   listLedgerEntryViewsBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIdsMock,
 }));
 import { getSourceDocumentDetail } from "@/modules/source-document/application/queries/get-source-document-detail";
+import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+
+const queryPorts = {
+  documents: { getAccessContext: getAccessContextMock, get: getTargetSourceDocumentMock },
+  ledgerReads: {},
+} as unknown as SourceDocumentQueryPorts;
+const getDetail = (id: string) => getSourceDocumentDetail(id, queryPorts, requireLedgerAccessMock);
 
 describe("getSourceDocumentDetail", () => {
   beforeEach(() => {
@@ -42,19 +40,19 @@ describe("getSourceDocumentDetail", () => {
   });
 
   it("returns the authorized target document", async () => {
-    const result = await getSourceDocumentDetail("doc-1");
+    const result = await getDetail("doc-1");
     expect(result?.id).toBe("doc-1");
     expect(requireLedgerAccessMock).toHaveBeenCalledWith("ledger-1");
   });
 
   it("returns null when access is denied", async () => {
     requireLedgerAccessMock.mockRejectedValue(new AppError("Forbidden", "FORBIDDEN", 403));
-    await expect(getSourceDocumentDetail("doc-1")).resolves.toBeNull();
+    await expect(getDetail("doc-1")).resolves.toBeNull();
     expect(getTargetSourceDocumentMock).not.toHaveBeenCalled();
   });
 
   it("returns null for a hidden document", async () => {
     getAccessContextMock.mockResolvedValue(null);
-    await expect(getSourceDocumentDetail("doc-1")).resolves.toBeNull();
+    await expect(getDetail("doc-1")).resolves.toBeNull();
   });
 });

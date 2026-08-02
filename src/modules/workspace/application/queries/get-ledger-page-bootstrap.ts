@@ -23,10 +23,18 @@ import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { scheduleProcessingRecovery } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import type { CategoryPort } from "@/application/contracts";
+import type { ServiceCredentialPort } from "@/application/contracts";
+import type { LedgerReadPort } from "@/modules/ledger/application/ports";
+import type { StatsReadPort } from "@/modules/stats/application/ports";
+import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
+import type { EntryCategoryWithCountDto } from "@/modules/ledger/contracts";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
   initialStatsDate: Date;
+  initialCategories: EntryCategoryWithCountDto[];
 }
 
 export interface GetLedgerPageBootstrapInput {
@@ -39,7 +47,14 @@ export interface GetLedgerPageBootstrapInput {
 }
 
 export async function getLedgerPageBootstrap(
-  input: GetLedgerPageBootstrapInput
+  input: GetLedgerPageBootstrapInput,
+  dependencies: {
+    categories: CategoryPort;
+    ledgerReads: LedgerReadPort;
+    stats: StatsReadPort;
+    sourceDocuments: SourceDocumentQueryPorts;
+    credentials: ServiceCredentialPort;
+  }
 ): Promise<LedgerPageBootstrapResult | null> {
   let ledgerDto: LedgerDto;
 
@@ -94,12 +109,12 @@ export async function getLedgerPageBootstrap(
     ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
   };
 
+  const categoriesPromise = queryClient.fetchQuery({
+    queryKey: queryKeys.entryCategories(input.ledgerId),
+    queryFn: () => listEntryCategories(input.ledgerId, dependencies.categories),
+    staleTime: LEDGER.STALE_TIME_MS,
+  });
   await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.entryCategories(input.ledgerId),
-      queryFn: () => listEntryCategories(input.ledgerId),
-      staleTime: LEDGER.STALE_TIME_MS,
-    }),
     ...(input.initialTab === "stream"
       ? [
           // First stream page (all-statuses, filtered by period+amount, paginated)
@@ -112,21 +127,25 @@ export async function getLedgerPageBootstrap(
               statuses: streamStatusesKey,
             }),
             queryFn: ({ pageParam }) =>
-              listStreamPage(input.ledgerId, {
-                ...(detailsState.startDateStr !== null
-                  ? { startDate: detailsState.startDateStr }
-                  : {}),
-                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
-                ...(input.advancedFilters?.minAmount != null
-                  ? { minAmount: input.advancedFilters.minAmount }
-                  : {}),
-                ...(input.advancedFilters?.maxAmount != null
-                  ? { maxAmount: input.advancedFilters.maxAmount }
-                  : {}),
-                ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
-                cursor: pageParam as string | undefined,
-                limit: 20,
-              }),
+              listStreamPage(
+                input.ledgerId,
+                {
+                  ...(detailsState.startDateStr !== null
+                    ? { startDate: detailsState.startDateStr }
+                    : {}),
+                  ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
+                  ...(input.advancedFilters?.minAmount != null
+                    ? { minAmount: input.advancedFilters.minAmount }
+                    : {}),
+                  ...(input.advancedFilters?.maxAmount != null
+                    ? { maxAmount: input.advancedFilters.maxAmount }
+                    : {}),
+                  ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
+                  cursor: pageParam as string | undefined,
+                  limit: 20,
+                },
+                dependencies.sourceDocuments
+              ),
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: StreamPage) => lastPage.nextCursor,
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
@@ -139,7 +158,12 @@ export async function getLedgerPageBootstrap(
               maxAmount: input.advancedFilters?.maxAmount,
               statuses: streamStatusesKey,
             }),
-            queryFn: () => getStreamTotal(input.ledgerId, streamFilterInput),
+            queryFn: () =>
+              getStreamTotal(
+                input.ledgerId,
+                streamFilterInput,
+                dependencies.sourceDocuments.documents
+              ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
         ]
@@ -160,7 +184,8 @@ export async function getLedgerPageBootstrap(
                 detailsState.startDateStr ?? undefined,
                 detailsState.endDateStr ?? undefined,
                 mainCurrency,
-                input.advancedFilters
+                input.advancedFilters,
+                dependencies.ledgerReads
               ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
@@ -173,26 +198,30 @@ export async function getLedgerPageBootstrap(
               detailsState.filterKey
             ),
             queryFn: ({ pageParam }) =>
-              listLedgerEntries(input.ledgerId, {
-                ...(detailsState.startDateStr !== null
-                  ? { startDate: detailsState.startDateStr }
-                  : {}),
-                ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
-                ...(input.advancedFilters?.categoryId != null
-                  ? { categoryId: input.advancedFilters.categoryId }
-                  : {}),
-                ...(input.advancedFilters?.currency != null
-                  ? { currency: input.advancedFilters.currency }
-                  : {}),
-                ...(input.advancedFilters?.minAmount != null
-                  ? { minAmount: input.advancedFilters.minAmount }
-                  : {}),
-                ...(input.advancedFilters?.maxAmount != null
-                  ? { maxAmount: input.advancedFilters.maxAmount }
-                  : {}),
-                cursor: pageParam,
-                limit: 50,
-              }),
+              listLedgerEntries(
+                input.ledgerId,
+                {
+                  ...(detailsState.startDateStr !== null
+                    ? { startDate: detailsState.startDateStr }
+                    : {}),
+                  ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
+                  ...(input.advancedFilters?.categoryId != null
+                    ? { categoryId: input.advancedFilters.categoryId }
+                    : {}),
+                  ...(input.advancedFilters?.currency != null
+                    ? { currency: input.advancedFilters.currency }
+                    : {}),
+                  ...(input.advancedFilters?.minAmount != null
+                    ? { minAmount: input.advancedFilters.minAmount }
+                    : {}),
+                  ...(input.advancedFilters?.maxAmount != null
+                    ? { maxAmount: input.advancedFilters.maxAmount }
+                    : {}),
+                  cursor: pageParam,
+                  limit: 50,
+                },
+                dependencies.ledgerReads
+              ),
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: Awaited<ReturnType<typeof listLedgerEntries>>) =>
               lastPage.nextCursor,
@@ -209,22 +238,40 @@ export async function getLedgerPageBootstrap(
               mainCurrency,
             }),
             queryFn: () =>
-              getEnhancedStats({
-                ledgerId: input.ledgerId,
-                queryRange: {
-                  from: statsState.startDateStr,
-                  to: statsState.endDateStr,
+              getEnhancedStats(
+                {
+                  ledgerId: input.ledgerId,
+                  queryRange: {
+                    from: statsState.startDateStr,
+                    to: statsState.endDateStr,
+                  },
+                  compareRange: {
+                    from: statsState.prevDateStartStr,
+                    to: statsState.prevDateEndStr,
+                  },
                 },
-                compareRange: {
-                  from: statsState.prevDateStartStr,
-                  to: statsState.prevDateEndStr,
-                },
-              }),
+                dependencies.stats
+              ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
         ]
       : []),
+    ...(input.initialTab === "settings"
+      ? [
+          queryClient.prefetchQuery({
+            queryKey: queryKeys.ledgerSettings(input.ledgerId),
+            queryFn: () =>
+              getLedgerSettingsView(input.ledgerId, {
+                categories: dependencies.categories,
+                credentials: dependencies.credentials,
+              }),
+            staleTime: LEDGER.STALE_TIME_MS,
+          }),
+        ]
+      : []),
+    categoriesPromise,
   ]);
+  const initialCategories = await categoriesPromise;
 
   // Schedule recovery of any missed processing intents after the response is sent
   after(() => scheduleProcessingRecovery(input.ledgerId));
@@ -232,5 +279,6 @@ export async function getLedgerPageBootstrap(
   return {
     dehydratedState: dehydrate(queryClient),
     initialStatsDate,
+    initialCategories,
   };
 }

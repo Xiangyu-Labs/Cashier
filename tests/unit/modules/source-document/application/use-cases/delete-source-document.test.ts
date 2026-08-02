@@ -5,13 +5,13 @@ const { getMock, softDeleteMock } = vi.hoisted(() => ({
   softDeleteMock: vi.fn(),
 }));
 
-vi.mock("@/application/current", () => ({
-  currentApplication: {
-    sourceDocumentRevisions: { get: getMock, softDelete: softDeleteMock },
-  },
-}));
-
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
+import type { SourceDocumentRevisionPort } from "@/modules/source-document/application/ports";
+
+const revisions = {
+  get: getMock,
+  softDelete: softDeleteMock,
+} as unknown as SourceDocumentRevisionPort;
 
 describe("deleteSourceDocument", () => {
   beforeEach(() => {
@@ -22,7 +22,7 @@ describe("deleteSourceDocument", () => {
     getMock.mockResolvedValue(null);
 
     await expect(
-      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" })
+      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" }, revisions)
     ).resolves.toEqual({ sourceDocumentId: "doc-1", deleted: false });
     expect(getMock).toHaveBeenCalledWith("ledger-1", "doc-1");
     expect(softDeleteMock).not.toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe("deleteSourceDocument", () => {
     softDeleteMock.mockResolvedValue(true);
 
     await expect(
-      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" })
+      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" }, revisions)
     ).resolves.toEqual({ sourceDocumentId: "doc-1", deleted: true });
     expect(softDeleteMock).toHaveBeenCalledWith("ledger-1", "doc-1");
   });
@@ -54,7 +54,7 @@ describe("deleteSourceDocument", () => {
     });
 
     await expect(
-      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" })
+      deleteSourceDocument({ ledgerId: "ledger-1", sourceDocumentId: "doc-1" }, revisions)
     ).resolves.toEqual({ sourceDocumentId: "doc-1", deleted: false });
     expect(softDeleteMock).not.toHaveBeenCalled();
   });

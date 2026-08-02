@@ -1,7 +1,5 @@
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { round, compare } from "@/lib/money/decimal";
-import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
-import { logger } from "@/lib/logger";
 import type { CategoryInfo, ParsedLedgerEntry } from "@/lib/ai/types";
 
 export interface EntryToInsert {
@@ -24,6 +22,12 @@ export interface BuildEntriesParams {
   ledgerId: string;
   mainCurrency: string;
   fallbackDate: string;
+  convertAmount: (input: {
+    amount: string;
+    fromCurrency: string;
+    toCurrency: string;
+    date: string;
+  }) => Promise<{ convertedAmount: string; exchangeRate: string }>;
 }
 
 /**
@@ -36,6 +40,7 @@ export async function buildEntriesForInsert({
   ledgerId,
   mainCurrency,
   fallbackDate,
+  convertAmount,
 }: BuildEntriesParams): Promise<EntryToInsert[]> {
   return Promise.all(
     validEntries.map(async (entry) => {
@@ -48,31 +53,21 @@ export async function buildEntriesForInsert({
       const entryCurrency = entry.currency ?? "CNY";
 
       // Calculate converted amount
-      let convertedAmount: string | null = null;
-      let exchangeRate: string | null = null;
+      let convertedAmount: string;
+      let exchangeRate: string;
 
       if (entryCurrency === mainCurrency) {
         convertedAmount = round(String(entry.amount), 2);
         exchangeRate = "1";
       } else {
-        try {
-          const conversion = await convertEntryAmount({
-            amount: String(entry.amount),
-            fromCurrency: entryCurrency,
-            toCurrency: mainCurrency,
-            date: fallbackDate,
-          });
-
-          if (conversion != null) {
-            convertedAmount = conversion.convertedAmount;
-            exchangeRate = conversion.exchangeRate;
-          }
-        } catch (err) {
-          logger.warn(
-            { err, entryCurrency, mainCurrency },
-            "Failed to convert amount in batch insert"
-          );
-        }
+        const conversion = await convertAmount({
+          amount: String(entry.amount),
+          fromCurrency: entryCurrency,
+          toCurrency: mainCurrency,
+          date: fallbackDate,
+        });
+        convertedAmount = conversion.convertedAmount;
+        exchangeRate = conversion.exchangeRate;
       }
 
       return {

@@ -3,6 +3,8 @@ import type { SourceDocumentDto } from "@/modules/source-document/contracts";
 import { getSourceDocumentDetail } from "../application/queries/get-source-document-detail";
 import { sourceDocumentIdSchema } from "../contract-schemas";
 import { ValidationError } from "@/lib/errors";
+import { requireLedgerAccess } from "@/modules/ledger/access";
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Fetch a source document by its global ID.
@@ -18,5 +20,12 @@ export async function getSourceDocumentByIdAction(id: string): Promise<SourceDoc
   if (!parsed.success) {
     throw new ValidationError("Validation failed", { issues: parsed.error.issues });
   }
-  return getSourceDocumentDetail(parsed.data);
+  return getSourceDocumentDetail(
+    parsed.data,
+    {
+      documents: serverComposition.sourceDocumentReads,
+      ledgerReads: serverComposition.ledgerReads,
+    },
+    requireLedgerAccess
+  );
 }

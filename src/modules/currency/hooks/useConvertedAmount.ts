@@ -4,6 +4,7 @@ import { convertCurrencyAction } from "../actions";
 import type { ConvertCurrencyResult } from "../contracts";
 
 export function useConvertedAmount(
+  ledgerId: string,
   amount: number,
   from: string | null | undefined,
   to: string | null | undefined,
@@ -19,6 +20,7 @@ export function useConvertedAmount(
 
   const { data, isLoading, error } = useQuery<ConvertCurrencyResult>({
     queryKey: queryKeys.convert(
+      ledgerId,
       amount,
       normalizedFrom ?? "__missing_from__",
       normalizedTo ?? "__missing_to__",
@@ -29,7 +31,7 @@ export function useConvertedAmount(
         return { converted: String(amount) };
       }
 
-      return convertCurrencyAction(amount, normalizedFrom, normalizedTo, normalizedDate);
+      return convertCurrencyAction(ledgerId, amount, normalizedFrom, normalizedTo, normalizedDate);
     },
     enabled: canConvert,
     staleTime: 1000 * 60 * 60 * 24,

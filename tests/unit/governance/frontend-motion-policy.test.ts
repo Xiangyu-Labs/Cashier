@@ -34,13 +34,23 @@ describe("frontend motion policy", () => {
     expect(source).not.toMatch(/\blayout(?:=|\s)/);
   });
 
+  it("keeps the client runtime free of framer-motion", () => {
+    const source = [
+      read("package.json"),
+      read("src/components/providers.tsx"),
+      read("src/modules/source-document/ui/SourceDocumentCard.tsx"),
+      read("src/modules/ledger/ui/batch-action-toolbar/LedgerEntriesBatchActionToolbar.tsx"),
+      read("src/modules/workspace/ui/SwipeTabSurface.tsx"),
+    ].join("\n");
+    expect(source).not.toContain("framer-motion");
+  });
+
   it("uses the shared group header in online and offline ledger lists", () => {
-    for (const file of [
-      "src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx",
-      "src/modules/workspace/ui/DetailsTab.tsx",
-      "src/modules/offline/OfflineLedgerView.tsx",
-    ]) {
-      expect(read(file)).toContain("<EntryGroupHeader");
-    }
+    expect(read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx")).toContain(
+      "<EntryGroupHeader"
+    );
+    expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
+    expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
+    expect(read("src/modules/offline/OfflineLedgerView.tsx")).toContain("<LedgerEntryGroupsView");
   });
 });

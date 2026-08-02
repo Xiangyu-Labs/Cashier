@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { resolveSingleLedgerForUser } from "./ensure-user-ledger";
+import type { LedgerPort } from "@/application/contracts";
 
 export interface ResolveHomeResult {
   ledgerId: string;
@@ -7,14 +8,17 @@ export interface ResolveHomeResult {
 }
 
 const resolveHomeImpl = cache(
-  async (input: { userId: string; locale: string }): Promise<ResolveHomeResult> => {
-    return resolveSingleLedgerForUser(input);
+  async (
+    input: { userId: string; locale: string },
+    ledgers: LedgerPort
+  ): Promise<ResolveHomeResult> => {
+    return resolveSingleLedgerForUser(input, ledgers);
   }
 );
 
-export async function resolveHome(input: {
-  userId: string;
-  locale: string;
-}): Promise<ResolveHomeResult> {
-  return resolveHomeImpl(input);
+export async function resolveHome(
+  input: { userId: string; locale: string },
+  ledgers: LedgerPort
+): Promise<ResolveHomeResult> {
+  return resolveHomeImpl(input, ledgers);
 }

@@ -1,11 +1,11 @@
-import { currentApplication } from "@/application/current";
+import type { LedgerPort } from "@/application/contracts";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 
-export async function getLedger(input: {
-  ledgerId: string;
-  userId: string;
-}): Promise<LedgerDto | null> {
-  const ledger = await currentApplication.ledgers.getOwned(input.ledgerId, input.userId);
+export async function getLedger(
+  input: { ledgerId: string; userId: string },
+  ledgers: LedgerPort
+): Promise<LedgerDto | null> {
+  const ledger = await ledgers.getOwned(input.ledgerId, input.userId);
   return ledger == null
     ? null
     : {

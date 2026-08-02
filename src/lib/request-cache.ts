@@ -2,7 +2,7 @@ import { cache } from "react";
 import { auth } from "@/auth";
 import { getLocale } from "next-intl/server";
 import { resolveHome } from "@/modules/workspace/application/use-cases/resolve-home";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { isValidUuid } from "@/lib/validation";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import type { LedgerDto } from "@/modules/ledger/contracts";
@@ -41,13 +41,13 @@ export const resolveAuthenticatedHome = cache(async (): Promise<AuthenticatedHom
   const validSession = session!;
 
   const locale = await getLocale();
-  const home = await resolveHome({ userId, locale });
+  const home = await resolveHome({ userId, locale }, serverComposition.ledgers);
 
   if (!isValidUuid(home.ledgerId)) {
     throw new NotFoundError("Ledger");
   }
 
-  const ledger = await currentApplication.ledgers.getOwned(home.ledgerId, userId);
+  const ledger = await serverComposition.ledgers.getOwned(home.ledgerId, userId);
   if (ledger == null) {
     throw new NotFoundError("Ledger");
   }

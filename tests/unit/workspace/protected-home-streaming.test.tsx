@@ -239,6 +239,10 @@ describe("protected home streaming boundary", () => {
       expect.objectContaining({
         ledgerId: "ledger-1",
         ledgerDto: expect.objectContaining({ id: "ledger-1" }),
+      }),
+      expect.objectContaining({
+        categories: expect.any(Object),
+        ledgerReads: expect.any(Object),
       })
     );
 

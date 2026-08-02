@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
-import { MotionConfig } from "framer-motion";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
 import { ConnectionStateProvider } from "@/modules/offline/connection-state";
 
@@ -15,13 +14,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: QUERY.DEFAULT_STALE_TIME_MS, // 5 minutes
-            gcTime: 24 * 60 * 60 * 1000, // 24 hours - cache retention
+            gcTime: 30 * 60 * 1000,
             refetchOnWindowFocus: false,
             refetchOnMount: true,
             refetchOnReconnect: true,
-            retry: (failureCount, _error) => {
-              return failureCount < 3;
-            },
+            retry: (failureCount, error) => shouldRetryQuery(failureCount, error),
           },
         },
       })
@@ -29,18 +26,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion="user">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ConnectionStateProvider>{children}</ConnectionStateProvider>
-          <ServiceWorkerUpdate />
-          <Toaster position="top-center" richColors closeButton />
-        </ThemeProvider>
-      </MotionConfig>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ConnectionStateProvider>{children}</ConnectionStateProvider>
+        <ServiceWorkerUpdate />
+        <Toaster position="top-center" richColors closeButton />
+      </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false;
+  if (typeof error !== "object" || error == null) return true;
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  const status =
+    typeof candidate.status === "number"
+      ? candidate.status
+      : typeof candidate.statusCode === "number"
+        ? candidate.statusCode
+        : null;
+  return status == null || status === 408 || status === 429 || status >= 500;
 }

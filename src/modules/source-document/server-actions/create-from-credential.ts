@@ -10,6 +10,7 @@ import type {
 } from "@/modules/source-document/contracts";
 import { createSourceDocumentInputSchemaV1 } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
+import { serverComposition } from "@/application/server-composition-root";
 
 export async function createSourceDocumentFromCredentialAction(input: {
   credentialId: string;
@@ -33,6 +34,12 @@ export async function createSourceDocumentFromCredentialAction(input: {
       ...(input.idempotencyKey == null ? {} : { idempotencyKey: input.idempotencyKey }),
       payload: parsed.data as CreateSourceDocumentInput,
     },
-    scheduleProcessing
+    scheduleProcessing,
+    {
+      ledgers: serverComposition.ledgers,
+      settings: serverComposition.settings,
+      submissions: serverComposition.sourceDocumentSubmissions,
+      storedFiles: serverComposition.storedFiles,
+    }
   );
 }

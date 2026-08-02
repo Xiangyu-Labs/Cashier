@@ -1,8 +1,9 @@
 "use server";
 import type { OtpTokenContract, OtpTokenPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import { logger } from "@/lib/logger";
-import { getLockoutExpiration, getMaxAttempts, verifyOTP } from "./otp";
+import { logIdentifier } from "@/lib/security/log-identifier";
+import { getMaxAttempts } from "./otp";
+import { verificationChallenges } from "./verification-challenge";
 
 export interface VerificationResult {
   success: boolean;
@@ -11,9 +12,14 @@ export interface VerificationResult {
   lockedUntil?: Date;
 }
 
+export interface ClaimedOTP {
+  email: string;
+  tokenHash: string;
+}
+
 export async function findOTPRecord(
   email: string,
-  tokens: OtpTokenPort = currentApplication.otpTokens
+  tokens: OtpTokenPort
 ): Promise<OtpTokenContract | undefined> {
   return (await tokens.find(email.toLowerCase())) ?? undefined;
 }
@@ -22,38 +28,67 @@ export async function verifyOTPWithPolicy(
   email: string,
   otp: string,
   record: OtpTokenContract,
-  tokens: OtpTokenPort = currentApplication.otpTokens
+  tokens: OtpTokenPort
 ): Promise<VerificationResult> {
-  if (record.lockedUntil != null && record.lockedUntil > new Date()) {
-    return { success: false, reason: "locked", lockedUntil: record.lockedUntil };
+  const check = verificationChallenges.check(record, otp);
+  if (!check.ok && check.reason === "locked") {
+    return { success: false, reason: "locked", lockedUntil: check.lockedUntil };
   }
-  if (record.expiresAt < new Date()) return { success: false, reason: "expired" };
-  if (!verifyOTP(otp, record.tokenHash)) {
-    const attempts = record.attempts + 1;
+  if (!check.ok && check.reason === "expired") return { success: false, reason: "expired" };
+  if (!check.ok) {
     const maxAttempts = getMaxAttempts();
-    if (attempts >= maxAttempts) {
-      const lockedUntil = getLockoutExpiration();
-      await tokens.recordFailure({ email: email.toLowerCase(), attempts, lockedUntil });
-      return { success: false, reason: "max_attempts", attemptsRemaining: 0, lockedUntil };
+    const nextFailure = verificationChallenges.nextFailure(record.attempts);
+    const failure = await tokens.recordFailure({
+      email: email.toLowerCase(),
+      maxAttempts,
+      lockedUntil: nextFailure.lockedUntil ?? new Date(0),
+    });
+    if (failure == null) return { success: false, reason: "not_found" };
+    if (failure.attempts >= maxAttempts) {
+      return {
+        success: false,
+        reason: "max_attempts",
+        attemptsRemaining: 0,
+        ...(failure.lockedUntil == null ? {} : { lockedUntil: failure.lockedUntil }),
+      };
     }
-    await tokens.recordFailure({ email: email.toLowerCase(), attempts });
-    return { success: false, reason: "invalid", attemptsRemaining: maxAttempts - attempts };
+    return {
+      success: false,
+      reason: "invalid",
+      attemptsRemaining: maxAttempts - failure.attempts,
+    };
   }
-  await tokens.markVerified(email.toLowerCase());
-  logger.info({ email }, "OTP verified successfully");
+  const claimed = await tokens.claim({
+    email: email.toLowerCase(),
+    tokenHash: record.tokenHash,
+    now: new Date(),
+  });
+  if (!claimed) return { success: false, reason: "not_found" };
+  logger.info("OTP verified and claimed successfully");
   return { success: true };
+}
+
+export async function releaseOTPClaim(claim: ClaimedOTP, tokens: OtpTokenPort): Promise<void> {
+  await tokens.release(claim);
+}
+
+export async function consumeOTPClaim(claim: ClaimedOTP, tokens: OtpTokenPort): Promise<boolean> {
+  return tokens.consume(claim);
 }
 
 export async function isAccountLocked(
   email: string,
-  tokens: OtpTokenPort = currentApplication.otpTokens
+  tokens: OtpTokenPort
 ): Promise<{ locked: boolean; lockedUntil?: Date }> {
   try {
     const record = await findOTPRecord(email, tokens);
     if (record?.lockedUntil == null || record.lockedUntil <= new Date()) return { locked: false };
     return { locked: true, lockedUntil: record.lockedUntil };
   } catch (error) {
-    logger.error({ error, email }, "Failed to check account lock status");
+    logger.error(
+      { error, subject: logIdentifier("email", email) },
+      "Failed to check account lock status"
+    );
     return { locked: false };
   }
 }

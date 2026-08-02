@@ -1,5 +1,5 @@
-import { currentApplication } from "@/application/current";
+import type { LedgerReadPort } from "../ports";
 
-export function getLedgerEntryDetail(id: string, ledgerId: string) {
-  return currentApplication.ledgerReads.getEntry(id, ledgerId);
+export function getLedgerEntryDetail(id: string, ledgerId: string, reads: LedgerReadPort) {
+  return reads.getEntry(id, ledgerId);
 }

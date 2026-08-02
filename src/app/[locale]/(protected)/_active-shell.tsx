@@ -67,12 +67,13 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
     (tab: LedgerTab) => {
       if (tab === "details") {
         import("@/modules/workspace/ui/DetailsTab");
-        void preloadFeatureMessages(locale);
+        void preloadFeatureMessages(locale, "details");
       } else if (tab === "stats") {
         import("@/modules/workspace/ui/StatsTab");
-        void preloadFeatureMessages(locale);
+        void preloadFeatureMessages(locale, "stats");
       } else if (tab === "settings") {
         import("@/modules/ledger/ui/SettingsTab");
+        void preloadFeatureMessages(locale, "settings");
       }
     },
     [locale]

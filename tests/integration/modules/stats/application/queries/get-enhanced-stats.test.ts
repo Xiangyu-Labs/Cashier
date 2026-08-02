@@ -17,6 +17,7 @@ import {
   getEnhancedStats,
   getEnhancedStatsQuery,
 } from "@/modules/stats/application/queries/get-enhanced-stats";
+import { serverComposition } from "@/application/server-composition-root";
 
 async function getTargetEnhancedStatsQuery(
   input: Parameters<typeof getEnhancedStatsQuery>[0]
@@ -29,7 +30,7 @@ async function getTargetEnhancedStatsQuery(
   for (const document of documents) {
     await activateTestSourceDocumentProjection(db, document.id);
   }
-  return getEnhancedStatsQuery(input);
+  return getEnhancedStatsQuery(input, serverComposition.stats);
 }
 
 function requireFirst<T>(rows: readonly T[], label: string): T {
@@ -62,11 +63,14 @@ describe("getEnhancedStatsQuery", () => {
 
   it("validates public query inputs before executing", async () => {
     await expect(
-      getEnhancedStats({
-        ledgerId: "not-a-uuid",
-        queryRange: { from: "2024-03-31", to: "2024-03-01" },
-        compareRange: { from: "2024-02-29", to: "2024-02-01" },
-      })
+      getEnhancedStats(
+        {
+          ledgerId: "not-a-uuid",
+          queryRange: { from: "2024-03-31", to: "2024-03-01" },
+          compareRange: { from: "2024-02-29", to: "2024-02-01" },
+        },
+        serverComposition.stats
+      )
     ).rejects.toThrow(ValidationError);
   });
 
@@ -114,6 +118,8 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: firstDoc.id,
         amount: "20",
+        convertedAmount: "40",
+        exchangeRate: "2",
         currency: "USD",
         itemName: "USD item",
         categoryId,
@@ -122,6 +128,8 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: secondDoc.id,
         amount: "30",
+        convertedAmount: "30",
+        exchangeRate: "1",
         currency: "CNY",
         itemName: "CNY item",
         categoryId,

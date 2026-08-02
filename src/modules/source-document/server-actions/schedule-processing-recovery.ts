@@ -3,6 +3,9 @@ import { executeSingleProcessingIntent } from "@/application/adapters/in-process
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
+import { PostgresProcessingIntentAdapter } from "@/application/adapters/postgres/processing-intents";
+
+const processingRecovery = new PostgresProcessingIntentAdapter();
 
 /**
  * Schedules recovery of bounded processing intents that were missed by
@@ -22,7 +25,11 @@ export async function scheduleProcessingRecovery(ledgerId: string): Promise<void
     cooldownSeconds: runtimeEnv.processingRecoveryCooldownSeconds,
   };
 
-  const recoverable = await selectRecoverableProcessingIntents(ledgerId, config);
+  const recoverable = await selectRecoverableProcessingIntents(
+    ledgerId,
+    config,
+    processingRecovery
+  );
 
   if (recoverable.length === 0) return;
 

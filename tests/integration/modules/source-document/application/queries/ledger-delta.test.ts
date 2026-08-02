@@ -1,9 +1,17 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getLedgerDelta } from "@/modules/source-document/application/queries/get-stream-refresh";
+import { getLedgerDelta as getLedgerDeltaUseCase } from "@/modules/source-document/application/queries/get-stream-refresh";
+import { serverComposition } from "@/application/server-composition-root";
 import { ledgerChangeBatches, ledgerSyncState, ledgers, sourceDocuments } from "@/persistence";
 import { createTestSourceDocument, createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
+
+const getLedgerDelta = (request: Parameters<typeof getLedgerDeltaUseCase>[0]) =>
+  getLedgerDeltaUseCase(request, {
+    documents: serverComposition.sourceDocumentReads,
+    ledgerReads: serverComposition.ledgerReads,
+    changes: serverComposition.ledgerChanges,
+  });
 
 describe("ledger delta", () => {
   let ledgerId: string;

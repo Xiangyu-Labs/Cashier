@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LedgerPort } from "@/application/contracts";
+
+const ledgers = {} as LedgerPort;
 
 const { mockResolveSingleLedgerForUser } = vi.hoisted(() => ({
   mockResolveSingleLedgerForUser: vi.fn(),
@@ -17,13 +20,13 @@ describe("resolveHome", () => {
     mockResolveSingleLedgerForUser.mockResolvedValue({ ledgerId: "ledger-new", created: true });
 
     const { resolveHome } = await import("@/modules/workspace/application/use-cases/resolve-home");
-    const result = await resolveHome({ userId: "user-1", locale: "zh" });
+    const result = await resolveHome({ userId: "user-1", locale: "zh" }, ledgers);
 
     expect(result).toEqual({ ledgerId: "ledger-new", created: true });
-    expect(mockResolveSingleLedgerForUser).toHaveBeenCalledWith({
-      userId: "user-1",
-      locale: "zh",
-    });
+    expect(mockResolveSingleLedgerForUser).toHaveBeenCalledWith(
+      { userId: "user-1", locale: "zh" },
+      ledgers
+    );
   });
 
   it("returns the existing single ledger id", async () => {
@@ -33,12 +36,12 @@ describe("resolveHome", () => {
     });
 
     const { resolveHome } = await import("@/modules/workspace/application/use-cases/resolve-home");
-    const result = await resolveHome({ userId: "user-1", locale: "en" });
+    const result = await resolveHome({ userId: "user-1", locale: "en" }, ledgers);
 
     expect(result).toEqual({ ledgerId: "ledger-existing", created: false });
-    expect(mockResolveSingleLedgerForUser).toHaveBeenCalledWith({
-      userId: "user-1",
-      locale: "en",
-    });
+    expect(mockResolveSingleLedgerForUser).toHaveBeenCalledWith(
+      { userId: "user-1", locale: "en" },
+      ledgers
+    );
   });
 });

@@ -240,21 +240,15 @@ describe("Enhanced Stats Actions", () => {
 
       const entryQueries = statements
         .map(normalizeSql)
-        .filter(
-          (sqlStatement) =>
-            sqlStatement.startsWith("select") && sqlStatement.includes('from "ledger_entries"')
-        );
+        .filter((sqlStatement) => sqlStatement.includes("with ranges"));
 
-      expect(entryQueries.length).toBeGreaterThanOrEqual(2);
-      for (const query of entryQueries.slice(0, 2)) {
-        expect(query).toMatch(/"ledger_entries"\."ledger_id" = \$\d+/);
-        expect(query).toContain('"ledger_entries"."deleted_at" is null');
-        expect(query).toMatch(/"source_documents"\."ledger_id" = \$\d+/);
-        expect(query).not.toContain('"source_documents"."status"');
-        expect(query).toContain('"source_documents"."deleted_at" is null');
-        expect(query).toMatch(/"source_documents"\."entry_date" >= \$\d+/);
-        expect(query).toMatch(/"source_documents"\."entry_date" <= \$\d+/);
-      }
+      expect(entryQueries).toHaveLength(1);
+      const query = entryQueries[0]!;
+      expect(query).toContain("entries.ledger_id = documents.ledger_id");
+      expect(query).toContain("entries.deleted_at is null");
+      expect(query).toContain("documents.ledger_id = $");
+      expect(query).toContain("documents.deleted_at is null");
+      expect(query).toContain("documents.entry_date between ranges.from_date and ranges.to_date");
     });
 
     it("should calculate correct summary totals", async () => {

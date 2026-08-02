@@ -107,12 +107,15 @@ describe("auth.ts adapter wiring", () => {
       request
     );
 
-    expect(authenticateWithOTPMock).toHaveBeenCalledWith({
-      email: "user@example.com",
-      otp: "123456",
-      locale: "zh",
-      requestHeaders: request.headers,
-    });
+    expect(authenticateWithOTPMock).toHaveBeenCalledWith(
+      {
+        email: "user@example.com",
+        otp: "123456",
+        locale: "zh",
+        requestHeaders: request.headers,
+      },
+      expect.any(Object)
+    );
     expect(result).toMatchObject({ email: "user@example.com" });
   });
 
@@ -126,7 +129,10 @@ describe("auth.ts adapter wiring", () => {
 
     await createUserEvent?.({ user: { id: "user-create" } });
 
-    expect(handleAuthUserCreatedMock).toHaveBeenCalledWith({ userId: "user-create" });
+    expect(handleAuthUserCreatedMock).toHaveBeenCalledWith(
+      { userId: "user-create" },
+      expect.any(Object)
+    );
   });
 
   it("delegates signIn events to the auth user-signed-in use case", async () => {
@@ -143,12 +149,15 @@ describe("auth.ts adapter wiring", () => {
       isNewUser: false,
     });
 
-    expect(handleAuthUserSignedInMock).toHaveBeenCalledWith({
-      userId: "user-signin",
-      email: "user@example.com",
-      locale: "en",
-      isNewUser: false,
-    });
+    expect(handleAuthUserSignedInMock).toHaveBeenCalledWith(
+      {
+        userId: "user-signin",
+        email: "user@example.com",
+        locale: "en",
+        isNewUser: false,
+      },
+      expect.any(Object)
+    );
   });
 
   it("delegates signIn callbacks to the auth sign-in guard use case", async () => {
@@ -159,7 +168,10 @@ describe("auth.ts adapter wiring", () => {
     isAuthSignInAllowedMock.mockResolvedValueOnce(false);
     const result = await signInCallback?.({ user: { email: "blocked@example.com" } });
 
-    expect(isAuthSignInAllowedMock).toHaveBeenCalledWith({ email: "blocked@example.com" });
+    expect(isAuthSignInAllowedMock).toHaveBeenCalledWith(
+      { email: "blocked@example.com" },
+      expect.any(Object)
+    );
     expect(result).toBe(false);
   });
 
@@ -191,7 +203,7 @@ describe("auth.ts adapter wiring", () => {
       token: { sub: "db-user" },
     });
 
-    expect(getSessionUserMock).toHaveBeenCalledWith("db-user");
+    expect(getSessionUserMock).toHaveBeenCalledWith("db-user", expect.any(Object));
     expect(result).toEqual({
       user: {
         id: "db-user",

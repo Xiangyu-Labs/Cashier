@@ -5,26 +5,17 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
-// Mock currency conversion use-case to avoid external API calls
-vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => ({
-  convertEntryAmount: vi.fn(
-    async (input: { amount: string; fromCurrency: string; toCurrency: string }) => {
-      if (input.fromCurrency === input.toCurrency) {
-        return {
-          convertedAmount: Number(input.amount).toFixed(2),
-          exchangeRate: "1",
-        };
-      }
-
-      return {
-        convertedAmount: "100.00",
-        exchangeRate: "1.00",
-      };
-    }
-  ),
+const { convertAmountMock } = vi.hoisted(() => ({
+  convertAmountMock: vi.fn(async () => "100.00"),
 }));
 
-import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
+vi.mock("@/application/adapters/postgres/exchange-rate", () => {
+  const rateBook = {
+    convert: convertAmountMock,
+    convertBatch: vi.fn(),
+  };
+  return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
+});
 import {
   createLedgerEntryAction,
   updateLedgerEntryAction,
@@ -101,18 +92,11 @@ describe("createLedgerEntryAction", () => {
     expect(result.amount).toBe("50.00");
     expect(result.convertedAmount).toBe("50.00");
     expect(result.exchangeRate).toBe("1");
-    expect(convertEntryAmount).toHaveBeenCalledWith({
-      amount: "50",
-      fromCurrency: "CNY",
-      toCurrency: "CNY",
-    });
+    expect(convertAmountMock).not.toHaveBeenCalled();
   });
 
   it("creates entry with foreign currency and triggers conversion", async () => {
-    vi.mocked(convertEntryAmount).mockResolvedValue({
-      convertedAmount: "720.00",
-      exchangeRate: "7.20",
-    });
+    convertAmountMock.mockResolvedValue("720.00");
 
     const result = await createLedgerEntryAction(ledgerId, {
       amount: 100,
@@ -123,11 +107,7 @@ describe("createLedgerEntryAction", () => {
 
     expect(result.currency).toBe("USD");
     expect(result.convertedAmount).toBe("720.00");
-    expect(convertEntryAmount).toHaveBeenCalledWith({
-      amount: "100",
-      fromCurrency: "USD",
-      toCurrency: "CNY",
-    });
+    expect(convertAmountMock).toHaveBeenCalledWith("100", "USD", "CNY", undefined);
   });
 
   it("rejects a source document that belongs to a different ledger", async () => {
@@ -226,14 +206,11 @@ describe("updateLedgerEntryAction", () => {
       itemName: "晚餐",
     });
     expect(result.itemName).toBe("晚餐");
-    expect(convertEntryAmount).not.toHaveBeenCalled();
+    expect(convertAmountMock).not.toHaveBeenCalled();
   });
 
   it("recalculates convertedAmount when amount changes", async () => {
-    vi.mocked(convertEntryAmount).mockResolvedValue({
-      convertedAmount: "200.00",
-      exchangeRate: "2.00",
-    });
+    convertAmountMock.mockResolvedValue("200.00");
 
     const db = getTestDb();
     // Change currency to USD first
@@ -243,7 +220,7 @@ describe("updateLedgerEntryAction", () => {
       amount: 100,
     });
 
-    expect(convertEntryAmount).toHaveBeenCalled();
+    expect(convertAmountMock).toHaveBeenCalled();
     expect(result.convertedAmount).toBe("200.00");
   });
 
@@ -261,7 +238,7 @@ describe("updateLedgerEntryAction", () => {
       categoryId: catId,
     });
     expect(result.categoryId).toBe(catId);
-    expect(convertEntryAmount).not.toHaveBeenCalled();
+    expect(convertAmountMock).not.toHaveBeenCalled();
   });
 });
 

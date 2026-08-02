@@ -1,11 +1,11 @@
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import LoginNotificationEmail from "@/emails/login-notification-email";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import type { SupportedLocale } from "@/i18n/locales";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 import type { EmailDeliveryPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 
 type LoginAuthEmailMessages = {
   loginSubject: string;
@@ -45,7 +45,7 @@ export async function sendLoginNotification(
     email: string;
     locale?: string;
   },
-  emailDelivery: EmailDeliveryPort = currentApplication.email
+  emailDelivery: EmailDeliveryPort
 ): Promise<void> {
   const locale = resolveSupportedLocale({ explicitLocale: params.locale ?? null });
 
@@ -75,9 +75,12 @@ export async function sendLoginNotification(
       return;
     }
 
-    logger.info({ email: params.email }, "Login notification sent");
+    logger.info({ subject: logIdentifier("email", params.email) }, "Login notification sent");
   } catch (error) {
     // Don't fail the login if notification fails
-    logger.error({ error, email: params.email }, "Failed to send login notification");
+    logger.error(
+      { error, subject: logIdentifier("email", params.email) },
+      "Failed to send login notification"
+    );
   }
 }

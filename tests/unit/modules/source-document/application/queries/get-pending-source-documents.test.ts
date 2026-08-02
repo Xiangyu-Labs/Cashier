@@ -9,6 +9,9 @@ vi.mock("@/modules/source-document/application/queries/list-source-document-page
 }));
 
 import { getPendingSourceDocumentsQuery } from "@/modules/source-document/application/queries/get-pending-source-documents";
+import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+
+const queryPorts = {} as SourceDocumentQueryPorts;
 
 describe("getPendingSourceDocumentsQuery", () => {
   beforeEach(() => {
@@ -41,12 +44,16 @@ describe("getPendingSourceDocumentsQuery", () => {
   });
 
   it("groups processing, anomaly, failed, and cancelled documents", async () => {
-    const result = await getPendingSourceDocumentsQuery("ledger-1");
+    const result = await getPendingSourceDocumentsQuery("ledger-1", queryPorts);
 
-    expect(querySourceDocumentPageMock).toHaveBeenCalledWith("ledger-1", {
-      status: "processing,anomaly,failed,cancelled",
-      includeLedgerEntries: true,
-    });
+    expect(querySourceDocumentPageMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        status: "processing,anomaly,failed,cancelled",
+        includeLedgerEntries: true,
+      },
+      queryPorts
+    );
     expect(result.groups.processing).toHaveLength(1);
     expect(result.groups.anomaly).toHaveLength(1);
     expect(result.groups.failed).toHaveLength(1);

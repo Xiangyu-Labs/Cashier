@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "tests/setup";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
 import { serviceCredentials } from "@/persistence";
-import { listServiceCredentials } from "@/modules/ledger/application/queries/list-service-credentials";
+import { listServiceCredentials as listServiceCredentialsUseCase } from "@/modules/ledger/application/queries/list-service-credentials";
+import { serverComposition } from "@/application/server-composition-root";
+
+const listServiceCredentials = (ledgerId: string) =>
+  listServiceCredentialsUseCase(ledgerId, serverComposition.serviceCredentials);
 
 describe("listServiceCredentials", () => {
   let ledgerId = "";

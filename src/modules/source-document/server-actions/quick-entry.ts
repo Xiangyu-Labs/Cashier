@@ -6,6 +6,7 @@ import {
   type CreateQuickEntryInput,
 } from "@/modules/source-document/contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Create a quick entry (manual entry without AI parsing).
@@ -23,6 +24,10 @@ export const createQuickEntryAction = withSourceDocumentLedgerAccess(
       ...(validated.entryDate !== undefined ? { entryDate: validated.entryDate } : {}),
     };
 
-    return createQuickEntry(ledgerId, ledger, payload);
+    return createQuickEntry(ledgerId, ledger, payload, {
+      categories: serverComposition.categories,
+      projections: serverComposition.ledgerProjections,
+      rates: serverComposition.exchangeRates,
+    });
   }
 );

@@ -1,5 +1,5 @@
-import { currentApplication } from "@/application/current";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
+import type { SourceDocumentQueryPorts } from "../ports";
 import {
   type ListSourceDocumentsInput,
   parseListSourceDocumentsInput,
@@ -24,16 +24,17 @@ export interface ListSourceDocumentsParams {
 
 export async function listEntriesBySourceDocumentIds(
   ledgerId: string,
-  sourceDocumentIds: string[]
+  sourceDocumentIds: string[],
+  ports: SourceDocumentQueryPorts
 ): Promise<Map<string, SourceDocumentLedgerEntryDto[]>> {
   if (sourceDocumentIds.length === 0) {
     return new Map<string, SourceDocumentLedgerEntryDto[]>();
   }
 
-  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds({
-    ledgerId,
-    sourceDocumentIds,
-  });
+  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
+    { ledgerId, sourceDocumentIds },
+    ports.ledgerReads
+  );
 
   const mapped = new Map<string, SourceDocumentLedgerEntryDto[]>();
   for (const [docId, entries] of entriesByDocId.entries()) {
@@ -45,7 +46,8 @@ export async function listEntriesBySourceDocumentIds(
 
 export async function querySourceDocumentPage(
   ledgerId: string,
-  params: ListSourceDocumentsParams
+  params: ListSourceDocumentsParams,
+  ports: SourceDocumentQueryPorts
 ): Promise<SourceDocumentPageDto> {
   const {
     status,
@@ -64,7 +66,7 @@ export async function querySourceDocumentPage(
     .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
       ["processing", "completed", "anomaly", "failed", "cancelled"].includes(value)
     );
-  const page = await currentApplication.sourceDocumentReads.list({
+  const page = await ports.documents.list({
     ledgerId,
     ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
     ...(startDate !== undefined ? { startDate } : {}),
@@ -80,7 +82,8 @@ export async function querySourceDocumentPage(
     includeLedgerEntries === true
       ? await listEntriesBySourceDocumentIds(
           ledgerId,
-          page.items.map((item) => item.id)
+          page.items.map((item) => item.id),
+          ports
         )
       : new Map<string, SourceDocumentLedgerEntryDto[]>();
 
@@ -97,18 +100,23 @@ export async function querySourceDocumentPage(
 
 export async function listSourceDocuments(
   ledgerId: string,
-  params: ListSourceDocumentsInput
+  params: ListSourceDocumentsInput,
+  ports: SourceDocumentQueryPorts
 ): Promise<SourceDocumentPageDto> {
   const validated = parseListSourceDocumentsInput(params);
-  return querySourceDocumentPage(ledgerId, {
-    status: validated.status ?? null,
-    startDate: validated.startDate ?? null,
-    endDate: validated.endDate ?? null,
-    minAmount: validated.minAmount,
-    maxAmount: validated.maxAmount,
-    cursor: validated.cursor ?? null,
-    limit: validated.limit,
-    includeLedgerEntries: validated.includeEntries,
-    includeFiles: validated.includeFiles,
-  });
+  return querySourceDocumentPage(
+    ledgerId,
+    {
+      status: validated.status ?? null,
+      startDate: validated.startDate ?? null,
+      endDate: validated.endDate ?? null,
+      minAmount: validated.minAmount,
+      maxAmount: validated.maxAmount,
+      cursor: validated.cursor ?? null,
+      limit: validated.limit,
+      includeLedgerEntries: validated.includeEntries,
+      includeFiles: validated.includeFiles,
+    },
+    ports
+  );
 }

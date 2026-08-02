@@ -1,10 +1,9 @@
 import type { LedgerPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import { getDefaultLedger } from "@/config/default-ledger";
 
 export async function createDefaultLedger(
   input: { userId: string; locale?: string },
-  ledgers: LedgerPort = currentApplication.ledgers
+  ledgers: LedgerPort
 ) {
   const defaults = getDefaultLedger(input.locale ?? "zh");
   const ledger = await ledgers.createDefault({

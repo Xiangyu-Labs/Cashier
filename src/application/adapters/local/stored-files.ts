@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type {
   AuthorizedFileReadContract,
   DirectStoredFilePort,
@@ -14,15 +14,8 @@ import { db } from "@/lib/db";
 import { AppError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getS3Storage } from "@/lib/storage/s3";
-import {
-  ledgers,
-  revisionFiles,
-  sourceDocumentRevisions,
-  sourceDocuments,
-  storedFiles,
-  uploadSessionFiles,
-  uploadSessions,
-} from "@/persistence";
+import type { ObjectStore } from "@/lib/storage";
+import { ledgers, storedFiles, uploadSessionFiles, uploadSessions } from "@/persistence";
 import {
   MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
@@ -30,28 +23,18 @@ import {
   SUPPORTED_MIME_SET,
   UPLOAD_SESSION_EXPIRY_MS,
 } from "@/modules/source-document/upload-policy";
+import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cleanup";
+import {
+  postgresAuthorizedFileRepository,
+  type AuthorizedFileRepository,
+} from "@/application/adapters/postgres/authorized-files";
+import {
+  postgresUploadSessionRepository,
+  type UploadSessionRepository,
+} from "@/application/adapters/postgres/upload-sessions";
 
-interface ObjectFileStore {
-  upload(key: string, data: Buffer, contentType: string): Promise<unknown>;
-  download(key: string): Promise<Buffer>;
-  stream?(key: string): Promise<ReadableStream<Uint8Array>>;
-  delete(key: string): Promise<{ success: boolean; error?: Error }>;
-  presignUpload?(
-    key: string,
-    contentType: string,
-    sha256: string,
-    expiresInSeconds: number
-  ): Promise<{ url: string; requiredHeaders: Readonly<Record<string, string>> }>;
-  head?(key: string): Promise<{
-    byteSize: number;
-    contentType: string;
-    metadata: Readonly<Record<string, string>>;
-  }>;
-  copy?(sourceKey: string, destinationKey: string): Promise<void>;
-}
-
-type DirectObjectFileStore = Required<Pick<ObjectFileStore, "presignUpload" | "head" | "copy">> &
-  ObjectFileStore;
+type DirectObjectFileStore = Required<Pick<ObjectStore, "presignUpload" | "head" | "copy">> &
+  ObjectStore;
 
 function tokenHash(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -105,7 +88,7 @@ function validateRequests(files: readonly UploadFileRequestContract[]): void {
   }
 }
 
-function requireDirectStorage(storage: ObjectFileStore): DirectObjectFileStore {
+function requireDirectStorage(storage: ObjectStore): DirectObjectFileStore {
   if (storage.presignUpload == null || storage.head == null || storage.copy == null) {
     throw new AppError("Direct upload storage is not configured", "STORAGE_UNAVAILABLE", 503);
   }
@@ -122,8 +105,10 @@ function durableKey(ledgerId: string, storedFileId: string): string {
 
 export class StoredFileAdapter implements DirectStoredFilePort {
   constructor(
-    private readonly storage: ObjectFileStore = getS3Storage(),
-    private readonly now: () => Date = () => new Date()
+    private readonly storage: ObjectStore = getS3Storage(),
+    private readonly now: () => Date = () => new Date(),
+    private readonly authorizedFiles: AuthorizedFileRepository = postgresAuthorizedFileRepository,
+    private readonly uploadSessionRepository: UploadSessionRepository = postgresUploadSessionRepository
   ) {}
 
   async createUploadPlan(
@@ -137,35 +122,21 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
     const targetIds = files.map(() => crypto.randomUUID());
 
-    await db.transaction(async (tx) => {
-      const ledger = await tx
-        .select({ id: ledgers.id })
-        .from(ledgers)
-        .where(and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)))
-        .then((rows) => rows[0]);
-      if (ledger == null) throw new NotFoundError("Ledger");
-      await tx.insert(uploadSessions).values({
-        id: sessionId,
-        ledgerId,
-        finalizationTokenHash: tokenHash(finalizationToken),
-        transport: "proxy",
-        status: "open",
-        expiresAt,
-        createdAt: now,
-      });
-      for (const [position, file] of files.entries()) {
-        await tx.insert(uploadSessionFiles).values({
-          ledgerId,
-          uploadSessionId: sessionId,
-          targetId: targetIds[position]!,
-          position,
-          expectedContentType: file.contentType,
-          expectedByteSize: file.byteSize,
-          originalFilename: file.originalFilename,
-          expectedChecksum: file.checksum ?? null,
-          status: "planned" as const,
-        });
-      }
+    await this.uploadSessionRepository.create({
+      id: sessionId,
+      ledgerId,
+      finalizationTokenHash: tokenHash(finalizationToken),
+      transport: "proxy",
+      expiresAt,
+      createdAt: now,
+      targets: files.map((file, position) => ({
+        id: targetIds[position]!,
+        position,
+        contentType: file.contentType,
+        byteSize: file.byteSize,
+        originalFilename: file.originalFilename,
+        checksum: file.checksum ?? null,
+      })),
     });
 
     return {
@@ -204,35 +175,21 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     const expiresAt = new Date(now.getTime() + UPLOAD_SESSION_EXPIRY_MS);
     const targetIds = files.map(() => crypto.randomUUID());
 
-    await db.transaction(async (tx) => {
-      const ledger = await tx
-        .select({ id: ledgers.id })
-        .from(ledgers)
-        .where(and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)))
-        .then((rows) => rows[0]);
-      if (ledger == null) throw new NotFoundError("Ledger");
-      await tx.insert(uploadSessions).values({
-        id: sessionId,
-        ledgerId,
-        finalizationTokenHash: tokenHash(finalizationToken),
-        transport: "direct",
-        status: "open",
-        expiresAt,
-        createdAt: now,
-      });
-      await tx.insert(uploadSessionFiles).values(
-        files.map((file, position) => ({
-          ledgerId,
-          uploadSessionId: sessionId,
-          targetId: targetIds[position]!,
-          position,
-          expectedContentType: file.contentType,
-          expectedByteSize: file.byteSize,
-          originalFilename: file.originalFilename,
-          expectedChecksum: file.checksum!.toLowerCase(),
-          status: "planned" as const,
-        }))
-      );
+    await this.uploadSessionRepository.create({
+      id: sessionId,
+      ledgerId,
+      finalizationTokenHash: tokenHash(finalizationToken),
+      transport: "direct",
+      expiresAt,
+      createdAt: now,
+      targets: files.map((file, position) => ({
+        id: targetIds[position]!,
+        position,
+        contentType: file.contentType,
+        byteSize: file.byteSize,
+        originalFilename: file.originalFilename,
+        checksum: file.checksum!.toLowerCase(),
+      })),
     });
 
     try {
@@ -378,6 +335,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     } catch (error) {
       const cleanup = await this.storage.delete(storageKey);
       if (!cleanup.success) {
+        await enqueueObjectCleanup(storageKey);
         logger.error(
           { provider: "s3", storageKey, cleanupError: cleanup.error },
           "Failed to clean up S3 object after database transaction failure"
@@ -551,6 +509,18 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       )
     );
     if (cleanupResults.some((result) => !result.success)) {
+      await Promise.all(
+        cleanupResults.flatMap((result, position) =>
+          result.success
+            ? []
+            : [
+                enqueueObjectCleanup(
+                  temporaryKey(session.ledgerId, session.id, targets[position]!.targetId),
+                  session.id
+                ),
+              ]
+        )
+      );
       logger.warn({ uploadSessionId: session.id }, "Temporary S3 upload cleanup was incomplete");
     }
     return files;
@@ -609,6 +579,27 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     }
 
     const { files, targets } = await db.transaction(async (tx) => {
+      const lockedSession = await tx
+        .select()
+        .from(uploadSessions)
+        .where(eq(uploadSessions.id, input.uploadSessionId))
+        .for("update")
+        .then((rows) => rows[0]);
+      if (
+        lockedSession == null ||
+        lockedSession.ledgerId !== session.ledgerId ||
+        (input.ownerLedgerId != null && lockedSession.ledgerId !== input.ownerLedgerId) ||
+        !safeTokenMatches(input.finalizationToken, lockedSession.finalizationTokenHash)
+      ) {
+        throw new NotFoundError("Upload session");
+      }
+      if (
+        lockedSession.status !== "open" &&
+        lockedSession.status !== "finalizing" &&
+        lockedSession.status !== "finalized"
+      ) {
+        throw new ConflictError("Upload session cannot be finalized");
+      }
       const targets = await tx
         .select()
         .from(uploadSessionFiles)
@@ -629,13 +620,6 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         )
       ) {
         throw new ConflictError("Upload targets are incomplete");
-      }
-      if (
-        session.status !== "open" &&
-        session.status !== "finalizing" &&
-        session.status !== "finalized"
-      ) {
-        throw new ConflictError("Upload session cannot be finalized");
       }
       // Validate unique display order: deduplicate on position since targets are unique
       const positionSet = new Set(targets.map((t) => t.position));
@@ -674,7 +658,12 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       await tx
         .update(uploadSessions)
         .set({ status: "finalized", finalizedAt: now })
-        .where(eq(uploadSessions.id, session.id));
+        .where(
+          and(
+            eq(uploadSessions.id, lockedSession.id),
+            inArray(uploadSessions.status, ["open", "finalizing", "finalized"])
+          )
+        );
       return { files, targets };
     });
     // Preserve position order from the targets query, ensuring files are returned
@@ -689,41 +678,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     ledgerId: LedgerId,
     fileId: StoredFileId
   ): Promise<AuthorizedFileReadContract | null> {
-    const rows = await db
-      .select({ file: storedFiles })
-      .from(storedFiles)
-      .innerJoin(
-        revisionFiles,
-        and(
-          eq(revisionFiles.ledgerId, storedFiles.ledgerId),
-          eq(revisionFiles.storedFileId, storedFiles.id)
-        )
-      )
-      .innerJoin(
-        sourceDocumentRevisions,
-        and(
-          eq(sourceDocumentRevisions.ledgerId, revisionFiles.ledgerId),
-          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
-        )
-      )
-      .innerJoin(
-        sourceDocuments,
-        and(
-          eq(sourceDocuments.ledgerId, sourceDocumentRevisions.ledgerId),
-          eq(sourceDocuments.id, sourceDocumentRevisions.sourceDocumentId)
-        )
-      )
-      .where(
-        and(
-          eq(storedFiles.ledgerId, ledgerId),
-          eq(storedFiles.id, fileId),
-          isNotNull(storedFiles.finalizedAt),
-          isNull(storedFiles.deletedAt),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .limit(1);
-    const row = rows[0]?.file;
+    const row = await this.authorizedFiles.findForLedger(ledgerId, fileId);
     if (row == null) return null;
     if (row.storageProvider !== "s3") {
       throw new AppError(
@@ -741,14 +696,18 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     userId: string,
     fileId: string
   ): Promise<AuthorizedFileReadContract | null> {
-    const owner = await db
-      .select({ ledgerId: storedFiles.ledgerId })
-      .from(storedFiles)
-      .innerJoin(ledgers, and(eq(ledgers.id, storedFiles.ledgerId), isNull(ledgers.deletedAt)))
-      .where(and(eq(storedFiles.id, fileId), eq(ledgers.userId, userId)))
-      .limit(1);
-    const ledgerId = owner[0]?.ledgerId;
-    return ledgerId == null ? null : this.readAuthorized(ledgerId, fileId);
+    const row = await this.authorizedFiles.findForUser(userId, fileId);
+    if (row == null) return null;
+    if (row.storageProvider !== "s3") {
+      throw new AppError(
+        `Unsupported stored file provider: ${row.storageProvider}`,
+        "UNSUPPORTED_STORAGE_PROVIDER",
+        500,
+        { provider: row.storageProvider, fileId: row.id }
+      );
+    }
+    const body = await this.storage.download(row.storageKey);
+    return { file: mapStoredFile(row), body: new Uint8Array(body) };
   }
 
   async readAuthorizedStreamForUser(
@@ -771,49 +730,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         }),
       };
     }
-    const owner = await db
-      .select({ ledgerId: storedFiles.ledgerId })
-      .from(storedFiles)
-      .innerJoin(ledgers, and(eq(ledgers.id, storedFiles.ledgerId), isNull(ledgers.deletedAt)))
-      .where(and(eq(storedFiles.id, fileId), eq(ledgers.userId, userId)))
-      .limit(1);
-    const ledgerId = owner[0]?.ledgerId;
-    if (ledgerId == null) return null;
-    const rows = await db
-      .select({ file: storedFiles })
-      .from(storedFiles)
-      .innerJoin(
-        revisionFiles,
-        and(
-          eq(revisionFiles.ledgerId, storedFiles.ledgerId),
-          eq(revisionFiles.storedFileId, storedFiles.id)
-        )
-      )
-      .innerJoin(
-        sourceDocumentRevisions,
-        and(
-          eq(sourceDocumentRevisions.ledgerId, revisionFiles.ledgerId),
-          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
-        )
-      )
-      .innerJoin(
-        sourceDocuments,
-        and(
-          eq(sourceDocuments.ledgerId, sourceDocumentRevisions.ledgerId),
-          eq(sourceDocuments.id, sourceDocumentRevisions.sourceDocumentId)
-        )
-      )
-      .where(
-        and(
-          eq(storedFiles.ledgerId, ledgerId),
-          eq(storedFiles.id, fileId),
-          isNotNull(storedFiles.finalizedAt),
-          isNull(storedFiles.deletedAt),
-          isNull(sourceDocuments.deletedAt)
-        )
-      )
-      .limit(1);
-    const row = rows[0]?.file;
+    const row = await this.authorizedFiles.findForUser(userId, fileId);
     if (row == null) return null;
     return { file: mapStoredFile(row), body: await this.storage.stream(row.storageKey) };
   }

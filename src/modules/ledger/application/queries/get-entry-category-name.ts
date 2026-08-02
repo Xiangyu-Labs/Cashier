@@ -1,9 +1,10 @@
-import { currentApplication } from "@/application/current";
+import type { CategoryPort } from "@/application/contracts";
 
 export async function getEntryCategoryName(
   ledgerId: string,
-  categoryId: string | null
+  categoryId: string | null,
+  categories: CategoryPort
 ): Promise<string> {
   if (categoryId == null || categoryId === "") return "";
-  return (await currentApplication.categories.get(ledgerId, categoryId))?.name ?? "";
+  return (await categories.get(ledgerId, categoryId))?.name ?? "";
 }

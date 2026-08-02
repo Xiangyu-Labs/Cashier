@@ -342,19 +342,35 @@ export interface PendingRevisionSubmissionContract {
   document: SourceDocumentContract;
   revision: SourceDocumentRevisionContract;
   intent: ProcessingIntentContract;
+  /** True when the result was replayed from an already-completed idempotent request. */
+  idempotencyReplay?: boolean;
 }
 
 /** Atomically persists submitted evidence and the durable work needed to process it. */
+export interface SourceDocumentSubmissionInput {
+  ledgerId: LedgerId;
+  sourceDocumentId?: SourceDocumentId;
+  submittedText?: string | null;
+  storedFileIds?: readonly StoredFileId[];
+  entryDate?: string | null;
+  inheritEvidence?: boolean;
+  supersedeProcessing?: boolean;
+}
+
+export interface SourceDocumentIdempotencyInput {
+  credentialId: string;
+  key: string;
+  contentFingerprint: string;
+}
+
 export interface SourceDocumentSubmissionPort {
-  createPendingWithIntent(input: {
-    ledgerId: LedgerId;
-    sourceDocumentId?: SourceDocumentId;
-    submittedText?: string | null;
-    storedFileIds?: readonly StoredFileId[];
-    entryDate?: string | null;
-    inheritEvidence?: boolean;
-    supersedeProcessing?: boolean;
-  }): Promise<PendingRevisionSubmissionContract>;
+  createPendingWithIntent(
+    input: SourceDocumentSubmissionInput
+  ): Promise<PendingRevisionSubmissionContract>;
+  createIdempotentPendingWithIntent?(
+    idempotency: SourceDocumentIdempotencyInput,
+    prepare: () => Promise<SourceDocumentSubmissionInput>
+  ): Promise<PendingRevisionSubmissionContract>;
 }
 
 export interface LedgerPort {
@@ -435,6 +451,7 @@ export interface OtpTokenContract {
   expiresAt: Date;
   attempts: number;
   lockedUntil: Date | null;
+  verifiedAt: Date | null;
 }
 
 export interface OtpTokenPort {
@@ -445,8 +462,14 @@ export interface OtpTokenPort {
     ipAddress?: string;
   }): Promise<void>;
   find(email: string): Promise<OtpTokenContract | null>;
-  recordFailure(input: { email: string; attempts: number; lockedUntil?: Date }): Promise<void>;
-  markVerified(email: string): Promise<void>;
+  recordFailure(input: {
+    email: string;
+    maxAttempts: number;
+    lockedUntil: Date;
+  }): Promise<{ attempts: number; lockedUntil: Date | null } | null>;
+  claim(input: { email: string; tokenHash: string; now: Date }): Promise<boolean>;
+  release(input: { email: string; tokenHash: string }): Promise<boolean>;
+  consume(input: { email: string; tokenHash: string }): Promise<boolean>;
   delete(email: string): Promise<void>;
   cleanupExpired(now: Date): Promise<number>;
 }
@@ -530,17 +553,26 @@ export interface CreatedServiceCredentialContract extends ServiceCredentialContr
   token: string;
 }
 
-export interface StoredFilePort {
+export interface UploadPlanningPort {
   createUploadPlan(
     ledgerId: LedgerId,
     files?: readonly UploadFileRequestContract[]
   ): Promise<UploadPlanContract>;
+}
+
+export interface UploadFinalizationPort {
   finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
+}
+
+export interface AuthorizedStoredFilePort {
   readAuthorized(
     ledgerId: LedgerId,
     fileId: StoredFileId
   ): Promise<AuthorizedFileReadContract | null>;
 }
+
+export interface StoredFilePort
+  extends UploadPlanningPort, UploadFinalizationPort, AuthorizedStoredFilePort {}
 
 export interface DirectStoredFilePort extends StoredFilePort {
   createDirectUploadPlan(

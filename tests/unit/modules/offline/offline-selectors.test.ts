@@ -1,65 +1,172 @@
 import { describe, expect, it } from "vitest";
+import { buildOfflineEnhancedStats } from "@/modules/offline/offline-selectors";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
-import { selectOfflineDocuments, totalOfflineMatches } from "@/modules/offline/offline-selectors";
 
-function entry(id: string, itemName: string, amount: string): SourceDocumentLedgerEntryDto {
+function entry({
+  id,
+  amount,
+  convertedAmount,
+  categoryId = "food",
+  categoryName = "Food",
+  currency = "USD",
+}: {
+  id: string;
+  amount: string;
+  convertedAmount: string | null;
+  categoryId?: string | null;
+  categoryName?: string;
+  currency?: string | null;
+}): SourceDocumentLedgerEntryDto {
   return {
     id,
     ledgerId: "ledger",
-    categoryId: null,
-    sourceDocumentId: "document",
+    categoryId,
+    sourceDocumentId: `document-${id}`,
     amount,
-    currency: "CNY",
-    itemName,
+    currency,
+    itemName: id,
     description: null,
-    convertedAmount: null,
-    exchangeRate: null,
-    createdAt: "2026-07-30T00:00:00.000Z",
-    updatedAt: "2026-07-30T00:00:00.000Z",
+    convertedAmount,
+    exchangeRate: convertedAmount == null ? null : "7",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     deletedAt: null,
+    category:
+      categoryId == null
+        ? null
+        : {
+            id: categoryId,
+            ledgerId: "ledger",
+            name: categoryName,
+            description: null,
+            icon: "utensils",
+            sortOrder: 0,
+            isEditable: true,
+            createdAt: "2026-08-01T00:00:00.000Z",
+            updatedAt: "2026-08-01T00:00:00.000Z",
+            deletedAt: null,
+          },
   };
 }
 
-function document(entries: SourceDocumentLedgerEntryDto[]): SourceDocumentListItemDto {
+function document({
+  id,
+  date,
+  entries,
+  entryDate = date,
+  status = "completed",
+}: {
+  id: string;
+  date: string;
+  entries: SourceDocumentLedgerEntryDto[];
+  entryDate?: string | null;
+  status?: SourceDocumentListItemDto["status"];
+}): SourceDocumentListItemDto {
   return {
-    id: "document",
+    id,
     ledgerId: "ledger",
-    title: "Afternoon tea",
+    type: "manual",
+    status,
+    title: id,
     text: null,
-    files: [],
-    status: "completed",
-    type: "ai_parsed",
     anomalyReason: null,
-    entryDate: "2026-07-30",
+    entryDate,
     metadata: {},
-    createdAt: "2026-07-30T00:00:00.000Z",
-    updatedAt: "2026-07-30T00:00:00.000Z",
+    createdAt: `${date}T10:00:00.000Z`,
+    updatedAt: `${date}T10:00:00.000Z`,
     deletedAt: null,
-    ledgerEntries: entries,
+    files: [],
     hasImages: false,
     supportedActions: [],
     errorCode: null,
     pendingRevisionId: null,
+    ledgerEntries: entries,
   };
 }
 
-describe("offline filtering contract", () => {
-  it("uses one matching entry for amount filters while retaining the complete document", () => {
-    const original = document([entry("coffee", "Coffee", "20"), entry("cake", "Cake", "80")]);
-    const matches = selectOfflineDocuments([original], { maxAmount: 30 });
+describe("buildOfflineEnhancedStats", () => {
+  it("uses the persisted accounting projection and the same effective-date fallback", () => {
+    const result = buildOfflineEnhancedStats({
+      items: [
+        document({
+          id: "current-a",
+          date: "2026-08-01",
+          entries: [entry({ id: "a", amount: "10", convertedAmount: "70" })],
+        }),
+        document({
+          id: "current-b",
+          date: "2026-08-02",
+          entryDate: null,
+          entries: [
+            entry({
+              id: "b",
+              amount: "30",
+              convertedAmount: null,
+              categoryId: null,
+              currency: "CNY",
+            }),
+          ],
+        }),
+        document({
+          id: "previous",
+          date: "2026-07-01",
+          entries: [entry({ id: "c", amount: "5", convertedAmount: "35" })],
+        }),
+        document({
+          id: "ignored",
+          date: "2026-08-03",
+          status: "processing",
+          entries: [entry({ id: "d", amount: "100", convertedAmount: "700" })],
+        }),
+      ],
+      queryRange: { from: "2026-08-01", to: "2026-08-31" },
+      compareRange: { from: "2026-07-01", to: "2026-07-31" },
+      mainCurrency: "CNY",
+      uncategorizedLabel: "Uncategorized",
+      today: "2026-08-02",
+    });
 
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.matchedEntries.map((item) => item.id)).toEqual(["coffee"]);
-    expect(matches[0]?.subtotal).toBe("20");
-    expect(totalOfflineMatches(matches)).toBe(20);
-    expect(matches[0]?.document.ledgerEntries).toHaveLength(2);
-  });
-
-  it("requires the same entry to satisfy amount and search conditions", () => {
-    const original = document([entry("coffee", "Coffee", "80"), entry("cake", "Cake", "20")]);
-    expect(selectOfflineDocuments([original], { search: "coffee", maxAmount: 30 })).toEqual([]);
+    expect(result.summary).toEqual({
+      total: "100",
+      currency: "CNY",
+      trend: { percent: expect.closeTo(185.71428571428572), amount: "65" },
+      dailyAverage: 50,
+    });
+    expect(result.categories).toMatchObject([
+      {
+        id: "food",
+        name: "Food",
+        totalConverted: "70",
+        percent: 70,
+        count: 1,
+        trend: { amount: "35", percent: 100 },
+      },
+      {
+        id: null,
+        name: "Uncategorized",
+        totalConverted: "30",
+        percent: 30,
+        count: 1,
+      },
+    ]);
+    expect(result.chart).toEqual([
+      { date: "2026-08-01", total: 70 },
+      { date: "2026-08-02", total: 30 },
+    ]);
+    expect(result.heatmap.days[1]).toEqual({
+      date: "2026-08-02",
+      totalAmount: 30,
+      entryCount: 1,
+      currencies: ["CNY"],
+    });
+    expect(result.heatmap.stats).toEqual({
+      minAmount: 30,
+      maxAmount: 70,
+      avgAmount: 50,
+      p80Amount: 70,
+    });
   });
 });

@@ -32,7 +32,7 @@ describe("sendOTPAction", () => {
     });
   });
 
-  it("forwards email with host and x-forwarded-for ip", async () => {
+  it("ignores forwarded IP headers when trusted proxy mode is disabled", async () => {
     headersMock.mockResolvedValue({
       get: (key: string) => {
         if (key === "x-forwarded-for") return "203.0.113.7, 10.0.0.1";
@@ -43,12 +43,10 @@ describe("sendOTPAction", () => {
 
     await expect(sendOTPAction("User@Example.com", "zh")).resolves.toMatchObject({ ok: true });
 
-    expect(sendOTPMock).toHaveBeenCalledWith({
-      email: "User@Example.com",
-      ip: "203.0.113.7",
-      host: "cashier.example",
-      locale: "zh",
-    });
+    expect(sendOTPMock).toHaveBeenCalledWith(
+      { email: "User@Example.com", ip: "unknown", host: "cashier.example", locale: "zh" },
+      expect.any(Object)
+    );
   });
 
   it("returns invalid_email before invoking use case", async () => {
@@ -83,12 +81,10 @@ describe("sendOTPAction", () => {
 
     await sendOTPAction("test@example.com", "en");
 
-    expect(sendOTPMock).toHaveBeenCalledWith({
-      email: "test@example.com",
-      ip: "unknown",
-      host: "localhost",
-      locale: "en",
-    });
+    expect(sendOTPMock).toHaveBeenCalledWith(
+      { email: "test@example.com", ip: "unknown", host: "localhost", locale: "en" },
+      expect.any(Object)
+    );
   });
 
   it("prefers x-real-ip when TRUSTED_PROXY is configured", async () => {
@@ -105,11 +101,14 @@ describe("sendOTPAction", () => {
 
     await sendOTPAction("test@example.com", "en");
 
-    expect(sendOTPMock).toHaveBeenCalledWith({
-      email: "test@example.com",
-      ip: "198.51.100.12",
-      host: "cashier.example",
-      locale: "en",
-    });
+    expect(sendOTPMock).toHaveBeenCalledWith(
+      {
+        email: "test@example.com",
+        ip: "198.51.100.12",
+        host: "cashier.example",
+        locale: "en",
+      },
+      expect.any(Object)
+    );
   });
 });

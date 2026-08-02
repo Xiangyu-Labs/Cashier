@@ -3,7 +3,8 @@ import { getTestDb } from "../../setup";
 import { users } from "@/persistence";
 import { otpTokens } from "@/persistence/schema/auth";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { authenticateWithOTP as authenticateWithOTPUseCase } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+import { serverComposition } from "@/application/server-composition-root";
 import { RegistrationDisabledError } from "@/modules/auth/application/use-cases/registration-policy";
 import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
@@ -17,6 +18,13 @@ vi.mock("resend", () => ({
 }));
 
 const REQUEST_HEADERS = new Headers({ "x-forwarded-for": "127.0.0.1" });
+const authenticateWithOTP = (input: Parameters<typeof authenticateWithOTPUseCase>[0]) =>
+  authenticateWithOTPUseCase(input, {
+    userAccounts: serverComposition.userAccounts,
+    otpTokens: serverComposition.otpTokens,
+    ledgers: serverComposition.ledgers,
+    rateLimiter: serverComposition.rateLimiter,
+  });
 
 async function createTestOTP(email: string, otp: string) {
   const db = getTestDb();

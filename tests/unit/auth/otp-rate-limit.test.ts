@@ -1,15 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  checkSendRateLimit,
-  checkSendRateLimitByIP,
-  checkResendCooldown,
-  setResendCooldown,
-  getCanResendAt,
-  checkVerifyRateLimit,
+  checkSendRateLimit as checkSendRateLimitUseCase,
+  checkSendRateLimitByIP as checkSendRateLimitByIPUseCase,
+  checkResendCooldown as checkResendCooldownUseCase,
+  setResendCooldown as setResendCooldownUseCase,
+  getCanResendAt as getCanResendAtUseCase,
+  checkVerifyRateLimit as checkVerifyRateLimitUseCase,
 } from "@/modules/auth/services/otp-rate-limit";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+
+const checkSendRateLimit = (value: string) => checkSendRateLimitUseCase(value, postgresRateLimiter);
+const checkSendRateLimitByIP = (value: string) =>
+  checkSendRateLimitByIPUseCase(value, postgresRateLimiter);
+const checkResendCooldown = (value: string) =>
+  checkResendCooldownUseCase(value, postgresRateLimiter);
+const setResendCooldown = (value: string) => setResendCooldownUseCase(value, postgresRateLimiter);
+const getCanResendAt = (value: string) => getCanResendAtUseCase(value, postgresRateLimiter);
+const checkVerifyRateLimit = (value: string) =>
+  checkVerifyRateLimitUseCase(value, postgresRateLimiter);
 
 describe("OTP Rate Limiting", () => {
   beforeEach(async () => {
@@ -73,6 +83,14 @@ describe("OTP Rate Limiting", () => {
   });
 
   describe("checkSendRateLimitByIP", () => {
+    it("does not create a shared IP bucket when the client IP is unknown", async () => {
+      const increment = vi.spyOn(postgresRateLimiter, "increment");
+
+      const result = await checkSendRateLimitByIP("unknown");
+
+      expect(result.allowed).toBe(true);
+      expect(increment).not.toHaveBeenCalled();
+    });
     it("should allow first 10 sends within 1 hour", async () => {
       const ip = "192.168.1.1";
 
@@ -197,6 +215,12 @@ describe("OTP Rate Limiting", () => {
   });
 
   describe("checkVerifyRateLimit (brute force protection)", () => {
+    it("does not create a shared verification bucket for an unknown IP", async () => {
+      const increment = vi.spyOn(postgresRateLimiter, "increment");
+
+      await expect(checkVerifyRateLimit("unknown")).resolves.toBe(true);
+      expect(increment).not.toHaveBeenCalled();
+    });
     it("should allow first 5 verifications per minute", async () => {
       const ip = "192.168.1.1";
 

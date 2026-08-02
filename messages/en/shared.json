@@ -1,0 +1,60 @@
+{
+  "Common": {
+    "back": "Back",
+    "close": "Close",
+    "deselectAll": "Deselect All",
+    "edit": "Edit",
+    "delete": "Delete",
+    "retry": "Edit & Retry",
+    "selectItem": "Select {item}",
+    "selectAll": "Select All",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveSuccess": "Saved successfully",
+    "saveFailed": "Save failed",
+    "deleteSuccess": "Deleted successfully",
+    "deleteFailed": "Delete failed",
+    "loading": "Loading…",
+    "sending": "Sending…",
+    "success": "Success",
+    "error": "Error",
+    "input": "Input",
+    "output": "Output",
+    "sending_status": "Sending…",
+    "unclassified": "Unclassified",
+    "needsCurrency": "Needs Currency",
+    "noRecords": "No records",
+    "noMore": "No more items",
+    "loadMore": "Load More",
+    "discard": "Discard",
+    "confirm": "Confirm",
+    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
+  },
+  "Error": {
+    "title": "Application Error",
+    "description": "An unexpected error occurred: {message}",
+    "errorId": "Error ID: {id}",
+    "goHome": "Go Home",
+    "retry": "Retry",
+    "backToHome": "Back to Home"
+  },
+  "LedgerError": {
+    "title": "Error Loading Ledger",
+    "description": "An error occurred while loading the ledger data. This might be due to a network issue or the ledger no longer exists.",
+    "backToHome": "Back to Home"
+  },
+  "Metadata": {
+    "title": "Cashier - AI Bookkeeping Assistant",
+    "description": "AI-powered intelligent bookkeeping tool"
+  },
+  "NotFound": {
+    "title": "Page Not Found",
+    "description": "Sorry, the page you are looking for does not exist or has been removed.",
+    "backToHome": "Back to Home"
+  },
+  "PullToRefresh": {
+    "pullToRefresh": "Pull to refresh",
+    "releaseToRefresh": "Release to refresh",
+    "refreshing": "Refreshing..."
+  }
+}

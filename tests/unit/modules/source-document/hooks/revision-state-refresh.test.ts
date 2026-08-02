@@ -386,7 +386,7 @@ describe("revision state refresh", () => {
   // Coordinator — healthy follower (working primitives, not leader)
   // -----------------------------------------------------------------------
 
-  it("refreshes independently when another tab is leader", async () => {
+  it("does not poll when another tab holds a healthy leadership lease", async () => {
     const env = createEnvironment();
     // acquireLeadership returns false (another tab is leader)
     env.environment.acquireLeadership = async (_leaseMs) => false;
@@ -408,10 +408,10 @@ describe("revision state refresh", () => {
     await vi.advanceTimersByTimeAsync(30000);
     await flushTimers();
 
-    expect(refreshCalled).toBe(true);
+    expect(refreshCalled).toBe(false);
   });
 
-  it("allows two visible coordinators to refresh their own subscriptions", async () => {
+  it("allows only the leader to refresh when two visible coordinators are active", async () => {
     const firstEnv = createEnvironment();
     const secondEnv = createEnvironment();
     secondEnv.environment.acquireLeadership = async () => false;
@@ -432,9 +432,40 @@ describe("revision state refresh", () => {
     await flushTimers();
 
     expect(firstRefresh).toHaveBeenCalledTimes(1);
-    expect(secondRefresh).toHaveBeenCalledTimes(1);
+    expect(secondRefresh).not.toHaveBeenCalled();
     first.destroy();
     second.destroy();
+  });
+
+  it("promotes a follower and refreshes within two polling cycles after leader expiry", async () => {
+    const env = createEnvironment();
+    let expiryHandler: (() => void) | undefined;
+    let acquisitionAttempt = 0;
+    env.environment.acquireLeadership = async () => {
+      acquisitionAttempt += 1;
+      return acquisitionAttempt > 1;
+    };
+    env.environment.onLeadershipExpired = (handler) => {
+      expiryHandler = handler;
+    };
+    const refresh = vi.fn(async () => ({
+      changed: false,
+      result: refreshResult(true),
+    }));
+    const follower = new RefreshCoordinator(env.environment);
+
+    follower.subscribe("processing", refresh);
+    await flushTimers();
+    expect(follower.getIsLeader()).toBe(false);
+    expect(refresh).not.toHaveBeenCalled();
+
+    expiryHandler?.();
+    await vi.advanceTimersByTimeAsync(0);
+    await flushTimers();
+
+    expect(follower.getIsLeader()).toBe(true);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    follower.destroy();
   });
 
   it("backs off after an error and keeps processing subscribed work", async () => {

@@ -294,6 +294,25 @@ export const uploadSessionFiles = pgTable(
   ]
 );
 
+export const objectCleanupJobs = pgTable(
+  "object_cleanup_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storageKey: text("storage_key").notNull(),
+    uploadSessionId: uuid("upload_session_id").references(() => uploadSessions.id, {
+      onDelete: "cascade",
+    }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: requiredTimestamp("next_attempt_at").$defaultFn(() => new Date()),
+    lastError: text("last_error"),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("uq_object_cleanup_jobs_storage_key").on(table.storageKey),
+    index("idx_object_cleanup_jobs_due").on(table.nextAttemptAt, table.createdAt),
+  ]
+);
+
 export const rateLimitBuckets = pgTable("rate_limit_buckets", {
   bucketKey: text("bucket_key").primaryKey(),
   count: integer("count").notNull().default(0),
@@ -320,6 +339,9 @@ export const idempotencyRecords = pgTable(
   (table) => [
     primaryKey({ columns: [table.credentialId, table.key] }),
     index("idx_idempotency_records_status_expiry").on(table.status, table.expiresAt),
+    index("idx_idempotency_pending_lease")
+      .on(table.leaseExpiresAt, table.createdAt)
+      .where(sql`${table.status} = 'pending'`),
   ]
 );
 

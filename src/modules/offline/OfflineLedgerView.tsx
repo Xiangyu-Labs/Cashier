@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import Decimal from "decimal.js";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import { LedgerEntryCard } from "@/modules/ledger/ui/LedgerEntryCard";
+import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
+import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
 import type {
   SourceDocument,
@@ -15,15 +15,30 @@ import { buildUnifiedStreamGroups } from "@/modules/source-document/stream-group
 import { SourceDocumentDetailModal } from "@/modules/source-document/ui/SourceDocumentDetailModal";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import {
+  addPeriod,
+  formatCivilDate,
+  formatDateTimeForApi,
+  parseDateString,
+  type DateRangeType,
+} from "@/lib/date-utils";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
 import { LedgerEntriesToolbar } from "@/modules/workspace/ui/LedgerEntriesToolbar";
 import { LedgerEntriesUnifiedGroups } from "@/modules/workspace/ui/LedgerEntriesCompletedGroups";
 import { EntriesToolbarShell } from "@/modules/workspace/ui/EntriesToolbarShell";
-import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
 import { STREAM_STATUS_PRESET_VALUES } from "@/modules/workspace/ledger-filter-state";
 import { useConnectionState } from "./connection-state";
-import { selectOfflineDocuments, totalOfflineMatches } from "./offline-selectors";
+import { StatsContentView } from "@/modules/stats/ui";
+import {
+  DEFAULT_STATS_RANGE_TYPE,
+  getStatsInitialQueryState,
+} from "@/modules/workspace/initial-query-state";
+import {
+  buildOfflineEnhancedStats,
+  selectOfflineDocuments,
+  totalOfflineMatches,
+} from "./offline-selectors";
 import {
   getActiveOfflineSnapshotKey,
   readOfflineImages,
@@ -289,20 +304,13 @@ function OfflineDetails({
   onSelectDocument: (document: SourceDocumentListItemDto) => void;
   syncStatus?: string;
 }) {
-  const groups = new Map<string, { title: string; entries: LedgerEntry[]; total: Decimal }>();
-  for (const match of matches) {
-    for (const entry of match.displayEntries) {
-      const key = entry.categoryId ?? "uncategorized";
-      const group = groups.get(key) ?? {
-        title: entry.category?.name ?? (locale.startsWith("zh") ? "未分类" : "Uncategorized"),
-        entries: [],
-        total: new Decimal(0),
-      };
-      group.entries.push({ ...entry, sourceDocument: match.document });
-      group.total = group.total.plus(entry.convertedAmount ?? entry.amount);
-      groups.set(key, group);
-    }
-  }
+  const entries = matches.flatMap((match) =>
+    match.displayEntries.map((entry) => ({ ...entry, sourceDocument: match.document }))
+  ) as LedgerEntry[];
+  const { groupedItems } = useDetailsTabGrouping(
+    entries,
+    snapshot.ledgerSettings?.timeZone ?? undefined
+  );
   return (
     <PullToRefresh
       onRefresh={async () => {}}
@@ -323,30 +331,17 @@ function OfflineDetails({
       }
     >
       <div className="space-y-6 pt-2">
-        {[...groups.entries()].map(([key, group]) => (
-          <div key={key} className="space-y-2">
-            <EntryGroupHeader
-              title={group.title}
-              totalLabel={formatCurrencyAmount(group.total.toNumber(), mainCurrency, locale)}
-            />
-            <div className="space-y-4 px-2">
-              {group.entries.map((entry) => (
-                <LedgerEntryCard
-                  key={entry.id}
-                  ledgerEntry={entry}
-                  categories={snapshot.categories ?? []}
-                  mainCurrency={mainCurrency}
-                  onView={() => {
-                    const document = matches.find(
-                      (item) => item.document.id === entry.sourceDocumentId
-                    )?.document;
-                    if (document != null) onSelectDocument(document);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+        <LedgerEntryGroupsView
+          groups={groupedItems}
+          categories={snapshot.categories ?? []}
+          mainCurrency={mainCurrency}
+          onView={(entry) => {
+            const document = matches.find(
+              (item) => item.document.id === entry.sourceDocumentId
+            )?.document;
+            if (document != null) onSelectDocument(document);
+          }}
+        />
       </div>
     </PullToRefresh>
   );
@@ -361,130 +356,62 @@ function OfflineStats({
   items: SourceDocumentListItemDto[];
   locale: string;
 }) {
-  const matches = selectOfflineDocuments(items, { statuses: ["completed"] });
-  const byCategory = new Map<string, { name: string; total: Decimal; count: number }>();
-  for (const match of matches) {
-    for (const entry of match.displayEntries) {
-      const key = entry.categoryId ?? "uncategorized";
-      const current = byCategory.get(key) ?? {
-        name: entry.category?.name ?? (locale.startsWith("zh") ? "未分类" : "Uncategorized"),
-        total: new Decimal(0),
-        count: 0,
-      };
-      current.total = current.total.plus(entry.convertedAmount ?? entry.amount);
-      current.count += 1;
-      byCategory.set(key, current);
-    }
-  }
+  const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
+  const [periodOffset, setPeriodOffset] = useState(0);
+  const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
   const currency = snapshot.mainCurrency ?? "CNY";
-  const dailyTotals = new Map<string, Decimal>();
-  for (const match of matches) {
-    const date = match.document.entryDate ?? match.document.createdAt.slice(0, 10);
-    dailyTotals.set(date, (dailyTotals.get(date) ?? new Decimal(0)).plus(match.subtotal));
-  }
-  const monthlyTotals = new Map<string, Decimal>();
-  for (const [date, total] of dailyTotals) {
-    const month = date.slice(0, 7);
-    monthlyTotals.set(month, (monthlyTotals.get(month) ?? new Decimal(0)).plus(total));
-  }
-  const trend = [...monthlyTotals.entries()].toSorted(([a], [b]) => a.localeCompare(b)).slice(-6);
-  const maxMonth = trend.reduce((max, [, total]) => Decimal.max(max, total), new Decimal(0));
-  const heatmapDays = buildHeatmapDays(dailyTotals);
-  const maxDay = heatmapDays.reduce((max, { total }) => Decimal.max(max, total), new Decimal(0));
-  return (
-    <div className="space-y-6 px-2 pb-24">
-      <section className="border-b border-border py-5">
-        <p className="text-xs text-muted-foreground">
-          {locale.startsWith("zh") ? "缓存支出合计" : "Cached expense total"}
-        </p>
-        <p className="mt-1 text-3xl font-semibold text-text">
-          {formatCurrencyAmount(totalOfflineMatches(matches), currency, locale)}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {new Date(snapshot.lastSyncedAt).toLocaleString(locale)}
-        </p>
-      </section>
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-text">
-          {locale.startsWith("zh") ? "分类" : "Categories"}
-        </h2>
-        <div className="divide-y divide-border border-y border-border">
-          {[...byCategory.entries()]
-            .sort((a, b) => b[1].total.comparedTo(a[1].total))
-            .map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between py-3 text-sm">
-                <span>
-                  {value.name} <span className="text-muted-foreground">({value.count})</span>
-                </span>
-                <span className="font-medium">
-                  {formatCurrencyAmount(value.total.toNumber(), currency, locale)}
-                </span>
-              </div>
-            ))}
-        </div>
-      </section>
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-text">
-          {locale.startsWith("zh") ? "月度趋势" : "Monthly trend"}
-        </h2>
-        <div className="space-y-3 border-y border-border py-3">
-          {trend.map(([month, total]) => (
-            <div
-              key={month}
-              className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 text-xs"
-            >
-              <span className="text-muted-foreground">{month}</span>
-              <div className="h-2 overflow-hidden rounded-sm bg-surface2">
-                <div
-                  className="h-full bg-primary"
-                  style={{
-                    width: `${maxMonth.isZero() ? 0 : total.div(maxMonth).times(100).toNumber()}%`,
-                  }}
-                />
-              </div>
-              <span className="font-medium text-text">
-                {formatCurrencyAmount(total.toNumber(), currency, locale)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-text">
-          {locale.startsWith("zh") ? "最近 35 天" : "Latest 35 days"}
-        </h2>
-        <div
-          className="grid grid-cols-7 gap-1.5"
-          role="img"
-          aria-label={locale.startsWith("zh") ? "每日支出热力图" : "Daily expense heatmap"}
-        >
-          {heatmapDays.map(({ date, total }) => (
-            <div
-              key={date}
-              className="aspect-square min-w-0 rounded-sm border border-border bg-primary"
-              style={{
-                opacity: total.isZero()
-                  ? 0.08
-                  : 0.2 + (maxDay.isZero() ? 0 : total.div(maxDay).times(0.8).toNumber()),
-              }}
-              title={`${date}: ${formatCurrencyAmount(total.toNumber(), currency, locale)}`}
-            />
-          ))}
-        </div>
-      </section>
-    </div>
+  const todayKey = formatDateTimeForApi(new Date());
+  const currentDate = useMemo(
+    () => addPeriod(parseDateString(todayKey), rangeType, periodOffset),
+    [periodOffset, rangeType, todayKey]
   );
-}
+  const range = useMemo(
+    () => getStatsInitialQueryState(currentDate, rangeType),
+    [currentDate, rangeType]
+  );
+  const label = useMemo(() => {
+    switch (rangeType) {
+      case "week":
+        return `${formatCivilDate(range.startDateStr, locale, { month: "numeric", day: "numeric" })} - ${formatCivilDate(range.endDateStr, locale, { month: "numeric", day: "numeric" })}`;
+      case "month":
+        return formatCivilDate(range.startDateStr, locale, { year: "numeric", month: "long" });
+      case "year":
+        return formatCivilDate(range.startDateStr, locale, { year: "numeric" });
+    }
+  }, [locale, range.endDateStr, range.startDateStr, rangeType]);
+  const stats = useMemo(
+    () =>
+      buildOfflineEnhancedStats({
+        items,
+        queryRange: { from: range.startDateStr, to: range.endDateStr },
+        compareRange: { from: range.prevDateStartStr, to: range.prevDateEndStr },
+        mainCurrency: currency,
+        uncategorizedLabel: locale.startsWith("zh") ? "未分类" : "Uncategorized",
+        today: todayKey,
+      }),
+    [currency, items, locale, range, todayKey]
+  );
 
-function buildHeatmapDays(dailyTotals: ReadonlyMap<string, Decimal>) {
-  const latest = [...dailyTotals.keys()].toSorted().at(-1) ?? new Date().toISOString().slice(0, 10);
-  const cursor = new Date(`${latest}T00:00:00Z`);
-  return Array.from({ length: 35 }, (_, index) => {
-    const date = new Date(cursor);
-    date.setUTCDate(cursor.getUTCDate() - (34 - index));
-    const key = date.toISOString().slice(0, 10);
-    return { date: key, total: dailyTotals.get(key) ?? new Decimal(0) };
-  });
+  return (
+    <StatsContentView
+      rangeType={rangeType}
+      onRangeTypeChange={(nextRange) => {
+        setRangeType(nextRange);
+        setPeriodOffset(0);
+      }}
+      periodOffset={periodOffset}
+      onPeriodOffsetChange={setPeriodOffset}
+      label={label}
+      startDate={range.startDate}
+      endDate={range.endDate}
+      startDateStr={range.startDateStr}
+      endDateStr={range.endDateStr}
+      stats={stats}
+      chartView={chartView}
+      onChartViewChange={setChartView}
+      fallbackCurrency={currency}
+    />
+  );
 }
 
 function SnapshotState({ state, zh }: { state: LoadState; zh: boolean }) {

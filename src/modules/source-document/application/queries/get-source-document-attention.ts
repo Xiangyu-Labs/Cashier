@@ -1,5 +1,5 @@
-import { currentApplication } from "@/application/current";
 import type { SourceDocumentAttentionDto } from "../../contracts";
+import type { SourceDocumentReadPort } from "../ports";
 
 /**
  * Attention query that fetches documents with status:
@@ -11,9 +11,10 @@ import type { SourceDocumentAttentionDto } from "../../contracts";
 const ATTENTION_HARD_LIMIT = 50;
 
 export async function getSourceDocumentAttentionQuery(
-  ledgerId: string
+  ledgerId: string,
+  documents: SourceDocumentReadPort
 ): Promise<SourceDocumentAttentionDto> {
-  const result = await currentApplication.sourceDocumentReads.list({
+  const result = await documents.list({
     ledgerId,
     statuses: ["processing", "candidate_pending", "anomaly", "failed"],
     limit: ATTENTION_HARD_LIMIT,

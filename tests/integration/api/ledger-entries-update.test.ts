@@ -11,14 +11,16 @@ import {
 } from "../../helpers/schema-setup";
 
 // Mock the exchange rate service
-vi.mock("@/modules/currency/application/services/exchange-rate", () => ({
-  ExchangeRateService: {
+vi.mock("@/application/adapters/postgres/exchange-rate", () => {
+  const rateBook = {
     convert: vi.fn().mockImplementation((amount: number) => {
       // Mock: 1 USD = 7 CNY
-      return Promise.resolve(amount * 7);
+      return Promise.resolve(String(amount * 7));
     }),
-  },
-}));
+    convertBatch: vi.fn(),
+  };
+  return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
+});
 
 describe("Ledger Entry Update Action", () => {
   let testLedgerId: string;

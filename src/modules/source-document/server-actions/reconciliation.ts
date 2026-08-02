@@ -3,7 +3,7 @@ import { sourceDocuments } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 
 // ---------------------------------------------------------------------------
 // Authoritative DB-backed read
@@ -22,7 +22,7 @@ export async function readSourceDocumentListItem(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<SourceDocumentListItemDto | null> {
-  const row = await currentApplication.sourceDocumentReads.get(ledgerId, sourceDocumentId);
+  const row = await serverComposition.sourceDocumentReads.get(ledgerId, sourceDocumentId);
   if (row == null) return null;
 
   return {

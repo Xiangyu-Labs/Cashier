@@ -7,64 +7,9 @@
  * Active tab namespaces are loaded in the active-tab component.
  * Inactive tabs load their messages lazily.
  */
-export const FEATURE_MESSAGES = {
-  /** Shell — loaded in the global locale layout */
-  shell: [
-    "Auth",
-    "AuthEmail",
-    "Common",
-    "Error",
-    "LedgerError",
-    "Metadata",
-    "NotFound",
-  ] as readonly string[],
-  /** Active Stream tab — loaded in _active-tab.tsx */
-  stream: [
-    "AnomalyCode",
-    "BatchActions",
-    "Calculator",
-    "Calendar",
-    "CandidateReview",
-    "CandidateAction",
-    "DateFilter",
-    "DateRangeFilter",
-    "DiagnosticCode",
-    "EntryFilterPanel",
-    "LedgerEntriesTab",
-    "LedgerEntryDetail",
-    "LedgerPage",
-    "PullToRefresh",
-    "QuickEntryForm",
-    "Settings",
-    "SourceDocumentCard",
-    "SourceDocumentDetail",
-    "SourceDocumentEditRetryDialog",
-    "SourceDocumentImageModal",
-    "SourceDocumentInput",
-  ] as readonly string[],
-  /** Details tab — loaded lazily when the tab mounts */
-  details: [
-    "BatchActions",
-    "Calendar",
-    "Common",
-    "DateFilter",
-    "DateRangeFilter",
-    "DetailsTab",
-    "LedgerEntryDetail",
-    "Settings",
-  ] as readonly string[],
-  /** Stats tab — loaded lazily when the tab mounts */
-  stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"] as readonly string[],
-  /** Settings tab — loaded lazily when the tab mounts */
-  settings: [
-    "CategoriesPage",
-    "Devices",
-    "LedgerError",
-    "PullToRefresh",
-    "ServiceCredentials",
-    "Settings",
-  ] as readonly string[],
-};
+import featureMessages from "./client-feature-message-map.json";
+
+export const FEATURE_MESSAGES = featureMessages;
 
 /**
  * Pick only the specified namespaces from a messages object.

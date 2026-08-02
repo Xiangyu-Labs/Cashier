@@ -6,6 +6,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { ledgerSyncState, sourceDocuments } from "@/persistence";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
+import { serverComposition } from "@/application/server-composition-root";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import { OFFLINE_DOCUMENT_LIMIT } from "./offline-constants";
 
@@ -26,12 +27,19 @@ async function collectSnapshotRows(ledgerId: string) {
   const items: SourceDocumentListItemDto[] = [];
   let cursor: string | undefined;
   do {
-    const page = await listSourceDocuments(ledgerId, {
-      limit: Math.min(100, OFFLINE_DOCUMENT_LIMIT - items.length),
-      includeEntries: true,
-      includeFiles: true,
-      ...(cursor != null ? { cursor } : {}),
-    });
+    const page = await listSourceDocuments(
+      ledgerId,
+      {
+        limit: Math.min(100, OFFLINE_DOCUMENT_LIMIT - items.length),
+        includeEntries: true,
+        includeFiles: true,
+        ...(cursor != null ? { cursor } : {}),
+      },
+      {
+        documents: serverComposition.sourceDocumentReads,
+        ledgerReads: serverComposition.ledgerReads,
+      }
+    );
     items.push(...page.items);
     cursor = page.nextCursor ?? undefined;
   } while (cursor != null && items.length < OFFLINE_DOCUMENT_LIMIT);

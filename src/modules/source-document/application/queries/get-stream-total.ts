@@ -1,4 +1,4 @@
-import { currentApplication } from "@/application/current";
+import type { SourceDocumentReadPort } from "../ports";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import type { StreamTotalDto } from "../../contracts";
 import { normalizeSearchTerm } from "@/lib/search";
@@ -14,7 +14,8 @@ export interface GetStreamTotalInput {
 
 export async function getStreamTotal(
   ledgerId: string,
-  input: GetStreamTotalInput = {}
+  input: GetStreamTotalInput = {},
+  documents: SourceDocumentReadPort
 ): Promise<StreamTotalDto> {
   if (
     input.statuses != null &&
@@ -27,7 +28,7 @@ export async function getStreamTotal(
   const search = normalizeSearchTerm(input.search);
   const filters = { ...input };
   delete filters.search;
-  return currentApplication.sourceDocumentReads.calculateCompletedTotal({
+  return documents.calculateCompletedTotal({
     ledgerId,
     ...filters,
     ...(search != null ? { search } : {}),

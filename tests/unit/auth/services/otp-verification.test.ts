@@ -4,7 +4,15 @@ import { getTestDb } from "tests/setup";
 import { otpTokens } from "@/persistence/schema/auth";
 import { hashOTP } from "@/modules/auth/services/otp";
 import { db } from "@/lib/db";
-import { findOTPRecord, isAccountLocked } from "@/modules/auth/services/otp-verification";
+import {
+  findOTPRecord as findOTPRecordWithPort,
+  isAccountLocked as isAccountLockedWithPort,
+} from "@/modules/auth/services/otp-verification";
+import { serverComposition } from "@/application/server-composition-root";
+
+const findOTPRecord = (email: string) => findOTPRecordWithPort(email, serverComposition.otpTokens);
+const isAccountLocked = (email: string) =>
+  isAccountLockedWithPort(email, serverComposition.otpTokens);
 
 describe("otp-verification service", () => {
   it("findOTPRecord is case-insensitive for email input", async () => {

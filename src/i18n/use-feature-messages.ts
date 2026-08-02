@@ -1,22 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import { pickMessages, FEATURE_MESSAGES } from "./client-feature-messages";
-
-// Static import map per locale — each import path is explicit so bundlers
-// can analyze it statically and create separate chunks.
-const MESSAGE_LOADERS: Record<string, () => Promise<Record<string, unknown>>> = {
-  en: () => import("../../messages/en.json").then((m) => m.default as Record<string, unknown>),
-  zh: () => import("../../messages/zh.json").then((m) => m.default as Record<string, unknown>),
-};
+import { FEATURE_MESSAGES } from "./client-feature-messages";
 
 const messagePromises = new Map<string, Promise<Record<string, unknown>>>();
+const FEATURE_MESSAGE_API_VERSION = "2";
 
-export function preloadFeatureMessages(locale: string): Promise<Record<string, unknown>> {
-  const normalizedLocale = MESSAGE_LOADERS[locale] != null ? locale : "en";
-  const existing = messagePromises.get(normalizedLocale);
+export function preloadFeatureMessages(
+  locale: string,
+  feature: keyof typeof FEATURE_MESSAGES
+): Promise<Record<string, unknown>> {
+  const normalizedLocale = locale === "zh" ? "zh" : "en";
+  const cacheKey = `${normalizedLocale}:${feature}`;
+  const existing = messagePromises.get(cacheKey);
   if (existing != null) return existing;
-  const promise = MESSAGE_LOADERS[normalizedLocale]!();
-  messagePromises.set(normalizedLocale, promise);
+  const promise = fetch(
+    `/api/i18n/${normalizedLocale}/${feature}?v=${FEATURE_MESSAGE_API_VERSION}`,
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+    }
+  )
+    .then(async (response) => {
+      if (!response.ok) throw new Error("Unable to load feature messages");
+      return (await response.json()) as Record<string, unknown>;
+    })
+    .catch((error: unknown) => {
+      messagePromises.delete(cacheKey);
+      throw error;
+    });
+  messagePromises.set(cacheKey, promise);
   return promise;
 }
 
@@ -36,9 +48,9 @@ export function useFeatureMessages(
 
   useEffect(() => {
     let cancelled = false;
-    preloadFeatureMessages(locale).then((full) => {
+    preloadFeatureMessages(locale, feature).then((loaded) => {
       if (cancelled) return;
-      setMessages(pickMessages(full, FEATURE_MESSAGES[feature]));
+      setMessages(loaded);
     });
     return () => {
       cancelled = true;

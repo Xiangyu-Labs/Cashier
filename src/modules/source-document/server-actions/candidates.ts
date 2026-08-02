@@ -17,6 +17,7 @@ import { getSourceDocumentCandidateReview } from "@/application/adapters/postgre
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
+import { serverComposition } from "@/application/server-composition-root";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
@@ -39,7 +40,10 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
     AcceptCandidateResponseDto &
       Partial<{ reconciliation: AcceptCandidateReconciliationDto["reconciliation"] }>
   > => {
-    const result = await acceptSourceDocumentCandidate({ ledgerId, sourceDocumentId, revisionId });
+    const result = await acceptSourceDocumentCandidate(
+      { ledgerId, sourceDocumentId, revisionId },
+      serverComposition.sourceDocumentLifecycle
+    );
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
@@ -95,7 +99,10 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
     AbandonCandidateResponseDto &
       Partial<{ reconciliation: AbandonCandidateReconciliationDto["reconciliation"] }>
   > => {
-    const result = await abandonSourceDocumentCandidate({ ledgerId, sourceDocumentId, revisionId });
+    const result = await abandonSourceDocumentCandidate(
+      { ledgerId, sourceDocumentId, revisionId },
+      serverComposition.sourceDocumentLifecycle
+    );
 
     if (operationId != null) {
       // Read authoritative updatedAt from DB
@@ -144,11 +151,10 @@ export const cancelSourceDocumentProcessingAction = withSourceDocumentLedgerAcce
     CancelProcessingResponseDto &
       Partial<{ reconciliation: CancelProcessingReconciliationDto["reconciliation"] }>
   > => {
-    const result = await cancelSourceDocumentProcessing({
-      ledgerId,
-      sourceDocumentId,
-      revisionId,
-    });
+    const result = await cancelSourceDocumentProcessing(
+      { ledgerId, sourceDocumentId, revisionId },
+      serverComposition.sourceDocumentLifecycle
+    );
     if (operationId == null) return result;
     return {
       ...result,

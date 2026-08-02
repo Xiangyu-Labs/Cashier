@@ -1,10 +1,10 @@
-import { currentApplication } from "@/application/current";
 import { ValidationError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
 import { compare } from "@/lib/money/decimal";
+import type { SourceDocumentQueryPorts } from "../ports";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -106,7 +106,8 @@ function validateCursor(cursor: string | null | undefined, ledgerId: string): st
 
 export async function listStreamPage(
   ledgerId: string,
-  input: ListStreamPageInput
+  input: ListStreamPageInput,
+  ports: SourceDocumentQueryPorts
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
@@ -125,7 +126,7 @@ export async function listStreamPage(
     throw error;
   }
 
-  const page = await currentApplication.sourceDocumentReads.list({
+  const page = await ports.documents.list({
     ledgerId,
     ...(input.statuses != null && input.statuses.length > 0
       ? { statuses: input.statuses as unknown as SourceDocumentStatusType[] }
@@ -140,10 +141,10 @@ export async function listStreamPage(
   });
 
   // Batch-load ledger entries for items that need them (completed cards etc.)
-  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds({
-    ledgerId,
-    sourceDocumentIds: page.items.map((item) => item.id),
-  });
+  const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
+    { ledgerId, sourceDocumentIds: page.items.map((item) => item.id) },
+    ports.ledgerReads
+  );
 
   const items = page.items.map((item) => ({
     ...item,

@@ -1,7 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
 import { currencyRates } from "@/persistence/schema/currency";
+import { ledgers } from "@/persistence";
 import { convertCurrencyAction, batchConvertCurrencyAction } from "@/modules/currency/actions";
+
+const TEST_LEDGER_ID = "10000000-0000-4000-8000-000000000001";
+
+vi.mock("@/auth", () => ({
+  auth: vi.fn().mockResolvedValue({ user: { id: "00000000-0000-0000-0000-000000000000" } }),
+}));
 
 /**
  * Helper to insert test exchange rates into the database
@@ -25,50 +32,54 @@ describe("Currency Actions", () => {
   };
 
   beforeEach(async () => {
+    await getTestDb().insert(ledgers).values({
+      id: TEST_LEDGER_ID,
+      userId: "00000000-0000-0000-0000-000000000000",
+    });
     // Insert test exchange rates (real database insert, no mock)
     await insertTestRates(testDate, testRates);
   });
 
   describe("convertCurrencyAction", () => {
     it("converts same currency (no-op)", async () => {
-      const result = await convertCurrencyAction(100, "CNY", "CNY");
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 100, "CNY", "CNY");
       expect(result.converted).toBe("100");
     });
 
     it("converts CNY to USD", async () => {
-      const result = await convertCurrencyAction(100, "CNY", "USD", testDate);
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 100, "CNY", "USD", testDate);
       // CNY rate: 7.5, USD rate: 1.1
       // 100 CNY = 100 * (1.1 / 7.5) = 14.67 USD
       expect(Number.parseFloat(result.converted)).toBeCloseTo(14.67, 1);
     });
 
     it("converts USD to CNY", async () => {
-      const result = await convertCurrencyAction(100, "USD", "CNY", testDate);
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 100, "USD", "CNY", testDate);
       // 100 USD = 100 * (7.5 / 1.1) = 681.82 CNY
       expect(Number.parseFloat(result.converted)).toBeCloseTo(681.82, 1);
     });
 
     it("converts EUR (base currency) to CNY", async () => {
-      const result = await convertCurrencyAction(100, "EUR", "CNY", testDate);
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 100, "EUR", "CNY", testDate);
       // EUR rate: 1.0 (base), CNY rate: 7.5
       // 100 EUR = 100 * (7.5 / 1.0) = 750 CNY
       expect(Number.parseFloat(result.converted)).toBeCloseTo(750, 0);
     });
 
     it("returns error for missing amount", async () => {
-      await expect(convertCurrencyAction(0, "CNY", "USD")).rejects.toThrow(
+      await expect(convertCurrencyAction(TEST_LEDGER_ID, 0, "CNY", "USD")).rejects.toThrow(
         "Missing required parameters"
       );
     });
 
     it("returns error for missing fromCurrency", async () => {
-      await expect(convertCurrencyAction(100, "", "USD")).rejects.toThrow(
+      await expect(convertCurrencyAction(TEST_LEDGER_ID, 100, "", "USD")).rejects.toThrow(
         "Missing required parameters"
       );
     });
 
     it("returns error for missing toCurrency", async () => {
-      await expect(convertCurrencyAction(100, "CNY", "")).rejects.toThrow(
+      await expect(convertCurrencyAction(TEST_LEDGER_ID, 100, "CNY", "")).rejects.toThrow(
         "Missing required parameters"
       );
     });
@@ -82,7 +93,7 @@ describe("Currency Actions", () => {
         { amount: 1000, currency: "JPY", date: testDate },
       ];
 
-      const result = await batchConvertCurrencyAction(items, "EUR");
+      const result = await batchConvertCurrencyAction(TEST_LEDGER_ID, items, "EUR");
       expect(result.results).toHaveLength(3);
 
       // CNY 100 -> EUR: 100 / 7.5 = 13.33
@@ -99,26 +110,27 @@ describe("Currency Actions", () => {
         { amount: 200, currency: "CNY", date: testDate },
       ];
 
-      const result = await batchConvertCurrencyAction(items, "CNY");
+      const result = await batchConvertCurrencyAction(TEST_LEDGER_ID, items, "CNY");
       expect(result.results).toEqual(["100", "200"]);
     });
 
     it("handles items without currency (passes through amount)", async () => {
       const items = [{ amount: 100, currency: "", date: testDate }];
 
-      const result = await batchConvertCurrencyAction(items, "CNY");
-      expect(result.results).toEqual(["100"]);
+      await expect(batchConvertCurrencyAction(TEST_LEDGER_ID, items, "CNY")).rejects.toThrow(
+        "Currency not found"
+      );
     });
 
     it("returns error for empty items array", async () => {
-      await expect(batchConvertCurrencyAction([], "CNY")).rejects.toThrow(
+      await expect(batchConvertCurrencyAction(TEST_LEDGER_ID, [], "CNY")).rejects.toThrow(
         "Missing required parameters"
       );
     });
 
     it("returns error for missing target currency", async () => {
       const items = [{ amount: 100, currency: "CNY" }];
-      await expect(batchConvertCurrencyAction(items, "")).rejects.toThrow(
+      await expect(batchConvertCurrencyAction(TEST_LEDGER_ID, items, "")).rejects.toThrow(
         "Missing required parameters"
       );
     });
@@ -136,7 +148,7 @@ describe("Currency Actions", () => {
         { amount: 100, currency: "CNY", date: anotherDate },
       ];
 
-      const result = await batchConvertCurrencyAction(items, "USD");
+      const result = await batchConvertCurrencyAction(TEST_LEDGER_ID, items, "USD");
       expect(result.results).toHaveLength(2);
       // Different rates should produce different results
       // Date 1: 100 * (1.1 / 7.5) = 14.67
@@ -153,7 +165,7 @@ describe("Currency Actions", () => {
         { amount: 40, currency: "JPY", date: testDate },
       ];
 
-      const result = await batchConvertCurrencyAction(items, "EUR");
+      const result = await batchConvertCurrencyAction(TEST_LEDGER_ID, items, "EUR");
       expect(result.results).toHaveLength(4);
       // Results should be in same order as input
       // USD 10 -> EUR: 10 / 1.1 = 9.09

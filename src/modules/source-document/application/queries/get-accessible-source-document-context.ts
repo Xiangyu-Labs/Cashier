@@ -1,6 +1,5 @@
-import { currentApplication } from "@/application/current";
 import { AppError } from "@/lib/errors";
-import { requireLedgerAccess } from "@/modules/ledger/access";
+import type { SourceDocumentReadPort } from "../ports";
 
 export interface AccessibleSourceDocumentContext {
   ledgerId: string;
@@ -8,12 +7,14 @@ export interface AccessibleSourceDocumentContext {
 }
 
 export async function getAccessibleSourceDocumentContext(
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  documents: SourceDocumentReadPort,
+  authorizeLedger: (ledgerId: string) => Promise<unknown>
 ): Promise<AccessibleSourceDocumentContext | null> {
-  const context = await currentApplication.sourceDocumentReads.getAccessContext(sourceDocumentId);
+  const context = await documents.getAccessContext(sourceDocumentId);
   if (context == null) return null;
   try {
-    await requireLedgerAccess(context.ledgerId);
+    await authorizeLedger(context.ledgerId);
     return context;
   } catch (error) {
     if (error instanceof AppError) return null;

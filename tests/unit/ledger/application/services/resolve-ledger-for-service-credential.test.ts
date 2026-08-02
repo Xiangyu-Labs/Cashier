@@ -11,7 +11,11 @@ vi.mock("@/lib/error-handlers", () => ({
   logError: logErrorMock,
 }));
 
-import { resolveLedgerForServiceCredential } from "@/modules/ledger/application/services/resolve-ledger-for-service-credential";
+import { resolveLedgerForServiceCredential as resolveLedgerForServiceCredentialUseCase } from "@/modules/ledger/application/services/resolve-ledger-for-service-credential";
+import { serverComposition } from "@/application/server-composition-root";
+
+const resolveLedgerForServiceCredential = (credentialId: string) =>
+  resolveLedgerForServiceCredentialUseCase(credentialId, serverComposition.ledgers);
 
 describe("resolveLedgerForServiceCredential", () => {
   let ledgerId = "";

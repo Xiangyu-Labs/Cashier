@@ -1,10 +1,11 @@
-import { currentApplication } from "@/application/current";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
 import type { SourceDocumentLightWithEntriesDto } from "@/modules/source-document/contracts";
 import { getAccessibleSourceDocumentContext } from "./get-accessible-source-document-context";
+import type { SourceDocumentDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentQueryPorts } from "../ports";
 
 function toLightDto(
-  document: NonNullable<Awaited<ReturnType<typeof currentApplication.sourceDocumentReads.get>>>,
+  document: SourceDocumentDto,
   ledgerEntries: SourceDocumentLightWithEntriesDto["ledgerEntries"],
   hasImages: boolean
 ): SourceDocumentLightWithEntriesDto {
@@ -31,20 +32,26 @@ function toLightDto(
 }
 
 export async function getSourceDocumentLight(
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  ports: SourceDocumentQueryPorts,
+  authorizeLedger: (ledgerId: string) => Promise<unknown>
 ): Promise<SourceDocumentLightWithEntriesDto | null> {
-  const accessContext = await getAccessibleSourceDocumentContext(sourceDocumentId);
+  const accessContext = await getAccessibleSourceDocumentContext(
+    sourceDocumentId,
+    ports.documents,
+    authorizeLedger
+  );
 
   if (accessContext == null) {
     return null;
   }
 
   const [document, entriesByDocId] = await Promise.all([
-    currentApplication.sourceDocumentReads.get(accessContext.ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds({
-      ledgerId: accessContext.ledgerId,
-      sourceDocumentIds: [sourceDocumentId],
-    }),
+    ports.documents.get(accessContext.ledgerId, sourceDocumentId),
+    listLedgerEntryViewsBySourceDocumentIds(
+      { ledgerId: accessContext.ledgerId, sourceDocumentIds: [sourceDocumentId] },
+      ports.ledgerReads
+    ),
   ]);
 
   if (document == null) {
@@ -60,14 +67,15 @@ export async function getSourceDocumentLight(
 
 export async function getSourceDocumentLightForLedger(
   ledgerId: string,
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  ports: SourceDocumentQueryPorts
 ): Promise<SourceDocumentLightWithEntriesDto | null> {
   const [document, entriesByDocId] = await Promise.all([
-    currentApplication.sourceDocumentReads.get(ledgerId, sourceDocumentId),
-    listLedgerEntryViewsBySourceDocumentIds({
-      ledgerId,
-      sourceDocumentIds: [sourceDocumentId],
-    }),
+    ports.documents.get(ledgerId, sourceDocumentId),
+    listLedgerEntryViewsBySourceDocumentIds(
+      { ledgerId, sourceDocumentIds: [sourceDocumentId] },
+      ports.ledgerReads
+    ),
   ]);
   if (document == null) return null;
 

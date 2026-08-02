@@ -1,5 +1,5 @@
-import { cancelPendingRevision } from "@/application/adapters/postgres";
 import type { CancelProcessingResponseDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentLifecyclePort } from "../ports";
 
 interface CancelSourceDocumentProcessingInput {
   ledgerId: string;
@@ -7,10 +7,9 @@ interface CancelSourceDocumentProcessingInput {
   revisionId: string;
 }
 
-export async function cancelSourceDocumentProcessing({
-  ledgerId,
-  sourceDocumentId,
-  revisionId,
-}: CancelSourceDocumentProcessingInput): Promise<CancelProcessingResponseDto> {
-  return cancelPendingRevision(ledgerId, sourceDocumentId, revisionId);
+export async function cancelSourceDocumentProcessing(
+  { ledgerId, sourceDocumentId, revisionId }: CancelSourceDocumentProcessingInput,
+  lifecycle: SourceDocumentLifecyclePort
+): Promise<CancelProcessingResponseDto> {
+  return lifecycle.cancelPending(ledgerId, sourceDocumentId, revisionId);
 }

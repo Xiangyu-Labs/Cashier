@@ -106,4 +106,51 @@ describe("email change challenges", () => {
     });
     expect(original).toBeDefined();
   });
+
+  it("does not lose concurrent failed verification attempts", async () => {
+    const db = getTestDb();
+    await db.insert(emailChangeChallenges).values({
+      userId,
+      newEmail: "new@example.com",
+      tokenHash: hashOTP("123456"),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 3 }, () => verifyEmailChangeCodeAction("new@example.com", "000000"))
+    );
+    expect(attempts.every((attempt) => attempt.status === "rejected")).toBe(true);
+
+    const challenge = await db.query.emailChangeChallenges.findFirst({
+      where: eq(emailChangeChallenges.userId, userId),
+    });
+    expect(challenge?.attempts).toBe(3);
+  });
+
+  it("consumes a successful challenge only once under concurrency", async () => {
+    const db = getTestDb();
+    await db.insert(emailChangeChallenges).values({
+      userId,
+      newEmail: "new@example.com",
+      tokenHash: hashOTP("123456"),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const outcomes = await Promise.allSettled([
+      verifyEmailChangeCodeAction("new@example.com", "123456"),
+      verifyEmailChangeCodeAction("new@example.com", "123456"),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
+    expect(
+      await db.query.emailChangeChallenges.findFirst({
+        where: eq(emailChangeChallenges.userId, userId),
+      })
+    ).toBeUndefined();
+    expect(
+      await db.query.users.findFirst({
+        where: and(eq(users.id, userId), eq(users.email, "new@example.com")),
+      })
+    ).toBeDefined();
+  });
 });

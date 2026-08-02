@@ -1,5 +1,4 @@
 import type { SettingsPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import { NotFoundError } from "@/lib/errors";
 import type { UpdateLedgerInput } from "@/modules/ledger/contract-schemas";
 import type { LedgerDto } from "@/modules/ledger/contracts";
@@ -9,7 +8,7 @@ export async function updateLedger(
   userId: string,
   ledgerId: string,
   data: UpdateLedgerInput,
-  settings: SettingsPort = currentApplication.settings
+  settings: SettingsPort
 ): Promise<LedgerDto> {
   const updated = await settings.update({
     ledgerId,

@@ -76,6 +76,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   const { converted } = useConvertedAmount(
+    ledgerEntry.ledgerId,
     displayData.amount,
     displayData.currency,
     mainCurrency,

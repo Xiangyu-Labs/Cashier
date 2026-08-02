@@ -193,8 +193,9 @@ describe("queryKeys", () => {
 
   describe("currency keys", () => {
     it("应该生成正确的convert query key", () => {
-      expect(queryKeys.convert(100, "USD", "CNY")).toEqual([
+      expect(queryKeys.convert(ledgerId, 100, "USD", "CNY")).toEqual([
         "convert",
+        ledgerId,
         100,
         "USD",
         "CNY",
@@ -203,8 +204,9 @@ describe("queryKeys", () => {
     });
 
     it("应该生成带日期的convert query key", () => {
-      expect(queryKeys.convert(100, "USD", "CNY", "2024-01-01")).toEqual([
+      expect(queryKeys.convert(ledgerId, 100, "USD", "CNY", "2024-01-01")).toEqual([
         "convert",
+        ledgerId,
         100,
         "USD",
         "CNY",

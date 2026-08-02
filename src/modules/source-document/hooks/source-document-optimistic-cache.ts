@@ -4,6 +4,56 @@ import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 
+export type SourceDocumentEntityStore = Record<string, SourceDocumentListItemDto>;
+
+export function seedSourceDocumentEntities(
+  queryClient: QueryClient,
+  ledgerId: string,
+  items: readonly SourceDocumentListItemDto[]
+): void {
+  queryClient.setQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId),
+    (current = {}) => {
+      let changed = false;
+      const next = { ...current };
+      for (const item of items) {
+        if (next[item.id] == null) {
+          next[item.id] = item;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    }
+  );
+}
+
+export function upsertSourceDocumentEntity(
+  queryClient: QueryClient,
+  ledgerId: string,
+  item: SourceDocumentListItemDto
+): void {
+  queryClient.setQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId),
+    (current = {}) => ({ ...current, [item.id]: item })
+  );
+}
+
+function deleteSourceDocumentEntity(
+  queryClient: QueryClient,
+  ledgerId: string,
+  itemId: string
+): void {
+  queryClient.setQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId),
+    (current = {}) => {
+      if (current[itemId] == null) return current;
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Optimistic Stream cache helpers
 // ---------------------------------------------------------------------------
@@ -115,6 +165,7 @@ export function applyOptimisticUpsert(
   item: SourceDocumentListItemDto,
   updateDetail = true
 ): void {
+  upsertSourceDocumentEntity(queryClient, ledgerId, item);
   const matches = getStreamQueryMatches(queryClient, ledgerId);
 
   for (const [queryKey, data] of matches) {
@@ -162,6 +213,42 @@ export function applyOptimisticUpsert(
   if (updateDetail) upsertDetailCache(queryClient, ledgerId, item);
 }
 
+/** Applies a server delta without guessing membership or ordering for uncached entities. */
+export function applyServerRefreshUpsert(
+  queryClient: QueryClient,
+  ledgerId: string,
+  item: SourceDocumentListItemDto
+): void {
+  upsertSourceDocumentEntity(queryClient, ledgerId, item);
+  for (const [queryKey, data] of getStreamQueryMatches(queryClient, ledgerId)) {
+    if (data == null) continue;
+    const existing = data.pages.flatMap((page) => page.items).find((value) => value.id === item.id);
+    const filters = extractFiltersFromQueryKey(queryKey);
+    const belongs = filters == null || itemMatchesFilters(item, filters);
+    const previouslyBelonged =
+      existing != null && (filters == null || itemMatchesFilters(existing, filters));
+    const orderingChanged =
+      existing != null &&
+      ((existing.entryDate ?? existing.createdAt.slice(0, 10)) !==
+        (item.entryDate ?? item.createdAt.slice(0, 10)) ||
+        existing.createdAt !== item.createdAt);
+
+    if (existing == null || belongs !== previouslyBelonged || orderingChanged) {
+      void queryClient.resetQueries({ queryKey, exact: true });
+      continue;
+    }
+    if (!belongs) continue;
+    queryClient.setQueryData<InfiniteData<StreamPage>>(queryKey, {
+      ...data,
+      pages: data.pages.map((page) => ({
+        ...page,
+        items: page.items.map((value) => (value.id === item.id ? item : value)),
+      })),
+    });
+  }
+  upsertDetailCache(queryClient, ledgerId, item);
+}
+
 /**
  * Apply an optimistic delete of a source document from the Stream cache.
  */
@@ -170,6 +257,7 @@ export function applyOptimisticDelete(
   ledgerId: string,
   itemId: string
 ): void {
+  deleteSourceDocumentEntity(queryClient, ledgerId, itemId);
   const matches = getStreamQueryMatches(queryClient, ledgerId);
 
   for (const [queryKey, data] of matches) {

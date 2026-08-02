@@ -1,5 +1,6 @@
 import OTPEmail from "@/emails/otp-email";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { RateLimitError, AppError } from "@/lib/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { normalizeEmail, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
@@ -15,8 +16,8 @@ import {
   setResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP } from "@/modules/auth/services/otp";
-import type { EmailDeliveryPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
+import type { EmailDeliveryPort, OtpTokenPort } from "@/application/contracts";
+import type { RateLimitPort } from "../ports";
 
 type OTPAuthEmailMessages = {
   otpSubject: string;
@@ -60,7 +61,11 @@ export async function sendOTP(
     host: string;
     locale?: SupportedLocale;
   },
-  emailDelivery: EmailDeliveryPort = currentApplication.email
+  dependencies: {
+    emailDelivery: EmailDeliveryPort;
+    tokens: OtpTokenPort;
+    rateLimiter: RateLimitPort;
+  }
 ): Promise<{
   expiresIn: number;
   expiresAt: number;
@@ -69,10 +74,10 @@ export async function sendOTP(
   try {
     const normalizedEmail = normalizeEmail(params.email);
 
-    const cooldownCheck = await checkResendCooldown(normalizedEmail);
+    const cooldownCheck = await checkResendCooldown(normalizedEmail, dependencies.rateLimiter);
     if (!cooldownCheck.allowed) {
       logger.warn(
-        { email: normalizedEmail, retryAfter: cooldownCheck.retryAfter },
+        { subject: logIdentifier("email", normalizedEmail), retryAfter: cooldownCheck.retryAfter },
         "OTP resend cooldown active"
       );
       throw new RateLimitError(
@@ -81,18 +86,21 @@ export async function sendOTP(
       );
     }
 
-    const emailRateLimit = await checkSendRateLimit(normalizedEmail);
+    const emailRateLimit = await checkSendRateLimit(normalizedEmail, dependencies.rateLimiter);
     if (!emailRateLimit.allowed) {
-      logger.warn({ email: normalizedEmail }, "OTP send rate limit exceeded");
+      logger.warn(
+        { subject: logIdentifier("email", normalizedEmail) },
+        "OTP send rate limit exceeded"
+      );
       throw new RateLimitError(
         "Too many requests. Please try again later.",
         emailRateLimit.retryAfter
       );
     }
 
-    const ipRateLimit = await checkSendRateLimitByIP(params.ip);
+    const ipRateLimit = await checkSendRateLimitByIP(params.ip, dependencies.rateLimiter);
     if (!ipRateLimit.allowed) {
-      logger.warn({ ip: params.ip }, "OTP send IP rate limit exceeded");
+      logger.warn({ subject: logIdentifier("ip", params.ip) }, "OTP send IP rate limit exceeded");
       throw new RateLimitError(
         "Too many requests from this IP. Please try again later.",
         ipRateLimit.retryAfter
@@ -104,13 +112,18 @@ export async function sendOTP(
     }
 
     const otp = generateOTP();
-    const { expiresAt } = await createOTPToken(normalizedEmail, otp, params.ip);
+    const { expiresAt } = await createOTPToken(
+      normalizedEmail,
+      otp,
+      dependencies.tokens,
+      params.ip === "unknown" ? undefined : params.ip
+    );
 
     try {
       const locale = params.locale ?? DEFAULT_LOCALE;
       const expiresInMinutes = 5;
       const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
-      const delivery = await emailDelivery.send({
+      const delivery = await dependencies.emailDelivery.send({
         from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
         to: normalizedEmail,
         subject,
@@ -119,19 +132,25 @@ export async function sendOTP(
       if (delivery === "not_configured") {
         throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
       } else {
-        logger.info({ email: normalizedEmail }, "OTP email sent successfully");
+        logger.info(
+          { subject: logIdentifier("email", normalizedEmail) },
+          "OTP email sent successfully"
+        );
       }
     } catch (error) {
-      logger.error({ error, email: normalizedEmail }, "Failed to send OTP email");
+      logger.error(
+        { error, subject: logIdentifier("email", normalizedEmail) },
+        "Failed to send OTP email"
+      );
       throw new AppError(
         "Failed to send verification code. Please try again.",
         "EMAIL_SEND_FAILED"
       );
     }
 
-    await setResendCooldown(normalizedEmail);
+    await setResendCooldown(normalizedEmail, dependencies.rateLimiter);
 
-    const canResendAt = await getCanResendAt(normalizedEmail);
+    const canResendAt = await getCanResendAt(normalizedEmail, dependencies.rateLimiter);
     const expiresIn = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
 
     return {

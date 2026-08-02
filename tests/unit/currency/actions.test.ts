@@ -4,6 +4,15 @@ import type { BatchConversionItem } from "@/modules/currency/contracts";
 import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
 
+vi.mock("@/modules/ledger/access", () => ({
+  withLedgerAccess:
+    (action: (...args: unknown[]) => Promise<unknown>) =>
+    (...args: unknown[]) =>
+      action(...args),
+}));
+
+const LEDGER_ID = "10000000-0000-4000-8000-000000000001";
+
 vi.mock("../../../src/modules/currency/application/use-cases/convert-currency", () => ({
   convertCurrency: vi.fn(),
 }));
@@ -20,14 +29,17 @@ describe("currency actions", () => {
   it("delegates single conversion to the application use-case", async () => {
     vi.mocked(convertCurrency).mockResolvedValue({ converted: "14.67" });
 
-    const result = await convertCurrencyAction(100, "CNY", "USD", "2026-02-04");
+    const result = await convertCurrencyAction(LEDGER_ID, 100, "CNY", "USD", "2026-02-04");
 
-    expect(convertCurrency).toHaveBeenCalledWith({
-      amount: 100,
-      from: "CNY",
-      to: "USD",
-      date: "2026-02-04",
-    });
+    expect(convertCurrency).toHaveBeenCalledWith(
+      {
+        amount: 100,
+        from: "CNY",
+        to: "USD",
+        date: "2026-02-04",
+      },
+      expect.objectContaining({ convert: expect.any(Function) })
+    );
     expect(result).toEqual({ converted: "14.67" });
   });
 
@@ -42,7 +54,7 @@ describe("currency actions", () => {
       { convertedAmount: "50", exchangeRate: "1" },
     ]);
 
-    const result = await batchConvertCurrencyAction(items, "EUR");
+    const result = await batchConvertCurrencyAction(LEDGER_ID, items, "EUR");
 
     expect(convertAmountsBatch).toHaveBeenCalledWith(
       [
@@ -60,10 +72,7 @@ describe("currency actions", () => {
         },
       ],
       "EUR",
-      {
-        allowBlankSourceCurrency: true,
-        fallbackToOriginalAmountOnMissingRate: true,
-      }
+      expect.objectContaining({ getRates: expect.any(Function) })
     );
     expect(result).toEqual({ results: ["13.33", "50"] });
   });

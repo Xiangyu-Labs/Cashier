@@ -10,7 +10,11 @@ vi.mock("@/lib/error-handlers", () => ({
   logError: logErrorMock,
 }));
 
-import { authenticateServiceCredential } from "@/modules/ledger/application/services/authenticate-service-credential";
+import { authenticateServiceCredential as authenticateServiceCredentialUseCase } from "@/modules/ledger/application/services/authenticate-service-credential";
+import { serverComposition } from "@/application/server-composition-root";
+
+const authenticateServiceCredential = (key: string) =>
+  authenticateServiceCredentialUseCase(key, serverComposition.serviceCredentials);
 
 function hashFields(token: string) {
   const { prefix, suffix } = prefixSuffix(token);

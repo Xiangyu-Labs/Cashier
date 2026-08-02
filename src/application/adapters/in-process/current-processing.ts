@@ -12,8 +12,10 @@ import {
 import type { ProcessingFailureCode, ProcessingIntentContract } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { CurrentRevisionProcessor } from "./revision-processor";
+import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
 
 function toFailureCode(error: unknown): ProcessingFailureCode {
+  if (error instanceof ProcessingFailure) return error.code;
   if (error instanceof AppError) {
     switch (error.code) {
       case "RATE_LIMIT":

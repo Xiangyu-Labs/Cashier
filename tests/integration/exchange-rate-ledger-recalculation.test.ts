@@ -6,7 +6,8 @@ import {
   initializeExchangeRateLedgerRecalculationOrchestration,
   onExchangeRatesStored,
 } from "@/lib/orchestration/exchange-rate-ledger-recalculation";
-import { batchConvertCurrencyAction } from "@/modules/currency/actions";
+import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
+import { ExchangeRateService } from "@/application/adapters/postgres/exchange-rate";
 
 const { recalculateEntriesConvertedAmountMock } = vi.hoisted(() => ({
   recalculateEntriesConvertedAmountMock: vi.fn().mockResolvedValue(undefined),
@@ -58,8 +59,16 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     await onExchangeRatesStored();
 
     expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(2);
-    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger1Id, "USD");
-    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledger2Id, "CNY");
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(
+      ledger1Id,
+      "USD",
+      expect.any(Object)
+    );
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(
+      ledger2Id,
+      "CNY",
+      expect.any(Object)
+    );
   });
 
   it("triggers recalculation only when rates are first stored after orchestration is initialized", async () => {
@@ -95,9 +104,10 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     initializeExchangeRateLedgerRecalculationOrchestration();
 
     let firstConversionSettled = false;
-    const firstConversion = batchConvertCurrencyAction(
-      [{ amount: 1, currency: "USD", date: "2024-02-10" }],
-      "CNY"
+    const firstConversion = convertAmountsBatch(
+      [{ amount: "1", fromCurrency: "USD", date: "2024-02-10" }],
+      "CNY",
+      ExchangeRateService
     ).then((result) => {
       firstConversionSettled = true;
       return result;
@@ -105,7 +115,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
 
     await vi.waitFor(() => {
       expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledTimes(1);
-      expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "CNY");
+      expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(
+        ledgerId,
+        "CNY",
+        expect.any(Object)
+      );
     });
     expect(firstConversionSettled).toBe(false);
 
@@ -118,7 +132,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
 
     recalculateEntriesConvertedAmountMock.mockClear();
 
-    await batchConvertCurrencyAction([{ amount: 1, currency: "USD", date: "2024-02-10" }], "CNY");
+    await convertAmountsBatch(
+      [{ amount: "1", fromCurrency: "USD", date: "2024-02-10" }],
+      "CNY",
+      ExchangeRateService
+    );
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(recalculateEntriesConvertedAmountMock).not.toHaveBeenCalled();
@@ -146,7 +164,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     });
 
     await expect(onExchangeRatesStored()).resolves.toBeUndefined();
-    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(ledgerId, "JPY");
+    expect(recalculateEntriesConvertedAmountMock).toHaveBeenCalledWith(
+      ledgerId,
+      "JPY",
+      expect.any(Object)
+    );
 
     const persisted = await db.query.ledgers.findFirst({
       where: eq(ledgers.id, ledgerId),

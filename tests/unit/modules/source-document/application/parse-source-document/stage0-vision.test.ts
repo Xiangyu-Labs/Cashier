@@ -4,18 +4,6 @@ import {
   type ParserInput,
 } from "@/modules/source-document/application/parse-source-document/parser";
 import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
-import { loadStoredFilesForAI } from "@/lib/storage/utils";
-
-// Mock image loading so tests don't need real storage
-vi.mock("@/lib/storage/utils", () => ({
-  isSuccessfulLoadImageResult: (result: { success: boolean }) => result.success,
-  loadImagesForAI: vi.fn(async (urls: string[]) =>
-    urls.map((url) => ({ url, dataUrl: `data:image/png;base64,STORED`, success: true }))
-  ),
-  loadStoredFilesForAI: vi.fn(async (_ledgerId: string, ids: string[]) =>
-    ids.map((id) => ({ url: id, dataUrl: `data:image/png;base64,STORED`, success: true }))
-  ),
-}));
 
 const SIMPLE_SUCCESS_RESPONSE = {
   outcome: "success",
@@ -53,7 +41,7 @@ function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOpt
 }
 
 function executeStage0(input: ParserInput, ai: AIContext) {
-  return executeParser({ ledgerId: "ledger-1", ...input }, ai);
+  return executeParser(input, ai);
 }
 
 describe("executeStage0 — single-pass receipt parser", () => {
@@ -67,7 +55,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   it("returns NormalizedStage0ParseOutput with outcome, title, entries, adjustments", async () => {
     const result = await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
 
@@ -81,7 +69,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   it("does NOT return DocumentUnderstanding shape (no primaryEvidence field)", async () => {
     const result = await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
 
@@ -91,7 +79,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   it("preserves receipt_index on ledger entries", async () => {
     const result = await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
 
@@ -107,7 +95,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
     });
 
     const result = await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       aiWithAdjustment
     );
 
@@ -126,26 +114,24 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   // === Model selection ===
 
-  it("uses vision model when storedFileIds are provided", async () => {
+  it("uses vision model when image evidence is provided", async () => {
     await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("vision");
   });
 
-  it("loads image evidence by stored-file identity when available", async () => {
+  it("passes preloaded image evidence to the AI", async () => {
     await executeStage0(
       {
-        ledgerId: "ledger-1",
-        storedFileIds: ["file-1"],
+        evidence: { images: [{ dataUrl: "data:image/png;base64,STORED" }] },
         originalCategories: [],
       },
       mockAI
     );
 
-    expect(loadStoredFilesForAI).toHaveBeenCalledWith("ledger-1", ["file-1"]);
     const call = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>);
     expect(call.messages[0]?.content).toEqual([
       { type: "text", text: "Please parse this source document." },
@@ -177,7 +163,10 @@ describe("executeStage0 — single-pass receipt parser", () => {
     });
 
     await executeStage0(
-      { storedFileIds: ["/api/uploads/ledger/doc/image.webp"], originalCategories: [] },
+      {
+        evidence: { images: [{ dataUrl: "data:image/png;base64,STORED" }] },
+        originalCategories: [],
+      },
       { generate }
     );
 
@@ -192,7 +181,11 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   it("uses vision model for mixed text+image input", async () => {
     await executeStage0(
-      { text: "meal", storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      {
+        text: "meal",
+        evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] },
+        originalCategories: [],
+      },
       mockAI
     );
 
@@ -224,7 +217,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
     });
 
     const result = await executeStage0(
-      { storedFileIds: ["data:image/jpeg;base64,abc"], originalCategories: [] },
+      { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       aiAnomaly
     );
 
@@ -283,7 +276,12 @@ describe("executeStage0 — single-pass receipt parser", () => {
   it("handles multiple images without error", async () => {
     const result = await executeStage0(
       {
-        storedFileIds: ["data:image/jpeg;base64,abc", "data:image/jpeg;base64,def"],
+        evidence: {
+          images: [
+            { dataUrl: "data:image/jpeg;base64,abc" },
+            { dataUrl: "data:image/jpeg;base64,def" },
+          ],
+        },
         originalCategories: [],
       },
       mockAI

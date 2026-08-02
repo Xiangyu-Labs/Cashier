@@ -84,6 +84,9 @@ export const entryCategories = pgTable(
   },
   (table) => [
     uniqueIndex("uq_entry_categories_ledger_id_id").on(table.ledgerId, table.id),
+    index("idx_entry_categories_active_sort")
+      .on(table.ledgerId, table.sortOrder, table.createdAt, table.id)
+      .where(sql`${table.deletedAt} IS NULL`),
     uniqueIndex("uniq_category_name_per_ledger")
       .on(table.ledgerId, table.name)
       .where(sql`${table.deletedAt} IS NULL`),
@@ -133,6 +136,15 @@ export const ledgerEntries = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index("idx_ledger_entries_active_currency")
       .on(table.ledgerId, table.currency, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_active_source")
+      .on(
+        table.ledgerId,
+        table.sourceDocumentId,
+        table.sourceDocumentRevisionId,
+        table.position,
+        table.id
+      )
       .where(sql`${table.deletedAt} IS NULL`),
     index("idx_ledger_entries_active_amount")
       .on(table.ledgerId, sql`COALESCE(${table.convertedAmount}, ${table.amount})`)

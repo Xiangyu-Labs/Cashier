@@ -1,19 +1,23 @@
 import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/calculate-ledger-entry-stats";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
 import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
+import type { LedgerReadPort } from "../ports";
 
 export async function calculateLedgerStats(
   ledgerId: string,
-  startDate?: string,
-  endDate?: string,
-  mainCurrency?: string,
-  filters?: {
-    categoryId?: string | null;
-    currency?: string | null;
-    minAmount?: number | null;
-    maxAmount?: number | null;
-    search?: string | null;
-  }
+  startDate: string | undefined,
+  endDate: string | undefined,
+  mainCurrency: string | undefined,
+  filters:
+    | {
+        categoryId?: string | null;
+        currency?: string | null;
+        minAmount?: number | null;
+        maxAmount?: number | null;
+        search?: string | null;
+      }
+    | undefined,
+  reads: LedgerReadPort
 ): Promise<LedgerSummaryDto> {
   const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
     ledgerId,
@@ -35,5 +39,5 @@ export async function calculateLedgerStats(
   if (filters?.minAmount !== undefined) payload.filters.minAmount = filters.minAmount;
   if (filters?.maxAmount !== undefined) payload.filters.maxAmount = filters.maxAmount;
   if (filters?.search !== undefined) payload.filters.search = filters.search;
-  return calculateLedgerEntryStats(payload);
+  return calculateLedgerEntryStats(payload, reads);
 }

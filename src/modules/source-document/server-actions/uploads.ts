@@ -1,5 +1,5 @@
 "use server";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import type { UploadPlanContract } from "@/application/contracts";
 import {
   createSourceDocumentUploadPlanInputSchema,
@@ -12,7 +12,7 @@ import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 
 export const createSourceDocumentUploadPlanAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, input: CreateSourceDocumentUploadPlanInput): Promise<UploadPlanContract> =>
-    currentApplication.storedFiles.createDirectUploadPlan(
+    serverComposition.storedFiles.createDirectUploadPlan(
       ledgerId,
       createSourceDocumentUploadPlanInputSchema.parse(input).map((file) => ({
         contentType: file.contentType,
@@ -27,7 +27,7 @@ export const finalizeSourceDocumentUploadAction = withSourceDocumentLedgerAccess
   async ({ ledgerId }, input: FinalizeSourceDocumentUploadInput): Promise<string[]> => {
     scheduleRequestMaintenance();
     const validated = finalizeSourceDocumentUploadInputSchema.parse(input);
-    const files = await currentApplication.storedFiles.finalizeBrowserUpload({
+    const files = await serverComposition.storedFiles.finalizeBrowserUpload({
       ...validated,
       ownerLedgerId: ledgerId,
     });

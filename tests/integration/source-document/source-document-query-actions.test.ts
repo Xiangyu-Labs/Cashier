@@ -4,11 +4,21 @@ import {
   getPendingSourceDocumentsAction,
   getSourceDocumentFullAction,
 } from "@/modules/source-document/actions";
-import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listSourceDocuments as listSourceDocumentsUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
+import { serverComposition } from "@/application/server-composition-root";
 import { sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { activateTestSourceDocumentProjection } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
+
+const listSourceDocuments = (
+  ledgerId: string,
+  input: Parameters<typeof listSourceDocumentsUseCase>[1]
+) =>
+  listSourceDocumentsUseCase(ledgerId, input, {
+    documents: serverComposition.sourceDocumentReads,
+    ledgerReads: serverComposition.ledgerReads,
+  });
 
 describe("source-document query action boundaries", () => {
   let ledgerId = "";

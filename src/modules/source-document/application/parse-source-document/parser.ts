@@ -8,16 +8,17 @@
  * Downstream can run a second pass (dual-run) for complex documents.
  */
 
-import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { isSuccessfulLoadImageResult, loadStoredFilesForAI } from "@/lib/storage/utils";
 import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
-import type { AiContextContract, AiMessageContentPart as AIMessageContentPart } from "./contracts";
+import {
+  ProcessingFailure,
+  type AiContextContract,
+  type AiMessageContentPart as AIMessageContentPart,
+} from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
 
 export interface ParserInput {
-  storedFileIds?: string[];
-  ledgerId?: string;
+  evidence?: { images: readonly { dataUrl: string }[] };
   text?: string;
   originalCategories: { name: string; description?: string | null }[];
   aiLanguage?: string;
@@ -25,7 +26,9 @@ export interface ParserInput {
   preferredCurrencies?: string[];
 }
 
-function buildMessageContent(images: { dataUrl: string }[] | undefined): AIMessageContentPart[] {
+function buildMessageContent(
+  images: readonly { dataUrl: string }[] | undefined
+): AIMessageContentPart[] {
   const content: AIMessageContentPart[] = [
     { type: "text", text: "Please parse this source document." },
   ];
@@ -155,30 +158,27 @@ export async function executeParser(
   ai: AiContextContract
 ): Promise<NormalizedParseOutput> {
   const aiLanguage = input.aiLanguage ?? "zh-CN";
-  const hasImages = (input.storedFileIds?.length ?? 0) > 0;
+  const images = input.evidence?.images;
+  const hasImages = (images?.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
 
   const prompt = buildPrompt(input, aiLanguage);
 
-  let images: { dataUrl: string }[] | undefined;
-  if (hasImages) {
-    if (input.ledgerId == null || input.ledgerId === "") {
-      throw new AppError(
-        "parser: stored-file evidence requires ledger identity",
-        "VALIDATION_ERROR"
-      );
-    }
-    const loaded = await loadStoredFilesForAI(input.ledgerId, input.storedFileIds!);
-    images = loaded.filter(isSuccessfulLoadImageResult).map((r) => ({ dataUrl: r.dataUrl }));
-  }
-
   logger.debug({ model, hasImages }, "parser: calling AI");
 
-  const response = await ai.generate({
-    model,
-    prompt,
-    messages: [{ role: "user", content: buildMessageContent(images) }],
-  });
+  let response: Awaited<ReturnType<AiContextContract["generate"]>>;
+  try {
+    response = await ai.generate({
+      model,
+      prompt,
+      messages: [{ role: "user", content: buildMessageContent(images) }],
+    });
+  } catch (error) {
+    if (error instanceof ProcessingFailure) throw error;
+    throw new ProcessingFailure("ai_provider_unavailable", "Parser AI request failed", {
+      cause: error,
+    });
+  }
 
   let raw: unknown;
   try {
@@ -188,17 +188,17 @@ export async function executeParser(
       .trim();
     raw = JSON.parse(content);
   } catch (e) {
-    throw new AppError(
-      `parser: failed to parse AI response as JSON: ${String(e)}`,
-      "AI_PARSE_ERROR"
-    );
+    throw new ProcessingFailure("ai_schema_invalid", "Parser AI response was not valid JSON", {
+      cause: e,
+    });
   }
 
   const parsed = parserOutputSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new AppError(
-      `parser: AI response failed schema validation: ${parsed.error.message}`,
-      "AI_SCHEMA_ERROR"
+    throw new ProcessingFailure(
+      "ai_schema_invalid",
+      "Parser AI response failed schema validation",
+      { cause: parsed.error }
     );
   }
 

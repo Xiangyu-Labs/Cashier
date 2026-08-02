@@ -23,6 +23,7 @@ export const queryKeys = {
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
     ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
   sourceDocumentCounts: (ledgerId: string) => ["sourceDocuments", ledgerId, "counts"] as const,
+  sourceDocumentEntities: (ledgerId: string) => ["sourceDocuments", ledgerId, "entities"] as const,
   sourceDocumentStream: (
     ledgerId: string,
     filters?: {
@@ -106,8 +107,8 @@ export const queryKeys = {
     ] as const,
 
   // === Currency ===
-  convert: (amount: number, from: string, to: string, date?: string) =>
-    ["convert", amount, from, to, date] as const,
+  convert: (ledgerId: string, amount: number, from: string, to: string, date?: string) =>
+    ["convert", ledgerId, amount, from, to, date] as const,
   batchConvert: (cacheKey: string, targetCurrency: string) =>
     ["batchConvert", cacheKey, targetCurrency] as const,
 

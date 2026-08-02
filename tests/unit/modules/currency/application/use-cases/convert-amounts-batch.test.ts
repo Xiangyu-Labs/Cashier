@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
-import { ExchangeRateService } from "@/modules/currency/application/services/exchange-rate";
+import type { FxRateBook } from "@/modules/currency/application/ports";
+
+const rateBook = { getRates: vi.fn() } as unknown as FxRateBook;
 
 describe("convertAmountsBatch", () => {
   afterEach(() => {
@@ -8,30 +10,28 @@ describe("convertAmountsBatch", () => {
   });
 
   it("loads rates once per unique date and preserves the original input order", async () => {
-    const getRatesSpy = vi
-      .spyOn(ExchangeRateService, "getRates")
-      .mockImplementation(async (date) => {
-        if (date === "2026-02-03") {
-          return {
-            base: "EUR",
-            date: "2026-02-03",
-            rates: {
-              USD: 1.08,
-              CNY: 7.6,
-            },
-          };
-        }
-
+    const getRatesSpy = vi.spyOn(rateBook, "getRates").mockImplementation(async (date) => {
+      if (date === "2026-02-03") {
         return {
           base: "EUR",
-          date: "2026-02-04",
+          date: "2026-02-03",
           rates: {
-            USD: 1.1,
-            CNY: 7.5,
-            GBP: 0.85,
+            USD: 1.08,
+            CNY: 7.6,
           },
         };
-      });
+      }
+
+      return {
+        base: "EUR",
+        date: "2026-02-04",
+        rates: {
+          USD: 1.1,
+          CNY: 7.5,
+          GBP: 0.85,
+        },
+      };
+    });
 
     const results = await convertAmountsBatch(
       [
@@ -39,7 +39,8 @@ describe("convertAmountsBatch", () => {
         { amount: "20", fromCurrency: "CNY", toCurrency: "USD", date: "2026-02-03" },
         { amount: "30", fromCurrency: "GBP", toCurrency: "EUR", date: "2026-02-04" },
       ],
-      "EUR"
+      "EUR",
+      rateBook
     );
 
     expect(getRatesSpy).toHaveBeenCalledTimes(2);
@@ -54,8 +55,8 @@ describe("convertAmountsBatch", () => {
     expect(Number.parseFloat(results[2]!.convertedAmount)).toBeCloseTo(35.29, 2);
   });
 
-  it("falls back to the original amount when source currency is blank or missing from rates", async () => {
-    vi.spyOn(ExchangeRateService, "getRates").mockResolvedValue({
+  it("rejects blank or missing source currencies instead of using a 1:1 rate", async () => {
+    vi.spyOn(rateBook, "getRates").mockResolvedValue({
       base: "EUR",
       date: "2026-02-04",
       rates: {
@@ -63,26 +64,24 @@ describe("convertAmountsBatch", () => {
       },
     });
 
-    const results = await convertAmountsBatch(
-      [
-        { amount: "12", fromCurrency: "", toCurrency: "USD", date: "2026-02-04" },
-        { amount: "15", fromCurrency: "CNY", toCurrency: "USD", date: "2026-02-04" },
-      ],
-      "USD",
-      {
-        allowBlankSourceCurrency: true,
-        fallbackToOriginalAmountOnMissingRate: true,
-      }
-    );
-
-    expect(results).toEqual([
-      { convertedAmount: "12", exchangeRate: "1" },
-      { convertedAmount: "15", exchangeRate: "1" },
-    ]);
+    await expect(
+      convertAmountsBatch(
+        [{ amount: "12", fromCurrency: "", toCurrency: "USD", date: "2026-02-04" }],
+        "USD",
+        rateBook
+      )
+    ).rejects.toThrow("Currency not found");
+    await expect(
+      convertAmountsBatch(
+        [{ amount: "15", fromCurrency: "CNY", toCurrency: "USD", date: "2026-02-04" }],
+        "USD",
+        rateBook
+      )
+    ).rejects.toThrow("Currency not found: CNY");
   });
 
   it("propagates errors when a grouped exchange-rate lookup fails", async () => {
-    vi.spyOn(ExchangeRateService, "getRates").mockImplementation(async (date) => {
+    vi.spyOn(rateBook, "getRates").mockImplementation(async (date) => {
       if (date === "2026-02-05") {
         throw new Error("upstream rates unavailable");
       }
@@ -103,7 +102,8 @@ describe("convertAmountsBatch", () => {
           { amount: "100", fromCurrency: "CNY", toCurrency: "EUR", date: "2026-02-04" },
           { amount: "50", fromCurrency: "USD", toCurrency: "EUR", date: "2026-02-05" },
         ],
-        "EUR"
+        "EUR",
+        rateBook
       )
     ).rejects.toThrow("upstream rates unavailable");
   });

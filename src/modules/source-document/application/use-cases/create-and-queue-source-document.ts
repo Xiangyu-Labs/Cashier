@@ -23,6 +23,11 @@ export interface CreateAndQueueSourceDocumentInput {
   maxDecodedImageBytes?: number;
   entryDate?: string;
   timezone?: string;
+  idempotency?: {
+    credentialId: string;
+    key: string;
+    contentFingerprint: string;
+  };
 }
 
 interface CreateAndQueueSourceDocumentDependencies {
@@ -69,34 +74,39 @@ export async function createAndQueueSourceDocument(
     throw new ValidationError("Images must be finalized before source-document submission");
   }
 
-  const processedImageIds =
-    imagesToProcess.length > 0
-      ? await prepareInlineImages(
-          imagesToProcess,
-          dependencies.storedFiles,
-          dependencies.processImage,
-          input.ledgerId,
-          input.maxDecodedImageBytes
+  const prepareSubmission = async () => {
+    const processedImageIds =
+      imagesToProcess.length > 0
+        ? await prepareInlineImages(
+            imagesToProcess,
+            dependencies.storedFiles,
+            dependencies.processImage,
+            input.ledgerId,
+            input.maxDecodedImageBytes
+          )
+        : [];
+
+    const totalFileCount = (validated.storedFileIds?.length ?? 0) + processedImageIds.length;
+    validateAggregateFileCount(totalFileCount, 0);
+
+    return {
+      ledgerId: input.ledgerId,
+      submittedText: validated.text ?? null,
+      storedFileIds: [...(validated.storedFileIds ?? []), ...processedImageIds],
+      entryDate: resolveEntryDate(
+        validated.entryDate,
+        validated.timezone ?? readLedgerTimeZone(input.ledger)
+      ),
+    };
+  };
+
+  const pending =
+    input.idempotency != null && dependencies.submissions.createIdempotentPendingWithIntent != null
+      ? await dependencies.submissions.createIdempotentPendingWithIntent(
+          input.idempotency,
+          prepareSubmission
         )
-      : [];
-
-  // Enforce aggregate file count after inline images are converted to stored-file IDs.
-  // Protects against dependency/mock bypass of the schema-level check.
-  const totalFileCount = (validated.storedFileIds?.length ?? 0) + processedImageIds.length;
-  validateAggregateFileCount(totalFileCount, 0);
-
-  // Combine in input order: existing storedFileIds, then processed images
-  const allStoredFileIds = [...(validated.storedFileIds ?? []), ...processedImageIds];
-
-  const pending = await dependencies.submissions.createPendingWithIntent({
-    ledgerId: input.ledgerId,
-    submittedText: validated.text ?? null,
-    storedFileIds: allStoredFileIds,
-    entryDate: resolveEntryDate(
-      validated.entryDate,
-      validated.timezone ?? readLedgerTimeZone(input.ledger)
-    ),
-  });
-  dependencies.scheduleProcessing(pending.intent);
+      : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
   return toSourceDocumentSubmissionContract(pending.document, pending.revision);
 }

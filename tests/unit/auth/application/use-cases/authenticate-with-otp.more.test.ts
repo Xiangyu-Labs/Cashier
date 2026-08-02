@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import type { UserAccountPort } from "@/application/contracts";
+import type { LedgerPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
 
 const {
   findOTPRecordMock,
   verifyOTPWithPolicyMock,
+  consumeOTPClaimMock,
+  releaseOTPClaimMock,
   checkVerifyRateLimitMock,
-  deleteOTPTokenMock,
   ensureUserLedgerMock,
   assertRegistrationAllowedMock,
   getClientIPFromHeadersMock,
@@ -17,8 +18,9 @@ const {
 } = vi.hoisted(() => ({
   findOTPRecordMock: vi.fn(),
   verifyOTPWithPolicyMock: vi.fn(),
+  consumeOTPClaimMock: vi.fn(),
+  releaseOTPClaimMock: vi.fn(),
   checkVerifyRateLimitMock: vi.fn(),
-  deleteOTPTokenMock: vi.fn(),
   ensureUserLedgerMock: vi.fn(),
   assertRegistrationAllowedMock: vi.fn(),
   getClientIPFromHeadersMock: vi.fn(),
@@ -31,14 +33,12 @@ const {
 vi.mock("@/modules/auth/services/otp-verification", () => ({
   findOTPRecord: findOTPRecordMock,
   verifyOTPWithPolicy: verifyOTPWithPolicyMock,
+  consumeOTPClaim: consumeOTPClaimMock,
+  releaseOTPClaim: releaseOTPClaimMock,
 }));
 
 vi.mock("@/modules/auth/services/otp-rate-limit", () => ({
   checkVerifyRateLimit: checkVerifyRateLimitMock,
-}));
-
-vi.mock("@/modules/auth/repositories/otp-repository", () => ({
-  deleteOTPToken: deleteOTPTokenMock,
 }));
 
 vi.mock("@/modules/workspace/application/use-cases/ensure-user-ledger", () => ({
@@ -78,11 +78,20 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
-  authenticateWithOTP,
+  authenticateWithOTP as authenticateWithOTPUseCase,
   OTPInvalidSignInError,
   OTPLockedSignInError,
   OTPRateLimitedSignInError,
 } from "@/modules/auth/application/use-cases/authenticate-with-otp";
+
+const otpTokens = {} as OtpTokenPort;
+const ledgers = {} as LedgerPort;
+const fallbackUsers = {} as UserAccountPort;
+const rateLimiter = {} as import("@/modules/auth/application/ports").RateLimitPort;
+const authenticateWithOTP = (
+  input: Parameters<typeof authenticateWithOTPUseCase>[0],
+  users: UserAccountPort = fallbackUsers
+) => authenticateWithOTPUseCase(input, { userAccounts: users, otpTokens, ledgers, rateLimiter });
 
 describe("authenticateWithOTP additional coverage", () => {
   beforeEach(() => {
@@ -102,6 +111,8 @@ describe("authenticateWithOTP additional coverage", () => {
     });
     checkVerifyRateLimitMock.mockResolvedValue(true);
     verifyOTPWithPolicyMock.mockResolvedValue({ success: true });
+    consumeOTPClaimMock.mockResolvedValue(true);
+    releaseOTPClaimMock.mockResolvedValue(undefined);
     assertRegistrationAllowedMock.mockResolvedValue(undefined);
     dbUserFindFirstMock.mockResolvedValue(null);
     dbInsertReturningMock.mockResolvedValue([
@@ -115,7 +126,6 @@ describe("authenticateWithOTP additional coverage", () => {
     dbInsertValuesMock.mockReturnValue({
       returning: dbInsertReturningMock,
     });
-    deleteOTPTokenMock.mockResolvedValue(undefined);
     ensureUserLedgerMock.mockResolvedValue({
       ledgerId: "new-ledger-id",
       created: true,
@@ -144,12 +154,11 @@ describe("authenticateWithOTP additional coverage", () => {
       users
     );
 
-    expect(assertRegistrationAllowedMock).toHaveBeenCalledWith("new-user@example.com");
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith({
-      userId: "new-user-id",
-      locale: "zh",
-    });
-    expect(deleteOTPTokenMock).toHaveBeenCalledWith("new-user@example.com");
+    expect(assertRegistrationAllowedMock).toHaveBeenCalledWith("new-user@example.com", users);
+    expect(ensureUserLedgerMock).toHaveBeenCalledWith(
+      { userId: "new-user-id", locale: "zh" },
+      ledgers
+    );
     expect(result).toEqual({
       id: "new-user-id",
       email: "new-user@example.com",
@@ -157,6 +166,64 @@ describe("authenticateWithOTP additional coverage", () => {
       image: null,
       locale: "zh",
     });
+    expect(consumeOTPClaimMock).toHaveBeenCalledWith(
+      { email: "new-user@example.com", tokenHash: "hash" },
+      otpTokens
+    );
+  });
+
+  it("ensures a ledger for an existing user before consuming the OTP", async () => {
+    const users = {
+      findOrCreate: vi.fn().mockResolvedValue({
+        user: {
+          id: "existing-user-id",
+          email: "new-user@example.com",
+          name: null,
+          image: null,
+        },
+        isExistingUser: true,
+      }),
+    } as unknown as UserAccountPort;
+
+    await authenticateWithOTP(
+      { email: "new-user@example.com", otp: "123456", requestHeaders: new Headers() },
+      users
+    );
+
+    expect(ensureUserLedgerMock).toHaveBeenCalledWith(
+      { userId: "existing-user-id", locale: "zh" },
+      ledgers
+    );
+    expect(consumeOTPClaimMock).toHaveBeenCalledOnce();
+  });
+
+  it("releases the OTP claim when account setup fails", async () => {
+    const setupError = new Error("ledger unavailable");
+    ensureUserLedgerMock.mockRejectedValueOnce(setupError);
+    const users = {
+      findOrCreate: vi.fn().mockResolvedValue({
+        user: {
+          id: "new-user-id",
+          email: "new-user@example.com",
+          name: null,
+          image: null,
+        },
+        isExistingUser: false,
+      }),
+    } as unknown as UserAccountPort;
+
+    await expect(
+      authenticateWithOTP(
+        { email: "new-user@example.com", otp: "123456", requestHeaders: new Headers() },
+        users
+      )
+    ).rejects.toBe(setupError);
+
+    expect(consumeOTPClaimMock).not.toHaveBeenCalled();
+    expect(releaseOTPClaimMock).toHaveBeenCalledWith(
+      { email: "new-user@example.com", tokenHash: "hash" },
+      otpTokens
+    );
   });
 
   it("throws otp_invalid when OTP record is missing", async () => {

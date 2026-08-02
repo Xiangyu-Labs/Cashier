@@ -1,7 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
-import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
+import { updateLedger as updateLedgerUseCase } from "@/modules/ledger/application/use-cases/update-ledger";
+import { serverComposition } from "@/application/server-composition-root";
 import { hasActiveEntries } from "@/modules/ledger/application/queries/has-active-entries";
 import {
   currencyRates,
@@ -12,6 +13,10 @@ import {
 } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
+
+const updateLedger = (
+  ...args: Parameters<typeof updateLedgerUseCase> extends [...infer Head, unknown] ? Head : never
+) => updateLedgerUseCase(...args, serverComposition.settings);
 
 describe("target Settings currency workflow", () => {
   let ledgerId = "";
@@ -146,17 +151,17 @@ describe("target Settings currency workflow", () => {
   });
 
   it("hasActiveEntries returns false for empty ledger", async () => {
-    expect(await hasActiveEntries(ledgerId)).toBe(false);
+    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(false);
   });
 
   it("hasActiveEntries returns true after entry creation", async () => {
     await createEntry();
-    expect(await hasActiveEntries(ledgerId)).toBe(true);
+    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(true);
   });
 
   it("hasActiveEntries returns false after source document is soft-deleted", async () => {
     await createEntry();
-    expect(await hasActiveEntries(ledgerId)).toBe(true);
+    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(true);
 
     // Soft-delete the source document so its entries are no longer active
     const db = getTestDb();
@@ -165,7 +170,7 @@ describe("target Settings currency workflow", () => {
       .set({ deletedAt: new Date() })
       .where(eq(sourceDocuments.id, sourceDocumentId));
 
-    expect(await hasActiveEntries(ledgerId)).toBe(false);
+    expect(await hasActiveEntries(ledgerId, serverComposition.ledgerReads)).toBe(false);
   });
 
   it("allows main currency change after source document is soft-deleted", async () => {

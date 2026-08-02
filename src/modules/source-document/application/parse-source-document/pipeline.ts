@@ -1,11 +1,12 @@
 import { logger } from "@/lib/logger";
-import type { ParsedLedgerEntry } from "@/lib/ai/types";
 import {
   ProcessingCancelledError,
   throwIfProcessingCancelled,
   type AiContextContract,
   type ParseSourceDocumentInput,
+  type ParsePipelineResult,
 } from "./contracts";
+export type { ParsePipelineResult } from "./contracts";
 import { executeParser } from "./parser";
 import type { ParserInput } from "./parser";
 import { arbitrateResults } from "./arbitration";
@@ -36,12 +37,6 @@ export function buildStageContext(params: {
 
 // ===== Result contract =====
 
-export type ParsePipelineResult =
-  | { kind: "success"; title: string; ledgerEntries: ParsedLedgerEntry[]; wasArbitrated: boolean }
-  | { kind: "invalid"; title: string }
-  | { kind: "anomaly"; title: string; anomalyReason: string }
-  | { kind: "cancelled" };
-
 // ===== Input mapping =====
 
 export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
@@ -51,8 +46,7 @@ export function buildParserInput(input: ParseSourceDocumentInput): ParserInput {
       description: c.description ?? null,
     })),
     ...(input.text !== undefined ? { text: input.text } : {}),
-    ...(input.storedFileIds !== undefined ? { storedFileIds: input.storedFileIds } : {}),
-    ledgerId: input.ledgerId,
+    ...(input.evidence !== undefined ? { evidence: input.evidence } : {}),
     ...(input.aiLanguage !== undefined ? { aiLanguage: input.aiLanguage } : {}),
     ...(input.preferredCurrencies !== undefined
       ? { preferredCurrencies: input.preferredCurrencies }

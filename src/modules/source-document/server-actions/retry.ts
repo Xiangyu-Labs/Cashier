@@ -2,7 +2,7 @@
 import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
-import { currentApplication } from "@/application/current";
+import { serverComposition } from "@/application/server-composition-root";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import type {
   RetrySourceDocumentReconciliationDto,
@@ -43,8 +43,8 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     const result = await retrySourceDocument(
       { ledgerId, sourceDocumentId },
       {
-        submissions: currentApplication.sourceDocumentSubmissions,
-        storedFiles: currentApplication.storedFiles,
+        submissions: serverComposition.sourceDocumentSubmissions,
+        storedFiles: serverComposition.storedFiles,
         processImage,
         scheduleProcessing,
       }
@@ -100,8 +100,8 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
         ...(validatedInput == null ? {} : { input: validatedInput }),
       },
       {
-        submissions: currentApplication.sourceDocumentSubmissions,
-        storedFiles: currentApplication.storedFiles,
+        submissions: serverComposition.sourceDocumentSubmissions,
+        storedFiles: serverComposition.storedFiles,
         processImage,
         scheduleProcessing,
       }

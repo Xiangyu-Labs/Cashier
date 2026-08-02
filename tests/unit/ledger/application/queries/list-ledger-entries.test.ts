@@ -6,7 +6,14 @@ vi.mock("@/modules/ledger/application/queries/list-ledger-entry-page", () => ({
   listLedgerEntryPage: listLedgerEntryPageMock,
 }));
 
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
+import type { LedgerReadPort } from "@/modules/ledger/application/ports";
+
+const reads = {} as LedgerReadPort;
+const listLedgerEntries = (
+  ledgerId: string,
+  input: Parameters<typeof listLedgerEntriesUseCase>[1]
+) => listLedgerEntriesUseCase(ledgerId, input, reads);
 
 describe("listLedgerEntries", () => {
   it("validates params, builds filters, and normalizes nextCursor to null", async () => {
@@ -26,19 +33,22 @@ describe("listLedgerEntries", () => {
       maxAmount: "50" as never,
     });
 
-    expect(listLedgerEntryPageMock).toHaveBeenCalledWith({
-      ledgerId: "ledger-1",
-      limit: 20,
-      cursor: null,
-      filters: {
-        startDate: "2026-03-01",
-        endDate: "2026-03-31",
-        categoryId: "11111111-1111-4111-8111-111111111111",
-        currency: "USD",
-        minAmount: 10,
-        maxAmount: 50,
+    expect(listLedgerEntryPageMock).toHaveBeenCalledWith(
+      {
+        ledgerId: "ledger-1",
+        limit: 20,
+        cursor: null,
+        filters: {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          categoryId: "11111111-1111-4111-8111-111111111111",
+          currency: "USD",
+          minAmount: 10,
+          maxAmount: 50,
+        },
       },
-    });
+      reads
+    );
     expect(result).toEqual({
       items: [{ id: "entry-1" }],
       nextCursor: null,

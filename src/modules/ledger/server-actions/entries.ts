@@ -30,6 +30,7 @@ import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
 import { NotFoundError } from "@/lib/errors";
+import { serverComposition } from "@/application/server-composition-root";
 
 async function assertCategoryBelongsToLedger(
   ledgerId: string,
@@ -60,7 +61,7 @@ export const createLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
     if (validated.description !== undefined) payload.description = validated.description;
-    return createLedgerEntryWithConversion(payload);
+    return createLedgerEntryWithConversion(payload, serverComposition.ledgerMutations);
   }
 );
 
@@ -85,7 +86,10 @@ export const updateLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     if (validated.description !== undefined) payload.description = validated.description;
-    const result = await updateLedgerEntryWithConversion(payload);
+    const result = await updateLedgerEntryWithConversion(
+      payload,
+      serverComposition.ledgerMutations
+    );
 
     if (operationId != null && result.sourceDocumentId != null) {
       // C3: Read authoritative source document from DB instead of fabricating
@@ -112,7 +116,11 @@ export const deleteLedgerEntryAction = withLedgerAccess(
       Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>
   > => {
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
-    const result = await deleteLedgerEntry(ledgerId, validatedLedgerEntryId);
+    const result = await deleteLedgerEntry(
+      ledgerId,
+      validatedLedgerEntryId,
+      serverComposition.ledgerMutations
+    );
 
     if (operationId != null && result.deleted) {
       // C3: Read authoritative source document from DB if available
@@ -147,7 +155,10 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     if (validated.amount !== undefined) payload.amount = String(validated.amount);
     if (validated.description !== undefined) payload.description = validated.description;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
-    const affectedCount = await batchUpdateLedgerEntries(payload);
+    const affectedCount = await batchUpdateLedgerEntries(
+      payload,
+      serverComposition.ledgerMutations
+    );
 
     return {
       ledgerEntryIds: validatedLedgerEntryIds,
@@ -167,7 +178,7 @@ export const batchDeleteLedgerEntriesAction = withLedgerAccess(
     };
     for (const id of ids) {
       try {
-        const deleted = await deleteLedgerEntry(ledgerId, id);
+        const deleted = await deleteLedgerEntry(ledgerId, id, serverComposition.ledgerMutations);
         if (deleted.deleted) result.succeededIds.push(id);
         else result.skipped.push({ id, reason: "not_available" });
       } catch (error) {
@@ -259,14 +270,20 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[], entryDate: string) => {
     const impact = await getBatchEntryDateImpact(ledgerId, inputIds);
     if (impact.sourceDocumentIds.length > 0) {
-      await batchUpdateSourceDocuments({
-        ledgerId,
-        sourceDocumentIds: impact.sourceDocumentIds,
-        data: { entryDate },
-      });
+      await batchUpdateSourceDocuments(
+        {
+          ledgerId,
+          sourceDocumentIds: impact.sourceDocumentIds,
+          data: { entryDate },
+        },
+        serverComposition.sourceDocumentUpdates
+      );
     }
     return impact;
   }
 );
 
-export const getLedgerEntriesAction = withLedgerAccess(listLedgerEntries);
+export const getLedgerEntriesAction = withLedgerAccess(
+  (ledgerId: string, params: Parameters<typeof listLedgerEntries>[1]) =>
+    listLedgerEntries(ledgerId, params, serverComposition.ledgerReads)
+);

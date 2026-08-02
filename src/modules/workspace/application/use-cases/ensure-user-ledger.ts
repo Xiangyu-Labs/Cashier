@@ -1,5 +1,4 @@
 import type { LedgerPort } from "@/application/contracts";
-import { currentApplication } from "@/application/current";
 import { getDefaultLedger } from "@/config/default-ledger";
 import { ConflictError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -14,14 +13,15 @@ export interface EnsureUserLedgerResult {
 }
 
 export async function resolveSingleLedgerForUser(
-  input: EnsureUserLedgerInput
+  input: EnsureUserLedgerInput,
+  ledgers: LedgerPort
 ): Promise<EnsureUserLedgerResult> {
-  return ensureUserLedger(input);
+  return ensureUserLedger(input, ledgers);
 }
 
 export async function ensureUserLedger(
   input: EnsureUserLedgerInput,
-  ledgers: LedgerPort = currentApplication.ledgers
+  ledgers: LedgerPort
 ): Promise<EnsureUserLedgerResult> {
   const existing = await ledgers.listIdsForUser(input.userId);
   if (existing.length > 1) {

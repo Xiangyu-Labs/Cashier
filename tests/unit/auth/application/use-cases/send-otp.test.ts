@@ -72,7 +72,17 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { RateLimitError } from "@/lib/errors";
-import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
+import { sendOTP as sendOTPUseCase } from "@/modules/auth/application/use-cases/send-otp";
+import { serverComposition } from "@/application/server-composition-root";
+import type { OtpTokenPort } from "@/application/contracts";
+
+const tokens = {} as OtpTokenPort;
+const sendOTP = (input: Parameters<typeof sendOTPUseCase>[0]) =>
+  sendOTPUseCase(input, {
+    emailDelivery: serverComposition.email,
+    tokens,
+    rateLimiter: serverComposition.rateLimiter,
+  });
 
 type SendOTPInput = Parameters<typeof sendOTP>[0];
 
@@ -147,7 +157,12 @@ describe("sendOTP use case", () => {
       host: "cashier.example",
     });
 
-    expect(createOTPTokenMock).toHaveBeenCalledWith("user@example.com", "123456", "203.0.113.2");
+    expect(createOTPTokenMock).toHaveBeenCalledWith(
+      "user@example.com",
+      "123456",
+      tokens,
+      "203.0.113.2"
+    );
     expect(otpEmailMock).toHaveBeenCalledWith({
       otp: "123456",
       host: "cashier.example",
@@ -166,7 +181,10 @@ describe("sendOTP use case", () => {
         react: { kind: "otp-email-component" },
       })
     );
-    expect(setResendCooldownMock).toHaveBeenCalledWith("user@example.com");
+    expect(setResendCooldownMock).toHaveBeenCalledWith(
+      "user@example.com",
+      expect.objectContaining({ increment: expect.any(Function) })
+    );
     expect(result.canResendAt).toBe(1_234_567_890);
   });
 
@@ -183,7 +201,7 @@ describe("sendOTP use case", () => {
     ).rejects.toThrow("Failed to send verification code. Please try again.");
 
     expect(loggerErrorMock).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "test@example.com" }),
+      expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
       "Failed to send OTP email"
     );
     expect(loggerErrorMock).toHaveBeenCalledWith(
@@ -239,7 +257,7 @@ describe("sendOTP use case", () => {
       })
     );
     expect(loggerInfoMock).toHaveBeenCalledWith(
-      { email: "test@example.com" },
+      { subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
       "OTP email sent successfully"
     );
   });

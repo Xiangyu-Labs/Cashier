@@ -25,12 +25,18 @@ import {
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { serverComposition } from "@/application/server-composition-root";
+
+const queryPorts = {
+  documents: serverComposition.sourceDocumentReads,
+  ledgerReads: serverComposition.ledgerReads,
+};
 
 export const getSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> => {
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return listSourceDocuments(ledgerId, params);
+    return listSourceDocuments(ledgerId, params, queryPorts);
   }
 );
 
@@ -42,7 +48,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return getPendingSourceDocuments(ledgerId);
+    return getPendingSourceDocuments(ledgerId, queryPorts);
   }
 );
 
@@ -54,7 +60,7 @@ export const getSourceDocumentAttentionAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentAttentionDto> => {
     // Schedule processing recovery alongside attention reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return getSourceDocumentAttentionQuery(ledgerId);
+    return getSourceDocumentAttentionQuery(ledgerId, queryPorts.documents);
   }
 );
 
@@ -65,7 +71,7 @@ export const getSourceDocumentCountsAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentCountsDto> => {
     // Schedule processing recovery alongside count reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return getSourceDocumentCountsQuery(ledgerId);
+    return getSourceDocumentCountsQuery(ledgerId, queryPorts.documents);
   }
 );
 
@@ -81,7 +87,7 @@ export const getSourceDocumentFullAction = withLedgerAccess(
 
     // Schedule processing recovery alongside detail reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return getSourceDocumentFullQuery(ledgerId, parsed.data);
+    return getSourceDocumentFullQuery(ledgerId, parsed.data, queryPorts.documents);
   }
 );
 
@@ -101,16 +107,20 @@ export const listStreamPageAction = withLedgerAccess(
 
     // Schedule processing recovery alongside data reads
     after(() => scheduleProcessingRecovery(ledgerId));
-    return listStreamPage(ledgerId, {
-      ...(startDate != null ? { startDate } : {}),
-      ...(endDate != null ? { endDate } : {}),
-      ...(minAmount != null ? { minAmount } : {}),
-      ...(maxAmount != null ? { maxAmount } : {}),
-      ...(search != null ? { search } : {}),
-      ...(statuses != null && statuses.length > 0 ? { statuses: statuses as string[] } : {}),
-      ...(cursor != null && cursor !== "" ? { cursor } : {}),
-      limit,
-    });
+    return listStreamPage(
+      ledgerId,
+      {
+        ...(startDate != null ? { startDate } : {}),
+        ...(endDate != null ? { endDate } : {}),
+        ...(minAmount != null ? { minAmount } : {}),
+        ...(maxAmount != null ? { maxAmount } : {}),
+        ...(search != null ? { search } : {}),
+        ...(statuses != null && statuses.length > 0 ? { statuses: statuses as string[] } : {}),
+        ...(cursor != null && cursor !== "" ? { cursor } : {}),
+        limit,
+      },
+      queryPorts
+    );
   }
 );
 
@@ -122,13 +132,17 @@ export const getStreamTotalAction = withLedgerAccess(
     }
 
     const { startDate, endDate, minAmount, maxAmount, statuses, search } = parsed.data;
-    return getStreamTotal(ledgerId, {
-      ...(startDate != null ? { startDate } : {}),
-      ...(endDate != null ? { endDate } : {}),
-      ...(minAmount != null ? { minAmount } : {}),
-      ...(maxAmount != null ? { maxAmount } : {}),
-      ...(search != null ? { search } : {}),
-      ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
-    });
+    return getStreamTotal(
+      ledgerId,
+      {
+        ...(startDate != null ? { startDate } : {}),
+        ...(endDate != null ? { endDate } : {}),
+        ...(minAmount != null ? { minAmount } : {}),
+        ...(maxAmount != null ? { maxAmount } : {}),
+        ...(search != null ? { search } : {}),
+        ...(statuses != null && statuses.length > 0 ? { statuses } : {}),
+      },
+      queryPorts.documents
+    );
   }
 );

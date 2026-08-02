@@ -16,6 +16,14 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 }));
 
 import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
+import type { SourceDocumentCredentialPorts } from "@/modules/source-document/application/ports";
+
+const ports = {
+  ledgers: {},
+  settings: {},
+  submissions: {},
+  storedFiles: {},
+} as unknown as SourceDocumentCredentialPorts;
 
 describe("createSourceDocumentFromCredential omission semantics", () => {
   const scheduleProcessing = vi.fn();
@@ -35,7 +43,8 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
         credentialId: "cred-1",
         payload: { text: "Lunch 12.50" },
       },
-      scheduleProcessing
+      scheduleProcessing,
+      ports
     );
 
     const callInput = createAndQueueSourceDocumentMock.mock.calls[0]?.[0] as Record<

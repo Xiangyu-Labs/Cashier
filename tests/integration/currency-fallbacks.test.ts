@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
-import { batchConvertCurrencyAction } from "@/modules/currency/actions";
+import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
+import { ExchangeRateService } from "@/application/adapters/postgres/exchange-rate";
 
 async function insertTestRates(date: string, rates: Record<string, number>) {
   await getTestDb().insert(currencyRates).values({
@@ -22,43 +23,43 @@ describe("currency fallbacks integration", () => {
     });
   });
 
-  it("batch conversion falls back to original amount when source currency is unknown", async () => {
-    const result = await batchConvertCurrencyAction(
-      [{ amount: 100, currency: "ZZZ", date: testDate }],
-      "USD"
-    );
-
-    expect(result).toEqual({ results: ["100"] });
+  it("batch conversion rejects an unknown source currency", async () => {
+    await expect(
+      convertAmountsBatch(
+        [{ amount: "100", fromCurrency: "ZZZ", date: testDate }],
+        "USD",
+        ExchangeRateService
+      )
+    ).rejects.toThrow("Currency not found: ZZZ");
   });
 
-  it("batch conversion falls back to original amount when target currency is unknown", async () => {
-    const result = await batchConvertCurrencyAction(
-      [{ amount: 100, currency: "USD", date: testDate }],
-      "ZZZ"
-    );
-
-    expect(result).toEqual({ results: ["100"] });
+  it("batch conversion rejects an unknown target currency", async () => {
+    await expect(
+      convertAmountsBatch(
+        [{ amount: "100", fromCurrency: "USD", date: testDate }],
+        "ZZZ",
+        ExchangeRateService
+      )
+    ).rejects.toThrow("Currency not found: ZZZ");
   });
 
-  it("keeps order while mixing converted and fallback items", async () => {
-    const result = await batchConvertCurrencyAction(
-      [
-        { amount: 100, currency: "CNY", date: testDate },
-        { amount: 50, currency: "ZZZ", date: testDate },
-        { amount: 25, currency: "USD", date: testDate },
-      ],
-      "USD"
-    );
-
-    expect(result.results).toHaveLength(3);
-    expect(Number.parseFloat(result.results[0]!)).toBeCloseTo(14.67, 1);
-    expect(result.results[1]).toBe("50");
-    expect(result.results[2]).toBe("25");
+  it("does not partially return a mixed batch with an unknown currency", async () => {
+    await expect(
+      convertAmountsBatch(
+        [
+          { amount: "100", fromCurrency: "CNY", date: testDate },
+          { amount: "50", fromCurrency: "ZZZ", date: testDate },
+          { amount: "25", fromCurrency: "USD", date: testDate },
+        ],
+        "USD",
+        ExchangeRateService
+      )
+    ).rejects.toThrow("Currency not found: ZZZ");
   });
 
   it("single conversion still fails for unknown currency", async () => {
     await expect(
-      convertCurrency({ amount: 100, from: "ZZZ", to: "USD", date: testDate })
+      convertCurrency({ amount: 100, from: "ZZZ", to: "USD", date: testDate }, ExchangeRateService)
     ).rejects.toThrow("Currency not found: ZZZ");
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { LedgerTab } from "../tabs";
 import { LEDGER_TAB_ORDER, resolveSwipeDestination, shouldIgnoreTabSwipe } from "../tab-swipe";
 

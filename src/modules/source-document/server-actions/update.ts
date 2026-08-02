@@ -18,6 +18,7 @@ import {
 } from "../application/use-cases/update-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Update source document metadata (e.g. title, entryDate).
@@ -36,11 +37,14 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
       Partial<{ reconciliation: UpdateSourceDocumentReconciliationDto["reconciliation"] }>
   > => {
     const validated = updateSourceDocumentInputSchema.parse(data);
-    const result = await updateSourceDocument({
-      ledgerId,
-      sourceDocumentId: sourceId,
-      data: validated,
-    });
+    const result = await updateSourceDocument(
+      {
+        ledgerId,
+        sourceDocumentId: sourceId,
+        data: validated,
+      },
+      serverComposition.sourceDocumentUpdates
+    );
 
     if (operationId != null && result.updated) {
       // Read authoritative updatedAt from DB
@@ -93,10 +97,13 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
   ): Promise<BatchUpdateSourceDocumentsResultDto> => {
     const validatedIds = sourceDocumentIdsSchema.parse(sourceDocumentIds);
     const validated = batchUpdateSourceDocumentsInputSchema.parse(data);
-    return batchUpdateSourceDocuments({
-      ledgerId,
-      sourceDocumentIds: validatedIds,
-      data: validated,
-    });
+    return batchUpdateSourceDocuments(
+      {
+        ledgerId,
+        sourceDocumentIds: validatedIds,
+        data: validated,
+      },
+      serverComposition.sourceDocumentUpdates
+    );
   }
 );

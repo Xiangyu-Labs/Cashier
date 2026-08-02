@@ -1,11 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
-import { calculateLedgerStats } from "@/modules/ledger/application/queries/calculate-ledger-stats";
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
-import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
-import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
+import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/ledger/application/queries/calculate-ledger-stats";
+import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { serverComposition } from "@/application/server-composition-root";
+import { getStreamTotal as getStreamTotalUseCase } from "@/modules/source-document/application/queries/get-stream-total";
+import { listStreamPage as listStreamPageUseCase } from "@/modules/source-document/application/queries/list-stream-page";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
+
+const listLedgerEntries = (
+  ledgerId: string,
+  input: Parameters<typeof listLedgerEntriesUseCase>[1]
+) => listLedgerEntriesUseCase(ledgerId, input, serverComposition.ledgerReads);
+const calculateLedgerStats = (
+  ...args: Parameters<typeof calculateLedgerStatsUseCase> extends [...infer Head, unknown]
+    ? Head
+    : never
+) => calculateLedgerStatsUseCase(...args, serverComposition.ledgerReads);
+const queryPorts = {
+  documents: serverComposition.sourceDocumentReads,
+  ledgerReads: serverComposition.ledgerReads,
+};
+const listStreamPage = (ledgerId: string, input: Parameters<typeof listStreamPageUseCase>[1]) =>
+  listStreamPageUseCase(ledgerId, input, queryPorts);
+const getStreamTotal = (ledgerId: string, input: Parameters<typeof getStreamTotalUseCase>[1]) =>
+  getStreamTotalUseCase(ledgerId, input, queryPorts.documents);
 
 describe("ledger search", () => {
   it("normalizes search and keeps Stream and Details contracts independent", async () => {

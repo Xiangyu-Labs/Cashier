@@ -1,14 +1,15 @@
-import { currentApplication } from "@/application/current";
 import type { SourceDocumentCountsDto } from "../../contracts";
+import type { SourceDocumentReadPort } from "../ports";
 
 /**
  * Lightweight aggregation query that returns processing count and attention count
  * for a given ledger. Uses a single SQL pass for efficiency.
  */
 export async function getSourceDocumentCountsQuery(
-  ledgerId: string
+  ledgerId: string,
+  documents: SourceDocumentReadPort
 ): Promise<SourceDocumentCountsDto> {
-  const result = await currentApplication.sourceDocumentReads.counts(ledgerId);
+  const result = await documents.counts(ledgerId);
 
   return {
     processingCount: result.processingCount,

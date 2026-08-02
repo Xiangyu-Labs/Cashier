@@ -5,6 +5,7 @@ import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import { sendOTP } from "@/modules/auth/application/use-cases/send-otp";
 import { AppError, RateLimitError } from "@/lib/errors";
 import { parseSendOTPEmail } from "../contract-schemas";
+import { serverComposition } from "@/application/server-composition-root";
 
 export type SendOTPActionResult =
   | {
@@ -57,12 +58,19 @@ export async function sendOTPAction(email: string, locale?: string): Promise<Sen
       cookieLocale: cookieStore.get("NEXT_LOCALE")?.value ?? null,
       acceptLanguage: requestHeaders.get("accept-language"),
     });
-    const result = await sendOTP({
-      email: validatedEmail,
-      ip: getClientIPFromHeaders(requestHeaders),
-      host: requestHeaders.get("host") ?? "localhost",
-      locale: resolvedLocale,
-    });
+    const result = await sendOTP(
+      {
+        email: validatedEmail,
+        ip: getClientIPFromHeaders(requestHeaders),
+        host: requestHeaders.get("host") ?? "localhost",
+        locale: resolvedLocale,
+      },
+      {
+        emailDelivery: serverComposition.email,
+        tokens: serverComposition.otpTokens,
+        rateLimiter: serverComposition.rateLimiter,
+      }
+    );
     return { ok: true, ...result };
   } catch (error) {
     return sendOTPFailure(error);

@@ -17,8 +17,8 @@ vi.mock("@/lib/date-utils", () => ({
   getDateInTimezone: vi.fn(() => undefined),
 }));
 
-vi.mock("@/application/current", () => ({
-  currentApplication: {
+vi.mock("@/application/server-composition-root", () => ({
+  serverComposition: {
     ledgerProjections: { createManual: createManualMock },
   },
 }));
@@ -36,6 +36,13 @@ vi.mock("@/modules/ledger/source-document-queries", () => ({
 }));
 
 import { createQuickEntry } from "@/modules/source-document/application/use-cases/create-quick-entry";
+import type { QuickEntryPorts } from "@/modules/source-document/application/ports";
+
+const ports = {
+  categories: {},
+  projections: { createManual: createManualMock },
+  rates: {},
+} as unknown as QuickEntryPorts;
 
 describe("createQuickEntry", () => {
   let randomUuidSpy: ReturnType<typeof vi.spyOn>;
@@ -70,15 +77,19 @@ describe("createQuickEntry", () => {
       {
         categoryId: "cat-1",
         amount: 100,
-      }
+      },
+      ports
     );
 
-    expect(convertEntryAmountMock).toHaveBeenCalledWith({
-      amount: "100",
-      fromCurrency: "USD",
-      toCurrency: "USD",
-      date: "2026-03-20",
-    });
+    expect(convertEntryAmountMock).toHaveBeenCalledWith(
+      {
+        amount: "100",
+        fromCurrency: "USD",
+        toCurrency: "USD",
+        date: "2026-03-20",
+      },
+      ports.rates
+    );
     expect(createManualMock).toHaveBeenCalledWith({
       ledgerId: "ledger-1",
       title: "Food",
@@ -117,15 +128,19 @@ describe("createQuickEntry", () => {
         entryDate: "2026-01-31",
         itemName: "Tea",
         description: "afternoon",
-      }
+      },
+      ports
     );
 
-    expect(convertEntryAmountMock).toHaveBeenCalledWith({
-      amount: "25",
-      fromCurrency: "CNY",
-      toCurrency: "USD",
-      date: "2026-01-31",
-    });
+    expect(convertEntryAmountMock).toHaveBeenCalledWith(
+      {
+        amount: "25",
+        fromCurrency: "CNY",
+        toCurrency: "USD",
+        date: "2026-01-31",
+      },
+      ports.rates
+    );
     expect(createManualMock).toHaveBeenCalledWith(
       expect.objectContaining({
         entryDate: "2026-01-31",

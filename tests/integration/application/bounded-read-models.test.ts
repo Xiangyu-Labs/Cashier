@@ -1,14 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
-import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
-import { getSourceDocumentFullQuery } from "@/modules/source-document/application/queries/get-source-document-full";
-import { querySourceDocumentPage } from "@/modules/source-document/application/queries/list-source-document-page";
+import { listLedgerEntries as listLedgerEntriesUseCase } from "@/modules/ledger/application/queries/list-ledger-entries";
+import { serverComposition } from "@/application/server-composition-root";
+import { getSourceDocumentFullQuery as getSourceDocumentFullQueryUseCase } from "@/modules/source-document/application/queries/get-source-document-full";
+import { querySourceDocumentPage as querySourceDocumentPageUseCase } from "@/modules/source-document/application/queries/list-source-document-page";
 import { sourceDocuments } from "@/persistence";
 import {
   activateTestSourceDocumentProjection,
   createTestUserWithLedger,
 } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
+
+const listLedgerEntries = (
+  ledgerId: string,
+  input: Parameters<typeof listLedgerEntriesUseCase>[1]
+) => listLedgerEntriesUseCase(ledgerId, input, serverComposition.ledgerReads);
+const queryPorts = {
+  documents: serverComposition.sourceDocumentReads,
+  ledgerReads: serverComposition.ledgerReads,
+};
+const querySourceDocumentPage = (
+  ledgerId: string,
+  input: Parameters<typeof querySourceDocumentPageUseCase>[1]
+) => querySourceDocumentPageUseCase(ledgerId, input, queryPorts);
+const getSourceDocumentFullQuery = (ledgerId: string, sourceDocumentId: string) =>
+  getSourceDocumentFullQueryUseCase(ledgerId, sourceDocumentId, queryPorts.documents);
 
 const SOURCE_LIST_KEYS = [
   "anomalyReason",

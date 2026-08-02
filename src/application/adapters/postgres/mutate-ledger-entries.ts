@@ -1,22 +1,46 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   ensureTargetLedgerProjection,
   postgresLedgerProjectionAdapter,
 } from "@/application/adapters/postgres/ledger-projections";
 import { db } from "@/lib/db";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { round } from "@/lib/money/decimal";
-import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
-import { getLedgerMainCurrency } from "@/modules/ledger/application/queries/get-ledger-main-currency";
+import { divide, round } from "@/lib/money/decimal";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { getLedgerEntryDetail } from "./ledger-reads/get-ledger-entry-detail";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
-import { ExchangeRateService } from "./exchange-rate";
+import { lockLedgerForUpdate } from "./transaction-locks";
+import { postgresFxRateBook } from "./exchange-rate";
 import { ConflictError } from "@/lib/errors";
+import { postgresSettingsAdapter } from "./business-ports";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
+}
+
+async function convertEntryAmount(input: {
+  amount: string;
+  fromCurrency: string;
+  toCurrency: string;
+  date?: string;
+}) {
+  if (input.fromCurrency === input.toCurrency) {
+    return { convertedAmount: round(input.amount, 2), exchangeRate: "1" };
+  }
+  const convertedAmount = await postgresFxRateBook.convert(
+    input.amount,
+    input.fromCurrency,
+    input.toCurrency,
+    input.date
+  );
+  return {
+    convertedAmount: round(convertedAmount, 2),
+    exchangeRate: round(divide(convertedAmount, input.amount), 6),
+  };
+}
+
+async function getLedgerMainCurrency(ledgerId: string): Promise<string> {
+  return (await postgresSettingsAdapter.get(ledgerId))?.mainCurrency ?? "CNY";
 }
 
 function whereActiveSourceDocumentForLedger(ledgerId: string, sourceDocumentId: string) {
@@ -252,8 +276,54 @@ export async function batchUpdateLedgerEntries(input: {
     await ensureTargetLedgerProjection(input.ledgerId, documentId);
   }
 
+  const initialMainCurrency = await getLedgerMainCurrency(input.ledgerId);
+  const initialRows = await db
+    .select({
+      id: ledgerEntries.id,
+      amount: ledgerEntries.amount,
+      currency: ledgerEntries.currency,
+      sourceDocumentId: ledgerEntries.sourceDocumentId,
+      sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+      entryDate: sourceDocuments.entryDate,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, input.ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        inArray(ledgerEntries.id, requestedIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    )
+    .orderBy(ledgerEntries.id);
+
+  assertBatchRowsAreCurrent(initialRows, requestedIds.length);
+  const conversions =
+    input.amount !== undefined || input.currency !== undefined
+      ? await postgresFxRateBook.convertBatch(
+          initialRows.map((row) => ({
+            amount: input.amount ?? row.amount,
+            from: normalizeCurrency(input.currency ?? row.currency),
+            to: initialMainCurrency,
+            ...(row.entryDate != null && row.entryDate !== "" ? { date: row.entryDate } : {}),
+          })),
+          initialMainCurrency
+        )
+      : null;
+
   return db.transaction(async (tx) => {
     const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
+    if (lockedLedger.mainCurrency !== initialMainCurrency) {
+      throw new ConflictError("Ledger currency changed before the batch edit");
+    }
     const candidates = await tx
       .select({ sourceDocumentId: ledgerEntries.sourceDocumentId })
       .from(ledgerEntries)
@@ -269,8 +339,22 @@ export async function batchUpdateLedgerEntries(input: {
         candidates.flatMap((row) => (row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))
       ),
     ].sort();
-    for (const documentId of documentIds) {
-      await lockSourceDocumentForUpdate(tx, input.ledgerId, documentId);
+    const lockedDocuments =
+      documentIds.length === 0
+        ? []
+        : await tx
+            .select({ id: sourceDocuments.id })
+            .from(sourceDocuments)
+            .where(
+              and(
+                eq(sourceDocuments.ledgerId, input.ledgerId),
+                inArray(sourceDocuments.id, documentIds),
+                isNull(sourceDocuments.deletedAt)
+              )
+            )
+            .for("update");
+    if (lockedDocuments.length !== documentIds.length) {
+      throw new ConflictError("Selected source documents changed before the batch edit");
     }
 
     const rows = await tx
@@ -301,63 +385,84 @@ export async function batchUpdateLedgerEntries(input: {
       )
       .orderBy(ledgerEntries.id);
 
+    assertBatchRowsAreCurrent(rows, requestedIds.length);
     if (
-      rows.length !== requestedIds.length ||
-      rows.some(
-        (row) =>
-          row.sourceDocumentId == null ||
-          row.activeRevisionId == null ||
-          row.sourceDocumentRevisionId !== row.activeRevisionId
-      )
+      rows.some((row, index) => {
+        const initial = initialRows[index];
+        return (
+          initial == null ||
+          row.id !== initial.id ||
+          row.amount !== initial.amount ||
+          row.currency !== initial.currency ||
+          row.entryDate !== initial.entryDate ||
+          row.sourceDocumentRevisionId !== initial.sourceDocumentRevisionId ||
+          row.activeRevisionId !== initial.activeRevisionId
+        );
+      })
     ) {
       throw new ConflictError("Selected ledger entries changed before the batch edit");
     }
 
-    const mainCurrency = lockedLedger.mainCurrency;
-    const conversions =
-      input.amount !== undefined || input.currency !== undefined
-        ? await ExchangeRateService.convertBatch(
-            rows.map((row) => ({
-              amount: input.amount ?? row.amount,
-              from: normalizeCurrency(input.currency ?? row.currency),
-              to: mainCurrency,
-              ...(row.entryDate != null && row.entryDate !== "" ? { date: row.entryDate } : {}),
-            })),
-            mainCurrency
-          )
-        : null;
     const now = new Date();
-    for (const [index, row] of rows.entries()) {
-      const conversion = conversions?.[index];
-      const updated = await tx
-        .update(ledgerEntries)
-        .set({
-          ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
-          ...(input.currency !== undefined ? { currency: normalizeCurrency(input.currency) } : {}),
-          ...(input.amount !== undefined ? { amount: round(input.amount, 2) } : {}),
-          ...(input.description !== undefined ? { description: input.description } : {}),
-          ...(input.itemName !== undefined ? { itemName: input.itemName } : {}),
-          ...(conversion != null
-            ? {
-                convertedAmount: round(conversion.convertedAmount, 2),
-                exchangeRate: round(conversion.exchangeRate, 6),
-              }
-            : {}),
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(ledgerEntries.ledgerId, input.ledgerId),
-            eq(ledgerEntries.id, row.id),
-            eq(ledgerEntries.sourceDocumentRevisionId, row.activeRevisionId!),
-            isNull(ledgerEntries.deletedAt)
-          )
+    const changesJson = JSON.stringify(
+      rows.map((row, index) => ({
+        id: row.id,
+        active_revision_id: row.activeRevisionId,
+        converted_amount:
+          conversions == null ? null : round(conversions[index]!.convertedAmount, 2),
+        exchange_rate: conversions == null ? null : round(conversions[index]!.exchangeRate, 6),
+      }))
+    );
+    const result = await tx.execute(sql`
+      WITH changes AS (
+        SELECT * FROM jsonb_to_recordset(${changesJson}::jsonb) AS value(
+          id uuid,
+          active_revision_id uuid,
+          converted_amount numeric,
+          exchange_rate numeric
         )
-        .returning({ id: ledgerEntries.id });
-      if (updated.length !== 1) {
-        throw new ConflictError("Ledger entry changed during the batch edit");
-      }
+      )
+      UPDATE ledger_entries AS entry
+      SET
+        category_id = CASE WHEN ${input.categoryId !== undefined} THEN ${input.categoryId ?? null}::uuid ELSE entry.category_id END,
+        currency = CASE WHEN ${input.currency !== undefined} THEN ${input.currency == null ? null : normalizeCurrency(input.currency)}::varchar ELSE entry.currency END,
+        amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount == null ? null : round(input.amount, 2)}::numeric ELSE entry.amount END,
+        description = CASE WHEN ${input.description !== undefined} THEN ${input.description ?? null}::text ELSE entry.description END,
+        item_name = CASE WHEN ${input.itemName !== undefined} THEN ${input.itemName ?? null}::text ELSE entry.item_name END,
+        converted_amount = CASE WHEN ${conversions != null} THEN changes.converted_amount ELSE entry.converted_amount END,
+        exchange_rate = CASE WHEN ${conversions != null} THEN changes.exchange_rate ELSE entry.exchange_rate END,
+        updated_at = ${now}
+      FROM changes
+      WHERE entry.id = changes.id
+        AND entry.ledger_id = ${input.ledgerId}
+        AND entry.source_document_revision_id = changes.active_revision_id
+        AND entry.deleted_at IS NULL
+      RETURNING entry.id
+    `);
+    if (result.rows.length !== rows.length) {
+      throw new ConflictError("Ledger entry changed during the batch edit");
     }
     return rows.length;
   });
+}
+
+function assertBatchRowsAreCurrent(
+  rows: Array<{
+    sourceDocumentId: string | null;
+    sourceDocumentRevisionId: string | null;
+    activeRevisionId: string | null;
+  }>,
+  expectedCount: number
+) {
+  if (
+    rows.length !== expectedCount ||
+    rows.some(
+      (row) =>
+        row.sourceDocumentId == null ||
+        row.activeRevisionId == null ||
+        row.sourceDocumentRevisionId !== row.activeRevisionId
+    )
+  ) {
+    throw new ConflictError("Selected ledger entries changed before the batch edit");
+  }
 }

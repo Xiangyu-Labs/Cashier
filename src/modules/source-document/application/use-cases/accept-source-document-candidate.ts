@@ -1,5 +1,5 @@
-import { acceptCandidateRevision } from "@/application/adapters/postgres";
 import type { AcceptCandidateResponseDto } from "@/modules/source-document/contracts";
+import type { SourceDocumentLifecyclePort } from "../ports";
 
 interface AcceptCandidateInput {
   ledgerId: string;
@@ -22,12 +22,11 @@ interface AcceptCandidateInput {
  *
  * Throws {@link NotFoundError} when the document does not exist or is deleted.
  */
-export async function acceptSourceDocumentCandidate({
-  ledgerId,
-  sourceDocumentId,
-  revisionId,
-}: AcceptCandidateInput): Promise<AcceptCandidateResponseDto> {
-  await acceptCandidateRevision(ledgerId, sourceDocumentId, revisionId);
+export async function acceptSourceDocumentCandidate(
+  { ledgerId, sourceDocumentId, revisionId }: AcceptCandidateInput,
+  lifecycle: SourceDocumentLifecyclePort
+): Promise<AcceptCandidateResponseDto> {
+  await lifecycle.acceptCandidate(ledgerId, sourceDocumentId, revisionId);
 
   return {
     sourceDocumentId,

@@ -49,13 +49,21 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   const dateRange = periodToDateRange(periodParams, ledgerDto.settings.timeZone ?? undefined);
 
   const allMessages = await messagesPromise;
-  const streamMessages = pickMessages(allMessages, [
+  const activeFeature =
+    activeTab === "details"
+      ? "details"
+      : activeTab === "stats"
+        ? "stats"
+        : activeTab === "settings"
+          ? "settings"
+          : "stream";
+  const activeMessages = pickMessages(allMessages, [
     ...FEATURE_MESSAGES.shell,
-    ...FEATURE_MESSAGES.stream,
+    ...FEATURE_MESSAGES[activeFeature],
   ]);
 
   return (
-    <NextIntlClientProvider messages={streamMessages} locale={locale}>
+    <NextIntlClientProvider messages={activeMessages} locale={locale}>
       <ActiveShell ledgerId={ledgerId}>
         {/*
          * Inner Suspense wraps only the tab content that depends on

@@ -5,6 +5,7 @@ import {
   parseListLedgerEntriesInput,
 } from "@/modules/ledger/contract-schemas";
 import type { LedgerEntryPageDto } from "@/modules/ledger/contracts";
+import type { LedgerReadPort } from "../ports";
 
 // "__uncategorized__" is a UI/query sentinel for `categoryId = null`.
 // It must be normalized at query boundaries and must never be persisted as a real category id.
@@ -12,7 +13,8 @@ export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
 
 export async function listLedgerEntries(
   ledgerId: string,
-  params: ListLedgerEntriesInput
+  params: ListLedgerEntriesInput,
+  reads: LedgerReadPort
 ): Promise<LedgerEntryPageDto> {
   const paramsRecord =
     typeof params === "object" && params !== null ? (params as Record<string, unknown>) : null;
@@ -27,15 +29,19 @@ export async function listLedgerEntries(
       : params;
 
   const validated = parseListLedgerEntriesInput(sanitizedParams);
-  return listLedgerEntriesFromValidatedInput(ledgerId, validated, {
-    uncategorizedOnly: isUncategorizedFilter,
-  });
+  return listLedgerEntriesFromValidatedInput(
+    ledgerId,
+    validated,
+    { uncategorizedOnly: isUncategorizedFilter },
+    reads
+  );
 }
 
 export async function listLedgerEntriesFromValidatedInput(
   ledgerId: string,
   validated: ListLedgerEntriesValidatedInput,
-  options?: { uncategorizedOnly?: boolean }
+  options: { uncategorizedOnly?: boolean } | undefined,
+  reads: LedgerReadPort
 ): Promise<LedgerEntryPageDto> {
   const filters: Parameters<typeof listLedgerEntryPage>[0]["filters"] = {};
   if (validated.startDate !== undefined) filters.startDate = validated.startDate;
@@ -49,12 +55,10 @@ export async function listLedgerEntriesFromValidatedInput(
     filters.uncategorizedOnly = true;
   }
 
-  const result = await listLedgerEntryPage({
-    ledgerId,
-    limit: validated.limit,
-    cursor: validated.cursor ?? null,
-    filters,
-  });
+  const result = await listLedgerEntryPage(
+    { ledgerId, limit: validated.limit, cursor: validated.cursor ?? null, filters },
+    reads
+  );
 
   return {
     ...result,

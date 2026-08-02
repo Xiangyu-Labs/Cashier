@@ -1,21 +1,16 @@
-import { currentApplication } from "@/application/current";
+import type { LedgerReadPort } from "../ports";
+import type { LedgerEntryFilterParams } from "../../filters";
 
-export interface LedgerEntryFilterParams {
-  startDate?: string | null;
-  endDate?: string | null;
-  categoryId?: string | null;
-  uncategorizedOnly?: boolean;
-  currency?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
-  search?: string | null;
-}
+export type { LedgerEntryFilterParams } from "../../filters";
 
-export function listLedgerEntryPage(input: {
-  ledgerId: string;
-  limit?: number;
-  cursor?: string | null;
-  filters: LedgerEntryFilterParams;
-}) {
-  return currentApplication.ledgerReads.listEntries(input);
+export function listLedgerEntryPage(
+  input: {
+    ledgerId: string;
+    limit?: number;
+    cursor?: string | null;
+    filters: LedgerEntryFilterParams;
+  },
+  reads: LedgerReadPort
+) {
+  return reads.listEntries(input);
 }

@@ -20,6 +20,7 @@ import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/strea
 // ---------------------------------------------------------------------------
 
 export const REVISION_STATE_REFRESH_INTERVAL_MS = 3000;
+export const REFRESH_LEADER_LEASE_MS = 4000;
 
 export function isRefreshableRevisionState(status: SourceDocumentStatusType): boolean {
   return status === "processing";
@@ -67,7 +68,6 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
   const STORAGE_KEY_LEASE = `cashier-refresh-lease-${ledgerId}`;
   const STORAGE_KEY_BROADCAST = `cashier-refresh-result-${ledgerId}`;
   const LEADER_HEARTBEAT_MS = 2000;
-  const MISSED_HEARTBEATS = 3;
 
   // I2: Stable per-tab token — generated once when the environment is created
   const myId = `tab-${Math.random().toString(36).slice(2, 10)}`;
@@ -195,6 +195,11 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         cleanupIntervals();
         leadershipTimer = setInterval(() => {
           try {
+            if (localStorage.getItem(leaderKey) !== myId) {
+              cleanupIntervals();
+              onExpired?.();
+              return;
+            }
             localStorage.setItem(leaseKey, String(Date.now() + leaseMs));
             // Broadcast heartbeat
             broadcastChannel?.postMessage({
@@ -232,7 +237,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         if (isLeaderExpired()) {
           onExpired?.();
         }
-      }, LEADER_HEARTBEAT_MS * MISSED_HEARTBEATS);
+      }, LEADER_HEARTBEAT_MS);
     },
     isLeadershipAvailable: () => {
       try {
@@ -397,9 +402,10 @@ export class RefreshCoordinator {
   }
 
   private async tryAcquireLeadership(): Promise<void> {
-    const acquired = await this.env.acquireLeadership(30000);
+    const acquired = await this.env.acquireLeadership(REFRESH_LEADER_LEASE_MS);
     this.isLeader = acquired;
-    this.schedule();
+    if (acquired || !this.env.isLeadershipAvailable()) this.queueImmediate();
+    else this.schedule();
   }
 
   private cancelTimer(): void {
@@ -412,6 +418,7 @@ export class RefreshCoordinator {
 
   private queueImmediate(): void {
     if (!this.env.isOnline() || !this.env.isVisible()) return;
+    if (!this.isLeader && this.env.isLeadershipAvailable()) return;
     if (this.inFlight != null) return; // Single-flight
 
     this.cancelTimer();
@@ -447,6 +454,7 @@ export class RefreshCoordinator {
     if (this.subscribers.size === 0) return;
     if (!this.hasTransitionalWork) return;
     if (!this.env.isOnline() || !this.env.isVisible()) return;
+    if (!this.isLeader && this.env.isLeadershipAvailable()) return;
 
     const delay = this.computeDelay();
     this.state = "SCHEDULED";
@@ -481,6 +489,7 @@ export class RefreshCoordinator {
   private async doRefresh(): Promise<boolean> {
     if (!this.env.isOnline()) return false;
     if (!this.env.isVisible()) return false;
+    if (!this.isLeader && this.env.isLeadershipAvailable()) return false;
 
     let anyChanged = false;
     let allSuccessfulResultsAreTerminal = true;

@@ -1,0 +1,60 @@
+{
+  "Common": {
+    "back": "返回",
+    "close": "关闭",
+    "confirm": "确认",
+    "delete": "删除",
+    "retry": "编辑重试",
+    "selectItem": "选择{item}",
+    "cancel": "取消",
+    "save": "保存",
+    "saveSuccess": "保存成功",
+    "saveFailed": "保存失败",
+    "deleteSuccess": "删除成功",
+    "deleteFailed": "删除失败",
+    "loading": "加载中…",
+    "sending": "发送中…",
+    "success": "成功",
+    "error": "错误",
+    "input": "输入",
+    "output": "输出",
+    "sending_status": "发送中…",
+    "unclassified": "未分类",
+    "needsCurrency": "需要货币",
+    "noRecords": "暂无记录",
+    "noMore": "没有更多了",
+    "edit": "编辑",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "loadMore": "加载更多",
+    "discard": "放弃",
+    "saveAllSuccess": "已保存 {count} 处修改"
+  },
+  "Error": {
+    "title": "应用错误",
+    "description": "发生意外错误：{message}",
+    "errorId": "错误 ID：{id}",
+    "goHome": "返回首页",
+    "retry": "重试",
+    "backToHome": "返回主页"
+  },
+  "LedgerError": {
+    "title": "加载账本出错",
+    "description": "加载账本数据时发生错误。这可能是由于网络问题或账本不存在导致。",
+    "backToHome": "返回主页"
+  },
+  "Metadata": {
+    "title": "Cashier - AI 记账助手",
+    "description": "AI 驱动的智能记账工具"
+  },
+  "NotFound": {
+    "title": "页面未找到",
+    "description": "抱歉，您访问的页面不存在或已被移除。",
+    "backToHome": "返回主账本"
+  },
+  "PullToRefresh": {
+    "pullToRefresh": "下拉刷新",
+    "releaseToRefresh": "释放刷新",
+    "refreshing": "刷新中..."
+  }
+}

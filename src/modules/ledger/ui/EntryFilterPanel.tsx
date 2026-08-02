@@ -22,21 +22,12 @@ import { type PeriodParams, type PeriodPreset } from "@/lib/period-utils";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
+  type EntryFilters,
   type StreamStatusPreset,
   STREAM_STATUS_PRESET_VALUES,
-} from "@/modules/workspace/ledger-filter-state";
+} from "@/modules/ledger/filters";
 
-export interface EntryFilters {
-  /** Civil dates. Never convert these values through UTC. */
-  startDate?: string;
-  endDate?: string;
-  categoryId?: string | null;
-  currency?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
-  statuses?: SourceDocumentStatusType[];
-  search?: string | null;
-}
+export type { EntryFilters } from "@/modules/ledger/filters";
 
 interface EntryFilterPanelProps {
   filters: EntryFilters;

@@ -19,6 +19,7 @@ import { createEntryCategory } from "@/modules/ledger/application/use-cases/crea
 import { deleteEntryCategory } from "@/modules/ledger/application/use-cases/delete-entry-category";
 import { reorderEntryCategories } from "@/modules/ledger/application/use-cases/reorder-entry-categories";
 import { updateEntryCategory } from "@/modules/ledger/application/use-cases/update-entry-category";
+import { serverComposition } from "@/application/server-composition-root";
 
 export const createEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateEntryCategoryInput): Promise<EntryCategoryDto> => {
@@ -29,7 +30,7 @@ export const createEntryCategoryAction = withLedgerAccess(
     if (validated.description !== undefined) payload.description = validated.description;
     if (validated.icon !== undefined) payload.icon = validated.icon;
     if (validated.sortOrder !== undefined) payload.sortOrder = validated.sortOrder;
-    return createEntryCategory(ledgerId, payload);
+    return createEntryCategory(ledgerId, payload, serverComposition.categories);
   }
 );
 
@@ -41,14 +42,23 @@ export const updateEntryCategoryAction = withLedgerAccess(
   ): Promise<EntryCategoryDto> => {
     const validatedCategoryId = parseEntryCategoryId(categoryId);
     const validated = parseUpdateEntryCategoryInput(data);
-    return updateEntryCategory(ledgerId, validatedCategoryId, validated);
+    return updateEntryCategory(
+      ledgerId,
+      validatedCategoryId,
+      validated,
+      serverComposition.categories
+    );
   }
 );
 
 export const deleteEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, categoryId: string): Promise<DeleteEntryCategoryResultDto> => {
     const validatedCategoryId = parseEntryCategoryId(categoryId);
-    const deleted = await deleteEntryCategory(ledgerId, validatedCategoryId);
+    const deleted = await deleteEntryCategory(
+      ledgerId,
+      validatedCategoryId,
+      serverComposition.categories
+    );
     return { categoryId: validatedCategoryId, deleted };
   }
 );
@@ -56,7 +66,7 @@ export const deleteEntryCategoryAction = withLedgerAccess(
 export const reorderEntryCategoriesAction = withLedgerAccess(
   async (ledgerId: string, categoryIds: string[]): Promise<ReorderEntryCategoriesResultDto> => {
     const validatedIds = parseReorderEntryCategoriesInput(categoryIds);
-    await reorderEntryCategories(ledgerId, validatedIds);
+    await reorderEntryCategories(ledgerId, validatedIds, serverComposition.categories);
     return {
       categoryIds: validatedIds,
       reorderedCount: validatedIds.length,
@@ -64,12 +74,15 @@ export const reorderEntryCategoriesAction = withLedgerAccess(
   }
 );
 
-export const getEntryCategoriesAction = withLedgerAccess(listEntryCategories);
+export const getEntryCategoriesAction = withLedgerAccess((ledgerId: string) =>
+  listEntryCategories(ledgerId, serverComposition.categories)
+);
 
 /**
  * Get count of uncategorized entries (entries without a category)
  * Separated from getEntryCategoriesAction for cleaner cache management
  */
 export const getUncategorizedCountAction = withLedgerAccess(
-  async (ledgerId: string): Promise<number> => getUncategorizedEntryCount(ledgerId)
+  async (ledgerId: string): Promise<number> =>
+    getUncategorizedEntryCount(ledgerId, serverComposition.categories)
 );

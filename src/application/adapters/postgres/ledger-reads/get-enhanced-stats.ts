@@ -1,19 +1,13 @@
 import Decimal from "decimal.js";
-import { and, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  currencyRates,
-  entryCategories,
-  ledgerEntries,
-  ledgers,
-  sourceDocuments,
-} from "@/persistence";
 import { parseDateString } from "@/lib/date-utils";
+import { logger } from "@/lib/logger";
 import {
   parseEnhancedStatsInput,
   type GetEnhancedStatsInput,
 } from "@/modules/stats/contract-schemas";
-import { convertAmount, calculateGrowth } from "@/modules/stats/utils";
+import { calculateGrowth } from "@/modules/stats/utils";
 import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
 
@@ -42,6 +36,7 @@ function calculateStats(amounts: number[]): CalendarHeatmapStats {
 }
 
 interface AggregatedRow {
+  period: "current" | "previous";
   entryDate: string | null;
   currency: string | null;
   categoryId: string | null;
@@ -49,82 +44,56 @@ interface AggregatedRow {
   categoryIcon: string | null;
   totalAmount: string;
   entryCount: number;
+  mainCurrency: string;
+  missingProjectionCount: number;
 }
 
 async function fetchAggregatedRows(
   ledgerId: string,
-  startStr: string,
-  endStr: string
+  current: { from: string; to: string },
+  previous: { from: string; to: string }
 ): Promise<AggregatedRow[]> {
-  const rows = await db
-    .select({
-      entryDate: sourceDocuments.entryDate,
-      currency: ledgerEntries.currency,
-      categoryId: ledgerEntries.categoryId,
-      categoryName: entryCategories.name,
-      categoryIcon: entryCategories.icon,
-      totalAmount: sql<string>`SUM(CAST(${ledgerEntries.amount} AS numeric))`,
-      entryCount: sql<number>`COUNT(*)`,
-    })
-    .from(ledgerEntries)
-    .innerJoin(sourceDocuments, eq(ledgerEntries.sourceDocumentId, sourceDocuments.id))
-    .leftJoin(entryCategories, eq(ledgerEntries.categoryId, entryCategories.id))
-    .where(
-      and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        isNull(ledgerEntries.deletedAt),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt),
-        sql`${sourceDocuments.activeRevisionId} IS NOT NULL`,
-        sql`${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}`,
-        gte(sourceDocuments.entryDate, startStr),
-        lte(sourceDocuments.entryDate, endStr)
-      )
+  const result = await db.execute<AggregatedRow & Record<string, unknown>>(sql`
+    WITH ranges(period, from_date, to_date) AS (
+      VALUES
+        ('current'::text, ${current.from}::date, ${current.to}::date),
+        ('previous'::text, ${previous.from}::date, ${previous.to}::date)
     )
-    .groupBy(
-      sourceDocuments.entryDate,
-      ledgerEntries.currency,
-      ledgerEntries.categoryId,
-      entryCategories.name,
-      entryCategories.icon
-    )
-    .orderBy(sourceDocuments.entryDate);
-
-  // pg returns COUNT(*) (int8) as a string by default; normalize to number
-  // so that processBatch does numeric addition, not string concatenation.
-  return rows.map((row) => ({
+    SELECT ranges.period, documents.entry_date AS "entryDate",
+      entries.currency, entries.category_id AS "categoryId",
+      categories.name AS "categoryName", categories.icon AS "categoryIcon",
+      sum(coalesce(entries.converted_amount, entries.amount))::text AS "totalAmount",
+      count(*)::int AS "entryCount", ledgers.main_currency AS "mainCurrency",
+      count(*) FILTER (
+        WHERE entries.converted_amount IS NULL
+          AND coalesce(entries.currency, 'CNY') <> ledgers.main_currency
+      )::int AS "missingProjectionCount"
+    FROM ranges
+    JOIN source_documents documents
+      ON documents.ledger_id = ${ledgerId}
+      AND documents.entry_date BETWEEN ranges.from_date AND ranges.to_date
+      AND documents.deleted_at IS NULL
+    JOIN ledger_entries entries
+      ON entries.ledger_id = documents.ledger_id
+      AND entries.source_document_id = documents.id
+      AND entries.source_document_revision_id = documents.active_revision_id
+      AND entries.deleted_at IS NULL
+    JOIN ledgers ON ledgers.id = documents.ledger_id AND ledgers.deleted_at IS NULL
+    LEFT JOIN entry_categories categories ON categories.id = entries.category_id
+    GROUP BY ranges.period, documents.entry_date, entries.currency, entries.category_id,
+      categories.name, categories.icon, ledgers.main_currency
+    UNION ALL
+    SELECT 'current', NULL, NULL, NULL, NULL, NULL, '0', 0, main_currency, 0
+    FROM ledgers WHERE id = ${ledgerId} AND deleted_at IS NULL
+  `);
+  return result.rows.map((row) => ({
     ...row,
     entryCount: Number(row.entryCount),
+    missingProjectionCount: Number(row.missingProjectionCount),
   }));
 }
 
-async function fetchRatesForDates(
-  dates: string[]
-): Promise<Record<string, Record<string, string>>> {
-  const ratesMap: Record<string, Record<string, string>> = {};
-
-  if (dates.length > 0) {
-    const ratesData = await db.query.currencyRates.findMany({
-      where: inArray(currencyRates.date, dates),
-    });
-
-    for (const rate of ratesData) {
-      const stringRates: Record<string, string> = {};
-      for (const [k, v] of Object.entries(rate.rates)) {
-        stringRates[k] = String(v);
-      }
-      ratesMap[rate.date] = stringRates;
-    }
-  }
-
-  return ratesMap;
-}
-
-function processBatch(
-  rows: AggregatedRow[],
-  mainCurrency: string,
-  ratesMap: Record<string, Record<string, string>>
-) {
+function processBatch(rows: AggregatedRow[], mainCurrency: string) {
   let total = new Decimal(0);
   const categoryMap = new Map<
     string,
@@ -140,15 +109,9 @@ function processBatch(
   const dateInfoMap = new Map<string, { entryCount: number; currencies: Set<string> }>();
 
   for (const row of rows) {
+    if (row.entryCount === 0) continue;
     const dateStr = row.entryDate ?? "";
-    const converted = new Decimal(
-      convertAmount({
-        amount: row.totalAmount,
-        fromCurrency: row.currency ?? mainCurrency,
-        toCurrency: mainCurrency,
-        rates: ratesMap[dateStr] ?? null,
-      })
-    );
+    const converted = new Decimal(row.totalAmount);
 
     total = total.plus(converted);
 
@@ -190,48 +153,31 @@ function processBatch(
   };
 }
 
-async function collectUniqueDates(rows: AggregatedRow[]): Promise<string[]> {
-  return Array.from(
-    new Set(
-      rows.map((row) => row.entryDate).filter((date): date is string => date != null && date !== "")
-    )
-  );
-}
-
 export async function getEnhancedStatsQuery({
   ledgerId,
   queryRange,
   compareRange,
 }: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
-  // Start ledger metadata and both aggregate queries in parallel --
-  // mainCurrency is only needed after rows arrive, in processBatch.
-  const ledgerPromise = db.query.ledgers.findFirst({
-    where: eq(ledgers.id, ledgerId),
-    columns: {
-      mainCurrency: true,
-    },
-  });
-
   const currentStart = parseDateString(queryRange.from);
   const currentEnd = parseDateString(queryRange.to);
 
-  const [ledger, currentRows, prevRows] = await Promise.all([
-    ledgerPromise,
-    fetchAggregatedRows(ledgerId, queryRange.from, queryRange.to),
-    fetchAggregatedRows(ledgerId, compareRange.from, compareRange.to),
-  ]);
-
-  const mainCurrency = ledger?.mainCurrency ?? "CNY";
-
-  const allDates = [
-    ...(await collectUniqueDates(currentRows)),
-    ...(await collectUniqueDates(prevRows)),
-  ].filter((value, index, self) => self.indexOf(value) === index);
-
-  const ratesMap = await fetchRatesForDates(allDates);
-
-  const currentStats = processBatch(currentRows, mainCurrency, ratesMap);
-  const prevStats = processBatch(prevRows, mainCurrency, ratesMap);
+  const rows = await fetchAggregatedRows(ledgerId, queryRange, compareRange);
+  const mainCurrency = rows[0]?.mainCurrency ?? "CNY";
+  const missingProjectionCount = rows.reduce((total, row) => total + row.missingProjectionCount, 0);
+  if (missingProjectionCount > 0) {
+    logger.warn(
+      { ledgerId, missingProjectionCount, operation: "enhanced_stats" },
+      "Historical entries used audited original-amount compatibility"
+    );
+  }
+  const currentStats = processBatch(
+    rows.filter((row) => row.period === "current"),
+    mainCurrency
+  );
+  const prevStats = processBatch(
+    rows.filter((row) => row.period === "previous"),
+    mainCurrency
+  );
 
   const categories: EnhancedCategoryStatDto[] = Array.from(currentStats.categoryMap.values())
     .map((category) => {

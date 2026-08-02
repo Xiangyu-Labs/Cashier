@@ -6,8 +6,10 @@ import {
 import type { LedgerEntryFilterParams } from "@/application/adapters/postgres/ledger-reads/build-ledger-entry-filters";
 
 describe("buildLedgerEntryCursorCondition", () => {
-  it("returns null for cursors with an invalid createdAt value", () => {
-    expect(buildLedgerEntryCursorCondition("not-a-date|entry-1")).toBeNull();
+  it("rejects malformed cursors", () => {
+    expect(() => buildLedgerEntryCursorCondition("not-a-date|entry-1", "ledger-1", {})).toThrow(
+      "Invalid ledger entry cursor"
+    );
   });
 });
 

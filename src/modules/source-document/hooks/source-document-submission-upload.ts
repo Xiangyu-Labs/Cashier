@@ -2,6 +2,7 @@
 
 import { compressImage } from "@/lib/image-utils";
 import { API_V1_MAX_IMAGES } from "@/app/api/v1/_shared/limits";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
 import {
   createSourceDocumentUploadPlanAction,
@@ -35,6 +36,7 @@ interface InlinePreparationDependencies {
   createPlan?: typeof createSourceDocumentUploadPlanAction;
   finalize?: typeof finalizeSourceDocumentUploadAction;
   put?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 const DATA_URL_PATTERN = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*={0,2})$/i;
@@ -91,7 +93,9 @@ export async function uploadSourceDocumentSubmissionImages(
   const originals = images.map((image, index) => dataUrlToFile(image.data, index));
   const compress = dependencies.compress ?? compressImage;
 
+  let files: File[] | null = null;
   for (let qualityIndex = 0; qualityIndex < QUALITY_STEPS.length; qualityIndex += 1) {
+    if (dependencies.signal?.aborted) throw new DOMException("Upload aborted", "AbortError");
     const quality = QUALITY_STEPS[qualityIndex]!;
     let compressed;
     try {
@@ -101,34 +105,62 @@ export async function uploadSourceDocumentSubmissionImages(
         cause: error,
       });
     }
-    const files = compressed.map((image, index) => dataUrlToFile(image.data, index));
+    const candidates = compressed.map((image, index) => dataUrlToFile(image.data, index));
     onProgress?.({
       phase: "preparing",
       percent: Math.min(80, 15 + qualityIndex * 15),
-      fileCount: images.length,
+      fileCount: candidates.length,
     });
-    try {
-      onProgress?.({ phase: "planning", percent: 55, fileCount: files.length });
-      const checksums = await Promise.all(files.map(sha256));
-      const plan = await (dependencies.createPlan ?? createSourceDocumentUploadPlanAction)(
-        _ledgerId,
-        files.map((file, index) => ({
-          contentType: file.type,
-          byteSize: file.size,
-          originalFilename: file.name,
-          checksum: checksums[index]!,
-        }))
-      );
-      let loadedBytes = 0;
-      const totalBytes = files.reduce((total, file) => total + file.size, 0);
-      for (const [index, target] of plan.targets.entries()) {
+    if (candidates.every((file) => file.size <= MAX_ORIGINAL_BYTES_PER_FILE)) {
+      files = candidates;
+      break;
+    }
+  }
+  if (files == null) {
+    throw new SourceDocumentSubmissionUploadError(
+      "Images cannot be compressed within the upload size limit",
+      "prepare"
+    );
+  }
+
+  try {
+    onProgress?.({ phase: "planning", percent: 55, fileCount: files.length });
+    const checksums = await Promise.all(files.map(sha256));
+    const plan = await (dependencies.createPlan ?? createSourceDocumentUploadPlanAction)(
+      _ledgerId,
+      files.map((file, index) => ({
+        contentType: file.type,
+        byteSize: file.size,
+        originalFilename: file.name,
+        checksum: checksums[index]!,
+      }))
+    );
+    let loadedBytes = 0;
+    const totalBytes = files.reduce((total, file) => total + file.size, 0);
+    let nextIndex = 0;
+    const uploadWorker = async () => {
+      while (nextIndex < plan.targets.length) {
+        const index = nextIndex++;
+        const target = plan.targets[index]!;
         const file = files[index]!;
-        const response = await (dependencies.put ?? fetch)(target.url, {
-          method: "PUT",
-          headers: target.requiredHeaders,
-          body: file,
-        });
-        if (!response.ok) throw new Error(`Direct upload failed with ${response.status}`);
+        let response: Response | null = null;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          if (dependencies.signal?.aborted) throw new DOMException("Upload aborted", "AbortError");
+          try {
+            response = await (dependencies.put ?? fetch)(target.url, {
+              method: "PUT",
+              headers: target.requiredHeaders,
+              body: file,
+              ...(dependencies.signal === undefined ? {} : { signal: dependencies.signal }),
+            });
+            if (response.ok) break;
+            lastError = new Error(`Direct upload failed with ${response.status}`);
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        if (response?.ok !== true) throw lastError ?? new Error("Direct upload failed");
         loadedBytes += file.size;
         onProgress?.({
           phase: "uploading",
@@ -139,30 +171,24 @@ export async function uploadSourceDocumentSubmissionImages(
           fileCount: files.length,
         });
       }
-      onProgress?.({ phase: "finalizing", percent: 88, fileCount: files.length });
-      const storedFileIds = await (dependencies.finalize ?? finalizeSourceDocumentUploadAction)(
-        _ledgerId,
-        {
-          uploadSessionId: plan.id,
-          finalizationToken: plan.finalizationToken,
-          targetIds: plan.targets.map((target) => target.id),
-        }
-      );
-      return {
-        ...base,
-        storedFileIds: [...(base.storedFileIds ?? []), ...storedFileIds],
-      };
-    } catch (error) {
-      if (qualityIndex === QUALITY_STEPS.length - 1) {
-        throw new SourceDocumentSubmissionUploadError("Failed to upload source image", "upload", {
-          cause: error,
-        });
+    };
+    await Promise.all(Array.from({ length: Math.min(3, files.length) }, uploadWorker));
+    onProgress?.({ phase: "finalizing", percent: 88, fileCount: files.length });
+    const storedFileIds = await (dependencies.finalize ?? finalizeSourceDocumentUploadAction)(
+      _ledgerId,
+      {
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: plan.targets.map((target) => target.id),
       }
-    }
+    );
+    return {
+      ...base,
+      storedFileIds: [...(base.storedFileIds ?? []), ...storedFileIds],
+    };
+  } catch (error) {
+    throw new SourceDocumentSubmissionUploadError("Failed to upload source image", "upload", {
+      cause: error,
+    });
   }
-
-  throw new SourceDocumentSubmissionUploadError(
-    "Images cannot be compressed within the 4 MiB request limit",
-    "prepare"
-  );
 }

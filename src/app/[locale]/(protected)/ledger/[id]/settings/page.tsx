@@ -1,16 +1,11 @@
-import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { HydrationBoundary } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
-import {
-  getLedgerAction,
-  getEntryCategoriesAction,
-  getLedgerSettingsAction,
-} from "@/modules/ledger/actions";
 import { SettingsPageClient } from "@/modules/ledger/ui";
-import { queryKeys } from "@/lib/query-keys";
-import { LEDGER } from "@/lib/constants";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { auth } from "@/auth";
+import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { serverComposition } from "@/application/server-composition-root";
 
 interface SettingsPageProps {
   params: Promise<{ id: string }>;
@@ -18,37 +13,40 @@ interface SettingsPageProps {
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
   const { id: ledgerId } = await params;
-  const locale = await getLocale();
-  const queryClient = new QueryClient();
-  const session = await auth();
-
-  const STALE_TIME = LEDGER.STALE_TIME_MS;
-
-  // Prefetch ledger data
-  const ledger = await queryClient.fetchQuery({
-    queryKey: queryKeys.ledger(ledgerId),
-    queryFn: () => getLedgerAction(ledgerId),
-    staleTime: STALE_TIME,
-  });
+  const [locale, session] = await Promise.all([getLocale(), auth()]);
+  const userId = session?.user?.id;
+  const ledger =
+    userId == null || userId === ""
+      ? null
+      : await serverComposition.ledgers.getOwned(ledgerId, userId);
 
   if (!ledger) {
     const t = await getTranslations({ locale, namespace: "LedgerPage" });
     return <div>{t("notFound")}</div>;
   }
 
-  // Prefetch categories
-  const categories = await queryClient.fetchQuery({
-    queryKey: queryKeys.entryCategories(ledgerId),
-    queryFn: () => getEntryCategoriesAction(ledgerId),
-    staleTime: STALE_TIME,
-  });
-
-  // Prefetch ledger settings (credentials and uncategorized count)
-  await queryClient.prefetchQuery({
-    queryKey: queryKeys.ledgerSettings(ledgerId),
-    queryFn: () => getLedgerSettingsAction(ledgerId),
-    staleTime: STALE_TIME,
-  });
+  const pageData = await getLedgerPageBootstrap(
+    {
+      ledgerId,
+      initialTab: "settings",
+      periodParams: { period: "thisMonth" },
+      ledgerDto: ledger,
+    },
+    {
+      categories: serverComposition.categories,
+      ledgerReads: serverComposition.ledgerReads,
+      stats: serverComposition.stats,
+      sourceDocuments: {
+        documents: serverComposition.sourceDocumentReads,
+        ledgerReads: serverComposition.ledgerReads,
+      },
+      credentials: serverComposition.serviceCredentials,
+    }
+  );
+  if (pageData == null) {
+    const t = await getTranslations({ locale, namespace: "LedgerPage" });
+    return <div>{t("notFound")}</div>;
+  }
 
   const allMessages = await getMessages({ locale });
   const settingsMessages = pickMessages(allMessages, [
@@ -58,10 +56,10 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
   return (
     <NextIntlClientProvider messages={settingsMessages} locale={locale}>
-      <HydrationBoundary state={dehydrate(queryClient)}>
+      <HydrationBoundary state={pageData.dehydratedState}>
         <SettingsPageClient
           ledger={ledger}
-          initialCategories={categories}
+          initialCategories={pageData.initialCategories}
           ledgerId={ledgerId}
           {...(session?.user?.email != null ? { userEmail: session.user.email } : {})}
           {...(session?.user != null ? { hasPassword: session.user.hasPassword } : {})}

@@ -2,7 +2,7 @@ import { CredentialsSignin } from "@auth/core/errors";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
-import { currentApplication } from "@/application/current";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import type { UserAccountPort } from "@/application/contracts";
 
 export class RegistrationDisabledError extends CredentialsSignin {
@@ -11,7 +11,7 @@ export class RegistrationDisabledError extends CredentialsSignin {
 
 export async function isRegistrationAllowed(
   email: string,
-  users: UserAccountPort = currentApplication.userAccounts
+  users: UserAccountPort
 ): Promise<boolean> {
   if (!runtimeEnv.disableRegistration) {
     return true;
@@ -21,11 +21,17 @@ export async function isRegistrationAllowed(
   return (await users.findByEmail(normalizedEmail)) != null;
 }
 
-export async function assertRegistrationAllowed(email: string): Promise<void> {
-  if (await isRegistrationAllowed(email)) {
+export async function assertRegistrationAllowed(
+  email: string,
+  users: UserAccountPort
+): Promise<void> {
+  if (await isRegistrationAllowed(email, users)) {
     return;
   }
 
-  logger.warn({ email: email.toLowerCase() }, "Registration disabled for new user sign-in");
+  logger.warn(
+    { subject: logIdentifier("email", email) },
+    "Registration disabled for new user sign-in"
+  );
   throw new RegistrationDisabledError();
 }

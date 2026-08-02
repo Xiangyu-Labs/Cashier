@@ -7,8 +7,13 @@ import {
   createSourceDocumentData,
 } from "tests/helpers/factories";
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
-import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
+import { listLedgerEntryViewsBySourceDocumentIds as listLedgerEntryViewsBySourceDocumentIdsUseCase } from "@/modules/ledger/source-document-queries";
+import { serverComposition } from "@/application/server-composition-root";
 import { activateTestSourceDocumentProjection, createTestUser } from "tests/helpers/schema-setup";
+
+const listLedgerEntryViewsBySourceDocumentIds = (
+  input: Parameters<typeof listLedgerEntryViewsBySourceDocumentIdsUseCase>[0]
+) => listLedgerEntryViewsBySourceDocumentIdsUseCase(input, serverComposition.ledgerReads);
 
 describe("ledger source-document linkage", () => {
   let ledgerId = "";

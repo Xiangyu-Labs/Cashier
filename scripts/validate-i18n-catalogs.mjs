@@ -7,6 +7,13 @@ import { fileURLToPath } from "node:url";
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
 const messagesDir = path.resolve(currentDirPath, "..", "messages");
+const featureMapPath = path.resolve(
+  currentDirPath,
+  "..",
+  "src",
+  "i18n",
+  "client-feature-message-map.json"
+);
 const catalogFiles = fs
   .readdirSync(messagesDir)
   .filter((fileName) => fileName.endsWith(".json"))
@@ -47,6 +54,15 @@ function flattenKeys(value, prefix = "") {
 
 const parsedCatalogs = new Map();
 const errors = [];
+let featureMap = {};
+
+try {
+  featureMap = JSON.parse(fs.readFileSync(featureMapPath, "utf8"));
+} catch (error) {
+  errors.push(
+    `feature message map is invalid: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
 
 for (const catalogFile of catalogFiles) {
   const filePath = path.join(messagesDir, catalogFile);
@@ -64,6 +80,46 @@ for (const catalogFile of catalogFiles) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     errors.push(`${catalogFile}: invalid JSON: ${message}`);
+  }
+}
+
+for (const [feature, namespaces] of Object.entries(featureMap)) {
+  if (!Array.isArray(namespaces) || namespaces.some((namespace) => typeof namespace !== "string")) {
+    errors.push(`${feature}: feature namespace list must contain strings only`);
+    continue;
+  }
+  for (const catalogFile of catalogFiles) {
+    const locale = path.basename(catalogFile, ".json");
+    const rootCatalog = parsedCatalogs.get(catalogFile);
+    const featurePath = path.join(messagesDir, locale, `${feature}.json`);
+    if (rootCatalog == null) continue;
+    if (!fs.existsSync(featurePath)) {
+      errors.push(`${locale}/${feature}.json: missing feature catalog`);
+      continue;
+    }
+    let actual;
+    try {
+      actual = JSON.parse(fs.readFileSync(featurePath, "utf8"));
+    } catch (error) {
+      errors.push(
+        `${locale}/${feature}.json: invalid JSON: ${error instanceof Error ? error.message : String(error)}`
+      );
+      continue;
+    }
+    const expected = Object.fromEntries(
+      namespaces
+        .filter((namespace) => namespace in rootCatalog)
+        .map((namespace) => [namespace, rootCatalog[namespace]])
+    );
+    const missingNamespaces = namespaces.filter((namespace) => !(namespace in rootCatalog));
+    if (missingNamespaces.length > 0) {
+      errors.push(
+        `${catalogFile}: feature ${feature} references missing namespaces: ${missingNamespaces.join(", ")}`
+      );
+    }
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(`${locale}/${feature}.json: content differs from ${catalogFile}`);
+    }
   }
 }
 
