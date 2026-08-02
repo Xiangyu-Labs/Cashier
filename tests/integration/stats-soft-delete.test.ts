@@ -32,9 +32,8 @@ describe("Stats Soft Delete Filtering Regression", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "Test expense",
         entryDate: "2024-01-01",
-        status: "completed",
+        currentStatus: "completed",
       })
       .returning();
     expect(sourceDoc).toBeDefined();
@@ -79,9 +78,8 @@ describe("Stats Soft Delete Filtering Regression", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "Test expense",
         entryDate: "2024-02-01",
-        status: "completed",
+        currentStatus: "completed",
       })
       .returning();
     expect(sourceDoc).toBeDefined();

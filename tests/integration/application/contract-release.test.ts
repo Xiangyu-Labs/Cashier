@@ -6,7 +6,7 @@ import {
   postgresSourceDocumentSubmissionAdapter,
   getTargetSourceDocument,
 } from "@/application/adapters/postgres";
-import { ledgerEntries, processingOutbox, revisionEntries, sourceDocuments } from "@/persistence";
+import { ledgerEntries, processingOutbox, sourceDocuments } from "@/persistence";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
@@ -20,16 +20,6 @@ const projectionEntry = {
   exchangeRate: "1.000000",
 } as const;
 
-function legacyFields(row: typeof sourceDocuments.$inferSelect) {
-  return {
-    text: row.text,
-    imageUrls: row.imageUrls,
-    status: row.status,
-    anomalyReason: row.anomalyReason,
-    metadata: row.metadata,
-  };
-}
-
 describe("local contract release", () => {
   it("writes only target revision, processing, and ledger projections", async () => {
     const db = getTestDb();
@@ -42,14 +32,7 @@ describe("local contract release", () => {
       where: eq(sourceDocuments.id, pending.document.id),
     });
     expect(created).not.toBeNull();
-    const compatibilityBaseline = legacyFields(created!);
-    expect(compatibilityBaseline).toEqual({
-      text: null,
-      imageUrls: [],
-      status: "processing",
-      anomalyReason: null,
-      metadata: {},
-    });
+    expect(created?.currentStatus).toBe("processing");
 
     await postgresRevisionAdapter.markProcessing({
       ledgerId,
@@ -69,29 +52,24 @@ describe("local contract release", () => {
     const completed = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, pending.document.id),
     });
-    expect(legacyFields(completed!)).toEqual(compatibilityBaseline);
     expect(completed).toMatchObject({
       activeRevisionId: pending.revision.id,
       pendingRevisionId: null,
       title: "Target title",
+      currentStatus: "completed",
     });
     expect(await db.select().from(processingOutbox)).toHaveLength(1);
-    expect(await db.select().from(revisionEntries)).toHaveLength(1);
     expect(await db.select().from(ledgerEntries)).toHaveLength(1);
   });
 
-  it("leaves retained legacy rows unchanged", async () => {
+  it("leaves retained soft-deleted rows unchanged", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const legacyDocumentId = crypto.randomUUID();
     await db.insert(sourceDocuments).values({
       id: legacyDocumentId,
       ledgerId,
-      text: "recovery evidence",
-      imageUrls: [`/api/uploads/${ledgerId}/${legacyDocumentId}/receipt.jpg`],
-      status: "deleted",
-      anomalyReason: "retained anomaly",
-      metadata: { originalImageUrls: ["retained-original.jpg"] },
+      currentStatus: "completed",
       deletedAt: new Date("2026-07-16T00:00:00.000Z"),
     });
     const beforeDocument = await db.query.sourceDocuments.findFirst({
@@ -109,7 +87,7 @@ describe("local contract release", () => {
     ).toEqual(beforeDocument);
   });
 
-  it("derives reads from revisions instead of the legacy status column", async () => {
+  it("derives reads from the canonical active revision", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
@@ -119,7 +97,7 @@ describe("local contract release", () => {
     });
     await db
       .update(sourceDocuments)
-      .set({ status: "deleted", text: "legacy text must be ignored" })
+      .set({ currentStatus: "failed" })
       .where(eq(sourceDocuments.id, created.sourceDocumentId));
 
     await expect(

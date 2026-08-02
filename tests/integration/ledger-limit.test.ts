@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { ledgers, users } from "@/persistence";
 import { eq } from "drizzle-orm";
 
+const LEDGER_ONE_ID = "00000000-0000-4000-8000-000000000001";
+const LEDGER_TWO_ID = "00000000-0000-4000-8000-000000000002";
+
 async function createTestUser(email?: string) {
   const id = crypto.randomUUID();
   const [user] = await db
@@ -24,8 +27,8 @@ async function createTestUser(email?: string) {
 describe("Ledger single limit constraint", () => {
   beforeEach(async () => {
     // Clean up test data - use raw SQL for cleanup to avoid relation issues
-    await db.delete(ledgers).where(eq(ledgers.id, "ledger-test-1"));
-    await db.delete(ledgers).where(eq(ledgers.id, "ledger-test-2"));
+    await db.delete(ledgers).where(eq(ledgers.id, LEDGER_ONE_ID));
+    await db.delete(ledgers).where(eq(ledgers.id, LEDGER_TWO_ID));
   });
 
   it("should allow creating first ledger for user", async () => {
@@ -35,7 +38,7 @@ describe("Ledger single limit constraint", () => {
     const [ledger] = await db
       .insert(ledgers)
       .values({
-        id: "ledger-test-1",
+        id: LEDGER_ONE_ID,
         userId: user.id,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -51,7 +54,7 @@ describe("Ledger single limit constraint", () => {
 
     // 创建第一个账本
     await db.insert(ledgers).values({
-      id: "ledger-test-1",
+      id: LEDGER_ONE_ID,
       userId: user.id,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -60,7 +63,7 @@ describe("Ledger single limit constraint", () => {
     // 尝试创建第二个账本应该失败
     await expect(
       db.insert(ledgers).values({
-        id: "ledger-test-2",
+        id: LEDGER_TWO_ID,
         userId: user.id,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -76,7 +79,7 @@ describe("Ledger single limit constraint", () => {
     const [ledger1] = await db
       .insert(ledgers)
       .values({
-        id: "ledger-test-1",
+        id: LEDGER_ONE_ID,
         userId: user1.id,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -87,7 +90,7 @@ describe("Ledger single limit constraint", () => {
     const [ledger2] = await db
       .insert(ledgers)
       .values({
-        id: "ledger-test-2",
+        id: LEDGER_TWO_ID,
         userId: user2.id,
         createdAt: new Date(),
         updatedAt: new Date(),

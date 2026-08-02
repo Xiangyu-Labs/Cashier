@@ -31,8 +31,7 @@ describe("countSourceDocumentsByStatus", () => {
         .values({
           ledgerId,
           title: `${status} receipt`,
-          text: null,
-          status,
+          currentStatus: status === "deleted" ? "completed" : status,
           entryDate: "2026-07-15",
           createdAt: now,
           updatedAt: now,
@@ -86,8 +85,7 @@ describe("countSourceDocumentsByStatus", () => {
       .values({
         ledgerId,
         title: "candidate_pending document",
-        text: null,
-        status: "completed",
+        currentStatus: "completed",
         entryDate: "2026-07-15",
         createdAt: now,
         updatedAt: now,
@@ -131,8 +129,7 @@ describe("countSourceDocumentsByStatus", () => {
         .values({
           ledgerId,
           title: `${status} document`,
-          text: null,
-          status,
+          currentStatus: status,
           entryDate: "2026-07-15",
           createdAt: now,
           updatedAt: now,
@@ -175,8 +172,7 @@ describe("countSourceDocumentsByStatus", () => {
       .values({
         ledgerId,
         title: "Deleted anomaly",
-        text: null,
-        status: "anomaly",
+        currentStatus: "anomaly",
         entryDate: "2026-07-15",
         createdAt: now,
         updatedAt: now,

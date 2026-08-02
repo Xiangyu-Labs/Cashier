@@ -3,6 +3,7 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { getTestDb } from "tests/setup";
 import {
   activateTestSourceDocumentProjection,
+  createTestSourceDocument,
   createTestUserWithLedger,
 } from "tests/helpers/schema-setup";
 import {
@@ -56,23 +57,17 @@ describe("source-document-queries", () => {
       .values([
         {
           ledgerId,
-          text: "completed-new",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-20",
         },
         {
           ledgerId,
-          text: "completed-old",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-19",
         },
         {
           ledgerId,
-          text: "failed",
-          status: "failed",
-          imageUrls: [],
+          currentStatus: "failed",
           entryDate: "2026-03-20",
         },
       ])
@@ -109,9 +104,7 @@ describe("source-document-queries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "has entry",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2026-03-21",
       })
       .returning();
@@ -143,18 +136,12 @@ describe("source-document-queries", () => {
 
   it("returns full payload for an existing document and throws NotFoundError for a missing one", async () => {
     const db = getTestDb();
-    const docs = await db
-      .insert(sourceDocuments)
-      .values({
-        ledgerId,
-        text: "full payload",
-        status: "processing",
-        imageUrls: ["/api/uploads/a.jpg"],
-        entryDate: "2026-03-22",
-      })
-      .returning();
-    const docId = requireDefined(docs[0], "source document").id;
-    await activateTestSourceDocumentProjection(db, docId);
+    const docId = await createTestSourceDocument(db, ledgerId, {
+      text: "full payload",
+      status: "processing",
+      imageUrls: ["/api/uploads/a.jpg"],
+      entryDate: "2026-03-22",
+    });
 
     const existing = await getSourceDocumentFullQuery(ledgerId, docId);
     expect(existing).toMatchObject({
@@ -171,7 +158,7 @@ describe("source-document-queries", () => {
     );
   });
 
-  it("hides documents whose status is deleted even when deletedAt is null", async () => {
+  it("hides soft-deleted documents", async () => {
     const db = getTestDb();
     const deletedDoc = requireDefined(
       (
@@ -179,10 +166,8 @@ describe("source-document-queries", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId,
-            text: "should be hidden",
-            status: "deleted",
-            deletedAt: null,
-            imageUrls: [],
+            currentStatus: "completed",
+            deletedAt: new Date(),
             entryDate: "2026-03-22",
           })
           .returning()
@@ -196,8 +181,8 @@ describe("source-document-queries", () => {
     const storedDeletedDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, deletedDoc.id),
     });
-    expect(storedDeletedDoc?.status).toBe("deleted");
-    expect(storedDeletedDoc?.deletedAt).toBeNull();
+    expect(storedDeletedDoc?.currentStatus).toBe("completed");
+    expect(storedDeletedDoc?.deletedAt).not.toBeNull();
 
     await expect(getSourceDocumentFullQuery(ledgerId, deletedDoc.id)).rejects.toThrow(
       NotFoundError
@@ -212,16 +197,12 @@ describe("source-document-queries", () => {
       .values([
         {
           ledgerId,
-          text: "processing doc",
-          status: "processing",
-          imageUrls: [],
+          currentStatus: "processing",
           entryDate: "2026-03-23",
         },
         {
           ledgerId,
-          text: "failed doc",
-          status: "failed",
-          imageUrls: [],
+          currentStatus: "failed",
           entryDate: "2026-03-22",
         },
       ])
@@ -254,9 +235,7 @@ describe("source-document-queries", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          text: `stream-test-${i}`,
-          status,
-          imageUrls: [],
+          currentStatus: status,
           entryDate: `2026-03-${String(day).padStart(2, "0")}`,
           createdAt: new Date(
             `2026-03-${String(day).padStart(2, "0")}T${String(10 + (i % 10)).padStart(2, "0")}:00:00Z`
@@ -318,24 +297,21 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "null-date-older",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: null,
           createdAt: today,
         },
         {
           ledgerId,
           title: "null-date-newer",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-18",
           createdAt: yesterday,
         },
         {
           ledgerId,
           title: "has-explicit-date",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-19",
           createdAt: new Date("2026-03-19T12:00:00Z"),
         },
@@ -381,27 +357,21 @@ describe("source-document-queries", () => {
       {
         id: idA,
         ledgerId,
-        text: "id-a",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: sameDate,
         createdAt: sameCreatedAt,
       },
       {
         id: idB,
         ledgerId,
-        text: "id-b",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: sameDate,
         createdAt: sameCreatedAt,
       },
       {
         id: idC,
         ledgerId,
-        text: "id-c",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: sameDate,
         createdAt: sameCreatedAt,
       },
@@ -428,29 +398,25 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "completed-in-range",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-15",
         },
         {
           ledgerId,
           title: "completed-outside-range",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-01",
         },
         {
           ledgerId,
           title: "processing-in-range",
-          status: "processing",
-          imageUrls: [],
+          currentStatus: "processing",
           entryDate: "2026-03-16",
         },
         {
           ledgerId,
           title: "anomaly-in-range",
-          status: "anomaly",
-          imageUrls: [],
+          currentStatus: "anomaly",
           entryDate: "2026-03-14",
         },
       ])
@@ -506,8 +472,7 @@ describe("source-document-queries", () => {
       .values({
         ledgerId,
         title: "Coffee and cake",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2026-03-20",
       })
       .returning();
@@ -556,22 +521,19 @@ describe("source-document-queries", () => {
         {
           ledgerId,
           title: "completed-total",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-15",
         },
         {
           ledgerId,
           title: "failed-with-active-result",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-03-16",
         },
         {
           ledgerId,
           title: "completed-out-of-range",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2026-02-01",
         },
       ])
@@ -658,9 +620,7 @@ describe("source-document-queries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "active doc",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2026-03-20",
       })
       .returning();
@@ -668,9 +628,7 @@ describe("source-document-queries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "deleted doc",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2026-03-19",
         deletedAt: new Date(),
       })
@@ -690,23 +648,17 @@ describe("source-document-queries", () => {
     await db.insert(sourceDocuments).values([
       {
         ledgerId,
-        text: "processing doc",
-        status: "processing",
-        imageUrls: [],
+        currentStatus: "processing",
         entryDate: "2026-03-20",
       },
       {
         ledgerId,
-        text: "completed doc",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2026-03-19",
       },
       {
         ledgerId,
-        text: "anomaly doc",
-        status: "anomaly",
-        imageUrls: [],
+        currentStatus: "anomaly",
         entryDate: "2026-03-18",
       },
     ]);
@@ -747,9 +699,7 @@ describe("source-document-queries", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          text: `cursor-walk-${i}`,
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: `2026-03-${String(day).padStart(2, "0")}`,
           createdAt: new Date(`2026-03-${String(day).padStart(2, "0")}T12:00:00Z`),
         })

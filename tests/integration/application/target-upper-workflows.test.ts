@@ -14,7 +14,6 @@ import { deleteLedgerEntry } from "@/modules/ledger/application/use-cases/delete
 import {
   entryCategories,
   ledgerEntries,
-  revisionEntries,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
@@ -51,7 +50,7 @@ describe("target upper workflows", () => {
     });
     await db
       .update(sourceDocuments)
-      .set({ status: "failed" })
+      .set({ currentStatus: "failed" })
       .where(eq(sourceDocuments.id, completed.sourceDocumentId));
 
     const first = await querySourceDocumentPage(ledgerId, { limit: 1 });
@@ -235,8 +234,9 @@ describe("target upper workflows", () => {
     const activeDocument = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    const targetLinks = await db.query.revisionEntries.findMany({
-      where: eq(revisionEntries.revisionId, created.revisionId),
+    const targetLinks = await db.query.ledgerEntries.findMany({
+      where: eq(ledgerEntries.sourceDocumentRevisionId, created.revisionId),
+      orderBy: (entries, { asc }) => [asc(entries.position)],
     });
     expect(afterRollback).toMatchObject({
       convertedAmount: "98.72",
@@ -244,7 +244,7 @@ describe("target upper workflows", () => {
       sourceDocumentRevisionId: created.revisionId,
     });
     expect(activeDocument?.activeRevisionId).toBe(created.revisionId);
-    expect(new Set(targetLinks.map((link) => link.ledgerEntryId))).toEqual(new Set(ids));
+    expect(new Set(targetLinks.map((link) => link.id))).toEqual(new Set(ids));
   });
 
   it("prevents cross-workspace reads and rolls back invalid manual replacement", async () => {
@@ -269,7 +269,6 @@ describe("target upper workflows", () => {
     expect(await db.select().from(sourceDocuments)).toHaveLength(0);
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(0);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
-    expect(await db.select().from(revisionEntries)).toHaveLength(0);
 
     const created = await postgresLedgerProjectionAdapter.createManual({
       ledgerId,
@@ -280,7 +279,6 @@ describe("target upper workflows", () => {
     });
     const beforeRevisionCount = await db.select().from(sourceDocumentRevisions);
     const beforeEntryCount = await db.select().from(ledgerEntries);
-    const beforeLinkCount = await db.select().from(revisionEntries);
 
     await expect(querySourceDocumentPage(otherLedgerId, {})).resolves.toMatchObject({ items: [] });
     await expect(listLedgerEntries(otherLedgerId, { limit: 20 })).resolves.toMatchObject({
@@ -303,7 +301,6 @@ describe("target upper workflows", () => {
       beforeRevisionCount.length
     );
     expect(await db.select().from(ledgerEntries)).toHaveLength(beforeEntryCount.length);
-    expect(await db.select().from(revisionEntries)).toHaveLength(beforeLinkCount.length);
   });
 
   it("edits a manual entry through an immediate revision while keeping the legacy id", async () => {

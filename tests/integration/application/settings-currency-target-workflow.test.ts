@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledger";
 import { hasActiveEntries } from "@/modules/ledger/application/queries/has-active-entries";
-import { currencyRates, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import {
+  currencyRates,
+  ledgerEntries,
+  ledgers,
+  sourceDocumentRevisions,
+  sourceDocuments,
+} from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
@@ -75,9 +81,28 @@ describe("target Settings currency workflow", () => {
       id: sourceDocumentId,
       ledgerId,
       entryDate: "2026-07-15",
-      activeRevisionId,
-      pendingRevisionId,
     });
+    await db.insert(sourceDocumentRevisions).values([
+      {
+        id: activeRevisionId,
+        ledgerId,
+        sourceDocumentId,
+        revisionNumber: 1,
+        outcome: "completed",
+        finalizedAt: new Date(),
+      },
+      {
+        id: pendingRevisionId,
+        ledgerId,
+        sourceDocumentId,
+        revisionNumber: 2,
+        outcome: "processing",
+      },
+    ]);
+    await db
+      .update(sourceDocuments)
+      .set({ activeRevisionId, pendingRevisionId })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
     await db.insert(ledgerEntries).values([
       {
         ledgerId,
@@ -186,8 +211,19 @@ describe("target Settings currency workflow", () => {
       id: sourceDocumentId,
       ledgerId,
       entryDate: "2026-07-14",
-      activeRevisionId,
     });
+    await db.insert(sourceDocumentRevisions).values({
+      id: activeRevisionId,
+      ledgerId,
+      sourceDocumentId,
+      revisionNumber: 1,
+      outcome: "completed",
+      finalizedAt: new Date(),
+    });
+    await db
+      .update(sourceDocuments)
+      .set({ activeRevisionId })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
     await db.insert(ledgerEntries).values({
       ledgerId,
       sourceDocumentId,

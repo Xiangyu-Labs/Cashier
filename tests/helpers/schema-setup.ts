@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@/persistence";
 
@@ -73,26 +73,92 @@ export async function createTestSourceDocument(
     text: string;
     status: "processing" | "completed" | "anomaly" | "failed" | "cancelled" | "deleted";
     imageUrls: string[];
+    entryDate: string | null;
+    title: string | null;
   }> = {}
 ): Promise<string> {
-  const insertedDocs = await db
-    .insert(schema.sourceDocuments)
-    .values({
-      ledgerId,
-      text: overrides.text ?? "Test document",
-      status: overrides.status ?? "completed",
-      imageUrls: overrides.imageUrls ?? [],
-    })
-    .returning();
-  const doc = requireDefined(insertedDocs[0], "Expected inserted source document");
-
-  return doc.id;
+  return db.transaction(async (tx) => {
+    const status = overrides.status ?? "completed";
+    const doc = requireDefined(
+      (
+        await tx
+          .insert(schema.sourceDocuments)
+          .values({
+            ledgerId,
+            currentStatus: status === "deleted" ? "completed" : status,
+            entryDate: overrides.entryDate,
+            title: overrides.title,
+          })
+          .returning()
+      )[0],
+      "Expected inserted source document"
+    );
+    const revision = requireDefined(
+      (
+        await tx
+          .insert(schema.sourceDocumentRevisions)
+          .values({
+            ledgerId,
+            sourceDocumentId: doc.id,
+            revisionNumber: 1,
+            submittedText: overrides.text ?? "Test document",
+            outcome:
+              status === "processing" || status === "anomaly" || status === "failed"
+                ? status
+                : "completed",
+            finalizedAt: status === "processing" ? null : new Date(),
+          })
+          .returning()
+      )[0],
+      "Expected inserted source document revision"
+    );
+    await tx
+      .update(schema.sourceDocuments)
+      .set(
+        revision.outcome === "completed"
+          ? { activeRevisionId: revision.id, pendingRevisionId: null }
+          : { activeRevisionId: null, pendingRevisionId: revision.id }
+      )
+      .where(eq(schema.sourceDocuments.id, doc.id));
+    for (const [position] of (overrides.imageUrls ?? []).entries()) {
+      const file = requireDefined(
+        (
+          await tx
+            .insert(schema.storedFiles)
+            .values({
+              ledgerId,
+              storageProvider: "local",
+              storageKey: `tests/${doc.id}/${position}`,
+              contentType: "image/jpeg",
+              byteSize: 1,
+              finalizedAt: new Date(),
+            })
+            .returning()
+        )[0],
+        "Expected inserted stored file"
+      );
+      await tx.insert(schema.revisionFiles).values({
+        ledgerId,
+        revisionId: revision.id,
+        storedFileId: file.id,
+        position,
+      });
+    }
+    if (status === "deleted") {
+      await tx
+        .update(schema.sourceDocuments)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.sourceDocuments.id, doc.id));
+    }
+    return doc.id;
+  });
 }
 
-/** Promote a legacy-shaped fixture into the target active ledger projection. */
+/** Attach fixture ledger entries to a canonical completed revision. */
 export async function activateTestSourceDocumentProjection(
   db: TestDatabase,
-  sourceDocumentId: string
+  sourceDocumentId: string,
+  content: { text?: string | null; imageUrls?: string[] } = {}
 ): Promise<string> {
   return db.transaction(async (tx) => {
     const documents = await tx
@@ -102,70 +168,83 @@ export async function activateTestSourceDocumentProjection(
       .limit(1);
     const document = documents[0];
     if (document == null) throw new Error("Expected source document fixture");
-    if (document.activeRevisionId != null) return document.activeRevisionId;
-
-    const revisions = await tx
-      .insert(schema.sourceDocumentRevisions)
-      .values({
-        ledgerId: document.ledgerId,
-        sourceDocumentId,
-        revisionNumber: 1,
-        submittedText: document.text,
-        outcome:
-          document.status === "processing" ||
-          document.status === "anomaly" ||
-          document.status === "failed"
-            ? document.status
-            : "completed",
-        anomalyReason: document.anomalyReason,
-        finalizedAt: document.status === "processing" ? null : new Date(),
-      })
-      .returning();
-    const revision = requireDefined(revisions[0], "Expected inserted revision");
+    let revisionId = document.activeRevisionId ?? document.pendingRevisionId;
+    if (revisionId == null) {
+      const outcome =
+        document.currentStatus === "candidate_pending" ? "completed" : document.currentStatus;
+      const revision = requireDefined(
+        (
+          await tx
+            .insert(schema.sourceDocumentRevisions)
+            .values({
+              ledgerId: document.ledgerId,
+              sourceDocumentId: document.id,
+              revisionNumber: 1,
+              submittedText: content.text,
+              outcome,
+              finalizedAt: outcome === "processing" ? null : new Date(),
+            })
+            .returning()
+        )[0],
+        "Expected inserted source document revision"
+      );
+      revisionId = revision.id;
+      await tx
+        .update(schema.sourceDocuments)
+        .set(
+          outcome === "completed"
+            ? { activeRevisionId: revisionId, pendingRevisionId: null }
+            : { activeRevisionId: null, pendingRevisionId: revisionId }
+        )
+        .where(eq(schema.sourceDocuments.id, sourceDocumentId));
+      for (const [position] of (content.imageUrls ?? []).entries()) {
+        const file = requireDefined(
+          (
+            await tx
+              .insert(schema.storedFiles)
+              .values({
+                ledgerId: document.ledgerId,
+                storageProvider: "local",
+                storageKey: `tests/${document.id}/${position}`,
+                contentType: "image/jpeg",
+                byteSize: 1,
+                finalizedAt: new Date(),
+              })
+              .returning()
+          )[0],
+          "Expected inserted stored file"
+        );
+        await tx.insert(schema.revisionFiles).values({
+          ledgerId: document.ledgerId,
+          revisionId,
+          storedFileId: file.id,
+          position,
+        });
+      }
+    }
     const entries = await tx
       .select()
       .from(schema.ledgerEntries)
-      .where(eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId));
-    for (const [position, entry] of entries.entries()) {
+      .where(
+        and(
+          eq(schema.ledgerEntries.sourceDocumentId, sourceDocumentId),
+          isNull(schema.ledgerEntries.sourceDocumentRevisionId)
+        )
+      );
+    const occupiedEntries = await tx
+      .select({ position: schema.ledgerEntries.position })
+      .from(schema.ledgerEntries)
+      .where(eq(schema.ledgerEntries.sourceDocumentRevisionId, revisionId));
+    const startingPosition = occupiedEntries.reduce(
+      (next, entry) => Math.max(next, entry.position + 1),
+      0
+    );
+    for (const [index, entry] of entries.entries()) {
       await tx
         .update(schema.ledgerEntries)
-        .set({ sourceDocumentRevisionId: revision.id })
+        .set({ sourceDocumentRevisionId: revisionId, position: startingPosition + index })
         .where(eq(schema.ledgerEntries.id, entry.id));
-      await tx.insert(schema.revisionEntries).values({
-        ledgerId: document.ledgerId,
-        revisionId: revision.id,
-        ledgerEntryId: entry.id,
-        position,
-      });
     }
-    for (const [position, _imageUrl] of (document.imageUrls ?? []).entries()) {
-      const storedFileRows = await tx
-        .insert(schema.storedFiles)
-        .values({
-          ledgerId: document.ledgerId,
-          storageProvider: "local",
-          storageKey: `tests/${sourceDocumentId}/${position}`,
-          contentType: "image/jpeg",
-          byteSize: 1,
-          finalizedAt: new Date(),
-        })
-        .returning();
-      const storedFile = requireDefined(storedFileRows[0], "Expected inserted stored file");
-      await tx.insert(schema.revisionFiles).values({
-        ledgerId: document.ledgerId,
-        revisionId: revision.id,
-        storedFileId: storedFile.id,
-        position,
-      });
-    }
-    await tx
-      .update(schema.sourceDocuments)
-      .set(
-        revision.outcome === "completed"
-          ? { activeRevisionId: revision.id, pendingRevisionId: null }
-          : { activeRevisionId: null, pendingRevisionId: revision.id }
-      )
-      .where(eq(schema.sourceDocuments.id, sourceDocumentId));
-    return revision.id;
+    return revisionId;
   });
 }

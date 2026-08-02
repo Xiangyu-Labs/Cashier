@@ -14,7 +14,6 @@ import {
   serviceCredentials,
   sourceDocumentRevisions,
   sourceDocuments,
-  revisionEntries,
   storedFiles,
   uploadSessions,
 } from "@/persistence";
@@ -160,22 +159,14 @@ describe("API v1 source-documents route", () => {
       })
     ).then((response) => response.json());
     const db = getTestDb();
-    const [entry] = await db
-      .insert(ledgerEntries)
-      .values({
-        ledgerId,
-        sourceDocumentId: created.sourceDocumentId,
-        sourceDocumentRevisionId: created.revisionId,
-        itemName: "Lunch",
-        description: "Noodles",
-        amount: "12.50",
-        currency: "CNY",
-      })
-      .returning();
-    await db.insert(revisionEntries).values({
+    await db.insert(ledgerEntries).values({
       ledgerId,
-      revisionId: created.revisionId,
-      ledgerEntryId: entry!.id,
+      sourceDocumentId: created.sourceDocumentId,
+      sourceDocumentRevisionId: created.revisionId,
+      itemName: "Lunch",
+      description: "Noodles",
+      amount: "12.50",
+      currency: "CNY",
       position: 0,
     });
     await db
@@ -185,7 +176,6 @@ describe("API v1 source-documents route", () => {
     await db
       .update(sourceDocuments)
       .set({
-        status: "completed",
         title: "Lunch receipt",
         activeRevisionId: created.revisionId,
         pendingRevisionId: null,

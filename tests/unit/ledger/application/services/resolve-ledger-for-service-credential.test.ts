@@ -24,8 +24,9 @@ describe("resolveLedgerForServiceCredential", () => {
 
   it("returns null for missing or deleted credentials", async () => {
     const db = getTestDb();
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "deleted-credential",
+      id: credentialId,
       ledgerId,
       name: "deleted",
       tokenHash: createToken().hash,
@@ -34,14 +35,15 @@ describe("resolveLedgerForServiceCredential", () => {
       deletedAt: new Date(),
     });
 
-    await expect(resolveLedgerForServiceCredential("missing")).resolves.toBeNull();
-    await expect(resolveLedgerForServiceCredential("deleted-credential")).resolves.toBeNull();
+    await expect(resolveLedgerForServiceCredential(crypto.randomUUID())).resolves.toBeNull();
+    await expect(resolveLedgerForServiceCredential(credentialId)).resolves.toBeNull();
   });
 
   it("returns the active ledger for an active credential and updates lastUsedAt", async () => {
     const db = getTestDb();
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "credential-1",
+      id: credentialId,
       ledgerId,
       name: "active",
       tokenHash: createToken().hash,
@@ -50,9 +52,9 @@ describe("resolveLedgerForServiceCredential", () => {
       lastUsedAt: null,
     });
 
-    const result = await resolveLedgerForServiceCredential("credential-1");
+    const result = await resolveLedgerForServiceCredential(credentialId);
     const updated = await db.query.serviceCredentials.findFirst({
-      where: (table, { eq }) => eq(table.id, "credential-1"),
+      where: (table, { eq }) => eq(table.id, credentialId),
     });
 
     expect(result?.id).toBe(ledgerId);
@@ -61,8 +63,9 @@ describe("resolveLedgerForServiceCredential", () => {
 
   it("returns null when the target ledger is soft deleted", async () => {
     const db = getTestDb();
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "credential-2",
+      id: credentialId,
       ledgerId,
       name: "soft-deleted-ledger",
       tokenHash: createToken().hash,
@@ -71,6 +74,6 @@ describe("resolveLedgerForServiceCredential", () => {
     });
     await db.update(ledgers).set({ deletedAt: new Date() }).where(eq(ledgers.id, ledgerId));
 
-    await expect(resolveLedgerForServiceCredential("credential-2")).resolves.toBeNull();
+    await expect(resolveLedgerForServiceCredential(credentialId)).resolves.toBeNull();
   });
 });

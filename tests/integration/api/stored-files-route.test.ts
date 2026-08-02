@@ -32,7 +32,7 @@ async function createLinkedStoredFile(ledgerId: string) {
   const db = getTestDb();
   const [document] = await db
     .insert(sourceDocuments)
-    .values({ ledgerId, status: "completed", imageUrls: [] })
+    .values({ ledgerId, currentStatus: "completed" })
     .returning();
   const [revision] = await db
     .insert(sourceDocumentRevisions)
@@ -111,7 +111,7 @@ describe("GET /api/stored-files/[fileId]", () => {
     const { document, file } = await createLinkedStoredFile(ledgerId);
     await db
       .update(sourceDocuments)
-      .set({ status: "deleted", deletedAt: new Date() })
+      .set({ deletedAt: new Date() })
       .where(eq(sourceDocuments.id, document.id));
 
     const response = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });

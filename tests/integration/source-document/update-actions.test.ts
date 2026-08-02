@@ -81,11 +81,11 @@ describe("Source Document Update Actions", () => {
 
       // Should not throw when document doesn't exist
       await expect(
-        updateSourceDocumentAction(ledgerData.id, "non-existent-id", {
+        updateSourceDocumentAction(ledgerData.id, "00000000-0000-4000-8000-000000000099", {
           title: "Updated Title",
         })
       ).resolves.toEqual({
-        sourceDocumentId: "non-existent-id",
+        sourceDocumentId: "00000000-0000-4000-8000-000000000099",
         updated: false,
       });
     });
@@ -104,7 +104,7 @@ describe("Source Document Update Actions", () => {
 
       // Batch update
       await batchUpdateSourceDocumentsAction(ledgerData.id, [docData1.id, docData2.id], {
-        status: "completed",
+        title: "Updated documents",
       });
 
       // Verify updates
@@ -115,8 +115,8 @@ describe("Source Document Update Actions", () => {
         where: eq(sourceDocuments.id, docData2.id),
       });
 
-      expect(updated1?.status).toBe("completed");
-      expect(updated2?.status).toBe("completed");
+      expect(updated1?.title).toBe("Updated documents");
+      expect(updated2?.title).toBe("Updated documents");
     });
 
     it("recalculates active entry conversions using the new historical date", async () => {

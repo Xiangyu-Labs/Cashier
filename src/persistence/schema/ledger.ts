@@ -9,6 +9,8 @@ import {
   boolean,
   check,
   numeric,
+  uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
 import { users } from "./auth";
@@ -16,10 +18,8 @@ import { users } from "./auth";
 export const ledgers = pgTable(
   "ledgers",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     metadata: jsonb("metadata").$type<LedgerMetadata>().default({}),
@@ -54,10 +54,8 @@ export type Ledger = InferSelectModel<typeof ledgers>;
 export const entryCategories = pgTable(
   "entry_categories",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
@@ -74,6 +72,7 @@ export const entryCategories = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
+    uniqueIndex("uq_entry_categories_ledger_id_id").on(table.ledgerId, table.id),
     uniqueIndex("uniq_category_name_per_ledger")
       .on(table.ledgerId, table.name)
       .where(sql`${table.deletedAt} IS NULL`),
@@ -85,20 +84,18 @@ export type EntryCategory = InferSelectModel<typeof entryCategories>;
 export const ledgerEntries = pgTable(
   "ledger_entries",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
-    categoryId: text("category_id").references(() => entryCategories.id, {
+    categoryId: uuid("category_id").references(() => entryCategories.id, {
       onDelete: "set null",
     }),
-    sourceDocumentId: text("source_document_id"),
-    // Nullable compatibility projection. Existing ledger reads continue to use sourceDocumentId.
-    sourceDocumentRevisionId: text("source_document_revision_id"),
+    sourceDocumentId: uuid("source_document_id"),
+    sourceDocumentRevisionId: uuid("source_document_revision_id"),
+    position: integer("position").notNull().default(0),
     amount: numeric("amount", { precision: 20, scale: 2, mode: "string" }).notNull(),
-    currency: text("currency"),
+    currency: varchar("currency", { length: 3 }),
     itemName: text("item_name").notNull(),
     description: text("description"),
     convertedAmount: numeric("converted_amount", { precision: 20, scale: 2, mode: "string" }),
@@ -112,20 +109,34 @@ export const ledgerEntries = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
-    index("idx_ledger_entries_source_doc").on(table.sourceDocumentId),
     uniqueIndex("uq_ledger_entries_ledger_id_id").on(table.ledgerId, table.id),
-    index("idx_ledger_entries_ledger_revision").on(table.ledgerId, table.sourceDocumentRevisionId),
-    index("idx_ledger_entries_ledger_active_created").on(
-      table.ledgerId,
-      table.deletedAt,
-      table.createdAt
+    uniqueIndex("uq_ledger_entries_revision_position").on(
+      table.sourceDocumentRevisionId,
+      table.position
     ),
-    index("idx_ledger_entries_ledger_category_active").on(
-      table.ledgerId,
-      table.categoryId,
-      table.deletedAt
+    index("idx_ledger_entries_active_feed")
+      .on(table.ledgerId, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_active_category")
+      .on(table.ledgerId, table.categoryId, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_active_currency")
+      .on(table.ledgerId, table.currency, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_active_amount")
+      .on(table.ledgerId, sql`COALESCE(${table.convertedAmount}, ${table.amount})`)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_search")
+      .using(
+        "gin",
+        sql`lower(${table.itemName} || ' ' || COALESCE(${table.description}, '')) public.gin_trgm_ops`
+      )
+      .where(sql`${table.deletedAt} IS NULL`),
+    check(
+      "ck_ledger_entries_currency",
+      sql`${table.currency} IS NULL OR ${table.currency} ~ '^[A-Z]{3}$'`
     ),
-    index("idx_ledger_entries_ledger_currency").on(table.ledgerId, table.currency, table.deletedAt),
+    check("ck_ledger_entries_position", sql`${table.position} >= 0`),
   ]
 );
 
@@ -134,13 +145,11 @@ export type LedgerEntry = InferSelectModel<typeof ledgerEntries>;
 export const serviceCredentials = pgTable(
   "service_credentials",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: uuid("id").primaryKey().defaultRandom(),
     tokenHash: text("token_hash"),
     tokenPrefix: text("token_prefix"),
     tokenSuffix: text("token_suffix"),
-    ledgerId: text("ledger_id")
+    ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),

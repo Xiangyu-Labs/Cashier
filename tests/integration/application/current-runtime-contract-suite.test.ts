@@ -61,6 +61,7 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
     });
     const actual = {
       ...intent,
+      id: crypto.randomUUID(),
       sourceDocumentId: pending.document.id,
       revisionId: pending.revision.id,
     };
@@ -72,9 +73,12 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
     async dispatch(intent: ProcessingIntentContract) {
       await processing.dispatch(await prepareIntent(intent));
     },
-    claim: (intentId: string) => processing.claim(intentId),
+    claim: (intentId: string) => processing.claim(actualIntents.get(intentId)?.id ?? intentId),
     async complete(result: ProcessingCompletionContract) {
-      const completed = await processing.complete(result);
+      const completed = await processing.complete({
+        ...result,
+        intentId: actualIntents.get(result.intentId)?.id ?? result.intentId,
+      });
       if (completed) completions.push(result);
       return completed;
     },

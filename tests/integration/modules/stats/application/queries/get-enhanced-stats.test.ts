@@ -95,16 +95,12 @@ describe("getEnhancedStatsQuery", () => {
       .values([
         {
           ledgerId,
-          text: "USD entry",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-01",
         },
         {
           ledgerId,
-          text: "CNY entry",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-02",
         },
       ])
@@ -157,16 +153,12 @@ describe("getEnhancedStatsQuery", () => {
       .values([
         {
           ledgerId,
-          text: "active",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-05",
         },
         {
           ledgerId,
-          text: "deleted",
-          status: "deleted",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-05",
           deletedAt: new Date(),
         },
@@ -226,9 +218,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "fallback cases",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2024-04-01",
       })
       .returning();
@@ -270,9 +260,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "default currency",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2024-05-01",
       })
       .returning();
@@ -307,9 +295,7 @@ describe("getEnhancedStatsQuery", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId,
-          text: `day-${day}`,
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: `2024-06-${day}`,
         })
         .returning();
@@ -351,9 +337,7 @@ describe("getEnhancedStatsQuery", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "multiple entries same group",
-        status: "completed",
-        imageUrls: [],
+        currentStatus: "completed",
         entryDate: "2024-07-01",
       })
       .returning();

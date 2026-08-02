@@ -41,7 +41,6 @@ export async function listLedgerEntryPage({
           title: true,
           type: true,
           entryDate: true,
-          metadata: true,
           createdAt: true,
           updatedAt: true,
           deletedAt: true,

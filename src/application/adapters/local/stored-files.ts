@@ -162,7 +162,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
           expectedByteSize: file.byteSize,
           originalFilename: file.originalFilename,
           expectedChecksum: file.checksum ?? null,
-          status: "planned",
+          status: "planned" as const,
         });
       }
     });
@@ -229,7 +229,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
           expectedByteSize: file.byteSize,
           originalFilename: file.originalFilename,
           expectedChecksum: file.checksum!.toLowerCase(),
-          status: "planned",
+          status: "planned" as const,
         }))
       );
     });

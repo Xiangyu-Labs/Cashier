@@ -164,8 +164,8 @@ describe("SourceDocument Actions", () => {
     });
 
     expect(savedDoc).toBeDefined();
-    expect(savedDoc?.text).toBeNull();
-    expect(savedDoc?.imageUrls).toEqual([]);
+    expect(savedDoc).not.toHaveProperty("text");
+    expect(savedDoc).not.toHaveProperty("imageUrls");
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.sourceDocumentId, result.sourceDocumentId!),
     });
@@ -213,7 +213,7 @@ describe("SourceDocument Actions", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(docAfter).toBeDefined();
-    expect(docAfter?.status).toBe("processing");
+    expect(docAfter?.currentStatus).toBe("completed");
     expect(docAfter?.deletedAt).not.toBeNull();
 
     const entriesAfter = await db.query.ledgerEntries.findMany({
@@ -233,9 +233,7 @@ describe("SourceDocument Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Lunch",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
         })
         .returning(),
       "Expected source document for includeEntries test"
@@ -285,13 +283,7 @@ describe("SourceDocument Actions", () => {
         .values({
           ledgerId: testLedgerId,
           title: "Receipt",
-          text: "full raw text",
-          status: "completed",
-          imageUrls: ["/api/uploads/source-documents/testLedger/doc/image.jpg"],
-          metadata: {
-            visionDescription: "sensitive debug text",
-            merchant: "Test Merchant",
-          },
+          currentStatus: "completed",
         })
         .returning(),
       "Expected source document to be created for page list test"
@@ -305,7 +297,9 @@ describe("SourceDocument Actions", () => {
       itemName: "Page item",
       categoryId: testCategoryId,
     });
-    await activateTestSourceDocumentProjection(db, doc.id);
+    await activateTestSourceDocumentProjection(db, doc.id, {
+      imageUrls: ["https://example.com/receipt.jpg"],
+    });
 
     const result = await getSourceDocumentsAction(testLedgerId, {
       includeEntries: true,
@@ -333,9 +327,7 @@ describe("SourceDocument Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "January expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-01-15", // Entry date in January
           createdAt: new Date("2024-03-01"), // Created in March
         })
@@ -349,9 +341,7 @@ describe("SourceDocument Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "March expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-15", // Entry date in March
           createdAt: new Date("2024-01-01"), // Created in January
         })
@@ -382,13 +372,7 @@ describe("SourceDocument Actions", () => {
         .values({
           ledgerId: testLedgerId,
           title: "Anomaly doc",
-          text: "raw anomaly text",
-          status: "anomaly",
-          imageUrls: ["/api/uploads/source-documents/testLedger/doc/anomaly.jpg"],
-          metadata: {
-            visionDescription: "internal anomaly debug text",
-            merchant: "Test Merchant",
-          },
+          currentStatus: "anomaly",
         })
         .returning(),
       "Expected source document to be created for pending group test"
@@ -402,7 +386,9 @@ describe("SourceDocument Actions", () => {
       itemName: "Pending item",
       categoryId: testCategoryId,
     });
-    await activateTestSourceDocumentProjection(db, doc.id);
+    await activateTestSourceDocumentProjection(db, doc.id, {
+      imageUrls: ["https://example.com/anomaly.jpg"],
+    });
 
     const result = await getPendingSourceDocumentsAction(testLedgerId);
     const group = result.groups.anomaly.find((entry) => entry.sourceDocument.id === doc.id);

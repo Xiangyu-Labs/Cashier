@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import {
   createTestUserWithLedger,
   createTestSourceDocument,
+  activateTestSourceDocumentProjection,
   TEST_USER_ID,
 } from "../../helpers/schema-setup";
 
@@ -38,6 +39,7 @@ describe("Ledger Entry Delete Action", () => {
       throw new Error("Expected ledger entry to be created");
     }
     testEntryId = entry.id;
+    await activateTestSourceDocumentProjection(db, testSourceDocId);
   });
 
   it("should delete a ledger entry", async () => {

@@ -57,7 +57,9 @@ describe("getLedgerEntryDetail", () => {
     await db.insert(entryCategories).values(category);
     await db.insert(sourceDocuments).values(sourceDocument);
     await db.insert(ledgerEntries).values(entry);
-    await activateTestSourceDocumentProjection(db, sourceDocument.id);
+    await activateTestSourceDocumentProjection(db, sourceDocument.id, {
+      imageUrls: ["https://example.com/a.png", "https://example.com/b.png"],
+    });
 
     const result = await getLedgerEntryDetail(entry.id, ledger.id);
 
@@ -66,6 +68,6 @@ describe("getLedgerEntryDetail", () => {
     expect(result?.category?.id).toBe(category.id);
     expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
     expect(result?.sourceDocument?.hasImages).toBe(true);
-    expect(result?.sourceDocument?.metadata).toEqual({ note: "keep-me" });
+    expect(result?.sourceDocument?.metadata).toEqual({});
   });
 });

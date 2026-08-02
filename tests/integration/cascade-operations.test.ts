@@ -41,10 +41,10 @@ async function getTargetEntryCategoriesAction(ledgerId: string) {
   const db = getTestDb();
   const documents = await db.query.sourceDocuments.findMany({
     where: (documents, { eq }) => eq(documents.ledgerId, ledgerId),
-    columns: { id: true, status: true },
+    columns: { id: true, deletedAt: true },
   });
   for (const document of documents) {
-    if (document.status !== "deleted") {
+    if (document.deletedAt == null) {
       await activateTestSourceDocumentProjection(db, document.id);
     }
   }
@@ -103,6 +103,7 @@ async function createTestEntry(
 
   const entry = createLedgerEntryData(ledgerId, { ...opts, sourceDocumentId });
   await db.insert(ledgerEntries).values(entry);
+  await activateTestSourceDocumentProjection(db, sourceDocumentId);
   return entry;
 }
 
@@ -114,8 +115,9 @@ async function createTestSourceDocument(
   const doc = createSourceDocumentData(ledgerId);
   await db.insert(sourceDocuments).values({
     ...doc,
-    status: status as "processing" | "processing" | "completed" | "anomaly",
+    currentStatus: status as "processing" | "processing" | "completed" | "anomaly",
   });
+  await activateTestSourceDocumentProjection(db, doc.id);
   return doc;
 }
 
@@ -294,7 +296,7 @@ describe("E2: Delete Entry → Related Counts Update", () => {
       where: and(eq(sourceDocuments.id, sourceDoc.id), isNull(sourceDocuments.deletedAt)),
     });
     expect(doc).not.toBeNull();
-    expect(doc?.status).toBe("completed");
+    expect(doc?.currentStatus).toBe("completed");
   });
 });
 

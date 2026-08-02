@@ -10,6 +10,7 @@ describe("mapLedgerEntryDto", () => {
       categoryId: null,
       sourceDocumentId: null,
       sourceDocumentRevisionId: null,
+      position: 0,
       amount: "12.50",
       currency: "USD",
       itemName: "Coffee",

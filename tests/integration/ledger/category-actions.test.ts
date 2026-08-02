@@ -17,10 +17,10 @@ async function getTargetEntryCategoriesAction(ledgerId: string) {
   const db = getTestDb();
   const documents = await db.query.sourceDocuments.findMany({
     where: (documents, { eq }) => eq(documents.ledgerId, ledgerId),
-    columns: { id: true, status: true },
+    columns: { id: true, deletedAt: true },
   });
   for (const document of documents) {
-    if (document.status !== "deleted") {
+    if (document.deletedAt == null) {
       await activateTestSourceDocumentProjection(db, document.id);
     }
   }
@@ -175,10 +175,8 @@ describe("deleteEntryCategoryAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "test",
-        status: "completed",
+        currentStatus: "completed",
         type: "ai_parsed",
-        imageUrls: [],
       })
       .returning();
     expect(doc).toBeDefined();
@@ -304,10 +302,8 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "test",
-        status: "completed",
+        currentStatus: "completed",
         type: "ai_parsed",
-        imageUrls: [],
       })
       .returning();
     expect(doc).toBeDefined();
@@ -357,10 +353,8 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "active",
-        status: "completed",
+        currentStatus: "completed",
         type: "ai_parsed",
-        imageUrls: [],
       })
       .returning();
     expect(activeDoc).toBeDefined();
@@ -373,10 +367,9 @@ describe("getEntryCategoriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "deleted",
-        status: "deleted",
+        currentStatus: "completed",
+        deletedAt: new Date(),
         type: "ai_parsed",
-        imageUrls: [],
       })
       .returning();
     expect(deletedDoc).toBeDefined();

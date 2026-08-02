@@ -25,10 +25,8 @@ async function seedEntry(
     .values({
       id: uuidv4(),
       ledgerId,
-      text: "test",
-      status: "completed",
+      currentStatus: "completed",
       type: "ai_parsed",
-      imageUrls: [],
       entryDate: opts.entryDate ?? null,
     })
     .returning();

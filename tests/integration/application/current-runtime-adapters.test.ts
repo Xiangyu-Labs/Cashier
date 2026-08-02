@@ -25,7 +25,6 @@ import {
   entryCategories,
   ledgers,
   ledgerEntries,
-  revisionEntries,
   revisionFiles,
   serviceCredentials,
   sourceDocumentRevisions,
@@ -239,7 +238,6 @@ describe("current-runtime target adapters", () => {
     });
     expect(revision?.outcome).toBe("processing");
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
-    expect(await db.select().from(revisionEntries)).toHaveLength(0);
   });
 
   it("never creates target projections for an already-deleted legacy bill", async () => {
@@ -249,9 +247,8 @@ describe("current-runtime target adapters", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        status: "deleted",
+        currentStatus: "completed",
         deletedAt: new Date(),
-        imageUrls: [`/api/uploads/${ledgerId}/legacy/receipt.jpg`],
       })
       .returning();
 
@@ -259,7 +256,6 @@ describe("current-runtime target adapters", () => {
       postgresRevisionAdapter.createPending({ ledgerId, sourceDocumentId: legacy!.id })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(0);
-    expect(await db.select().from(revisionEntries)).toHaveLength(0);
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
   });
 
@@ -321,7 +317,7 @@ describe("current-runtime target adapters", () => {
       where: eq(sourceDocuments.id, active.sourceDocumentId),
     });
     expect(deleted).toMatchObject({
-      status: "processing",
+      currentStatus: "processing",
       deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
       pendingRevisionId: pending.revision.id,
@@ -383,7 +379,7 @@ describe("current-runtime target adapters", () => {
     const deleted = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, created.sourceDocumentId),
     });
-    expect(deleted).toMatchObject({ status: "processing", deletedAt: expect.any(Date) });
+    expect(deleted).toMatchObject({ currentStatus: "completed", deletedAt: expect.any(Date) });
     expect(
       (
         await db.query.ledgerEntries.findFirst({
@@ -406,8 +402,9 @@ describe("current-runtime target adapters", () => {
       base: "EUR",
       rates: { CNY: 8, USD: 2 },
     });
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "credential-1",
+      id: credentialId,
       ledgerId,
       tokenHash: computeHash("secret-key"),
       tokenPrefix: "secret-k",
@@ -416,7 +413,7 @@ describe("current-runtime target adapters", () => {
     });
 
     await expect(postgresLedgerAdapter.isOwnedByUser(ledgerId, userId)).resolves.toBe(true);
-    await expect(postgresLedgerAdapter.getLedgerIdForCredential("credential-1")).resolves.toBe(
+    await expect(postgresLedgerAdapter.getLedgerIdForCredential(credentialId)).resolves.toBe(
       ledgerId
     );
     await expect(postgresCategoryAdapter.list(ledgerId)).resolves.toHaveLength(1);
@@ -430,7 +427,7 @@ describe("current-runtime target adapters", () => {
       id: userId,
     });
     await expect(postgresServiceCredentialAdapter.authenticate("secret-key")).resolves.toEqual({
-      id: "credential-1",
+      id: credentialId,
       ledgerId,
     });
 
@@ -508,7 +505,7 @@ describe("current-runtime target adapters", () => {
       await db.query.sourceDocuments.findFirst({
         where: eq(sourceDocuments.id, pending.document.id),
       })
-    ).toMatchObject({ imageUrls: [] });
+    ).not.toHaveProperty("imageUrls");
     await expect(adapter.readAuthorized(ledgerId, uploaded.id)).resolves.toMatchObject({
       file: { id: uploaded.id },
     });

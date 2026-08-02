@@ -66,7 +66,7 @@ function mapDocument(
     supportedActions: supportedSourceDocumentActions({
       activeRevisionId: row.activeRevisionId,
       pendingOutcome,
-      deleted: row.status === "deleted" || row.deletedAt != null,
+      deleted: row.deletedAt != null,
     }),
   };
 }

@@ -42,8 +42,9 @@ describe("authenticateServiceCredential", () => {
 
   it("returns the credential and updates lastUsedAt", async () => {
     const db = getTestDb();
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "credential-1",
+      id: credentialId,
       ledgerId,
       name: "primary",
       ...hashFields("sk_primary"),
@@ -52,17 +53,18 @@ describe("authenticateServiceCredential", () => {
 
     const result = await authenticateServiceCredential("sk_primary");
     const updated = await db.query.serviceCredentials.findFirst({
-      where: (table, { eq }) => eq(table.id, "credential-1"),
+      where: (table, { eq }) => eq(table.id, credentialId),
     });
 
-    expect(result?.id).toBe("credential-1");
+    expect(result?.id).toBe(credentialId);
     expect(updated?.lastUsedAt).not.toBeNull();
   });
 
   it("logs and still returns the credential when lastUsedAt update fails", async () => {
     const db = getTestDb();
+    const credentialId = crypto.randomUUID();
     await db.insert(serviceCredentials).values({
-      id: "credential-2",
+      id: credentialId,
       ledgerId,
       name: "broken",
       ...hashFields("sk_broken"),
@@ -74,7 +76,7 @@ describe("authenticateServiceCredential", () => {
 
     const result = await authenticateServiceCredential("sk_broken");
 
-    expect(result?.id).toBe("credential-2");
+    expect(result?.id).toBe(credentialId);
     expect(logErrorMock).toHaveBeenCalledWith(
       "modules/ledger:authenticate-service-credential:update-last-used",
       expect.any(Error)

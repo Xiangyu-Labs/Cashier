@@ -2,7 +2,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
-import { createTestUserWithLedger } from "tests/helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+} from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 
 describe("deleteSourceDocument", () => {
@@ -20,9 +23,7 @@ describe("deleteSourceDocument", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "Delete me",
-        imageUrls: [],
-        status: "completed",
+        currentStatus: "completed",
         entryDate: "2026-03-22",
       })
       .returning();
@@ -47,6 +48,7 @@ describe("deleteSourceDocument", () => {
     if (entry == null) {
       throw new Error("Expected delete lifecycle fixtures to be created");
     }
+    await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
     const result = await deleteSourceDocument({
       ledgerId,
@@ -70,7 +72,7 @@ describe("deleteSourceDocument", () => {
 
     expect(deletedDocument).toMatchObject({
       id: sourceDocument.id,
-      status: "completed",
+      currentStatus: "completed",
       deletedAt: expect.any(Date),
     });
     expect(activeEntries).toEqual([]);

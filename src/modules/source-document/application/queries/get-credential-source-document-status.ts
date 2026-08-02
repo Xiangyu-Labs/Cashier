@@ -3,7 +3,6 @@ import { db } from "@/persistence/db";
 import {
   entryCategories,
   ledgerEntries,
-  revisionEntries,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
@@ -42,7 +41,7 @@ export async function getCredentialSourceDocumentStatus(
       isNull(sourceDocuments.deletedAt)
     ),
   });
-  if (document == null || document.status === "deleted") return null;
+  if (document == null) return null;
 
   const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
   if (revisionId == null) return null;
@@ -66,20 +65,16 @@ export async function getCredentialSourceDocumentStatus(
         currency: ledgerEntries.currency,
         category: entryCategories.name,
       })
-      .from(revisionEntries)
-      .innerJoin(
-        ledgerEntries,
+      .from(ledgerEntries)
+      .leftJoin(entryCategories, eq(entryCategories.id, ledgerEntries.categoryId))
+      .where(
         and(
-          eq(ledgerEntries.id, revisionEntries.ledgerEntryId),
+          eq(ledgerEntries.sourceDocumentRevisionId, revision.id),
           eq(ledgerEntries.ledgerId, ledgerId),
           isNull(ledgerEntries.deletedAt)
         )
       )
-      .leftJoin(entryCategories, eq(entryCategories.id, ledgerEntries.categoryId))
-      .where(
-        and(eq(revisionEntries.revisionId, revision.id), eq(revisionEntries.ledgerId, ledgerId))
-      )
-      .orderBy(asc(revisionEntries.position));
+      .orderBy(asc(ledgerEntries.position));
     const total = rows.reduce((sum, row) => sum.plus(row.amount), new Decimal(0));
     result = { title: document.title, total: total.toFixed(2), entries: rows };
   }

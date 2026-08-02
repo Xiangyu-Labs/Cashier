@@ -54,9 +54,7 @@ describe("source-document query action boundaries", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "processing doc",
-        status: "processing",
-        imageUrls: [],
+        currentStatus: "processing",
         entryDate: "2026-03-23",
       })
       .returning();

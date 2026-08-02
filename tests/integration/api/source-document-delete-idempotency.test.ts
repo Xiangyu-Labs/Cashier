@@ -3,7 +3,11 @@ import { deleteSourceDocumentAction } from "@/modules/source-document/actions";
 import { getTestDb } from "../../setup";
 import { entryCategories as categories, sourceDocuments, ledgers } from "@/persistence";
 import { eq, and, isNull } from "drizzle-orm";
-import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
+import {
+  activateTestSourceDocumentProjection,
+  createTestUserWithLedger,
+  TEST_USER_ID,
+} from "../../helpers/schema-setup";
 
 /**
  * 删除操作的幂等性测试
@@ -46,14 +50,13 @@ describe("SourceDocument Delete Idempotency", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "待删除的流水记录",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
       "Expected source document to be created"
     );
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 2. 第一次删除 - 应该成功
     await expect(deleteSourceDocumentAction(testLedgerId, sourceDoc.id)).resolves.not.toThrow();
@@ -67,7 +70,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const deletedDoc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDoc.id),
     });
-    expect(deletedDoc?.status).toBe("completed");
+    expect(deletedDoc?.currentStatus).toBe("completed");
     expect(deletedDoc?.deletedAt).not.toBeNull();
   });
 
@@ -80,14 +83,13 @@ describe("SourceDocument Delete Idempotency", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "已被后台软删除的流水",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
       "Expected source document for soft-delete simulation"
     );
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 2. 【模拟竞态条件】后台进程软删除了记录
     await db
@@ -107,7 +109,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const doc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDoc.id),
     });
-    expect(doc?.status).toBe("completed");
+    expect(doc?.currentStatus).toBe("completed");
     expect(doc?.deletedAt).not.toBeNull();
   });
 
@@ -120,14 +122,13 @@ describe("SourceDocument Delete Idempotency", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "并发删除测试",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
       "Expected source document for concurrent delete test"
     );
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 2. 模拟两个并发的删除请求
     // 请求1：先删除成功
@@ -149,7 +150,7 @@ describe("SourceDocument Delete Idempotency", () => {
     const doc = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDoc.id),
     });
-    expect(doc?.status).toBe("completed");
+    expect(doc?.currentStatus).toBe("completed");
     expect(doc?.deletedAt).not.toBeNull();
   });
 
@@ -162,14 +163,13 @@ describe("SourceDocument Delete Idempotency", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "数据一致性测试",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
       "Expected source document for consistency test"
     );
+    await activateTestSourceDocumentProjection(db, sourceDoc.id);
 
     // 2. 【模拟竞态条件】记录被其他进程软删除
     await db

@@ -113,7 +113,7 @@ describe("getSourceDocumentLightAction", () => {
       text: "Lunch for 25.50",
     });
     await db.insert(sourceDocuments).values(docData);
-    await activateTestSourceDocumentProjection(db, docData.id);
+    await activateTestSourceDocumentProjection(db, docData.id, { text: "Lunch for 25.50" });
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 
@@ -134,7 +134,9 @@ describe("getSourceDocumentLightAction", () => {
       imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
     });
     await db.insert(sourceDocuments).values(docData);
-    await activateTestSourceDocumentProjection(db, docData.id);
+    await activateTestSourceDocumentProjection(db, docData.id, {
+      imageUrls: ["data:image/jpeg;base64,/9j/4AAQ..."],
+    });
 
     const result = await getSourceDocumentLightAction(ledgerData.id, docData.id);
 

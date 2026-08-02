@@ -6,6 +6,7 @@ import { inArray, eq } from "drizzle-orm";
 import {
   createTestUserWithLedger,
   createTestSourceDocument,
+  activateTestSourceDocumentProjection,
   TEST_USER_ID,
 } from "../../helpers/schema-setup";
 
@@ -55,6 +56,7 @@ describe("Batch Update Ledger Entries Action", () => {
       ])
       .returning();
     testEntryIds = entries.map((e) => e.id);
+    await activateTestSourceDocumentProjection(db, testSourceDocId);
   });
 
   it("should batch update category and currency", async () => {

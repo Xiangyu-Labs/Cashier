@@ -68,7 +68,9 @@ export function applicationContractSuite(
     it("does not reveal a file when authorization is denied", async () => {
       const harness = await create();
       const files = await harness.finalize(await harness.plan());
-      await expect(harness.files.readAuthorized("other-ledger", files[0]!.id)).resolves.toBeNull();
+      await expect(
+        harness.files.readAuthorized("00000000-0000-4000-8000-000000000099", files[0]!.id)
+      ).resolves.toBeNull();
     });
 
     it("makes duplicate processing dispatch and recovery completion harmless", async () => {

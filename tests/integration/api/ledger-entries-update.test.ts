@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import {
   createTestUserWithLedger,
   createTestSourceDocument,
+  activateTestSourceDocumentProjection,
   TEST_USER_ID,
 } from "../../helpers/schema-setup";
 
@@ -62,6 +63,7 @@ describe("Ledger Entry Update Action", () => {
       throw new Error("Expected ledger entry insert to return a row");
     }
     testEntryId = entry.id;
+    await activateTestSourceDocumentProjection(db, testSourceDocId);
   });
 
   it("should update description correctly", async () => {

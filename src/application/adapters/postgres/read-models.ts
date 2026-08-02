@@ -22,21 +22,12 @@ import { add as decimalAdd, normalize as decimalNormalize } from "@/lib/money/de
 import {
   entryCategories,
   ledgerEntries,
-  revisionEntries,
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
 import { ConflictError, NotFoundError } from "@/lib/errors";
-
-/**
- * Effective date: `entryDate` if present, otherwise the ISO calendar date
- * derived from `createdAt`.  Used for date filters, ORDER BY, cursor
- * comparison, cursor encoding, and grouping — everything that needs the
- * canonical business-date value.
- */
-const EFFECTIVE_DATE = sql<string>`COALESCE(${sourceDocuments.entryDate}, to_char(${sourceDocuments.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD'))`;
 
 export interface TargetSourceDocumentFilterInput {
   ledgerId: string;
@@ -104,7 +95,7 @@ export async function getSourceDocumentCandidateReview(
       ),
     db
       .select({
-        revisionId: revisionEntries.revisionId,
+        revisionId: ledgerEntries.sourceDocumentRevisionId,
         id: ledgerEntries.id,
         itemName: ledgerEntries.itemName,
         description: ledgerEntries.description,
@@ -122,15 +113,7 @@ export async function getSourceDocumentCandidateReview(
         categoryUpdatedAt: entryCategories.updatedAt,
         categoryDeletedAt: entryCategories.deletedAt,
       })
-      .from(revisionEntries)
-      .innerJoin(
-        ledgerEntries,
-        and(
-          eq(ledgerEntries.ledgerId, revisionEntries.ledgerId),
-          eq(ledgerEntries.id, revisionEntries.ledgerEntryId),
-          isNull(ledgerEntries.deletedAt)
-        )
-      )
+      .from(ledgerEntries)
       .leftJoin(
         entryCategories,
         and(
@@ -140,11 +123,12 @@ export async function getSourceDocumentCandidateReview(
       )
       .where(
         and(
-          eq(revisionEntries.ledgerId, ledgerId),
-          inArray(revisionEntries.revisionId, revisionIds)
+          eq(ledgerEntries.ledgerId, ledgerId),
+          inArray(ledgerEntries.sourceDocumentRevisionId, revisionIds),
+          isNull(ledgerEntries.deletedAt)
         )
       )
-      .orderBy(revisionEntries.revisionId, revisionEntries.position),
+      .orderBy(ledgerEntries.sourceDocumentRevisionId, ledgerEntries.position),
   ]);
 
   const pendingRevision = revisions.find((revision) => revision.id === document.pendingRevisionId);
@@ -154,6 +138,7 @@ export async function getSourceDocumentCandidateReview(
 
   const entriesByRevision = new Map<string, SourceDocumentCandidateReviewEntryDto[]>();
   for (const row of rows) {
+    if (row.revisionId == null) continue;
     const entries = entriesByRevision.get(row.revisionId) ?? [];
     entries.push({
       id: row.id,
@@ -199,50 +184,25 @@ export async function getSourceDocumentCandidateReview(
 
 type SourceDocumentRow = typeof sourceDocuments.$inferSelect;
 
-function pendingOutcomeSubquery() {
-  return sql<string>`(
-    SELECT pending.outcome
-    FROM source_document_revisions AS pending
-    WHERE pending.ledger_id = ${sourceDocuments.ledgerId}
-      AND pending.source_document_id = ${sourceDocuments.id}
-      AND pending.id = ${sourceDocuments.pendingRevisionId}
-  )`;
-}
-
-function derivedStatusExpression() {
-  return sql<SourceDocumentStatusType>`CASE
-    WHEN ${sourceDocuments.pendingRevisionId} IS NOT NULL AND ${sourceDocuments.activeRevisionId} IS NOT NULL THEN
-      CASE
-        WHEN ${pendingOutcomeSubquery()} = 'completed' THEN 'candidate_pending'
-        ELSE ${pendingOutcomeSubquery()}
-      END
-    WHEN ${sourceDocuments.pendingRevisionId} IS NOT NULL THEN ${pendingOutcomeSubquery()}
-    WHEN ${sourceDocuments.activeRevisionId} IS NOT NULL THEN (
-      SELECT active.outcome
-      FROM source_document_revisions AS active
-      WHERE active.ledger_id = ${sourceDocuments.ledgerId}
-        AND active.source_document_id = ${sourceDocuments.id}
-        AND active.id = ${sourceDocuments.activeRevisionId}
-    )
-    ELSE NULL
-  END`;
-}
-
 function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [
     eq(sourceDocuments.ledgerId, input.ledgerId),
     isNull(sourceDocuments.deletedAt),
-    sql`${derivedStatusExpression()} IS NOT NULL`,
   ];
 
   if (input.statuses != null && input.statuses.length > 0) {
-    conditions.push(inArray(derivedStatusExpression(), [...input.statuses]));
+    const activeStatuses = input.statuses.filter((status) => status !== "deleted");
+    if (activeStatuses.length === 0) {
+      conditions.push(sql`false`);
+    } else {
+      conditions.push(inArray(sourceDocuments.currentStatus, activeStatuses));
+    }
   }
   if (input.startDate != null && input.startDate !== "") {
-    conditions.push(sql`${EFFECTIVE_DATE} >= ${input.startDate}`);
+    conditions.push(sql`${sourceDocuments.effectiveDate} >= ${input.startDate}::date`);
   }
   if (input.endDate != null && input.endDate !== "") {
-    conditions.push(sql`${EFFECTIVE_DATE} <= ${input.endDate}`);
+    conditions.push(sql`${sourceDocuments.effectiveDate} <= ${input.endDate}::date`);
   }
   if (
     input.minAmount !== undefined ||
@@ -279,7 +239,6 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
 export async function calculateCompletedSourceDocumentTotal(
   input: TargetSourceDocumentFilterInput
 ): Promise<{ total: string }> {
-  const derivedStatus = derivedStatusExpression();
   const matchedEntryConditions: SQL<unknown>[] = [];
   if (input.minAmount !== undefined) {
     matchedEntryConditions.push(
@@ -312,7 +271,7 @@ export async function calculateCompletedSourceDocumentTotal(
         ...matchedEntryConditions
       )
     )
-    .where(and(...baseConditions(input), eq(derivedStatus, "completed")))
+    .where(and(...baseConditions(input), eq(sourceDocuments.currentStatus, "completed")))
     .then((rows) => rows[0]);
 
   return {
@@ -343,13 +302,13 @@ function cursorCondition(cursor: string | null | undefined): SQL<unknown> | null
   if (decoded == null) return null;
   return (
     or(
-      sql`${EFFECTIVE_DATE} < ${decoded.entryDate}`,
+      sql`${sourceDocuments.effectiveDate} < ${decoded.entryDate}::date`,
       and(
-        sql`${EFFECTIVE_DATE} = ${decoded.entryDate}`,
+        sql`${sourceDocuments.effectiveDate} = ${decoded.entryDate}::date`,
         lt(sourceDocuments.createdAt, decoded.createdAt)
       ),
       and(
-        sql`${EFFECTIVE_DATE} = ${decoded.entryDate}`,
+        sql`${sourceDocuments.effectiveDate} = ${decoded.entryDate}::date`,
         eq(sourceDocuments.createdAt, decoded.createdAt),
         sql`${sourceDocuments.id} < ${decoded.id}`
       )
@@ -358,8 +317,7 @@ function cursorCondition(cursor: string | null | undefined): SQL<unknown> | null
 }
 
 function encodeCursor(row: SourceDocumentRow): string {
-  const effectiveDate = row.entryDate ?? row.createdAt.toISOString().slice(0, 10);
-  return `${effectiveDate}|${row.createdAt.toISOString()}|${row.id}`;
+  return `${row.effectiveDate}|${row.createdAt.toISOString()}|${row.id}`;
 }
 
 async function loadRevisionFacts(rows: readonly SourceDocumentRow[]) {
@@ -383,28 +341,9 @@ async function loadRevisionFacts(rows: readonly SourceDocumentRow[]) {
 
 function statusForRow(
   row: SourceDocumentRow,
-  revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
+  _revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>
 ): SourceDocumentStatusType {
-  // A document with both an active revision and a completed pending revision -> candidate_pending
-  if (row.activeRevisionId != null && row.pendingRevisionId != null) {
-    const pendingOutcome = revisions.get(row.pendingRevisionId)?.outcome;
-    if (pendingOutcome === "completed") {
-      return "candidate_pending";
-    }
-  }
-
-  const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
-  const outcome = revisionId == null ? null : revisions.get(revisionId)?.outcome;
-  if (
-    outcome === "processing" ||
-    outcome === "completed" ||
-    outcome === "anomaly" ||
-    outcome === "failed" ||
-    outcome === "cancelled"
-  ) {
-    return outcome;
-  }
-  throw new Error(`Source document ${row.id} has no readable current revision`);
+  return row.currentStatus;
 }
 
 async function loadFiles(
@@ -665,7 +604,11 @@ async function fetchRows(input: TargetSourceDocumentListInput, includeCursor: bo
     .select()
     .from(sourceDocuments)
     .where(and(...conditions))
-    .orderBy(desc(EFFECTIVE_DATE), desc(sourceDocuments.createdAt), desc(sourceDocuments.id))
+    .orderBy(
+      desc(sourceDocuments.effectiveDate),
+      desc(sourceDocuments.createdAt),
+      desc(sourceDocuments.id)
+    )
     .limit(input.limit + 1);
 }
 
@@ -745,27 +688,19 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
 /**
  * Lightweight aggregation that returns the processing count
  * and attention count (candidate_pending + anomaly + failed) for a ledger.
- * Uses the same derived status expression as list/collect queries but
- * performs a single-pass aggregate without fetching rows.
+ * Reads the transactionally maintained current status without revision subqueries.
  */
 export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
   processingCount: number;
   attentionCount: number;
 }> {
-  const derivedStatus = derivedStatusExpression();
   const result = await db
     .select({
-      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} = 'processing')`,
-      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${derivedStatus} IN ('candidate_pending', 'anomaly', 'failed'))`,
+      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'processing')`,
+      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('candidate_pending', 'anomaly', 'failed'))`,
     })
     .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt),
-        sql`${derivedStatus} IS NOT NULL`
-      )
-    )
+    .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
     .then((rows) => rows[0] ?? { processingCount: 0, attentionCount: 0 });
 
   return {
@@ -782,8 +717,7 @@ export async function getTargetSourceDocument(
     where: and(
       eq(sourceDocuments.ledgerId, ledgerId),
       eq(sourceDocuments.id, sourceDocumentId),
-      isNull(sourceDocuments.deletedAt),
-      sql`${derivedStatusExpression()} IS NOT NULL`
+      isNull(sourceDocuments.deletedAt)
     ),
   });
   if (row == null) return null;
@@ -795,12 +729,6 @@ export async function getTargetSourceDocument(
   const selectedRevision =
     selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
   const files = filesByDocument.get(row.id) ?? [];
-  const {
-    visionDescription: _visionDescription,
-    visionUnderstanding: _visionUnderstanding,
-    originalImageUrls: _originalImageUrls,
-    ...metadata
-  } = row.metadata ?? {};
   const status = statusForRow(row, revisions);
 
   // Load active result summary for anomaly/failed documents with an active revision
@@ -820,7 +748,7 @@ export async function getTargetSourceDocument(
     type: row.type,
     anomalyReason: selectedRevision?.anomalyReason ?? null,
     entryDate: row.entryDate,
-    metadata,
+    metadata: {},
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,

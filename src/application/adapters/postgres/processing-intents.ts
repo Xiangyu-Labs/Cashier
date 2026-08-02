@@ -287,7 +287,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
           eq(
             sourceDocuments.id,
-            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
           ),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
@@ -336,7 +336,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
           eq(
             sourceDocuments.id,
-            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
           ),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
@@ -399,7 +399,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
             eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
             eq(
               sourceDocuments.id,
-              sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS text)`
+              sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
             )
           )
         )

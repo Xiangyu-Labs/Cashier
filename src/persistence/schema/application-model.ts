@@ -9,24 +9,69 @@ import {
   uniqueIndex,
   timestamp,
   jsonb,
+  uuid,
+  pgEnum,
+  bigint,
 } from "drizzle-orm/pg-core";
-import { ledgers, ledgerEntries } from "./ledger";
+import { ledgers } from "./ledger";
 import { sourceDocuments } from "./source-document";
 
 const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true }).notNull();
 
+export const revisionOutcomeEnum = pgEnum("revision_outcome", [
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+  "cancelled",
+  "abandoned",
+]);
+export const processingAttemptStatusEnum = pgEnum("processing_attempt_status", [
+  "queued",
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+  "cancelled",
+]);
+export const retryClassificationEnum = pgEnum("retry_classification", [
+  "retryable",
+  "permanent",
+  "anomaly",
+]);
+export const processingOutboxStatusEnum = pgEnum("processing_outbox_status", [
+  "pending",
+  "claimed",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const uploadSessionStatusEnum = pgEnum("upload_session_status", [
+  "open",
+  "finalizing",
+  "finalized",
+  "expired",
+  "cancelled",
+]);
+export const uploadTransportEnum = pgEnum("upload_transport", ["proxy", "direct"]);
+export const uploadFileStatusEnum = pgEnum("upload_file_status", [
+  "planned",
+  "uploaded",
+  "finalized",
+  "rejected",
+]);
+export const idempotencyStatusEnum = pgEnum("idempotency_status", ["pending", "completed"]);
+
 export const sourceDocumentRevisions = pgTable(
   "source_document_revisions",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    sourceDocumentId: text("source_document_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    sourceDocumentId: uuid("source_document_id").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     title: text("title"),
     submittedText: text("submitted_text"),
-    outcome: text("outcome").notNull().default("processing"),
+    outcome: revisionOutcomeEnum("outcome").notNull().default("processing"),
     anomalyReason: text("anomaly_reason"),
     failureCode: text("failure_code"),
     submittedAt: requiredTimestamp("submitted_at").$defaultFn(() => new Date()),
@@ -40,6 +85,11 @@ export const sourceDocumentRevisions = pgTable(
       name: "fk_revisions_source_document_ledger",
     }).onDelete("cascade"),
     uniqueIndex("uq_source_document_revisions_ledger_id_id").on(table.ledgerId, table.id),
+    uniqueIndex("uq_source_document_revisions_ledger_document_id").on(
+      table.ledgerId,
+      table.sourceDocumentId,
+      table.id
+    ),
     uniqueIndex("uq_source_document_revisions_document_number").on(
       table.sourceDocumentId,
       table.revisionNumber
@@ -50,26 +100,20 @@ export const sourceDocumentRevisions = pgTable(
       table.createdAt
     ),
     check("ck_source_document_revisions_number", sql`${table.revisionNumber} > 0`),
-    check(
-      "ck_source_document_revisions_outcome",
-      sql`${table.outcome} IN ('processing', 'completed', 'anomaly', 'failed', 'cancelled', 'abandoned')`
-    ),
   ]
 );
 
 export const storedFiles = pgTable(
   "stored_files",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     storageProvider: text("storage_provider").notNull(),
     storageKey: text("storage_key").notNull(),
     contentType: text("content_type").notNull(),
-    byteSize: integer("byte_size").notNull(),
+    byteSize: bigint("byte_size", { mode: "number" }).notNull(),
     originalFilename: text("original_filename"),
     checksum: text("checksum"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
@@ -87,12 +131,10 @@ export const storedFiles = pgTable(
 export const revisionFiles = pgTable(
   "revision_files",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    revisionId: text("revision_id").notNull(),
-    storedFileId: text("stored_file_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    revisionId: uuid("revision_id").notNull(),
+    storedFileId: uuid("stored_file_id").notNull(),
     position: integer("position").notNull(),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
@@ -114,46 +156,15 @@ export const revisionFiles = pgTable(
   ]
 );
 
-export const revisionEntries = pgTable(
-  "revision_entries",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    revisionId: text("revision_id").notNull(),
-    ledgerEntryId: text("ledger_entry_id").notNull(),
-    position: integer("position").notNull(),
-    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.ledgerId, table.revisionId],
-      foreignColumns: [sourceDocumentRevisions.ledgerId, sourceDocumentRevisions.id],
-      name: "fk_revision_entries_revision_ledger",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.ledgerId, table.ledgerEntryId],
-      foreignColumns: [ledgerEntries.ledgerId, ledgerEntries.id],
-      name: "fk_revision_entries_ledger_entry_ledger",
-    }),
-    uniqueIndex("uq_revision_entries_revision_position").on(table.revisionId, table.position),
-    uniqueIndex("uq_revision_entries_ledger_entry").on(table.ledgerEntryId),
-    check("ck_revision_entries_position", sql`${table.position} >= 0`),
-  ]
-);
-
 export const processingAttempts = pgTable(
   "processing_attempts",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    revisionId: text("revision_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    revisionId: uuid("revision_id").notNull(),
     attemptNumber: integer("attempt_number").notNull(),
-    status: text("status").notNull().default("queued"),
-    retryClassification: text("retry_classification"),
+    status: processingAttemptStatusEnum("status").notNull().default("queued"),
+    retryClassification: retryClassificationEnum("retry_classification"),
     diagnosticCode: text("diagnostic_code"),
     correlationId: text("correlation_id"),
     startedAt: timestamp("started_at", { withTimezone: true }),
@@ -169,28 +180,18 @@ export const processingAttempts = pgTable(
     uniqueIndex("uq_processing_attempts_revision_number").on(table.revisionId, table.attemptNumber),
     index("idx_processing_attempts_ledger_status").on(table.ledgerId, table.status),
     check("ck_processing_attempts_number", sql`${table.attemptNumber} > 0`),
-    check(
-      "ck_processing_attempts_status",
-      sql`${table.status} IN ('queued', 'processing', 'completed', 'anomaly', 'failed', 'cancelled')`
-    ),
-    check(
-      "ck_processing_attempts_retry_classification",
-      sql`${table.retryClassification} IS NULL OR ${table.retryClassification} IN ('retryable', 'permanent', 'anomaly')`
-    ),
   ]
 );
 
 export const processingOutbox = pgTable(
   "processing_outbox",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    revisionId: text("revision_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    revisionId: uuid("revision_id").notNull(),
     attemptNumber: integer("attempt_number").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
-    status: text("status").notNull().default("pending"),
+    status: processingOutboxStatusEnum("status").notNull().default("pending"),
     payload: jsonb("payload").$type<unknown>(),
     availableAt: requiredTimestamp("available_at").$defaultFn(() => new Date()),
     claimToken: text("claim_token"),
@@ -210,33 +211,31 @@ export const processingOutbox = pgTable(
     }).onDelete("cascade"),
     uniqueIndex("uq_processing_outbox_idempotency_key").on(table.idempotencyKey),
     uniqueIndex("uq_processing_outbox_revision_attempt").on(table.revisionId, table.attemptNumber),
-    index("idx_processing_outbox_dispatch").on(table.status, table.availableAt),
-    index("idx_processing_outbox_claim_expiry").on(table.status, table.claimExpiresAt),
+    index("idx_processing_outbox_pending_dispatch")
+      .on(table.availableAt, table.createdAt)
+      .where(sql`${table.status} = 'pending'`),
+    index("idx_processing_outbox_claim_expiry")
+      .on(table.claimExpiresAt)
+      .where(sql`${table.status} = 'claimed'`),
     index("idx_processing_outbox_recoverable").on(
       table.ledgerId,
       table.status,
       table.nextAvailableAt
     ),
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
-    check(
-      "ck_processing_outbox_status",
-      sql`${table.status} IN ('pending', 'claimed', 'completed', 'failed', 'cancelled')`
-    ),
   ]
 );
 
 export const uploadSessions = pgTable(
   "upload_sessions",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
     finalizationTokenHash: text("finalization_token_hash").notNull(),
-    transport: text("transport").notNull().default("proxy"),
-    status: text("status").notNull().default("open"),
+    transport: uploadTransportEnum("transport").notNull().default("proxy"),
+    status: uploadSessionStatusEnum("status").notNull().default("open"),
     expiresAt: requiredTimestamp("expires_at"),
     finalizedAt: timestamp("finalized_at", { withTimezone: true }),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
@@ -249,31 +248,24 @@ export const uploadSessions = pgTable(
       table.status,
       table.expiresAt
     ),
-    check(
-      "ck_upload_sessions_status",
-      sql`${table.status} IN ('open', 'finalizing', 'finalized', 'expired', 'cancelled')`
-    ),
-    check("ck_upload_sessions_transport", sql`${table.transport} IN ('proxy', 'direct')`),
   ]
 );
 
 export const uploadSessionFiles = pgTable(
   "upload_session_files",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    ledgerId: text("ledger_id").notNull(),
-    uploadSessionId: text("upload_session_id").notNull(),
-    storedFileId: text("stored_file_id"),
-    targetId: text("target_id").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    uploadSessionId: uuid("upload_session_id").notNull(),
+    storedFileId: uuid("stored_file_id"),
+    targetId: uuid("target_id").notNull(),
     position: integer("position").notNull(),
     // Nullable only for upload sessions created by a prior compatible image.
     expectedContentType: text("expected_content_type"),
-    expectedByteSize: integer("expected_byte_size"),
+    expectedByteSize: bigint("expected_byte_size", { mode: "number" }),
     originalFilename: text("original_filename"),
     expectedChecksum: text("expected_checksum"),
-    status: text("status").notNull().default("planned"),
+    status: uploadFileStatusEnum("status").notNull().default("planned"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => [
@@ -298,10 +290,6 @@ export const uploadSessionFiles = pgTable(
       "ck_upload_session_files_expected_byte_size",
       sql`${table.expectedByteSize} IS NULL OR ${table.expectedByteSize} >= 0`
     ),
-    check(
-      "ck_upload_session_files_status",
-      sql`${table.status} IN ('planned', 'uploaded', 'finalized', 'rejected')`
-    ),
   ]
 );
 
@@ -316,14 +304,11 @@ export const idempotencyRecords = pgTable(
   "idempotency_records",
   {
     key: text("key").primaryKey(),
-    status: text("status").notNull().default("pending"),
+    status: idempotencyStatusEnum("status").notNull().default("pending"),
     result: jsonb("result").$type<unknown>(),
     contentFingerprint: text("content_fingerprint"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (table) => [
-    index("idx_idempotency_records_status_created").on(table.status, table.createdAt),
-    check("ck_idempotency_records_status", sql`${table.status} IN ('pending', 'completed')`),
-  ]
+  (table) => [index("idx_idempotency_records_status_created").on(table.status, table.createdAt)]
 );

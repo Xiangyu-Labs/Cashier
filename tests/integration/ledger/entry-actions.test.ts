@@ -43,10 +43,8 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
     .values({
       id: uuidv4(),
       ledgerId,
-      text: "test",
-      status: "completed",
+      currentStatus: "completed",
       type: "ai_parsed",
-      imageUrls: [],
       entryDate: entryDate ?? null,
     })
     .returning();
@@ -54,6 +52,7 @@ async function seedDoc(db: ReturnType<typeof getTestDb>, ledgerId: string, entry
   if (doc === undefined) {
     throw new Error("Expected source document insert to return a row");
   }
+  await activateTestSourceDocumentProjection(db, doc.id);
   return doc;
 }
 
@@ -161,7 +160,7 @@ describe("createLedgerEntryAction", () => {
     const db = getTestDb();
     await db
       .update(sourceDocuments)
-      .set({ status: "deleted", deletedAt: new Date() })
+      .set({ deletedAt: new Date() })
       .where(eq(sourceDocuments.id, docId));
 
     await expect(
@@ -219,6 +218,7 @@ describe("updateLedgerEntryAction", () => {
       throw new Error("Expected ledger entry insert to return a row");
     }
     entryId = entry.id;
+    await activateTestSourceDocumentProjection(db, doc.id);
   });
 
   it("updates itemName without recalculating convertedAmount", async () => {
@@ -297,6 +297,7 @@ describe("deleteLedgerEntryAction", () => {
     if (entry === undefined) {
       throw new Error("Expected ledger entry insert to return a row");
     }
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     await deleteLedgerEntryAction(ledgerId, entry.id);
 
@@ -352,6 +353,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
       }
       ids.push(e.id);
     }
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId: catId });
 
@@ -395,6 +397,7 @@ describe("batchUpdateLedgerEntriesAction", () => {
       }
       ids.push(e.id);
     }
+    await activateTestSourceDocumentProjection(db, doc.id);
 
     await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId: null });
 
@@ -601,10 +604,8 @@ describe("getLedgerEntriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "test",
-        status: "completed",
+        currentStatus: "completed",
         type: "ai_parsed",
-        imageUrls: [],
         entryDate: "2024-01-15",
         createdAt: new Date("2024-03-01"),
       })
@@ -620,10 +621,8 @@ describe("getLedgerEntriesAction", () => {
       .values({
         id: uuidv4(),
         ledgerId,
-        text: "test",
-        status: "completed",
+        currentStatus: "completed",
         type: "ai_parsed",
-        imageUrls: [],
         entryDate: "2024-03-15",
         createdAt: new Date("2024-01-01"),
       })

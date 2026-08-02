@@ -405,7 +405,10 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
 
   it("handles processing failure: preserveTerminalOutcome guard on stale revision", async () => {
     const db = getTestDb();
-    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
 
     const generate = vi.fn().mockRejectedValue(new Error("AI service unavailable"));
     vi.mocked(createAIContext).mockReturnValue({ generate });
@@ -415,6 +418,13 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
 
     // Simulate stale revision: change pendingRevisionId so preserveTerminalOutcome guard fails
     const staleRevisionId = crypto.randomUUID();
+    await db.insert(sourceDocumentRevisions).values({
+      id: staleRevisionId,
+      ledgerId,
+      sourceDocumentId: intent.sourceDocumentId,
+      revisionNumber: 2,
+      outcome: "processing",
+    });
     await db
       .update(sourceDocuments)
       .set({ pendingRevisionId: staleRevisionId })

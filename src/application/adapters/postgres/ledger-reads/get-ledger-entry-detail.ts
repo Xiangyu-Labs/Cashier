@@ -27,7 +27,6 @@ export async function getLedgerEntryDetail(
           title: true,
           type: true,
           entryDate: true,
-          metadata: true,
           createdAt: true,
           updatedAt: true,
           deletedAt: true,
@@ -53,18 +52,12 @@ export async function getLedgerEntryDetail(
         where: eq(revisionFiles.revisionId, entry.sourceDocumentRevisionId),
         columns: { id: true },
       })) != null;
-    const {
-      visionDescription: _visionDescription,
-      originalImageUrls: _originalImageUrls,
-      ...lightMetadata
-    } = serializedEntry.sourceDocument.metadata ?? {};
-
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
       text: null,
       status: "completed",
       anomalyReason: null,
-      metadata: lightMetadata,
+      metadata: {},
       hasImages,
     };
   }

@@ -1,4 +1,4 @@
-import { and, sql, type SQL } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { ledgerEntries } from "@/persistence";
 
 // Compatibility visibility SQL is adapter-private.
@@ -8,28 +8,10 @@ interface SourceDocumentDateRange {
   endDate?: string | null;
 }
 
-function buildVisibleSourceDocumentIdsSubquery(
+export function buildLedgerEntryVisibilityCondition(
   ledgerId: string,
   dateRange?: SourceDocumentDateRange
 ): SQL<unknown> {
-  const conditions: SQL<unknown>[] = [
-    sql`ledger_id = ${ledgerId}`,
-    sql`deleted_at IS NULL`,
-    sql`active_revision_id IS NOT NULL`,
-  ];
-
-  if (dateRange?.startDate != null && dateRange.startDate !== "") {
-    conditions.push(sql`entry_date >= ${dateRange.startDate}`);
-  }
-
-  if (dateRange?.endDate != null && dateRange.endDate !== "") {
-    conditions.push(sql`entry_date <= ${dateRange.endDate}`);
-  }
-
-  return sql`SELECT id FROM source_documents WHERE ${and(...conditions)}`;
-}
-
-export function buildLedgerEntryVisibilityCondition(ledgerId: string): SQL<unknown> {
   return sql`EXISTS (
     SELECT 1
     FROM source_documents AS active_documents
@@ -38,6 +20,16 @@ export function buildLedgerEntryVisibilityCondition(ledgerId: string): SQL<unkno
       AND active_documents.deleted_at IS NULL
       AND active_documents.active_revision_id IS NOT NULL
       AND active_documents.active_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+      ${
+        dateRange?.startDate != null && dateRange.startDate !== ""
+          ? sql`AND active_documents.effective_date >= ${dateRange.startDate}::date`
+          : sql``
+      }
+      ${
+        dateRange?.endDate != null && dateRange.endDate !== ""
+          ? sql`AND active_documents.effective_date <= ${dateRange.endDate}::date`
+          : sql``
+      }
   )`;
 }
 
@@ -51,11 +43,5 @@ export function buildLedgerEntrySourceDocumentDateCondition(
     return null;
   }
 
-  const sourceDocumentIdsInDateRange = buildVisibleSourceDocumentIdsSubquery(ledgerId, dateRange);
-  return (
-    and(
-      sql`${ledgerEntries.sourceDocumentId} IN (${sourceDocumentIdsInDateRange})`,
-      buildLedgerEntryVisibilityCondition(ledgerId)
-    ) ?? null
-  );
+  return buildLedgerEntryVisibilityCondition(ledgerId, dateRange);
 }

@@ -12,7 +12,6 @@ import {
   ledgerEntries,
   processingAttempts,
   processingOutbox,
-  revisionEntries,
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
@@ -156,7 +155,6 @@ describe("target source-document submissions", () => {
         pendingRevisionId: pending.revision.id,
         supportedActions: ["retry", "edit_retry", "delete"],
       });
-      expect(await db.select().from(revisionEntries)).toHaveLength(0);
       expect(await db.select().from(ledgerEntries)).toHaveLength(0);
     }
   );

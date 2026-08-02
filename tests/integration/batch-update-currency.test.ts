@@ -13,11 +13,7 @@ import { auth } from "@/auth";
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
-  let counter = 0;
-
   beforeEach(() => {
-    counter++;
-
     // Setup auth mock for each test
     vi.mocked(auth as ReturnType<typeof vi.fn>).mockResolvedValue({
       user: { id: TEST_USER_ID, email: "test@example.com" },
@@ -29,10 +25,10 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     const db = getTestDb();
 
     // Arrange: Create test data
-    const ledgerId = `test-ledger-${counter}`;
-    const entryId = `test-entry-${counter}`;
-    const categoryId = `test-category-${counter}`;
-    const sourceDocId = `test-source-${counter}`;
+    const ledgerId = crypto.randomUUID();
+    const entryId = crypto.randomUUID();
+    const categoryId = crypto.randomUUID();
+    const sourceDocId = crypto.randomUUID();
 
     await db.insert(ledgers).values({
       id: ledgerId,
@@ -52,7 +48,6 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocId,
       ledgerId,
-      text: "Test",
     });
 
     await db.insert(ledgerEntries).values({
@@ -82,10 +77,10 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     const db = getTestDb();
 
     // Arrange: Create test data
-    const ledgerId = `test-ledger-${counter}`;
-    const entryId = `test-entry-${counter}`;
-    const categoryId = `test-category-${counter}`;
-    const sourceDocId = `test-source-${counter}`;
+    const ledgerId = crypto.randomUUID();
+    const entryId = crypto.randomUUID();
+    const categoryId = crypto.randomUUID();
+    const sourceDocId = crypto.randomUUID();
 
     await db.insert(ledgers).values({
       id: ledgerId,
@@ -103,7 +98,6 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     await db.insert(sourceDocuments).values({
       id: sourceDocId,
       ledgerId,
-      text: "Test",
     });
 
     await db.insert(ledgerEntries).values({

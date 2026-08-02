@@ -96,7 +96,7 @@ describe("source-document retry action", () => {
     // Document has an active revision and a completed pending candidate
     expect(after).toMatchObject({
       id: created.sourceDocumentId,
-      status: "processing",
+      currentStatus: "candidate_pending",
       deletedAt: null,
     });
     expect(after?.pendingRevisionId).not.toBeNull();

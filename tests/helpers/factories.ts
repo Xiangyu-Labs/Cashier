@@ -99,21 +99,26 @@ export function createSourceDocumentData(
   }> = {}
 ) {
   const now = new Date();
+  const {
+    text: _text,
+    imageUrls: _imageUrls,
+    metadata: _metadata,
+    status = "completed",
+    anomalyReason: _anomalyReason,
+    deletedAt,
+    ...canonicalOverrides
+  } = overrides;
   return {
     id: uuidv4(),
     ledgerId,
     title: null,
-    text: "午餐花了25.5元",
-    imageUrls: [],
-    metadata: {},
-    status: "completed" as const,
+    currentStatus: status === "deleted" ? ("completed" as const) : status,
     type: "ai_parsed" as const,
-    anomalyReason: null,
     entryDate: null,
     createdAt: now,
     updatedAt: now,
-    deletedAt: null,
-    ...overrides,
+    deletedAt: status === "deleted" ? (deletedAt ?? now) : (deletedAt ?? null),
+    ...canonicalOverrides,
   };
 }
 

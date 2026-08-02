@@ -1,32 +1,36 @@
-import { pgTable, text, integer, index, timestamp, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  integer,
+  index,
+  timestamp,
+  uniqueIndex,
+  jsonb,
+  uuid,
+  inet,
+} from "drizzle-orm/pg-core";
 import { type InferSelectModel } from "drizzle-orm";
 
-export const users = pgTable(
-  "users",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    name: text("name"),
-    email: text("email").notNull().unique(),
-    emailVerified: timestamp("email_verified", { withTimezone: true }),
-    image: text("image"),
-    passwordHash: text("password_hash"),
-    passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
-    preferences: jsonb("preferences")
-      .$type<UserPreferences>()
-      .notNull()
-      .default({ interfaceLanguage: "auto" }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-  },
-  (table) => [index("idx_users_email").on(table.email)]
-);
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  image: text("image"),
+  passwordHash: text("password_hash"),
+  passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
+  preferences: jsonb("preferences")
+    .$type<UserPreferences>()
+    .notNull()
+    .default({ interfaceLanguage: "auto" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
 
 export type User = InferSelectModel<typeof users>;
 
@@ -39,9 +43,7 @@ export interface UserPreferences {
 export const otpTokens = pgTable(
   "otp_tokens",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     expires: timestamp("expires", { withTimezone: true }).notNull(),
@@ -52,7 +54,7 @@ export const otpTokens = pgTable(
       .$defaultFn(() => new Date()),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
-    ipAddress: text("ip_address"),
+    ipAddress: inet("ip_address"),
   },
   (table) => [
     index("idx_otp_tokens_email").on(table.email),
@@ -66,10 +68,8 @@ export type OTPToken = InferSelectModel<typeof otpTokens>;
 export const emailChangeChallenges = pgTable(
   "email_change_challenges",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     newEmail: text("new_email").notNull(),

@@ -35,7 +35,7 @@ describe("deleteLedgerAction", () => {
     const db = getTestDb();
 
     // Arrange: Create test ledger and related data (user already exists from setup.ts)
-    const ledgerId = `test-ledger-${counter}`;
+    const ledgerId = crypto.randomUUID();
 
     await db.insert(ledgers).values({
       id: ledgerId,
@@ -44,7 +44,7 @@ describe("deleteLedgerAction", () => {
     });
 
     await db.insert(entryCategories).values({
-      id: `test-category-${counter}`,
+      id: crypto.randomUUID(),
       ledgerId,
       name: "Test Category",
       sortOrder: 0,
@@ -66,15 +66,15 @@ describe("deleteLedgerAction", () => {
   });
 
   it("should throw NotFoundError if ledger does not exist", async () => {
-    await expect(deleteLedgerAction("non-existent-ledger")).rejects.toThrow("Ledger");
+    await expect(deleteLedgerAction(crypto.randomUUID())).rejects.toThrow("Ledger");
   });
 
   it("should throw ForbiddenError if user does not own the ledger", async () => {
     const db = getTestDb();
 
     // Arrange: Create ledger owned by different user
-    const ownerId = `owner-${counter}`;
-    const ledgerId = `test-ledger-${counter}`;
+    const ownerId = crypto.randomUUID();
+    const ledgerId = crypto.randomUUID();
 
     await db.insert(users).values({
       id: ownerId,

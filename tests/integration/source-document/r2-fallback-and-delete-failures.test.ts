@@ -31,7 +31,7 @@ describe("source-document delete tolerance", () => {
     const db = getTestDb();
     const [document] = await db
       .insert(sourceDocuments)
-      .values({ ledgerId, text: "delete me", status: "completed" })
+      .values({ ledgerId, currentStatus: "completed" })
       .returning();
     await expect(deleteSourceDocumentAction(ledgerId, document!.id)).resolves.toEqual({
       sourceDocumentId: document!.id,

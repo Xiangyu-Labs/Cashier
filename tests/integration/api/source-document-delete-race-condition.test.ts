@@ -56,9 +56,7 @@ describe("SourceDocument Delete Race Condition", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "待删除的流水记录",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
@@ -112,9 +110,7 @@ describe("SourceDocument Delete Race Condition", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "鸡蛋 16元",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),
@@ -171,9 +167,7 @@ describe("SourceDocument Delete Race Condition", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "正常删除的流水",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-17",
         })
         .returning(),

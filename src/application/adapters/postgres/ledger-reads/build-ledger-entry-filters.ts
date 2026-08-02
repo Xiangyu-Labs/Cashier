@@ -29,8 +29,6 @@ export function buildLedgerEntryFilterConditions(
     conditions.push(q.whereActive);
   }
 
-  conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
-
   const sourceDocumentDateRange: { startDate?: string | null; endDate?: string | null } = {};
   if (filters.startDate !== undefined) {
     sourceDocumentDateRange.startDate = filters.startDate;
@@ -45,6 +43,8 @@ export function buildLedgerEntryFilterConditions(
   );
   if (sourceDocumentDateCondition != null) {
     conditions.push(sourceDocumentDateCondition);
+  } else {
+    conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
   }
 
   if (filters.uncategorizedOnly) {

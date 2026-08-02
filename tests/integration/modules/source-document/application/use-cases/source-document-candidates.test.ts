@@ -142,7 +142,6 @@ async function setupDocumentWithFirstParseFailure(
     id: sourceDocumentId,
     ledgerId,
     type: "ai_parsed",
-    pendingRevisionId: revisionId,
   });
 
   await db.insert(sourceDocumentRevisions).values({
@@ -154,6 +153,10 @@ async function setupDocumentWithFirstParseFailure(
     finalizedAt: new Date(),
     ...(outcome === "anomaly" ? { anomalyReason: "First parse anomaly" } : {}),
   });
+  await db
+    .update(sourceDocuments)
+    .set({ pendingRevisionId: revisionId })
+    .where(eq(sourceDocuments.id, sourceDocumentId));
 
   return { sourceDocumentId, pendingRevisionId: revisionId };
 }

@@ -62,9 +62,8 @@ describe("Stats Currency Conversion", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "MYR expense",
         entryDate: "2024-01-01",
-        status: "completed",
+        currentStatus: "completed",
       })
       .returning();
     expect(sourceDoc).toBeDefined();
@@ -101,9 +100,8 @@ describe("Stats Currency Conversion", () => {
       .insert(sourceDocuments)
       .values({
         ledgerId,
-        text: "Multi-currency expenses",
         entryDate: "2024-01-01",
-        status: "completed",
+        currentStatus: "completed",
       })
       .returning();
     expect(sourceDoc).toBeDefined();

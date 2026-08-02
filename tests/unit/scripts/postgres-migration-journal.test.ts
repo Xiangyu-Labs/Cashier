@@ -29,7 +29,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0014_revision_title_transaction");
+    expect(journal.entries.at(-1)?.tag).toBe("0015_model_convergence");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

@@ -75,14 +75,16 @@ describe("getLedgerEntryAction", () => {
 
     const entryData = createLedgerEntryData(ledgerData.id, { sourceDocumentId: sourceDocData.id });
     await db.insert(ledgerEntries).values(entryData);
-    await activateTestSourceDocumentProjection(db, sourceDocData.id);
+    await activateTestSourceDocumentProjection(db, sourceDocData.id, {
+      imageUrls: ["https://example.com/original.png"],
+    });
 
     const result = await getLedgerEntryAction(ledgerData.id, entryData.id);
 
     expect(result?.sourceDocument).toBeDefined();
     expect(result?.sourceDocument?.hasImages).toBe(true);
     expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
-    expect(result?.sourceDocument?.metadata).toEqual({ note: "keep-me" });
+    expect(result?.sourceDocument?.metadata).toEqual({});
   });
 
   it("should return null when entry does not exist", async () => {

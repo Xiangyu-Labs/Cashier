@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { postgresLedgerProjectionAdapter } from "@/application/adapters/postgres";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
@@ -90,18 +89,18 @@ describe("bounded target read models", () => {
         Array.from({ length: historySize }, (_, index) => ({
           ledgerId,
           title: `Receipt ${index}`,
-          text: `${sensitiveText}-${index}`,
-          status: "completed" as const,
-          imageUrls: index === 0 ? [sensitiveUrl] : [],
-          metadata: { storageKey, localPath, unrelatedEntryDetail: `detail-${index}` },
+          currentStatus: "completed" as const,
           entryDate: "2026-07-15",
           createdAt,
           updatedAt: createdAt,
         }))
       )
       .returning();
-    for (const document of documents) {
-      await activateTestSourceDocumentProjection(db, document.id);
+    for (const [index, document] of documents.entries()) {
+      await activateTestSourceDocumentProjection(db, document.id, {
+        text: `${sensitiveText}-${index}`,
+        imageUrls: [`${sensitiveUrl}/${index}`],
+      });
     }
 
     const firstPage = await querySourceDocumentPage(ledgerId, { limit: 7 });
@@ -172,14 +171,6 @@ describe("bounded target read models", () => {
         createdAt,
       })),
     });
-    await db
-      .update(sourceDocuments)
-      .set({
-        imageUrls: [sensitiveUrl],
-        metadata: { storageKey, localPath, unrelatedHistory: "do-not-return" },
-      })
-      .where(eq(sourceDocuments.id, created.sourceDocumentId));
-
     const firstPage = await listLedgerEntries(ledgerId, { limit: 7 });
     const history = await collectLedgerEntryPages(ledgerId, 7);
     const serialized = JSON.stringify(firstPage);

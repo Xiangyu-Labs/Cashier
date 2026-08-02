@@ -21,7 +21,7 @@ type SourceDocumentRow = Pick<
   SourceDocumentReferenceDto,
   "id" | "ledgerId" | "title" | "type" | "entryDate"
 > &
-  DateFields & { metadata: unknown };
+  DateFields;
 type LedgerEntryRow = Omit<
   LedgerEntryDto,
   "createdAt" | "updatedAt" | "deletedAt" | "category" | "sourceDocument"
@@ -79,15 +79,7 @@ export function mapServiceCredentialDto(credential: ServiceCredentialRow): Servi
 export function mapSourceDocumentReferenceDto(
   doc: Pick<
     SourceDocumentRow,
-    | "id"
-    | "ledgerId"
-    | "title"
-    | "type"
-    | "entryDate"
-    | "metadata"
-    | "createdAt"
-    | "updatedAt"
-    | "deletedAt"
+    "id" | "ledgerId" | "title" | "type" | "entryDate" | "createdAt" | "updatedAt" | "deletedAt"
   >
 ): SourceDocumentReferenceDto {
   return {
@@ -99,7 +91,7 @@ export function mapSourceDocumentReferenceDto(
     type: doc.type,
     anomalyReason: null,
     entryDate: doc.entryDate,
-    metadata: (doc.metadata ?? {}) as Record<string, unknown>,
+    metadata: {},
     createdAt: toIso(doc.createdAt)!,
     updatedAt: toIso(doc.updatedAt)!,
     deletedAt: toIso(doc.deletedAt),

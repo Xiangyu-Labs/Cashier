@@ -102,7 +102,7 @@ describe("Enhanced Stats Actions", () => {
   describe("getEnhancedStats", () => {
     it("rejects invalid ledger ids", async () => {
       await expect(
-        getTargetEnhancedStats({
+        getEnhancedStats({
           ledgerId: "not-a-uuid",
           queryRange: { from: "2024-01-01", to: "2024-01-31" },
           compareRange: { from: "2023-12-01", to: "2023-12-31" },
@@ -156,9 +156,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "January expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-01-15",
           createdAt: new Date("2024-03-01"),
         })
@@ -170,9 +168,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "March expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-15",
           createdAt: new Date("2024-01-01"),
         })
@@ -218,9 +214,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "SQL filter test",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-05",
         })
         .returning();
@@ -273,9 +267,7 @@ describe("Enhanced Stats Actions", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
-            text: `${date} expense`,
-            status: "completed",
-            imageUrls: [],
+            currentStatus: "completed",
             entryDate: date,
           })
           .returning();
@@ -309,9 +301,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Multi-category expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-01",
         })
         .returning();
@@ -365,9 +355,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Current period expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-15",
         })
         .returning();
@@ -387,9 +375,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Previous period expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-02-15",
         })
         .returning();
@@ -423,9 +409,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Daily expenses",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-01",
         })
         .returning();
@@ -457,9 +441,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Mixed entries",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-01",
         })
         .returning();
@@ -508,9 +490,7 @@ describe("Enhanced Stats Actions", () => {
           .insert(sourceDocuments)
           .values({
             ledgerId: testLedgerId,
-            text: `${entry.date} expense`,
-            status: "completed",
-            imageUrls: [],
+            currentStatus: "completed",
             entryDate: entry.date,
           })
           .returning();
@@ -545,9 +525,7 @@ describe("Enhanced Stats Actions", () => {
         .insert(sourceDocuments)
         .values({
           ledgerId: testLedgerId,
-          text: "Uncategorized expense",
-          status: "completed",
-          imageUrls: [],
+          currentStatus: "completed",
           entryDate: "2024-03-01",
         })
         .returning();
