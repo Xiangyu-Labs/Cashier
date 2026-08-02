@@ -69,7 +69,7 @@ describe("target application contracts", () => {
     expect(error.correlationId).toBeTypeOf("string");
   });
 
-  it("keeps the published API v1 response fixture and compatibility window", () => {
+  it("keeps the published API v1 response fixture as a stable contract", () => {
     const response = fixture.response as {
       sourceDocumentId: string;
       revisionId: string;
@@ -77,10 +77,7 @@ describe("target application contracts", () => {
     };
     expect(toApiV1SourceDocumentCreateResponse(response)).toEqual(fixture.response);
     expect(apiV1Compatibility.version).toBe(fixture.compatibility.version);
-    expect(apiV1Compatibility.additiveUntil).toBe(fixture.compatibility.additiveUntil);
-    expect(apiV1Compatibility.deprecatedTaskFields).toEqual(
-      fixture.compatibility.deprecatedTaskFields
-    );
+    expect(apiV1Compatibility.status).toBe(fixture.compatibility.status);
   });
 
   describe("toStableFailureCode", () => {

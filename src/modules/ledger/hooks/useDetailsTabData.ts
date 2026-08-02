@@ -48,7 +48,7 @@ export function useDetailsTabData({
   advancedFilters,
   timeZone,
 }: UseDetailsTabDataProps): UseDetailsTabDataReturn {
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const { startDateStr, endDateStr, filterKey } = useMemo(
     () => getDetailsInitialQueryState(periodParams, advancedFilters, timeZone),
     [periodParams, advancedFilters, timeZone]

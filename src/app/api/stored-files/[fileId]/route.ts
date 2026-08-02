@@ -13,9 +13,9 @@ export async function GET(
   try {
     const userId = await requireAuth();
     const { fileId } = await params;
-    const read = await currentApplication.storedFiles.readAuthorizedForUser(userId, fileId);
+    const read = await currentApplication.storedFiles.readAuthorizedStreamForUser(userId, fileId);
     if (read == null) return new NextResponse("Not Found", { status: 404 });
-    return new NextResponse(Buffer.from(read.body), {
+    return new NextResponse(read.body, {
       status: 200,
       headers: {
         "Content-Type": read.file.metadata.contentType,

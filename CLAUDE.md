@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cashier is an AI-powered bookkeeping application that uses LLMs to parse receipts and invoices, automatically categorizing and recording expenses. Built with Next.js 16 (App Router), TypeScript, SQLite/Drizzle ORM, and OpenAI.
+Cashier is an AI-powered bookkeeping application that uses LLMs to parse receipts and invoices, automatically categorizing and recording expenses. Built with Next.js 16 (App Router), TypeScript, PostgreSQL/Drizzle ORM, private S3-compatible storage, and OpenAI.
 
 ## Commands
 
@@ -15,7 +15,7 @@ npm run build            # Production build
 npm run start            # Start production server
 npm run lint             # ESLint
 
-# Testing (uses in-memory SQLite, no external DB needed)
+# Testing (integration and DB tests use docker-compose.test.yml PostgreSQL)
 npm run test             # Watch mode
 npm run test:run         # Single run
 npm run test:coverage    # With coverage
@@ -74,7 +74,7 @@ src/modules/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**In-process task runtime** (`src/lib/tasks/`): Background tasks (source-document parsing only) run as in-process Promises via `taskRuntime.submit()`. No Redis or external queue. Task processing intents are scheduled with `after()` at request boundaries rather than a process-wide dispatcher loop. Task handlers are registered centrally in `src/lib/tasks/task-registry.ts`.
+**Request-bound processing** (`src/lib/tasks/`): Source-document parsing intents are claimed from PostgreSQL and scheduled with Next.js `after()` at request boundaries. There is no Redis, external queue, cron, resident worker, or process-wide dispatcher. Claims use leases and renew while AI work is running; the accepted reliability limit is that work may remain pending until another request arrives.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
 
@@ -100,7 +100,7 @@ src/modules/{domain}/
 
 ### Testing
 
-- Tests use in-memory SQLite (`:memory:`), no external DB needed
+- Database tests use isolated schemas in the PostgreSQL 17 test container
 - `fileParallelism: false` in vitest config for DB consistency
 - Global mocks in `tests/setup.ts`: `@/lib/db`, `@/auth` (test user `00000000-0000-0000-0000-000000000000`), `next-intl`, `next/cache`
 - Prefer integration tests over unit tests for business logic
@@ -120,7 +120,7 @@ src/modules/{domain}/
 - Always put `invalidateQueries` in `onSettled` (not `onSuccess`) to ensure cache refresh even on error
 - Use centralized `queryKeys` factory (`src/lib/query-keys.ts`) and the ledger-scoped invalidation helpers defined there for cache invalidation
 - Store dates as `yyyy-MM-dd` strings, never timestamps — frontend owns timezone, backend does string comparison
-- Use `metadata` JSONB column for extensible settings instead of adding individual columns
+- Ledger settings use the typed `ledgers` columns; do not reintroduce a metadata fallback
 - Prefer minimal infrastructure: in-process over external services, memory store over Redis, polling over SSE
 - Domain naming must be precise — invest in renaming when concepts no longer match their actual contract
 - **Coding patterns and conventions**: see `docs/architecture/coding-patterns.md` — all agents must read this before modifying existing code or adding new features

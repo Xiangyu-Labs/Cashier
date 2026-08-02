@@ -84,16 +84,13 @@ vi.mock("@/modules/ledger/hooks", () => ({
 const ledger: Ledger = {
   id: "ledger-1",
   userId: "user-1",
-  metadata: {
-    settings: {
-      mainCurrency: "CNY",
-      currencies: ["CNY"],
-      aiLanguage: "zh-CN",
-    },
+  settings: {
+    mainCurrency: "CNY",
+    currencies: ["CNY"],
+    aiLanguage: "zh-CN",
   },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
-  deletedAt: null,
 };
 
 describe("SettingsTab layout", () => {

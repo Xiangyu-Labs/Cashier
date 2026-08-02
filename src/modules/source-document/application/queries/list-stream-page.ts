@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { currentApplication } from "@/application/current";
 import { ValidationError } from "@/lib/errors";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source-document-queries";
@@ -43,55 +42,24 @@ export interface ListStreamPageInput {
 }
 
 // ---------------------------------------------------------------------------
-// Filter fingerprint
-// ---------------------------------------------------------------------------
-
-/**
- * Compute a stable 8-hex-char fingerprint of the normalized filter values.
- * Used to detect incompatible cursor reuse across filter combinations.
- */
-export function computeFilterFingerprint(input: ListStreamPageInput): string {
-  const hash = createHash("sha256");
-  const sortedStatuses = (input.statuses ?? []).slice().sort();
-  const parts = [
-    input.startDate ?? "",
-    input.endDate ?? "",
-    input.minAmount?.toString() ?? "",
-    input.maxAmount?.toString() ?? "",
-    input.search ?? "",
-    ...sortedStatuses,
-  ].join("\0");
-  hash.update(parts);
-  return hash.digest("hex").slice(0, 8);
-}
-
-// ---------------------------------------------------------------------------
 // Stream cursor helpers
 // ---------------------------------------------------------------------------
 
 /**
  * Decode a versioned stream cursor into its components.
- * Expected format: v1|ledgerId|filterFingerprint|effectiveDate|createdAt|id
+ * Expected format: v2|ledgerId|effectiveDate|createdAt|id
  */
 interface DecodedStreamCursor {
   ledgerId: string;
-  filterFingerprint: string;
   innerCursor: string;
 }
 
 function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCursor | null {
   if (cursor == null || cursor === "") return null;
   const parts = cursor.split("|");
-  if (parts.length !== 6) return null;
-  const [version, decodedLedgerId, filterFingerprint, effectiveDate, createdAt, id] = parts;
-  if (
-    version !== "v1" ||
-    !decodedLedgerId ||
-    !filterFingerprint ||
-    !effectiveDate ||
-    !createdAt ||
-    !id
-  ) {
+  if (parts.length !== 5) return null;
+  const [version, decodedLedgerId, effectiveDate, createdAt, id] = parts;
+  if (version !== "v2" || !decodedLedgerId || !effectiveDate || !createdAt || !id) {
     return null;
   }
   // Validate effectiveDate format (YYYY-MM-DD)
@@ -101,7 +69,6 @@ function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCur
   if (Number.isNaN(createdAtMs)) return null;
   return {
     ledgerId: decodedLedgerId,
-    filterFingerprint,
     innerCursor: `${effectiveDate}|${createdAt}|${id}`,
   };
 }
@@ -109,13 +76,9 @@ function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCur
 /**
  * Encode a versioned stream cursor from its components.
  */
-function encodeStreamCursor(
-  ledgerId: string,
-  filterFingerprint: string,
-  readModelCursor: string | null
-): string | null {
+function encodeStreamCursor(ledgerId: string, readModelCursor: string | null): string | null {
   if (readModelCursor == null) return null;
-  return `v1|${ledgerId}|${filterFingerprint}|${readModelCursor}`;
+  return `v2|${ledgerId}|${readModelCursor}`;
 }
 
 /**
@@ -125,11 +88,7 @@ function encodeStreamCursor(
  * Throws ValidationError for malformed, incompatible, or stale cursors so the
  * caller can signal the client to restart from page one.
  */
-function validateCursor(
-  cursor: string | null | undefined,
-  ledgerId: string,
-  filterFingerprint: string
-): string | null {
+function validateCursor(cursor: string | null | undefined, ledgerId: string): string | null {
   if (cursor == null || cursor === "") return null;
   const decoded = decodeStreamCursor(cursor);
   if (decoded == null) {
@@ -137,9 +96,6 @@ function validateCursor(
   }
   if (decoded.ledgerId !== ledgerId) {
     throw new ValidationError("Cross-ledger cursor, restart required");
-  }
-  if (decoded.filterFingerprint !== filterFingerprint) {
-    throw new ValidationError("Incompatible cursor filters, restart required");
   }
   return decoded.innerCursor;
 }
@@ -156,18 +112,12 @@ export async function listStreamPage(
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
   const search = normalizeSearchTerm(input.search);
 
-  // Compute filter fingerprint before cursor validation
-  const filterFingerprint = computeFilterFingerprint({
-    ...input,
-    ...(search != null ? { search } : {}),
-  });
-
   // Validate cursor against ledger identity and filter compatibility.
   // Throws ValidationError for malformed/incompatible cursors so the client
   // can discard stale pages and restart from page one.
   let innerCursor: string | null;
   try {
-    innerCursor = validateCursor(input.cursor, ledgerId, filterFingerprint);
+    innerCursor = validateCursor(input.cursor, ledgerId);
   } catch (error) {
     if (error instanceof ValidationError) {
       return { items: [], nextCursor: null, generation: 1, restartRequired: true };
@@ -206,7 +156,7 @@ export async function listStreamPage(
 
   return {
     items: items as SourceDocumentListItemDto[],
-    nextCursor: encodeStreamCursor(ledgerId, filterFingerprint, page.nextCursor),
+    nextCursor: encodeStreamCursor(ledgerId, page.nextCursor),
     generation: 1,
   };
 }

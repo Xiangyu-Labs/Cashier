@@ -3,7 +3,7 @@
 import { ConflictError } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { ledgerSyncState, sourceDocuments } from "@/persistence";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
@@ -39,7 +39,7 @@ async function collectSnapshotRows(ledgerId: string) {
 }
 
 async function querySnapshotVersion(ledgerId: string): Promise<OfflineSnapshotVersionDto> {
-  const [documentState, entryState] = await Promise.all([
+  const [documentState, syncState] = await Promise.all([
     db
       .select({
         count: sql<number>`count(*)`,
@@ -48,16 +48,12 @@ async function querySnapshotVersion(ledgerId: string): Promise<OfflineSnapshotVe
       .from(sourceDocuments)
       .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
       .then((rows) => rows[0]),
-    db
-      .select({ updatedAt: sql<string>`COALESCE(MAX(${ledgerEntries.updatedAt}), 'epoch')` })
-      .from(ledgerEntries)
-      .where(eq(ledgerEntries.ledgerId, ledgerId))
-      .then((rows) => rows[0]),
+    db.query.ledgerSyncState.findFirst({ where: eq(ledgerSyncState.ledgerId, ledgerId) }),
   ]);
   const recordCount = Number(documentState?.count ?? 0);
   const truncated = recordCount > OFFLINE_DOCUMENT_LIMIT;
   return {
-    version: `${recordCount}:${documentState?.updatedAt ?? "epoch"}:${entryState?.updatedAt ?? "epoch"}`,
+    version: (syncState?.version ?? BigInt(0)).toString(),
     recordCount,
     complete: !truncated,
     truncated,

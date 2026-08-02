@@ -10,7 +10,6 @@
   },
   "compatibility": {
     "version": "v1",
-    "additiveUntil": "2026-10-13",
-    "deprecatedTaskFields": ["status"]
+    "status": "stable"
   }
 }

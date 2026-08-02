@@ -1,1 +1,0 @@
-ALTER TABLE `source_documents` ADD `progress_message` text;

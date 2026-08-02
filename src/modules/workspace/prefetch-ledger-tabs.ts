@@ -21,11 +21,11 @@ export async function prefetchDetailsTabQuery(
 ) {
   const { getLedgerEntriesAction, getLedgerStatsAction } = await import("@/modules/ledger/actions");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const { startDateStr, endDateStr, filterKey } = getDetailsInitialQueryState(
     periodParams,
     advancedFilters,
-    ledger?.metadata?.settings?.timeZone ?? undefined
+    ledger?.settings.timeZone ?? undefined
   );
 
   await Promise.all([
@@ -64,8 +64,8 @@ export async function prefetchDetailsTabQuery(
 export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: string) {
   const { getEnhancedStats } = await import("@/modules/stats/actions");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const fixedTimeZone = ledger?.metadata?.settings?.timeZone ?? undefined;
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
+  const fixedTimeZone = ledger?.settings.timeZone ?? undefined;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const state = getStatsInitialQueryState(
     zonedToday != null ? parseDateString(zonedToday) : new Date()

@@ -68,6 +68,6 @@ describe("getLedgerEntryDetail", () => {
     expect(result?.category?.id).toBe(category.id);
     expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
     expect(result?.sourceDocument?.hasImages).toBe(true);
-    expect(result?.sourceDocument?.metadata).toEqual({});
+    expect(result?.sourceDocument).not.toHaveProperty("metadata");
   });
 });

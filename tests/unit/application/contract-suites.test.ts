@@ -77,6 +77,9 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
           expiresAt: "2026-07-13T00:05:00.000Z",
         };
       },
+      async renew(_intentId, _claimToken) {
+        return "2026-07-13T00:05:00.000Z";
+      },
       async complete(result) {
         if (completed.has(result.intentId)) return false;
         completed.set(result.intentId, result);
@@ -100,6 +103,6 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
 }
 
 applicationContractSuite(
-  "current SQLite/local-file/in-process contract composition",
+  "current Postgres/local-file/in-process contract composition",
   createCurrentRuntimeHarness
 );

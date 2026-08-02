@@ -93,6 +93,9 @@ export async function executeSingleProcessingIntent(
     columns: { ledgerId: true },
   });
   if (row == null) throw new Error("Processing intent disappeared after claim");
+  const heartbeat = setInterval(() => {
+    void adapter.renew(claim.intent.id, claim.claimToken);
+  }, 60_000);
 
   try {
     const result = await processor.process({
@@ -118,6 +121,8 @@ export async function executeSingleProcessingIntent(
       claimToken: claim.claimToken,
       outcome: "failed",
     });
+  } finally {
+    clearInterval(heartbeat);
   }
 
   return true;

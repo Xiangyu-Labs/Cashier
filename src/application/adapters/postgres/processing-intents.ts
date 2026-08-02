@@ -23,16 +23,11 @@ export interface PostgresProcessingIntentAdapterOptions {
 }
 
 function mapIntent(row: typeof processingOutbox.$inferSelect): ProcessingIntentContract {
-  const payload = row.payload as { sourceDocumentId?: unknown; requestedAt?: unknown } | null;
-  if (typeof payload?.sourceDocumentId !== "string") {
-    throw new Error(`Processing intent ${row.id} has no source document identity`);
-  }
   return {
     id: row.id,
-    sourceDocumentId: payload.sourceDocumentId,
+    sourceDocumentId: row.sourceDocumentId,
     revisionId: row.revisionId,
-    requestedAt:
-      typeof payload.requestedAt === "string" ? payload.requestedAt : row.createdAt.toISOString(),
+    requestedAt: row.requestedAt.toISOString(),
     attempt: row.attemptNumber,
   };
 }
@@ -89,14 +84,11 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         .values({
           id: intent.id,
           ledgerId: revision.ledgerId,
+          sourceDocumentId: intent.sourceDocumentId,
           revisionId: intent.revisionId,
           attemptNumber: intent.attempt,
-          idempotencyKey: intent.id,
           status: "pending",
-          payload: {
-            sourceDocumentId: intent.sourceDocumentId,
-            requestedAt: intent.requestedAt,
-          },
+          requestedAt: new Date(intent.requestedAt),
           availableAt: new Date(intent.requestedAt),
         })
         .onConflictDoNothing();
@@ -109,23 +101,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
   }
 
   async claimNext(): Promise<ProcessingClaimContract | null> {
-    const now = this.now();
-    const candidate = await db
-      .select({ id: processingOutbox.id })
-      .from(processingOutbox)
-      .where(
-        and(
-          lte(processingOutbox.availableAt, now),
-          or(
-            eq(processingOutbox.status, "pending"),
-            and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-          )
-        )
-      )
-      .orderBy(asc(processingOutbox.availableAt), asc(processingOutbox.createdAt))
-      .limit(1)
-      .then((rows) => rows[0]);
-    return candidate == null ? null : this.claim(candidate.id);
+    return this.claimWhere(sql`TRUE`);
   }
 
   private async claimWhere(
@@ -135,26 +111,33 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
     const claimToken = crypto.randomUUID();
     const expiresAt = new Date(now.getTime() + this.leaseMs);
     return db.transaction(async (tx) => {
-      const row = await tx
-        .update(processingOutbox)
-        .set({
-          status: "claimed",
-          claimToken,
-          claimedAt: now,
-          claimExpiresAt: expiresAt,
-        })
-        .where(
-          and(
-            identity,
-            lte(processingOutbox.availableAt, now),
-            or(
-              eq(processingOutbox.status, "pending"),
-              and(eq(processingOutbox.status, "claimed"), lte(processingOutbox.claimExpiresAt, now))
-            )
-          )
+      const claimed = await tx.execute<typeof processingOutbox.$inferSelect>(sql`
+        WITH candidate AS (
+          SELECT id FROM processing_outbox
+          WHERE ${identity}
+            AND available_at <= ${now}
+            AND (status = 'pending' OR (status = 'claimed' AND claim_expires_at <= ${now}))
+          ORDER BY available_at, created_at
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
         )
-        .returning()
-        .then((rows) => rows[0]);
+        UPDATE processing_outbox outbox
+        SET status = 'claimed', claim_token = ${claimToken}, claimed_at = ${now},
+            claim_expires_at = ${expiresAt}
+        FROM candidate WHERE outbox.id = candidate.id
+        RETURNING outbox.*
+      `);
+      const raw = claimed.rows?.[0] as Record<string, unknown> | undefined;
+      const row =
+        raw == null
+          ? undefined
+          : ({
+              ...raw,
+              sourceDocumentId: raw.source_document_id,
+              revisionId: raw.revision_id,
+              attemptNumber: raw.attempt_number,
+              requestedAt: new Date(raw.requested_at as string | Date),
+            } as typeof processingOutbox.$inferSelect);
       if (row == null) return null;
       const intent = mapIntent(row);
       await tx
@@ -169,6 +152,22 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         );
       return { intent, claimToken, expiresAt: expiresAt.toISOString() };
     });
+  }
+
+  async renew(intentId: string, claimToken: string): Promise<string | null> {
+    const expiresAt = new Date(this.now().getTime() + this.leaseMs);
+    const renewed = await db
+      .update(processingOutbox)
+      .set({ claimExpiresAt: expiresAt })
+      .where(
+        and(
+          eq(processingOutbox.id, intentId),
+          eq(processingOutbox.status, "claimed"),
+          eq(processingOutbox.claimToken, claimToken)
+        )
+      )
+      .returning({ id: processingOutbox.id });
+    return renewed.length === 1 ? expiresAt.toISOString() : null;
   }
 
   async complete(result: ProcessingCompletionContract): Promise<boolean> {
@@ -273,9 +272,9 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
     const rows = await db
       .select({
         id: processingOutbox.id,
-        sourceDocumentId: sql<string>`${processingOutbox.payload}->>'sourceDocumentId'`,
+        sourceDocumentId: processingOutbox.sourceDocumentId,
         revisionId: processingOutbox.revisionId,
-        requestedAt: sql<string>`COALESCE(${processingOutbox.payload}->>'requestedAt', ${processingOutbox.createdAt}::text)`,
+        requestedAt: processingOutbox.requestedAt,
         attempt: processingOutbox.attemptNumber,
         scheduleAttemptCount: processingOutbox.scheduleAttemptCount,
         nextAvailableAt: processingOutbox.nextAvailableAt,
@@ -285,10 +284,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         sourceDocuments,
         and(
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(
-            sourceDocuments.id,
-            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
-          ),
+          eq(sourceDocuments.id, processingOutbox.sourceDocumentId),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
         )
@@ -310,7 +306,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
       id: row.id,
       sourceDocumentId: row.sourceDocumentId,
       revisionId: row.revisionId,
-      requestedAt: row.requestedAt,
+      requestedAt: row.requestedAt.toISOString(),
       attempt: row.attempt,
       scheduleAttemptCount: row.scheduleAttemptCount,
       nextAvailableAt: row.nextAvailableAt.toISOString(),
@@ -334,10 +330,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         sourceDocuments,
         and(
           eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-          eq(
-            sourceDocuments.id,
-            sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
-          ),
+          eq(sourceDocuments.id, processingOutbox.sourceDocumentId),
           eq(sourceDocuments.pendingRevisionId, processingOutbox.revisionId),
           isNull(sourceDocuments.deletedAt)
         )
@@ -397,10 +390,7 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
           sourceDocuments,
           and(
             eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
-            eq(
-              sourceDocuments.id,
-              sql`CAST(${processingOutbox.payload}->>'sourceDocumentId' AS uuid)`
-            )
+            eq(sourceDocuments.id, processingOutbox.sourceDocumentId)
           )
         )
         .innerJoin(

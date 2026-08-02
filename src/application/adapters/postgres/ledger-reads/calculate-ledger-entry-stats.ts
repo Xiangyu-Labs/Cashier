@@ -56,7 +56,7 @@ export async function calculateLedgerEntryStats({
     mainCurrency == null
       ? db.query.ledgers.findFirst({
           where: eq(ledgers.id, ledgerId),
-          columns: { metadata: true },
+          columns: { mainCurrency: true },
         })
       : Promise.resolve(null),
   ]);
@@ -76,7 +76,7 @@ export async function calculateLedgerEntryStats({
 
   const convertedTotalValue = decimalNormalize(String(convertedTotalResult[0]?.total ?? "0"));
 
-  const effectiveMainCurrency = mainCurrency ?? settings?.metadata?.settings?.mainCurrency ?? "CNY";
+  const effectiveMainCurrency = mainCurrency ?? settings?.mainCurrency ?? "CNY";
 
   return {
     convertedTotal: {

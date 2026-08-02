@@ -116,18 +116,14 @@ describe("PostgresProcessingIntentAdapter", () => {
       crypto.randomUUID()
     );
 
-    // Update ledger metadata with custom prompt
+    // Update typed ledger settings with a custom prompt.
     const customPrompt = "Please categorize expenses as food or transport";
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            aiCustomPrompt: customPrompt,
-            aiLanguage: "en",
-            currencies: ["CNY", "USD"],
-          },
-        },
+        aiCustomPrompt: customPrompt,
+        aiLanguage: "en",
+        preferredCurrencies: ["CNY", "USD"],
       })
       .where(eq(ledgers.id, ledgerId));
 
@@ -212,18 +208,14 @@ describe("PostgresProcessingIntentAdapter", () => {
       revisionId: intent.revisionId,
     });
 
-    // Now update ledger metadata WITH a custom prompt (simulating user changing settings after first parse)
+    // Update typed settings after the first parse.
     const customPrompt = "Please focus on categorizing dining expenses";
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            aiCustomPrompt: customPrompt,
-            aiLanguage: "en",
-            currencies: ["CNY", "USD"],
-          },
-        },
+        aiCustomPrompt: customPrompt,
+        aiLanguage: "en",
+        preferredCurrencies: ["CNY", "USD"],
       })
       .where(eq(ledgers.id, ledgerId));
 
@@ -295,6 +287,9 @@ describe("PostgresProcessingIntentAdapter", () => {
 
     const first = await adapter.claim(intent.id);
     expect(first).not.toBeNull();
+    now = new Date(now.getTime() + 500);
+    const renewedUntil = await adapter.renew(intent.id, first!.claimToken);
+    expect(renewedUntil).toBe(new Date(now.getTime() + 1_000).toISOString());
     now = new Date(now.getTime() + 1_001);
     const second = await adapter.claim(intent.id);
     expect(second).not.toBeNull();

@@ -1,1 +1,0 @@
-ALTER TABLE `task_runs` ADD `updated_at` integer DEFAULT 0 NOT NULL;

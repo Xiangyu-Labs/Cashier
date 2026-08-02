@@ -86,7 +86,7 @@ describe("SettingsTab account authentication controls", () => {
     const ledger = {
       id: "ledger-1",
       userId: "user-1",
-      metadata: { settings: {} },
+      settings: {},
     } as unknown as Ledger;
 
     render(

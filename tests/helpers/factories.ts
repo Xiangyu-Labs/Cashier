@@ -5,7 +5,12 @@ export function createLedgerData(
   overrides: Partial<{
     id: string;
     userId: string;
-    metadata: Record<string, unknown>;
+    aiLanguage: string;
+    preferredCurrencies: string[];
+    mainCurrency: string;
+    collapseEntriesDefault: boolean;
+    aiCustomPrompt: string;
+    timeZone: string | null;
     createdAt: Date;
     updatedAt: Date;
   }> = {}
@@ -13,7 +18,12 @@ export function createLedgerData(
   return {
     id: uuidv4(),
     userId: TEST_USER_ID, // 默认使用测试用户，避免外键约束失败
-    metadata: {},
+    aiLanguage: "zh-CN",
+    preferredCurrencies: [],
+    mainCurrency: "CNY",
+    collapseEntriesDefault: false,
+    aiCustomPrompt: "",
+    timeZone: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

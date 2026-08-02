@@ -15,7 +15,7 @@ export async function createDefaultLedger(
   return {
     id: ledger.id,
     userId: ledger.userId,
-    metadata: { settings: ledger.settings },
+    settings: ledger.settings,
     createdAt: new Date(ledger.createdAt),
     updatedAt: new Date(ledger.updatedAt),
     deletedAt: null,

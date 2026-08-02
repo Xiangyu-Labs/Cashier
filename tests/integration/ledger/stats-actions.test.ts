@@ -59,7 +59,7 @@ describe("getLedgerStatsAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: { settings: { mainCurrency: "CNY" } },
+      mainCurrency: "CNY",
     });
   });
 
@@ -240,7 +240,6 @@ describe("getLedgerStatsAction", () => {
     await db.insert(ledgers).values({
       id: otherLedgerId,
       userId: OTHER_USER_ID,
-      metadata: {},
     });
 
     await expect(getLedgerStatsAction(otherLedgerId)).rejects.toThrow("Ledger not found");

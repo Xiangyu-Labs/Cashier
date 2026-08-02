@@ -189,7 +189,7 @@ export function SettingsTab({
           <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
             <Switch
               aria-label={t("collapseEntries")}
-              checked={settingsLedger.metadata?.settings?.collapseEntriesDefault ?? false}
+              checked={settingsLedger.settings.collapseEntriesDefault ?? false}
               onCheckedChange={(checked) => {
                 updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
               }}
@@ -198,7 +198,7 @@ export function SettingsTab({
           </SettingsField>
           <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
             <Select
-              value={settingsLedger.metadata?.settings?.timeZone ?? "auto"}
+              value={settingsLedger.settings.timeZone ?? "auto"}
               onValueChange={(value) => {
                 updateLedgerMutation.mutate({
                   timeZone: value === "auto" ? null : value,
@@ -237,8 +237,8 @@ export function SettingsTab({
           </SettingsField>
           <CurrencySection
             settings={{
-              ...settingsLedger.metadata?.settings,
-              currencies: settingsLedger.metadata?.settings?.currencies || [],
+              ...settingsLedger.settings,
+              currencies: settingsLedger.settings.currencies || [],
             }}
             onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
           />
@@ -262,7 +262,7 @@ export function SettingsTab({
         <SettingsSection title={t("aiParsing")}>
           <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
             <Select
-              value={settingsLedger.metadata?.settings?.aiLanguage ?? "zh-CN"}
+              value={settingsLedger.settings.aiLanguage ?? "zh-CN"}
               onValueChange={(value) => updateLedgerMutation.mutate({ aiLanguage: value })}
               disabled={isPending}
             >
@@ -280,10 +280,10 @@ export function SettingsTab({
           </SettingsField>
           <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
             <Textarea
-              defaultValue={settingsLedger.metadata?.settings?.aiCustomPrompt ?? ""}
+              defaultValue={settingsLedger.settings.aiCustomPrompt ?? ""}
               onBlur={(e) => {
                 const newValue = e.target.value;
-                const currentValue = settingsLedger.metadata?.settings?.aiCustomPrompt ?? "";
+                const currentValue = settingsLedger.settings.aiCustomPrompt ?? "";
                 if (newValue !== currentValue) {
                   updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
                 }

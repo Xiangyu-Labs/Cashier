@@ -31,6 +31,7 @@ import { ConflictError, NotFoundError } from "@/lib/errors";
 
 export interface TargetSourceDocumentFilterInput {
   ledgerId: string;
+  ids?: readonly string[];
   statuses?: readonly SourceDocumentStatusType[];
   startDate?: string | null;
   endDate?: string | null;
@@ -189,6 +190,9 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
     eq(sourceDocuments.ledgerId, input.ledgerId),
     isNull(sourceDocuments.deletedAt),
   ];
+  if (input.ids != null) {
+    conditions.push(input.ids.length === 0 ? sql`false` : inArray(sourceDocuments.id, input.ids));
+  }
 
   if (input.statuses != null && input.statuses.length > 0) {
     const activeStatuses = input.statuses.filter((status) => status !== "deleted");

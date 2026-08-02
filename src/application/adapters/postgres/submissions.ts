@@ -163,14 +163,11 @@ export const postgresSourceDocumentSubmissionAdapter: SourceDocumentSubmissionPo
       await tx.insert(processingOutbox).values({
         id: intent.id,
         ledgerId: input.ledgerId,
+        sourceDocumentId: intent.sourceDocumentId,
         revisionId: pending.revision.id,
         attemptNumber: intent.attempt,
-        idempotencyKey: intent.id,
         status: "pending",
-        payload: {
-          sourceDocumentId: intent.sourceDocumentId,
-          requestedAt: intent.requestedAt,
-        },
+        requestedAt,
         availableAt: requestedAt,
       });
 

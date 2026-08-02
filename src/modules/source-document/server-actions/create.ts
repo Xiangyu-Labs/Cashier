@@ -14,6 +14,7 @@ import { createAndQueueSourceDocument } from "../application/use-cases/create-an
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
+import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 
 /**
  * Create a new source document and trigger processing.
@@ -50,6 +51,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
 
     // Also recover any missed processing intents
     after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleRequestMaintenance();
 
     if (operationId != null) {
       return {

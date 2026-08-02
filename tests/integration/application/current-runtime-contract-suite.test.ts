@@ -12,6 +12,7 @@ import {
   PostgresProcessingIntentAdapter,
   postgresIdempotencyAdapter,
   postgresRevisionAdapter,
+  postgresServiceCredentialAdapter,
 } from "@/application/adapters/postgres";
 
 class ContractFileStore {
@@ -74,6 +75,8 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
       await processing.dispatch(await prepareIntent(intent));
     },
     claim: (intentId: string) => processing.claim(actualIntents.get(intentId)?.id ?? intentId),
+    renew: (intentId: string, claimToken: string) =>
+      processing.renew(actualIntents.get(intentId)?.id ?? intentId, claimToken),
     async complete(result: ProcessingCompletionContract) {
       const completed = await processing.complete({
         ...result,
@@ -104,9 +107,15 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
     return current;
   }
 
+  let credential: Awaited<ReturnType<typeof postgresServiceCredentialAdapter.create>> | null = null;
+
   return {
     sourceDocumentActions: supportedSourceDocumentActions,
-    executeIdempotently: (key, operation) => postgresIdempotencyAdapter.execute(key, operation),
+    executeIdempotently: async (key, operation) => {
+      const { ledgerId } = await getSetup();
+      credential ??= await postgresServiceCredentialAdapter.create(ledgerId, "Contract");
+      return postgresIdempotencyAdapter.execute(credential.id, key, operation);
+    },
     files,
     processing: processingPort,
     plan,

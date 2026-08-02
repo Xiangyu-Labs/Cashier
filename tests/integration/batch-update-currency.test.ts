@@ -33,9 +33,7 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {
-        settings: { mainCurrency: "USD" },
-      },
+      mainCurrency: "USD",
     });
 
     await db.insert(entryCategories).values({
@@ -85,7 +83,6 @@ describe("batchUpdateLedgerEntriesAction currency recalculation", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
 
     await db.insert(entryCategories).values({

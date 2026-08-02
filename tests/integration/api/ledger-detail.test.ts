@@ -33,9 +33,9 @@ describe("Ledger Actions", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.ledger.metadata?.settings?.mainCurrency).toBe("USD");
-    expect(result.ledger.metadata?.settings?.aiLanguage).toBe("en");
-    expect(result.ledger.metadata?.settings?.currencies).toEqual(["USD", "CNY"]);
+    expect(result.ledger.settings.mainCurrency).toBe("USD");
+    expect(result.ledger.settings.aiLanguage).toBe("en");
+    expect(result.ledger.settings.currencies).toEqual(["USD", "CNY"]);
   });
 
   it("should return a stable conflict for a non-existent ledger (Update)", async () => {

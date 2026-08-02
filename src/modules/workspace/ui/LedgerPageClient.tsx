@@ -195,9 +195,9 @@ function LedgerPageClientContent({
     pathname,
   });
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
-  const preferredCurrencies = ledger?.metadata?.settings?.currencies ?? [];
-  const fixedTimeZone = ledger?.metadata?.settings?.timeZone ?? undefined;
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
+  const preferredCurrencies = ledger?.settings.currencies ?? [];
+  const fixedTimeZone = ledger?.settings.timeZone ?? undefined;
   const deviceTimeZone = useSyncExternalStore(
     subscribeToDeviceTimeZone,
     getDeviceTimeZone,
@@ -275,7 +275,7 @@ function LedgerPageClientContent({
           locale={locale}
           mainCurrency={mainCurrency}
           timeZone={fixedTimeZone ?? null}
-          collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+          collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
           preferredCurrencies={preferredCurrencies}
           categories={categories}
           onStatusChange={setSyncStatus}
@@ -292,7 +292,7 @@ function LedgerPageClientContent({
               periodParams={periodParams}
               onFiltersChange={handleFiltersChange}
               advancedFilters={advancedFilters}
-              collapseEntriesDefault={ledger.metadata?.settings?.collapseEntriesDefault ?? false}
+              collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
               onApplyPreset={applyStreamStatusPreset}
               onResetFilters={resetFilters}
               {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}

@@ -43,11 +43,13 @@ describe("createDefaultLedger", () => {
 
     expect(getDefaultLedgerMock).toHaveBeenCalledWith("en");
     expect(ledger.userId).toBe(userId);
-    expect(ledger.metadata).toEqual({
-      settings: {
-        mainCurrency: "USD",
-        aiLanguage: "en",
-      },
+    expect(ledger.settings).toEqual({
+      mainCurrency: "USD",
+      aiLanguage: "en",
+      currencies: [],
+      collapseEntriesDefault: false,
+      aiCustomPrompt: "",
+      timeZone: null,
     });
     expect(categories).toHaveLength(1);
     expect(categories[0]?.name).toBe("Food");

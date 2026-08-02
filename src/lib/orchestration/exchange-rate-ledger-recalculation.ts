@@ -31,12 +31,12 @@ export async function onExchangeRatesStored(): Promise<void> {
 
     const allLedgers = await db.query.ledgers.findMany({
       where: isNull(ledgers.deletedAt),
-      columns: { id: true, metadata: true },
+      columns: { id: true, mainCurrency: true },
     });
 
     await Promise.all(
       allLedgers.map(async (ledger) => {
-        const mainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+        const mainCurrency = ledger.mainCurrency;
         try {
           await recalculateEntriesConvertedAmount(ledger.id, mainCurrency);
         } catch (err) {

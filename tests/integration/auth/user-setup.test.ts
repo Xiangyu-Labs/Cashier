@@ -31,8 +31,8 @@ describe("ensureUserLedger", () => {
     });
 
     expect(ledger).toBeDefined();
-    expect(ledger?.metadata?.settings?.mainCurrency).toBe("USD");
-    expect(ledger?.metadata?.settings?.aiLanguage).toBe("en");
+    expect(ledger?.mainCurrency).toBe("USD");
+    expect(ledger?.aiLanguage).toBe("en");
   });
 
   it("returns the existing ledger and does not create another one", async () => {

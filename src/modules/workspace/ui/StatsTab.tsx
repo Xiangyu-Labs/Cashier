@@ -102,8 +102,8 @@ export function StatsTab({
     compareStartDate: prevDateStartStr,
     compareEndDate: prevDateEndStr,
     rangeType,
-    ...(ledger?.metadata?.settings?.mainCurrency !== undefined
-      ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+    ...(ledger?.settings.mainCurrency !== undefined
+      ? { mainCurrency: ledger.settings.mainCurrency }
       : {}),
   });
   const { data: stats, isLoading } = useQuery({
@@ -125,8 +125,7 @@ export function StatsTab({
   });
 
   const totalExpense = Number(stats?.summary.total ?? 0);
-  const currencySymbol =
-    stats?.summary.currency ?? ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const currencySymbol = stats?.summary.currency ?? ledger?.settings.mainCurrency ?? "CNY";
   const averageDaily = stats?.summary.dailyAverage ?? 0;
   const statsTrend = stats?.summary.trend;
   const trend =

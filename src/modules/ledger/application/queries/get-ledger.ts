@@ -11,9 +11,8 @@ export async function getLedger(input: {
     : {
         id: ledger.id,
         userId: ledger.userId,
-        metadata: { settings: ledger.settings },
+        settings: ledger.settings,
         createdAt: ledger.createdAt,
         updatedAt: ledger.updatedAt,
-        deletedAt: null,
       };
 }

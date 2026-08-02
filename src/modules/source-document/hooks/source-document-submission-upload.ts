@@ -1,12 +1,12 @@
 "use client";
 
 import { compressImage } from "@/lib/image-utils";
-import {
-  API_V1_MAX_DECODED_BATCH_BYTES,
-  API_V1_MAX_IMAGES,
-  API_V1_MAX_REQUEST_BYTES,
-} from "@/app/api/v1/_shared/limits";
+import { API_V1_MAX_IMAGES } from "@/app/api/v1/_shared/limits";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
+import {
+  createSourceDocumentUploadPlanAction,
+  finalizeSourceDocumentUploadAction,
+} from "../actions";
 
 export interface SourceDocumentSubmissionProgress {
   phase: "preparing" | "planning" | "uploading" | "finalizing" | "submitting" | "complete";
@@ -32,6 +32,9 @@ export class SourceDocumentSubmissionUploadError extends Error {
 
 interface InlinePreparationDependencies {
   compress?: typeof compressImage;
+  createPlan?: typeof createSourceDocumentUploadPlanAction;
+  finalize?: typeof finalizeSourceDocumentUploadAction;
+  put?: typeof fetch;
 }
 
 const DATA_URL_PATTERN = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*={0,2})$/i;
@@ -57,16 +60,6 @@ function dataUrlToFile(dataUrl: string, index: number): File {
   return new File([bytes], `source-${index}.jpg`, { type: "image/jpeg" });
 }
 
-function payloadWithinLimits(payload: SourceDocumentSubmitPayload): boolean {
-  const bodyBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
-  if (bodyBytes > API_V1_MAX_REQUEST_BYTES) return false;
-  const decodedBytes = (payload.images ?? []).reduce((total, image) => {
-    const match = DATA_URL_PATTERN.exec(image.data);
-    return total + (match == null ? Number.POSITIVE_INFINITY : atob(match[1]!).length);
-  }, 0);
-  return decodedBytes <= API_V1_MAX_DECODED_BATCH_BYTES;
-}
-
 function submissionBase(payload: SourceDocumentSubmitPayload): SourceDocumentSubmitPayload {
   return {
     entryDate: payload.entryDate,
@@ -74,6 +67,11 @@ function submissionBase(payload: SourceDocumentSubmitPayload): SourceDocumentSub
     ...(payload.text == null ? {} : { text: payload.text }),
     ...(payload.storedFileIds == null ? {} : { storedFileIds: payload.storedFileIds }),
   };
+}
+
+async function sha256(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function uploadSourceDocumentSubmissionImages(
@@ -103,18 +101,63 @@ export async function uploadSourceDocumentSubmissionImages(
         cause: error,
       });
     }
-    const candidate: SourceDocumentSubmitPayload = {
-      ...base,
-      images: compressed.map((image) => ({ data: image.data, mimeType: "image/jpeg" })),
-    };
+    const files = compressed.map((image, index) => dataUrlToFile(image.data, index));
     onProgress?.({
       phase: "preparing",
       percent: Math.min(80, 15 + qualityIndex * 15),
       fileCount: images.length,
     });
-    if (payloadWithinLimits(candidate)) {
-      onProgress?.({ phase: "submitting", percent: 90, fileCount: images.length });
-      return candidate;
+    try {
+      onProgress?.({ phase: "planning", percent: 55, fileCount: files.length });
+      const checksums = await Promise.all(files.map(sha256));
+      const plan = await (dependencies.createPlan ?? createSourceDocumentUploadPlanAction)(
+        _ledgerId,
+        files.map((file, index) => ({
+          contentType: file.type,
+          byteSize: file.size,
+          originalFilename: file.name,
+          checksum: checksums[index]!,
+        }))
+      );
+      let loadedBytes = 0;
+      const totalBytes = files.reduce((total, file) => total + file.size, 0);
+      for (const [index, target] of plan.targets.entries()) {
+        const file = files[index]!;
+        const response = await (dependencies.put ?? fetch)(target.url, {
+          method: "PUT",
+          headers: target.requiredHeaders,
+          body: file,
+        });
+        if (!response.ok) throw new Error(`Direct upload failed with ${response.status}`);
+        loadedBytes += file.size;
+        onProgress?.({
+          phase: "uploading",
+          percent: 55 + Math.round((loadedBytes / totalBytes) * 30),
+          loadedBytes,
+          totalBytes,
+          fileIndex: index,
+          fileCount: files.length,
+        });
+      }
+      onProgress?.({ phase: "finalizing", percent: 88, fileCount: files.length });
+      const storedFileIds = await (dependencies.finalize ?? finalizeSourceDocumentUploadAction)(
+        _ledgerId,
+        {
+          uploadSessionId: plan.id,
+          finalizationToken: plan.finalizationToken,
+          targetIds: plan.targets.map((target) => target.id),
+        }
+      );
+      return {
+        ...base,
+        storedFileIds: [...(base.storedFileIds ?? []), ...storedFileIds],
+      };
+    } catch (error) {
+      if (qualityIndex === QUALITY_STEPS.length - 1) {
+        throw new SourceDocumentSubmissionUploadError("Failed to upload source image", "upload", {
+          cause: error,
+        });
+      }
     }
   }
 

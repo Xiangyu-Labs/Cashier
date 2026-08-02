@@ -89,6 +89,9 @@ npm run test:run    # Single run
 npm run test:coverage  # With coverage
 ```
 
+PostgreSQL migrations under `src/persistence/postgres-migrations/` are the only schema history.
+There is no SQLite runtime or compatibility migration path.
+
 ## Documentation
 
 - [CLAUDE.md](./CLAUDE.md) - Working conventions for agents in this repository
@@ -116,7 +119,7 @@ The ledger home displays a single unified Stream of source documents across all 
 
 ### Refresh Ownership
 
-Every visible eligible tab independently runs a bounded refresh cycle for its active filter signatures and watched source-document IDs, returning only changed canonical data. BroadcastChannel-based leadership still distributes versioned results as a cache optimization, but it does not gate local refreshes. Polling pauses when hidden/offline, wakes after relevant mutations, and uses jittered backoff.
+Every ledger has a monotonic bigint sync version. Visible tabs request bounded deltas and apply changed canonical documents and tombstones to every loaded filter cache. BroadcastChannel distributes versioned results as an optimization, while polling pauses when hidden or offline and wakes after relevant mutations. IndexedDB v4 consumes the same protocol; only first use, a retained-log gap, or `resetRequired` downloads a full snapshot.
 
 ### Cache Transaction Model
 
@@ -125,3 +128,7 @@ Optimistic mutations are represented as operation-scoped overlays over canonical
 ### Internal-Breaking Compatibility
 
 Ledger-entry update/delete server actions accept an optional `operationId` parameter and return a parent source-document reconciliation DTO (`MutationReconciliation<SourceDocumentListItemDto>`). This is an internal change only; the public API v1 response contracts remain unchanged. Legacy client-side query keys (`sourceDocumentAttention`, `sourceDocumentCompletedPage`, `sourceDocumentCollection`) and their invalidation predicates have been removed.
+
+### Storage And API
+
+Web images are uploaded directly to private R2 with short-lived signed PUT URLs. The server verifies object MIME type, size, and SHA-256 metadata before copying to a durable key. Reads remain authenticated and stream through `/api/stored-files/:fileId`; API v1 inline images continue using the server-side upload path. `/api/v1` is the stable long-lived public contract and has no scheduled sunset. There is no `/api/v2` route surface.

@@ -52,7 +52,7 @@ describe("target Settings currency workflow", () => {
     const updated = await updateLedger(TEST_USER_ID, ledgerId, {
       settings: { mainCurrency: "USD" },
     });
-    expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
+    expect(updated.settings.mainCurrency).toBe("USD");
   });
 
   it("changes main currency and recalculates active entries atomically", async () => {
@@ -65,7 +65,7 @@ describe("target Settings currency workflow", () => {
       where: eq(ledgerEntries.ledgerId, ledgerId),
     });
 
-    expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
+    expect(updated.settings.mainCurrency).toBe("USD");
     expect(entry?.amount).toBe("80.00");
     expect(entry?.currency).toBe("CNY");
     expect(entry?.convertedAmount).toBe("10.00");
@@ -141,9 +141,8 @@ describe("target Settings currency workflow", () => {
     const updated = await updateLedger(TEST_USER_ID, ledgerId, {
       settings: { aiLanguage: "en" },
     });
-    expect(updated.metadata?.settings?.aiLanguage).toBe("en");
-    // mainCurrency is not in the initial empty settings, so remains undefined
-    expect(updated.metadata?.settings?.mainCurrency).toBeUndefined();
+    expect(updated.settings.aiLanguage).toBe("en");
+    expect(updated.settings.mainCurrency).toBe("CNY");
   });
 
   it("hasActiveEntries returns false for empty ledger", async () => {
@@ -181,7 +180,7 @@ describe("target Settings currency workflow", () => {
     const updated = await updateLedger(TEST_USER_ID, ledgerId, {
       settings: { mainCurrency: "USD" },
     });
-    expect(updated.metadata?.settings?.mainCurrency).toBe("USD");
+    expect(updated.settings.mainCurrency).toBe("USD");
   });
 
   it("rolls back settings and conversions when a required rate is unavailable", async () => {
@@ -197,7 +196,7 @@ describe("target Settings currency workflow", () => {
         where: eq(ledgerEntries.ledgerId, ledgerId),
       }),
     ]);
-    expect(ledger?.metadata?.settings?.mainCurrency).toBeUndefined();
+    expect(ledger?.mainCurrency).toBe("CNY");
     expect(entry?.convertedAmount).toBe("80.00");
     expect(entry?.exchangeRate).toBe("1.000000");
   });
@@ -243,7 +242,7 @@ describe("target Settings currency workflow", () => {
       db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
       db.query.ledgerEntries.findMany({ where: eq(ledgerEntries.ledgerId, ledgerId) }),
     ]);
-    expect(storedLedger?.metadata?.settings?.mainCurrency).toBeUndefined();
+    expect(storedLedger?.mainCurrency).toBe("CNY");
     expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.00", "80.00"]);
     expect(entries.every((entry) => entry.exchangeRate === "1.000000")).toBe(true);
   });
@@ -292,7 +291,7 @@ describe("settings concurrency invariants", () => {
 
       // Verify main-currency/entry consistency invariant.
       const [settingsResult, createResult] = results;
-      const mainCurrency = ledger?.metadata?.settings?.mainCurrency;
+      const mainCurrency = ledger?.mainCurrency;
 
       if (createResult.status === "fulfilled") {
         // Entries were created — either settings ran first (changed currency) and entries
@@ -306,8 +305,8 @@ describe("settings concurrency invariants", () => {
           expect(activeEntries.length).toBeGreaterThan(0);
           expect(activeEntries.every((e) => e.currency === "CNY")).toBe(true);
         } else {
-          // Settings was rejected: entries existed first, so mainCurrency must be unchanged.
-          expect(mainCurrency).toBeUndefined();
+          // Settings was rejected: entries existed first, so mainCurrency stays at its default.
+          expect(mainCurrency).toBe("CNY");
           expect(activeEntries.length).toBeGreaterThan(0);
         }
       } else if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
@@ -331,7 +330,7 @@ describe("settings concurrency invariants", () => {
       }
       // Reset main currency if it was changed
       if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
-        await db.update(ledgers).set({ metadata: {} }).where(eq(ledgers.id, ledgerId));
+        await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
       }
     }
   });
@@ -391,7 +390,7 @@ describe("settings concurrency invariants", () => {
 
       // Verify main-currency/entry consistency invariant.
       const [settingsResult, activateResult] = results;
-      const mainCurrency = ledger?.metadata?.settings?.mainCurrency;
+      const mainCurrency = ledger?.mainCurrency;
 
       if (activateResult.status === "fulfilled" && activateResult.value === true) {
         // activateRevision succeeded — entries were created.
@@ -402,7 +401,7 @@ describe("settings concurrency invariants", () => {
           expect(activeEntries.every((e) => e.currency === "CNY")).toBe(true);
         } else {
           // Settings was rejected: entries existed first, mainCurrency unchanged.
-          expect(mainCurrency).toBeUndefined();
+          expect(mainCurrency).toBe("CNY");
           expect(activeEntries.length).toBeGreaterThan(0);
         }
       } else if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
@@ -425,7 +424,7 @@ describe("settings concurrency invariants", () => {
         });
       }
       if (settingsResult.status === "fulfilled" && settingsResult.value != null) {
-        await db.update(ledgers).set({ metadata: {} }).where(eq(ledgers.id, ledgerId));
+        await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
       }
     }
   });

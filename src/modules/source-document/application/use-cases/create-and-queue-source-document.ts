@@ -41,9 +41,8 @@ function readLedgerTimeZone(ledger: unknown): string | undefined {
   if (typeof ledger !== "object" || ledger == null) return undefined;
   const value = ledger as {
     settings?: { timeZone?: unknown };
-    metadata?: { settings?: { timeZone?: unknown } } | null;
   };
-  const timeZone = value.settings?.timeZone ?? value.metadata?.settings?.timeZone;
+  const timeZone = value.settings?.timeZone;
   return typeof timeZone === "string" && timeZone !== "" ? timeZone : undefined;
 }
 

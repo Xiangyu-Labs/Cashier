@@ -42,17 +42,16 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     await db.insert(ledgers).values({
       id: ledger1Id,
       userId: user1Id,
-      metadata: { settings: { mainCurrency: "USD" } },
+      mainCurrency: "USD",
     });
     await db.insert(ledgers).values({
       id: ledger2Id,
       userId: user2Id,
-      metadata: {},
     });
     await db.insert(ledgers).values({
       id: deletedLedgerId,
       userId: user3Id,
-      metadata: { settings: { mainCurrency: "EUR" } },
+      mainCurrency: "EUR",
       deletedAt: new Date(),
     });
 
@@ -75,7 +74,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId,
-      metadata: { settings: { mainCurrency: "CNY" } },
+      mainCurrency: "CNY",
     });
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
@@ -137,7 +136,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId,
-      metadata: { settings: { mainCurrency: "JPY" } },
+      mainCurrency: "JPY",
     });
 
     recalculateEntriesConvertedAmountMock.mockImplementation(async (id: string) => {

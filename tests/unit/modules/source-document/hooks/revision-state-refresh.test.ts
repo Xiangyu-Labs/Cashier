@@ -97,13 +97,17 @@ describe("revision state refresh", () => {
   // Shared no-op refresh callback for tests
   const noopRefresh = async (): Promise<{ changed: boolean }> => ({ changed: false });
   const refreshResult = (hasTransitionalWork: boolean): StreamRefreshResult => ({
-    protocolVersion: 1,
-    generation: 1,
+    protocolVersion: 2,
+    fromVersion: "0",
+    toVersion: "0",
+    hasMore: false,
+    resetRequired: false,
     changed: false,
     hasTransitionalWork,
-    firstPages: [],
-    changedWatched: [],
+    documents: [],
+    tombstones: [],
     counts: null,
+    invalidations: { categories: false, settings: false, stats: false },
   });
 
   // -----------------------------------------------------------------------

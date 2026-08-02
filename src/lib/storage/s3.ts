@@ -194,6 +194,23 @@ export class S3StorageProvider implements StorageProvider {
     }
   }
 
+  async stream(key: string): Promise<ReadableStream<Uint8Array>> {
+    assertSafeStorageKey(key);
+    try {
+      const response = await this.getClient().send(
+        new GetObjectCommand({ Bucket: this.getBucket(), Key: key })
+      );
+      if (response.Body == null) throw storageError("File not found in S3", "FILE_NOT_FOUND", key);
+      return response.Body.transformToWebStream();
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (isNotFound(error)) {
+        throw storageError("File not found in S3", "FILE_NOT_FOUND", key, error);
+      }
+      throw storageError("Failed to stream file from S3", "S3_DOWNLOAD_FAILED", key, error);
+    }
+  }
+
   async delete(key: string): Promise<{ success: boolean; key: string; error?: Error }> {
     assertSafeStorageKey(key);
     try {

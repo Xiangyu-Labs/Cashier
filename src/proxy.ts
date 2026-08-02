@@ -33,5 +33,5 @@ export default auth((req) => {
 
 export const config = {
   // Matcher ignoring static files
-  matcher: ["/((?!_next|api/health|api/v2|.*\\..*).*)"],
+  matcher: ["/((?!_next|api/health|.*\\..*).*)"],
 };

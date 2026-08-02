@@ -122,9 +122,9 @@ describe("target upper workflows", () => {
       convertedAmount: stream.items[0]!.convertedAmount,
       exchangeRate: stream.items[0]!.exchangeRate,
       categoryId: stream.items[0]!.categoryId,
-      sourceDocument: expect.objectContaining({ text: null, status: "completed" }),
+      sourceDocument: expect.objectContaining({ status: "completed" }),
     });
-    expect(stream.items[0]?.sourceDocument?.text).toBeNull();
+    expect(stream.items[0]?.sourceDocument).not.toHaveProperty("text");
     expect(summary.convertedTotal).toEqual({ total: "12.5", currency: "CNY" });
     expect(enhanced.summary).toMatchObject({ total: "12.5", currency: "CNY" });
 

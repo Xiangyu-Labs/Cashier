@@ -32,6 +32,32 @@ function toIso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
 }
 
+function mapLedgerSettings(row: typeof ledgers.$inferSelect) {
+  return {
+    aiLanguage: row.aiLanguage,
+    currencies: row.preferredCurrencies,
+    mainCurrency: row.mainCurrency,
+    collapseEntriesDefault: row.collapseEntriesDefault,
+    aiCustomPrompt: row.aiCustomPrompt,
+    timeZone: row.timeZone,
+  };
+}
+
+function settingsColumns(
+  settings: Partial<import("@/application/contracts").LedgerSettingsContract>
+) {
+  return {
+    ...(settings.aiLanguage === undefined ? {} : { aiLanguage: settings.aiLanguage }),
+    ...(settings.currencies === undefined ? {} : { preferredCurrencies: settings.currencies }),
+    ...(settings.mainCurrency === undefined ? {} : { mainCurrency: settings.mainCurrency }),
+    ...(settings.collapseEntriesDefault === undefined
+      ? {}
+      : { collapseEntriesDefault: settings.collapseEntriesDefault }),
+    ...(settings.aiCustomPrompt === undefined ? {} : { aiCustomPrompt: settings.aiCustomPrompt }),
+    ...(settings.timeZone === undefined ? {} : { timeZone: settings.timeZone }),
+  };
+}
+
 function mapCategory(row: typeof entryCategories.$inferSelect) {
   return {
     id: row.id,
@@ -164,7 +190,7 @@ export const postgresLedgerAdapter: LedgerPort = {
       : {
           id: row.id,
           userId: row.userId,
-          settings: row.metadata?.settings ?? {},
+          settings: mapLedgerSettings(row),
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         };
@@ -185,7 +211,7 @@ export const postgresLedgerAdapter: LedgerPort = {
     return rows.map((row) => ({
       id: row.id,
       userId: row.userId,
-      settings: row.metadata?.settings ?? {},
+      settings: mapLedgerSettings(row),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
@@ -195,7 +221,7 @@ export const postgresLedgerAdapter: LedgerPort = {
       return db.transaction(async (tx) => {
         const row = await tx
           .insert(ledgers)
-          .values({ userId: input.userId, metadata: { settings: input.settings } })
+          .values({ userId: input.userId, ...settingsColumns(input.settings) })
           .returning()
           .then((rows) => rows[0]);
         if (row == null) throw new ConflictError("Failed to create ledger");
@@ -205,7 +231,7 @@ export const postgresLedgerAdapter: LedgerPort = {
         return {
           id: row.id,
           userId: row.userId,
-          settings: row.metadata?.settings ?? {},
+          settings: mapLedgerSettings(row),
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         };
@@ -423,9 +449,16 @@ export const postgresSettingsAdapter: SettingsPort = {
   async get(ledgerId) {
     const ledger = await db.query.ledgers.findFirst({
       where: and(eq(ledgers.id, ledgerId), isNull(ledgers.deletedAt)),
-      columns: { metadata: true },
+      columns: {
+        aiLanguage: true,
+        preferredCurrencies: true,
+        mainCurrency: true,
+        collapseEntriesDefault: true,
+        aiCustomPrompt: true,
+        timeZone: true,
+      },
     });
-    return ledger?.metadata?.settings ?? null;
+    return ledger == null ? null : mapLedgerSettings(ledger as typeof ledgers.$inferSelect);
   },
 
   async update(input) {
@@ -445,15 +478,15 @@ export const postgresSettingsAdapter: SettingsPort = {
         .for("update")
         .then((rows) => rows[0]);
       if (ledger == null) return null;
-      const settings = { ...(ledger.metadata?.settings ?? {}), ...input.settings };
-      const previousMainCurrency = ledger.metadata?.settings?.mainCurrency ?? "CNY";
+      const settings = { ...mapLedgerSettings(ledger), ...input.settings };
+      const previousMainCurrency = ledger.mainCurrency;
       const nextMainCurrency = settings.mainCurrency ?? "CNY";
       if (previousMainCurrency !== nextMainCurrency) {
         await recalculateCurrentEntries(tx, input.ledgerId, nextMainCurrency);
       }
       const updated = await tx
         .update(ledgers)
-        .set({ metadata: { ...(ledger.metadata ?? {}), settings }, updatedAt: new Date() })
+        .set({ ...settingsColumns(settings), updatedAt: new Date() })
         .where(and(eq(ledgers.id, input.ledgerId), eq(ledgers.userId, input.userId)))
         .returning()
         .then((rows) => rows[0]);
@@ -461,7 +494,7 @@ export const postgresSettingsAdapter: SettingsPort = {
       return {
         id: updated.id,
         userId: updated.userId,
-        settings: updated.metadata?.settings ?? {},
+        settings: mapLedgerSettings(updated),
         createdAt: updated.createdAt.toISOString(),
         updatedAt: updated.updatedAt.toISOString(),
       };
@@ -603,8 +636,9 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
   },
 };
 
-const IDEMPOTENCY_WAIT_ATTEMPTS = 500;
-const IDEMPOTENCY_WAIT_MS = 10;
+const IDEMPOTENCY_WAIT_ATTEMPTS = 10;
+const IDEMPOTENCY_LEASE_MS = 30_000;
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -612,6 +646,7 @@ function wait(ms: number): Promise<void> {
 
 export const postgresIdempotencyAdapter: IdempotencyPort = {
   async execute<T>(
+    credentialId: string,
     key: string,
     operation: () => Promise<T>,
     contentFingerprint?: string
@@ -620,30 +655,71 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
       throw new ValidationError("Idempotency key must contain between 1 and 512 characters");
     }
 
+    const now = new Date();
+    const leaseToken = crypto.randomUUID();
     const claimed = await db
       .insert(idempotencyRecords)
-      .values({ key, status: "pending", contentFingerprint: contentFingerprint ?? null })
-      .onConflictDoNothing()
+      .values({
+        credentialId,
+        key,
+        status: "pending",
+        contentFingerprint: contentFingerprint ?? null,
+        leaseToken,
+        leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
+        expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
+      })
+      .onConflictDoUpdate({
+        target: [idempotencyRecords.credentialId, idempotencyRecords.key],
+        set: {
+          leaseToken,
+          leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
+          contentFingerprint: contentFingerprint ?? null,
+          expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
+        },
+        setWhere: sql`${idempotencyRecords.status} = 'pending'
+          AND ${idempotencyRecords.leaseExpiresAt} < ${now}`,
+      })
       .returning({ key: idempotencyRecords.key });
     if (claimed.length === 1) {
       try {
         const result = await operation();
         await db
           .update(idempotencyRecords)
-          .set({ status: "completed", result: { value: result }, completedAt: new Date() })
-          .where(and(eq(idempotencyRecords.key, key), eq(idempotencyRecords.status, "pending")));
+          .set({
+            status: "completed",
+            result: { value: result },
+            completedAt: new Date(),
+            leaseToken: null,
+            leaseExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(idempotencyRecords.credentialId, credentialId),
+              eq(idempotencyRecords.key, key),
+              eq(idempotencyRecords.leaseToken, leaseToken)
+            )
+          );
         return result;
       } catch (error) {
         await db
           .delete(idempotencyRecords)
-          .where(and(eq(idempotencyRecords.key, key), eq(idempotencyRecords.status, "pending")));
+          .where(
+            and(
+              eq(idempotencyRecords.credentialId, credentialId),
+              eq(idempotencyRecords.key, key),
+              eq(idempotencyRecords.leaseToken, leaseToken)
+            )
+          );
         throw error;
       }
     }
 
     for (let attempt = 0; attempt < IDEMPOTENCY_WAIT_ATTEMPTS; attempt += 1) {
       const record = await db.query.idempotencyRecords.findFirst({
-        where: eq(idempotencyRecords.key, key),
+        where: and(
+          eq(idempotencyRecords.credentialId, credentialId),
+          eq(idempotencyRecords.key, key)
+        ),
       });
       if (record?.status === "completed") {
         if (
@@ -656,9 +732,9 @@ export const postgresIdempotencyAdapter: IdempotencyPort = {
         return (record.result as { value: T }).value;
       }
       if (record == null) {
-        return this.execute(key, operation, contentFingerprint);
+        return this.execute(credentialId, key, operation, contentFingerprint);
       }
-      await wait(IDEMPOTENCY_WAIT_MS);
+      await wait(Math.min(25 * 2 ** attempt, 500));
     }
     throw new ConflictError("The idempotent request is still in progress");
   },

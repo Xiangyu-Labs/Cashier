@@ -1,50 +1,33 @@
-import type { SourceDocumentListItemDto, StreamPage } from "./contracts";
+import type { SourceDocumentListItemDto } from "./contracts";
 
-export const STREAM_REFRESH_PROTOCOL_VERSION = 1;
-export const MAX_WATCHED_IDS = 50;
-export const MAX_FILTER_SIGNATURES = 10;
+export const LEDGER_DELTA_PROTOCOL_VERSION = 2;
+export const STREAM_REFRESH_PROTOCOL_VERSION = LEDGER_DELTA_PROTOCOL_VERSION;
+export const MAX_DELTA_VERSIONS = 100;
+export const MAX_DELTA_DOCUMENTS = 200;
 
-/**
- * Request from a client tab to the refresh server endpoint.
- * Contains enough information for the server to determine whether
- * the first page, watched entities, or counts have changed.
- */
-export interface StreamRefreshRequest {
+export interface LedgerDeltaRequest {
   ledgerId: string;
-  protocolVersion: number;
-  signatures: Array<{
-    filterSignature: string;
-    firstPageFingerprint: string | null;
-  }>;
-  watchedIds: Array<{
-    id: string;
-    fingerprint: string;
-  }>;
-  countFingerprint: string | null;
+  afterVersion: string;
 }
 
-/**
- * Result from the refresh server endpoint.
- * Only includes changed data — unchanged pages/watched/counts are omitted.
- */
-export interface StreamRefreshResult {
+export interface LedgerDeltaResult {
   protocolVersion: number;
-  generation: number;
+  fromVersion: string;
+  toVersion: string;
+  hasMore: boolean;
+  resetRequired: boolean;
   changed: boolean;
   hasTransitionalWork: boolean;
-  firstPages: Array<{
-    filterSignature: string;
-    fingerprint: string;
-    page: StreamPage | null; // null when unchanged
-  }>;
-  changedWatched: Array<{
-    id: string;
-    doc: SourceDocumentListItemDto | null; // null = tombstone
-    fingerprint: string;
-  }>;
-  counts: {
-    processingCount: number;
-    attentionCount: number;
-    fingerprint: string;
-  } | null; // null when unchanged
+  documents: SourceDocumentListItemDto[];
+  tombstones: string[];
+  counts: { processingCount: number; attentionCount: number } | null;
+  invalidations: {
+    categories: boolean;
+    settings: boolean;
+    stats: boolean;
+  };
 }
+
+// Retained aliases keep the refresh coordinator API narrow while the wire protocol is v2.
+export type StreamRefreshRequest = LedgerDeltaRequest;
+export type StreamRefreshResult = LedgerDeltaResult;

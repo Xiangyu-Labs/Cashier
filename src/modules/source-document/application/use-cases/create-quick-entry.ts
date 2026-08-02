@@ -74,18 +74,16 @@ async function createQuickEntryAtomically(
 
 export async function createQuickEntry<
   TLedger extends {
-    settings?: { mainCurrency?: string; timeZone?: string | null };
-    metadata?: { settings?: { mainCurrency?: string; timeZone?: string | null } } | null;
+    settings: { mainCurrency?: string; timeZone?: string | null };
   },
 >(
   ledgerId: string,
   ledger: TLedger,
   payload: CreateQuickEntryPayload
 ): Promise<QuickEntryResponseDto> {
-  const mainCurrency =
-    ledger.settings?.mainCurrency ?? ledger.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger.settings.mainCurrency ?? "CNY";
   const entryCurrency = payload.currency ?? mainCurrency;
-  const timeZone = ledger.settings?.timeZone ?? ledger.metadata?.settings?.timeZone ?? undefined;
+  const timeZone = ledger.settings.timeZone ?? undefined;
   const entryDate =
     payload.entryDate ?? getDateInTimezone(timeZone) ?? formatDateTimeForApi(new Date());
 

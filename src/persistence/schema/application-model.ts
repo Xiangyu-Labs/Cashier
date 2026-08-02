@@ -12,8 +12,10 @@ import {
   uuid,
   pgEnum,
   bigint,
+  primaryKey,
+  boolean,
 } from "drizzle-orm/pg-core";
-import { ledgers } from "./ledger";
+import { ledgers, serviceCredentials } from "./ledger";
 import { sourceDocuments } from "./source-document";
 
 const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true }).notNull();
@@ -189,10 +191,10 @@ export const processingOutbox = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     ledgerId: uuid("ledger_id").notNull(),
     revisionId: uuid("revision_id").notNull(),
+    sourceDocumentId: uuid("source_document_id").notNull(),
     attemptNumber: integer("attempt_number").notNull(),
-    idempotencyKey: text("idempotency_key").notNull(),
     status: processingOutboxStatusEnum("status").notNull().default("pending"),
-    payload: jsonb("payload").$type<unknown>(),
+    requestedAt: requiredTimestamp("requested_at").$defaultFn(() => new Date()),
     availableAt: requiredTimestamp("available_at").$defaultFn(() => new Date()),
     claimToken: text("claim_token"),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
@@ -209,7 +211,6 @@ export const processingOutbox = pgTable(
       foreignColumns: [sourceDocumentRevisions.ledgerId, sourceDocumentRevisions.id],
       name: "fk_processing_outbox_revision_ledger",
     }).onDelete("cascade"),
-    uniqueIndex("uq_processing_outbox_idempotency_key").on(table.idempotencyKey),
     uniqueIndex("uq_processing_outbox_revision_attempt").on(table.revisionId, table.attemptNumber),
     index("idx_processing_outbox_pending_dispatch")
       .on(table.availableAt, table.createdAt)
@@ -303,12 +304,69 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
 export const idempotencyRecords = pgTable(
   "idempotency_records",
   {
-    key: text("key").primaryKey(),
+    credentialId: uuid("credential_id")
+      .notNull()
+      .references(() => serviceCredentials.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
     status: idempotencyStatusEnum("status").notNull().default("pending"),
     result: jsonb("result").$type<unknown>(),
     contentFingerprint: text("content_fingerprint"),
     createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    expiresAt: requiredTimestamp("expires_at"),
   },
-  (table) => [index("idx_idempotency_records_status_created").on(table.status, table.createdAt)]
+  (table) => [
+    primaryKey({ columns: [table.credentialId, table.key] }),
+    index("idx_idempotency_records_status_expiry").on(table.status, table.expiresAt),
+  ]
+);
+
+export const ledgerSyncState = pgTable("ledger_sync_state", {
+  ledgerId: uuid("ledger_id")
+    .primaryKey()
+    .references(() => ledgers.id, { onDelete: "cascade" }),
+  version: bigint("version", { mode: "bigint" }).notNull().default(BigInt(0)),
+  updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
+});
+
+export const ledgerChangeBatches = pgTable(
+  "ledger_change_batches",
+  {
+    ledgerId: uuid("ledger_id")
+      .notNull()
+      .references(() => ledgers.id, { onDelete: "cascade" }),
+    version: bigint("version", { mode: "bigint" }).notNull(),
+    transactionId: bigint("transaction_id", { mode: "bigint" }).notNull(),
+    categoriesChanged: boolean("categories_changed").notNull().default(false),
+    settingsChanged: boolean("settings_changed").notNull().default(false),
+    countsChanged: boolean("counts_changed").notNull().default(false),
+    statsChanged: boolean("stats_changed").notNull().default(false),
+    resetRequired: boolean("reset_required").notNull().default(false),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ledgerId, table.version] }),
+    uniqueIndex("uq_ledger_change_batches_transaction").on(table.ledgerId, table.transactionId),
+    index("idx_ledger_change_batches_created").on(table.createdAt),
+  ]
+);
+
+export const ledgerChangeItems = pgTable(
+  "ledger_change_items",
+  {
+    ledgerId: uuid("ledger_id").notNull(),
+    version: bigint("version", { mode: "bigint" }).notNull(),
+    sourceDocumentId: uuid("source_document_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ledgerId, table.version, table.sourceDocumentId] }),
+    foreignKey({
+      columns: [table.ledgerId, table.version],
+      foreignColumns: [ledgerChangeBatches.ledgerId, ledgerChangeBatches.version],
+      name: "fk_ledger_change_items_batch",
+    }).onDelete("cascade"),
+    index("idx_ledger_change_items_document").on(table.ledgerId, table.sourceDocumentId),
+  ]
 );

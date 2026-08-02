@@ -13,8 +13,15 @@ describe("source-document inline submission preparation", () => {
     ).resolves.toEqual({ entryDate: "2026-07-15", text: "Lunch" });
   });
 
-  it("returns compressed JPEG images inline without an upload session", async () => {
+  it("uploads compressed JPEG images through a signed direct plan", async () => {
     const compress = vi.fn().mockResolvedValue({ data: onePixel, mimeType: "image/jpeg" });
+    const createPlan = vi.fn().mockResolvedValue({
+      id: "session-1",
+      finalizationToken: "token",
+      targets: [{ id: "target-1", url: "https://upload.test", requiredHeaders: {} }],
+    });
+    const put = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const finalize = vi.fn().mockResolvedValue(["file-1"]);
     const result = await uploadSourceDocumentSubmissionImages(
       "ledger-1",
       {
@@ -22,14 +29,18 @@ describe("source-document inline submission preparation", () => {
         images: [{ data: onePixel, mimeType: "image/jpeg" }],
         originalImages: [{ data: onePixel, mimeType: "image/jpeg" }],
       },
-      { compress }
+      { compress, createPlan, put, finalize }
     );
 
     expect(compress).toHaveBeenCalledWith(expect.any(File), 1080, 1080, 0.78);
     expect(result).toEqual({
       entryDate: "2026-07-15",
-      images: [{ data: onePixel, mimeType: "image/jpeg" }],
+      storedFileIds: ["file-1"],
     });
+    expect(put).toHaveBeenCalledWith(
+      "https://upload.test",
+      expect.objectContaining({ method: "PUT", body: expect.any(File) })
+    );
   });
 
   it("rejects compression failures instead of returning original bytes", async () => {

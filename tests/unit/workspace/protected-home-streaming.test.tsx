@@ -116,10 +116,9 @@ describe("protected home streaming boundary", () => {
       ledgerDto: {
         id: "ledger-1",
         userId: "user-1",
-        metadata: { settings: { mainCurrency: "USD" } },
+        settings: { mainCurrency: "USD" },
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        deletedAt: null,
       },
       session: {
         user: {
@@ -219,10 +218,9 @@ describe("protected home streaming boundary", () => {
       ledgerDto: {
         id: "ledger-1",
         userId: "user-1",
-        metadata: { settings: { mainCurrency: "USD" } },
+        settings: { mainCurrency: "USD" },
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        deletedAt: null,
       },
       initialTab: "stream",
       periodParams: { period: "thisMonth" },
@@ -257,10 +255,9 @@ describe("protected home streaming boundary", () => {
       ledgerDto: {
         id: "ledger-1",
         userId: "user-1",
-        metadata: { settings: {} },
+        settings: {},
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        deletedAt: null,
       },
       initialTab: "stream",
       periodParams: { period: "thisMonth" },

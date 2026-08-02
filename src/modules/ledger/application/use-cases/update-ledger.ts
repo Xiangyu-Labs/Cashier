@@ -20,9 +20,8 @@ export async function updateLedger(
   return {
     id: updated.id,
     userId: updated.userId,
-    metadata: { settings: updated.settings },
+    settings: updated.settings,
     createdAt: updated.createdAt,
     updatedAt: updated.updatedAt,
-    deletedAt: null,
   };
 }

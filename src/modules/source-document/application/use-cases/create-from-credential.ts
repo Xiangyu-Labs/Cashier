@@ -62,7 +62,6 @@ export async function createSourceDocumentFromCredential(
       }
     );
   if (input.idempotencyKey == null) return create();
-  const key = `api-v1:${input.credentialId}:${input.idempotencyKey}`;
   const images = payload.images ?? [];
   const totalBytes = images.reduce(
     (total, image) => total + decodeBase64Image(image.data, image.mimeType).bytes.length,
@@ -71,5 +70,10 @@ export async function createSourceDocumentFromCredential(
   if (totalBytes > API_V1_MAX_DECODED_BATCH_BYTES) {
     throw new ValidationError("Decoded image batch exceeds 3 MiB");
   }
-  return dependencies.idempotency.execute(key, create, contentFingerprint(images));
+  return dependencies.idempotency.execute(
+    input.credentialId,
+    input.idempotencyKey,
+    create,
+    contentFingerprint(images)
+  );
 }

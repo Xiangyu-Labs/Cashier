@@ -57,7 +57,6 @@ describe("requireLedgerAccess", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
   });
 
@@ -85,7 +84,6 @@ describe("requireLedgerAccess", () => {
     await db.insert(ledgers).values({
       id: otherLedgerId,
       userId: otherUserId,
-      metadata: {},
     });
 
     await expect(requireLedgerAccess(otherLedgerId)).rejects.toThrow(NotFoundError);
@@ -115,7 +113,6 @@ describe("requireLedgerAccess", () => {
     await db.insert(ledgers).values({
       id: deletedLedgerId,
       userId: anotherUserId,
-      metadata: {},
       deletedAt: new Date(),
     });
 

@@ -80,7 +80,6 @@ describe("withLedgerAccess", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: "00000000-0000-0000-0000-000000000000",
-      metadata: {},
     });
 
     const action = withLedgerAccess(async (authorizedLedgerId) => authorizedLedgerId);
@@ -100,7 +99,6 @@ describe("withLedgerAccess", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: otherUserId,
-      metadata: {},
     });
 
     const action = withLedgerAccess(async (authorizedLedgerId) => authorizedLedgerId);

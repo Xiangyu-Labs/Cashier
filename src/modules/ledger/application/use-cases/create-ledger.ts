@@ -14,10 +14,9 @@ export async function createLedger(input: { userId: string; locale?: string }): 
     return {
       id: ledger.id,
       userId: ledger.userId,
-      metadata: ledger.metadata,
+      settings: ledger.settings,
       createdAt: ledger.createdAt.toISOString(),
       updatedAt: ledger.updatedAt.toISOString(),
-      deletedAt: null,
     };
   } catch (error) {
     if (error instanceof ConflictError) throw new ConflictError(CONFLICT_MESSAGE);

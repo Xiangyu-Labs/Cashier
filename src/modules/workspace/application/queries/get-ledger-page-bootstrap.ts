@@ -53,10 +53,9 @@ export async function getLedgerPageBootstrap(
       ledgerDto = {
         id: ledger.id,
         userId: ledger.userId,
-        metadata: { settings: ledger.settings },
+        settings: ledger.settings,
         createdAt: ledger.createdAt,
         updatedAt: ledger.updatedAt,
-        deletedAt: null,
       };
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
@@ -69,8 +68,8 @@ export async function getLedgerPageBootstrap(
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
 
-  const mainCurrency = ledgerDto.metadata?.settings?.mainCurrency ?? "CNY";
-  const fixedTimeZone = ledgerDto.metadata?.settings?.timeZone ?? undefined;
+  const mainCurrency = ledgerDto.settings.mainCurrency ?? "CNY";
+  const fixedTimeZone = ledgerDto.settings.timeZone ?? undefined;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const initialStatsDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
   const detailsState = getDetailsInitialQueryState(

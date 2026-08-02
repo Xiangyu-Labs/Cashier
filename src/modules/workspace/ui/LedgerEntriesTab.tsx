@@ -65,7 +65,7 @@ export function LedgerEntriesTab({
     advancedFilters,
     timeZone
   );
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const [candidateReviewDocument, setCandidateReviewDocument] = useState<SourceDocument | null>(
     null
   );

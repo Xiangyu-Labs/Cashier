@@ -14,7 +14,10 @@ import {
   type UnifiedStreamGroup,
 } from "@/modules/source-document/stream-grouping";
 import { getStreamRefreshAction } from "@/modules/source-document/actions";
-import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import {
+  applyStreamRefreshToCache,
+  readLedgerSyncVersion,
+} from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { useRevisionStateRefresh } from "./revision-state-refresh";
 
@@ -127,9 +130,6 @@ export function useSourceDocumentStream(
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<number | null>(null);
   // C3: Persist first page fingerprint from server for refresh comparison
-  const firstPageFingerprintRef = useRef<string | null>(null);
-  // I1: Persist count fingerprint from server for adaptive refresh
-  const countFingerprintRef = useRef<string | null>(null);
 
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: streamPageKey,
@@ -184,45 +184,25 @@ export function useSourceDocumentStream(
         queryClient.resetQueries({ queryKey: streamPageKey });
       }
     }
-
-    // Update first page fingerprint whenever data changes
-    firstPageFingerprintRef.current = data?.pages?.[0]?.items
-      ? data.pages[0].items.map((i) => `${i.id}:${i.updatedAt}`).join(",")
-      : null;
   }, [data, queryClient, streamPageKey]);
 
-  // C3: Refresh function — calls the bounded refresh endpoint with persisted fingerprints
   const refresh = useCallback(async (): Promise<{
     changed: boolean;
     result?: StreamRefreshResult;
   }> => {
-    const firstPageFp = firstPageFingerprintRef.current;
-
-    // I1: Send countFingerprint from last response for adaptive refresh
-    const result = await getStreamRefreshAction(ledgerId, {
-      ledgerId,
-      protocolVersion: 1,
-      signatures: [
-        {
-          filterSignature,
-          firstPageFingerprint: firstPageFp,
-        },
-      ],
-      watchedIds: [],
-      countFingerprint: countFingerprintRef.current,
-    });
-
-    applyStreamRefreshToCache(queryClient, ledgerId, result);
-    // C3: Update persisted fingerprint from server response
-    if (result.firstPages.length > 0 && result.firstPages[0] != null) {
-      firstPageFingerprintRef.current = result.firstPages[0].fingerprint;
+    let result: StreamRefreshResult | undefined;
+    let changed = false;
+    for (let page = 0; page < 10; page += 1) {
+      result = await getStreamRefreshAction(ledgerId, {
+        ledgerId,
+        afterVersion: readLedgerSyncVersion(ledgerId),
+      });
+      applyStreamRefreshToCache(queryClient, ledgerId, result);
+      changed ||= result.changed;
+      if (!result.hasMore || result.resetRequired) break;
     }
-    // I1: Update persisted count fingerprint
-    if (result.counts?.fingerprint) {
-      countFingerprintRef.current = result.counts.fingerprint;
-    }
-    return { changed: result.changed, result };
-  }, [ledgerId, filterSignature, queryClient]);
+    return { changed, ...(result === undefined ? {} : { result }) };
+  }, [ledgerId, queryClient]);
 
   // Register with the refresh coordinator for polling
   useRevisionStateRefresh({

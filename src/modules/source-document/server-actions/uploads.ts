@@ -8,10 +8,11 @@ import {
   type FinalizeSourceDocumentUploadInput,
 } from "../contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
+import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 
 export const createSourceDocumentUploadPlanAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, input: CreateSourceDocumentUploadPlanInput): Promise<UploadPlanContract> =>
-    currentApplication.storedFiles.createUploadPlan(
+    currentApplication.storedFiles.createDirectUploadPlan(
       ledgerId,
       createSourceDocumentUploadPlanInputSchema.parse(input).map((file) => ({
         contentType: file.contentType,
@@ -24,6 +25,7 @@ export const createSourceDocumentUploadPlanAction = withSourceDocumentLedgerAcce
 
 export const finalizeSourceDocumentUploadAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, input: FinalizeSourceDocumentUploadInput): Promise<string[]> => {
+    scheduleRequestMaintenance();
     const validated = finalizeSourceDocumentUploadInputSchema.parse(input);
     const files = await currentApplication.storedFiles.finalizeBrowserUpload({
       ...validated,

@@ -46,10 +46,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
     getScopedLedgerSearchParams(urlSearchParams, filterScope)
   );
   const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
-  const dateRange = periodToDateRange(
-    periodParams,
-    ledgerDto.metadata?.settings?.timeZone ?? undefined
-  );
+  const dateRange = periodToDateRange(periodParams, ledgerDto.settings.timeZone ?? undefined);
 
   const allMessages = await messagesPromise;
   const streamMessages = pickMessages(allMessages, [

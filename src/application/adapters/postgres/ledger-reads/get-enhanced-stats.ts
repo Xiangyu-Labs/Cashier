@@ -208,7 +208,7 @@ export async function getEnhancedStatsQuery({
   const ledgerPromise = db.query.ledgers.findFirst({
     where: eq(ledgers.id, ledgerId),
     columns: {
-      metadata: true,
+      mainCurrency: true,
     },
   });
 
@@ -221,7 +221,7 @@ export async function getEnhancedStatsQuery({
     fetchAggregatedRows(ledgerId, compareRange.from, compareRange.to),
   ]);
 
-  const mainCurrency = ledger?.metadata?.settings?.mainCurrency ?? "CNY";
+  const mainCurrency = ledger?.mainCurrency ?? "CNY";
 
   const allDates = [
     ...(await collectUniqueDates(currentRows)),

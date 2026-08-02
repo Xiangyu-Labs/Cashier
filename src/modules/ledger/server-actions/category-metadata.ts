@@ -47,8 +47,8 @@ export const generateEntryCategoryMetadataAction = withLedgerAccess(
     ]);
     if (category == null || ledger == null) throw new NotFoundError("Category");
 
-    const language = ledger.metadata?.settings?.aiLanguage ?? "zh-CN";
-    const customPrompt = ledger.metadata?.settings?.aiCustomPrompt;
+    const language = ledger.aiLanguage;
+    const customPrompt = ledger.aiCustomPrompt;
     const prompt = `Generate bookkeeping category metadata. Return JSON only. The icon must be selected from the provided Lucide icon names. Keep the description short and concrete.
 ${customPrompt == null || customPrompt === "" ? "" : `\n### Additional Instructions\n${customPrompt}\n`}
 ${buildAiOutputLocaleInstruction(language)}

@@ -154,7 +154,7 @@ export async function batchUpdateSourceDocuments({
           )
         )
         .orderBy(ledgerEntries.id);
-      const mainCurrency = lockedLedger.metadata?.settings?.mainCurrency ?? "CNY";
+      const mainCurrency = lockedLedger.mainCurrency;
       const conversions = await ExchangeRateService.convertBatch(
         projectionEntries.map((entry) => ({
           amount: entry.amount,

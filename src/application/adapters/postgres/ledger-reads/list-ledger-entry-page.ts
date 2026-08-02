@@ -84,10 +84,7 @@ export async function listLedgerEntryPage({
     if (dto.sourceDocument != null) {
       dto.sourceDocument = {
         ...dto.sourceDocument,
-        text: null,
-        metadata: {},
         status: "completed",
-        anomalyReason: null,
         hasImages:
           row.sourceDocumentRevisionId != null &&
           revisionsWithFiles.has(row.sourceDocumentRevisionId),

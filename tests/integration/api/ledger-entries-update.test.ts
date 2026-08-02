@@ -119,11 +119,7 @@ describe("Ledger Entry Update Action", () => {
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            mainCurrency: "CNY",
-          },
-        },
+        mainCurrency: "CNY",
       })
       .where(eq(ledgers.id, testLedgerId));
 
@@ -148,11 +144,7 @@ describe("Ledger Entry Update Action", () => {
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            mainCurrency: "CNY",
-          },
-        },
+        mainCurrency: "CNY",
       })
       .where(eq(ledgers.id, testLedgerId));
 
@@ -182,11 +174,7 @@ describe("Ledger Entry Update Action", () => {
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            mainCurrency: "CNY",
-          },
-        },
+        mainCurrency: "CNY",
       })
       .where(eq(ledgers.id, testLedgerId));
 

@@ -34,6 +34,7 @@ import {
 interface ObjectFileStore {
   upload(key: string, data: Buffer, contentType: string): Promise<unknown>;
   download(key: string): Promise<Buffer>;
+  stream?(key: string): Promise<ReadableStream<Uint8Array>>;
   delete(key: string): Promise<{ success: boolean; error?: Error }>;
   presignUpload?(
     key: string,
@@ -748,6 +749,73 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       .limit(1);
     const ledgerId = owner[0]?.ledgerId;
     return ledgerId == null ? null : this.readAuthorized(ledgerId, fileId);
+  }
+
+  async readAuthorizedStreamForUser(
+    userId: string,
+    fileId: string
+  ): Promise<{
+    file: StoredFileContract;
+    body: ReadableStream<Uint8Array>;
+  } | null> {
+    if (this.storage.stream == null) {
+      const read = await this.readAuthorizedForUser(userId, fileId);
+      if (read == null) return null;
+      return {
+        file: read.file,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(read.body);
+            controller.close();
+          },
+        }),
+      };
+    }
+    const owner = await db
+      .select({ ledgerId: storedFiles.ledgerId })
+      .from(storedFiles)
+      .innerJoin(ledgers, and(eq(ledgers.id, storedFiles.ledgerId), isNull(ledgers.deletedAt)))
+      .where(and(eq(storedFiles.id, fileId), eq(ledgers.userId, userId)))
+      .limit(1);
+    const ledgerId = owner[0]?.ledgerId;
+    if (ledgerId == null) return null;
+    const rows = await db
+      .select({ file: storedFiles })
+      .from(storedFiles)
+      .innerJoin(
+        revisionFiles,
+        and(
+          eq(revisionFiles.ledgerId, storedFiles.ledgerId),
+          eq(revisionFiles.storedFileId, storedFiles.id)
+        )
+      )
+      .innerJoin(
+        sourceDocumentRevisions,
+        and(
+          eq(sourceDocumentRevisions.ledgerId, revisionFiles.ledgerId),
+          eq(sourceDocumentRevisions.id, revisionFiles.revisionId)
+        )
+      )
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, sourceDocumentRevisions.ledgerId),
+          eq(sourceDocuments.id, sourceDocumentRevisions.sourceDocumentId)
+        )
+      )
+      .where(
+        and(
+          eq(storedFiles.ledgerId, ledgerId),
+          eq(storedFiles.id, fileId),
+          isNotNull(storedFiles.finalizedAt),
+          isNull(storedFiles.deletedAt),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .limit(1);
+    const row = rows[0]?.file;
+    if (row == null) return null;
+    return { file: mapStoredFile(row), body: await this.storage.stream(row.storageKey) };
   }
 }
 

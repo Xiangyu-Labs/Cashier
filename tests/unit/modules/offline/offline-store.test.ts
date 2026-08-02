@@ -4,7 +4,9 @@ import {
   type OfflineImageRecord,
   selectOfflineImageEvictions,
   migrateOfflineSnapshot,
+  mergeOfflineDeltaItems,
 } from "@/modules/offline/offline-store";
+import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 
 function image(overrides: Partial<OfflineImageRecord> & Pick<OfflineImageRecord, "key">) {
   return {
@@ -19,6 +21,29 @@ function image(overrides: Partial<OfflineImageRecord> & Pick<OfflineImageRecord,
     lastAccessedAt: 1,
     ...overrides,
   } satisfies OfflineImageRecord;
+}
+
+function document(id: string, entryDate: string): SourceDocumentListItemDto {
+  return {
+    id,
+    ledgerId: "ledger",
+    type: "manual",
+    status: "completed",
+    title: id,
+    text: null,
+    anomalyReason: null,
+    entryDate,
+    metadata: {},
+    createdAt: `${entryDate}T00:00:00.000Z`,
+    updatedAt: `${entryDate}T00:00:00.000Z`,
+    deletedAt: null,
+    files: [],
+    hasImages: false,
+    supportedActions: [],
+    errorCode: null,
+    pendingRevisionId: null,
+    ledgerEntries: [],
+  };
 }
 
 describe("offline image eviction", () => {
@@ -60,7 +85,7 @@ describe("offline image eviction", () => {
 });
 
 describe("offline snapshot migration", () => {
-  it("migrates a v2 snapshot without restoring removed preferences", () => {
+  it("invalidates a v2 snapshot for a v4 rebuild", () => {
     const migrated = migrateOfflineSnapshot({
       key: "user:ledger",
       schemaVersion: 2,
@@ -71,10 +96,10 @@ describe("offline snapshot migration", () => {
       fullSyncAt: null,
     });
     expect(migrated).toMatchObject({
-      schemaVersion: 3,
-      syncVersion: "legacy:2026-07-30T00:00:00.000Z",
+      schemaVersion: 4,
+      syncVersion: "0",
       recordCount: 0,
-      complete: true,
+      complete: false,
       truncated: false,
       coverageLimit: 1000,
     });
@@ -82,7 +107,7 @@ describe("offline snapshot migration", () => {
     expect(migrated.ledgerSettings?.collapseEntriesDefault ?? false).toBe(false);
   });
 
-  it("preserves the optional collapse preference in v3 snapshots", () => {
+  it("invalidates v3 preferences with the old snapshot", () => {
     const snapshot = {
       key: "user:ledger",
       schemaVersion: 3 as const,
@@ -98,6 +123,30 @@ describe("offline snapshot migration", () => {
       lastSyncedAt: "2026-07-30T00:00:00.000Z",
       fullSyncAt: null,
     };
-    expect(migrateOfflineSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault).toBe(true);
+    expect(migrateOfflineSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault ?? false).toBe(
+      false
+    );
+  });
+});
+
+describe("offline delta merge", () => {
+  it("applies canonical replacements and tombstones in server order", () => {
+    const replacement = { ...document("b", "2026-08-03"), title: "updated" };
+    const merged = mergeOfflineDeltaItems(
+      [document("a", "2026-08-01"), document("b", "2026-08-02")],
+      { documents: [replacement, document("c", "2026-08-04")], tombstones: ["a"] },
+      1000
+    );
+    expect(merged.map((item) => item.id)).toEqual(["c", "b"]);
+    expect(merged[1]?.title).toBe("updated");
+  });
+
+  it("truncates incremental results to snapshot coverage", () => {
+    const merged = mergeOfflineDeltaItems(
+      [document("a", "2026-08-01"), document("b", "2026-08-02")],
+      { documents: [document("c", "2026-08-03")], tombstones: [] },
+      2
+    );
+    expect(merged.map((item) => item.id)).toEqual(["c", "b"]);
   });
 });

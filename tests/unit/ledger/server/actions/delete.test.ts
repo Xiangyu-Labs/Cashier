@@ -40,7 +40,6 @@ describe("deleteLedgerAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
 
     await db.insert(entryCategories).values({
@@ -84,7 +83,6 @@ describe("deleteLedgerAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: ownerId,
-      metadata: {},
     });
 
     // Act & Assert - withAuth uses TEST_USER_ID from session, which doesn't own the ledger

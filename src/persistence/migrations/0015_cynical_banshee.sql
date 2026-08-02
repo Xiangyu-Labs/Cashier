@@ -1,2 +1,0 @@
-CREATE INDEX `idx_ledger_entries_converted_amount` ON `ledger_entries` (`converted_amount`);--> statement-breakpoint
-CREATE INDEX `idx_ledger_entries_ledger_active` ON `ledger_entries` (`ledger_id`,`deleted_at`);

@@ -8,11 +8,14 @@ import {
   clearOfflineData,
   getActiveOfflineSnapshotKey,
   hasOfflineImage,
+  mergeOfflineDeltaItems,
   offlineSnapshotKey,
   readOfflineSnapshot,
   replaceOfflineSnapshot,
 } from "./offline-store";
 import { getOfflineLedgerSnapshot, getOfflineSnapshotVersion } from "./server-actions";
+import { getStreamRefreshAction } from "@/modules/source-document/actions";
+import type { LedgerDeltaResult } from "@/modules/source-document/contract-refresh";
 
 export type OfflineSyncStatus = "idle" | "checking" | "downloading" | "updated" | "error";
 
@@ -96,11 +99,49 @@ async function syncSnapshot(input: OfflineSnapshotSyncProps, signal: AbortSignal
     }
     return false;
   }
+  if (previous != null && /^\d+$/.test(previous.syncVersion)) {
+    let snapshot = previous;
+    let resetRequired = false;
+    for (let page = 0; page < 100 && snapshot.syncVersion !== version.version; page += 1) {
+      const delta: LedgerDeltaResult = await getStreamRefreshAction(input.ledgerId, {
+        ledgerId: input.ledgerId,
+        afterVersion: snapshot.syncVersion,
+      });
+      if (delta.resetRequired) {
+        resetRequired = true;
+        break;
+      }
+      const items = mergeOfflineDeltaItems(snapshot.items, delta, version.coverageLimit);
+      snapshot = {
+        ...snapshot,
+        locale: input.locale,
+        mainCurrency: input.mainCurrency,
+        preferredCurrencies: input.preferredCurrencies,
+        categories: input.categories,
+        ledgerSettings: {
+          timeZone: input.timeZone,
+          collapseEntriesDefault: input.collapseEntriesDefault,
+        },
+        items,
+        syncVersion: delta.toVersion,
+        recordCount: version.recordCount,
+        complete: version.complete,
+        truncated: version.truncated,
+        lastSyncedAt: new Date().toISOString(),
+      };
+      if (!delta.hasMore) break;
+    }
+    if (!resetRequired && snapshot.syncVersion === version.version) {
+      await replaceOfflineSnapshot(snapshot);
+      await prefetchLatestImages(key, snapshot.items, signal);
+      return true;
+    }
+  }
   const payload = await getOfflineLedgerSnapshot(input.ledgerId, version.version);
   if (signal.aborted) return false;
   await replaceOfflineSnapshot({
     key,
-    schemaVersion: 3,
+    schemaVersion: 4,
     userId: input.userId,
     ledgerId: input.ledgerId,
     locale: input.locale,

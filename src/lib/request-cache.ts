@@ -55,10 +55,9 @@ export const resolveAuthenticatedHome = cache(async (): Promise<AuthenticatedHom
   const ledgerDto: LedgerDto = {
     id: ledger.id,
     userId: ledger.userId,
-    metadata: { settings: ledger.settings },
+    settings: ledger.settings,
     createdAt: ledger.createdAt,
     updatedAt: ledger.updatedAt,
-    deletedAt: null,
   };
 
   return {

@@ -392,10 +392,7 @@ describe("current-runtime target adapters", () => {
   it("implements ledger, category, currency, settings, auth, credential, and idempotency ports", async () => {
     const db = getTestDb();
     const { userId, ledgerId } = await createTestUserWithLedger(db);
-    await db
-      .update(ledgers)
-      .set({ metadata: { settings: { mainCurrency: "CNY" } } })
-      .where(eq(ledgers.id, ledgerId));
+    await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
     await db.insert(entryCategories).values({ ledgerId, name: "Food" });
     await db.insert(currencyRates).values({
       date: "2026-07-15",
@@ -438,11 +435,25 @@ describe("current-runtime target adapters", () => {
       return { id: calls };
     });
     const results = await Promise.all([
-      postgresIdempotencyAdapter.execute("same-key", operation),
-      postgresIdempotencyAdapter.execute("same-key", operation),
+      postgresIdempotencyAdapter.execute(credentialId, "same-key", operation),
+      postgresIdempotencyAdapter.execute(credentialId, "same-key", operation),
     ]);
     expect(results).toEqual([{ id: 1 }, { id: 1 }]);
     expect(operation).toHaveBeenCalledTimes(1);
+
+    const secondCredentialId = crypto.randomUUID();
+    await db.insert(serviceCredentials).values({
+      id: secondCredentialId,
+      ledgerId,
+      tokenHash: computeHash("second-secret-key"),
+      tokenPrefix: "second-s",
+      tokenSuffix: "-key",
+      name: "Second API",
+    });
+    await expect(
+      postgresIdempotencyAdapter.execute(secondCredentialId, "same-key", operation)
+    ).resolves.toEqual({ id: 2 });
+    expect(operation).toHaveBeenCalledTimes(2);
   });
 
   it("plans, validates, finalizes, expires, and authorizes R2 stored files", async () => {

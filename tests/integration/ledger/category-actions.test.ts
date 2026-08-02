@@ -39,7 +39,6 @@ describe("createEntryCategoryAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
   });
 
@@ -83,7 +82,6 @@ describe("createEntryCategoryAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId2,
       userId: otherUserId,
-      metadata: {},
     });
 
     // Create categories for each ledger directly in DB (bypassing action auth checks)
@@ -138,7 +136,6 @@ describe("deleteEntryCategoryAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
   });
 
@@ -219,7 +216,6 @@ describe("reorderEntryCategoriesAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
   });
 
@@ -257,7 +253,6 @@ describe("getEntryCategoriesAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: {},
     });
   });
 

@@ -84,7 +84,7 @@ describe("getLedgerEntryAction", () => {
     expect(result?.sourceDocument).toBeDefined();
     expect(result?.sourceDocument?.hasImages).toBe(true);
     expect(result?.sourceDocument).not.toHaveProperty("imageUrls");
-    expect(result?.sourceDocument?.metadata).toEqual({});
+    expect(result?.sourceDocument).not.toHaveProperty("metadata");
   });
 
   it("should return null when entry does not exist", async () => {

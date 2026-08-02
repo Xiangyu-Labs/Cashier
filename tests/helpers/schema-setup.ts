@@ -28,8 +28,7 @@ export async function createTestUser(
     .where(sql`${schema.users.id} = ${id}`)
     .limit(1);
   if (existing.length !== 0) {
-    // SQLite doesn't support ON CONFLICT DO UPDATE nicely with returning in all cases for simple execute
-    // Just update if exists
+    // Keep the stable fixture identity while allowing callers to choose a fresh email.
     await db
       .update(schema.users)
       .set({ email: finalEmail })
@@ -59,7 +58,6 @@ export async function createTestUserWithLedger(
   await db.insert(schema.ledgers).values({
     id: ledgerId,
     userId: finalUserId,
-    metadata: {},
   });
 
   return { userId: finalUserId, ledgerId };

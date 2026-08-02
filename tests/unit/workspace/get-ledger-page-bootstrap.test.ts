@@ -55,10 +55,9 @@ function createPreAuthorizedLedgerDto() {
   return {
     id: "ledger-1",
     userId: "user-1",
-    metadata: { settings: { mainCurrency: "USD" } },
+    settings: { mainCurrency: "USD" },
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null as string | null,
   };
 }
 
@@ -283,7 +282,7 @@ describe("getLedgerPageBootstrap", () => {
   it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {
     const dto = {
       ...createPreAuthorizedLedgerDto(),
-      metadata: { settings: {} },
+      settings: {},
     };
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",

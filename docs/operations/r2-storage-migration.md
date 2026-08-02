@@ -1,41 +1,36 @@
-# Private R2 storage cutover
+# Private R2 storage operations
 
-Cashier runtime supports private Cloudflare R2 only. Browsers upload source images with short-lived,
-PUT-only signed URLs and read through `/api/stored-files/:fileId`. The bucket must not have public
-access or a public custom domain, and no Worker is required.
+Cashier uses a private Cloudflare R2 bucket. Web clients upload images with short-lived signed PUT
+URLs; reads stream through the authenticated `/api/stored-files/:fileId` route. No public bucket,
+custom public domain, browser credential, or Cloudflare Worker is required.
 
-## Prepare
+## Runtime configuration
 
-1. Create the private bucket `cashier-images` and an Object Read & Write S3 token scoped only to it.
-2. Back up Neon and the complete production `data/uploads` tree. Record the current image digest.
-3. Put the four R2 values in a local ignored environment file and the production `.env`:
+Create an Object Read & Write token scoped to the Cashier bucket and configure the server:
 
-   ```dotenv
-   R2_ACCOUNT_ID=...
-   R2_BUCKET_NAME=cashier-images
-   R2_ACCESS_KEY_ID=...
-   R2_SECRET_ACCESS_KEY=...
-   ```
+```dotenv
+APP_URL=https://cashier.example.com
+S3_ENDPOINT=https://account-id.r2.cloudflarestorage.com
+S3_PUBLIC_ENDPOINT=https://account-id.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_BUCKET=cashier
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+S3_FORCE_PATH_STYLE=false
+```
 
-Do not paste credentials into chat, logs, issue trackers, or Git.
+These credentials sign uploads, verify them with HEAD, copy verified objects to durable keys, stream
+reads, and delete temporary objects. Never expose them to the browser or logs.
 
-The same four R2 values support upload signing, HEAD verification, server-side COPY, reads, and
-deletes. Do not expose them to the browser and do not create a separate browser credential.
+## CORS and lifecycle
 
-## Configure direct-upload CORS and cleanup
-
-Before deploying the direct-upload Web flow, add an R2 CORS rule with the exact production and
-stable staging origins. Local development may add `http://localhost:3000`. Do not add `*` or
-ephemeral Vercel preview origins.
+Allow only the exact `APP_URL` origin. Add localhost separately for local development; do not use
+`*` or ephemeral preview origins.
 
 ```json
 [
   {
-    "AllowedOrigins": [
-      "https://cashier.example.com",
-      "https://cashier-staging.example.com",
-      "http://localhost:3000"
-    ],
+    "AllowedOrigins": ["https://cashier.example.com"],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["content-type", "x-amz-meta-sha256"],
     "ExposeHeaders": ["etag"],
@@ -44,77 +39,30 @@ ephemeral Vercel preview origins.
 ]
 ```
 
-Replace the example HTTPS origins with the deployed values of `NEXT_PUBLIC_APP_URL`; omit staging
-when it does not exist. Keep the bucket private. CORS grants no object access without a valid signed
-URL.
+Configure a lifecycle rule that deletes the `temporary/` prefix after one day. Request-bound
+maintenance also removes terminal upload sessions and their temporary objects after 24 hours, but
+the bucket rule is the final guard for abandoned uploads and interrupted execution.
 
-Configure an R2 lifecycle rule that deletes objects with prefix `temporary/` after one day. The
-application deletes promoted temporary objects best-effort; the lifecycle rule covers abandoned
-sessions and interrupted cleanup.
+## Upload protocol
 
-## Upload historical objects
+1. The browser compresses each image and calculates SHA-256.
+2. The server creates an upload session and signs a temporary PUT requiring `Content-Type` and
+   `x-amz-meta-sha256`.
+3. The browser PUTs directly to R2.
+4. Finalization uses HEAD to verify MIME type, byte size, and SHA-256 metadata, then copies to
+   `<ledger-id>/stored/<file-id>` and records the opaque stored-file ID.
+5. API v1 inline data images continue through the server-side upload capability.
 
-The migration script can upload the database-referenced files directly. It validates local files
-and legacy inline data-URI images before the first R2 write, uploads with six concurrent requests,
-and then downloads every object to verify it again. The object key stays identical to
-`stored_files.storage_key`:
+Failed validation never promotes the temporary object. Repeating finalize is idempotent for the
+same session and target ordering. Expired or old active sessions from a previous release are not
+compatible and users must upload again.
 
-```text
-local: data/uploads/<ledger-id>/stored/<file-id>
-R2:                <ledger-id>/stored/<file-id>
-```
+## Release and recovery
 
-With the ignored `.env.r2.local` file configured, upload and verify with:
+Before a breaking database/storage release, validate a signed PUT from `APP_URL`, HEAD/copy/delete,
+an authenticated read, an unauthorized 404, and the one-day lifecycle rule. Stop application
+writes and back up PostgreSQL before migration.
 
-```bash
-npm run storage:r2:upload
-```
-
-`LOCAL_INVALID` means nothing was uploaded. An upload interrupted by a network error is safe to
-rerun. Upload mode does not download objects after writing and does not change the database.
-`EXTRA_R2_OBJECT` is informational and objects are never automatically deleted.
-
-## Maintenance window
-
-1. Stop Cashier writes for 15-30 minutes and wait for open upload sessions to expire.
-2. Copy and upload the final `data/uploads/` increment, then repeat the dry-run.
-3. Switch the verified database rows under an advisory lock:
-
-   ```bash
-   npm run storage:r2:migrate -- --apply --maintenance-window-confirmed
-   ```
-
-   To explicitly accept upload success without downloading every R2 object for checksum
-   verification, use:
-
-   ```bash
-   npm run storage:r2:migrate -- --apply --maintenance-window-confirmed --skip-r2-verification
-   ```
-
-4. Deploy the pinned candidate image and force recreation so Compose rereads `.env`:
-
-   ```bash
-   docker compose pull
-   docker compose up -d --force-recreate
-   ```
-
-5. Verify historical reads, a new upload, AI recognition and retry, unauthorized 404 behavior, and
-   persistence after a container restart.
-
-The isolated live credential check touches only a random `smoke-tests/` key:
-
-```bash
-npm run storage:r2:smoke
-```
-
-## Roll back to the previous image
-
-Keep writes frozen. The rollback command downloads every active R2 row to `LOCAL_STORAGE_PATH`,
-verifies size/checksum, and only then changes those rows to `local` in a locked transaction:
-
-```bash
-npm run storage:r2:migrate -- --rollback --maintenance-window-confirmed
-```
-
-Restore the previous environment and pinned image digest, then force-recreate the container. The
-new R2-only image intentionally cannot run against `local` rows.
+The destructive schema migration cannot be rolled back independently. Recovery means restoring the
+pre-migration PostgreSQL backup and deploying the previous image. Durable R2 objects are preserved;
+do not bulk-delete them during rollback.

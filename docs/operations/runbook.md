@@ -71,6 +71,23 @@ npm run docker:external
 外部 S3 bucket 必须预先存在。R2 使用账户 endpoint、`S3_REGION=auto` 和
 `S3_FORCE_PATH_STYLE=false`。
 
+Web 上传使用签名 PUT 直传。R2 CORS 只允许 `APP_URL` 对应的精确 origin（本地开发可另加
+`http://localhost:3000`）、只允许 `PUT`，并允许 `Content-Type` 与
+`x-amz-meta-sha256` 请求头。bucket 必须保持私有；为 `temporary/` 前缀配置 1 天后删除的
+lifecycle rule。读取始终通过 `/api/stored-files/:fileId` 鉴权代理。
+
+## Breaking migration 发布
+
+`src/persistence/postgres-migrations/` 是唯一迁移历史。发布前分别在全新 PostgreSQL 17
+数据库和当前生产快照副本上执行 `npm run db:migrate`，核对账本设置、outbox、revision、
+entry、stored file 与软删除记录。
+
+正式发布时停止应用写入并完成数据库备份，再执行迁移并部署同一发布版本。0016 会删除旧
+JSON/payload 列，旧浏览器的 IndexedDB 快照会失效并重建，旧的活动上传 session 需要用户
+重新上传。不要只回滚应用镜像：回滚必须恢复迁移前数据库备份并部署上一镜像。
+
+`/api/v1` 是长期稳定契约，没有下线日期；部署与代理配置中不得添加 `/api/v2` 例外。
+
 ## 本地开发与检查
 
 ```bash

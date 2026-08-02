@@ -5,7 +5,6 @@ import {
   index,
   uniqueIndex,
   timestamp,
-  jsonb,
   boolean,
   check,
   numeric,
@@ -22,7 +21,15 @@ export const ledgers = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    metadata: jsonb("metadata").$type<LedgerMetadata>().default({}),
+    aiLanguage: text("ai_language").notNull().default("zh-CN"),
+    preferredCurrencies: varchar("preferred_currencies", { length: 3 })
+      .array()
+      .notNull()
+      .default([]),
+    mainCurrency: varchar("main_currency", { length: 3 }).notNull().default("CNY"),
+    collapseEntriesDefault: boolean("collapse_entries_default").notNull().default(false),
+    aiCustomPrompt: text("ai_custom_prompt").notNull().default(""),
+    timeZone: text("time_zone"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -36,18 +43,22 @@ export const ledgers = pgTable(
     uniqueIndex("uniq_ledgers_user_id")
       .on(table.userId)
       .where(sql`${table.deletedAt} IS NULL`),
+    check("ck_ledgers_main_currency", sql`${table.mainCurrency} ~ '^[A-Z]{3}$'`),
+    check(
+      "ck_ledgers_preferred_currencies",
+      sql`cardinality(${table.preferredCurrencies}) <= 32 AND (
+        cardinality(${table.preferredCurrencies}) = 0 OR
+        array_to_string(${table.preferredCurrencies}, ',') ~ '^([A-Z]{3})(,[A-Z]{3})*$'
+      )`
+    ),
+    check("ck_ledgers_ai_language_length", sql`length(${table.aiLanguage}) BETWEEN 2 AND 35`),
+    check("ck_ledgers_ai_custom_prompt_length", sql`length(${table.aiCustomPrompt}) <= 4000`),
+    check(
+      "ck_ledgers_time_zone_length",
+      sql`${table.timeZone} IS NULL OR length(${table.timeZone}) <= 50`
+    ),
   ]
 );
-
-export interface LedgerMetadata {
-  settings?: {
-    aiLanguage?: string;
-    currencies?: string[];
-    mainCurrency?: string;
-    aiCustomPrompt?: string;
-    timeZone?: string | null;
-  };
-}
 
 export type Ledger = InferSelectModel<typeof ledgers>;
 

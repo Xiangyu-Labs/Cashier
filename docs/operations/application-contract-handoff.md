@@ -16,10 +16,9 @@ request. See `docs/formless/plans/2026-07-18-vercel-compatible-ai-processing.md`
 - A startup dispatcher and `MAX_TASK_WORKER` are no longer needed.
 - Retry-after-failure tests verify the new scheduling path.
 
-This handoff is the only application-layer baseline for later Neon, R2, and
-Vercel work. The current implementation remains Docker, SQLite, local storage, and in-process
-target processing -- now scheduled via Next.js after() rather than a global drain loop.
-No managed provider was provisioned, connected, or written by this change.
+This handoff is the application-layer baseline for the current PostgreSQL, private R2, Vercel, and
+Docker composition. Target processing remains scheduled via Next.js `after()` rather than a global
+drain loop or external queue.
 
 ## What Changed From 1.0.0 to 2.0.0
 
@@ -44,9 +43,9 @@ remediation (`fix/review-remediation-tasks` branch). Breaking changes:
   stable, user-facing error taxonomies. `AnomalyCode`, `ProcessingFailureCode`,
   `toStableFailureCode`, and `toStableAnomalyCode` provide mapping from legacy values.
 
-API v1 remains behaviorally unchanged and continues returning its original format through the
-deprecated sunset date (2026-10-13). The `APPLICATION_CONTRACT_VERSION` constant reflects the
-internal application contract only; API v1 has separate versioning.
+API v1 remains behaviorally unchanged. Its `status` member is a stable field and the contract has no
+scheduled sunset. The `APPLICATION_CONTRACT_VERSION` constant reflects the internal application
+contract only; API v1 has separate versioning.
 
 ## Versioned Contracts
 
@@ -70,8 +69,8 @@ set until a separately reviewed OpenSpec change revises the application contract
 ## Fixtures, Suites, And Invariants
 
 The API v1 fixture is `tests/fixtures/api-v1/source-documents.post.json`. API v1 remains version
-`v1`; deprecated response field `status` is retained through 2026-10-13 and maps directly from
-`revisionState`. Removing it requires a later explicitly approved API change.
+`v1`; response field `status` is stable and maps directly from `revisionState`. Removing it requires
+a later explicitly approved API change.
 
 Reusable contract authority:
 
@@ -89,8 +88,8 @@ identity; ownership before reads or writes; concurrent idempotency; restart-safe
 duplicate dispatch safety; sanitized errors; bounded DTOs; soft deletion by target `deleted_at`;
 and no physical deletion of legacy rows, task history, image references, or files.
 
-The accepted current adapters are SQLite revision/ledger/settings/auth/credential/idempotency,
-local stored-file/upload/finalization/authorized-read, and SQLite outbox plus in-process target
+The accepted current adapters are PostgreSQL revision/ledger/settings/auth/credential/idempotency,
+private R2 upload/finalization/authorized-read, and PostgreSQL outbox plus request-bound target
 processing. Their automated suites are the reference behavior, not their provider mechanics.
 
 ## Replacement Adapter Boundaries

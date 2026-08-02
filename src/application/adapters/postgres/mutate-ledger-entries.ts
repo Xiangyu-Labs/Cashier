@@ -313,7 +313,7 @@ export async function batchUpdateLedgerEntries(input: {
       throw new ConflictError("Selected ledger entries changed before the batch edit");
     }
 
-    const mainCurrency = lockedLedger.metadata?.settings?.mainCurrency ?? "CNY";
+    const mainCurrency = lockedLedger.mainCurrency;
     const conversions =
       input.amount !== undefined || input.currency !== undefined
         ? await ExchangeRateService.convertBatch(

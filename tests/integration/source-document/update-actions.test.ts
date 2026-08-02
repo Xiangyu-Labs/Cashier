@@ -123,7 +123,7 @@ describe("Source Document Update Actions", () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({
         userId: testUserId,
-        metadata: { settings: { mainCurrency: "USD" } },
+        mainCurrency: "USD",
       });
       await db.insert(ledgers).values(ledgerData);
       const document = createSourceDocumentData(ledgerData.id, {

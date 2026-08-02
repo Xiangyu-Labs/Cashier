@@ -9,7 +9,18 @@ import type {
 } from "@/modules/ledger/contracts";
 
 type DateFields = { createdAt: Date; updatedAt: Date; deletedAt: Date | null };
-type LedgerRow = Omit<LedgerDto, "createdAt" | "updatedAt" | "deletedAt"> & DateFields;
+type LedgerRow = {
+  id: string;
+  userId: string;
+  aiLanguage: string;
+  preferredCurrencies: string[];
+  mainCurrency: string;
+  collapseEntriesDefault: boolean;
+  aiCustomPrompt: string;
+  timeZone: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 type EntryCategoryRow = Omit<EntryCategoryDto, "createdAt" | "updatedAt" | "deletedAt"> &
   DateFields;
 type ServiceCredentialRow = Omit<ServiceCredentialDto, "createdAt" | "lastUsedAt" | "deletedAt"> & {
@@ -41,10 +52,16 @@ export function mapLedgerDto(ledger: LedgerRow): LedgerDto {
   return {
     id: ledger.id,
     userId: ledger.userId,
-    metadata: ledger.metadata,
+    settings: {
+      aiLanguage: ledger.aiLanguage,
+      currencies: ledger.preferredCurrencies,
+      mainCurrency: ledger.mainCurrency,
+      collapseEntriesDefault: ledger.collapseEntriesDefault,
+      aiCustomPrompt: ledger.aiCustomPrompt,
+      timeZone: ledger.timeZone,
+    },
     createdAt: toIso(ledger.createdAt)!,
     updatedAt: toIso(ledger.updatedAt)!,
-    deletedAt: toIso(ledger.deletedAt),
   };
 }
 
@@ -86,15 +103,11 @@ export function mapSourceDocumentReferenceDto(
     id: doc.id,
     ledgerId: doc.ledgerId,
     title: doc.title,
-    text: null,
     status: "completed",
     type: doc.type,
-    anomalyReason: null,
     entryDate: doc.entryDate,
-    metadata: {},
     createdAt: toIso(doc.createdAt)!,
     updatedAt: toIso(doc.updatedAt)!,
-    deletedAt: toIso(doc.deletedAt),
     hasImages: false,
   };
 }

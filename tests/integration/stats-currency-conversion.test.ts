@@ -22,11 +22,7 @@ describe("Stats Currency Conversion", () => {
     await db
       .update(ledgers)
       .set({
-        metadata: {
-          settings: {
-            mainCurrency: "CNY",
-          },
-        },
+        mainCurrency: "CNY",
       })
       .where(eq(ledgers.id, ledgerId));
 

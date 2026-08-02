@@ -50,7 +50,7 @@ describe("createQuickEntryAction", () => {
     await db.insert(ledgers).values({
       id: ledgerId,
       userId: TEST_USER_ID,
-      metadata: { settings: { mainCurrency: "CNY" } },
+      mainCurrency: "CNY",
     });
 
     // Create test category
@@ -192,7 +192,6 @@ describe("createQuickEntryAction", () => {
     await db.insert(ledgers).values({
       id: otherLedgerId,
       userId: otherUserId,
-      metadata: {},
     });
 
     await expect(

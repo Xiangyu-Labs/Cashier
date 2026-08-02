@@ -40,9 +40,10 @@ describe("PWA policy", () => {
     expect(read("src/app/api/stored-files/[fileId]/route.ts")).toContain('"private, no-store"');
   });
 
-  it("keeps the database-free health probe and retired v2 paths outside session auth", () => {
+  it("keeps the database-free health probe outside session auth and removes v2", () => {
     const proxy = read("src/proxy.ts");
-    expect(proxy).toContain("api/health|api/v2");
+    expect(proxy).toContain("api/health");
+    expect(proxy).not.toContain("api/v2");
   });
 
   it("ships an offline reader without offline mutation controls", () => {

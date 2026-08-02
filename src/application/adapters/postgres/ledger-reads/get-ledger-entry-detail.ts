@@ -54,10 +54,7 @@ export async function getLedgerEntryDetail(
       })) != null;
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
-      text: null,
       status: "completed",
-      anomalyReason: null,
-      metadata: {},
       hasImages,
     };
   }

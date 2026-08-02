@@ -181,8 +181,6 @@ describe("bounded target read models", () => {
     expect(Object.keys(firstPage.items[0]!).sort()).toEqual([...LEDGER_LIST_KEYS].sort());
     expect(firstPage.items[0]?.sourceDocument).toMatchObject({
       id: created.sourceDocumentId,
-      text: null,
-      metadata: {},
       hasImages: false,
     });
     expect(serialized.length).toBeLessThan(15_000);

@@ -239,7 +239,7 @@ export function DetailsTab({
                   onSelectAll={selectAll}
                   onClearSelection={clearSelection}
                   categories={categories}
-                  preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+                  preferredCurrencies={ledger?.settings.currencies ?? []}
                   onChangeCategory={async (categoryId) => {
                     await batchUpdate.mutateAsync({ categoryId });
                   }}
@@ -272,7 +272,7 @@ export function DetailsTab({
                 onFiltersChange={onFiltersChange}
                 periodParams={periodParams}
                 categories={categories}
-                preferredCurrencies={ledger?.metadata?.settings?.currencies ?? []}
+                preferredCurrencies={ledger?.settings.currencies ?? []}
                 showStatus={false}
                 className="flex-1 sm:flex-none"
                 onResetFilters={onResetFilters}
@@ -297,8 +297,8 @@ export function DetailsTab({
                     key={entry.id}
                     ledgerEntry={entry}
                     categories={categories}
-                    {...(ledger?.metadata?.settings?.mainCurrency !== undefined
-                      ? { mainCurrency: ledger.metadata.settings.mainCurrency }
+                    {...(ledger?.settings.mainCurrency !== undefined
+                      ? { mainCurrency: ledger.settings.mainCurrency }
                       : {})}
                     onView={handleViewEntry}
                     selectionMode={isSelectionMode}

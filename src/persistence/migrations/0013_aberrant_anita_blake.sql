@@ -1,1 +1,0 @@
-ALTER TABLE `source_documents` ADD `type` text DEFAULT 'ai_parsed' NOT NULL;

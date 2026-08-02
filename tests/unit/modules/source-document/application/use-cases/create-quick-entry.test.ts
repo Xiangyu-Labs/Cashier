@@ -62,7 +62,7 @@ describe("createQuickEntry", () => {
       {
         id: "ledger-1",
         userId: "user-1",
-        metadata: { settings: { mainCurrency: "USD" } },
+        settings: { mainCurrency: "USD" },
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -105,7 +105,7 @@ describe("createQuickEntry", () => {
       {
         id: "ledger-1",
         userId: "user-1",
-        metadata: { settings: { mainCurrency: "USD" } },
+        settings: { mainCurrency: "USD" },
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,

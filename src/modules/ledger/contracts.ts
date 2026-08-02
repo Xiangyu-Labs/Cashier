@@ -12,17 +12,12 @@ export interface LedgerSettings {
   timeZone?: string | null;
 }
 
-export interface LedgerMetadataDto {
-  settings?: LedgerSettings;
-}
-
 export type LedgerDto = {
   id: string;
   userId: string;
-  metadata: LedgerMetadataDto | null;
+  settings: LedgerSettings;
   createdAt: string;
   updatedAt: string;
-  deletedAt: string | null;
 };
 export type Ledger = LedgerDto;
 
@@ -68,15 +63,11 @@ export type SourceDocumentReferenceDto = {
   id: string;
   ledgerId: string;
   title: string | null;
-  text: string | null;
   status: SourceDocumentReferenceStatus;
   type: SourceDocumentReferenceType;
-  anomalyReason: string | null;
   entryDate: string | null;
-  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  deletedAt: string | null;
   hasImages?: boolean;
 };
 

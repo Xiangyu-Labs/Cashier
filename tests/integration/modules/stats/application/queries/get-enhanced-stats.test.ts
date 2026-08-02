@@ -72,10 +72,7 @@ describe("getEnhancedStatsQuery", () => {
 
   it("converts mixed currencies by entry date using ledger main currency", async () => {
     const db = getTestDb();
-    await db
-      .update(ledgers)
-      .set({ metadata: { settings: { mainCurrency: "CNY" } } })
-      .where(eq(ledgers.id, ledgerId));
+    await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
 
     await db.insert(currencyRates).values([
       {
@@ -203,10 +200,7 @@ describe("getEnhancedStatsQuery", () => {
 
   it("falls back to original amount when rates are missing and handles null currency", async () => {
     const db = getTestDb();
-    await db
-      .update(ledgers)
-      .set({ metadata: { settings: { mainCurrency: "USD" } } })
-      .where(eq(ledgers.id, ledgerId));
+    await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
 
     await db.insert(currencyRates).values({
       date: "2024-04-01",
