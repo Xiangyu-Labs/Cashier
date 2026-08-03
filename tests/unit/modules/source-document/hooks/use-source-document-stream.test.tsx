@@ -4,9 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
+const useRevisionStateRefreshMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/source-document/actions", () => ({
   listStreamPageAction: listStreamPageActionMock,
+}));
+
+vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
+  useRevisionStateRefresh: useRevisionStateRefreshMock,
 }));
 
 function createWrapper() {
@@ -71,6 +76,39 @@ describe("useSourceDocumentStream", () => {
         });
       }
     );
+  });
+
+  it.each([
+    ["terminal items", [makeItem("doc-1", { status: "completed" })]],
+    ["an empty page", []],
+  ])("keeps the refresh scope subscribed for %s", async (_label, items) => {
+    listStreamPageActionMock.mockResolvedValue({
+      items,
+      nextCursor: null,
+      generation: 1,
+    });
+
+    renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: true, pending: true })
+      );
+    });
+  });
+
+  it("disables the refresh scope when enableRefresh is false", async () => {
+    renderHook(() => useSourceDocumentStream("ledger-1", { enableRefresh: false }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false, pending: true })
+      );
+    });
   });
 
   it("fetches the first page on mount and returns stream groups", async () => {

@@ -2,7 +2,10 @@ import { QueryClient, type InfiniteData } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import { queryKeys } from "@/lib/query-keys";
 import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
-import { applyOptimisticUpsert } from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import {
+  applyOptimisticUpsert,
+  seedSourceDocumentEntities,
+} from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 
 function makeItem(entryDate: string): SourceDocumentListItemDto {
@@ -32,6 +35,25 @@ function page(items: SourceDocumentListItemDto[]): InfiniteData<StreamPage> {
   return {
     pages: [{ items, nextCursor: null, generation: 1 }],
     pageParams: [undefined],
+  };
+}
+
+function makeEntry(id: string, itemName: string) {
+  return {
+    id,
+    ledgerId: "ledger-1",
+    categoryId: null,
+    sourceDocumentId: "doc-1",
+    amount: "1.00",
+    currency: "USD",
+    itemName,
+    description: null,
+    convertedAmount: null,
+    exchangeRate: null,
+    createdAt: "2026-07-01T10:00:00.000Z",
+    updatedAt: "2026-07-01T10:00:00.000Z",
+    deletedAt: null,
+    category: null,
   };
 }
 
@@ -103,5 +125,34 @@ describe("source document optimistic cache", () => {
     });
 
     expect(client.getQueryData<InfiniteData<StreamPage>>(july28Key)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("replaces stale entities with the authoritative page result", () => {
+    const queryClient = new QueryClient();
+    const stale: SourceDocumentListItemDto = {
+      ...makeItem("2026-07-01"),
+      title: "Old title",
+      status: "processing",
+      ledgerEntries: [makeEntry("entry-old", "Old entry")],
+    };
+    const authoritative: SourceDocumentListItemDto = {
+      ...makeItem("2026-07-01"),
+      title: "Authoritative title",
+      status: "completed",
+      ledgerEntries: [makeEntry("entry-new", "New entry")],
+    };
+    const unrelated = { ...makeItem("2026-07-02"), id: "doc-2" };
+    const key = queryKeys.sourceDocumentEntities("ledger-1");
+
+    queryClient.setQueryData(key, {
+      ["doc-1"]: stale,
+      [unrelated.id]: unrelated,
+    });
+    seedSourceDocumentEntities(queryClient, "ledger-1", [{ ...authoritative, id: "doc-1" }]);
+
+    expect(queryClient.getQueryData(key)).toEqual({
+      ["doc-1"]: { ...authoritative, id: "doc-1" },
+      [unrelated.id]: unrelated,
+    });
   });
 });

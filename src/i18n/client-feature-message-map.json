@@ -36,12 +36,22 @@
   "details": [
     "BatchActions",
     "Calendar",
+    "Calculator",
+    "CandidateAction",
     "DateFilter",
     "DateRangeFilter",
+    "DiagnosticCode",
     "DetailsTab",
+    "EntryFilterPanel",
+    "LedgerEntriesTab",
     "Common",
     "LedgerEntryDetail",
-    "Settings"
+    "PullToRefresh",
+    "Settings",
+    "SourceDocumentCard",
+    "SourceDocumentDetail",
+    "SourceDocumentEditRetryDialog",
+    "SourceDocumentImageModal"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   "settings": [

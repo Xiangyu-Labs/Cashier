@@ -11,13 +11,15 @@ export function seedSourceDocumentEntities(
   ledgerId: string,
   items: readonly SourceDocumentListItemDto[]
 ): void {
+  // Page responses are authoritative snapshots for these IDs. Replace stale
+  // optimistic/detail data while preserving unrelated entities in the store.
   queryClient.setQueryData<SourceDocumentEntityStore>(
     queryKeys.sourceDocumentEntities(ledgerId),
     (current = {}) => {
       let changed = false;
       const next = { ...current };
       for (const item of items) {
-        if (next[item.id] == null) {
+        if (next[item.id] !== item) {
           next[item.id] = item;
           changed = true;
         }

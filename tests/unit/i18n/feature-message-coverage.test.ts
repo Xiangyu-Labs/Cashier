@@ -20,8 +20,10 @@ const CATALOGS = [
  * Stream: base provider for the protected page. All namespaces needed by
  *   components rendered while the stream tab is active, including dialogs,
  *   batch actions, and quick-entry forms.
- * Details: lazy feature loaded on tab mount. Includes Settings for the
- *   EntryFilterPanel rendered inside this tab.
+ * Details: lazy feature loaded on tab mount. Includes the calculator,
+ *   candidate/source-document dialogs and cards, ledger-entry/filter panels,
+ *   pull-to-refresh, and Settings for the EntryFilterPanel rendered inside
+ *   this tab.
  * Stats: lazy feature. Includes Calendar for the heatmap sections.
  * Settings: lazy feature and standalone page provider. Includes PullToRefresh
  *   because the SettingsTab renders it and the standalone page does not
@@ -68,13 +70,23 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "SourceDocumentInput",
   ],
   details: [
+    "Calculator",
+    "CandidateAction",
     "Calendar",
     "Common",
     "DateFilter",
     "DateRangeFilter",
+    "DiagnosticCode",
     "DetailsTab",
+    "EntryFilterPanel",
+    "LedgerEntriesTab",
     "LedgerEntryDetail",
+    "PullToRefresh",
     "Settings",
+    "SourceDocumentCard",
+    "SourceDocumentDetail",
+    "SourceDocumentEditRetryDialog",
+    "SourceDocumentImageModal",
   ],
   stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
   settings: [

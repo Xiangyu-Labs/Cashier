@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
+  REFRESH_LEADER_LEASE_MS,
   initRefreshCoordinator,
   isRefreshableRevisionState,
   RefreshCoordinator,
@@ -466,6 +467,55 @@ describe("revision state refresh", () => {
     expect(follower.getIsLeader()).toBe(true);
     expect(refresh).toHaveBeenCalledTimes(1);
     follower.destroy();
+  });
+
+  it("keeps checking after a leader token replacement until the replacement lease expires", async () => {
+    const ledgerId = "real-lease-handoff";
+    const leaderKey = `cashier-refresh-leader-${ledgerId}`;
+    const leaseKey = `cashier-refresh-lease-${ledgerId}`;
+    const values = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    } as unknown as Storage);
+    localStorage.removeItem(leaderKey);
+    localStorage.removeItem(leaseKey);
+
+    const coordinator = initRefreshCoordinator(ledgerId);
+    const env = coordinator.getEnv();
+    const acquire = vi.spyOn(env, "acquireLeadership");
+    const refresh = vi.fn(async () => ({
+      changed: false,
+      result: refreshResult(true),
+    }));
+
+    try {
+      coordinator.subscribe("handoff", refresh);
+      await vi.advanceTimersByTimeAsync(0);
+      await flushTimers();
+      expect(coordinator.getIsLeader()).toBe(true);
+
+      localStorage.setItem(leaderKey, "replacement-token");
+      localStorage.setItem(leaseKey, String(Date.now() + REFRESH_LEADER_LEASE_MS * 2));
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      await flushTimers();
+      expect(coordinator.getIsLeader()).toBe(false);
+      expect(acquire).toHaveBeenCalledTimes(2);
+      expect(await acquire.mock.results[1]!.value).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(REFRESH_LEADER_LEASE_MS * 2 + 2_000);
+      await flushTimers();
+      expect(coordinator.getIsLeader()).toBe(true);
+      expect(acquire).toHaveBeenCalledTimes(3);
+      expect(await acquire.mock.results[2]!.value).toBe(true);
+      expect(refresh).toHaveBeenCalledTimes(2);
+    } finally {
+      coordinator.destroy();
+      localStorage.removeItem(leaderKey);
+      localStorage.removeItem(leaseKey);
+    }
   });
 
   it("backs off after an error and keeps processing subscribed work", async () => {

@@ -61,7 +61,7 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
   let broadcastChannel: BroadcastChannel | null = null;
   const broadcastHandlers = new Set<(data: unknown) => void>();
   let onExpired: (() => void) | null = null;
-  let leadershipTimer: ReturnType<typeof setTimeout> | null = null;
+  let leadershipTimer: ReturnType<typeof setInterval> | null = null;
   let expiryCheckTimer: ReturnType<typeof setInterval> | null = null;
 
   const STORAGE_KEY_LEADER = `cashier-refresh-leader-${ledgerId}`;
@@ -109,15 +109,25 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
     return Date.now() > ts;
   }
 
-  function cleanupIntervals(): void {
-    if (leadershipTimer) {
+  function stopLeadershipHeartbeat(): void {
+    if (leadershipTimer != null) {
       clearInterval(leadershipTimer);
       leadershipTimer = null;
     }
-    if (expiryCheckTimer) {
+  }
+
+  function stopExpiryCheck(): void {
+    if (expiryCheckTimer != null) {
       clearInterval(expiryCheckTimer);
       expiryCheckTimer = null;
     }
+  }
+
+  function startExpiryCheck(): void {
+    if (expiryCheckTimer != null) return;
+    expiryCheckTimer = setInterval(() => {
+      if (isLeaderExpired()) onExpired?.();
+    }, LEADER_HEARTBEAT_MS);
   }
 
   return {
@@ -188,15 +198,21 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
         // Verify we won the race
         const verifyLeader = localStorage.getItem(leaderKey);
         if (verifyLeader !== myId) {
+          startExpiryCheck();
           return false;
         }
 
-        // Start heartbeat to renew lease
-        cleanupIntervals();
+        // A successful takeover owns the lease and no longer needs the
+        // follower expiry check. Start a separate heartbeat for renewal.
+        stopExpiryCheck();
+        stopLeadershipHeartbeat();
         leadershipTimer = setInterval(() => {
           try {
             if (localStorage.getItem(leaderKey) !== myId) {
-              cleanupIntervals();
+              // Another tab took over. Keep watching its lease so this tab
+              // can compete again after that lease really expires.
+              stopLeadershipHeartbeat();
+              startExpiryCheck();
               onExpired?.();
               return;
             }
@@ -228,16 +244,12 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
       } catch {
         // Ignore storage errors
       }
-      cleanupIntervals();
+      stopLeadershipHeartbeat();
+      stopExpiryCheck();
     },
     onLeadershipExpired: (cb) => {
       onExpired = cb;
-      // Check lease expiry periodically
-      expiryCheckTimer = setInterval(() => {
-        if (isLeaderExpired()) {
-          onExpired?.();
-        }
-      }, LEADER_HEARTBEAT_MS);
+      startExpiryCheck();
     },
     isLeadershipAvailable: () => {
       try {
@@ -251,7 +263,8 @@ function browserEnvironment(ledgerId: string): RefreshEnvironment | null {
       }
     },
     destroy: () => {
-      cleanupIntervals();
+      stopLeadershipHeartbeat();
+      stopExpiryCheck();
       window.removeEventListener("storage", handleStorageBroadcast);
       if (typeof broadcastChannel?.close === "function") broadcastChannel.close();
       broadcastChannel = null;

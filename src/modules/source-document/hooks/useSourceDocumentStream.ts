@@ -232,13 +232,13 @@ export function useSourceDocumentStream(
       return item == null ? [] : [item];
     });
   }, [data, entities, windowItemIds]);
-  const hasProcessingItems = items.some((item) => item.status === "processing");
-
-  // Fast polling is active only while this window contains transitional work.
+  // Keep the scope subscribed for the lifetime of the mounted stream. The
+  // coordinator stops its timer after a successful terminal response, while
+  // broadcast/focus/visibility/reconnect events can still wake it later.
   useRevisionStateRefresh({
     scope: `stream:${ledgerId}:${filterSignature}`,
     enabled: enableRefresh,
-    pending: hasProcessingItems,
+    pending: true,
     refresh,
   });
 
