@@ -36,6 +36,14 @@ function mockOnline(value = true) {
   vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(value);
 }
 
+function setVisibility(state: "hidden" | "visible") {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    value: state,
+  });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
 describe("connection state", () => {
   it("hydrates without a mismatch when the client starts offline", async () => {
     const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
@@ -158,6 +166,68 @@ describe("connection state", () => {
 
     await act(async () => vi.advanceTimersByTimeAsync(5_000));
     expect(screen.getByTestId("status")).toHaveTextContent("offline");
+    expect(screen.getByTestId("retry")).toHaveTextContent("10");
+  });
+
+  it("caps automatic backoff at 30 seconds", async () => {
+    vi.useFakeTimers();
+    mockOnline();
+    const fetchMock = vi.fn().mockRejectedValue(new Error("unreachable"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderProvider();
+    await act(async () => Promise.resolve());
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("5");
+
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("10");
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("20");
+    await act(async () => vi.advanceTimersByTimeAsync(20_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("30");
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("30");
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("preserves the current deadline across repeated offline, focus, and visibility events", async () => {
+    vi.useFakeTimers();
+    mockOnline();
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("unreachable")));
+
+    renderProvider();
+    await act(async () => Promise.resolve());
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("10");
+
+    act(() => window.dispatchEvent(new Event("offline")));
+    act(() => window.dispatchEvent(new Event("focus")));
+    act(() => setVisibility("hidden"));
+    expect(screen.getByTestId("retry")).toHaveTextContent("10");
+
+    act(() => setVisibility("visible"));
+    expect(screen.getByTestId("retry")).toHaveTextContent("10");
+  });
+
+  it("keeps a background deadline and probes immediately when it is overdue on resume", async () => {
+    vi.useFakeTimers();
+    mockOnline();
+    const fetchMock = vi.fn().mockRejectedValue(new Error("unreachable"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderProvider();
+    await act(async () => Promise.resolve());
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(screen.getByTestId("retry")).toHaveTextContent("5");
+
+    act(() => setVisibility("hidden"));
+    await act(async () => vi.advanceTimersByTimeAsync(6_000));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await act(async () => setVisibility("visible"));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(screen.getByTestId("retry")).toHaveTextContent("10");
   });
 

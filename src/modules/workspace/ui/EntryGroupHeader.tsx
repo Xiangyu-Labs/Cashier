@@ -6,7 +6,7 @@ interface EntryGroupHeaderProps {
 
 export function EntryGroupHeader({ title, totalLabel, subtitle }: EntryGroupHeaderProps) {
   return (
-    <div className="flex items-center justify-between border-b border-border/80 px-1 pb-2 pt-3">
+    <div className="mx-2 flex items-center justify-between border-b border-border/80 pb-2 pt-3">
       <h3 className="min-w-0 text-xs font-medium text-muted-foreground">
         {title}
         {subtitle != null && subtitle !== "" && (

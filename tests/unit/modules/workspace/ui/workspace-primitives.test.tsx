@@ -23,6 +23,7 @@ describe("workspace primitives", () => {
     render(<EntryGroupHeader title="2026-07-07" totalLabel="CNY 123.00" />);
 
     expect(screen.getByText("2026-07-07")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-07").closest("div")).toHaveClass("mx-2");
     expect(screen.getByText("CNY 123.00")).toHaveClass("tabular-nums");
   });
 });
