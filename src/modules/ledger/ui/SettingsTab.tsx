@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
+import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -47,6 +48,7 @@ interface SettingsTabProps {
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
   interfaceLanguage?: InterfaceLanguage;
+  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function SettingsTab({
@@ -57,6 +59,7 @@ export function SettingsTab({
   hasPassword = false,
   passwordUpdatedAt = null,
   interfaceLanguage = "auto",
+  onQueryStateChange,
 }: SettingsTabProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -98,7 +101,26 @@ export function SettingsTab({
     credentials,
     updateLedgerMutation,
     isPending,
+    settingsQueryKey,
+    settingsQueryStatus,
+    settingsQueryIsFetching,
   } = useLedgerSettings({ ledgerId, ledger, initialCategories });
+
+  useEffect(() => {
+    onQueryStateChange?.({
+      ledgerId,
+      tab: "settings",
+      queryKey: settingsQueryKey,
+      status: settingsQueryStatus,
+      isFetching: settingsQueryIsFetching,
+    });
+  }, [
+    ledgerId,
+    onQueryStateChange,
+    settingsQueryIsFetching,
+    settingsQueryKey,
+    settingsQueryStatus,
+  ]);
 
   // Use reactive ledger for settings that need optimistic updates
   const settingsLedger = reactiveLedger || ledger;

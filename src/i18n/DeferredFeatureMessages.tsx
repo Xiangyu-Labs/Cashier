@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { NextIntlClientProvider, useMessages } from "next-intl";
+import { NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { useFeatureMessages } from "./use-feature-messages";
 
 interface DeferredFeatureMessagesProps {
@@ -28,14 +28,36 @@ export function DeferredFeatureMessages({
   fallback,
   children,
 }: DeferredFeatureMessagesProps) {
-  const featureMessages = useFeatureMessages(locale, feature);
   const parentMessages = useMessages();
+  const tCommon = useTranslations("Common");
+  const featureState = useFeatureMessages(
+    locale,
+    feature,
+    parentMessages as Record<string, unknown>
+  );
 
-  if (!featureMessages) return <>{fallback}</>;
+  if (featureState.status === "loading") return <>{fallback}</>;
+  if (featureState.status === "error" || featureState.data == null) {
+    return (
+      <div
+        role="alert"
+        className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-4 py-6 text-center text-sm text-text"
+      >
+        <span>{tCommon("error")}</span>
+        <button
+          type="button"
+          className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={featureState.retry}
+        >
+          {tCommon("retry")}
+        </button>
+      </div>
+    );
+  }
 
   // Merge feature messages on top of parent messages so the feature
   // gets its namespaces without losing shell/global ones.
-  const merged = { ...parentMessages, ...featureMessages };
+  const merged = { ...parentMessages, ...featureState.data };
 
   return (
     <NextIntlClientProvider messages={merged} locale={locale}>

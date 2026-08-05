@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { queryKeys } from "@/lib/query-keys";
@@ -22,6 +22,7 @@ export function useLedgerSettingsQueries({
   initialLedger,
   initialCategories,
 }: UseLedgerSettingsQueriesParams) {
+  const settingsQueryKey = useMemo(() => queryKeys.ledgerSettings(ledgerId), [ledgerId]);
   const categoryMetadataPolling = useSmartPolling<EntryCategoryWithCount[]>({
     isPollingActive: useCallback(
       (data) =>
@@ -49,13 +50,14 @@ export function useLedgerSettingsQueries({
     refetchInterval: categoryMetadataPolling,
   });
 
-  const { data: settingsData, isLoading: isSettingsLoading } = useQuery<{
+  const settingsQuery = useQuery<{
     uncategorizedCount: number;
     credentials: ServiceCredential[];
   }>({
-    queryKey: queryKeys.ledgerSettings(ledgerId),
+    queryKey: settingsQueryKey,
     queryFn: () => getLedgerSettingsAction(ledgerId),
   });
+  const { data: settingsData, isLoading: isSettingsLoading } = settingsQuery;
 
   return {
     ledger,
@@ -63,5 +65,8 @@ export function useLedgerSettingsQueries({
     uncategorizedCount: settingsData?.uncategorizedCount ?? 0,
     credentials: settingsData?.credentials ?? [],
     isSettingsLoading,
+    settingsQueryKey,
+    settingsQueryStatus: settingsQuery.status,
+    settingsQueryIsFetching: settingsQuery.isFetching,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { EntryCategory, Ledger } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui";
@@ -17,6 +17,7 @@ import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import { useDetailsBatchController } from "./useDetailsBatchController";
 import { DetailsTabView } from "./DetailsTabView";
+import type { TabQueryStateReport } from "./tab-query-state";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -33,6 +34,7 @@ interface DetailsTabProps {
   };
   onResetFilters: () => void;
   timeZone?: string;
+  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function DetailsTab({
@@ -44,6 +46,7 @@ export function DetailsTab({
   advancedFilters,
   onResetFilters,
   timeZone,
+  onQueryStateChange,
 }: DetailsTabProps) {
   const queryClient = useQueryClient();
   const push = useModalStackStore((state) => state.push);
@@ -55,6 +58,15 @@ export function DetailsTab({
     ...(timeZone != null ? { timeZone } : {}),
     ...(ledger !== undefined ? { ledger } : {}),
   });
+  useEffect(() => {
+    onQueryStateChange?.({
+      ledgerId,
+      tab: "details",
+      queryKey: data.queryKey,
+      status: data.queryStatus,
+      isFetching: data.queryIsFetching,
+    });
+  }, [data.queryIsFetching, data.queryKey, data.queryStatus, ledgerId, onQueryStateChange]);
   const { groupedItems } = useDetailsTabGrouping(data.entries, timeZone);
   const entryIds = useMemo(() => data.entries.map((entry) => entry.id), [data.entries]);
   const batch = useDetailsBatchController(ledgerId, entryIds);

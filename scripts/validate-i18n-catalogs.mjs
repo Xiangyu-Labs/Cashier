@@ -212,9 +212,61 @@ function getMessageValue(catalog, key) {
 
 function collectTranslationUsages(sourceFile) {
   const useTranslationNames = new Set(["useTranslations"]);
+  const translationFactoryNames = new Set(["getTranslations", "createTranslator"]);
   const bindings = new Map();
   const usages = [];
   const rawKeyLiterals = [];
+  const dynamicUsages = [];
+
+  function unwrapExpression(node) {
+    let current = node;
+    while (
+      current != null &&
+      (ts.isAwaitExpression(current) || ts.isParenthesizedExpression(current))
+    ) {
+      current = current.expression;
+    }
+    return current;
+  }
+
+  function getFactoryCall(node) {
+    const expression = unwrapExpression(node);
+    return ts.isCallExpression(expression) &&
+      ts.isIdentifier(expression.expression) &&
+      translationFactoryNames.has(expression.expression.text)
+      ? expression
+      : null;
+  }
+
+  function getFactoryNamespace(call) {
+    const firstArgument = call.arguments[0];
+    if (firstArgument == null) return "";
+    const literalNamespace = literalText(firstArgument);
+    if (literalNamespace != null) return literalNamespace;
+    if (ts.isObjectLiteralExpression(firstArgument)) {
+      const namespaceProperty = firstArgument.properties.find((property) => {
+        if (!ts.isPropertyAssignment(property)) return false;
+        return (
+          (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+          property.name.text === "namespace"
+        );
+      });
+      if (namespaceProperty != null && ts.isPropertyAssignment(namespaceProperty)) {
+        return literalText(namespaceProperty.initializer);
+      }
+      return "";
+    }
+    return null;
+  }
+
+  function isTranslationFactoryArgument(node) {
+    const parent = node.parent;
+    return (
+      ts.isCallExpression(parent) &&
+      ts.isIdentifier(parent.expression) &&
+      translationFactoryNames.has(parent.expression.text)
+    );
+  }
 
   function visit(node) {
     if (ts.isImportDeclaration(node) && node.importClause?.namedBindings != null) {
@@ -227,21 +279,44 @@ function collectTranslationUsages(sourceFile) {
           ) {
             useTranslationNames.add(element.name.text);
           }
+          if (
+            element.propertyName?.text === "getTranslations" ||
+            element.name.text === "getTranslations" ||
+            element.propertyName?.text === "createTranslator" ||
+            element.name.text === "createTranslator"
+          ) {
+            translationFactoryNames.add(element.name.text);
+          }
         }
       }
     }
 
     if (ts.isVariableDeclaration(node)) {
       const initializer = node.initializer;
-      if (
-        ts.isIdentifier(node.name) &&
-        initializer != null &&
-        ts.isCallExpression(initializer) &&
-        ts.isIdentifier(initializer.expression) &&
-        useTranslationNames.has(initializer.expression.text)
-      ) {
-        const namespace = literalText(initializer.arguments[0]);
-        if (namespace != null) bindings.set(node.name.text, namespace);
+      if (ts.isIdentifier(node.name) && initializer != null) {
+        const directTranslationCall =
+          ts.isCallExpression(initializer) &&
+          ts.isIdentifier(initializer.expression) &&
+          useTranslationNames.has(initializer.expression.text)
+            ? initializer
+            : null;
+        const factoryCall = getFactoryCall(initializer);
+        if (directTranslationCall != null) {
+          const namespace = literalText(directTranslationCall.arguments[0]);
+          if (namespace != null) bindings.set(node.name.text, namespace);
+        } else if (factoryCall != null) {
+          const namespace = getFactoryNamespace(factoryCall);
+          if (namespace != null) {
+            bindings.set(node.name.text, namespace);
+          } else {
+            dynamicUsages.push({
+              fileName: sourceFile.fileName,
+              line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+              namespace: null,
+              kind: "dynamic namespace",
+            });
+          }
+        }
       }
     }
 
@@ -261,13 +336,19 @@ function collectTranslationUsages(sourceFile) {
       const namespace = bindingName == null ? undefined : bindings.get(bindingName);
       if (namespace != null && ["translate", "raw", "rich", "markup", "has"].includes(method)) {
         const key = literalText(node.arguments[0]);
-        if (key != null) {
-          usages.push({
+        usages.push({
+          fileName: sourceFile.fileName,
+          line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+          namespace,
+          key,
+          reason: null,
+        });
+        if (key == null) {
+          dynamicUsages.push({
             fileName: sourceFile.fileName,
             line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
             namespace,
-            key,
-            reason: null,
+            kind: "dynamic key",
           });
         }
       }
@@ -279,7 +360,12 @@ function collectTranslationUsages(sourceFile) {
         ts.isCallExpression(parent) &&
         ts.isIdentifier(parent.expression) &&
         useTranslationNames.has(parent.expression.text);
-      if (!isUseTranslationsArgument && referenceKeys.has(node.text) && node.text.includes(".")) {
+      if (
+        !isUseTranslationsArgument &&
+        !isTranslationFactoryArgument(node) &&
+        referenceKeys.has(node.text) &&
+        node.text.includes(".")
+      ) {
         rawKeyLiterals.push({
           fileName: sourceFile.fileName,
           line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
@@ -292,7 +378,7 @@ function collectTranslationUsages(sourceFile) {
   }
 
   visit(sourceFile);
-  return { usages, rawKeyLiterals };
+  return { usages, rawKeyLiterals, dynamicUsages };
 }
 
 if (referenceCatalog != null) {
@@ -326,7 +412,7 @@ if (referenceCatalog != null) {
       true,
       fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
     );
-    const { usages, rawKeyLiterals } = collectTranslationUsages(sourceFile);
+    const { usages, rawKeyLiterals, dynamicUsages } = collectTranslationUsages(sourceFile);
     const relativeFileName = path.relative(path.resolve(currentDirPath, ".."), fileName);
 
     for (const usage of usages) {
@@ -335,7 +421,21 @@ if (referenceCatalog != null) {
         errors.push(`${location}: ${usage.reason}`);
         continue;
       }
-      const fullKey = `${usage.namespace}.${usage.key}`;
+      if (usage.key == null) {
+        // Dynamic keys cannot be expanded safely from syntax alone. Still
+        // validate the statically known namespace in every catalog and report
+        // the usage so it is visible in CI output.
+        for (const locale of locales) {
+          const catalog = parsedCatalogs.get(`${locale}.json`);
+          if (usage.namespace !== "" && getMessageValue(catalog, usage.namespace) === undefined) {
+            errors.push(
+              `${location}: missing ${locale} message namespace ${usage.namespace} for dynamic key`
+            );
+          }
+        }
+        continue;
+      }
+      const fullKey = usage.namespace === "" ? usage.key : `${usage.namespace}.${usage.key}`;
       for (const locale of locales) {
         const catalog = parsedCatalogs.get(`${locale}.json`);
         if (getMessageValue(catalog, fullKey) === undefined) {
@@ -358,6 +458,19 @@ if (referenceCatalog != null) {
     for (const rawKey of rawKeyLiterals) {
       errors.push(
         `${relativeFileName}:${rawKey.line}: raw translation key rendered directly: ${rawKey.key}`
+      );
+    }
+
+    for (const dynamicUsage of dynamicUsages) {
+      const namespace =
+        dynamicUsage.namespace == null || dynamicUsage.namespace === ""
+          ? "<root>"
+          : dynamicUsage.namespace;
+      console.warn(
+        `i18n dynamic ${dynamicUsage.kind} checked at ${namespace}: ${path.relative(
+          path.resolve(currentDirPath, ".."),
+          dynamicUsage.fileName
+        )}:${dynamicUsage.line}`
       );
     }
   }

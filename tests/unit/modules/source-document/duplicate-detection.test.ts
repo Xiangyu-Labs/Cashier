@@ -375,4 +375,15 @@ describe("normalizeDuplicateReason", () => {
       })
     ).toBe("The bill content, amount, and date closely match and may represent the same purchase.");
   });
+
+  it("removes internal comparison labels from legacy reasons", () => {
+    const reason = normalizeDuplicateReason({
+      reason: "CURRENT and CANDIDATE_1 have the same merchant and amount.",
+      currentSourceDocumentId: "current-1",
+      candidateSourceDocumentIds: ["candidate-1"],
+    });
+
+    expect(reason).not.toMatch(/CURRENT|CANDIDATE/i);
+    expect(reason).toContain("same merchant and amount");
+  });
 });

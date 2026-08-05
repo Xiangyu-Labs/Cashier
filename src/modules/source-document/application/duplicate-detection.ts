@@ -1,6 +1,12 @@
 import { logger } from "@/lib/logger";
 import { add as decimalAdd } from "@/lib/money/decimal";
 import type { AiContextContract, AiMessageContentPart } from "./parse-source-document/contracts";
+import { normalizeDuplicateReason } from "../duplicate-reason";
+
+export {
+  normalizeDuplicateReason,
+  type DuplicateReasonNormalizationInput,
+} from "../duplicate-reason";
 
 /**
  * Best-effort duplicate detection for first-parsed AI source documents.
@@ -69,55 +75,6 @@ export interface DuplicateVerdict {
   matchedSourceDocumentId: string | null;
   confidence: number | null;
   reason: string | null;
-}
-
-export interface DuplicateReasonNormalizationInput {
-  reason: string | null | undefined;
-  aiLanguage?: string;
-  currentSourceDocumentId: string;
-  candidateSourceDocumentIds: readonly string[];
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function documentIdPattern(id: string): RegExp {
-  return new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegExp(id)}(?![\\p{L}\\p{N}_-])`, "giu");
-}
-
-function duplicateReasonFallback(aiLanguage?: string): string {
-  return aiLanguage?.trim().toLocaleLowerCase().startsWith("zh")
-    ? "账单内容、金额和日期高度一致，疑似为同一笔消费。"
-    : "The bill content, amount, and date closely match and may represent the same purchase.";
-}
-
-/**
- * Keeps the model's useful comparison evidence while removing only the
- * document IDs that were actually included in the comparison prompt.
- * Other numbers (receipt numbers, order numbers, amounts, and dates) are
- * intentionally left untouched.
- */
-export function normalizeDuplicateReason({
-  reason,
-  aiLanguage,
-  currentSourceDocumentId,
-  candidateSourceDocumentIds,
-}: DuplicateReasonNormalizationInput): string {
-  const ids = [currentSourceDocumentId, ...candidateSourceDocumentIds].filter(
-    (id, index, values) => id !== "" && values.indexOf(id) === index
-  );
-  const patterns = ids.map(documentIdPattern);
-  const sanitized = patterns
-    .reduce((value, pattern) => value.replace(pattern, ""), reason ?? "")
-    .replace(/\s+/g, " ")
-    .replace(/\s+([,.;:!?，。；：！？])/g, "$1")
-    .trim();
-
-  if (sanitized === "" || patterns.some((pattern) => pattern.test(sanitized))) {
-    return duplicateReasonFallback(aiLanguage);
-  }
-  return sanitized;
 }
 
 function noDuplicate(candidatesConsidered = 0): DuplicateDetectionResult {

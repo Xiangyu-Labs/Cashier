@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DetailsTabSkeleton,
@@ -13,6 +13,7 @@ import {
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
 import {
   readLedgerStartupSnapshot,
   type LedgerStartupCacheSnapshot,
@@ -66,6 +67,7 @@ export function LedgerStartupPreview({
   onRetry,
 }: LedgerStartupPreviewProps) {
   const t = useTranslations("LedgerPage");
+  const locale = useLocale();
   const reducedMotion = useReducedMotion();
   const [snapshot, setSnapshot] = useState<LedgerStartupCacheSnapshot | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -96,6 +98,19 @@ export function LedgerStartupPreview({
   }, [activeTab, snapshotKey]);
 
   if (queryState === "success") return null;
+
+  const previewFeature =
+    activeTab === "stream" || activeTab === "details" || activeTab === "stats" ? activeTab : null;
+  const previewContent =
+    activeTab === "settings" || loadState !== "ready" || snapshot == null ? (
+      <SkeletonForTab activeTab={activeTab} />
+    ) : activeTab === "stream" ? (
+      <LedgerStartupStreamPreview snapshot={snapshot} initialFilters={initialFilters} />
+    ) : activeTab === "details" ? (
+      <LedgerStartupDetailsPreview snapshot={snapshot} initialFilters={initialFilters} />
+    ) : (
+      <LedgerStartupStatsPreview snapshot={snapshot} />
+    );
 
   return (
     <>
@@ -133,14 +148,16 @@ export function LedgerStartupPreview({
           </Button>
         )}
       </div>
-      {activeTab === "settings" || loadState !== "ready" || snapshot == null ? (
-        <SkeletonForTab activeTab={activeTab} />
-      ) : activeTab === "stream" ? (
-        <LedgerStartupStreamPreview snapshot={snapshot} initialFilters={initialFilters} />
-      ) : activeTab === "details" ? (
-        <LedgerStartupDetailsPreview snapshot={snapshot} initialFilters={initialFilters} />
+      {previewFeature == null ? (
+        previewContent
       ) : (
-        <LedgerStartupStatsPreview snapshot={snapshot} />
+        <DeferredFeatureMessages
+          feature={previewFeature}
+          locale={locale}
+          fallback={<SkeletonForTab activeTab={activeTab} />}
+        >
+          {previewContent}
+        </DeferredFeatureMessages>
       )}
     </>
   );

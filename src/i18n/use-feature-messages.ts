@@ -1,58 +1,193 @@
 "use client";
-import { useEffect, useState } from "react";
-import { FEATURE_MESSAGES } from "./client-feature-messages";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { FEATURE_MESSAGES, pickMessages } from "./client-feature-messages";
 import { FEATURE_MESSAGE_VERSION } from "./feature-message-version";
 
-const messagePromises = new Map<string, Promise<Record<string, unknown>>>();
+export type FeatureMessageStatus = "loading" | "success" | "error";
+
+export interface FeatureMessagesState {
+  status: FeatureMessageStatus;
+  data: Record<string, unknown> | null;
+  messages: Record<string, unknown> | null;
+  error: Error | null;
+  retry: () => void;
+}
+
+interface CachedFeatureMessages {
+  status: FeatureMessageStatus;
+  messages: Record<string, unknown> | null;
+  error: Error | null;
+  promise?: Promise<Record<string, unknown>>;
+  requestId?: symbol;
+}
+
+const EMPTY_CACHE_STATE: CachedFeatureMessages = {
+  status: "loading",
+  messages: null,
+  error: null,
+};
+const featureMessageCache = new Map<string, CachedFeatureMessages>();
+const featureMessageListeners = new Map<string, Set<() => void>>();
+
+function notifyFeatureMessageListeners(cacheKey: string) {
+  featureMessageListeners.get(cacheKey)?.forEach((listener) => listener());
+}
+
+function subscribeToFeatureMessages(cacheKey: string, listener: () => void) {
+  let listeners = featureMessageListeners.get(cacheKey);
+  if (listeners == null) {
+    listeners = new Set();
+    featureMessageListeners.set(cacheKey, listeners);
+  }
+  listeners.add(listener);
+  return () => {
+    listeners?.delete(listener);
+    if (listeners?.size === 0) featureMessageListeners.delete(cacheKey);
+  };
+}
+
+function featureCacheKey(locale: string, feature: keyof typeof FEATURE_MESSAGES) {
+  const normalizedLocale = locale === "zh" ? "zh" : "en";
+  return `${normalizedLocale}:${feature}`;
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function startFeatureMessageLoad(
+  locale: string,
+  feature: keyof typeof FEATURE_MESSAGES,
+  cacheKey: string
+): Promise<Record<string, unknown>> {
+  const requestId = Symbol(cacheKey);
+  const promise = fetch(
+    `/api/i18n/${locale === "zh" ? "zh" : "en"}/${feature}?v=${FEATURE_MESSAGE_VERSION}`,
+    {
+      credentials: "same-origin",
+      cache: "no-store",
+    }
+  ).then(async (response) => {
+    if (!response.ok) throw new Error("Unable to load feature messages");
+    return (await response.json()) as Record<string, unknown>;
+  });
+
+  featureMessageCache.set(cacheKey, {
+    status: "loading",
+    messages: null,
+    error: null,
+    promise,
+    requestId,
+  });
+  notifyFeatureMessageListeners(cacheKey);
+
+  // Attach the cache update separately so callers can still observe the
+  // rejection, while an unobserved preload never becomes an unhandled
+  // rejection.
+  void promise.then(
+    (messages) => {
+      const current = featureMessageCache.get(cacheKey);
+      if (current?.requestId !== requestId) return;
+      featureMessageCache.set(cacheKey, {
+        status: "success",
+        messages,
+        error: null,
+      });
+      notifyFeatureMessageListeners(cacheKey);
+    },
+    (error: unknown) => {
+      const current = featureMessageCache.get(cacheKey);
+      if (current?.requestId !== requestId) return;
+      featureMessageCache.set(cacheKey, {
+        status: "error",
+        messages: null,
+        error: toError(error),
+      });
+      notifyFeatureMessageListeners(cacheKey);
+    }
+  );
+
+  return promise;
+}
 
 export function preloadFeatureMessages(
   locale: string,
   feature: keyof typeof FEATURE_MESSAGES
 ): Promise<Record<string, unknown>> {
-  const normalizedLocale = locale === "zh" ? "zh" : "en";
-  const cacheKey = `${normalizedLocale}:${feature}`;
-  const existing = messagePromises.get(cacheKey);
-  if (existing != null) return existing;
-  const promise = fetch(`/api/i18n/${normalizedLocale}/${feature}?v=${FEATURE_MESSAGE_VERSION}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-  })
-    .then(async (response) => {
-      if (!response.ok) throw new Error("Unable to load feature messages");
-      return (await response.json()) as Record<string, unknown>;
-    })
-    .catch((error: unknown) => {
-      messagePromises.delete(cacheKey);
-      throw error;
-    });
-  messagePromises.set(cacheKey, promise);
-  return promise;
+  const cacheKey = featureCacheKey(locale, feature);
+  const cached = featureMessageCache.get(cacheKey);
+  if (cached?.status === "success" && cached.messages != null) {
+    return Promise.resolve(cached.messages);
+  }
+  if (cached?.status === "error") {
+    return Promise.reject(cached.error ?? new Error("Unable to load feature messages"));
+  }
+  if (cached?.promise != null) return cached.promise;
+  return startFeatureMessageLoad(locale, feature, cacheKey);
 }
 
 /**
  * Loads a subset of locale messages for a specific feature boundary.
- * Returns null while the messages are being fetched, giving the caller
- * an opportunity to show a skeleton fallback.
+ * Exposes the full loading/error/success state so a failed message request
+ * cannot leave a feature mounted behind a permanent skeleton.
  *
  * @param locale - The current locale string (e.g. "en", "zh").
  * @param feature - The feature key whose namespaces to pick.
+ * @param availableMessages - Messages already provided by an outer
+ *   NextIntlClientProvider. This avoids refetching the initial tab's feature.
  */
 export function useFeatureMessages(
   locale: string,
-  feature: keyof typeof FEATURE_MESSAGES
-): Record<string, unknown> | null {
-  const [messages, setMessages] = useState<Record<string, unknown> | null>(null);
+  feature: keyof typeof FEATURE_MESSAGES,
+  availableMessages?: Record<string, unknown>
+): FeatureMessagesState {
+  const cacheKey = featureCacheKey(locale, feature);
+  const namespaces = FEATURE_MESSAGES[feature];
+  const availableFeatureMessages = useMemo(
+    () =>
+      availableMessages != null && namespaces.every((namespace) => namespace in availableMessages)
+        ? pickMessages(availableMessages, namespaces)
+        : null,
+    [availableMessages, namespaces]
+  );
+
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeToFeatureMessages(cacheKey, listener),
+    [cacheKey]
+  );
+  const getSnapshot = useCallback(
+    () => featureMessageCache.get(cacheKey) ?? EMPTY_CACHE_STATE,
+    [cacheKey]
+  );
+  const cached = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    let cancelled = false;
-    preloadFeatureMessages(locale, feature).then((loaded) => {
-      if (cancelled) return;
-      setMessages(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [locale, feature]);
+    if (availableFeatureMessages != null) return;
+    void preloadFeatureMessages(locale, feature).catch(() => undefined);
+  }, [availableFeatureMessages, feature, locale]);
 
-  return messages;
+  const retry = useCallback(() => {
+    if (availableFeatureMessages != null) return;
+    featureMessageCache.delete(cacheKey);
+    notifyFeatureMessageListeners(cacheKey);
+    void preloadFeatureMessages(locale, feature).catch(() => undefined);
+  }, [availableFeatureMessages, cacheKey, feature, locale]);
+
+  if (availableFeatureMessages != null) {
+    return {
+      status: "success",
+      data: availableFeatureMessages,
+      messages: availableFeatureMessages,
+      error: null,
+      retry,
+    };
+  }
+
+  return {
+    status: cached.status,
+    data: cached.messages,
+    messages: cached.messages,
+    error: cached.error,
+    retry,
+  };
 }

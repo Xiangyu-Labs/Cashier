@@ -17,12 +17,20 @@ export function useLedgerSettings({
   initialCategories,
 }: UseLedgerSettingsParams) {
   const t = useTranslations("Settings");
-  const { ledger, categories, uncategorizedCount, credentials, isSettingsLoading } =
-    useLedgerSettingsQueries({
-      ledgerId,
-      initialLedger,
-      initialCategories,
-    });
+  const {
+    ledger,
+    categories,
+    uncategorizedCount,
+    credentials,
+    isSettingsLoading,
+    settingsQueryKey,
+    settingsQueryStatus,
+    settingsQueryIsFetching,
+  } = useLedgerSettingsQueries({
+    ledgerId,
+    initialLedger,
+    initialCategories,
+  });
 
   const updateLedgerMutation = useLedgerSettingsMutation({
     ledgerId,
@@ -38,5 +46,8 @@ export function useLedgerSettings({
     updateLedgerMutation,
     isPending: updateLedgerMutation.isPending,
     isSettingsLoading,
+    settingsQueryKey,
+    settingsQueryStatus,
+    settingsQueryIsFetching,
   };
 }

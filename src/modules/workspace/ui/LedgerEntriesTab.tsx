@@ -28,6 +28,7 @@ import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { buildStreamTotalQuery, useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
+import type { TabQueryStateReport } from "./tab-query-state";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -40,6 +41,7 @@ interface LedgerEntriesTabProps {
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   onResetFilters: () => void;
   timeZone?: string;
+  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function LedgerEntriesTab({
@@ -53,6 +55,7 @@ export function LedgerEntriesTab({
   onApplyPreset,
   onResetFilters,
   timeZone,
+  onQueryStateChange,
 }: LedgerEntriesTabProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -110,19 +113,37 @@ export function LedgerEntriesTab({
   const { deleteEntry } = useLedgerEntriesMutations(ledgerId, categories);
 
   // Use the unified stream hook with paginated all-statuses results
-  const { streamGroups, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refresh } =
-    useSourceDocumentStream(ledgerId, {
-      dateRange: {
-        ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
-        ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
-      },
-      ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
-      ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
-      ...(filters.statuses != null && filters.statuses.length > 0
-        ? { statuses: filters.statuses }
-        : {}),
-      ...(filters.search != null ? { search: filters.search } : {}),
+  const {
+    streamGroups,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refresh,
+    queryKey,
+    queryStatus,
+    queryIsFetching,
+  } = useSourceDocumentStream(ledgerId, {
+    dateRange: {
+      ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
+      ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),
+    },
+    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
+    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
+    ...(filters.statuses != null && filters.statuses.length > 0
+      ? { statuses: filters.statuses }
+      : {}),
+    ...(filters.search != null ? { search: filters.search } : {}),
+  });
+  useEffect(() => {
+    onQueryStateChange?.({
+      ledgerId,
+      tab: "stream",
+      queryKey,
+      status: queryStatus,
+      isFetching: queryIsFetching,
     });
+  }, [ledgerId, onQueryStateChange, queryIsFetching, queryKey, queryStatus]);
 
   // Build groupedItems from completed groups for useGroupedEntries — no longer needed
   // Selection uses unified stream groups
@@ -150,18 +171,20 @@ export function LedgerEntriesTab({
     batchKeepDuplicates,
     batchDiscardDuplicates,
   } = useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
-  const selectedDuplicateCount = useMemo(() => {
-    if (selectedIds.length === 0) return 0;
+  const selectedDuplicateIds = useMemo(() => {
+    if (selectedIds.length === 0) return [];
     const statusById = new Map(
       streamGroups.flatMap((group) =>
         group.items.map((item) => [item.sourceDocument.id, item.sourceDocument.status] as const)
       )
     );
-    return selectedIds.reduce(
-      (count, id) => count + (statusById.get(id) === "duplicate_pending" ? 1 : 0),
-      0
-    );
+    return selectedIds.filter((id) => statusById.get(id) === "duplicate_pending");
   }, [selectedIds, streamGroups]);
+  const selectedDuplicateCount = selectedDuplicateIds.length;
+  const selectedOrdinaryIds = useMemo(() => {
+    const duplicateIds = new Set(selectedDuplicateIds);
+    return selectedIds.filter((id) => !duplicateIds.has(id));
+  }, [selectedDuplicateIds, selectedIds]);
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
     return () => {
@@ -260,10 +283,16 @@ export function LedgerEntriesTab({
         isRetrying={batchRetry.isPending}
         isDeleting={batchDelete.isPending}
         onKeepDuplicates={async () => {
-          await batchKeepDuplicates.mutateAsync(selectedIds);
+          await batchKeepDuplicates.mutateAsync({
+            ids: selectedDuplicateIds,
+            preserveIds: selectedOrdinaryIds,
+          });
         }}
         onDiscardDuplicates={async () => {
-          await batchDiscardDuplicates.mutateAsync(selectedIds);
+          await batchDiscardDuplicates.mutateAsync({
+            ids: selectedDuplicateIds,
+            preserveIds: selectedOrdinaryIds,
+          });
         }}
         isKeepingDuplicates={batchKeepDuplicates.isPending}
         isDiscardingDuplicates={batchDiscardDuplicates.isPending}

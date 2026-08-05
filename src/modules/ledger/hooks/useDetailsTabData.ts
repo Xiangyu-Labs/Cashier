@@ -25,6 +25,9 @@ export interface UseDetailsTabDataReturn {
   filterKey: string | null;
   startDateStr: string | null;
   endDateStr: string | null;
+  queryKey: readonly unknown[];
+  queryStatus: "pending" | "success" | "error";
+  queryIsFetching: boolean;
 }
 
 interface UseDetailsTabDataProps {
@@ -80,8 +83,12 @@ export function useDetailsTabData({
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
-    queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
+  const entriesQueryKey = useMemo(
+    () => queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
+    [endDateStr, filterKey, ledgerId, startDateStr]
+  );
+  const entriesQuery = useInfiniteQuery({
+    queryKey: entriesQueryKey,
     queryFn: ({ pageParam }) =>
       getLedgerEntriesAction(ledgerId, {
         limit: 50,
@@ -98,6 +105,7 @@ export function useDetailsTabData({
     initialPageParam: undefined as string | undefined,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = entriesQuery;
 
   const entries = useMemo(() => {
     if (!data?.pages) return [];
@@ -132,5 +140,8 @@ export function useDetailsTabData({
     filterKey,
     startDateStr,
     endDateStr,
+    queryKey: entriesQueryKey,
+    queryStatus: entriesQuery.status,
+    queryIsFetching: entriesQuery.isFetching,
   };
 }

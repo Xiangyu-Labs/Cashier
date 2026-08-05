@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale, useMessages, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -17,6 +17,8 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { getLedgerAction, getEntryCategoriesAction } from "@/modules/ledger/actions";
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
+import { FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
+import { useFeatureMessages } from "@/i18n/use-feature-messages";
 import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
@@ -29,6 +31,7 @@ import { LedgerStartupCacheSync } from "@/modules/workspace/ledger-startup-cache
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
 import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
 import type { LedgerDto } from "@/modules/ledger/contracts";
+import type { TabQueryStateReport } from "./tab-query-state";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -142,39 +145,28 @@ interface LedgerPageClientProps {
 
 type TabQueryState = "loading" | "success" | "error";
 
-function getActiveTabQueryPrefix(ledgerId: string, activeTab: LedgerTab) {
-  return activeTab === "stream"
-    ? queryKeys.sourceDocumentStreamPrefix(ledgerId)
-    : activeTab === "details"
-      ? (["ledgerEntries", ledgerId, "infinite"] as const)
-      : activeTab === "stats"
-        ? (["enhanced-stats", ledgerId] as const)
-        : queryKeys.ledgerSettings(ledgerId);
+function getFeatureForTab(activeTab: LedgerTab): keyof typeof FEATURE_MESSAGES {
+  return activeTab === "details"
+    ? "details"
+    : activeTab === "stats"
+      ? "stats"
+      : activeTab === "settings"
+        ? "settings"
+        : "stream";
 }
 
-function useActiveTabQueryState(ledgerId: string, activeTab: LedgerTab): TabQueryState {
-  const queryClient = useQueryClient();
-  const prefix = useMemo(() => getActiveTabQueryPrefix(ledgerId, activeTab), [activeTab, ledgerId]);
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => queryClient.getQueryCache().subscribe(onStoreChange),
-    [queryClient]
-  );
-  const getSnapshot = useCallback((): TabQueryState => {
-    const queries = queryClient.getQueryCache().findAll({ queryKey: prefix });
-    if (queries.some((query) => query.state.status === "success")) return "success";
-    if (
-      queries.some(
-        (query) => query.state.status === "pending" || query.state.fetchStatus === "fetching"
-      )
-    ) {
-      return "loading";
-    }
-    if (queries.some((query) => query.state.status === "error")) return "error";
-    return "loading";
-  }, [prefix, queryClient]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, () => "loading");
+function getActiveTabQueryState(
+  ledgerId: string,
+  activeTab: LedgerTab,
+  featureStatus: "loading" | "success" | "error",
+  report: TabQueryStateReport | null
+): TabQueryState {
+  if (featureStatus === "error") return "error";
+  if (featureStatus !== "success") return "loading";
+  if (report == null || report.ledgerId !== ledgerId || report.tab !== activeTab) return "loading";
+  if (report.status === "error") return report.isFetching ? "loading" : "error";
+  if (report.status === "pending") return "loading";
+  return "success";
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -226,6 +218,20 @@ function LedgerPageClientContent({
     pathname,
   });
 
+  const parentMessages = useMessages();
+  const activeFeature = getFeatureForTab(activeTab);
+  const activeFeatureMessages = useFeatureMessages(
+    locale,
+    activeFeature,
+    parentMessages as Record<string, unknown>
+  );
+  const activeFeatureStatus = activeFeatureMessages.status;
+  const retryFeatureMessages = activeFeatureMessages.retry;
+  const [tabQueryReport, setTabQueryReport] = useState<TabQueryStateReport | null>(null);
+  const handleQueryStateChange = useCallback((report: TabQueryStateReport) => {
+    setTabQueryReport(report);
+  }, []);
+
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const preferredCurrencies = ledger?.settings.currencies ?? [];
   const fixedTimeZone = ledger?.settings.timeZone ?? undefined;
@@ -251,11 +257,20 @@ function LedgerPageClientContent({
   });
 
   const advancedFilters = filterParams;
-  const activeTabQueryState = useActiveTabQueryState(ledgerId, activeTab);
+  const activeTabQueryState = useMemo(
+    () => getActiveTabQueryState(ledgerId, activeTab, activeFeatureStatus, tabQueryReport),
+    [activeFeatureStatus, activeTab, ledgerId, tabQueryReport]
+  );
   const retryActiveTab = useCallback(() => {
-    const prefix = getActiveTabQueryPrefix(ledgerId, activeTab);
-    void queryClient.refetchQueries({ queryKey: prefix });
-  }, [activeTab, ledgerId, queryClient]);
+    retryFeatureMessages();
+    if (
+      tabQueryReport?.ledgerId === ledgerId &&
+      tabQueryReport.tab === activeTab &&
+      tabQueryReport.queryKey.length > 0
+    ) {
+      void queryClient.refetchQueries({ queryKey: tabQueryReport.queryKey, exact: true });
+    }
+  }, [activeTab, ledgerId, queryClient, retryFeatureMessages, tabQueryReport]);
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
@@ -312,6 +327,7 @@ function LedgerPageClientContent({
                 collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
                 onApplyPreset={applyStreamStatusPreset}
                 onResetFilters={resetFilters}
+                onQueryStateChange={handleQueryStateChange}
                 {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
               />
             </div>
@@ -332,6 +348,7 @@ function LedgerPageClientContent({
                   onFiltersChange={handleFiltersChange}
                   advancedFilters={advancedFilters}
                   onResetFilters={resetFilters}
+                  onQueryStateChange={handleQueryStateChange}
                   {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
                 />
               </DeferredFeatureMessages>
@@ -351,6 +368,7 @@ function LedgerPageClientContent({
                   onCategoryDrilldown={handleCategoryDrilldown}
                   onDateDrilldown={handleDateDrilldown}
                   {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+                  onQueryStateChange={handleQueryStateChange}
                   {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
                 />
               </DeferredFeatureMessages>
@@ -372,6 +390,7 @@ function LedgerPageClientContent({
                   {...(hasPassword !== undefined ? { hasPassword } : {})}
                   {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
                   {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
+                  onQueryStateChange={handleQueryStateChange}
                 />
               </DeferredFeatureMessages>
             </div>

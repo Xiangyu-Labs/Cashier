@@ -138,7 +138,7 @@ export function LedgerEntriesToolbar({
 
       {showBatchActions && (
         <>
-          <div className="min-w-0 shrink-0 basis-full sm:basis-auto">
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 basis-full sm:basis-auto">
             <SourceDocumentActions
               isProcessing={isProcessing}
               isUpdatingDates={isUpdatingDates}

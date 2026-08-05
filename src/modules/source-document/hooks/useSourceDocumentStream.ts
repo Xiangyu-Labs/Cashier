@@ -113,14 +113,18 @@ export function useSourceDocumentStream(
     statusesKey != null ? (statusesKey.split(",") as SourceDocumentStatusType[]) : undefined;
 
   // Build stream page key that includes all filter params
-  const streamPageKey = queryKeys.sourceDocumentStream(ledgerId, {
-    startDate,
-    endDate,
-    ...(minAmount != null ? { minAmount } : {}),
-    ...(maxAmount != null ? { maxAmount } : {}),
-    statuses: statusesKey,
-    search: search ?? null,
-  });
+  const streamPageKey = useMemo(
+    () =>
+      queryKeys.sourceDocumentStream(ledgerId, {
+        startDate,
+        endDate,
+        ...(minAmount != null ? { minAmount } : {}),
+        ...(maxAmount != null ? { maxAmount } : {}),
+        statuses: statusesKey,
+        search: search ?? null,
+      }),
+    [endDate, ledgerId, maxAmount, minAmount, search, startDate, statusesKey]
+  );
 
   // Compute filter signature for refresh coordination
   const filterSignature = useMemo(
@@ -143,7 +147,7 @@ export function useSourceDocumentStream(
   const restartingRef = useRef(false);
   // C3: Persist first page fingerprint from server for refresh comparison
 
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
+  const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
     queryFn: ({ pageParam }) =>
       listStreamPageAction(ledgerId, {
@@ -163,6 +167,7 @@ export function useSourceDocumentStream(
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = streamQuery;
   const { data: entities = {} } = useQuery<SourceDocumentEntityStore>({
     queryKey: queryKeys.sourceDocumentEntities(ledgerId),
     queryFn: async () => ({}),
@@ -295,6 +300,9 @@ export function useSourceDocumentStream(
   return {
     streamGroups,
     isLoading,
+    queryKey: streamPageKey,
+    queryStatus: streamQuery.status,
+    queryIsFetching: streamQuery.isFetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,

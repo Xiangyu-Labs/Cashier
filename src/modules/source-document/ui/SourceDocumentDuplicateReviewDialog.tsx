@@ -34,6 +34,7 @@ import {
 } from "@/lib/query-keys";
 import { toast } from "sonner";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
+import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -144,6 +145,15 @@ export function SourceDocumentDuplicateReviewDialog({
   });
   const isPending = keepMutation.isPending || discardMutation.isPending;
   const data = reviewQuery.data;
+  const displayReason =
+    data?.review.reason == null
+      ? null
+      : normalizeDuplicateReason({
+          reason: data.review.reason,
+          currentSourceDocumentId: data.duplicate.id,
+          candidateSourceDocumentIds: data.matched == null ? [] : [data.matched.id],
+          aiLanguage: locale,
+        });
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
       <DialogContent
@@ -159,8 +169,8 @@ export function SourceDocumentDuplicateReviewDialog({
             <ShieldCheck className="h-4 w-4 text-warning" />
             {t("title")}
           </DialogTitle>
-          {data?.review.reason != null && data.review.reason !== "" && (
-            <p className="mt-1 text-xs text-muted-foreground">{data.review.reason}</p>
+          {displayReason != null && displayReason !== "" && (
+            <p className="mt-1 text-xs text-muted-foreground">{displayReason}</p>
           )}
         </DialogHeader>
 

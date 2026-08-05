@@ -20,6 +20,7 @@ import {
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
+import type { TabQueryStateReport } from "./tab-query-state";
 
 interface StatsTabProps {
   ledgerId?: string;
@@ -28,6 +29,7 @@ interface StatsTabProps {
   onDateDrilldown?: (date: string) => void;
   initialDate?: Date;
   timeZone?: string;
+  onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
 
 export function StatsTab({
@@ -37,6 +39,7 @@ export function StatsTab({
   onDateDrilldown,
   initialDate,
   timeZone,
+  onQueryStateChange,
 }: StatsTabProps) {
   const locale = useLocale();
   const queryClient = useQueryClient();
@@ -97,18 +100,22 @@ export function StatsTab({
     }
   }, [endDateStr, locale, rangeType, startDateStr]);
 
-  const enhancedStatsKey = queryKeys.enhancedStats(ledgerId ?? "", {
-    startDate: startDateStr,
-    endDate: endDateStr,
-    compareStartDate: prevDateStartStr,
-    compareEndDate: prevDateEndStr,
-    rangeType,
-    comparisonMode: mode,
-    ...(ledger?.settings.mainCurrency !== undefined
-      ? { mainCurrency: ledger.settings.mainCurrency }
-      : {}),
-  });
-  const { data: stats, isLoading } = useQuery({
+  const enhancedStatsKey = useMemo(
+    () =>
+      queryKeys.enhancedStats(ledgerId ?? "", {
+        startDate: startDateStr,
+        endDate: endDateStr,
+        compareStartDate: prevDateStartStr,
+        compareEndDate: prevDateEndStr,
+        rangeType,
+        comparisonMode: mode,
+        ...(ledger?.settings.mainCurrency !== undefined
+          ? { mainCurrency: ledger.settings.mainCurrency }
+          : {}),
+      }),
+    [endDateStr, ledger, ledgerId, mode, prevDateEndStr, prevDateStartStr, rangeType, startDateStr]
+  );
+  const statsQuery = useQuery({
     queryKey: enhancedStatsKey,
     queryFn: () =>
       getEnhancedStats({
@@ -126,6 +133,17 @@ export function StatsTab({
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
+  const { data: stats, isLoading } = statsQuery;
+
+  useEffect(() => {
+    onQueryStateChange?.({
+      ledgerId: ledgerId ?? "",
+      tab: "stats",
+      queryKey: enhancedStatsKey,
+      status: statsQuery.status,
+      isFetching: statsQuery.isFetching,
+    });
+  }, [enhancedStatsKey, ledgerId, onQueryStateChange, statsQuery.isFetching, statsQuery.status]);
 
   const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";

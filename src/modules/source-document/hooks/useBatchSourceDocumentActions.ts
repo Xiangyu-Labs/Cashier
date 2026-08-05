@@ -19,6 +19,17 @@ import type { BatchActionResult } from "@/lib/batch-ids";
 import type { BatchUpdateSourceDocumentsResultDto } from "@/modules/source-document/contracts";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 
+type DuplicateBatchVariables =
+  | string[]
+  | {
+      ids: string[];
+      preserveIds: string[];
+    };
+
+function getDuplicateBatchVariables(variables: DuplicateBatchVariables) {
+  return Array.isArray(variables) ? { ids: variables, preserveIds: [] } : variables;
+}
+
 export function useBatchSourceDocumentActions(
   ledgerId: string,
   clearSelection: () => void,
@@ -83,11 +94,16 @@ export function useBatchSourceDocumentActions(
     onSettled: settleDerivedQueries,
   });
 
-  const settleBatchResult = async (result: BatchActionResult, successLabel: string) => {
+  const settleBatchResult = async (
+    result: BatchActionResult,
+    successLabel: string,
+    preserveIds: string[] = []
+  ) => {
     notifyRefresh();
     const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
-    if (unresolved.length === 0) clearSelection();
-    else retainSelection?.(unresolved);
+    const retained = [...new Set([...preserveIds, ...unresolved])];
+    if (retained.length === 0) clearSelection();
+    else retainSelection?.(retained);
     if (result.succeededIds.length > 0) toast.success(successLabel);
     if (unresolved.length > 0) {
       toast.warning(
@@ -116,20 +132,35 @@ export function useBatchSourceDocumentActions(
     onSettled: settleDerivedQueries,
   });
 
-  const batchKeepDuplicates = useMutation<BatchActionResult, Error, string[]>({
-    mutationFn: (ids) => batchResolveDuplicateReviewsAction(ledgerId, ids, "keep"),
-    onSuccess: (result) =>
-      settleBatchResult(result, tBatch("duplicatesKept", { count: result.succeededIds.length })),
+  const batchKeepDuplicates = useMutation<BatchActionResult, Error, DuplicateBatchVariables>({
+    mutationFn: (variables) =>
+      batchResolveDuplicateReviewsAction(
+        ledgerId,
+        getDuplicateBatchVariables(variables).ids,
+        "keep"
+      ),
+    onSuccess: (result, variables) =>
+      settleBatchResult(
+        result,
+        tBatch("duplicatesKept", { count: result.succeededIds.length }),
+        getDuplicateBatchVariables(variables).preserveIds
+      ),
     onError: () => toast.error(tCommon("error")),
     onSettled: settleDerivedQueries,
   });
 
-  const batchDiscardDuplicates = useMutation<BatchActionResult, Error, string[]>({
-    mutationFn: (ids) => batchResolveDuplicateReviewsAction(ledgerId, ids, "discard"),
-    onSuccess: (result) =>
+  const batchDiscardDuplicates = useMutation<BatchActionResult, Error, DuplicateBatchVariables>({
+    mutationFn: (variables) =>
+      batchResolveDuplicateReviewsAction(
+        ledgerId,
+        getDuplicateBatchVariables(variables).ids,
+        "discard"
+      ),
+    onSuccess: (result, variables) =>
       settleBatchResult(
         result,
-        tBatch("duplicatesDiscarded", { count: result.succeededIds.length })
+        tBatch("duplicatesDiscarded", { count: result.succeededIds.length }),
+        getDuplicateBatchVariables(variables).preserveIds
       ),
     onError: () => toast.error(tCommon("error")),
     onSettled: settleDerivedQueries,
