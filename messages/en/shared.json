@@ -27,6 +27,7 @@
     "noMore": "No more items",
     "loadMore": "Load More",
     "discard": "Discard",
+    "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "statusDuplicatePending": "Duplicate pending"

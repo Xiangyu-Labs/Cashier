@@ -12,6 +12,7 @@ import {
   deleteSourceDocumentAction,
   batchUpdateSourceDocumentsAction,
   batchDeleteSourceDocumentsAction,
+  batchResolveDuplicateReviewsAction,
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import type { BatchActionResult } from "@/lib/batch-ids";
@@ -115,10 +116,31 @@ export function useBatchSourceDocumentActions(
     onSettled: settleDerivedQueries,
   });
 
+  const batchKeepDuplicates = useMutation<BatchActionResult, Error, string[]>({
+    mutationFn: (ids) => batchResolveDuplicateReviewsAction(ledgerId, ids, "keep"),
+    onSuccess: (result) =>
+      settleBatchResult(result, tBatch("duplicatesKept", { count: result.succeededIds.length })),
+    onError: () => toast.error(tCommon("error")),
+    onSettled: settleDerivedQueries,
+  });
+
+  const batchDiscardDuplicates = useMutation<BatchActionResult, Error, string[]>({
+    mutationFn: (ids) => batchResolveDuplicateReviewsAction(ledgerId, ids, "discard"),
+    onSuccess: (result) =>
+      settleBatchResult(
+        result,
+        tBatch("duplicatesDiscarded", { count: result.succeededIds.length })
+      ),
+    onError: () => toast.error(tCommon("error")),
+    onSettled: settleDerivedQueries,
+  });
+
   return {
     deleteSourceDocument,
     batchUpdateDates,
     batchDelete,
     batchRetry,
+    batchKeepDuplicates,
+    batchDiscardDuplicates,
   };
 }

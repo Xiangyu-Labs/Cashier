@@ -1,6 +1,7 @@
 import { Calendar, ChevronDown, DollarSign, Loader2, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { BatchActionButton } from "@/components/batch-action-button";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -49,20 +50,15 @@ export function LedgerEntriesActions({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isProcessing}
-            className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-          >
+          <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
             {isChangingCategory ? (
-              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+              <Tag className="size-4" />
             )}
             <span className="hidden sm:inline">{t("manualCategory")}</span>
             <span className="sm:hidden">{t("manualCategoryShort")}</span>
-            <ChevronDown className="w-3 h-3 ml-0.5 sm:ml-1 opacity-50" />
+            <ChevronDown className="size-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="w-48 max-h-64 overflow-y-auto">
@@ -84,46 +80,37 @@ export function LedgerEntriesActions({
       </DropdownMenu>
 
       {onChangeDate != null && (
-        <Button
+        <BatchActionButton
           variant="outline"
-          size="sm"
+          icon={Calendar}
           disabled={isProcessing}
           onClick={onChangeDate}
-          className="flex-1 h-8 text-xs sm:h-9"
         >
-          <Calendar className="mr-1 h-3.5 w-3.5" />
-          {t("setDateShort")}
-        </Button>
+          {t("setDate")}
+        </BatchActionButton>
       )}
       {onDelete != null && (
-        <Button
+        <BatchActionButton
           variant="destructive"
-          size="sm"
+          icon={Trash2}
           disabled={isProcessing}
           onClick={onDelete}
-          className="h-8 px-2 sm:h-9"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span className="sr-only">{t("delete")}</span>
-        </Button>
+          {t("delete")}
+        </BatchActionButton>
       )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isProcessing}
-            className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-          >
+          <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 px-3 text-sm">
             {isChangingCurrency ? (
-              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+              <DollarSign className="size-4" />
             )}
             <span className="hidden sm:inline">{t("setCurrency")}</span>
             <span className="sm:hidden">{t("setCurrencyShort")}</span>
-            <ChevronDown className="w-3 h-3 ml-0.5 sm:ml-1 opacity-50" />
+            <ChevronDown className="size-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="w-32 max-h-64 overflow-y-auto">

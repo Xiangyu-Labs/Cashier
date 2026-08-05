@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { redirect } from "@/i18n/routing";
@@ -13,9 +12,6 @@ import {
 } from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
-import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
-import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
-import { periodToDateRange } from "@/lib/period-utils";
 
 interface ActiveTabProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -46,8 +42,6 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
     getScopedLedgerSearchParams(urlSearchParams, filterScope)
   );
   const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
-  const dateRange = periodToDateRange(periodParams, ledgerDto.settings.timeZone ?? undefined);
-
   const allMessages = await messagesPromise;
   const activeFeature =
     activeTab === "details"
@@ -65,37 +59,17 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   return (
     <NextIntlClientProvider messages={activeMessages} locale={locale}>
       <ActiveShell ledgerId={ledgerId}>
-        {/*
-         * Inner Suspense wraps only the tab content that depends on
-         * getLedgerPageBootstrap. The shell (AppShell, Header,
-         * TabNavigation) is inside ActiveShell and renders immediately.
-         */}
-        <Suspense
-          fallback={
-            <LedgerStartupPreview
-              snapshotKey={ledgerStartupCacheKey(ledgerDto.userId, ledgerId)}
-              activeTab={activeTab}
-              initialFilters={{
-                ...advancedFilters,
-                ...(dateRange.startDate != null ? { startDate: dateRange.startDate } : {}),
-                ...(dateRange.endDate != null ? { endDate: dateRange.endDate } : {}),
-              }}
-            />
-          }
-        >
-          <ActiveContent
-            ledgerId={ledgerId}
-            ledgerDto={ledgerDto}
-            initialTab={activeTab}
-            periodParams={periodParams}
-            advancedFilters={advancedFilters}
-            {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
-            hasPassword={session.user?.hasPassword ?? false}
-            passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}
-            interfaceLanguage={session.user?.interfaceLanguage ?? "auto"}
-            locale={locale}
-          />
-        </Suspense>
+        <ActiveContent
+          ledgerId={ledgerId}
+          ledgerDto={ledgerDto}
+          initialTab={activeTab}
+          periodParams={periodParams}
+          advancedFilters={advancedFilters}
+          {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
+          hasPassword={session.user?.hasPassword ?? false}
+          passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}
+          interfaceLanguage={session.user?.interfaceLanguage ?? "auto"}
+        />
       </ActiveShell>
     </NextIntlClientProvider>
   );

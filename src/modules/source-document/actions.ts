@@ -36,5 +36,6 @@ export {
   getSourceDocumentDuplicateReviewAction,
   keepDuplicateSourceDocumentAction,
   discardDuplicateSourceDocumentAction,
+  batchResolveDuplicateReviewsAction,
 } from "./server-actions/duplicate-reviews";
 export { getStreamRefreshAction } from "./server-actions/refresh";

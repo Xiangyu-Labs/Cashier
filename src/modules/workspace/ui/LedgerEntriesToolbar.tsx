@@ -13,11 +13,13 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
 import type { ReactNode } from "react";
+import { BatchActionButton } from "@/components/batch-action-button";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
   isAllSelected: boolean;
   selectedCount: number;
+  selectedDuplicateCount?: number;
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
@@ -27,6 +29,10 @@ interface LedgerEntriesToolbarProps {
   onDelete?: () => Promise<void> | void;
   isRetrying?: boolean;
   isDeleting?: boolean;
+  onKeepDuplicates?: () => Promise<void> | void;
+  onDiscardDuplicates?: () => Promise<void> | void;
+  isKeepingDuplicates?: boolean;
+  isDiscardingDuplicates?: boolean;
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams: PeriodParams;
@@ -43,6 +49,7 @@ export function LedgerEntriesToolbar({
   isSelectionMode,
   isAllSelected,
   selectedCount,
+  selectedDuplicateCount = 0,
   onToggleSelectionMode,
   onSelectAll,
   onClearSelection,
@@ -52,6 +59,10 @@ export function LedgerEntriesToolbar({
   onDelete,
   isRetrying = false,
   isDeleting = false,
+  onKeepDuplicates,
+  onDiscardDuplicates,
+  isKeepingDuplicates = false,
+  isDiscardingDuplicates = false,
   filters,
   onFiltersChange,
   periodParams,
@@ -70,7 +81,8 @@ export function LedgerEntriesToolbar({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const showBatchActions = isSelectionMode && selectedCount > 0;
-  const isProcessing = isUpdatingDates || isRetrying || isDeleting;
+  const isProcessing =
+    isUpdatingDates || isRetrying || isDeleting || isKeepingDuplicates || isDiscardingDuplicates;
   const masterChecked: boolean | "indeterminate" = isAllSelected
     ? true
     : selectedCount > 0
@@ -99,13 +111,7 @@ export function LedgerEntriesToolbar({
         disabled={readOnly}
         className="shrink-0 h-8 w-8"
         title={
-          readOnly
-            ? locale.startsWith("zh")
-              ? "只读预览"
-              : "Read-only preview"
-            : isSelectionMode
-              ? t("cancelSelect")
-              : t("select")
+          readOnly ? tCommon("readOnlyPreview") : isSelectionMode ? t("cancelSelect") : t("select")
         }
       >
         {isSelectionMode ? <ArrowLeft className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
@@ -143,18 +149,22 @@ export function LedgerEntriesToolbar({
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               showUpdateDates={onUpdateDates !== undefined}
+              duplicateCount={selectedDuplicateCount}
+              {...(onKeepDuplicates != null ? { onKeepDuplicates } : {})}
+              {...(onDiscardDuplicates != null ? { onDiscardDuplicates } : {})}
+              isKeepingDuplicates={isKeepingDuplicates}
+              isDiscardingDuplicates={isDiscardingDuplicates}
             />
             {onRetry != null && (
-              <Button
+              <BatchActionButton
                 variant="outline"
-                size="sm"
+                icon={RefreshCw}
+                loading={isRetrying}
                 disabled={isProcessing}
                 onClick={onRetry}
-                className="ml-1 h-8 text-xs sm:h-9"
               >
-                <RefreshCw className={cn("mr-1 h-3.5 w-3.5", isRetrying && "animate-spin")} />
                 {tBatch("retry")}
-              </Button>
+              </BatchActionButton>
             )}
             {onDelete != null && (
               <ConfirmDialog
@@ -164,15 +174,14 @@ export function LedgerEntriesToolbar({
                 confirmLabel={tCommon("delete")}
                 onConfirm={onDelete}
                 trigger={
-                  <Button
+                  <BatchActionButton
                     variant="destructive"
-                    size="sm"
+                    icon={Trash2}
+                    loading={isDeleting}
                     disabled={isProcessing}
-                    className="ml-1 h-8 text-xs sm:h-9"
                   >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
                     {tCommon("delete")}
-                  </Button>
+                  </BatchActionButton>
                 }
               />
             )}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
+import { FEATURE_MESSAGE_VERSION } from "@/i18n/feature-message-version";
 
 export async function GET(
   _request: Request,
@@ -12,6 +13,9 @@ export async function GET(
   const messages = (await import(`../../../../../../messages/${locale}/${feature}.json`))
     .default as Record<string, unknown>;
   return NextResponse.json(messages, {
-    headers: { "Cache-Control": "no-store" },
+    headers: {
+      "Cache-Control": "no-store",
+      "X-Message-Version": FEATURE_MESSAGE_VERSION,
+    },
   });
 }

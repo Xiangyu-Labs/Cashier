@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { FEATURE_MESSAGES } from "./client-feature-messages";
+import { FEATURE_MESSAGE_VERSION } from "./feature-message-version";
 
 const messagePromises = new Map<string, Promise<Record<string, unknown>>>();
-const FEATURE_MESSAGE_API_VERSION = "2";
 
 export function preloadFeatureMessages(
   locale: string,
@@ -13,13 +13,10 @@ export function preloadFeatureMessages(
   const cacheKey = `${normalizedLocale}:${feature}`;
   const existing = messagePromises.get(cacheKey);
   if (existing != null) return existing;
-  const promise = fetch(
-    `/api/i18n/${normalizedLocale}/${feature}?v=${FEATURE_MESSAGE_API_VERSION}`,
-    {
-      credentials: "same-origin",
-      cache: "no-store",
-    }
-  )
+  const promise = fetch(`/api/i18n/${normalizedLocale}/${feature}?v=${FEATURE_MESSAGE_VERSION}`, {
+    credentials: "same-origin",
+    cache: "no-store",
+  })
     .then(async (response) => {
       if (!response.ok) throw new Error("Unable to load feature messages");
       return (await response.json()) as Record<string, unknown>;

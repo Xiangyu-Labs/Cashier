@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useMemo } from "react";
+import { useEffect } from "react";
 
 interface UseSelectionOptions {
   allIds: string[];
@@ -79,6 +80,36 @@ export function useSelection({ allIds }: UseSelectionOptions): UseSelectionRetur
   const retainSelection = useCallback((ids: string[]) => {
     setSelectedIds([...new Set(ids)]);
   }, []);
+
+  useEffect(() => {
+    if (!isSelectionMode) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+
+      // Radix handles Escape for the topmost Dialog, Popover, Select, or
+      // DropdownMenu first. Keep the underlying selection mode intact while
+      // any such layer is open, including nested image viewers/confirmations.
+      const openLayer = document.querySelector(
+        [
+          '[data-radix-dialog-content][data-state="open"]',
+          '[data-radix-alert-dialog-content][data-state="open"]',
+          '[data-radix-popover-content][data-state="open"]',
+          '[data-radix-select-content][data-state="open"]',
+          '[data-radix-menu-content][data-state="open"]',
+          '[role="dialog"][data-state="open"]',
+        ].join(", ")
+      );
+      if (openLayer != null) return;
+
+      event.preventDefault();
+      exitSelectionMode();
+    };
+
+    // Bubble phase is intentional: nested Radix layers retain priority.
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [exitSelectionMode, isSelectionMode]);
 
   return {
     selectedIds,

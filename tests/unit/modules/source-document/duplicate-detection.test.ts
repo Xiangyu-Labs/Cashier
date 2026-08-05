@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   detectDuplicateBill,
+  normalizeDuplicateReason,
   type DuplicateCandidateContract,
   type DuplicateDetectionInput,
 } from "@/modules/source-document/application/duplicate-detection";
@@ -341,5 +342,37 @@ describe("detectDuplicateBill", () => {
     const visualCall = generate.mock.calls[1]?.[0];
     const content = visualCall?.messages?.[0]?.content;
     expect(JSON.stringify(content)).toContain("candidate-1");
+  });
+});
+
+describe("normalizeDuplicateReason", () => {
+  it("removes only the current and shortlisted document IDs", () => {
+    const reason = normalizeDuplicateReason({
+      reason: "current-1 matches candidate-1; receipt 12345, amount 123, date 2026-08-05",
+      currentSourceDocumentId: "current-1",
+      candidateSourceDocumentIds: ["candidate-1"],
+    });
+
+    expect(reason).toBe("matches; receipt 12345, amount 123, date 2026-08-05");
+  });
+
+  it("uses a localized fallback when the model gives no usable reason", () => {
+    expect(
+      normalizeDuplicateReason({
+        reason: "   ",
+        aiLanguage: "zh-CN",
+        currentSourceDocumentId: "current-1",
+        candidateSourceDocumentIds: ["candidate-1"],
+      })
+    ).toBe("账单内容、金额和日期高度一致，疑似为同一笔消费。");
+
+    expect(
+      normalizeDuplicateReason({
+        reason: null,
+        aiLanguage: "en-US",
+        currentSourceDocumentId: "current-1",
+        candidateSourceDocumentIds: ["candidate-1"],
+      })
+    ).toBe("The bill content, amount, and date closely match and may represent the same purchase.");
   });
 });

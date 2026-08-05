@@ -1,8 +1,10 @@
-import { Calendar, Loader2 } from "lucide-react";
+import { Calendar, Check, Loader2, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { BatchActionButton } from "@/components/batch-action-button";
 
 interface SourceDocumentActionsProps {
   isProcessing: boolean;
@@ -14,6 +16,11 @@ interface SourceDocumentActionsProps {
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   showUpdateDates: boolean;
+  duplicateCount?: number;
+  onKeepDuplicates?: () => Promise<void> | void;
+  onDiscardDuplicates?: () => Promise<void> | void;
+  isKeepingDuplicates?: boolean;
+  isDiscardingDuplicates?: boolean;
 }
 
 export function SourceDocumentActions({
@@ -26,9 +33,16 @@ export function SourceDocumentActions({
   selectedDate,
   setSelectedDate,
   showUpdateDates,
+  duplicateCount = 0,
+  onKeepDuplicates,
+  onDiscardDuplicates,
+  isKeepingDuplicates = false,
+  isDiscardingDuplicates = false,
 }: SourceDocumentActionsProps) {
   const t = useTranslations("BatchActions");
   const tCommon = useTranslations("Common");
+  const showDuplicateActions =
+    duplicateCount > 0 && onKeepDuplicates != null && onDiscardDuplicates != null;
 
   return (
     <>
@@ -39,15 +53,14 @@ export function SourceDocumentActions({
               variant="outline"
               size="sm"
               disabled={isProcessing}
-              className="flex-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+              className="h-9 px-3 text-sm"
             >
               {isUpdatingDates ? (
-                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+                <Calendar className="size-4" />
               )}
-              <span className="hidden sm:inline">{t("setDate")}</span>
-              <span className="sm:hidden">{t("setDateShort")}</span>
+              <span>{t("setDate")}</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="center">
@@ -75,6 +88,36 @@ export function SourceDocumentActions({
             </div>
           </PopoverContent>
         </Popover>
+      )}
+      {showDuplicateActions && (
+        <>
+          <BatchActionButton
+            variant="outline"
+            icon={Check}
+            loading={isKeepingDuplicates}
+            disabled={isProcessing}
+            onClick={onKeepDuplicates}
+          >
+            {t("keepDuplicates", { count: duplicateCount })}
+          </BatchActionButton>
+          <ConfirmDialog
+            title={t("deleteDuplicatesTitle")}
+            description={t("deleteDuplicatesDescription", { count: duplicateCount })}
+            variant="destructive"
+            confirmLabel={t("deleteDuplicates", { count: duplicateCount })}
+            onConfirm={onDiscardDuplicates}
+            trigger={
+              <BatchActionButton
+                variant="destructive"
+                icon={Trash2}
+                loading={isDiscardingDuplicates}
+                disabled={isProcessing}
+              >
+                {t("deleteDuplicates", { count: duplicateCount })}
+              </BatchActionButton>
+            }
+          />
+        </>
       )}
     </>
   );

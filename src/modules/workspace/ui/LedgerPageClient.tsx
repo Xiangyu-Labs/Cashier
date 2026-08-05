@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/routing";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +26,9 @@ import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/re
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerStartupCacheSync } from "@/modules/workspace/ledger-startup-cache-sync";
+import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
+import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
+import type { LedgerDto } from "@/modules/ledger/contracts";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -67,7 +70,7 @@ export function preloadNewRecordModules() {
 
 function InputFormLoadingFallback() {
   return (
-    <div aria-hidden className="min-h-[26rem] space-y-4 pt-1">
+    <div aria-hidden className="space-y-4 pt-1">
       <Skeleton className="h-9 w-full" />
       <Skeleton className="h-9 w-full" />
       <Skeleton className="h-28 w-full" />
@@ -126,6 +129,7 @@ function Skeleton({ className }: { className?: string }) {
 
 interface LedgerPageClientProps {
   ledgerId: string;
+  initialLedger?: LedgerDto;
   initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
@@ -134,6 +138,43 @@ interface LedgerPageClientProps {
   hasPassword?: boolean;
   passwordUpdatedAt?: string | null;
   interfaceLanguage?: InterfaceLanguage;
+}
+
+type TabQueryState = "loading" | "success" | "error";
+
+function getActiveTabQueryPrefix(ledgerId: string, activeTab: LedgerTab) {
+  return activeTab === "stream"
+    ? queryKeys.sourceDocumentStreamPrefix(ledgerId)
+    : activeTab === "details"
+      ? (["ledgerEntries", ledgerId, "infinite"] as const)
+      : activeTab === "stats"
+        ? (["enhanced-stats", ledgerId] as const)
+        : queryKeys.ledgerSettings(ledgerId);
+}
+
+function useActiveTabQueryState(ledgerId: string, activeTab: LedgerTab): TabQueryState {
+  const queryClient = useQueryClient();
+  const prefix = useMemo(() => getActiveTabQueryPrefix(ledgerId, activeTab), [activeTab, ledgerId]);
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => queryClient.getQueryCache().subscribe(onStoreChange),
+    [queryClient]
+  );
+  const getSnapshot = useCallback((): TabQueryState => {
+    const queries = queryClient.getQueryCache().findAll({ queryKey: prefix });
+    if (queries.some((query) => query.state.status === "success")) return "success";
+    if (
+      queries.some(
+        (query) => query.state.status === "pending" || query.state.fetchStatus === "fetching"
+      )
+    ) {
+      return "loading";
+    }
+    if (queries.some((query) => query.state.status === "error")) return "error";
+    return "loading";
+  }, [prefix, queryClient]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => "loading");
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -151,6 +192,7 @@ export function LedgerPageClient({ ...props }: LedgerPageClientProps) {
 
 function LedgerPageClientContent({
   ledgerId,
+  initialLedger,
   initialTab,
   initialPeriod,
   initialStatsDate,
@@ -164,10 +206,12 @@ function LedgerPageClientContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const queryClient = useQueryClient();
   const { data: ledger } = useQuery({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
     staleTime: STALE_TIME,
+    ...(initialLedger !== undefined ? { initialData: initialLedger } : {}),
   });
 
   const { data: categories = [] } = useQuery({
@@ -191,16 +235,27 @@ function LedgerPageClientContent({
     getServerTimeZone
   );
   const effectiveTimeZone = fixedTimeZone ?? deviceTimeZone;
-  const { periodParams, filterParams, handleFiltersChange, applyStreamStatusPreset, resetFilters } =
-    usePeriodFilter({
-      pathname,
-      searchParams,
-      initialPeriod,
-      scope: activeTab === "details" ? "details" : "stream",
-      ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
-    });
+  const {
+    periodParams,
+    filters,
+    filterParams,
+    handleFiltersChange,
+    applyStreamStatusPreset,
+    resetFilters,
+  } = usePeriodFilter({
+    pathname,
+    searchParams,
+    initialPeriod,
+    scope: activeTab === "details" ? "details" : "stream",
+    ...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {}),
+  });
 
   const advancedFilters = filterParams;
+  const activeTabQueryState = useActiveTabQueryState(ledgerId, activeTab);
+  const retryActiveTab = useCallback(() => {
+    const prefix = getActiveTabQueryPrefix(ledgerId, activeTab);
+    void queryClient.refetchQueries({ queryKey: prefix });
+  }, [activeTab, ledgerId, queryClient]);
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
@@ -244,81 +299,93 @@ function LedgerPageClientContent({
       />
       <div>
         {/* Only mount the active tab — inactive tabs load lazily */}
-        {activeTab === "stream" && (
-          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-            <LedgerEntriesTab
-              ledgerId={ledgerId}
-              categories={categories.length > 0 ? categories : []}
-              ledger={ledger}
-              periodParams={periodParams}
-              onFiltersChange={handleFiltersChange}
-              advancedFilters={advancedFilters}
-              collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
-              onApplyPreset={applyStreamStatusPreset}
-              onResetFilters={resetFilters}
-              {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-            />
-          </div>
-        )}
-
-        {activeTab === "details" && (
-          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-            <DeferredFeatureMessages
-              feature="details"
-              locale={locale}
-              fallback={<DetailsTabSkeleton />}
-            >
-              <DetailsTab
+        <div className={activeTabQueryState === "success" ? undefined : "hidden"}>
+          {activeTab === "stream" && (
+            <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+              <LedgerEntriesTab
                 ledgerId={ledgerId}
                 categories={categories.length > 0 ? categories : []}
                 ledger={ledger}
                 periodParams={periodParams}
                 onFiltersChange={handleFiltersChange}
                 advancedFilters={advancedFilters}
+                collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
+                onApplyPreset={applyStreamStatusPreset}
                 onResetFilters={resetFilters}
                 {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
               />
-            </DeferredFeatureMessages>
-          </div>
-        )}
+            </div>
+          )}
 
-        {activeTab === "stats" && (
-          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-            <DeferredFeatureMessages
-              feature="stats"
-              locale={locale}
-              fallback={<StatsTabSkeleton />}
-            >
-              <StatsTab
-                ledgerId={ledgerId}
-                ledger={ledger}
-                onCategoryDrilldown={handleCategoryDrilldown}
-                onDateDrilldown={handleDateDrilldown}
-                {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
-                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-              />
-            </DeferredFeatureMessages>
-          </div>
-        )}
+          {activeTab === "details" && (
+            <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+              <DeferredFeatureMessages
+                feature="details"
+                locale={locale}
+                fallback={<DetailsTabSkeleton />}
+              >
+                <DetailsTab
+                  ledgerId={ledgerId}
+                  categories={categories.length > 0 ? categories : []}
+                  ledger={ledger}
+                  periodParams={periodParams}
+                  onFiltersChange={handleFiltersChange}
+                  advancedFilters={advancedFilters}
+                  onResetFilters={resetFilters}
+                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                />
+              </DeferredFeatureMessages>
+            </div>
+          )}
 
-        {activeTab === "settings" && (
-          <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-            <DeferredFeatureMessages
-              feature="settings"
-              locale={locale}
-              fallback={<SettingsTabSkeleton />}
-            >
-              <SettingsTab
-                ledgerId={ledgerId}
-                ledger={ledger}
-                initialCategories={categories}
-                {...(userEmail !== undefined ? { userEmail } : {})}
-                {...(hasPassword !== undefined ? { hasPassword } : {})}
-                {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
-                {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
-              />
-            </DeferredFeatureMessages>
-          </div>
+          {activeTab === "stats" && (
+            <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+              <DeferredFeatureMessages
+                feature="stats"
+                locale={locale}
+                fallback={<StatsTabSkeleton />}
+              >
+                <StatsTab
+                  ledgerId={ledgerId}
+                  ledger={ledger}
+                  onCategoryDrilldown={handleCategoryDrilldown}
+                  onDateDrilldown={handleDateDrilldown}
+                  {...(initialStatsDate !== undefined ? { initialDate: initialStatsDate } : {})}
+                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                />
+              </DeferredFeatureMessages>
+            </div>
+          )}
+
+          {activeTab === "settings" && (
+            <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
+              <DeferredFeatureMessages
+                feature="settings"
+                locale={locale}
+                fallback={<SettingsTabSkeleton />}
+              >
+                <SettingsTab
+                  ledgerId={ledgerId}
+                  ledger={ledger}
+                  initialCategories={categories}
+                  {...(userEmail !== undefined ? { userEmail } : {})}
+                  {...(hasPassword !== undefined ? { hasPassword } : {})}
+                  {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
+                  {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
+                />
+              </DeferredFeatureMessages>
+            </div>
+          )}
+        </div>
+
+        {activeTabQueryState !== "success" && (
+          <LedgerStartupPreview
+            snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
+            activeTab={activeTab}
+            initialFilters={filters}
+            queryState={activeTabQueryState}
+            onRetry={retryActiveTab}
+          />
         )}
 
         <Dialog
@@ -343,7 +410,7 @@ function LedgerPageClientContent({
             <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
               <DialogTitle>{t("newRecord")}</DialogTitle>
             </DialogHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-none sm:p-6">
               <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
                 <button
                   onClick={() => setInputMode("ai")}
@@ -369,7 +436,7 @@ function LedgerPageClientContent({
                 </button>
               </div>
 
-              <div className="min-h-[26rem]">
+              <div>
                 <DeferredFeatureMessages
                   feature="stream"
                   locale={locale}

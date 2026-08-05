@@ -35,6 +35,11 @@ export interface SourceDocumentFilterInput {
   search?: string;
 }
 
+export interface PendingDuplicateReviewContract {
+  sourceDocumentId: string;
+  revisionId: string;
+}
+
 export interface SourceDocumentListInput extends SourceDocumentFilterInput {
   cursor?: string | null;
   limit: number;
@@ -44,6 +49,10 @@ export interface SourceDocumentListInput extends SourceDocumentFilterInput {
 export interface SourceDocumentReadPort {
   calculateCompletedTotal(input: SourceDocumentFilterInput): Promise<{ total: string }>;
   counts(ledgerId: string): Promise<SourceDocumentCountsDto>;
+  listPendingDuplicateReviews(
+    ledgerId: string,
+    sourceDocumentIds: readonly string[]
+  ): Promise<PendingDuplicateReviewContract[]>;
   get(ledgerId: string, sourceDocumentId: string): Promise<SourceDocumentDto | null>;
   getAccessContext(
     sourceDocumentId: string

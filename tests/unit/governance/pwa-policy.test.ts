@@ -66,7 +66,9 @@ describe("PWA policy", () => {
     const details = read("src/modules/workspace/ui/LedgerStartupDetailsPreview.tsx");
     const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(preview).toContain("readLedgerStartupSnapshot");
-    expect(preview).toContain('"正在加载最新数据"');
+    expect(preview).toContain('useTranslations("LedgerPage")');
+    expect(preview).toContain('t("loadingLatest")');
+    expect(preview).not.toContain("正在加载最新数据");
     expect(preview).toContain("SettingsTabSkeleton");
     for (const source of [preview, stream, details]) {
       expect(source).not.toContain("useMutation");
@@ -80,8 +82,9 @@ describe("PWA policy", () => {
 
   it("keeps server-rendered cache keys outside the client IndexedDB module", () => {
     const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
-    expect(activeTab).toContain('from "@/modules/workspace/ledger-startup-cache-constants"');
-    expect(activeTab).toContain("ledgerStartupCacheKey");
+    const pageClient = read("src/modules/workspace/ui/LedgerPageClient.tsx");
+    expect(pageClient).toContain('from "@/modules/workspace/ledger-startup-cache-constants"');
+    expect(pageClient).toContain("ledgerStartupCacheKey");
     expect(activeTab).not.toContain("ledger-startup-cache-store");
   });
 

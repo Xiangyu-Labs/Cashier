@@ -40,7 +40,7 @@ export function SelectableCardSurface({
           <span
             aria-hidden="true"
             className={cn(
-              "absolute left-3 top-6 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm border border-primary bg-background text-primary-foreground",
+              "absolute left-3 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm border border-primary bg-background text-primary-foreground",
               selected && "bg-primary"
             )}
           >

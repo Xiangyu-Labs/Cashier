@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -15,6 +16,7 @@ import {
   countSourceDocumentsByStatus,
   getSourceDocumentDuplicateReview,
   getTargetSourceDocument,
+  listPendingDuplicateReviews,
   listTargetSourceDocuments,
 } from "@/application/adapters/postgres/read-models";
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
@@ -22,6 +24,7 @@ import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-read
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import {
+  batchResolveDuplicateReviews,
   keepDuplicateDocument,
   discardDuplicateDocument,
 } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
@@ -502,6 +505,110 @@ describe("duplicate review lifecycle", () => {
         lifecycle
       )
     ).rejects.toThrow("Source document");
+  });
+
+  it("batch-keeps only pending duplicates within the requested ledger", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-batch");
+    const { ledgerId: otherLedgerId } = await createTestUserWithLedger(
+      db,
+      "duplicate-batch-other@example.com",
+      undefined,
+      randomUUID()
+    );
+    const original = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId,
+      title: "Original",
+      entryDate: "2026-08-05",
+      submittedText: null,
+      entries: [entry],
+    });
+    const otherOriginal = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId: otherLedgerId,
+      title: "Other original",
+      entryDate: "2026-08-05",
+      submittedText: null,
+      entries: [entry],
+    });
+    const first = await createDuplicatePendingDocument(db, ledgerId);
+    const other = await createDuplicatePendingDocument(db, otherLedgerId);
+
+    await storeDuplicatePendingRevision(
+      ledgerId,
+      first.sourceDocumentId,
+      first.revisionId,
+      "Original",
+      [entry],
+      {
+        matchedSourceDocumentId: original.sourceDocumentId,
+        reason: "Same bill",
+        confidence: 0.95,
+      }
+    );
+    await storeDuplicatePendingRevision(
+      otherLedgerId,
+      other.sourceDocumentId,
+      other.revisionId,
+      "Other ledger",
+      [entry],
+      {
+        matchedSourceDocumentId: otherOriginal.sourceDocumentId,
+        reason: "Same bill",
+        confidence: 0.95,
+      }
+    );
+
+    const result = await batchResolveDuplicateReviews(
+      {
+        ledgerId,
+        sourceDocumentIds: [
+          first.sourceDocumentId,
+          original.sourceDocumentId,
+          other.sourceDocumentId,
+        ],
+        decision: "keep",
+      },
+      {
+        reviews: { listPendingDuplicateReviews },
+        lifecycle: {
+          keepDuplicate: activateDuplicatePendingRevision,
+          discardDuplicate: discardDuplicatePendingRevision,
+        },
+      }
+    );
+
+    expect(result).toMatchObject({
+      requestedCount: 3,
+      succeededIds: [first.sourceDocumentId],
+      skipped: expect.arrayContaining([
+        { id: original.sourceDocumentId, reason: "not_duplicate_pending" },
+        { id: other.sourceDocumentId, reason: "not_duplicate_pending" },
+      ]),
+    });
+    await expect(getTargetSourceDocument(ledgerId, first.sourceDocumentId)).resolves.toMatchObject({
+      status: "completed",
+    });
+    await expect(
+      getTargetSourceDocument(otherLedgerId, other.sourceDocumentId)
+    ).resolves.toMatchObject({ status: "duplicate_pending" });
+
+    const repeat = await batchResolveDuplicateReviews(
+      {
+        ledgerId,
+        sourceDocumentIds: [first.sourceDocumentId],
+        decision: "keep",
+      },
+      {
+        reviews: { listPendingDuplicateReviews },
+        lifecycle: {
+          keepDuplicate: activateDuplicatePendingRevision,
+          discardDuplicate: discardDuplicatePendingRevision,
+        },
+      }
+    );
+    expect(repeat.skipped).toEqual([
+      { id: first.sourceDocumentId, reason: "not_duplicate_pending" },
+    ]);
   });
 
   it("lists same-day completed AI candidates and excludes manual/different-date docs", async () => {

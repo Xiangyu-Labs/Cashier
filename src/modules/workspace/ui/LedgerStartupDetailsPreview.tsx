@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
@@ -31,6 +31,7 @@ export function LedgerStartupDetailsPreview({
   initialFilters,
 }: LedgerStartupDetailsPreviewProps) {
   const locale = useLocale();
+  const t = useTranslations("LedgerPage");
   const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
   const mainCurrency = snapshot.mainCurrency ?? "CNY";
@@ -77,19 +78,25 @@ export function LedgerStartupDetailsPreview({
           onResetFilters={() => setFilters({})}
         />
       </EntriesToolbarShell>
-      <div className="space-y-6 pt-2">
-        <LedgerEntryGroupsView
-          groups={groupedItems}
-          categories={snapshot.categories ?? []}
-          mainCurrency={mainCurrency}
-          onView={(entry) => {
-            const document = matches.find(
-              (item) => item.document.id === entry.sourceDocumentId
-            )?.document;
-            if (document != null) setSelected(document as unknown as SourceDocument);
-          }}
-        />
-      </div>
+      {groupedItems.length === 0 ? (
+        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+          {t("cachedNoRecords")}
+        </p>
+      ) : (
+        <div className="space-y-6 pt-2">
+          <LedgerEntryGroupsView
+            groups={groupedItems}
+            categories={snapshot.categories ?? []}
+            mainCurrency={mainCurrency}
+            onView={(entry) => {
+              const document = matches.find(
+                (item) => item.document.id === entry.sourceDocumentId
+              )?.document;
+              if (document != null) setSelected(document as unknown as SourceDocument);
+            }}
+          />
+        </div>
+      )}
       <SourceDocumentDetailModal
         ledgerId={snapshot.ledgerId}
         sourceDocument={selected}

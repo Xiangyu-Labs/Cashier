@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  batchResolveDuplicateReviews,
   keepDuplicateDocument,
   discardDuplicateDocument,
 } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
@@ -10,6 +11,9 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 import type { ResolveDuplicateReviewResult } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
+import type { BatchActionResult } from "@/lib/batch-ids";
+import { sourceDocumentIdsSchema } from "@/modules/source-document/contract-schemas";
+import { ValidationError } from "@/lib/errors";
 
 export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentDuplicateReviewDetailDto> =>
@@ -77,5 +81,25 @@ export const discardDuplicateSourceDocumentAction = withSourceDocumentLedgerAcce
         sourceDocumentId
       ),
     };
+  }
+);
+
+export const batchResolveDuplicateReviewsAction = withSourceDocumentLedgerAccess(
+  async (
+    { ledgerId },
+    inputIds: string[],
+    decision: "keep" | "discard"
+  ): Promise<BatchActionResult> => {
+    const ids = sourceDocumentIdsSchema.parse(inputIds);
+    if (decision !== "keep" && decision !== "discard") {
+      throw new ValidationError("Invalid duplicate review decision");
+    }
+    return batchResolveDuplicateReviews(
+      { ledgerId, sourceDocumentIds: ids, decision },
+      {
+        reviews: serverComposition.sourceDocumentReads,
+        lifecycle: serverComposition.sourceDocumentLifecycle,
+      }
+    );
   }
 );

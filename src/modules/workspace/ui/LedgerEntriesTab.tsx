@@ -142,8 +142,26 @@ export function LedgerEntriesTab({
     isAllSelected,
   } = useSelection({ allIds: allSourceDocumentIds });
 
-  const { deleteSourceDocument, batchUpdateDates, batchDelete, batchRetry } =
-    useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
+  const {
+    deleteSourceDocument,
+    batchUpdateDates,
+    batchDelete,
+    batchRetry,
+    batchKeepDuplicates,
+    batchDiscardDuplicates,
+  } = useBatchSourceDocumentActions(ledgerId, clearSelection, retainSelection);
+  const selectedDuplicateCount = useMemo(() => {
+    if (selectedIds.length === 0) return 0;
+    const statusById = new Map(
+      streamGroups.flatMap((group) =>
+        group.items.map((item) => [item.sourceDocument.id, item.sourceDocument.status] as const)
+      )
+    );
+    return selectedIds.reduce(
+      (count, id) => count + (statusById.get(id) === "duplicate_pending" ? 1 : 0),
+      0
+    );
+  }, [selectedIds, streamGroups]);
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
     return () => {
@@ -227,6 +245,7 @@ export function LedgerEntriesTab({
         isSelectionMode={isSelectionMode}
         isAllSelected={isAllSelected}
         selectedCount={selectedIds.length}
+        selectedDuplicateCount={selectedDuplicateCount}
         onToggleSelectionMode={handleToggleSelectionMode}
         onSelectAll={selectAll}
         onClearSelection={clearSelection}
@@ -240,6 +259,14 @@ export function LedgerEntriesTab({
         }}
         isRetrying={batchRetry.isPending}
         isDeleting={batchDelete.isPending}
+        onKeepDuplicates={async () => {
+          await batchKeepDuplicates.mutateAsync(selectedIds);
+        }}
+        onDiscardDuplicates={async () => {
+          await batchDiscardDuplicates.mutateAsync(selectedIds);
+        }}
+        isKeepingDuplicates={batchKeepDuplicates.isPending}
+        isDiscardingDuplicates={batchDiscardDuplicates.isPending}
         filters={filters}
         onFiltersChange={onFiltersChange}
         periodParams={periodParams}

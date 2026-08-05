@@ -71,6 +71,55 @@ export interface DuplicateVerdict {
   reason: string | null;
 }
 
+export interface DuplicateReasonNormalizationInput {
+  reason: string | null | undefined;
+  aiLanguage?: string;
+  currentSourceDocumentId: string;
+  candidateSourceDocumentIds: readonly string[];
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function documentIdPattern(id: string): RegExp {
+  return new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegExp(id)}(?![\\p{L}\\p{N}_-])`, "giu");
+}
+
+function duplicateReasonFallback(aiLanguage?: string): string {
+  return aiLanguage?.trim().toLocaleLowerCase().startsWith("zh")
+    ? "账单内容、金额和日期高度一致，疑似为同一笔消费。"
+    : "The bill content, amount, and date closely match and may represent the same purchase.";
+}
+
+/**
+ * Keeps the model's useful comparison evidence while removing only the
+ * document IDs that were actually included in the comparison prompt.
+ * Other numbers (receipt numbers, order numbers, amounts, and dates) are
+ * intentionally left untouched.
+ */
+export function normalizeDuplicateReason({
+  reason,
+  aiLanguage,
+  currentSourceDocumentId,
+  candidateSourceDocumentIds,
+}: DuplicateReasonNormalizationInput): string {
+  const ids = [currentSourceDocumentId, ...candidateSourceDocumentIds].filter(
+    (id, index, values) => id !== "" && values.indexOf(id) === index
+  );
+  const patterns = ids.map(documentIdPattern);
+  const sanitized = patterns
+    .reduce((value, pattern) => value.replace(pattern, ""), reason ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?，。；：！？])/g, "$1")
+    .trim();
+
+  if (sanitized === "" || patterns.some((pattern) => pattern.test(sanitized))) {
+    return duplicateReasonFallback(aiLanguage);
+  }
+  return sanitized;
+}
+
 function noDuplicate(candidatesConsidered = 0): DuplicateDetectionResult {
   return {
     duplicate: false,
@@ -266,6 +315,7 @@ async function shortlistCandidates(
           "Pick at most 2 candidates that are most likely the same physical bill as CURRENT.",
           "Ignore entries order and formatting; match by merchant, item names, and total.",
           "Return strict JSON: an array of candidate ids (strings). Empty array when nothing matches.",
+          "Never put any document ID, candidate ID, UUID, or internal label in a human-readable reason.",
         ].join("\n"),
         messages: [{ role: "user", content: shortlistPrompt(input, candidates) }],
         model: "text",
@@ -346,6 +396,8 @@ function visualPromptParts(
         "Return strict JSON only, with this exact shape:",
         '{"duplicate": boolean, "matchedSourceDocumentId": string|null, "confidence": number between 0 and 1, "reason": string|null}',
         "Set duplicate=true only when you are highly confident.",
+        "The reason must describe only matching evidence such as merchant, item, amount, date, or layout.",
+        "Never include CURRENT, CANDIDATE labels, document IDs, candidate IDs, UUIDs, or other internal identifiers in reason.",
       ].join("\n"),
     });
     return parts;
@@ -423,7 +475,12 @@ export async function detectDuplicateBill(
       duplicate: true,
       matchedSourceDocumentId: verdict.matchedSourceDocumentId,
       confidence: verdict.confidence,
-      reason: verdict.reason,
+      reason: normalizeDuplicateReason({
+        reason: verdict.reason,
+        currentSourceDocumentId: input.sourceDocumentId,
+        candidateSourceDocumentIds: shortlist.map((candidate) => candidate.sourceDocumentId),
+        ...(input.aiLanguage != null ? { aiLanguage: input.aiLanguage } : {}),
+      }),
       candidatesConsidered: candidates.length,
     };
   } catch (error) {

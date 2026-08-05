@@ -80,7 +80,13 @@
     "quickEntry": "Quick Entry",
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
-    "attentionCountLabel": "Documents requiring confirmation or correction"
+    "attentionCountLabel": "Documents requiring confirmation or correction",
+    "loadingLatest": "Loading latest data",
+    "startupCacheError": "Latest data could not be loaded.",
+    "retry": "Retry",
+    "cachedNoRecords": "No cached records match",
+    "total": "Total",
+    "readOnlyPreview": "Read-only preview"
   },
   "DetailsTab": {
     "noMore": "No more items",
@@ -125,7 +131,13 @@
     "deleteDescription": "Delete the selected {count} records? This cannot be undone.",
     "deleted": "Deleted {count} records",
     "retried": "Submitted {count} records for retry",
-    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}"
+    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}",
+    "keepDuplicates": "Keep possible duplicates ({count})",
+    "deleteDuplicates": "Delete duplicates ({count})",
+    "deleteDuplicatesTitle": "Delete possible duplicates",
+    "deleteDuplicatesDescription": "Delete the selected {count} possible duplicates? This cannot be undone.",
+    "duplicatesKept": "Kept {count} possible duplicates",
+    "duplicatesDiscarded": "Deleted {count} duplicates"
   },
   "EntryFilterPanel": {
     "filter": "Filter",
@@ -146,12 +158,14 @@
     "allStatuses": "All Statuses",
     "needsAttention": "Needs Attention",
     "inProgress": "In Progress",
+    "possibleDuplicates": "Possible duplicates",
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusAnomaly": "Anomaly",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusCandidatePending": "Candidate Pending",
+    "statusDuplicatePending": "Duplicate pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -183,6 +197,7 @@
     "vsPreviousPeriod": "vs previous period",
     "noStats": "No stats yet",
     "noStatsDesc": "Record a few entries and this section will show where the money went.",
+    "uncategorized": "Uncategorized",
     "lastWeek": "last week",
     "lastMonth": "last month",
     "lastYear": "last year",
@@ -302,6 +317,7 @@
     "noMore": "No more items",
     "loadMore": "Load More",
     "discard": "Discard",
+    "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "statusDuplicatePending": "Duplicate pending"

@@ -486,6 +486,14 @@ export function EntryFilterPanel({
               variant="outline"
               size="sm"
               className="text-xs h-7"
+              onClick={() => handlePreset("possible_duplicates")}
+            >
+              {t("possibleDuplicates")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7"
               onClick={() => handlePreset("in_progress")}
             >
               {t("inProgress")}

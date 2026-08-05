@@ -80,7 +80,13 @@
     "quickEntry": "快速记账",
     "singleBook": "你的个人账本",
     "processingCountLabel": "处理中的单据",
-    "attentionCountLabel": "待确认或修正的单据"
+    "attentionCountLabel": "待确认或修正的单据",
+    "loadingLatest": "正在加载最新数据",
+    "startupCacheError": "最新数据加载失败。",
+    "retry": "重试",
+    "cachedNoRecords": "没有符合条件的缓存单据",
+    "total": "合计",
+    "readOnlyPreview": "只读预览"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",
@@ -125,7 +131,13 @@
     "deleteDescription": "确定删除所选 {count} 条记录吗？此操作无法撤销。",
     "deleted": "已删除 {count} 条记录",
     "retried": "已提交 {count} 条记录重试",
-    "partialResult": "成功 {succeeded} 项，跳过 {skipped} 项，失败 {failed} 项"
+    "partialResult": "成功 {succeeded} 项，跳过 {skipped} 项，失败 {failed} 项",
+    "keepDuplicates": "保留疑似重复（{count}）",
+    "deleteDuplicates": "删除重复项（{count}）",
+    "deleteDuplicatesTitle": "删除疑似重复账单",
+    "deleteDuplicatesDescription": "确定删除所选 {count} 项疑似重复账单吗？此操作无法撤销。",
+    "duplicatesKept": "已保留 {count} 项疑似重复账单",
+    "duplicatesDiscarded": "已删除 {count} 项重复账单"
   },
   "EntryFilterPanel": {
     "filter": "筛选",
@@ -146,12 +158,14 @@
     "allStatuses": "全部状态",
     "needsAttention": "待处理",
     "inProgress": "进行中",
+    "possibleDuplicates": "疑似重复",
     "statusProcessing": "处理中",
     "statusCompleted": "已完成",
     "statusAnomaly": "异常",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
     "statusCandidatePending": "待核准",
+    "statusDuplicatePending": "待确认重复",
     "statusSummary": "状态：{label}",
     "search": "搜索",
     "searchPlaceholder": "搜索标题、名称或描述",
@@ -183,6 +197,7 @@
     "vsPreviousPeriod": "较上期",
     "noStats": "暂无统计",
     "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。",
+    "uncategorized": "未分类",
     "lastWeek": "上周",
     "lastMonth": "上月",
     "lastYear": "去年",
@@ -303,6 +318,7 @@
     "deselectAll": "取消全选",
     "loadMore": "加载更多",
     "discard": "放弃",
+    "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
     "statusDuplicatePending": "待确认重复"
   },

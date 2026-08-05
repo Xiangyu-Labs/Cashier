@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
@@ -29,7 +29,7 @@ export function LedgerStartupStreamPreview({
   snapshot,
   initialFilters,
 }: LedgerStartupStreamPreviewProps) {
-  const locale = useLocale();
+  const t = useTranslations("LedgerPage");
   const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
 
@@ -79,7 +79,7 @@ export function LedgerStartupStreamPreview({
         filters={filters}
         onFiltersChange={setFilters}
         periodParams={periodParams}
-        {...(!hasAnyFilter ? { totalPrefix: locale.startsWith("zh") ? "合计" : "Total" } : {})}
+        {...(!hasAnyFilter ? { totalPrefix: t("total") } : {})}
         mainCurrency={mainCurrency}
         filteredTotal={totalCachedMatches(matches)}
         onApplyPreset={(preset) =>
@@ -104,9 +104,7 @@ export function LedgerStartupStreamPreview({
         isSelectionMode={false}
         selectedIds={[]}
         onToggleSelection={() => {}}
-        noRecordsText={
-          locale.startsWith("zh") ? "没有符合条件的缓存单据" : "No cached records match"
-        }
+        noRecordsText={t("cachedNoRecords")}
         getItemProps={() => ({})}
         {...(snapshot.ledgerSettings?.timeZone != null
           ? { timeZone: snapshot.ledgerSettings.timeZone }

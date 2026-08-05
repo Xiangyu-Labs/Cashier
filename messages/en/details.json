@@ -21,7 +21,13 @@
     "deleteDescription": "Delete the selected {count} records? This cannot be undone.",
     "deleted": "Deleted {count} records",
     "retried": "Submitted {count} records for retry",
-    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}"
+    "partialResult": "Completed {succeeded}; skipped {skipped}; failed {failed}",
+    "keepDuplicates": "Keep possible duplicates ({count})",
+    "deleteDuplicates": "Delete duplicates ({count})",
+    "deleteDuplicatesTitle": "Delete possible duplicates",
+    "deleteDuplicatesDescription": "Delete the selected {count} possible duplicates? This cannot be undone.",
+    "duplicatesKept": "Kept {count} possible duplicates",
+    "duplicatesDiscarded": "Deleted {count} duplicates"
   },
   "Calendar": {
     "today": "Today",
@@ -172,12 +178,14 @@
     "allStatuses": "All Statuses",
     "needsAttention": "Needs Attention",
     "inProgress": "In Progress",
+    "possibleDuplicates": "Possible duplicates",
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusAnomaly": "Anomaly",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusCandidatePending": "Candidate Pending",
+    "statusDuplicatePending": "Duplicate pending",
     "statusSummary": "Status: {label}",
     "search": "Search",
     "searchPlaceholder": "Search title, name, or description",
@@ -252,6 +260,7 @@
     "noMore": "No more items",
     "loadMore": "Load More",
     "discard": "Discard",
+    "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "statusDuplicatePending": "Duplicate pending"

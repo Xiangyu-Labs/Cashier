@@ -144,9 +144,6 @@ export function SourceDocumentDuplicateReviewDialog({
   });
   const isPending = keepMutation.isPending || discardMutation.isPending;
   const data = reviewQuery.data;
-  const confidence =
-    data?.review.confidence == null ? null : Math.round(data.review.confidence * 100);
-
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
       <DialogContent
@@ -161,11 +158,6 @@ export function SourceDocumentDuplicateReviewDialog({
           <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-warning" />
             {t("title")}
-            {confidence != null && (
-              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
-                {t("confidence", { percent: confidence })}
-              </span>
-            )}
           </DialogTitle>
           {data?.review.reason != null && data.review.reason !== "" && (
             <p className="mt-1 text-xs text-muted-foreground">{data.review.reason}</p>

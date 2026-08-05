@@ -4,16 +4,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 // --------------------------------------------------------------------------
 // Hoisted mocks — run before any imports
 // --------------------------------------------------------------------------
-const {
-  resolveAuthenticatedHomeMock,
-  getMessagesMock,
-  getLedgerPageBootstrapMock,
-  getTranslationsMock,
-} = vi.hoisted(() => ({
+const { resolveAuthenticatedHomeMock, getMessagesMock } = vi.hoisted(() => ({
   resolveAuthenticatedHomeMock: vi.fn(),
   getMessagesMock: vi.fn(),
-  getLedgerPageBootstrapMock: vi.fn(),
-  getTranslationsMock: vi.fn(),
 }));
 
 // --------------------------------------------------------------------------
@@ -21,10 +14,6 @@ const {
 // --------------------------------------------------------------------------
 vi.mock("@/lib/request-cache", () => ({
   resolveAuthenticatedHome: resolveAuthenticatedHomeMock,
-}));
-
-vi.mock("@/modules/workspace/application/queries/get-ledger-page-bootstrap", () => ({
-  getLedgerPageBootstrap: getLedgerPageBootstrapMock,
 }));
 
 vi.mock("@/i18n/routing", () => ({
@@ -35,7 +24,6 @@ vi.mock("@/i18n/routing", () => ({
 
 vi.mock("next-intl/server", () => ({
   getMessages: getMessagesMock,
-  getTranslations: getTranslationsMock,
   getLocale: vi.fn(() => Promise.resolve("en")),
 }));
 
@@ -134,7 +122,6 @@ describe("protected home streaming boundary", () => {
       Common: { notFound: "Not found" },
       LedgerPage: { stream: "Stream" },
     });
-    getTranslationsMock.mockResolvedValue(vi.fn((key: string) => key));
   });
 
   it("page.tsx returns Suspense with LedgerPageSkeleton fallback and ActiveTab child", async () => {
@@ -178,12 +165,7 @@ describe("protected home streaming boundary", () => {
     expect(activeTabElement.props.searchParams).toEqual(searchParams);
   });
 
-  it("ActiveTab calls resolveAuthenticatedHome and renders shell with inner Suspense", async () => {
-    getLedgerPageBootstrapMock.mockResolvedValue({
-      dehydratedState: { queries: [], mutations: [] },
-      initialStatsDate: new Date(),
-    });
-
+  it("ActiveTab calls resolveAuthenticatedHome and mounts active content immediately", async () => {
     // ActiveTab awaits resolveAuthenticatedHome before returning JSX.
     // The returned element is a Fragment (mocked NextIntlClientProvider),
     // whose child is the ActiveShell component element.
@@ -197,31 +179,22 @@ describe("protected home streaming boundary", () => {
     const shellElement = element!.props.children;
     expect(shellElement).toBeDefined();
 
-    // The ActiveShell receives the inner content as children. Since ActiveShell
-    // is a client component, the element tree has it as a component reference.
-    // The children of ActiveShell should be the inner Suspense boundary.
+    // The ActiveShell receives the interactive client directly.
     const innerContent = shellElement.props.children;
-    expect(innerContent.type).toBe(Suspense);
-    expect(innerContent.props.fallback).toBeDefined();
+    expect(innerContent.type).toBe(ActiveContent);
   });
 
-  it("ActiveContent calls getLedgerPageBootstrap with ledgerDto and renders client", async () => {
-    getLedgerPageBootstrapMock.mockResolvedValue({
-      dehydratedState: { queries: [], mutations: [] },
-      initialStatsDate: new Date(),
-    });
-
-    // Render ActiveContent directly (not through Suspense) to prove
-    // the bootstrap call uses the pre-authorized ledgerDto.
-    const element = await ActiveContent({
+  it("ActiveContent passes the pre-authorized ledger dto to the client", () => {
+    const ledgerDto = {
+      id: "ledger-1",
+      userId: "user-1",
+      settings: { mainCurrency: "USD" },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const element = ActiveContent({
       ledgerId: "ledger-1",
-      ledgerDto: {
-        id: "ledger-1",
-        userId: "user-1",
-        settings: { mainCurrency: "USD" },
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
+      ledgerDto,
       initialTab: "stream",
       periodParams: { period: "thisMonth" },
       advancedFilters: {
@@ -234,35 +207,20 @@ describe("protected home streaming boundary", () => {
       locale: "en",
     });
 
-    // getLedgerPageBootstrap should have been called with the ledgerDto
-    expect(getLedgerPageBootstrapMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ledgerId: "ledger-1",
-        ledgerDto: expect.objectContaining({ id: "ledger-1" }),
-      }),
-      expect.objectContaining({
-        categories: expect.any(Object),
-        ledgerReads: expect.any(Object),
-      })
-    );
-
-    // The result should contain the LedgerPageClient (wrapped in HydrationBoundary)
-    expect(element).toBeDefined();
+    expect(element.props.initialLedger).toBe(ledgerDto);
   });
 
-  it("ActiveContent renders localized notFound message on null bootstrap", async () => {
-    getLedgerPageBootstrapMock.mockResolvedValue(null);
-    getTranslationsMock.mockResolvedValue(vi.fn((key: string) => key));
-
-    const element = await ActiveContent({
+  it("ActiveContent keeps the interactive client mounted for slow or failed tab queries", () => {
+    const ledgerDto = {
+      id: "ledger-1",
+      userId: "user-1",
+      settings: {},
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const element = ActiveContent({
       ledgerId: "ledger-1",
-      ledgerDto: {
-        id: "ledger-1",
-        userId: "user-1",
-        settings: {},
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
+      ledgerDto,
       initialTab: "stream",
       periodParams: { period: "thisMonth" },
       advancedFilters: {
@@ -274,13 +232,7 @@ describe("protected home streaming boundary", () => {
       locale: "en",
     });
 
-    // Should render the localized notFound message, not hardcoded English
-    expect(getTranslationsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ namespace: "LedgerPage" })
-    );
-    expect(element).toBeDefined();
-    // The element should be a not-found message div
-    expect(element.type).toBe("div");
+    expect(element.props.initialLedger).toBe(ledgerDto);
   });
 
   it("throws non-UnauthorizedError from resolveAuthenticatedHome", async () => {

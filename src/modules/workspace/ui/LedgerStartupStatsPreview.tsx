@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   addPeriod,
   formatCivilDate,
@@ -23,6 +23,7 @@ interface LedgerStartupStatsPreviewProps {
 
 export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPreviewProps) {
   const locale = useLocale();
+  const t = useTranslations("StatsTab");
   const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
   const [periodOffset, setPeriodOffset] = useState(0);
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
@@ -56,10 +57,10 @@ export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPrevie
         queryRange: { from: range.startDateStr, to: range.endDateStr },
         compareRange: { from: range.prevDateStartStr, to: range.prevDateEndStr },
         mainCurrency: currency,
-        uncategorizedLabel: locale.startsWith("zh") ? "未分类" : "Uncategorized",
+        uncategorizedLabel: t("uncategorized"),
         today: todayKey,
       }),
-    [currency, locale, range, snapshot.items, todayKey]
+    [currency, range, snapshot.items, t, todayKey]
   );
 
   return (

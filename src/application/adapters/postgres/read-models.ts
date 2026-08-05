@@ -13,6 +13,7 @@ import type {
   SourceDocumentDuplicateReviewDto,
   SourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/contracts";
+import type { PendingDuplicateReviewContract } from "@/modules/source-document/application/ports";
 import {
   PROCESSING_FAILURE_CODES,
   supportedSourceDocumentActions,
@@ -67,6 +68,38 @@ export async function getTargetSourceDocumentAccessContext(sourceDocumentId: str
       columns: { id: true },
     })) != null;
   return { ledgerId: document.ledgerId, hasImages: hasFiles };
+}
+
+export async function listPendingDuplicateReviews(
+  ledgerId: string,
+  sourceDocumentIds: readonly string[]
+): Promise<PendingDuplicateReviewContract[]> {
+  if (sourceDocumentIds.length === 0) return [];
+
+  const rows = await db
+    .select({
+      sourceDocumentId: duplicateReviews.sourceDocumentId,
+      revisionId: duplicateReviews.revisionId,
+    })
+    .from(duplicateReviews)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.ledgerId, duplicateReviews.ledgerId),
+        eq(sourceDocuments.id, duplicateReviews.sourceDocumentId),
+        isNull(sourceDocuments.deletedAt),
+        eq(sourceDocuments.currentStatus, "duplicate_pending")
+      )
+    )
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, ledgerId),
+        eq(duplicateReviews.status, "pending"),
+        inArray(duplicateReviews.sourceDocumentId, [...sourceDocumentIds])
+      )
+    );
+
+  return rows;
 }
 
 export async function getSourceDocumentCandidateReview(

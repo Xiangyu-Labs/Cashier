@@ -28,6 +28,7 @@
     "deselectAll": "取消全选",
     "loadMore": "加载更多",
     "discard": "放弃",
+    "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
     "statusDuplicatePending": "待确认重复"
   },
