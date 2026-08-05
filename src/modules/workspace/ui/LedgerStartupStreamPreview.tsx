@@ -33,17 +33,13 @@ export function LedgerStartupStreamPreview({
   const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
 
-  const previewItems = useMemo(
-    () => snapshot.items.slice(0, CACHED_STREAM_PREVIEW_LIMIT),
-    [snapshot.items]
-  );
   const matches = useMemo(
-    () => selectCachedDocuments(previewItems, filters),
-    [filters, previewItems]
+    () => selectCachedDocuments(snapshot.items, filters),
+    [filters, snapshot.items]
   );
   const displayDocuments = useMemo(
     () =>
-      matches.map(({ document, displayEntries }) => ({
+      matches.slice(0, CACHED_STREAM_PREVIEW_LIMIT).map(({ document, displayEntries }) => ({
         ...document,
         ledgerEntries: displayEntries,
       })),
@@ -96,7 +92,9 @@ export function LedgerStartupStreamPreview({
         streamGroups={streamGroups}
         mainCurrency={mainCurrency}
         onViewLedgerEntry={(entry) => {
-          const document = previewItems.find((item) => item.id === entry.sourceDocumentId);
+          const document = matches.find(
+            (match) => match.document.id === entry.sourceDocumentId
+          )?.document;
           if (document != null) setSelected(document as unknown as SourceDocument);
         }}
         onViewSourceDetail={({ sourceDocument }) =>

@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
-import {
-  cacheImage,
-  readCachedImagesForFiles,
-  type CachedImageRecord,
-} from "@/modules/source-document/image-cache";
+import { cacheImage, readCachedImagesForFiles } from "@/modules/source-document/image-cache";
 
 function revokeUrls(urls: Iterable<string>) {
   for (const url of urls) {
@@ -91,7 +87,6 @@ export function useCachedSourceImages({
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const urlsRef = useRef<Map<string, string>>(new Map());
-  const inFlightRef = useRef<Map<string, Promise<CachedImageRecord | null>>>(new Map());
 
   useEffect(() => {
     let disposed = false;
@@ -126,18 +121,14 @@ export function useCachedSourceImages({
 
       if (missing.length > 0) {
         const results = await Promise.all(
-          missing.map((file) => {
-            const pending =
-              inFlightRef.current.get(file.id) ??
-              cacheImage({
-                snapshotKey,
-                documentId,
-                documentTimestamp,
-                file,
-              }).catch(() => null);
-            inFlightRef.current.set(file.id, pending);
-            return pending;
-          })
+          missing.map((file) =>
+            cacheImage({
+              snapshotKey,
+              documentId,
+              documentTimestamp,
+              file,
+            }).catch(() => null)
+          )
         );
         if (disposed) return;
         for (let index = 0; index < missing.length; index += 1) {

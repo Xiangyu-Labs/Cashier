@@ -50,7 +50,7 @@ function previous(overrides: Partial<LedgerStartupCacheSnapshot> = {}): LedgerSt
   const now = new Date().toISOString();
   return {
     key: "user:ledger",
-    schemaVersion: 5,
+    schemaVersion: 1,
     userId: "user",
     ledgerId: "ledger",
     locale: "zh",

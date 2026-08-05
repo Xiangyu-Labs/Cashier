@@ -1,9 +1,31 @@
-import { describe, expect, it } from "vitest";
+import "fake-indexeddb/auto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  migrateLedgerStartupSnapshot,
+  DOCUMENT_IMAGE_STORE,
+  LEDGER_SNAPSHOT_STORE,
+  getActiveStartupCacheKey,
+  openCacheDb,
+  requestResult,
+  setActiveStartupCacheKey,
+  transactionDone,
+} from "@/lib/client-cache";
+import {
   mergeLedgerStartupDeltaItems,
+  readLedgerStartupSnapshot,
+  writeLedgerStartupSnapshot,
+  type LedgerStartupCacheSnapshot,
 } from "@/modules/workspace/ledger-startup-cache-store";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+
+const storage = new Map<string, string>();
+beforeEach(() => {
+  storage.clear();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+  });
+});
 
 function document(id: string, entryDate: string): SourceDocumentListItemDto {
   return {
@@ -28,88 +50,109 @@ function document(id: string, entryDate: string): SourceDocumentListItemDto {
   };
 }
 
-describe("startup snapshot migration", () => {
-  it("invalidates an old snapshot for a full rebuild", () => {
-    const migrated = migrateLedgerStartupSnapshot({
-      key: "user:ledger",
-      schemaVersion: 2,
-      userId: "user",
-      ledgerId: "ledger",
-      items: [],
-      lastSyncedAt: "2026-07-30T00:00:00.000Z",
-      fullSyncAt: null,
-    });
-    expect(migrated).toMatchObject({
-      schemaVersion: 5,
-      syncVersion: "0",
-      recordCount: 0,
-      complete: false,
-      truncated: false,
-      coverageLimit: 1000,
-    });
-    expect(migrated).not.toHaveProperty("collapseEntriesDefault");
-    expect(migrated.ledgerSettings?.collapseEntriesDefault ?? false).toBe(false);
+function snapshot(overrides: Partial<LedgerStartupCacheSnapshot> = {}): LedgerStartupCacheSnapshot {
+  return {
+    key: "user:ledger",
+    schemaVersion: 1,
+    userId: "user",
+    ledgerId: "ledger",
+    items: [],
+    syncVersion: "1",
+    recordCount: 0,
+    complete: true,
+    truncated: false,
+    coverageLimit: 1000,
+    lastSyncedAt: "2026-08-01T00:00:00.000Z",
+    fullSyncAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("startup snapshot schema", () => {
+  it("writes and reads a snapshot with the current schema", async () => {
+    const item = document("a", "2026-08-01");
+    await writeLedgerStartupSnapshot(snapshot({ items: [item], syncVersion: "7", recordCount: 1 }));
+
+    const read = await readLedgerStartupSnapshot("user:ledger");
+    expect(read).toEqual(
+      expect.objectContaining({
+        key: "user:ledger",
+        schemaVersion: 1,
+        items: [item],
+        syncVersion: "7",
+        recordCount: 1,
+      })
+    );
   });
 
-  it("preserves a complete v4 snapshot while upgrading metadata to v5", () => {
-    const item = document("preserved", "2026-08-01");
-    const migrated = migrateLedgerStartupSnapshot({
-      key: "user:ledger",
-      schemaVersion: 4,
-      userId: "user",
-      ledgerId: "ledger",
-      items: [item],
-      syncVersion: "9",
-      recordCount: 1,
-      complete: true,
-      truncated: false,
-      coverageLimit: 1000,
-      lastSyncedAt: "2026-08-01T00:00:00.000Z",
-      fullSyncAt: "2026-08-01T00:00:00.000Z",
-    });
-    expect(migrated.schemaVersion).toBe(5);
-    expect(migrated.items).toEqual([item]);
-    expect(migrated.syncVersion).toBe("9");
-  });
-
-  it("invalidates v3 preferences with the old snapshot", () => {
-    const snapshot = {
-      key: "user:ledger",
-      schemaVersion: 3 as const,
-      userId: "user",
-      ledgerId: "ledger",
-      ledgerSettings: { timeZone: null, collapseEntriesDefault: true },
-      items: [],
-      syncVersion: "3",
-      recordCount: 0,
-      complete: true,
-      truncated: false,
-      coverageLimit: 1000,
-      lastSyncedAt: "2026-07-30T00:00:00.000Z",
-      fullSyncAt: null,
-    };
-    expect(
-      migrateLedgerStartupSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault ?? false
-    ).toBe(false);
-  });
-
-  it("drops legacy viewedItems copies from the snapshot", () => {
-    const migrated = migrateLedgerStartupSnapshot({
+  it("returns a cache miss and cleans up when the stored snapshot uses another schema", async () => {
+    setActiveStartupCacheKey("user:ledger");
+    const db = await openCacheDb();
+    const tx = db.transaction([LEDGER_SNAPSHOT_STORE, DOCUMENT_IMAGE_STORE], "readwrite");
+    tx.objectStore(LEDGER_SNAPSHOT_STORE).put({
       key: "user:ledger",
       schemaVersion: 5,
       userId: "user",
       ledgerId: "ledger",
-      items: [document("a", "2026-08-01")],
-      viewedItems: [document("viewed", "2026-08-02")],
-      syncVersion: "1",
-      recordCount: 1,
-      complete: true,
-      truncated: false,
-      coverageLimit: 1000,
-      lastSyncedAt: "2026-08-01T00:00:00.000Z",
-      fullSyncAt: "2026-08-01T00:00:00.000Z",
+      items: [document("old", "2026-07-30")],
+      viewedItems: [document("viewed", "2026-07-31")],
     });
-    expect(migrated).not.toHaveProperty("viewedItems");
+    tx.objectStore(DOCUMENT_IMAGE_STORE).put({
+      key: "user:ledger:file-1",
+      snapshotKey: "user:ledger",
+      userId: "user",
+      fileId: "file-1",
+      documentId: "doc-1",
+      contentType: "image/png",
+      byteSize: 1,
+      blob: new Blob(["x"]),
+      lastAccessedAt: 1,
+    });
+    tx.objectStore(DOCUMENT_IMAGE_STORE).put({
+      key: "other:ledger:file-2",
+      snapshotKey: "other:ledger",
+      userId: "other",
+      fileId: "file-2",
+      documentId: "doc-2",
+      contentType: "image/png",
+      byteSize: 1,
+      blob: new Blob(["y"]),
+      lastAccessedAt: 1,
+    });
+    await transactionDone(tx);
+
+    await expect(readLedgerStartupSnapshot("user:ledger")).resolves.toBeNull();
+
+    const verify = db.transaction([LEDGER_SNAPSHOT_STORE, DOCUMENT_IMAGE_STORE], "readonly");
+    const snapshots = await requestResult(
+      verify.objectStore(LEDGER_SNAPSHOT_STORE).getAll() as IDBRequest<unknown[]>
+    );
+    const images = await requestResult(
+      verify.objectStore(DOCUMENT_IMAGE_STORE).getAll() as IDBRequest<Array<{ key: string }>>
+    );
+    expect(snapshots).toEqual([]);
+    expect(images.map((image) => image.key)).toEqual(["other:ledger:file-2"]);
+    expect(getActiveStartupCacheKey()).toBeNull();
+  });
+
+  it("treats a snapshot without a schema version as a cache miss", async () => {
+    const db = await openCacheDb();
+    const tx = db.transaction(LEDGER_SNAPSHOT_STORE, "readwrite");
+    tx.objectStore(LEDGER_SNAPSHOT_STORE).put({
+      key: "user:ledger",
+      userId: "user",
+      ledgerId: "ledger",
+      items: [],
+    });
+    await transactionDone(tx);
+
+    await expect(readLedgerStartupSnapshot("user:ledger")).resolves.toBeNull();
+
+    const verify = db.transaction(LEDGER_SNAPSHOT_STORE, "readonly");
+    const snapshots = await requestResult(
+      verify.objectStore(LEDGER_SNAPSHOT_STORE).getAll() as IDBRequest<unknown[]>
+    );
+    expect(snapshots).toEqual([]);
   });
 });
 

@@ -1,12 +1,16 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import "fake-indexeddb/auto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DOCUMENT_IMAGE_STORE, openCacheDb, transactionDone } from "@/lib/client-cache";
 import {
   CACHED_IMAGE_BYTES_LIMIT,
   type CachedImageRecord,
+  cacheImage,
   imageCacheKey,
   readCachedImages,
   readCachedImagesForFiles,
   selectCachedImageEvictions,
 } from "@/modules/source-document/image-cache";
+import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
 
 function image(overrides: Partial<CachedImageRecord> & Pick<CachedImageRecord, "key">) {
   return {
@@ -22,8 +26,28 @@ function image(overrides: Partial<CachedImageRecord> & Pick<CachedImageRecord, "
   } satisfies CachedImageRecord;
 }
 
+function storedFile(id: string): SourceDocumentStoredFileDto {
+  return { id, contentType: "image/png", byteSize: 100, originalFilename: `${id}.png` };
+}
+
+function cacheImageInput(snapshotKey = "user:ledger", fileId = "file-1") {
+  return {
+    snapshotKey,
+    documentId: "doc-1",
+    documentTimestamp: "2026-08-01",
+    file: storedFile(fileId),
+  };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+beforeEach(async () => {
+  const db = await openCacheDb();
+  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+  tx.objectStore(DOCUMENT_IMAGE_STORE).clear();
+  await transactionDone(tx);
 });
 
 describe("cached image eviction", () => {
@@ -69,5 +93,73 @@ describe("cached image reads", () => {
     vi.stubGlobal("indexedDB", undefined);
     await expect(readCachedImages("user:ledger")).resolves.toEqual([]);
     await expect(readCachedImagesForFiles("user:ledger", ["file-1"])).resolves.toEqual([]);
+  });
+});
+
+describe("cacheImage single-flight", () => {
+  it("dedupes concurrent requests for the same snapshot key and file id", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Blob(["x"]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await Promise.all([
+      cacheImage(cacheImageInput()),
+      cacheImage(cacheImageInput()),
+      cacheImage(cacheImageInput()),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(results.every((record) => record?.key === "user:ledger:file-1")).toBe(true);
+  });
+
+  it("does not share requests across snapshot keys", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Blob(["x"]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all([
+      cacheImage(cacheImageInput("user:ledger")),
+      cacheImage(cacheImageInput("user:other")),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows a retry after a failed request", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValue(new Response(new Blob(["x"]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(cacheImage(cacheImageInput())).rejects.toThrow("network");
+    await expect(cacheImage(cacheImageInput())).resolves.not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the updated record with the refreshed access time on a cache hit", async () => {
+    const db = await openCacheDb();
+    const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+    tx.objectStore(DOCUMENT_IMAGE_STORE).put({
+      key: "user:ledger:file-1",
+      snapshotKey: "user:ledger",
+      userId: "user",
+      fileId: "file-1",
+      documentId: "doc-1",
+      contentType: "image/png",
+      byteSize: 100,
+      blob: new Blob(["old"]),
+      lastAccessedAt: 1,
+    });
+    await transactionDone(tx);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const before = Date.now();
+    const record = await cacheImage(cacheImageInput());
+
+    expect(record?.lastAccessedAt).toBeGreaterThanOrEqual(before);
+    expect(record?.lastAccessedAt).toBeGreaterThan(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    const stored = await readCachedImagesForFiles("user:ledger", ["file-1"]);
+    expect(stored[0]?.lastAccessedAt).toBe(record?.lastAccessedAt);
   });
 });

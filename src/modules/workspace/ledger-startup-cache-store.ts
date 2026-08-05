@@ -4,13 +4,15 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { LedgerDeltaResult } from "@/modules/source-document/contract-refresh";
 import {
+  DOCUMENT_IMAGE_STORE,
   LEDGER_SNAPSHOT_STORE,
+  getActiveStartupCacheKey,
   openCacheDb,
+  removeActiveStartupCacheKey,
   requestResult,
   setActiveStartupCacheKey,
   transactionDone,
 } from "@/lib/client-cache";
-import { LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT } from "./ledger-startup-cache-constants";
 
 export {
   CACHED_DETAILS_PREVIEW_LIMIT,
@@ -22,7 +24,7 @@ export {
 
 export interface LedgerStartupCacheSnapshot {
   key: string;
-  schemaVersion: 5;
+  schemaVersion: 1;
   userId: string;
   ledgerId: string;
   locale?: string;
@@ -41,45 +43,6 @@ export interface LedgerStartupCacheSnapshot {
   coverageLimit: number;
   lastSyncedAt: string;
   fullSyncAt: string | null;
-}
-
-type LegacyLedgerStartupCacheSnapshot = Omit<
-  LedgerStartupCacheSnapshot,
-  "schemaVersion" | "syncVersion" | "recordCount" | "complete" | "truncated" | "coverageLimit"
-> & {
-  schemaVersion?: 1 | 2 | 3 | 4 | 5;
-  syncVersion?: string;
-  recordCount?: number;
-  complete?: boolean;
-  truncated?: boolean;
-  coverageLimit?: number;
-  viewedItems?: SourceDocumentListItemDto[];
-};
-
-export function migrateLedgerStartupSnapshot(
-  snapshot: LedgerStartupCacheSnapshot | LegacyLedgerStartupCacheSnapshot
-): LedgerStartupCacheSnapshot {
-  if (snapshot.schemaVersion === 5) {
-    const { viewedItems: _viewedItems, ...rest } = snapshot as LegacyLedgerStartupCacheSnapshot;
-    return rest as LedgerStartupCacheSnapshot;
-  }
-  if (snapshot.schemaVersion === 4) {
-    return { ...snapshot, schemaVersion: 5 } as LedgerStartupCacheSnapshot;
-  }
-  return {
-    key: snapshot.key,
-    schemaVersion: 5,
-    userId: snapshot.userId,
-    ledgerId: snapshot.ledgerId,
-    items: [],
-    syncVersion: "0",
-    recordCount: 0,
-    complete: false,
-    truncated: false,
-    coverageLimit: LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT,
-    lastSyncedAt: snapshot.lastSyncedAt,
-    fullSyncAt: null,
-  };
 }
 
 export function mergeLedgerStartupDeltaItems(
@@ -112,17 +75,25 @@ export async function readLedgerStartupSnapshot(
   const tx = db.transaction(LEDGER_SNAPSHOT_STORE, "readonly");
   const stored = await requestResult(
     tx.objectStore(LEDGER_SNAPSHOT_STORE).get(key) as IDBRequest<
-      LedgerStartupCacheSnapshot | LegacyLedgerStartupCacheSnapshot | undefined
+      LedgerStartupCacheSnapshot | undefined
     >
   );
   if (stored == null) return null;
-  const migrated = migrateLedgerStartupSnapshot(stored);
-  if (stored.schemaVersion !== 5 || "viewedItems" in stored) {
-    const migration = db.transaction(LEDGER_SNAPSHOT_STORE, "readwrite");
-    migration.objectStore(LEDGER_SNAPSHOT_STORE).put(migrated);
-    await transactionDone(migration);
+  // Any other schema (including missing) is treated as a cache miss: the
+  // snapshot and its images are removed so they are never served or migrated.
+  if (stored.schemaVersion !== 1) {
+    const cleanup = db.transaction([LEDGER_SNAPSHOT_STORE, DOCUMENT_IMAGE_STORE], "readwrite");
+    cleanup.objectStore(LEDGER_SNAPSHOT_STORE).delete(key);
+    const imageStore = cleanup.objectStore(DOCUMENT_IMAGE_STORE);
+    const images = await requestResult(
+      imageStore.index("snapshotKey").getAll(key) as IDBRequest<Array<{ key: string }>>
+    );
+    for (const image of images) imageStore.delete(image.key);
+    await transactionDone(cleanup);
+    if (getActiveStartupCacheKey() === key) removeActiveStartupCacheKey();
+    return null;
   }
-  return migrated;
+  return stored;
 }
 
 export async function writeLedgerStartupSnapshot(

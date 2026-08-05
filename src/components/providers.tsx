@@ -5,11 +5,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
-import { migrateLegacyOfflineCache } from "@/lib/client-cache";
+import { discardLegacyOfflineCache } from "@/lib/client-cache";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    void migrateLegacyOfflineCache().catch(() => {});
+    void discardLegacyOfflineCache();
   }, []);
 
   const [queryClient] = useState(

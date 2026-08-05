@@ -113,7 +113,7 @@ export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signa
   if (signal.aborted) return;
   await replaceLedgerStartupSnapshot({
     key,
-    schemaVersion: 5,
+    schemaVersion: 1,
     userId: input.userId,
     ledgerId: input.ledgerId,
     locale: input.locale,

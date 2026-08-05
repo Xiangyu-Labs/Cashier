@@ -111,6 +111,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.5",
     "eslint-config-next": "16.2.12",
+    "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.11.1",
     "postcss": "^8.5.25",
     "prettier": "3.9.6",

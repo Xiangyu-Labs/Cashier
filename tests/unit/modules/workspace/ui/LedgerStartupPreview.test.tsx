@@ -25,7 +25,7 @@ import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPrevie
 function snapshot(): LedgerStartupCacheSnapshot {
   return {
     key: "user:ledger",
-    schemaVersion: 5,
+    schemaVersion: 1,
     userId: "user",
     ledgerId: "ledger",
     items: [
