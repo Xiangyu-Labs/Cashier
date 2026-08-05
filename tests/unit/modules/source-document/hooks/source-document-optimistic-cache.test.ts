@@ -4,9 +4,13 @@ import { queryKeys } from "@/lib/query-keys";
 import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
 import {
   applyOptimisticUpsert,
+  applyServerRefreshUpsert,
+  applyOptimisticDelete,
+  applySourceDocumentReconciliation,
   seedSourceDocumentEntities,
 } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
+import { STREAM_PAGE_LIMIT } from "@/modules/source-document/stream-cache-merge";
 
 function makeItem(entryDate: string): SourceDocumentListItemDto {
   return {
@@ -155,4 +159,197 @@ describe("source document optimistic cache", () => {
       [unrelated.id]: unrelated,
     });
   });
+
+  it("inserts a server delta at its server-order position and re-slices pages", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1");
+    const items = orderedItems(40);
+    client.setQueryData(
+      key,
+      multiPage([items.slice(0, STREAM_PAGE_LIMIT), items.slice(STREAM_PAGE_LIMIT)])
+    );
+
+    const inserted = {
+      ...makeItem("2026-06-15"),
+      id: "doc-new",
+      createdAt: "2026-06-15T10:00:00.000Z",
+      updatedAt: "2026-06-15T10:00:00.000Z",
+    };
+    const resetSpy = vi.spyOn(client, "resetQueries");
+
+    applyServerRefreshUpsert(client, "ledger-1", inserted);
+
+    const data = client.getQueryData<InfiniteData<StreamPage>>(key);
+    const flat = data?.pages.flatMap((page) => page.items) ?? [];
+    expect(flat).toHaveLength(41);
+    // 06-30..06-16 occupy indices 0-14; the new 06-15 doc lands at index 15.
+    expect(flat[15]?.id).toBe("doc-new");
+    expect(data?.pages[0]?.items).toHaveLength(STREAM_PAGE_LIMIT);
+    expect(data?.pages[1]?.items).toHaveLength(STREAM_PAGE_LIMIT);
+    expect(data?.pages[2]?.items).toHaveLength(1);
+    // Non-final page cursors are derived from their last item.
+    expect(data?.pages[0]?.nextCursor).toContain("v2|ledger-1|");
+    expect(resetSpy).not.toHaveBeenCalled();
+  });
+
+  it("removes a tombstone from every loaded page and re-slices", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1");
+    const items = orderedItems(40);
+    client.setQueryData(
+      key,
+      multiPage([items.slice(0, STREAM_PAGE_LIMIT), items.slice(STREAM_PAGE_LIMIT)])
+    );
+    const removedId = items[25]?.id ?? "doc-26";
+
+    applyOptimisticDelete(client, "ledger-1", removedId);
+
+    const data = client.getQueryData<InfiniteData<StreamPage>>(key);
+    const flat = data?.pages.flatMap((page) => page.items) ?? [];
+    expect(flat).toHaveLength(39);
+    expect(flat.some((item) => item.id === removedId)).toBe(false);
+    expect(data?.pages[0]?.items).toHaveLength(STREAM_PAGE_LIMIT);
+    expect(data?.pages[1]?.items).toHaveLength(19);
+    expect(
+      client.getQueryData<Record<string, unknown>>(queryKeys.sourceDocumentEntities("ledger-1"))
+    ).not.toHaveProperty(removedId);
+  });
+
+  it("re-slices pages when an inserted item crosses the page boundary", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1");
+    const items = orderedItems(39);
+    client.setQueryData(
+      key,
+      multiPage([items.slice(0, STREAM_PAGE_LIMIT), items.slice(STREAM_PAGE_LIMIT)])
+    );
+    const inserted = {
+      ...makeItem("2026-05-01"),
+      id: "doc-new",
+      createdAt: "2026-05-01T10:00:00.000Z",
+      updatedAt: "2026-05-01T10:00:00.000Z",
+    };
+
+    applyServerRefreshUpsert(client, "ledger-1", inserted);
+
+    const data = client.getQueryData<InfiniteData<StreamPage>>(key);
+    // The original 39 items span 06-30..05-22; the new 05-01 doc sorts last,
+    // so the local re-slice packs all 40 items into exactly two pages.
+    expect(data?.pages).toHaveLength(2);
+    expect(data?.pages[0]?.items).toHaveLength(STREAM_PAGE_LIMIT);
+    expect(data?.pages[1]?.items).toHaveLength(STREAM_PAGE_LIMIT);
+    expect(data?.pages[1]?.items.at(-1)?.id).toBe("doc-new");
+  });
+
+  it("keeps a newer entity when a stale delta or page response arrives", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1");
+    const fresh = {
+      ...makeItem("2026-06-10"),
+      id: "doc-fresh",
+      title: "Fresh title",
+      createdAt: "2026-06-10T10:00:00.000Z",
+      updatedAt: "2026-06-10T11:00:00.000Z",
+    };
+    const stale = {
+      ...fresh,
+      title: "Stale title",
+      updatedAt: "2026-06-10T10:00:00.000Z",
+    };
+    client.setQueryData(key, multiPage([[fresh]]));
+    seedSourceDocumentEntities(client, "ledger-1", [fresh]);
+
+    applyServerRefreshUpsert(client, "ledger-1", stale);
+    expect(client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0]?.title).toBe(
+      "Fresh title"
+    );
+
+    seedSourceDocumentEntities(client, "ledger-1", [stale]);
+    expect(
+      client.getQueryData<Record<string, SourceDocumentListItemDto>>(
+        queryKeys.sourceDocumentEntities("ledger-1")
+      )?.["doc-fresh"]?.title
+    ).toBe("Fresh title");
+  });
+
+  it("reconciles tombstones and minimal entities without blanking card data", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1");
+    const existing: SourceDocumentListItemDto = {
+      ...makeItem("2026-06-10"),
+      id: "doc-1",
+      title: "Receipt",
+      status: "candidate_pending",
+      files: [{ id: "file-1", contentType: "image/png", byteSize: 10, originalFilename: null }],
+      ledgerEntries: [makeEntry("entry-1", "Lunch")],
+      hasImages: true,
+      createdAt: "2026-06-10T10:00:00.000Z",
+      updatedAt: "2026-06-10T10:00:00.000Z",
+    };
+    client.setQueryData(key, multiPage([[existing]]));
+    seedSourceDocumentEntities(client, "ledger-1", [existing]);
+
+    const minimal: SourceDocumentListItemDto = {
+      ...makeItem("2026-06-10"),
+      id: "doc-1",
+      title: null,
+      status: "completed",
+      entryDate: null,
+      files: [],
+      ledgerEntries: [],
+      hasImages: false,
+      createdAt: "2026-06-10T10:00:00.000Z",
+      updatedAt: "2026-06-10T11:00:00.000Z",
+    };
+    applySourceDocumentReconciliation(client, "ledger-1", "doc-1", {
+      operationId: "op-1",
+      entity: minimal,
+      entityVersion: minimal.updatedAt,
+      countPatch: null,
+      streamMembershipChanged: true,
+      orderingChanged: false,
+    });
+
+    const merged = client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0];
+    expect(merged?.status).toBe("completed");
+    expect(merged?.entryDate).toBe("2026-06-10");
+    expect(merged?.title).toBe("Receipt");
+    expect(merged?.files).toHaveLength(1);
+    expect(merged?.ledgerEntries).toHaveLength(1);
+
+    applySourceDocumentReconciliation(client, "ledger-1", "doc-1", {
+      operationId: "op-2",
+      entity: null,
+      entityVersion: "2026-06-10T12:00:00.000Z",
+      countPatch: null,
+      streamMembershipChanged: true,
+      orderingChanged: false,
+    });
+    expect(client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items).toHaveLength(0);
+  });
 });
+
+function makeItemAt(date: string, id: string, createdAt: string): SourceDocumentListItemDto {
+  return {
+    ...makeItem(date),
+    id,
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+function orderedItems(count: number): SourceDocumentListItemDto[] {
+  return Array.from({ length: count }, (_, index) => {
+    const day = 30 - (index % 30);
+    const month = index < 30 ? 6 : 5;
+    const date = `2026-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return makeItemAt(date, `doc-${String(index + 1).padStart(2, "0")}`, `${date}T10:00:00.000Z`);
+  });
+}
+
+function multiPage(groups: SourceDocumentListItemDto[][]): InfiniteData<StreamPage> {
+  return {
+    pages: groups.map((items) => ({ items, nextCursor: null, generation: 1 })),
+    pageParams: [undefined, ...groups.slice(1).map(() => undefined)],
+  };
+}

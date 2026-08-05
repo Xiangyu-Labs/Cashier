@@ -6,7 +6,6 @@ import {
   invalidateCalendar,
   invalidateLedgerEntries,
   invalidateLedgerStats,
-  invalidateSourceDocuments,
   invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
 import {
@@ -17,6 +16,7 @@ import {
 } from "@/modules/source-document/actions";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import type { BatchUpdateSourceDocumentsResultDto } from "@/modules/source-document/contracts";
+import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 
 export function useBatchSourceDocumentActions(
   ledgerId: string,
@@ -26,6 +26,7 @@ export function useBatchSourceDocumentActions(
   const queryClient = useQueryClient();
   const tCommon = useTranslations("Common");
   const tBatch = useTranslations("BatchActions");
+  const notifyRefresh = useNotifyRevisionRefresh();
 
   const deleteSourceDocument = useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
@@ -33,7 +34,7 @@ export function useBatchSourceDocumentActions(
       await deleteSourceDocumentAction(ledgerId, id, operationId);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+      notifyRefresh();
       toast.success(tCommon("deleteSuccess"));
       clearSelection();
     },
@@ -55,7 +56,6 @@ export function useBatchSourceDocumentActions(
   });
 
   const settleDerivedQueries = () => {
-    void queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
     void queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) });
     void queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
     void queryClient.invalidateQueries({
@@ -72,6 +72,7 @@ export function useBatchSourceDocumentActions(
     mutationFn: ({ ids, entryDate }) =>
       batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
     onSuccess: (result) => {
+      notifyRefresh();
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
     },
@@ -82,7 +83,7 @@ export function useBatchSourceDocumentActions(
   });
 
   const settleBatchResult = async (result: BatchActionResult, successLabel: string) => {
-    await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    notifyRefresh();
     const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
     if (unresolved.length === 0) clearSelection();
     else retainSelection?.(unresolved);

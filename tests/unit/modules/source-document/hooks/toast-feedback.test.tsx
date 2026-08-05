@@ -50,6 +50,7 @@ vi.mock("@/lib/mutations/cache-transaction", () => ({
 vi.mock("@/modules/source-document/hooks/source-document-optimistic-cache", () => ({
   applyOptimisticDelete: vi.fn(),
   applyOptimisticUpsert: vi.fn(),
+  applySourceDocumentReconciliation: vi.fn(),
   getStreamQueryMatches: vi.fn(() => []),
 }));
 

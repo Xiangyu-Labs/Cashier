@@ -2,7 +2,15 @@
 
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import type { StreamPage, SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import type {
+  MutationReconciliation,
+  StreamPage,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
+import {
+  mergeStreamPageData,
+  STREAM_PAGE_LIMIT,
+} from "@/modules/source-document/stream-cache-merge";
 
 export type SourceDocumentEntityStore = Record<string, SourceDocumentListItemDto>;
 
@@ -19,7 +27,11 @@ export function seedSourceDocumentEntities(
       let changed = false;
       const next = { ...current };
       for (const item of items) {
-        if (next[item.id] !== item) {
+        // Page responses are authoritative snapshots, but a stale page
+        // response must never overwrite a newer reconciliation entity.
+        const existing = next[item.id];
+        if (existing != null && existing.updatedAt > item.updatedAt) continue;
+        if (existing !== item) {
           next[item.id] = item;
           changed = true;
         }
@@ -32,11 +44,18 @@ export function seedSourceDocumentEntities(
 export function upsertSourceDocumentEntity(
   queryClient: QueryClient,
   ledgerId: string,
-  item: SourceDocumentListItemDto
+  item: SourceDocumentListItemDto,
+  guardVersion = true
 ): void {
   queryClient.setQueryData<SourceDocumentEntityStore>(
     queryKeys.sourceDocumentEntities(ledgerId),
-    (current = {}) => ({ ...current, [item.id]: item })
+    (current = {}) => {
+      const existing = current[item.id];
+      if (guardVersion && existing != null && existing.updatedAt > item.updatedAt) {
+        return current;
+      }
+      return { ...current, [item.id]: item };
+    }
   );
 }
 
@@ -154,8 +173,9 @@ function itemMatchesFilters(
 
 /**
  * Apply an optimistic upsert of a source document item to the Stream cache.
- * If the entity already exists (by ID), it is updated in-place. Otherwise it
- * is prepended to the first page.
+ * The entity is merged in server order into every loaded window and pages are
+ * re-sliced to the original capacity. Windows the entity no longer matches
+ * (after a date/status edit) drop it immediately.
  *
  * I1: Only patches queries where the entity matches the query's filter
  * criteria (status, date range). Filters out non-matching queries to prevent
@@ -167,55 +187,40 @@ export function applyOptimisticUpsert(
   item: SourceDocumentListItemDto,
   updateDetail = true
 ): void {
-  upsertSourceDocumentEntity(queryClient, ledgerId, item);
+  // Mutation reconciliation entities are intentionally minimal (files and
+  // entries are overlaid by the refresh cycle), so rollback/reconciliation
+  // must not be blocked by version guards.
+  upsertSourceDocumentEntity(queryClient, ledgerId, item, false);
   const matches = getStreamQueryMatches(queryClient, ledgerId);
 
   for (const [queryKey, data] of matches) {
     if (!data) continue;
-    const { pages, pageParams } = data;
-    if (!pages || pages.length === 0) continue;
-
     const filters = extractFiltersFromQueryKey(queryKey);
-    const belongs = filters == null || itemMatchesFilters(item, filters);
-    let replaced = false;
-
-    const updatedPages = pages.map((page) => {
-      const existingIdx = page.items.findIndex((i) => i.id === item.id);
-      if (existingIdx !== -1) {
-        if (belongs && !replaced) {
-          const updatedItems = [...page.items];
-          updatedItems[existingIdx] = item;
-          replaced = true;
-          return { ...page, items: updatedItems };
-        }
-        return { ...page, items: page.items.filter((i) => i.id !== item.id) };
-      }
-      return page;
-    });
-
-    // Membership may change after a date/status edit. Populate matching cached
-    // windows immediately and remove the entity from windows it no longer matches.
-    if (belongs && !replaced) {
-      const firstPage = updatedPages[0];
-      if (firstPage) {
-        updatedPages[0] = {
-          ...firstPage,
-          items: [item, ...firstPage.items], // C2: No slice -- TanStack Query flattening dedup handles display limit
-        };
-      }
-    }
-
-    queryClient.setQueryData<InfiniteData<StreamPage>>(queryKey, {
-      pages: updatedPages,
-      pageParams,
-    });
+    const belongs = (candidate: SourceDocumentListItemDto) =>
+      filters == null || itemMatchesFilters(candidate, filters);
+    queryClient.setQueryData<InfiniteData<StreamPage>>(
+      queryKey,
+      mergeStreamPageData(
+        data,
+        { upserts: [item], tombstones: [] },
+        belongs,
+        STREAM_PAGE_LIMIT,
+        ledgerId,
+        false
+      )
+    );
   }
 
   // Also update detail cache if it exists
   if (updateDetail) upsertDetailCache(queryClient, ledgerId, item);
 }
 
-/** Applies a server delta without guessing membership or ordering for uncached entities. */
+/**
+ * Applies a server delta document to the Stream cache as a pure merge.
+ * Unlike the previous behavior, membership or ordering changes never reset
+ * the query: the entity is inserted at its server-order position, stale
+ * entities are replaced only by newer versions, and the window is re-sliced.
+ */
 export function applyServerRefreshUpsert(
   queryClient: QueryClient,
   ledgerId: string,
@@ -224,29 +229,19 @@ export function applyServerRefreshUpsert(
   upsertSourceDocumentEntity(queryClient, ledgerId, item);
   for (const [queryKey, data] of getStreamQueryMatches(queryClient, ledgerId)) {
     if (data == null) continue;
-    const existing = data.pages.flatMap((page) => page.items).find((value) => value.id === item.id);
     const filters = extractFiltersFromQueryKey(queryKey);
-    const belongs = filters == null || itemMatchesFilters(item, filters);
-    const previouslyBelonged =
-      existing != null && (filters == null || itemMatchesFilters(existing, filters));
-    const orderingChanged =
-      existing != null &&
-      ((existing.entryDate ?? existing.createdAt.slice(0, 10)) !==
-        (item.entryDate ?? item.createdAt.slice(0, 10)) ||
-        existing.createdAt !== item.createdAt);
-
-    if (existing == null || belongs !== previouslyBelonged || orderingChanged) {
-      void queryClient.resetQueries({ queryKey, exact: true });
-      continue;
-    }
-    if (!belongs) continue;
-    queryClient.setQueryData<InfiniteData<StreamPage>>(queryKey, {
-      ...data,
-      pages: data.pages.map((page) => ({
-        ...page,
-        items: page.items.map((value) => (value.id === item.id ? item : value)),
-      })),
-    });
+    const belongs = (candidate: SourceDocumentListItemDto) =>
+      filters == null || itemMatchesFilters(candidate, filters);
+    queryClient.setQueryData<InfiniteData<StreamPage>>(
+      queryKey,
+      mergeStreamPageData(
+        data,
+        { upserts: [item], tombstones: [] },
+        belongs,
+        STREAM_PAGE_LIMIT,
+        ledgerId
+      )
+    );
   }
   upsertDetailCache(queryClient, ledgerId, item);
 }
@@ -264,18 +259,16 @@ export function applyOptimisticDelete(
 
   for (const [queryKey, data] of matches) {
     if (!data) continue;
-    const { pages, pageParams } = data;
-    if (!pages || pages.length === 0) continue;
-
-    const updatedPages = pages.map((page) => ({
-      ...page,
-      items: page.items.filter((i) => i.id !== itemId),
-    }));
-
-    queryClient.setQueryData<InfiniteData<StreamPage>>(queryKey, {
-      pages: updatedPages,
-      pageParams,
-    });
+    queryClient.setQueryData<InfiniteData<StreamPage>>(
+      queryKey,
+      mergeStreamPageData(
+        data,
+        { upserts: [], tombstones: [itemId] },
+        () => true,
+        STREAM_PAGE_LIMIT,
+        ledgerId
+      )
+    );
   }
 
   // Also remove from detail caches
@@ -330,6 +323,62 @@ export function revertOptimisticDelete(
   item: SourceDocumentListItemDto
 ): void {
   applyOptimisticUpsert(queryClient, ledgerId, item);
+}
+
+/**
+ * Unified reconciliation entrypoint for single-document mutations.
+ *
+ * Applies the returned entity in server order, or removes the document for
+ * tombstones. Minimal reconciliation entities (files/entries intentionally
+ * empty until the refresh cycle overlays authoritative data) are merged over
+ * the cached entity so title/date/status updates land instantly without
+ * blanking the card. Returns whether a reconciliation was applied.
+ */
+export function applySourceDocumentReconciliation(
+  queryClient: QueryClient,
+  ledgerId: string,
+  sourceDocumentId: string,
+  reconciliation: MutationReconciliation<SourceDocumentListItemDto> | null | undefined
+): boolean {
+  if (reconciliation == null) return false;
+  if (reconciliation.entity == null) {
+    applyOptimisticDelete(queryClient, ledgerId, sourceDocumentId);
+    return true;
+  }
+
+  const entity = reconciliation.entity;
+  const existing = queryClient.getQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId)
+  )?.[entity.id];
+  applyOptimisticUpsert(queryClient, ledgerId, mergeReconciliationItem(existing, entity));
+  return true;
+}
+
+/**
+ * Merge a minimal reconciliation entity over the cached entity. Fields the
+ * reconciliation intentionally leaves empty (files, entries, hasImages) and
+ * absent values (title/entryDate) never blank existing card data.
+ */
+function mergeReconciliationItem(
+  existing: SourceDocumentListItemDto | undefined,
+  incoming: SourceDocumentListItemDto
+): SourceDocumentListItemDto {
+  if (existing == null) return incoming;
+  return {
+    ...existing,
+    ...incoming,
+    title: incoming.title != null && incoming.title !== "" ? incoming.title : existing.title,
+    entryDate:
+      incoming.entryDate != null && incoming.entryDate !== ""
+        ? incoming.entryDate
+        : existing.entryDate,
+    files: incoming.files.length > 0 ? incoming.files : existing.files,
+    hasImages: incoming.hasImages || existing.hasImages,
+    ledgerEntries:
+      incoming.ledgerEntries != null && incoming.ledgerEntries.length > 0
+        ? incoming.ledgerEntries
+        : (existing.ledgerEntries ?? []),
+  };
 }
 
 // ---------------------------------------------------------------------------

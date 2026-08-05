@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -267,6 +267,65 @@ describe("useSourceDocumentStream", () => {
         cursor: undefined,
         limit: 20,
       });
+    });
+  });
+
+  it("keeps the old list visible until a generation restart succeeds", async () => {
+    let resolveRestart!: (value: unknown) => void;
+    const restartPromise = new Promise((resolve) => {
+      resolveRestart = resolve;
+    });
+    listStreamPageActionMock
+      .mockResolvedValueOnce({
+        items: [
+          makeItem("doc-1", { entryDate: "2026-07-15" }),
+          makeItem("doc-2", { entryDate: "2026-07-10" }),
+        ],
+        nextCursor: "cursor-2",
+        generation: 1,
+      })
+      .mockResolvedValueOnce({
+        items: [],
+        nextCursor: null,
+        generation: 2,
+        restartRequired: true,
+      })
+      .mockReturnValueOnce(restartPromise as never);
+
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await result.current.fetchNextPage();
+    await waitFor(() => {
+      expect(listStreamPageActionMock).toHaveBeenCalledTimes(3);
+    });
+
+    // The restart page request is in flight; the previously loaded cards must
+    // not have been cleared.
+    expect(
+      result.current.streamGroups.flatMap((group) =>
+        group.items.map((item) => item.sourceDocument.id)
+      )
+    ).toEqual(["doc-1", "doc-2"]);
+
+    await act(async () => {
+      resolveRestart({
+        items: [makeItem("doc-9", { entryDate: "2026-07-09" })],
+        nextCursor: null,
+        generation: 2,
+      });
+    });
+    await waitFor(() => {
+      expect(
+        result.current.streamGroups.flatMap((group) =>
+          group.items.map((item) => item.sourceDocument.id)
+        )
+      ).toEqual(["doc-9"]);
     });
   });
 });

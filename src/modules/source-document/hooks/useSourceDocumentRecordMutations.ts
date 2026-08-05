@@ -4,10 +4,15 @@ import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import { invalidateSourceDocumentCounts, invalidateSourceDocuments } from "@/lib/query-keys";
+import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { applyOptimisticUpsert } from "./source-document-optimistic-cache";
+import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
+import { useNotifyRevisionRefresh } from "./revision-state-refresh";
+import type {
+  MutationReconciliation,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
@@ -30,6 +35,7 @@ export function useSourceDocumentRecordMutations({
 }: UseSourceDocumentRecordMutationsOptions) {
   const queryClient = useQueryClient();
   const tCommon = useTranslations("Common");
+  const notifyRefresh = useNotifyRevisionRefresh();
 
   // -----------------------------------------------------------------------
   // Update source document (title, entryDate)
@@ -48,10 +54,18 @@ export function useSourceDocumentRecordMutations({
     },
     onSuccess: async (result) => {
       if (ledgerId == null) return;
-      if (result.reconciliation?.entity != null) {
-        applyOptimisticUpsert(queryClient, ledgerId, result.reconciliation.entity);
-      }
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+      applySourceDocumentReconciliation(
+        queryClient,
+        ledgerId,
+        id,
+        (
+          result as
+            | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
+            | null
+            | undefined
+        )?.reconciliation
+      );
+      notifyRefresh();
     },
     onSettled: () => {
       if (ledgerId != null && ledgerId !== "") {
@@ -71,9 +85,19 @@ export function useSourceDocumentRecordMutations({
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return deleteSourceDocumentAction(ledgerId, id, operationId);
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       if (ledgerId != null) {
-        await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+        applySourceDocumentReconciliation(
+          queryClient,
+          ledgerId,
+          id,
+          (
+            result as
+              | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
+              | null
+              | undefined
+          )?.reconciliation
+        );
       }
       toast.success(tCommon("deleteSuccess"));
       onClose();

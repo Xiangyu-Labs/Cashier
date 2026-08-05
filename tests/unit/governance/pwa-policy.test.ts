@@ -89,6 +89,7 @@ describe("PWA policy", () => {
     const imageCache = read("src/modules/source-document/image-cache.ts");
     const viewDetails = read("src/modules/source-document/ui/SourceDocumentViewDetails.tsx");
     const groups = read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx");
+    const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(imageCache).toContain("CACHED_IMAGE_COUNT_LIMIT = 100");
     expect(imageCache).toContain("CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024");
     expect(imageCache).toContain("storedFileReadUrl");
@@ -97,7 +98,11 @@ describe("PWA policy", () => {
     expect(viewDetails).toContain("cachedImageUrls");
     expect(viewDetails).not.toContain("cacheOfflineImage");
     expect(viewDetails).not.toContain("rememberViewedDocument");
-    expect(groups).toContain("cachedImageUrls");
+    // Original vouchers belong to the detail view only; list cards never
+    // render cached image previews.
+    expect(groups).not.toContain("cachedImageUrls");
+    expect(card).not.toContain("cachedImageUrls");
+    expect(card).not.toContain("SourceDocumentCardPreview");
   });
 
   it("keeps protected stored files out of the browser HTTP cache", () => {

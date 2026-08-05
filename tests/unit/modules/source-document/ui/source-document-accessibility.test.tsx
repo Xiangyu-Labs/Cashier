@@ -58,21 +58,22 @@ describe("source document accessibility", () => {
     expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive");
   });
 
-  it("keeps the spinning ring for processing under normal motion preferences", () => {
+  it("keeps the dedicated spinning ring for processing under normal motion preferences", () => {
     render(<ProcessingStatus status="processing" />);
-    const indicator = screen.getByRole("status").querySelector("span[aria-hidden]");
-    expect(indicator).not.toBeNull();
-    expect(indicator).toHaveClass("animate-spin");
-    expect(indicator).toHaveClass("border-t-primary");
+    const status = screen.getByRole("status");
+    const ring = status.querySelector("[data-processing-ring]");
+    expect(ring).not.toBeNull();
+    expect(ring).toHaveClass("source-document-spinner");
+    expect(status.querySelector("span[aria-hidden]")).toBeNull();
   });
 
   it("replaces the frozen ring with a solid dot for processing under reduced motion", () => {
     reducedMotion = true;
     render(<ProcessingStatus status="processing" />);
-    const indicator = screen.getByRole("status").querySelector("span[aria-hidden]");
+    const status = screen.getByRole("status");
+    expect(status.querySelector("[data-processing-ring]")).toBeNull();
+    const indicator = status.querySelector("span[aria-hidden]");
     expect(indicator).not.toBeNull();
-    expect(indicator).not.toHaveClass("animate-spin");
-    expect(indicator).not.toHaveClass("border-t-primary");
     expect(indicator).toHaveClass("bg-primary/70");
   });
 

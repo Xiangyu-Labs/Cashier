@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { invalidateSourceDocumentCounts, invalidateSourceDocuments } from "@/lib/query-keys";
+import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
@@ -12,6 +12,11 @@ import {
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
+import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
+import type {
+  MutationReconciliation,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
@@ -49,7 +54,9 @@ export function useSourceDocumentRecoveryMutations({
       return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+      // The accept reconciliation entity is intentionally minimal and would
+      // blank the card's entries; the delta refresh overlays authoritative
+      // data, so accept relies on the incremental refresh path.
       notifyRefresh();
       toast.success(tActions("acceptSuccess"));
       onSuccess?.();
@@ -79,7 +86,11 @@ export function useSourceDocumentRecoveryMutations({
       );
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+      // Same as accept: rely on the incremental refresh instead of applying
+      // the minimal placeholder entity. Wake the refresh coordinator so the
+      // delta refresh overlays the authoritative state even when polling has
+      // reached a terminal state.
+      notifyRefresh();
       toast.success(tActions("abandonSuccess"));
       onSuccess?.();
     },
@@ -101,8 +112,18 @@ export function useSourceDocumentRecoveryMutations({
     mutationFn: async ({ operationId }) => {
       return retrySourceDocumentAction(ledgerId, sourceDocumentId, operationId);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    onSuccess: async (result) => {
+      applySourceDocumentReconciliation(
+        queryClient,
+        ledgerId,
+        sourceDocumentId,
+        (
+          result as
+            | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
+            | null
+            | undefined
+        )?.reconciliation
+      );
       notifyRefresh();
       toast.success(tActions("retrySuccess"), {
         description: tActions("retrySuccessDescription"),
@@ -131,8 +152,18 @@ export function useSourceDocumentRecoveryMutations({
         operationId
       );
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    onSuccess: async (result) => {
+      applySourceDocumentReconciliation(
+        queryClient,
+        ledgerId,
+        sourceDocumentId,
+        (
+          result as
+            | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
+            | null
+            | undefined
+        )?.reconciliation
+      );
       notifyRefresh();
       toast.success(tActions("cancelSuccess"));
       onSuccess?.();

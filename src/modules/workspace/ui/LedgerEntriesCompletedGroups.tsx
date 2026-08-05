@@ -7,7 +7,9 @@ import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
 import { EntryGroupHeader } from "./EntryGroupHeader";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
-import { memo } from "react";
+import { memo, useCallback, useMemo, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { useStreamListMotion, type StreamListMotionApi } from "./use-stream-list-motion";
 
 // ---------------------------------------------------------------------------
 // Unified Stream Groups (replaces attention section + completed groups)
@@ -31,7 +33,6 @@ export interface UnifiedStreamGroupProps {
   timeZone?: string;
   readOnly?: boolean;
   collapseEntriesDefault?: boolean;
-  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -49,7 +50,6 @@ export function LedgerEntriesUnifiedGroups({
   timeZone,
   readOnly = false,
   collapseEntriesDefault = false,
-  cachedImageUrls,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -61,14 +61,41 @@ export function LedgerEntriesUnifiedGroups({
     );
   }
 
+  const commonProps = {
+    streamGroups,
+    mainCurrency,
+    ...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {}),
+    onViewSourceDetail,
+    ...(onEditRetry != null ? { onEditRetry } : {}),
+    onDeleteSourceConfirm,
+    isSelectionMode,
+    selectedIds,
+    onToggleSelection,
+    noRecordsText,
+    getItemProps,
+    ...(timeZone != null ? { timeZone } : {}),
+    collapseEntriesDefault,
+  } satisfies Omit<UnifiedStreamGroupProps, "readOnly">;
+
+  if (readOnly) {
+    return <StaticUnifiedGroups {...commonProps} readOnly />;
+  }
+  return <InteractiveUnifiedGroups {...commonProps} />;
+}
+
+/**
+ * Static (startup snapshot) rendering: keeps the per-group `content-visibility`
+ * optimization and renders no list motion — the snapshot never changes.
+ */
+function StaticUnifiedGroups(props: UnifiedStreamGroupProps) {
   return (
     <div className="space-y-6 pt-2">
-      {streamGroups.map((dateGroup) => (
+      {props.streamGroups.map((dateGroup) => (
         <div key={dateGroup.date} className="ledger-list-group space-y-2">
           <UnifiedGroupHeader
             group={dateGroup}
-            mainCurrency={mainCurrency}
-            {...(timeZone != null ? { timeZone } : {})}
+            mainCurrency={props.mainCurrency}
+            {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
           />
 
           <div className="space-y-4 px-2">
@@ -76,23 +103,155 @@ export function LedgerEntriesUnifiedGroups({
               <UnifiedStreamItemRow
                 key={item.sourceDocument.id}
                 item={item}
-                mainCurrency={mainCurrency}
-                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
-                onViewSourceDetail={onViewSourceDetail}
-                {...(onEditRetry != null ? { onEditRetry } : {})}
-                onDeleteSourceConfirm={onDeleteSourceConfirm}
-                selectionMode={isSelectionMode}
-                selected={selectedIds.includes(item.sourceDocument.id)}
-                onToggleSelection={onToggleSelection}
-                getItemProps={getItemProps}
-                readOnly={readOnly}
-                defaultExpanded={!collapseEntriesDefault}
-                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
+                mainCurrency={props.mainCurrency}
+                {...(props.onViewLedgerEntry != null
+                  ? { onViewLedgerEntry: props.onViewLedgerEntry }
+                  : {})}
+                onViewSourceDetail={props.onViewSourceDetail}
+                {...(props.onEditRetry != null ? { onEditRetry: props.onEditRetry } : {})}
+                onDeleteSourceConfirm={props.onDeleteSourceConfirm}
+                selectionMode={props.isSelectionMode}
+                selected={props.selectedIds.includes(item.sourceDocument.id)}
+                onToggleSelection={props.onToggleSelection}
+                getItemProps={props.getItemProps}
+                readOnly={props.readOnly === true}
+                defaultExpanded={!props.collapseEntriesDefault}
               />
             ))}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Interactive stream rendering: one flat keyed list so cards keep their DOM
+ * node (and expansion state) across date-group moves, wrapped in the
+ * transform/opacity motion layer. No `content-visibility` here — it would
+ * fight the animations and rect measurements.
+ */
+function InteractiveUnifiedGroups(props: UnifiedStreamGroupProps) {
+  const motionItems = useMemo(
+    () =>
+      props.streamGroups.flatMap((dateGroup) =>
+        dateGroup.items.map((item) => ({
+          id: item.sourceDocument.id,
+          date: dateGroup.date,
+          revision: buildStreamRevision(item),
+        }))
+      ),
+    [props.streamGroups]
+  );
+  const motion = useStreamListMotion(motionItems);
+  const children: ReactNode[] = [];
+  const pendingExits = [...motion.exiting].sort((a, b) => a.index - b.index);
+  let flatCardIndex = 0;
+
+  for (const dateGroup of props.streamGroups) {
+    children.push(
+      <UnifiedGroupHeader
+        key={`header:${dateGroup.date}`}
+        group={dateGroup}
+        mainCurrency={props.mainCurrency}
+        {...(props.timeZone != null ? { timeZone: props.timeZone } : {})}
+      />
+    );
+    for (const item of dateGroup.items) {
+      const nextExit = pendingExits[0];
+      while (nextExit != null && nextExit.index <= flatCardIndex) {
+        const exit = pendingExits.shift()!;
+        children.push(<StreamExitCard key={`exit:${exit.id}`} id={exit.id} />);
+      }
+      flatCardIndex += 1;
+      children.push(
+        <StreamCardMotion
+          key={item.sourceDocument.id}
+          id={item.sourceDocument.id}
+          registerNode={motion.registerNode}
+          isEntering={!motion.reducedMotion && motion.entering.has(item.sourceDocument.id)}
+          isHighlighted={!motion.reducedMotion && motion.updated.has(item.sourceDocument.id)}
+        >
+          <UnifiedStreamItemRow
+            item={item}
+            mainCurrency={props.mainCurrency}
+            {...(props.onViewLedgerEntry != null
+              ? { onViewLedgerEntry: props.onViewLedgerEntry }
+              : {})}
+            onViewSourceDetail={props.onViewSourceDetail}
+            {...(props.onEditRetry != null ? { onEditRetry: props.onEditRetry } : {})}
+            onDeleteSourceConfirm={props.onDeleteSourceConfirm}
+            selectionMode={props.isSelectionMode}
+            selected={props.selectedIds.includes(item.sourceDocument.id)}
+            onToggleSelection={props.onToggleSelection}
+            getItemProps={props.getItemProps}
+            readOnly={props.readOnly === true}
+            defaultExpanded={!props.collapseEntriesDefault}
+          />
+        </StreamCardMotion>
+      );
+    }
+  }
+  for (const exit of pendingExits) {
+    children.push(<StreamExitCard key={`exit:${exit.id}`} id={exit.id} />);
+  }
+
+  return <div className="space-y-4 pt-2">{children}</div>;
+}
+
+function buildStreamRevision(item: UnifiedStreamGroup["items"][number]): string {
+  const doc = item.sourceDocument;
+  const entries = item.ledgerEntries ?? [];
+  return [
+    doc.title ?? "",
+    doc.status,
+    doc.entryDate ?? "",
+    doc.updatedAt,
+    entries
+      .map(
+        (entry) =>
+          `${entry.id}:${entry.itemName}:${entry.amount}:${entry.currency}:${entry.description ?? ""}`
+      )
+      .join("|"),
+  ].join("|");
+}
+
+function StreamCardMotion({
+  id,
+  registerNode,
+  isEntering,
+  isHighlighted,
+  children,
+}: {
+  id: string;
+  registerNode: StreamListMotionApi["registerNode"];
+  isEntering: boolean;
+  isHighlighted: boolean;
+  children: ReactNode;
+}) {
+  const setNodeRef = useCallback(
+    (node: HTMLElement | null) => registerNode(id, node),
+    [id, registerNode]
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      data-stream-card-id={id}
+      className={cn(
+        "px-2",
+        isEntering && "stream-card-enter",
+        isHighlighted && "stream-card-highlight"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StreamExitCard({ id }: { id: string }) {
+  return (
+    <div className="pointer-events-none px-2" aria-hidden data-stream-exit-card={id}>
+      <div className="stream-card-exit min-h-[68px] rounded-[var(--radius-xl)] border border-border bg-surface text-text" />
     </div>
   );
 }
@@ -110,7 +269,6 @@ interface UnifiedStreamItemRowProps {
   getItemProps: () => Record<string, unknown>;
   readOnly: boolean;
   defaultExpanded: boolean;
-  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
@@ -126,7 +284,6 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   getItemProps,
   readOnly,
   defaultExpanded,
-  cachedImageUrls,
 }: UnifiedStreamItemRowProps) {
   const sourceDocument = item.sourceDocument as SourceDocument;
   const ledgerEntries = item.ledgerEntries as LedgerEntry[];
@@ -148,7 +305,6 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         onToggleSelect={() => onToggleSelection(sourceDocument.id)}
         readOnly={readOnly}
         defaultExpanded={defaultExpanded}
-        {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
       />
     </div>
   );

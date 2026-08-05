@@ -326,6 +326,70 @@ body {
   animation: fade-in var(--motion-base) var(--motion-ease);
 }
 
+/* Processing ring — component-specific keyframes with an explicit running
+   state. Kept separate from utility animations so content-visibility or
+   utility resets can never freeze the ring mid-arc. */
+@keyframes cashier-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.source-document-spinner {
+  animation: cashier-spin 900ms linear infinite;
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+/* Stream list card transitions — transform/opacity only. Reduced-motion is
+   handled by the motion hook (no classes are applied) and by the global
+   reduced-motion overrides as a fallback. */
+@keyframes stream-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stream-card-enter {
+  animation: stream-card-enter 200ms ease-out;
+}
+
+@keyframes stream-card-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.stream-card-exit {
+  animation: stream-card-exit 200ms var(--motion-exit) forwards;
+}
+
+@keyframes stream-card-highlight {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.stream-card-highlight {
+  animation: stream-card-highlight 400ms ease-out;
+}
+
 [data-slot="collapsible-content"] {
   overflow: hidden;
 }

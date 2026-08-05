@@ -203,4 +203,50 @@ describe("SourceDocumentCard interactions", () => {
       expect(screen.getByText(/Untitled Bill|未命名账单/i)).toBeInTheDocument();
     }
   );
+
+  it("never renders original voucher text or images on list cards", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={{
+          ...sourceDocument,
+          status: "processing",
+          text: "Lunch at the canteen",
+          files: [{ id: "file-1", contentType: "image/png", byteSize: 10, originalFilename: null }],
+        }}
+        ledgerEntries={[]}
+        status="processing"
+      />
+    );
+
+    expect(screen.queryByText(/Lunch at the canteen/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("hides the expansion toggle when the card has no expandable entries", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={{ ...sourceDocument, status: "cancelled" }}
+        ledgerEntries={[]}
+        status="cancelled"
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /展开|expand|折叠|collapse/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
+  });
+
+  it("keeps the expansion toggle for completed cards with entries", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[ledgerEntry]}
+        status="completed"
+        defaultExpanded={false}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /展开|expand/i })).toBeInTheDocument();
+  });
 });

@@ -1,12 +1,7 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import { parseAmount } from "@/lib/formatters";
 
 import type { SourceDocumentCardTotals } from "./source-document-card.types";
-
-export function getSourceDocumentPreview(sourceDocument: SourceDocument | SourceDocumentLight) {
-  return { text: sourceDocument.text ?? "", images: sourceDocument.files };
-}
 
 export function sortSourceDocumentEntries(entries: LedgerEntry[]): LedgerEntry[] {
   return [...entries].sort((a, b) => {

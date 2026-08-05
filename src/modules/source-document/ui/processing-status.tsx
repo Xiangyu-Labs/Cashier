@@ -67,17 +67,39 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
       aria-atomic="true"
     >
       <div className="relative flex items-center justify-center">
-        <span
-          className={cn(
-            "block size-2 rounded-full",
-            status === "processing"
-              ? reducedMotion
-                ? "size-3 bg-primary/70"
-                : "size-3 animate-spin border-2 border-primary/25 border-t-primary"
-              : bgClass
-          )}
-          aria-hidden
-        />
+        {status === "processing" && !reducedMotion ? (
+          <svg
+            viewBox="0 0 16 16"
+            className="source-document-spinner size-3 text-primary/70"
+            data-processing-ring
+            aria-hidden
+          >
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              fill="none"
+              stroke="currentColor"
+              strokeOpacity="0.25"
+              strokeWidth="2.5"
+            />
+            <path
+              d="M14 8a6 6 0 0 0-6-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <span
+            className={cn(
+              "block size-2 rounded-full",
+              status === "processing" ? "size-3 bg-primary/70" : bgClass
+            )}
+            aria-hidden
+          />
+        )}
       </div>
       <span
         className={cn("max-w-32 truncate text-xs font-medium sm:max-w-48", colorClass)}

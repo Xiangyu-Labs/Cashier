@@ -32,7 +32,10 @@ export function applyStreamRefreshToCache(
 ): void {
   if (result.resetRequired) {
     writeLedgerSyncVersion(ledgerId, result.toVersion);
-    void queryClient.resetQueries({ predicate: invalidateSourceDocumentStream(ledgerId) });
+    // Keep the current list visible and calibrate in the background. Only the
+    // first load may show the full loading state; a reset must never flash
+    // the list back to the first-page skeleton.
+    void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) });
     void queryClient.invalidateQueries({
       predicate: invalidateSourceDocumentStreamTotal(ledgerId),
     });
@@ -49,6 +52,9 @@ export function applyStreamRefreshToCache(
   if (result.counts != null) {
     queryClient.setQueryData(queryKeys.sourceDocumentCounts(ledgerId), result.counts);
   }
+  // Local merge is the instant experience; a background refetch of the loaded
+  // windows calibrates pagination boundaries without clearing current data.
+  void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) });
   void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) });
   if (result.invalidations.categories || result.invalidations.settings) {
     void queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) });

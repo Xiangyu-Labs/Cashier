@@ -45,6 +45,7 @@ interface SourceDocumentCardHeaderProps {
   supportedActions: readonly SupportedSourceDocumentAction[];
   showActions?: boolean;
   isExpanded: boolean;
+  hasExpandableContent?: boolean;
   contentId: string;
   onToggleExpanded: () => void;
   onViewDetails?: (() => void) | undefined;
@@ -86,6 +87,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   supportedActions,
   showActions = true,
   isExpanded,
+  hasExpandableContent = true,
   contentId,
   onToggleExpanded,
   onViewDetails,
@@ -129,21 +131,23 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
     >
-      <button
-        type="button"
-        onClick={onToggleExpanded}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-9 sm:w-9"
-        aria-label={isExpanded ? t("collapse") : t("expand")}
-        aria-expanded={isExpanded}
-        aria-controls={contentId}
-      >
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 transition-transform duration-[var(--motion-feedback)] ease-[var(--motion-state-ease)]",
-            isExpanded && "rotate-180"
-          )}
-        />
-      </button>
+      {hasExpandableContent && (
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color] duration-[var(--motion-feedback)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-9 sm:w-9"
+          aria-label={isExpanded ? t("collapse") : t("expand")}
+          aria-expanded={isExpanded}
+          aria-controls={contentId}
+        >
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform duration-[var(--motion-feedback)] ease-[var(--motion-state-ease)]",
+              isExpanded && "rotate-180"
+            )}
+          />
+        </button>
+      )}
 
       <button
         type="button"

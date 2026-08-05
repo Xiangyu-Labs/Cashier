@@ -1,11 +1,17 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useCallback } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { listStreamPageAction } from "@/modules/source-document/actions";
 import type {
   SourceDocumentListItemDto,
   SourceDocumentStatusType,
+  StreamPage,
 } from "@/modules/source-document/contracts";
 import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
@@ -24,8 +30,7 @@ import {
   seedSourceDocumentEntities,
   type SourceDocumentEntityStore,
 } from "./source-document-optimistic-cache";
-
-const STREAM_PAGE_LIMIT = 20;
+import { STREAM_PAGE_LIMIT } from "@/modules/source-document/stream-cache-merge";
 
 export interface UseSourceDocumentStreamOptions {
   dateRange?: {
@@ -133,6 +138,9 @@ export function useSourceDocumentStream(
 
   // Track the generation from the first page for cross-page consistency
   const generationRef = useRef<number | null>(null);
+  // Guards the background restart so a generation mismatch only triggers one
+  // fresh first-page fetch while the old list stays visible.
+  const restartingRef = useRef(false);
   // C3: Persist first page fingerprint from server for refresh comparison
 
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
@@ -167,39 +175,76 @@ export function useSourceDocumentStream(
     if (pageItems.length > 0) seedSourceDocumentEntities(queryClient, ledgerId, pageItems);
   }, [data, ledgerId, queryClient]);
 
+  // A new filter window starts fresh: generation/restart state from the
+  // previous window must not trigger a background restart for the new key.
+  useEffect(() => {
+    generationRef.current = null;
+    restartingRef.current = false;
+  }, [filterSignature]);
+
   // Check generation consistency across pages (Fix 3).
   // If a subsequent page has a different generation than the first page,
-  // reset the query so it restarts from page 1 with the new ordering/schema.
-  // Also check for restartRequired (Fix 2) — invalid cursor / stale data
-  // requiring the client to discard pages and restart from page one.
+  // or the server signals restartRequired (invalid cursor / stale data),
+  // restart from page 1 in the background. The old list stays visible until
+  // the fresh first page succeeds; on failure the current list is preserved.
   useEffect(() => {
     const pages = data?.pages;
     if (!pages || pages.length === 0) return;
 
-    // Fix 2: Detect restartRequired from cursor validation failure
     const anyRestart = pages.some((p) => p.restartRequired);
-    if (anyRestart) {
-      queryClient.resetQueries({ queryKey: streamPageKey });
-      return;
-    }
-
     const firstGen = pages[0]?.generation;
     if (firstGen == null) return;
 
     if (generationRef.current === null) {
       generationRef.current = firstGen;
-    } else if (firstGen !== generationRef.current) {
-      // The first page generation changed (e.g. after a server deployment).
-      generationRef.current = firstGen;
-      queryClient.resetQueries({ queryKey: streamPageKey });
-    } else if (pages.length > 1) {
-      // Check all loaded pages share the same generation
-      const anyMismatch = pages.some((p) => p.generation !== firstGen);
-      if (anyMismatch) {
-        queryClient.resetQueries({ queryKey: streamPageKey });
-      }
+      return;
     }
-  }, [data, queryClient, streamPageKey]);
+
+    const generationChanged =
+      anyRestart ||
+      firstGen !== generationRef.current ||
+      (pages.length > 1 && pages.some((p) => p.generation !== firstGen));
+    if (!generationChanged) return;
+    if (restartingRef.current) return;
+
+    restartingRef.current = true;
+    void (async () => {
+      try {
+        const fresh = await listStreamPageAction(ledgerId, {
+          ...(startDate !== null ? { startDate } : {}),
+          ...(endDate !== null ? { endDate } : {}),
+          ...(minAmount != null ? { minAmount } : {}),
+          ...(maxAmount != null ? { maxAmount } : {}),
+          ...(stableStatuses != null && stableStatuses.length > 0
+            ? { statuses: stableStatuses }
+            : {}),
+          ...(search != null && search !== "" ? { search } : {}),
+          cursor: undefined,
+          limit: STREAM_PAGE_LIMIT,
+        });
+        generationRef.current = fresh.generation;
+        queryClient.setQueryData<InfiniteData<StreamPage>>(streamPageKey, {
+          pages: [fresh],
+          pageParams: [undefined],
+        });
+      } catch {
+        // Keep the old list — a failed restart must not clear the window.
+      } finally {
+        restartingRef.current = false;
+      }
+    })();
+  }, [
+    data,
+    endDate,
+    ledgerId,
+    maxAmount,
+    minAmount,
+    queryClient,
+    search,
+    stableStatuses,
+    startDate,
+    streamPageKey,
+  ]);
 
   const refresh = useCallback(async (): Promise<{
     changed: boolean;

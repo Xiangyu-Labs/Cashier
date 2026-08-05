@@ -10,9 +10,8 @@ import { EntryCardShell } from "@/components/entry-card-shell";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { SourceDocumentCardHeader } from "./SourceDocumentCardHeader";
 import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/hooks/useSourceDocumentRecoveryMutations";
-import { getSourceDocumentPreview, sortSourceDocumentEntries } from "./source-document-card.utils";
+import { sortSourceDocumentEntries } from "./source-document-card.utils";
 import { SourceDocumentCardEntries } from "./SourceDocumentCardEntries";
-import { SourceDocumentCardPreview } from "./SourceDocumentCardPreview";
 
 interface SourceDocumentCardProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -31,7 +30,6 @@ interface SourceDocumentCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
-  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 interface RecoveryControls {
@@ -88,7 +86,6 @@ function SourceDocumentCardBody({
   isSelected = false,
   onToggleSelect,
   readOnly = false,
-  cachedImageUrls,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
   const tCommon = useTranslations("Common");
@@ -96,7 +93,7 @@ function SourceDocumentCardBody({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
-  const preview = useMemo(() => getSourceDocumentPreview(sourceDocument), [sourceDocument]);
+  const hasExpandableContent = status === "completed" && sortedEntries.length > 0;
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
     : "supportedActions" in sourceDocument
@@ -136,6 +133,7 @@ function SourceDocumentCardBody({
           supportedActions={supportedActions}
           showActions={!readOnly}
           isExpanded={isExpanded}
+          hasExpandableContent={hasExpandableContent}
           contentId={contentId}
           onToggleExpanded={() => setIsExpanded((expanded) => !expanded)}
           onViewDetails={onViewDetails}
@@ -145,28 +143,18 @@ function SourceDocumentCardBody({
           onEditRetry={onEditRetry}
           onDelete={onDelete}
         />
-        {isExpanded ? (
+        {isExpanded && hasExpandableContent ? (
           <div
             id={contentId}
             data-testid="source-document-card-body"
             className="animate-in overflow-hidden fade-in-0 slide-in-from-top-1 duration-[var(--motion-expand)] ease-[var(--motion-state-ease)] motion-reduce:animate-none"
           >
-            {status === "completed" && sortedEntries.length > 0 ? (
-              <SourceDocumentCardEntries
-                entries={sortedEntries}
-                mainCurrency={mainCurrency}
-                sourceDocumentEntryDate={sourceDocument.entryDate}
-                {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
-              />
-            ) : status !== "completed" ? (
-              <SourceDocumentCardPreview
-                text={preview.text}
-                images={preview.images}
-                {...(onViewDetails != null ? { onViewDetails } : {})}
-                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
-                readOnly={readOnly}
-              />
-            ) : null}
+            <SourceDocumentCardEntries
+              entries={sortedEntries}
+              mainCurrency={mainCurrency}
+              sourceDocumentEntryDate={sourceDocument.entryDate}
+              {...(onViewLedgerEntry != null ? { onViewLedgerEntry } : {})}
+            />
           </div>
         ) : null}
       </EntryCardShell>

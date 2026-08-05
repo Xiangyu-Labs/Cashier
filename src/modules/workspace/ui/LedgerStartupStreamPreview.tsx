@@ -113,7 +113,6 @@ export function LedgerStartupStreamPreview({
           : {})}
         readOnly
         collapseEntriesDefault={snapshot.ledgerSettings?.collapseEntriesDefault ?? false}
-        cachedImageUrls={cachedImageUrls}
       />
       <SourceDocumentDetailModal
         ledgerId={snapshot.ledgerId}
