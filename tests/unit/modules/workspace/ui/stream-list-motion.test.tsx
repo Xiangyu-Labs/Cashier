@@ -133,6 +133,58 @@ describe("stream list motion", () => {
     expect(document.querySelector('[data-stream-exit-card="doc-2"]')).toBeNull();
   });
 
+  it("keeps the exit copy when the first card is removed", () => {
+    const { rerender } = renderGroups(["doc-1", "doc-2"]);
+
+    expect(() => rerenderGroups(rerender, ["doc-2"])).not.toThrow();
+
+    expect(document.querySelector('[data-stream-exit-card="doc-1"]')).not.toBeNull();
+    expect(document.querySelector('[data-stream-exit-card="doc-2"]')).toBeNull();
+    expect(screen.getByTestId("card-doc-2")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(document.querySelector('[data-stream-exit-card="doc-1"]')).toBeNull();
+  });
+
+  it("places the exit copy between the remaining cards when a middle card is removed", () => {
+    const { rerender } = renderGroups(["doc-1", "doc-2", "doc-3"]);
+
+    expect(() => rerenderGroups(rerender, ["doc-1", "doc-3"])).not.toThrow();
+
+    const exitCards = document.querySelectorAll("[data-stream-exit-card]");
+    expect(exitCards).toHaveLength(1);
+    expect(exitCards[0]).toHaveAttribute("data-stream-exit-card", "doc-2");
+
+    const cardBefore = screen.getByTestId("card-doc-1");
+    const cardAfter = screen.getByTestId("card-doc-3");
+    const exit = exitCards[0] as HTMLElement;
+    expect(
+      cardBefore.compareDocumentPosition(exit) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(exit.compareDocumentPosition(cardAfter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders each exit placeholder exactly once when consecutive leading cards are removed", () => {
+    const { rerender } = renderGroups(["doc-1", "doc-2", "doc-3"]);
+
+    expect(() => rerenderGroups(rerender, ["doc-3"])).not.toThrow();
+
+    const exitCards = document.querySelectorAll("[data-stream-exit-card]");
+    expect(exitCards).toHaveLength(2);
+    expect([...exitCards].map((node) => node.getAttribute("data-stream-exit-card"))).toEqual([
+      "doc-1",
+      "doc-2",
+    ]);
+    expect(screen.getByTestId("card-doc-3")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(document.querySelectorAll("[data-stream-exit-card]")).toHaveLength(0);
+  });
+
   it("applies a FLIP transform on reorder and clears it after the animation", () => {
     const rects = new Map<string, number>();
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (

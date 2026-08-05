@@ -7,7 +7,6 @@ import { Link } from "@/i18n/routing";
 
 export default function LedgerError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
@@ -28,7 +27,7 @@ export default function LedgerError({
         </div>
 
         <div className="flex flex-col gap-3">
-          <Button className="w-full gap-2" onClick={() => reset()}>
+          <Button className="w-full gap-2" onClick={() => window.location.reload()}>
             <RefreshCcw className="w-4 h-4" />
             {t("retry")}
           </Button>

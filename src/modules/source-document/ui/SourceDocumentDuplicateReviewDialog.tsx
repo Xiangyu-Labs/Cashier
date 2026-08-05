@@ -85,7 +85,7 @@ export function SourceDocumentDuplicateReviewDialog({
   }, [ledgerId, queryClient, reviewQueryKey, sourceDocumentId]);
 
   const reconcileAndClose = useCallback(
-    async (
+    (
       result: {
         reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
       },
@@ -102,7 +102,15 @@ export function SourceDocumentDuplicateReviewDialog({
       removeResolvedDocumentQueries();
       onOpenChange(false);
       toast.success(successMessage);
-      await invalidateLedgerViews();
+      // Background refresh: the Server Action already committed the write, so
+      // cache invalidation must never block the success path or turn the
+      // mutation into an error when the refresh itself fails.
+      void invalidateLedgerViews().catch((error) => {
+        console.error(
+          "[SourceDocumentDuplicateReviewDialog] background cache invalidation failed after a successful action",
+          { ledgerId, sourceDocumentId, error }
+        );
+      });
     },
     [
       invalidateLedgerViews,
@@ -121,8 +129,8 @@ export function SourceDocumentDuplicateReviewDialog({
       }
       return keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId, operationId);
     },
-    onSuccess: async (result) => {
-      await reconcileAndClose(result, t("keepSuccess"));
+    onSuccess: (result) => {
+      reconcileAndClose(result, t("keepSuccess"));
     },
     onError: () => toast.error(t("actionFailed")),
   });
@@ -138,8 +146,8 @@ export function SourceDocumentDuplicateReviewDialog({
         operationId
       );
     },
-    onSuccess: async (result) => {
-      await reconcileAndClose(result, t("discardSuccess"));
+    onSuccess: (result) => {
+      reconcileAndClose(result, t("discardSuccess"));
     },
     onError: () => toast.error(t("actionFailed")),
   });

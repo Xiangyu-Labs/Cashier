@@ -39,6 +39,26 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
   const enterTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const exitTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const updateTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const reducedMotionRef = useRef(reducedMotion);
+
+  // Keep a ref mirror for callbacks scheduled before a reduced-motion switch.
+  useEffect(() => {
+    reducedMotionRef.current = reducedMotion;
+  }, [reducedMotion]);
+
+  // Reduced motion: cancel every pending animation timer and measurement
+  // immediately so delayed state updates can never act on a reset animation
+  // state. Runs after commit; the diff is already collapsed in render phase.
+  useEffect(() => {
+    if (!reducedMotion) return;
+    for (const timer of timers.current) clearTimeout(timer);
+    timers.current.clear();
+    enterTimers.current.clear();
+    exitTimers.current.clear();
+    updateTimers.current.clear();
+    flipApplied.current.clear();
+    baselineRects.current.clear();
+  }, [reducedMotion]);
 
   // Render-phase state adjustment: the transition must be part of the same
   // commit as the changed list so removed cards get exit copies in the same
@@ -64,6 +84,7 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       if (enterTimers.current.has(id)) continue;
       const timer = setTimeout(() => {
         enterTimers.current.delete(id);
+        timers.current.delete(timer);
         setDiff((current) => {
           const entering = new Set(current.entering);
           entering.delete(id);
@@ -77,6 +98,7 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       if (updateTimers.current.has(id)) continue;
       const timer = setTimeout(() => {
         updateTimers.current.delete(id);
+        timers.current.delete(timer);
         setDiff((current) => {
           const updated = new Set(current.updated);
           updated.delete(id);
@@ -90,6 +112,7 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       if (exitTimers.current.has(exit.id)) continue;
       const timer = setTimeout(() => {
         exitTimers.current.delete(exit.id);
+        timers.current.delete(timer);
         setDiff((current) => ({
           ...current,
           exiting: current.exiting.filter((item) => item.id !== exit.id),
@@ -105,7 +128,16 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
   // exit copy is removed (which shifts the remaining cards up).
   const flipKey = `${itemsKey}|exits:${diff.exiting.map((exit) => exit.id).join(",")}`;
   useLayoutEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      // Clear any in-flight FLIP transforms after the reduced-motion switch;
+      // their settle timers were canceled in the cleanup effect.
+      for (const node of nodeRefs.current.values()) {
+        if (node == null) continue;
+        node.style.transition = "";
+        node.style.transform = "";
+      }
+      return;
+    }
     for (const [id, node] of nodeRefs.current) {
       if (node == null) continue;
       const prevRect = baselineRects.current.get(id);
@@ -119,6 +151,7 @@ export function useStreamListMotion(items: readonly StreamListMotionItem[]): Str
       node.style.transform = `translate(${dx}px, ${dy}px)`;
       flipApplied.current.add(id);
       requestAnimationFrame(() => {
+        if (reducedMotionRef.current) return;
         if (!node.isConnected) return;
         node.style.transition = `transform ${STREAM_CARD_FLIP_MS}ms var(--motion-state-ease, ease)`;
         node.style.transform = "";

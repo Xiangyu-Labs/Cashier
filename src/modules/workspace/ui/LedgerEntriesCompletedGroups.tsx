@@ -146,7 +146,11 @@ function InteractiveUnifiedGroups(props: UnifiedStreamGroupProps) {
   const motion = useStreamListMotion(motionItems);
   const children: ReactNode[] = [];
   const pendingExits = [...motion.exiting].sort((a, b) => a.index - b.index);
-  let flatCardIndex = 0;
+  // Immutable cursor over the sorted exit list. `renderedSlotCount` counts
+  // every rendered slot (normal cards + exit placeholders) so exit copies are
+  // placed at their previous flat position and each exit renders exactly once.
+  let exitCursor = 0;
+  let renderedSlotCount = 0;
 
   for (const dateGroup of props.streamGroups) {
     children.push(
@@ -158,12 +162,15 @@ function InteractiveUnifiedGroups(props: UnifiedStreamGroupProps) {
       />
     );
     for (const item of dateGroup.items) {
-      const nextExit = pendingExits[0];
-      while (nextExit != null && nextExit.index <= flatCardIndex) {
-        const exit = pendingExits.shift()!;
+      let nextExit = pendingExits[exitCursor];
+      while (nextExit != null && nextExit.index <= renderedSlotCount) {
+        const exit = nextExit;
         children.push(<StreamExitCard key={`exit:${exit.id}`} id={exit.id} />);
+        exitCursor += 1;
+        renderedSlotCount += 1;
+        nextExit = pendingExits[exitCursor];
       }
-      flatCardIndex += 1;
+      renderedSlotCount += 1;
       children.push(
         <StreamCardMotion
           key={item.sourceDocument.id}
@@ -192,7 +199,9 @@ function InteractiveUnifiedGroups(props: UnifiedStreamGroupProps) {
       );
     }
   }
-  for (const exit of pendingExits) {
+  for (; exitCursor < pendingExits.length; exitCursor += 1) {
+    const exit = pendingExits[exitCursor];
+    if (exit == null) continue;
     children.push(<StreamExitCard key={`exit:${exit.id}`} id={exit.id} />);
   }
 

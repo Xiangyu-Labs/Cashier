@@ -89,8 +89,9 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
  * Generic mutation hook for ledger-related operations.
  * Handles the common pattern of:
  * 1. Preserve cached server data while the request is pending.
- * 2. Refresh explicitly affected queries after a successful response.
- * 3. Show feedback and run UI callbacks only after refresh completes.
+ * 2. Refresh explicitly affected queries in the background after a successful
+ *    response; a failed refresh never rejects the mutation.
+ * 3. Show feedback and run UI callbacks as soon as the business write succeeds.
  *
  * @param ledgerId - The ledger ID for scoped cache invalidation
  * @param options - Mutation configuration
@@ -127,14 +128,30 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       return undefined;
     },
 
-    onSuccess: async (data, variables, context) => {
+    onSuccess: (data, variables, context) => {
       if (!skipInvalidation) {
-        if (ledgerId != null && invalidatePredicates != null && invalidatePredicates.length > 0) {
-          await runPredicates(queryClient, "invalidateQueries", invalidatePredicates);
-        }
-        if (customInvalidation != null) {
-          await customInvalidation(queryClient);
-        }
+        // Cache refresh is recoverable post-write work: the mutation already
+        // succeeded at the business layer, so a failed invalidation must never
+        // reject the mutation or change its success status.
+        void (async () => {
+          try {
+            if (
+              ledgerId != null &&
+              invalidatePredicates != null &&
+              invalidatePredicates.length > 0
+            ) {
+              await runPredicates(queryClient, "invalidateQueries", invalidatePredicates);
+            }
+            if (customInvalidation != null) {
+              await customInvalidation(queryClient);
+            }
+          } catch (error) {
+            console.error(
+              "[useLedgerMutation] background cache invalidation failed after a successful mutation",
+              { ledgerId, error }
+            );
+          }
+        })();
       }
 
       // Show success toast if message provided

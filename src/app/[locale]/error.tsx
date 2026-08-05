@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 
 export default function Error({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
@@ -36,7 +35,7 @@ export default function Error({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button className="flex-1 gap-2 h-11" onClick={() => reset()}>
+          <Button className="flex-1 gap-2 h-11" onClick={() => window.location.reload()}>
             <RefreshCcw className="w-4 h-4" />
             {t("retry")}
           </Button>
