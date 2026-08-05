@@ -27,6 +27,9 @@ function toLightDto(
     ...(document.activeResultSummary !== undefined
       ? { activeResultSummary: document.activeResultSummary }
       : {}),
+    ...(document.duplicateReview !== undefined
+      ? { duplicateReview: document.duplicateReview }
+      : {}),
     ledgerEntries,
   };
 }

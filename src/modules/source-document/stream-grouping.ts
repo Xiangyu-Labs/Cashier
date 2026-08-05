@@ -25,7 +25,7 @@ export interface UnifiedStreamGroup {
   date: string;
   /** Provenance of the first item's effective date (groups are homogeneous). */
   dateProvenance: DateProvenance;
-  /** Sum of active ledger-entry amounts across completed items in this group. */
+  /** Sum of active ledger-entry amounts across accounting-valid items in this group. */
   total: number;
   items: UnifiedStreamItem[];
 }
@@ -116,10 +116,14 @@ export function buildUnifiedStreamGroups(
     }
   }
 
-  // 3. Compute totals (completed items only)
+  // 3. Compute totals for all active accounting projections. A pending
+  // duplicate is valid until the user chooses to delete it.
   for (const group of groups) {
     group.total = group.items.reduce((sum, item) => {
-      if (item.sourceDocument.status === "completed") {
+      if (
+        item.sourceDocument.status === "completed" ||
+        item.sourceDocument.status === "duplicate_pending"
+      ) {
         return sum + computeEntryTotal(item.ledgerEntries);
       }
       return sum;

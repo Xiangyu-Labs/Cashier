@@ -57,6 +57,7 @@ describe("ledger single-owner race and rollback", () => {
         mainCurrency: "CNY",
         collapseEntriesDefault: false,
         aiCustomPrompt: "",
+        duplicateDetectionEnabled: true,
       },
       categories: [
         {

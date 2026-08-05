@@ -1,4 +1,6 @@
-import { eq } from "drizzle-orm";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   activateDuplicatePendingRevision,
@@ -15,6 +17,10 @@ import {
   getTargetSourceDocument,
   listTargetSourceDocuments,
 } from "@/application/adapters/postgres/read-models";
+import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
+import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
+import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
+import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import {
   keepDuplicateDocument,
   discardDuplicateDocument,
@@ -57,7 +63,7 @@ async function createDuplicatePendingDocument(
 }
 
 describe("duplicate review lifecycle", () => {
-  it("stores a first-parse duplicate as a pending non-active revision", async () => {
+  it("stores a first-parse duplicate as an active revision with a pending review", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-store");
     const matched = await postgresLedgerProjectionAdapter.createManual({
@@ -87,8 +93,16 @@ describe("duplicate review lifecycle", () => {
       where: eq(sourceDocuments.id, sourceDocumentId),
     });
     expect(document?.currentStatus).toBe("duplicate_pending");
-    expect(document?.activeRevisionId).toBeNull();
-    expect(document?.pendingRevisionId).toBe(revisionId);
+    expect(document?.activeRevisionId).toBe(revisionId);
+    expect(document?.pendingRevisionId).toBeNull();
+    expect(document?.title).toBe("Coffee Shop");
+
+    // The revision title remains the compatibility fallback for historical
+    // rows that have no document-level title.
+    await db
+      .update(sourceDocuments)
+      .set({ title: null })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
 
     const review = await db.query.duplicateReviews.findFirst({
       where: eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
@@ -99,6 +113,7 @@ describe("duplicate review lifecycle", () => {
 
     const detail = await getTargetSourceDocument(ledgerId, sourceDocumentId);
     expect(detail?.status).toBe("duplicate_pending");
+    expect(detail?.title).toBe("Coffee Shop");
     expect(detail?.duplicateReview?.matchedSourceDocumentId).toBe(matched.sourceDocumentId);
     expect(detail?.supportedActions).toEqual(
       expect.arrayContaining(["keep_duplicate", "discard_duplicate"])
@@ -161,6 +176,61 @@ describe("duplicate review lifecycle", () => {
     expect(detail?.duplicateReview).toBeUndefined();
   });
 
+  it("migrates legacy pending duplicate projections into the active model", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-migration");
+    const matched = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId,
+      title: "Original",
+      entryDate: "2026-08-05",
+      submittedText: null,
+      entries: [entry],
+    });
+    const { sourceDocumentId, revisionId } = await createDuplicatePendingDocument(db, ledgerId);
+
+    await db
+      .update(sourceDocumentRevisions)
+      .set({ title: "Recovered title", outcome: "completed", finalizedAt: new Date() })
+      .where(eq(sourceDocumentRevisions.id, revisionId));
+    await db.insert(duplicateReviews).values({
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+      matchedSourceDocumentId: matched.sourceDocumentId,
+      status: "pending",
+      reason: "Legacy review",
+      confidence: "0.900",
+    });
+    await db
+      .update(sourceDocuments)
+      .set({
+        activeRevisionId: null,
+        pendingRevisionId: revisionId,
+        title: null,
+        currentStatus: "duplicate_pending",
+      })
+      .where(eq(sourceDocuments.id, sourceDocumentId));
+
+    const migration = readFileSync(
+      path.resolve("src/persistence/postgres-migrations/0020_duplicate_detection_enabled.sql"),
+      "utf8"
+    );
+    for (const statement of migration
+      .split("--> statement-breakpoint")
+      .map((part) => part.trim())
+      .filter((part) => part !== "")) {
+      await db.execute(sql.raw(statement));
+    }
+
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    expect(document?.activeRevisionId).toBe(revisionId);
+    expect(document?.pendingRevisionId).toBeNull();
+    expect(document?.currentStatus).toBe("duplicate_pending");
+    expect(document?.title).toBe("Recovered title");
+  });
+
   it("discards the duplicate as a soft delete and keeps the review record", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-discard");
@@ -199,6 +269,27 @@ describe("duplicate review lifecycle", () => {
     expect(review?.status).toBe("discarded");
     expect(review?.decision).toBe("discard_duplicate");
 
+    // The active projection is excluded by the document tombstone, so all
+    // accounting reads immediately fall back to the original bill.
+    await expect(calculateCompletedSourceDocumentTotal({ ledgerId })).resolves.toEqual({
+      total: "38",
+    });
+    await expect(
+      calculateLedgerEntryStats({ ledgerId, filters: {}, mainCurrency: "CNY" })
+    ).resolves.toMatchObject({
+      convertedTotal: { total: "38", currency: "CNY" },
+    });
+    await expect(listLedgerEntryPage({ ledgerId, limit: 20, filters: {} })).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          sourceDocument: expect.objectContaining({
+            id: matched.sourceDocumentId,
+            status: "completed",
+          }),
+        }),
+      ],
+    });
+
     await expect(
       discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
     ).resolves.toBe(true);
@@ -208,7 +299,88 @@ describe("duplicate review lifecycle", () => {
     ).resolves.toBe(false);
   });
 
-  it("keeps duplicates out of stats and attention until resolved", async () => {
+  it("blocks active projection replacement while a duplicate review is pending", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-edit-conflict");
+    const matched = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId,
+      title: "Original",
+      entryDate: "2026-08-05",
+      submittedText: null,
+      entries: [entry],
+    });
+    const { sourceDocumentId, revisionId } = await createDuplicatePendingDocument(db, ledgerId);
+    await storeDuplicatePendingRevision(
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+      "Original",
+      [entry],
+      {
+        matchedSourceDocumentId: matched.sourceDocumentId,
+        reason: "Same bill",
+        confidence: 0.9,
+      }
+    );
+
+    await expect(
+      postgresLedgerProjectionAdapter.replaceActive({
+        ledgerId,
+        sourceDocumentId,
+        expectedActiveRevisionId: revisionId,
+        entries: [entry],
+      })
+    ).rejects.toThrow("Source document has a pending duplicate review");
+
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, sourceDocumentId),
+    });
+    expect(document?.activeRevisionId).toBe(revisionId);
+    expect(document?.currentStatus).toBe("duplicate_pending");
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId)
+    ).resolves.toBe(true);
+  });
+
+  it("retires a pending duplicate review when the document is deleted", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "duplicate-delete");
+    const matched = await postgresLedgerProjectionAdapter.createManual({
+      ledgerId,
+      title: "Original",
+      entryDate: "2026-08-05",
+      submittedText: null,
+      entries: [entry],
+    });
+    const { sourceDocumentId, revisionId } = await createDuplicatePendingDocument(db, ledgerId);
+    await storeDuplicatePendingRevision(
+      ledgerId,
+      sourceDocumentId,
+      revisionId,
+      "Original",
+      [entry],
+      {
+        matchedSourceDocumentId: matched.sourceDocumentId,
+        reason: "Same bill",
+        confidence: 0.9,
+      }
+    );
+
+    await expect(
+      deleteSourceDocument({ ledgerId, sourceDocumentId }, postgresRevisionAdapter)
+    ).resolves.toEqual({ sourceDocumentId, deleted: true });
+
+    const review = await db.query.duplicateReviews.findFirst({
+      where: eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+    });
+    expect(review).toMatchObject({
+      status: "discarded",
+      decision: "superseded",
+    });
+    await expect(getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId)).rejects.toThrow();
+  });
+
+  it("counts duplicate pending amounts immediately and keeps them in attention", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-stats");
     const matched = await postgresLedgerProjectionAdapter.createManual({
@@ -243,9 +415,15 @@ describe("duplicate review lifecycle", () => {
         endDate: "2026-08-31",
       }),
     ]);
-    // Only the matched bill counts; the duplicate pending document is excluded.
-    expect(totals[0].total).toBe("38");
-    expect(totals[1].total).toBe("38");
+    // The active duplicate projection is already part of the accounting total.
+    expect(totals[0].total).toBe("76");
+    expect(totals[1].total).toBe("76");
+
+    const ledgerPage = await listLedgerEntryPage({ ledgerId, limit: 20, filters: {} });
+    expect(
+      ledgerPage.items.find((item) => item.sourceDocumentId === sourceDocumentId)?.sourceDocument
+        ?.status
+    ).toBe("duplicate_pending");
 
     await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
     const afterKeep = await calculateCompletedSourceDocumentTotal({ ledgerId });

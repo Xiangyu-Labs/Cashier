@@ -5,6 +5,7 @@ const zhLedger = {
     mainCurrency: "CNY",
     collapseEntriesDefault: false,
     aiCustomPrompt: "",
+    duplicateDetectionEnabled: true,
   },
   categories: [
     {
@@ -78,6 +79,7 @@ const enLedger = {
     mainCurrency: "USD",
     collapseEntriesDefault: false,
     aiCustomPrompt: "",
+    duplicateDetectionEnabled: true,
   },
   categories: [
     {

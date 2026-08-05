@@ -72,6 +72,8 @@ export const queryKeys = {
     ] as const,
   sourceDocument: (id: string) => ["sourceDocument", id] as const,
   sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
+  sourceDocumentDuplicateReview: (ledgerId: string, id: string) =>
+    ["sourceDocument", "duplicateReview", ledgerId, id] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>
     ["sourceDocument", "full", ledgerId, id] as const,
 

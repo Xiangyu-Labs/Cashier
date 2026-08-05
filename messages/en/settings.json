@@ -91,6 +91,8 @@
     "assistant": "Smart Assistant",
     "aiLanguage": "AI Output Language",
     "aiLanguageDesc": "Makes AI-generated titles, item names, adjustments, and notes natural for native speakers of this language without limiting the receipt's original language",
+    "duplicateDetection": "Detect possible duplicates",
+    "duplicateDetectionDesc": "When enabled, new bills are checked against nearby bills and flagged for your confirmation. Turning it off affects future submissions and retries only; existing reviews stay unchanged.",
     "aiSettings": "AI Settings",
     "serviceCredentialsSection": "Service Credentials",
     "dataConfig": "Currency & Categories",

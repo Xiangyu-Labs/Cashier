@@ -184,9 +184,10 @@ export async function storeCandidateRevision(
 }
 
 /**
- * Store a completed, non-activated revision for a first parse that was flagged
- * as a likely duplicate. The document stays without an active revision (and
- * therefore outside stats) until a human keeps or discards it.
+ * Store a completed, active revision for a first parse that was flagged as a
+ * likely duplicate. The pending review keeps the document in
+ * `duplicate_pending`, while the active projection makes the bill visible to
+ * all normal accounting reads until it is discarded.
  */
 export async function storeDuplicatePendingRevision(
   ledgerId: string,
@@ -221,18 +222,6 @@ export async function storeDuplicatePendingRevision(
     const now = new Date();
     assertEntryValues(entries);
     await assertCategoryOwnership(tx, ledgerId, entries);
-    await tx
-      .insert(duplicateReviews)
-      .values({
-        ledgerId,
-        sourceDocumentId,
-        revisionId,
-        matchedSourceDocumentId: review.matchedSourceDocumentId,
-        status: "pending",
-        reason: review.reason,
-        confidence: review.confidence == null ? null : String(review.confidence),
-      })
-      .onConflictDoNothing({ target: duplicateReviews.sourceDocumentId });
     await insertRevisionEntries(tx, { ledgerId, sourceDocumentId, revisionId, entries });
     await tx
       .update(sourceDocumentRevisions)
@@ -244,19 +233,54 @@ export async function storeDuplicatePendingRevision(
         failureCode: null,
       })
       .where(eq(sourceDocumentRevisions.id, revisionId));
-    // Touch the document so the status trigger recomputes `duplicate_pending`
-    // from the now-pending duplicate review.
-    await tx
+    const insertedReview = await tx
+      .insert(duplicateReviews)
+      .values({
+        ledgerId,
+        sourceDocumentId,
+        revisionId,
+        matchedSourceDocumentId: review.matchedSourceDocumentId,
+        status: "pending",
+        reason: review.reason,
+        confidence: review.confidence == null ? null : String(review.confidence),
+      })
+      .onConflictDoNothing({ target: duplicateReviews.sourceDocumentId })
+      .returning({ id: duplicateReviews.id })
+      .then((rows) => rows[0]);
+    if (insertedReview == null) {
+      throw new ConflictError("Duplicate review already exists");
+    }
+    // Activate the completed projection before touching the document. The
+    // status trigger checks the pending review first, so this produces an
+    // active `duplicate_pending` document rather than a plain completed one.
+    const activated = await tx
       .update(sourceDocuments)
-      .set({ updatedAt: now })
-      .where(activeDocumentWhere(ledgerId, sourceDocumentId));
+      .set({
+        activeRevisionId: revisionId,
+        pendingRevisionId: null,
+        ...(title == null ? {} : { title }),
+        updatedAt: now,
+      })
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, revisionId),
+          isNull(sourceDocuments.activeRevisionId)
+        )
+      )
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (activated == null) {
+      throw new ConflictError("Source document changed during duplicate activation");
+    }
     return true;
   });
 }
 
 /**
- * Keep a duplicate-pending document: atomically activate its completed
- * pending revision and mark the review as kept. Idempotent.
+ * Keep a duplicate-pending document: mark the review as kept and refresh the
+ * document status. The active projection is already in place, so this must
+ * never insert entries or activate a second revision.
  */
 export async function activateDuplicatePendingRevision(
   ledgerId: string,
@@ -272,10 +296,6 @@ export async function activateDuplicatePendingRevision(
       throw error;
     }
     if (document.deletedAt != null) return false;
-    if (document.activeRevisionId === revisionId && document.pendingRevisionId == null) {
-      return true;
-    }
-
     const review = await tx
       .select()
       .from(duplicateReviews)
@@ -289,12 +309,19 @@ export async function activateDuplicatePendingRevision(
     if (review == null) {
       throw new ConflictError("Duplicate review record is missing");
     }
-    if (review.status === "kept" && review.revisionId === revisionId) return true;
+    if (
+      review.status === "kept" &&
+      review.revisionId === revisionId &&
+      document.activeRevisionId === revisionId &&
+      document.pendingRevisionId == null
+    ) {
+      return true;
+    }
     if (review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }
-    if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
-      throw new ConflictError("Duplicate pending revision does not match");
+    if (document.activeRevisionId !== revisionId || document.pendingRevisionId != null) {
+      throw new ConflictError("Duplicate active revision does not match");
     }
 
     const revision = await tx
@@ -322,17 +349,12 @@ export async function activateDuplicatePendingRevision(
       .where(eq(duplicateReviews.id, review.id));
     const updated = await tx
       .update(sourceDocuments)
-      .set({
-        activeRevisionId: revisionId,
-        pendingRevisionId: null,
-        ...(revision.title == null || revision.title === "" ? {} : { title: revision.title }),
-        updatedAt: now,
-      })
+      .set({ updatedAt: now })
       .where(
         and(
           activeDocumentWhere(ledgerId, sourceDocumentId),
-          eq(sourceDocuments.pendingRevisionId, revisionId),
-          isNull(sourceDocuments.activeRevisionId)
+          eq(sourceDocuments.activeRevisionId, revisionId),
+          isNull(sourceDocuments.pendingRevisionId)
         )
       )
       .returning({ id: sourceDocuments.id })
@@ -346,7 +368,9 @@ export async function activateDuplicatePendingRevision(
 
 /**
  * Discard a duplicate-pending document: mark the review as discarded and
- * soft-delete the new document. Idempotent.
+ * soft-delete the active new document. Its active entries remain historical
+ * rows, but all accounting reads exclude them through the document tombstone.
+ * Idempotent.
  */
 export async function discardDuplicatePendingRevision(
   ledgerId: string,
@@ -380,8 +404,8 @@ export async function discardDuplicatePendingRevision(
     if (review == null || review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }
-    if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
-      throw new ConflictError("Duplicate pending revision does not match");
+    if (document.activeRevisionId !== revisionId || document.pendingRevisionId != null) {
+      throw new ConflictError("Duplicate active revision does not match");
     }
 
     const now = new Date();
@@ -395,8 +419,8 @@ export async function discardDuplicatePendingRevision(
       .where(
         and(
           activeDocumentWhere(ledgerId, sourceDocumentId),
-          eq(sourceDocuments.pendingRevisionId, revisionId),
-          isNull(sourceDocuments.activeRevisionId),
+          eq(sourceDocuments.activeRevisionId, revisionId),
+          isNull(sourceDocuments.pendingRevisionId),
           isNull(sourceDocuments.deletedAt)
         )
       )
@@ -1060,6 +1084,20 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       ) {
         throw new ConflictError("Source document active revision changed");
       }
+      const pendingDuplicateReview = await tx
+        .select({ id: duplicateReviews.id })
+        .from(duplicateReviews)
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, input.ledgerId),
+            eq(duplicateReviews.sourceDocumentId, input.sourceDocumentId),
+            eq(duplicateReviews.status, "pending")
+          )
+        )
+        .then((rows) => rows[0]);
+      if (pendingDuplicateReview != null) {
+        throw new ConflictError("Source document has a pending duplicate review");
+      }
       if (document.pendingRevisionId != null) {
         const pending = await tx
           .select({ outcome: sourceDocumentRevisions.outcome })
@@ -1177,6 +1215,21 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       }
 
       const now = new Date();
+      await tx
+        .update(duplicateReviews)
+        .set({
+          status: "discarded",
+          decision: "superseded",
+          decidedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, ledgerId),
+            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+            eq(duplicateReviews.status, "pending")
+          )
+        );
       const deleted = await tx
         .update(sourceDocuments)
         .set({ deletedAt: now, updatedAt: now })

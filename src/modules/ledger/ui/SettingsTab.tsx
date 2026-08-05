@@ -279,6 +279,16 @@ export function SettingsTab({
             </SelectContent>
           </Select>
         </SettingsField>
+        <SettingsField title={t("duplicateDetection")} description={t("duplicateDetectionDesc")}>
+          <Switch
+            aria-label={t("duplicateDetection")}
+            checked={settingsLedger.settings.duplicateDetectionEnabled ?? true}
+            onCheckedChange={(checked) => {
+              updateLedgerMutation.mutate({ duplicateDetectionEnabled: checked });
+            }}
+            disabled={isPending}
+          />
+        </SettingsField>
         <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
           <Textarea
             defaultValue={settingsLedger.settings.aiCustomPrompt ?? ""}

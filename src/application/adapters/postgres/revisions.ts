@@ -67,6 +67,7 @@ function mapDocument(
     supportedActions: supportedSourceDocumentActions({
       activeRevisionId: row.activeRevisionId,
       pendingOutcome,
+      duplicateReviewPending: row.currentStatus === "duplicate_pending",
       deleted: row.deletedAt != null,
     }),
   };
@@ -387,15 +388,31 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         throw error;
       }
 
+      const now = new Date();
+      await tx
+        .update(duplicateReviews)
+        .set({
+          status: "discarded",
+          decision: "superseded",
+          decidedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, ledgerId),
+            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+            eq(duplicateReviews.status, "pending")
+          )
+        );
       const deleted = await tx
         .update(sourceDocuments)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .set({ deletedAt: now, updatedAt: now })
         .where(activeDocumentWhere(ledgerId, sourceDocumentId))
         .returning({ id: sourceDocuments.id });
       if (deleted.length === 0) return false;
       await tx
         .update(ledgerEntries)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .set({ deletedAt: now, updatedAt: now })
         .where(
           and(
             eq(ledgerEntries.ledgerId, ledgerId),

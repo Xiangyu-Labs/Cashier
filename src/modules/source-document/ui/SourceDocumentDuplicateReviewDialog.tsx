@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
@@ -16,17 +16,24 @@ import {
   keepDuplicateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentDuplicateReviewDetailDto } from "@/modules/source-document/contracts";
+import type {
+  MutationReconciliation,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 import { storedFileReadUrl } from "../stored-file-read";
+import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocumentCounts,
+  invalidateSourceDocuments,
   invalidateSourceDocumentStream,
   invalidateSourceDocumentStreamTotal,
   queryKeys,
 } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -46,42 +53,92 @@ export function SourceDocumentDuplicateReviewDialog({
   const t = useTranslations("DuplicateReview");
   const locale = useLocale();
   const queryClient = useQueryClient();
+  const reviewQueryKey = queryKeys.sourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
   const reviewQuery = useQuery({
-    queryKey: ["sourceDocument", "duplicateReview", ledgerId, sourceDocumentId],
+    queryKey: reviewQueryKey,
     queryFn: () => getSourceDocumentDuplicateReviewAction(ledgerId, sourceDocumentId),
     enabled: open,
     staleTime: 0,
   });
   const revisionId = reviewQuery.data?.review.revisionId;
 
-  const invalidate = useCallback(async () => {
+  const invalidateLedgerViews = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocument(sourceDocumentId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.sourceDocumentLight(sourceDocumentId) }),
+      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
       queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
     ]);
-  }, [ledgerId, queryClient, sourceDocumentId]);
+  }, [ledgerId, queryClient]);
+
+  const removeResolvedDocumentQueries = useCallback(() => {
+    queryClient.removeQueries({ queryKey: reviewQueryKey });
+    queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(sourceDocumentId) });
+    queryClient.removeQueries({ queryKey: queryKeys.sourceDocumentLight(sourceDocumentId) });
+    queryClient.removeQueries({
+      queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocumentId),
+    });
+  }, [ledgerId, queryClient, reviewQueryKey, sourceDocumentId]);
+
+  const reconcileAndClose = useCallback(
+    async (
+      result: {
+        reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
+      },
+      successMessage: string
+    ) => {
+      applySourceDocumentReconciliation(
+        queryClient,
+        ledgerId,
+        sourceDocumentId,
+        result.reconciliation
+      );
+      // Remove the review/detail queries and close before any background
+      // invalidation. A discarded document is expected to return Not Found.
+      removeResolvedDocumentQueries();
+      onOpenChange(false);
+      toast.success(successMessage);
+      await invalidateLedgerViews();
+    },
+    [
+      invalidateLedgerViews,
+      ledgerId,
+      onOpenChange,
+      queryClient,
+      removeResolvedDocumentQueries,
+      sourceDocumentId,
+    ]
+  );
 
   const keepMutation = useMutation({
-    mutationFn: () =>
-      keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId ?? ""),
-    onSuccess: async () => {
-      await invalidate();
-      onOpenChange(false);
+    mutationFn: ({ operationId }: { operationId: string }) => {
+      if (revisionId == null || revisionId === "") {
+        throw new Error("Duplicate review revision is unavailable");
+      }
+      return keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId, operationId);
+    },
+    onSuccess: async (result) => {
+      await reconcileAndClose(result, t("keepSuccess"));
     },
     onError: () => toast.error(t("actionFailed")),
   });
   const discardMutation = useMutation({
-    mutationFn: () =>
-      discardDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId ?? ""),
-    onSuccess: async () => {
-      await invalidate();
-      onOpenChange(false);
+    mutationFn: ({ operationId }: { operationId: string }) => {
+      if (revisionId == null || revisionId === "") {
+        throw new Error("Duplicate review revision is unavailable");
+      }
+      return discardDuplicateSourceDocumentAction(
+        ledgerId,
+        sourceDocumentId,
+        revisionId,
+        operationId
+      );
+    },
+    onSuccess: async (result) => {
+      await reconcileAndClose(result, t("discardSuccess"));
     },
     onError: () => toast.error(t("actionFailed")),
   });
@@ -160,7 +217,7 @@ export function SourceDocumentDuplicateReviewDialog({
           </Button>
           <Button
             variant="destructive"
-            onClick={() => discardMutation.mutate()}
+            onClick={() => discardMutation.mutate({ operationId: crypto.randomUUID() })}
             disabled={isPending || data == null}
           >
             {discardMutation.isPending ? (
@@ -170,7 +227,10 @@ export function SourceDocumentDuplicateReviewDialog({
             )}
             {t("discard")}
           </Button>
-          <Button onClick={() => keepMutation.mutate()} disabled={isPending || data == null}>
+          <Button
+            onClick={() => keepMutation.mutate({ operationId: crypto.randomUUID() })}
+            disabled={isPending || data == null}
+          >
             {keepMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -240,6 +300,10 @@ function ReviewPanel({
   locale: string;
 }) {
   const t = useTranslations("DuplicateReview");
+  const [imageViewer, setImageViewer] = useState<{ open: boolean; index: number }>({
+    open: false,
+    index: 0,
+  });
   const total = side.entries.reduce((sum, entry) => {
     const amount = Number(entry.convertedAmount ?? entry.amount);
     return sum + (Number.isFinite(amount) ? amount : 0);
@@ -276,17 +340,26 @@ function ReviewPanel({
 
       {side.files.length > 0 && (
         <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
-          {side.files.slice(0, 4).map((file) => (
-            <Image
+          {side.files.map((file, index) => (
+            <button
               key={file.id}
-              src={storedFileReadUrl(file.id)}
-              alt={file.originalFilename ?? ""}
-              width={64}
-              height={64}
-              unoptimized
-              className="h-16 w-16 shrink-0 rounded-md border border-border object-cover"
-              loading="lazy"
-            />
+              type="button"
+              className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onClick={() => setImageViewer({ open: true, index })}
+              aria-label={t("viewImage", {
+                filename: file.originalFilename ?? t("image"),
+              })}
+            >
+              <Image
+                src={storedFileReadUrl(file.id)}
+                alt={file.originalFilename ?? t("image")}
+                width={64}
+                height={64}
+                unoptimized
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </button>
           ))}
         </div>
       )}
@@ -320,6 +393,17 @@ function ReviewPanel({
           })
         )}
       </div>
+
+      <SourceDocumentImageModal
+        images={side.files.map((file) => ({
+          data: "",
+          mimeType: file.contentType,
+          storedFileId: file.id,
+        }))}
+        initialIndex={imageViewer.index}
+        open={imageViewer.open}
+        onOpenChange={(open) => setImageViewer((previous) => ({ ...previous, open }))}
+      />
     </section>
   );
 }

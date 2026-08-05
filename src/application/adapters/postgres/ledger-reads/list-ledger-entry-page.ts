@@ -106,6 +106,7 @@ export async function listLedgerEntryPage({
             id: true,
             ledgerId: true,
             title: true,
+            currentStatus: true,
             type: true,
             entryDate: true,
             createdAt: true,
@@ -174,7 +175,6 @@ export async function listLedgerEntryPage({
     if (dto.sourceDocument != null) {
       dto.sourceDocument = {
         ...dto.sourceDocument,
-        status: "completed",
         hasImages:
           row.sourceDocumentRevisionId != null &&
           revisionsWithFiles.has(row.sourceDocumentRevisionId),

@@ -10,6 +10,7 @@ export function createLedgerData(
     mainCurrency: string;
     collapseEntriesDefault: boolean;
     aiCustomPrompt: string;
+    duplicateDetectionEnabled: boolean;
     timeZone: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -23,6 +24,7 @@ export function createLedgerData(
     mainCurrency: "CNY",
     collapseEntriesDefault: false,
     aiCustomPrompt: "",
+    duplicateDetectionEnabled: true,
     timeZone: null,
     createdAt: new Date(),
     updatedAt: new Date(),

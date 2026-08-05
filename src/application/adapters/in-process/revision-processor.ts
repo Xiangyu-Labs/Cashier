@@ -196,7 +196,11 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       createdAt: entry.entryDate,
     }));
 
-    if (document.activeRevisionId == null && document.type === "ai_parsed") {
+    if (
+      document.activeRevisionId == null &&
+      document.type === "ai_parsed" &&
+      ledgerSettings?.duplicateDetectionEnabled !== false
+    ) {
       // Retries/re-parses after a duplicate flag are never re-checked: a prior
       // review (pending or retired) marks this document as already judged.
       const priorReview = await db.query.duplicateReviews.findFirst({
@@ -212,6 +216,12 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           : await detectDuplicateBill({
               ledgerId: request.ledgerId,
               mainCurrency,
+              ...(ledgerSettings?.aiLanguage === undefined
+                ? {}
+                : { aiLanguage: ledgerSettings.aiLanguage }),
+              ...(ledgerSettings?.aiCustomPrompt === undefined
+                ? {}
+                : { aiCustomPrompt: ledgerSettings.aiCustomPrompt }),
               sourceDocumentId: request.sourceDocumentId,
               currentCreatedAt: document.createdAt.toISOString(),
               currentTitle: output.title ?? null,

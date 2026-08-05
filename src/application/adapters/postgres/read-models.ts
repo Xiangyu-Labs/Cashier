@@ -288,9 +288,20 @@ async function loadDuplicateReviewSide(
   };
 }
 
+function effectiveDocumentTitle(
+  documentTitle: string | null | undefined,
+  revisionTitle: string | null | undefined
+): string | null {
+  for (const value of [documentTitle, revisionTitle]) {
+    const normalized = value?.trim();
+    if (normalized != null && normalized !== "") return normalized;
+  }
+  return null;
+}
+
 /**
  * Loads the side-by-side duplicate review payload: the review record, the
- * duplicate document's pending revision data, and the matched document's
+ * duplicate document's active review revision data, and the matched document's
  * projection. The matched document may be null if it was deleted meanwhile.
  */
 export async function getSourceDocumentDuplicateReview(
@@ -317,7 +328,13 @@ export async function getSourceDocumentDuplicateReview(
       createdAt: sourceDocuments.createdAt,
     })
     .from(sourceDocuments)
-    .where(and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)))
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        eq(sourceDocuments.id, sourceDocumentId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
     .then((rows) => rows[0]);
   if (duplicateDoc == null) throw new NotFoundError("Source document");
 
@@ -358,10 +375,23 @@ export async function getSourceDocumentDuplicateReview(
   if (matchedDoc != null) {
     const matchedRevisionId = matchedDoc.activeRevisionId ?? matchedDoc.pendingRevisionId;
     if (matchedRevisionId != null) {
-      const side = await loadDuplicateReviewSide(ledgerId, matchedRevisionId);
+      const [side, matchedRevision] = await Promise.all([
+        loadDuplicateReviewSide(ledgerId, matchedRevisionId),
+        db
+          .select({ title: sourceDocumentRevisions.title })
+          .from(sourceDocumentRevisions)
+          .where(
+            and(
+              eq(sourceDocumentRevisions.ledgerId, ledgerId),
+              eq(sourceDocumentRevisions.id, matchedRevisionId),
+              eq(sourceDocumentRevisions.sourceDocumentId, matchedDoc.id)
+            )
+          )
+          .then((rows) => rows[0]),
+      ]);
       matched = {
         id: matchedDoc.id,
-        title: matchedDoc.title,
+        title: effectiveDocumentTitle(matchedDoc.title, matchedRevision?.title),
         entryDate: matchedDoc.entryDate,
         createdAt: matchedDoc.createdAt.toISOString(),
         entries: side.entries,
@@ -381,7 +411,7 @@ export async function getSourceDocumentDuplicateReview(
     },
     duplicate: {
       id: duplicateDoc.id,
-      title: duplicateRevision?.title ?? duplicateDoc.title,
+      title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),
       entryDate: duplicateDoc.entryDate,
       createdAt: duplicateDoc.createdAt.toISOString(),
       entries: duplicateSide.entries,
@@ -444,9 +474,9 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
 }
 
 /**
- * Sum completed active projections across the full filtered Stream result.
- * Non-completed records may have an older active projection, but those amounts
- * are intentionally excluded until the document returns to completed.
+ * Sum active projections across the full filtered Stream result. A
+ * `duplicate_pending` document is already a valid accounting projection, so it
+ * shares the completed total semantics until it is discarded.
  */
 export async function calculateCompletedSourceDocumentTotal(
   input: TargetSourceDocumentFilterInput
@@ -483,7 +513,12 @@ export async function calculateCompletedSourceDocumentTotal(
         ...matchedEntryConditions
       )
     )
-    .where(and(...baseConditions(input), eq(sourceDocuments.currentStatus, "completed")))
+    .where(
+      and(
+        ...baseConditions(input),
+        inArray(sourceDocuments.currentStatus, ["completed", "duplicate_pending"])
+      )
+    )
     .then((rows) => rows[0]);
 
   return {
@@ -614,7 +649,7 @@ function mapListItem(
   return {
     id: row.id,
     ledgerId: row.ledgerId,
-    title: row.title,
+    title: effectiveDocumentTitle(row.title, revision?.title),
     text: null,
     files: includeFiles ? [...(files.get(row.id) ?? [])] : [],
     status: statusForRow(row, revisions),
@@ -631,6 +666,7 @@ function mapListItem(
         activeRevisionId: row.activeRevisionId,
         pendingOutcome:
           row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
+        duplicateReviewPending: row.currentStatus === "duplicate_pending",
       }),
     ],
     errorCode: sanitizedErrorCode(revision?.outcome, revision?.failureCode),
@@ -965,7 +1001,7 @@ export async function getTargetSourceDocument(
   return {
     id: row.id,
     ledgerId: row.ledgerId,
-    title: row.title,
+    title: effectiveDocumentTitle(row.title, selectedRevision?.title),
     text: selectedRevision?.submittedText ?? null,
     files,
     status,
@@ -984,6 +1020,7 @@ export async function getTargetSourceDocument(
           row.pendingRevisionId == null
             ? null
             : ((selectedRevision?.outcome as RevisionOutcome) ?? null),
+        duplicateReviewPending: row.currentStatus === "duplicate_pending",
       }),
     ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),

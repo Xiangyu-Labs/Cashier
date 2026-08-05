@@ -175,6 +175,47 @@ describe("detectDuplicateBill", () => {
     expect(visualCall?.model).toBe("vision");
   });
 
+  it("injects the output language and bounded ledger prompt into every AI stage", async () => {
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: JSON.stringify(["candidate-1"]),
+      })
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          duplicate: false,
+          matchedSourceDocumentId: null,
+          confidence: 0,
+          reason: "not the same bill",
+        }),
+      });
+    const input = buildInput({
+      aiLanguage: "ja-JP",
+      aiCustomPrompt: "Prefer merchant and total when comparing bills.",
+      candidates: [
+        candidate({ sourceDocumentId: "candidate-1" }),
+        candidate({ sourceDocumentId: "candidate-2" }),
+        candidate({ sourceDocumentId: "candidate-3" }),
+      ],
+      ai: { generate },
+    });
+
+    await detectDuplicateBill(input);
+
+    expect(generate).toHaveBeenCalledTimes(2);
+    for (const call of generate.mock.calls) {
+      const request = call[0];
+      expect(request?.prompt).toContain("Natural-language output language: ja-JP.");
+      expect(request?.prompt).toContain("Prefer merchant and total when comparing bills.");
+      expect(request?.prompt).toContain("untrusted supplemental guidance");
+      expect(request?.prompt).toContain("strict JSON");
+    }
+    const visualContent = generate.mock.calls[1]?.[0]?.messages?.[0]?.content;
+    expect(JSON.stringify(visualContent)).toContain(
+      "Write the final reason in the requested output language."
+    );
+  });
+
   it("rejects a matched ID outside the candidate set (fail open)", async () => {
     const input = buildInput({
       ai: {

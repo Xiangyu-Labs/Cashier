@@ -17,6 +17,7 @@ type LedgerRow = {
   mainCurrency: string;
   collapseEntriesDefault: boolean;
   aiCustomPrompt: string;
+  duplicateDetectionEnabled: boolean;
   timeZone: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -32,7 +33,9 @@ type SourceDocumentRow = Pick<
   SourceDocumentReferenceDto,
   "id" | "ledgerId" | "title" | "type" | "entryDate"
 > &
-  DateFields;
+  DateFields & {
+    currentStatus: SourceDocumentReferenceDto["status"];
+  };
 type LedgerEntryRow = Omit<
   LedgerEntryDto,
   "createdAt" | "updatedAt" | "deletedAt" | "category" | "sourceDocument"
@@ -58,6 +61,7 @@ export function mapLedgerDto(ledger: LedgerRow): LedgerDto {
       mainCurrency: ledger.mainCurrency,
       collapseEntriesDefault: ledger.collapseEntriesDefault,
       aiCustomPrompt: ledger.aiCustomPrompt,
+      duplicateDetectionEnabled: ledger.duplicateDetectionEnabled,
       timeZone: ledger.timeZone,
     },
     createdAt: toIso(ledger.createdAt)!,
@@ -96,14 +100,26 @@ export function mapServiceCredentialDto(credential: ServiceCredentialRow): Servi
 export function mapSourceDocumentReferenceDto(
   doc: Pick<
     SourceDocumentRow,
-    "id" | "ledgerId" | "title" | "type" | "entryDate" | "createdAt" | "updatedAt" | "deletedAt"
+    | "id"
+    | "ledgerId"
+    | "title"
+    | "type"
+    | "entryDate"
+    | "createdAt"
+    | "updatedAt"
+    | "deletedAt"
+    | "currentStatus"
   >
 ): SourceDocumentReferenceDto {
   return {
     id: doc.id,
     ledgerId: doc.ledgerId,
     title: doc.title,
-    status: "completed",
+    // Ledger-entry references describe the active accounting projection.
+    // Duplicate-pending is the one active status that remains actionable in
+    // the UI; retry/anomaly states still expose their retained completed
+    // projection as completed for compatibility.
+    status: doc.currentStatus === "duplicate_pending" ? "duplicate_pending" : "completed",
     type: doc.type,
     entryDate: doc.entryDate,
     createdAt: toIso(doc.createdAt)!,

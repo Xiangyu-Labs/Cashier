@@ -42,7 +42,11 @@ describe("target application contracts", () => {
 
   it("offers keep/discard (without retry) for a pending duplicate review", () => {
     expect(
-      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "completed" })
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        pendingOutcome: null,
+        duplicateReviewPending: true,
+      })
     ).toEqual(["keep_duplicate", "discard_duplicate", "delete"]);
   });
 

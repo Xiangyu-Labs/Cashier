@@ -91,6 +91,8 @@
     "assistant": "智能助理",
     "aiLanguage": "AI 输出语言",
     "aiLanguageDesc": "使 AI 生成的标题、项目名、补差项和备注符合该语言母语者的记账表达，不限制票据原文语言",
+    "duplicateDetection": "检测疑似重复",
+    "duplicateDetectionDesc": "开启后，新的账单会与附近账单进行查重并等待您确认。关闭只影响之后提交或重试的账单，已有审查不会改变。",
     "aiSettings": "AI 设置",
     "serviceCredentialsSection": "服务凭证",
     "dataConfig": "货币与分类",

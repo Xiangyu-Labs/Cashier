@@ -89,7 +89,9 @@ export function selectCachedDocuments(
 
 export function totalCachedMatches(matches: CachedDocumentMatch[]): number {
   return matches
-    .filter(({ document }) => document.status === "completed")
+    .filter(
+      ({ document }) => document.status === "completed" || document.status === "duplicate_pending"
+    )
     .reduce((total, match) => total.plus(match.subtotal), new Decimal(0))
     .toNumber();
 }
@@ -127,7 +129,7 @@ function buildCachedStatsBucket(
   };
 
   for (const document of items) {
-    if (document.status !== "completed") continue;
+    if (document.status !== "completed" && document.status !== "duplicate_pending") continue;
     const date = effectiveDocumentDate(document);
     if (date < range.from || date > range.to) continue;
 

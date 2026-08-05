@@ -39,6 +39,7 @@ function mapLedgerSettings(row: typeof ledgers.$inferSelect) {
     mainCurrency: row.mainCurrency,
     collapseEntriesDefault: row.collapseEntriesDefault,
     aiCustomPrompt: row.aiCustomPrompt,
+    duplicateDetectionEnabled: row.duplicateDetectionEnabled,
     timeZone: row.timeZone,
   };
 }
@@ -54,6 +55,9 @@ function settingsColumns(
       ? {}
       : { collapseEntriesDefault: settings.collapseEntriesDefault }),
     ...(settings.aiCustomPrompt === undefined ? {} : { aiCustomPrompt: settings.aiCustomPrompt }),
+    ...(settings.duplicateDetectionEnabled === undefined
+      ? {}
+      : { duplicateDetectionEnabled: settings.duplicateDetectionEnabled }),
     ...(settings.timeZone === undefined ? {} : { timeZone: settings.timeZone }),
   };
 }
@@ -498,6 +502,7 @@ export const postgresSettingsAdapter: SettingsPort = {
         mainCurrency: true,
         collapseEntriesDefault: true,
         aiCustomPrompt: true,
+        duplicateDetectionEnabled: true,
         timeZone: true,
       },
     });

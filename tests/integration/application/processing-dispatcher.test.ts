@@ -10,10 +10,12 @@ import {
   PostgresProcessingIntentAdapter,
   postgresRevisionAdapter,
 } from "@/application/adapters/postgres";
+import { serverComposition } from "@/application/server-composition-root";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import {
   ledgerEntries,
   ledgers,
+  duplicateReviews,
   processingAttempts,
   processingOutbox,
   sourceDocumentRevisions,
@@ -166,6 +168,85 @@ describe("PostgresProcessingIntentAdapter", () => {
       ""
     );
     expect(callArgs).toContain(customPrompt);
+  });
+
+  it("skips duplicate candidates, images, and AI when detection is disabled", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(
+      db,
+      undefined,
+      undefined,
+      crypto.randomUUID()
+    );
+    await db
+      .update(ledgers)
+      .set({ duplicateDetectionEnabled: false })
+      .where(eq(ledgers.id, ledgerId));
+    await serverComposition.ledgerProjections.createManual({
+      ledgerId,
+      title: "Existing bill",
+      entryDate: "2026-07-15",
+      submittedText: null,
+      entries: [
+        {
+          categoryId: null,
+          amount: "12.50",
+          currency: "CNY",
+          itemName: "Lunch",
+          description: null,
+          convertedAmount: "12.50",
+          exchangeRate: "1.000000",
+        },
+      ],
+    });
+    const pending = await postgresRevisionAdapter.createPending({
+      ledgerId,
+      entryDate: "2026-07-15",
+      submittedText: "Lunch 12.50 CNY",
+    });
+    const generate = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+    const processor = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate }),
+    });
+
+    await processor.process({
+      ledgerId,
+      sourceDocumentId: pending.document.id,
+      revisionId: pending.revision.id,
+    });
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(
+      await db.query.duplicateReviews.findFirst({
+        where: eq(duplicateReviews.sourceDocumentId, pending.document.id),
+      })
+    ).toBeUndefined();
+    await expect(postgresRevisionAdapter.get(ledgerId, pending.document.id)).resolves.toMatchObject(
+      {
+        activeRevisionId: pending.revision.id,
+        pendingRevisionId: null,
+      }
+    );
   });
 
   it("retried revision uses current ledger settings", async () => {

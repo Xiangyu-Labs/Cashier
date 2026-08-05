@@ -53,6 +53,7 @@ describe("createDefaultLedger", () => {
       currencies: [],
       collapseEntriesDefault: false,
       aiCustomPrompt: "",
+      duplicateDetectionEnabled: true,
       timeZone: null,
     });
     expect(categories).toHaveLength(1);

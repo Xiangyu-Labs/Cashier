@@ -141,6 +141,13 @@
       "when": 1787145600000,
       "tag": "0019_duplicate_review",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787232000000,
+      "tag": "0020_duplicate_detection_enabled",
+      "breakpoints": true
     }
   ]
 }

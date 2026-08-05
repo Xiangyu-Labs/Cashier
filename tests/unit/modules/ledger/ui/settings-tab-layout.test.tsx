@@ -135,6 +135,7 @@ describe("SettingsTab layout", () => {
     );
     expect(screen.getByRole("combobox", { name: "界面语言" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "AI 输出语言" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "检测疑似重复" })).toBeChecked();
     expect(
       screen.getByText(
         "使 AI 生成的标题、项目名、补差项和备注符合该语言母语者的记账表达，不限制票据原文语言"

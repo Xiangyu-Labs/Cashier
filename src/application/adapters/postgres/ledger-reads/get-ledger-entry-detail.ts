@@ -25,6 +25,7 @@ export async function getLedgerEntryDetail(
           id: true,
           ledgerId: true,
           title: true,
+          currentStatus: true,
           type: true,
           entryDate: true,
           createdAt: true,
@@ -54,7 +55,6 @@ export async function getLedgerEntryDetail(
       })) != null;
     serializedEntry.sourceDocument = {
       ...serializedEntry.sourceDocument,
-      status: "completed",
       hasImages,
     };
   }

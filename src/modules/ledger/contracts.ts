@@ -9,6 +9,7 @@ export interface LedgerSettings {
   mainCurrency?: string;
   collapseEntriesDefault?: boolean;
   aiCustomPrompt?: string;
+  duplicateDetectionEnabled?: boolean;
   timeZone?: string | null;
 }
 

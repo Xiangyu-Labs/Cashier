@@ -64,6 +64,17 @@ describe("useLedgerSettingsMutation", () => {
     });
   });
 
+  it("submits the duplicate detection preference", async () => {
+    updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
+    const { result } = setup();
+
+    await act(async () => result.current.mutateAsync({ duplicateDetectionEnabled: false }));
+
+    expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+      settings: { duplicateDetectionEnabled: false },
+    });
+  });
+
   it("localizes action failures and does not invalidate queries", async () => {
     updateLedgerAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
     const { result, invalidate } = setup();

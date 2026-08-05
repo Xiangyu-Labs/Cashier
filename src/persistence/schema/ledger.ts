@@ -29,6 +29,7 @@ export const ledgers = pgTable(
     mainCurrency: varchar("main_currency", { length: 3 }).notNull().default("CNY"),
     collapseEntriesDefault: boolean("collapse_entries_default").notNull().default(false),
     aiCustomPrompt: text("ai_custom_prompt").notNull().default(""),
+    duplicateDetectionEnabled: boolean("duplicate_detection_enabled").notNull().default(true),
     timeZone: text("time_zone"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
