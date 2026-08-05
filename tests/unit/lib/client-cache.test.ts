@@ -13,36 +13,6 @@ import {
   transactionDone,
 } from "@/lib/client-cache";
 
-const LEGACY_DB_NAME = "cashier-offline";
-const LEGACY_ACTIVE_KEY = "cashier.offline.activeSnapshot";
-
-function openLegacyDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(LEGACY_DB_NAME, 5);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore("snapshots", { keyPath: "key" });
-      request.result.createObjectStore("images", { keyPath: "key" });
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function deleteLegacyDb(): Promise<void> {
-  return new Promise((resolve) => {
-    const request = indexedDB.deleteDatabase(LEGACY_DB_NAME);
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
-}
-
-/** Returns a fresh module instance so the single-execution guard resets. */
-async function freshClientCache() {
-  vi.resetModules();
-  return await import("@/lib/client-cache");
-}
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -176,81 +146,6 @@ describe("client cache database", () => {
       verifyTx.objectStore(LEDGER_SNAPSHOT_STORE).getAll() as IDBRequest<unknown[]>
     );
     expect(snapshots).toEqual([]);
-  });
-});
-
-describe("legacy offline cache discard", () => {
-  it("removes the legacy localStorage key and database without throwing", async () => {
-    const legacyDb = await openLegacyDb();
-    const seedTx = legacyDb.transaction("snapshots", "readwrite");
-    seedTx.objectStore("snapshots").put({
-      key: "user:ledger",
-      userId: "user",
-      ledgerId: "ledger",
-      items: [],
-    });
-    await transactionDone(seedTx);
-    legacyDb.close();
-    localStorage.setItem(LEGACY_ACTIVE_KEY, "user:ledger");
-
-    const { discardLegacyOfflineCache } = await freshClientCache();
-    await expect(discardLegacyOfflineCache()).resolves.toBeUndefined();
-    expect(localStorage.getItem(LEGACY_ACTIVE_KEY)).toBeNull();
-
-    const reopened = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(LEGACY_DB_NAME);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    expect(reopened.version).toBe(1);
-    expect(reopened.objectStoreNames.length).toBe(0);
-    reopened.close();
-    await deleteLegacyDb();
-  });
-
-  it("runs the deletion at most once per page load", async () => {
-    const deleteSpy = vi.spyOn(indexedDB, "deleteDatabase");
-    const { discardLegacyOfflineCache } = await freshClientCache();
-    await discardLegacyOfflineCache();
-    await discardLegacyOfflineCache();
-    expect(deleteSpy).toHaveBeenCalledTimes(1);
-    deleteSpy.mockRestore();
-  });
-
-  it("does not block or throw when deletion is blocked by an open connection", async () => {
-    const legacyDb = await openLegacyDb();
-    localStorage.setItem(LEGACY_ACTIVE_KEY, "user:ledger");
-
-    const { discardLegacyOfflineCache } = await freshClientCache();
-    await expect(discardLegacyOfflineCache()).resolves.toBeUndefined();
-    expect(localStorage.getItem(LEGACY_ACTIVE_KEY)).toBeNull();
-
-    legacyDb.close();
-    await deleteLegacyDb();
-  });
-
-  it("never throws when deletion errors", async () => {
-    vi.stubGlobal("indexedDB", {
-      deleteDatabase: vi.fn(() => {
-        const request = {} as IDBOpenDBRequest;
-        setTimeout(() => request.onerror?.(new Event("error")), 0);
-        return request;
-      }),
-    });
-    localStorage.setItem(LEGACY_ACTIVE_KEY, "user:ledger");
-
-    const { discardLegacyOfflineCache } = await freshClientCache();
-    await expect(discardLegacyOfflineCache()).resolves.toBeUndefined();
-    expect(localStorage.getItem(LEGACY_ACTIVE_KEY)).toBeNull();
-  });
-
-  it("resolves immediately when IndexedDB is unavailable", async () => {
-    vi.stubGlobal("indexedDB", undefined);
-    localStorage.setItem(LEGACY_ACTIVE_KEY, "user:ledger");
-
-    const { discardLegacyOfflineCache } = await freshClientCache();
-    await expect(discardLegacyOfflineCache()).resolves.toBeUndefined();
-    expect(localStorage.getItem(LEGACY_ACTIVE_KEY)).toBeNull();
   });
 });
 

@@ -152,16 +152,16 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const selectedImageIndex = Math.min(activeImageIndex, Math.max(files.length - 1, 0));
 
   const activeSnapshotKey = getActiveStartupCacheKey();
-  const { imageUrls: onlineImageUrls, isLoading: onlineImagesLoading } = useCachedSourceImages({
+  const { imageUrls: fetchedImageUrls, isLoading: fetchedImagesLoading } = useCachedSourceImages({
     snapshotKey: activeSnapshotKey,
     files,
     documentId: sourceDocument.id,
     documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
     enabled: !readOnly && files.length > 0 && activeSnapshotKey != null,
   });
-  const cachedUrls = readOnly && cachedImageUrls != null ? cachedImageUrls : onlineImageUrls;
+  const cachedUrls = readOnly && cachedImageUrls != null ? cachedImageUrls : fetchedImageUrls;
   const useDirectImageUrls = !readOnly && activeSnapshotKey == null;
-  const showImageLoading = isLoadingImages || (!readOnly && onlineImagesLoading);
+  const showImageLoading = isLoadingImages || (!readOnly && fetchedImagesLoading);
 
   return (
     <div className="h-full flex flex-col gap-4">

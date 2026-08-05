@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "crypto";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
 import { ValidationError } from "@/lib/errors";
 import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
@@ -14,7 +15,8 @@ import {
   API_V1_MAX_DECODED_BATCH_BYTES,
   API_V1_MAX_DECODED_IMAGE_BYTES,
   API_V1_MAX_IMAGES,
-} from "@/app/api/v1/_shared/limits";
+  type PreparedInlineImage,
+} from "@/modules/source-document/api-v1-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
@@ -126,6 +128,15 @@ export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.super
   }
 );
 
+/**
+ * Validate a source-document payload without requiring content to be present.
+ * Used by internal prepared-input paths (API v1) that carry pre-validated,
+ * already-decoded images and check the content requirement themselves.
+ */
+export function parseSourceDocumentPayloadInput(input: unknown) {
+  return parseSourceDocumentContract(sourceDocumentPayloadSchema, input);
+}
+
 /** API v1 is the compact Shortcut contract: inline images plus an optional business date. */
 const API_V1_TIMESTAMP_PATTERN =
   /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
@@ -140,41 +151,50 @@ const apiV1EntryDateSchema = z.preprocess((value) => {
   return match[1];
 }, optionalDateStringSchema);
 
-const apiV1ImageSchema = strictObjectSchema({
+/**
+ * API v1 image schema. Decodes each image exactly once, validates the MIME
+ * type and per-image decoded size, and computes the content hash. The output
+ * is the internal PreparedInlineImage contract: only bytes, MIME, and hash
+ * are retained — never the full base64 representation.
+ */
+const apiV1PreparedImageSchema = strictObjectSchema({
   data: z.string().min(1, "Image data is required"),
   mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
-}).superRefine((image, ctx) => {
+}).transform((image, ctx) => {
+  let decoded: ReturnType<typeof decodeBase64Image>;
   try {
-    const decodedBytes = decodeBase64Image(image.data, image.mimeType).bytes.length;
-    if (decodedBytes > API_V1_MAX_DECODED_IMAGE_BYTES) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["data"],
-        message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
-      });
-    }
+    decoded = decodeBase64Image(image.data, image.mimeType);
   } catch (error) {
     ctx.addIssue({
       code: "custom",
       path: ["data"],
       message: error instanceof Error ? error.message : "Invalid base64 image data",
     });
+    return z.NEVER;
   }
+  if (decoded.bytes.length > API_V1_MAX_DECODED_IMAGE_BYTES) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["data"],
+      message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
+    });
+    return z.NEVER;
+  }
+  return {
+    bytes: decoded.bytes,
+    mimeType: image.mimeType.toLowerCase(),
+    contentHash: createHash("sha256").update(decoded.bytes).digest("hex"),
+  } satisfies PreparedInlineImage;
 });
 
 const imagesSchemaV1 = z
-  .array(apiV1ImageSchema)
+  .array(apiV1PreparedImageSchema)
   .min(1, "At least one image is required")
   .max(API_V1_MAX_IMAGES, `Maximum ${API_V1_MAX_IMAGES} images allowed`)
   .superRefine((images, ctx) => {
-    let total = 0;
-    for (const image of images) {
-      try {
-        total += decodeBase64Image(image.data, image.mimeType).bytes.length;
-      } catch {
-        return;
-      }
-    }
+    // Failed elements keep their raw input shape, so only sum decoded sizes
+    // for elements that actually reached the transform.
+    const total = images.reduce((sum, image) => sum + (image.bytes?.length ?? 0), 0);
     if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
       ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
     }
@@ -186,6 +206,47 @@ const sourceDocumentPayloadSchemaV1 = strictObjectSchema({
 });
 
 export const createSourceDocumentInputSchemaV1 = sourceDocumentPayloadSchemaV1;
+
+/**
+ * Validates the internal prepared API v1 payload without decoding again.
+ * Re-checks shape, MIME, per-image and batch sizes as defense in depth at the
+ * server-action boundary.
+ */
+const preparedApiV1ImageSchema = strictObjectSchema({
+  bytes: z.instanceof(Buffer, { message: "Image bytes are required" }),
+  mimeType: z.string().regex(IMAGE_MIME_REGEX, "Invalid image type"),
+  contentHash: z.string().regex(/^[a-f\d]{64}$/i, "Invalid content hash"),
+}).superRefine((image, ctx) => {
+  const byteLength = image.bytes?.length ?? 0;
+  if (byteLength === 0) {
+    ctx.addIssue({ code: "custom", path: ["bytes"], message: "Image data is empty" });
+  }
+  if (byteLength > API_V1_MAX_DECODED_IMAGE_BYTES) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["bytes"],
+      message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
+    });
+  }
+});
+
+export const preparedApiV1SourceDocumentInputSchema = strictObjectSchema({
+  images: z
+    .array(preparedApiV1ImageSchema)
+    .min(1, "At least one image is required")
+    .max(API_V1_MAX_IMAGES, `Maximum ${API_V1_MAX_IMAGES} images allowed`)
+    .superRefine((images, ctx) => {
+      const total = images.reduce((sum, image) => sum + (image.bytes?.length ?? 0), 0);
+      if (total > API_V1_MAX_DECODED_BATCH_BYTES) {
+        ctx.addIssue({ code: "custom", message: "Decoded image batch exceeds 3 MiB" });
+      }
+    }),
+  entryDate: optionalDateStringSchema,
+});
+
+export type PreparedApiV1SourceDocumentInputContract = z.infer<
+  typeof preparedApiV1SourceDocumentInputSchema
+>;
 
 export const retrySourceDocumentInputSchema = sourceDocumentPayloadSchema;
 

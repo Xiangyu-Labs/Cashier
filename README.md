@@ -95,7 +95,6 @@ There is no SQLite runtime or compatibility migration path.
 ## Documentation
 
 - [CLAUDE.md](./CLAUDE.md) - Working conventions for agents in this repository
-- [docs/operations/runbook.md](./docs/operations/runbook.md) - Operations runbook for local running, migrations, backup, and deployment
 
 ## Processing
 
@@ -123,8 +122,7 @@ Every ledger has a monotonic bigint sync version. Visible tabs request bounded d
 
 ### Startup Preview Cache
 
-IndexedDB (`cashier-cache`) stores a short-lived, read-only startup preview: the latest ledger snapshot (up to 1,000 documents) and viewed document image blobs (100 images / 10 MB with LRU eviction). The preview is only shown while the server bootstrap is still loading; the authoritative server data replaces it as soon as it arrives. The first run of this version migrates the legacy `cashier-offline` database and its localStorage key into `cashier-cache`, then removes the old storage; migration failures degrade to an empty cache. The application does not provide offline availability — the service worker precaches only immutable static assets and never serves navigation or cached API responses. TanStack Query and the refresh coordinator still use `navigator.onLine` to avoid request storms while disconnected.
-IndexedDB (`cashier-cache`) stores a short-lived, read-only startup preview: the latest ledger snapshot (up to 1,000 documents) and viewed document image blobs (100 images / 10 MB with LRU eviction). The preview is only shown while the server bootstrap is still loading; the authoritative server data replaces it as soon as it arrives. Client caches are disposable and never migrated: a cache-format upgrade invalidates the whole database, and the next startup rebuilds it from the server. The retired `cashier-offline` database and its localStorage key are removed in the background on app load; cleanup failures are non-blocking and retried on a later page load. The application does not provide offline availability — the service worker precaches only immutable static assets and never serves navigation or cached API responses. TanStack Query and the refresh coordinator still use `navigator.onLine` to avoid request storms while disconnected.
+IndexedDB (`cashier-cache`) stores a short-lived, read-only startup preview: the latest ledger snapshot (up to 1,000 documents) and viewed document image blobs (100 images / 10 MB with LRU eviction). The preview is only shown while the server bootstrap is still loading; the authoritative server data replaces it as soon as it arrives. Client caches are disposable and never migrated: a cache-format upgrade invalidates the whole database, and the next startup rebuilds it from the server. The application does not provide offline availability — the service worker precaches only immutable static assets and never serves navigation or cached API responses. TanStack Query and the refresh coordinator still use `navigator.onLine` to avoid request storms while disconnected.
 
 ### Cache Transaction Model
 
@@ -136,4 +134,4 @@ Ledger-entry update/delete server actions accept an optional `operationId` param
 
 ### Storage And API
 
-Web images are uploaded directly to private R2 with short-lived signed PUT URLs. The server verifies object MIME type, size, and SHA-256 metadata before copying to a durable key. Reads remain authenticated and stream through `/api/stored-files/:fileId`; API v1 inline images continue using the server-side upload path. `/api/v1` is the stable long-lived public contract and has no scheduled sunset. There is no `/api/v2` route surface.
+Web images are uploaded directly to private R2 with short-lived signed PUT URLs. The server verifies object MIME type, size, and SHA-256 metadata before copying to a durable key. Reads remain authenticated and stream through `/api/stored-files/:fileId`; API v1 inline images continue using the server-side upload path. `/api/v1` is the stable long-lived public contract and has no scheduled sunset. There is no `/api/v2` route surface. Mobile and automation clients should reuse the same `Idempotency-Key` when retrying a `POST /api/v1/source-documents` so a network retry cannot create duplicate documents or files; every API v1 response includes an `X-Request-Id` header that can be used for request correlation.

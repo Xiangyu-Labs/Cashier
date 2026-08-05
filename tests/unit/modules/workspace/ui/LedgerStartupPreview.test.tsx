@@ -63,6 +63,19 @@ function snapshot(): LedgerStartupCacheSnapshot {
 describe("LedgerStartupPreview", () => {
   beforeEach(() => {
     readSnapshot.mockReset();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
   it("shows the latest-data banner and the stream preview on a cache hit", async () => {
@@ -70,6 +83,33 @@ describe("LedgerStartupPreview", () => {
     render(<LedgerStartupPreview snapshotKey="user:ledger" activeTab="stream" />);
     expect(await screen.findByText("正在加载最新数据")).toBeInTheDocument();
     expect(await screen.findByText("stream-preview")).toBeInTheDocument();
+
+    const indicator = screen.getByTestId("startup-preview-latest-banner").querySelector("span");
+    expect(indicator).toHaveClass("animate-spin");
+  });
+
+  it("shows a solid dot instead of a spinning ring under reduced motion", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    readSnapshot.mockResolvedValue(snapshot());
+    render(<LedgerStartupPreview snapshotKey="user:ledger" activeTab="stream" />);
+    expect(await screen.findByText("正在加载最新数据")).toBeInTheDocument();
+
+    const indicator = screen.getByTestId("startup-preview-latest-banner").querySelector("span");
+    expect(indicator).not.toHaveClass("animate-spin");
+    expect(indicator).not.toHaveClass("border-t-info");
+    expect(indicator).toHaveClass("bg-info");
   });
 
   it("renders the skeleton on a cache miss", async () => {

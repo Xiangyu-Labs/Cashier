@@ -38,7 +38,7 @@ describe("contract schema omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(parsed, "status")).toBe(false);
   });
 
-  it("allows the authenticated offline snapshot reader to request file metadata", () => {
+  it("allows the authenticated startup-preview snapshot reader to request file metadata", () => {
     const parsed = listSourceDocumentsInputSchema.parse({
       limit: 100,
       includeEntries: true,

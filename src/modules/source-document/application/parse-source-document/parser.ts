@@ -16,6 +16,7 @@ import {
   type AiMessageContentPart as AIMessageContentPart,
 } from "./contracts";
 import { parserOutputSchema, normalizeResult, type NormalizedParseOutput } from "./parser-schema";
+import { TITLE_POLICY_PROMPT } from "@/modules/source-document/title-policy";
 
 export interface ParserInput {
   evidence?: { images: readonly { dataUrl: string }[] };
@@ -70,9 +71,10 @@ function buildPrompt(input: ParserInput, aiLanguage: string): string {
     input.text != null && input.text !== "" ? `\n### Document Text\n${input.text}\n` : "";
 
   const localeSection = `\n${buildAiOutputLocaleInstruction(aiLanguage)}\n`;
+  const titlePolicySection = `\n${TITLE_POLICY_PROMPT}\n`;
 
   return `You are an expense evidence parser. Extract all expense line items from the provided document(s) and return structured JSON.
-${categorySection}${currencySection}${customSection}${textSection}${localeSection}
+${categorySection}${currencySection}${customSection}${textSection}${localeSection}${titlePolicySection}
 ### Output Format
 
 Return a single JSON object:

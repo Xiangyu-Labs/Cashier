@@ -16,9 +16,9 @@ vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source
 }));
 
 import { ValidationError } from "@/lib/errors";
-import type { CreateSourceDocumentInput } from "@/modules/source-document/contracts";
 import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
 import type { SourceDocumentCredentialPorts } from "@/modules/source-document/application/ports";
+import type { PreparedApiV1SourceDocumentInput } from "@/modules/source-document/api-v1-policy";
 
 const ports = {
   ledgers: {},
@@ -29,6 +29,11 @@ const ports = {
 
 describe("createSourceDocumentFromCredential", () => {
   const scheduleProcessing = vi.fn();
+  const preparedImage = {
+    bytes: Buffer.from("AQ==", "base64"),
+    mimeType: "image/jpeg",
+    contentHash: "a".repeat(64),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,7 +51,7 @@ describe("createSourceDocumentFromCredential", () => {
         {
           credentialId: "cred-1",
           payload: {
-            text: "hello",
+            images: [preparedImage],
           },
         },
         scheduleProcessing,
@@ -65,10 +70,9 @@ describe("createSourceDocumentFromCredential", () => {
       updatedAt: new Date(),
       deletedAt: null,
     });
-    const payload: CreateSourceDocumentInput = {
-      text: "receipt",
+    const payload: PreparedApiV1SourceDocumentInput = {
+      images: [preparedImage],
     };
-    (payload as { timezone?: string | undefined }).timezone = undefined;
 
     await createSourceDocumentFromCredential(
       { credentialId: "cred-1", payload },
@@ -80,10 +84,10 @@ describe("createSourceDocumentFromCredential", () => {
     expect(callInput).toEqual({
       ledgerId: "ledger-1",
       ledger: expect.objectContaining({ id: "ledger-1" }),
-      text: "receipt",
+      preparedImages: [preparedImage],
       maxDecodedImageBytes: 3 * 1024 * 1024,
     });
-    expect(callInput).not.toHaveProperty("timezone");
+    expect(callInput).not.toHaveProperty("images");
   });
 
   it("threads scheduleProcessing through to createAndQueueSourceDocument", async () => {
@@ -92,7 +96,7 @@ describe("createSourceDocumentFromCredential", () => {
     });
 
     await createSourceDocumentFromCredential(
-      { credentialId: "cred-1", payload: { text: "hello" } },
+      { credentialId: "cred-1", payload: { images: [preparedImage] } },
       scheduleProcessing,
       ports
     );

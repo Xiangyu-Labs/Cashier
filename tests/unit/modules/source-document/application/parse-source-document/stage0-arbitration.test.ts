@@ -307,4 +307,39 @@ describe("arbitrateStage0Results", () => {
       );
     }
   });
+
+  it("applies the shared title policy to choice and correction prompts", async () => {
+    const result1 = makeResult({ title: "Coffee" });
+    const result2 = makeResult({ title: "Cafe" });
+    const calls: AIGenerateOptions[] = [];
+    const generate = vi.fn(async (opts: AIGenerateOptions) => {
+      calls.push(opts);
+      if (calls.length === 1) {
+        return { content: JSON.stringify({ choice: 0, reason: "no clear winner" }) };
+      }
+      return { content: JSON.stringify({ ...makeResult(), title: "コーヒー" }) };
+    });
+
+    await arbitrateStage0Results(
+      {
+        input: {
+          originalCategories: [],
+          text: "Coffee 10 USD",
+          aiLanguage: "ja-JP",
+          aiCustomPrompt: "Use concise merchant-first titles.",
+        },
+        result1,
+        result2,
+      },
+      { generate }
+    );
+
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.prompt).toContain("### Title Policy");
+      expect(call.prompt).toContain("merchant- or service-first");
+      expect(call.prompt).toContain("at most 200 Unicode characters");
+      expect(call.prompt).toContain("Use concise merchant-first titles.");
+    }
+  });
 });

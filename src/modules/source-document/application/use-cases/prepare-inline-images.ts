@@ -34,6 +34,14 @@ export type ImageProcessor = (
   mimeType: string
 ) => Promise<{ buffer: Buffer; mimeType: string }>;
 
+/**
+ * An inline image that is either still base64-encoded (web flow) or has
+ * already been decoded once by the API v1 boundary (prepared flow). Both
+ * variants share the same Sharp/S3/finalize pipeline.
+ */
+export type InlineImageSource =
+  { data: string; mimeType: string } | { bytes: Buffer; mimeType: string };
+
 const DEFAULT_MAX_DECODED_SIZE = MAX_ORIGINAL_BYTES_PER_FILE;
 
 /**
@@ -64,7 +72,7 @@ function decodeImageData(data: string, mimeType: string, maxDecodedSize?: number
  * fails to decode or process, no upload plan or durable state is created.
  */
 export async function prepareInlineImages(
-  images: Array<{ data: string; mimeType: string }>,
+  images: InlineImageSource[],
   storedFiles: InlineImageUploader,
   processImage: ImageProcessor,
   ledgerId: string,
@@ -73,7 +81,14 @@ export async function prepareInlineImages(
   // Phase 1: decode and process all images (fail-fast if any is bad)
   const processedImages = await Promise.all(
     images.map(async (img) => {
-      const rawBuffer = decodeImageData(img.data, img.mimeType, maxDecodedBytes);
+      const rawBuffer =
+        "bytes" in img ? img.bytes : decodeImageData(img.data, img.mimeType, maxDecodedBytes);
+      const effectiveMax = maxDecodedBytes ?? DEFAULT_MAX_DECODED_SIZE;
+      if (rawBuffer.length > effectiveMax) {
+        throw new ValidationError(
+          `Decoded image data exceeds maximum size of ${effectiveMax / 1024 / 1024}MB`
+        );
+      }
       const processed = await processImage(rawBuffer, img.mimeType);
       return { buffer: processed.buffer, mimeType: processed.mimeType };
     })

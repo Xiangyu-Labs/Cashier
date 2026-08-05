@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export type ProcessingStatusType =
   "processing" | "completed" | "error" | "candidate_pending" | "cancelled";
@@ -13,6 +14,7 @@ interface ProcessingStatusProps {
 export function ProcessingStatus({ status, label, className }: ProcessingStatusProps) {
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
+  const reducedMotion = useReducedMotion();
 
   const config = {
     processing: {
@@ -69,7 +71,9 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
           className={cn(
             "block size-2 rounded-full",
             status === "processing"
-              ? "size-3 animate-spin border-2 border-primary/25 border-t-primary"
+              ? reducedMotion
+                ? "size-3 bg-primary/70"
+                : "size-3 animate-spin border-2 border-primary/25 border-t-primary"
               : bgClass
           )}
           aria-hidden

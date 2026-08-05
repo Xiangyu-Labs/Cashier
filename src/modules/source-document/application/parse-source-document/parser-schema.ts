@@ -2,6 +2,7 @@ import { z } from "zod";
 import Decimal from "decimal.js";
 import { isValidDecimal, compare } from "@/lib/money/decimal";
 import { getAiOutputCopy } from "@/config/ai-output-locales";
+import { normalizeTitle } from "@/modules/source-document/title-policy";
 
 // ===== Decimal string validation =====
 
@@ -98,11 +99,6 @@ function fallbackTitleForOutcome(
   }
 }
 
-function normalizeTitle(output: z.infer<typeof parserOutputSchema>, aiLanguage?: string): string {
-  const title = output.title?.trim();
-  return title != null && title !== "" ? title : fallbackTitleForOutcome(output, aiLanguage);
-}
-
 function normalizeSuccessfulExpenseAmount(amount: string): string {
   return compare(amount, "0") < 0 ? new Decimal(amount).abs().toFixed() : amount;
 }
@@ -137,7 +133,7 @@ export function normalizeResult(
     return {
       outcome: "anomaly",
       anomaly_reason: `ledger_entry "${invalidEntry.item_name}" has non-positive amount ${invalidEntry.amount} — likely an order-level adjustment misclassified as a line item`,
-      title: normalizeTitle(output, aiLanguage),
+      title: normalizeTitle(output.title, fallbackTitleForOutcome(output, aiLanguage)),
       receipt_count: output.receipt_count,
       receipt_totals: receiptTotals,
       ledger_entries: [],
@@ -149,7 +145,7 @@ export function normalizeResult(
   return {
     outcome: output.outcome,
     ...(output.anomaly_reason != null ? { anomaly_reason: output.anomaly_reason } : {}),
-    title: normalizeTitle(output, aiLanguage),
+    title: normalizeTitle(output.title, fallbackTitleForOutcome(output, aiLanguage)),
     receipt_count: output.receipt_count,
     receipt_totals: receiptTotals,
     ledger_entries: ledgerEntries.map((e) => ({

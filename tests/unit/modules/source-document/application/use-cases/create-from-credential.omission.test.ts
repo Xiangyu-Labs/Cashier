@@ -27,6 +27,11 @@ const ports = {
 
 describe("createSourceDocumentFromCredential omission semantics", () => {
   const scheduleProcessing = vi.fn();
+  const preparedImage = {
+    bytes: Buffer.from("AQ==", "base64"),
+    mimeType: "image/jpeg",
+    contentHash: "a".repeat(64),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +46,7 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
     await createSourceDocumentFromCredential(
       {
         credentialId: "cred-1",
-        payload: { text: "Lunch 12.50" },
+        payload: { images: [preparedImage] },
       },
       scheduleProcessing,
       ports
@@ -53,10 +58,11 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
     >;
     expect(callInput).toBeDefined();
     expect(callInput.ledgerId).toBe("ledger-1");
-    expect(callInput.text).toBe("Lunch 12.50");
+    expect(callInput.preparedImages).toEqual([preparedImage]);
     expect(Object.prototype.hasOwnProperty.call(callInput, "images")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "originalImages")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "entryDate")).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(callInput, "timezone")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(callInput, "text")).toBe(false);
   });
 });

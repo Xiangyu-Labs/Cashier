@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProcessingStatus } from "@/modules/source-document/ui/processing-status";
 import { SourceDocumentImageModal } from "@/modules/source-document/ui/SourceDocumentImageModal";
 
@@ -25,6 +25,25 @@ function ImageDialogHarness() {
 }
 
 describe("source document accessibility", () => {
+  let reducedMotion = false;
+
+  beforeEach(() => {
+    reducedMotion = false;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: reducedMotion,
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
+
   it("announces processing, failure, and success state changes", () => {
     const { rerender } = render(<ProcessingStatus status="processing" />);
     expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
@@ -37,6 +56,24 @@ describe("source document accessibility", () => {
 
     rerender(<ProcessingStatus status="error" label="Parsing failed" />);
     expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive");
+  });
+
+  it("keeps the spinning ring for processing under normal motion preferences", () => {
+    render(<ProcessingStatus status="processing" />);
+    const indicator = screen.getByRole("status").querySelector("span[aria-hidden]");
+    expect(indicator).not.toBeNull();
+    expect(indicator).toHaveClass("animate-spin");
+    expect(indicator).toHaveClass("border-t-primary");
+  });
+
+  it("replaces the frozen ring with a solid dot for processing under reduced motion", () => {
+    reducedMotion = true;
+    render(<ProcessingStatus status="processing" />);
+    const indicator = screen.getByRole("status").querySelector("span[aria-hidden]");
+    expect(indicator).not.toBeNull();
+    expect(indicator).not.toHaveClass("animate-spin");
+    expect(indicator).not.toHaveClass("border-t-primary");
+    expect(indicator).toHaveClass("bg-primary/70");
   });
 
   it("supports keyboard image navigation, Escape dismissal, and focus return", async () => {

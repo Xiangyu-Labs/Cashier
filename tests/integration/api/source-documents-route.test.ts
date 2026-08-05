@@ -18,6 +18,7 @@ import {
   uploadSessions,
 } from "@/persistence";
 import { computeHash, prefixSuffix } from "@/lib/security/service-credential-token";
+import { AppError } from "@/lib/errors";
 
 async function validJpegBase64(): Promise<string> {
   const buffer = await sharp({
@@ -58,10 +59,15 @@ vi.mock("@/application/adapters/in-process/parse-source-document-task", () => ({
 // Hoisted shared memory store so the beforeEach and vi.mock factory share the same Map
 const mockR2 = vi.hoisted(() => {
   const files = new Map<string, Buffer>();
+  let uploadError: unknown = null;
   return {
     files,
+    setUploadError: (error: unknown) => {
+      uploadError = error;
+    },
     getStorage: () => ({
       upload: async (key: string, data: Buffer) => {
+        if (uploadError != null) throw uploadError;
         files.set(key, Buffer.from(data));
       },
       download: async (key: string) => {
@@ -76,6 +82,7 @@ const mockR2 = vi.hoisted(() => {
     }),
     R2StorageProvider: class {
       async upload(key: string, data: Buffer) {
+        if (uploadError != null) throw uploadError;
         files.set(key, Buffer.from(data));
       }
       async download(key: string) {
@@ -103,6 +110,7 @@ describe("API v1 source-documents route", () => {
   beforeEach(async () => {
     const db = getTestDb();
     mockR2.files.clear();
+    mockR2.setUploadError(null);
 
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
     const setup = await createTestUserWithLedger(db, undefined, "Route Test Ledger", TEST_USER_ID);
@@ -140,6 +148,7 @@ describe("API v1 source-documents route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("retry-after")).toBe("5");
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
     expect(await response.json()).toMatchObject({
       sourceDocumentId: created.sourceDocumentId,
       revisionId: created.revisionId,
@@ -227,6 +236,7 @@ describe("API v1 source-documents route", () => {
 
     const response = await POST(request);
     expect(response.status).toBe(201);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
 
     const data = await response.json();
     expect(data.status).toBe("processing");
@@ -275,6 +285,116 @@ describe("API v1 source-documents route", () => {
     expect(documents).toHaveLength(1);
     expect(revisions).toHaveLength(1);
     expect(intents).toHaveLength(1);
+  });
+
+  it("returns X-Request-Id on error responses too", async () => {
+    const request = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${credentialKey}`,
+      },
+      body: JSON.stringify({
+        images: [{ data: "!!!invalid-base64!!!", mimeType: "image/jpeg" }],
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+
+    const missing = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${crypto.randomUUID()}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: crypto.randomUUID() }) }
+    );
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("accepts a legal 3 MiB decoded image through the request-body boundary", async () => {
+    const small = await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 255, g: 0, b: 0 } },
+    })
+      .jpeg()
+      .toBuffer();
+    const padded = Buffer.concat([small, Buffer.alloc(3 * 1024 * 1024 - small.length)]);
+    expect(padded.length).toBe(3 * 1024 * 1024);
+
+    const request = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentialKey}` },
+      body: JSON.stringify({
+        images: [{ data: padded.toString("base64"), mimeType: "image/jpeg" }],
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+
+    const db = getTestDb();
+    const documents = await db
+      .select({ id: sourceDocuments.id })
+      .from(sourceDocuments)
+      .where(eq(sourceDocuments.ledgerId, ledgerId));
+    expect(documents).toHaveLength(1);
+  });
+
+  it("rejects a decoded batch above 3 MiB with 400", async () => {
+    const half = Buffer.alloc((3 * 1024 * 1024) / 2 + 1).toString("base64");
+    const request = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentialKey}` },
+      body: JSON.stringify({
+        images: [
+          { data: half, mimeType: "image/jpeg" },
+          { data: half, mimeType: "image/jpeg" },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.details.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: "Decoded image batch exceeds 3 MiB" }),
+      ])
+    );
+  });
+
+  it("rejects a request body above the wire limit with 400", async () => {
+    const { API_V1_MAX_REQUEST_BYTES } = await import("@/modules/source-document/api-v1-policy");
+    const image = await validJpegBase64();
+    const request = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${credentialKey}`,
+        "content-length": String(API_V1_MAX_REQUEST_BYTES + 1),
+      },
+      body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("maps storage failures to 503 and still returns X-Request-Id", async () => {
+    const image = await validJpegBase64();
+    mockR2.setUploadError(new AppError("Failed to upload file to S3", "S3_UPLOAD_FAILED", 503));
+
+    const request = new NextRequest("http://localhost/api/v1/source-documents", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentialKey}` },
+      body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+    mockR2.setUploadError(null);
   });
 
   it("normalizes equivalent Base64 for idempotency and rejects different image content", async () => {

@@ -40,6 +40,8 @@ describe("api/v1/source-documents omission semantics", () => {
     );
     createSourceDocumentFromCredentialActionMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
+      revisionId: "revision-1",
+      revisionState: "processing",
       status: "processing",
     });
   });
@@ -57,7 +59,15 @@ describe("api/v1/source-documents omission semantics", () => {
 
     const payload = createSourceDocumentFromCredentialActionMock.mock.calls[0]?.[0]
       ?.payload as Record<string, unknown>;
-    expect(payload.images).toEqual([{ data: "AQ==", mimeType: "image/jpeg" }]);
+    const images = payload.images as Array<{
+      bytes: Uint8Array;
+      mimeType: string;
+      contentHash: string;
+    }>;
+    expect(images).toHaveLength(1);
+    expect(images[0]?.mimeType).toBe("image/jpeg");
+    expect(images[0]?.bytes).toEqual(Buffer.from("AQ==", "base64"));
+    expect(images[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/);
     expect(Object.prototype.hasOwnProperty.call(payload, "entryDate")).toBe(false);
   });
 });

@@ -271,6 +271,32 @@ describe("executeStage0 — single-pass receipt parser", () => {
     expect(prompt).toContain("Preserve merchant names, brand names, product proper names");
   });
 
+  it("includes the shared title policy and keeps language above ledger prompts", async () => {
+    await executeStage0(
+      {
+        text: "Coffee 10 USD",
+        originalCategories: [],
+        aiLanguage: "en-US",
+        aiCustomPrompt: "Always include the amount in the title.",
+      },
+      mockAI
+    );
+
+    const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt ?? "";
+    expect(prompt).toContain("### Title Policy");
+    expect(prompt).toContain("merchant- or service-first");
+    expect(prompt).toContain("Do not add amounts, dates, or payment status");
+    expect(prompt).toContain("at most 200 Unicode characters");
+    expect(prompt).toContain("1. Facts and structure of the source document");
+    expect(prompt).toContain("2. The mandatory output locale below");
+    expect(prompt).toContain("3. Additional Instructions from the ledger owner");
+    expect(prompt).toContain("4. The default merchant-/service-first style above");
+    // The ledger prompt cannot override the output language or hard constraints.
+    expect(prompt.indexOf("Mandatory Output Locale")).toBeGreaterThan(
+      prompt.indexOf("Always include the amount in the title.")
+    );
+  });
+
   // === Multi-image ===
 
   it("handles multiple images without error", async () => {

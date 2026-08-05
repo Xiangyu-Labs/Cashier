@@ -17,6 +17,7 @@ import type { NormalizedParseOutput } from "./parser-schema";
 import { parserOutputSchema, normalizeResult } from "./parser-schema";
 import type { ParserInput } from "./parser";
 import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
+import { TITLE_POLICY_PROMPT } from "@/modules/source-document/title-policy";
 
 const arbitrationChoiceSchema = z.object({
   choice: z.number().int().min(0).max(2),
@@ -33,8 +34,9 @@ function buildArbitrationContext(input: ParserInput): string {
     input.aiCustomPrompt != null && input.aiCustomPrompt !== ""
       ? `\nAdditional Instructions:\n${input.aiCustomPrompt}\n`
       : "";
+  const titlePolicySection = `\n${TITLE_POLICY_PROMPT}\n`;
 
-  return `${categorySection}${currencySection}${customSection}\n${buildAiOutputLocaleInstruction(input.aiLanguage)}\n`;
+  return `${categorySection}${currencySection}${customSection}\n${buildAiOutputLocaleInstruction(input.aiLanguage)}\n${titlePolicySection}`;
 }
 
 function buildArbitrationPrompt(

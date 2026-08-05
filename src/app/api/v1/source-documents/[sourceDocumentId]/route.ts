@@ -23,7 +23,7 @@ export async function GET(
       if (status == null) throw new NotFoundError("Source document");
       const response = NextResponse.json(status);
       if (status.status === "processing") response.headers.set("Retry-After", "5");
-      return response;
+      return { response };
     },
   });
 }

@@ -11,6 +11,7 @@ import {
 } from "@/components/skeletons/TabSkeletons";
 import type { EntryFilters } from "@/modules/ledger/ui";
 import type { LedgerTab } from "@/modules/workspace/tabs";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import {
   readLedgerStartupSnapshot,
   type LedgerStartupCacheSnapshot,
@@ -59,6 +60,7 @@ export function LedgerStartupPreview({
   initialFilters = {},
 }: LedgerStartupPreviewProps) {
   const locale = useLocale();
+  const reducedMotion = useReducedMotion();
   const [snapshot, setSnapshot] = useState<LedgerStartupCacheSnapshot | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
@@ -103,7 +105,11 @@ export function LedgerStartupPreview({
       >
         <span
           aria-hidden
-          className="size-3 animate-spin rounded-full border-2 border-info/25 border-t-info"
+          className={
+            reducedMotion
+              ? "size-3 rounded-full bg-info"
+              : "size-3 animate-spin rounded-full border-2 border-info/25 border-t-info"
+          }
         />
         {locale.startsWith("zh") ? "正在加载最新数据" : "Loading latest data"}
       </div>

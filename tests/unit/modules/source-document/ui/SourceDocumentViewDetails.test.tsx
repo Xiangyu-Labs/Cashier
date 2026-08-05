@@ -97,7 +97,7 @@ describe("SourceDocumentViewDetails image stage", () => {
     expect(screen.queryByTestId("source-document-image-stage")).not.toBeInTheDocument();
   });
 
-  it("hides thumbnails for a single offline image", () => {
+  it("hides thumbnails for a single cached image", () => {
     renderDetails(1);
     const stage = screen.getByTestId("source-document-image-stage");
     expect(stage).toHaveClass("aspect-[4/3]");

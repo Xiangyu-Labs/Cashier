@@ -6,13 +6,6 @@ export const LEDGER_SNAPSHOT_STORE = "ledgerSnapshots";
 export const DOCUMENT_IMAGE_STORE = "documentImages";
 export const ACTIVE_STARTUP_CACHE_KEY = "cashier.startupCache.activeSnapshot";
 
-/**
- * Legacy storage names are only referenced by the background cleanup that
- * removes the retired cashier-offline database.
- */
-const LEGACY_DB_NAME = "cashier-offline";
-const LEGACY_ACTIVE_KEY = "cashier.offline.activeSnapshot";
-
 export function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -109,32 +102,4 @@ export async function clearUserCacheData(userId?: string): Promise<void> {
   }
   await transactionDone(tx);
   removeActiveStartupCacheKey();
-}
-
-function deleteDatabase(name: string): Promise<void> {
-  return new Promise((resolve) => {
-    const request = indexedDB.deleteDatabase(name);
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
-}
-
-/**
- * Discards the retired cashier-offline database and its localStorage active
- * key. Idempotent and executed at most once per page load; success, error and
- * blocked outcomes are all non-blocking and never throw, so a later page
- * reload can simply try again.
- */
-let legacyDiscardPromise: Promise<void> | null = null;
-
-export function discardLegacyOfflineCache(): Promise<void> {
-  if (typeof localStorage !== "undefined") {
-    localStorage.removeItem(LEGACY_ACTIVE_KEY);
-  }
-  legacyDiscardPromise ??= (async () => {
-    if (typeof indexedDB === "undefined") return;
-    await deleteDatabase(LEGACY_DB_NAME);
-  })();
-  return legacyDiscardPromise;
 }
