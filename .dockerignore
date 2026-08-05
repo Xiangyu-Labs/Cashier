@@ -7,10 +7,21 @@ tests
 docs
 openspec
 .DS_Store
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 .git
 .env*
 data/
+uploads/
 sqlite.db
 *.db
 *.db-*
+
+# Local tool state / agent sessions - never part of the image
+.claude/
+.hallmark/
+.worktrees/
+.agent
+.serena/
+.superpowers/
+.codex/
+.vercel
