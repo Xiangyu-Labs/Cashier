@@ -19,7 +19,6 @@ import {
   prefetchDetailsTabQuery,
   prefetchStatsTabQuery,
 } from "@/modules/workspace/prefetch-ledger-tabs";
-import { useConnectionState } from "@/modules/offline/connection-state";
 
 interface ActiveShellProps {
   ledgerId: string;
@@ -52,8 +51,6 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const { onInputIntent, onOpenInput } = useShellController();
-  const { status } = useConnectionState();
-  const offline = status === "offline";
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.
@@ -82,7 +79,6 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const preloadTab = useCallback(
     (tab: LedgerTab) => {
       preloadTabCode(tab);
-      if (offline) return;
       if (tab === "details") {
         const scoped = getScopedLedgerSearchParams(searchParams, "details");
         void prefetchDetailsTabQuery(
@@ -95,7 +91,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
         void prefetchStatsTabQuery(queryClient, ledgerId);
       }
     },
-    [ledgerId, offline, preloadTabCode, queryClient, searchParams]
+    [ledgerId, preloadTabCode, queryClient, searchParams]
   );
 
   useEffect(() => {
@@ -120,7 +116,6 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
           onOpenInput={onOpenInput}
           onInputIntent={onInputIntent}
           onTabIntent={preloadTab}
-          offline={offline}
         />
       }
     >

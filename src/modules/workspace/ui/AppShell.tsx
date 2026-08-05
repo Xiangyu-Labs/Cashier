@@ -1,7 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
 import { Header } from "./Header";
-import { ConnectionBanner } from "@/modules/offline/ConnectionBanner";
 
 interface AppShellProps {
   navigation: ReactNode;
@@ -11,7 +10,6 @@ interface AppShellProps {
 export function AppShell({ navigation, children }: AppShellProps) {
   return (
     <div className="flex min-h-dvh max-w-full flex-col overflow-x-clip bg-bg text-text">
-      <ConnectionBanner />
       <Header navigation={navigation} />
       <main
         data-pull-to-refresh-surface=""

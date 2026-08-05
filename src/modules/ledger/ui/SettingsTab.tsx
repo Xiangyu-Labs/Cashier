@@ -33,7 +33,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/actions";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
-import { clearOfflineData } from "@/modules/offline/offline-store";
+import { clearUserCacheData } from "@/lib/client-cache";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -312,7 +312,7 @@ export function SettingsTab({
             <Button
               variant="outline"
               onClick={async () => {
-                await clearOfflineData(ledger.userId).catch(() => {});
+                await clearUserCacheData(ledger.userId).catch(() => {});
                 await signOut({ callbackUrl: "/login" });
               }}
               disabled={isPending}

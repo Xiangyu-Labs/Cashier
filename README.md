@@ -119,7 +119,11 @@ The ledger home displays a single unified Stream of source documents across all 
 
 ### Refresh Ownership
 
-Every ledger has a monotonic bigint sync version. Visible tabs request bounded deltas and apply changed canonical documents and tombstones to every loaded filter cache. BroadcastChannel distributes versioned results as an optimization, while polling pauses when hidden or offline and wakes after relevant mutations. IndexedDB v4 consumes the same protocol; only first use, a retained-log gap, or `resetRequired` downloads a full snapshot.
+Every ledger has a monotonic bigint sync version. Visible tabs request bounded deltas and apply changed canonical documents and tombstones to every loaded filter cache. BroadcastChannel distributes versioned results as an optimization, while polling pauses when hidden or offline and wakes after relevant mutations. The startup preview cache consumes the same protocol; only first use, a retained-log gap, `resetRequired`, or a 24-hour full validation downloads a full snapshot.
+
+### Startup Preview Cache
+
+IndexedDB (`cashier-cache`) stores a short-lived, read-only startup preview: the latest ledger snapshot (up to 1,000 documents) and viewed document image blobs (100 images / 10 MB with LRU eviction). The preview is only shown while the server bootstrap is still loading; the authoritative server data replaces it as soon as it arrives. The first run of this version migrates the legacy `cashier-offline` database and its localStorage key into `cashier-cache`, then removes the old storage; migration failures degrade to an empty cache. The application does not provide offline availability — the service worker precaches only immutable static assets and never serves navigation or cached API responses. TanStack Query and the refresh coordinator still use `navigator.onLine` to avoid request storms while disconnected.
 
 ### Cache Transaction Model
 

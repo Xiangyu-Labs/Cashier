@@ -1,76 +1,106 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
+const exists = (path: string) => existsSync(resolve(root, path));
+
+function collectSourceFiles(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const absolute = resolve(directory, entry);
+    return statSync(absolute).isDirectory()
+      ? collectSourceFiles(absolute)
+      : /\.(ts|tsx)$/.test(entry)
+        ? [absolute]
+        : [];
+  });
+}
 
 describe("PWA policy", () => {
-  it("keeps authenticated navigation out of persistent service-worker caches", () => {
+  it("precaches only immutable static assets and keeps the update prompt", () => {
     const config = read("next.config.ts");
     const worker = read("worker/index.ts");
     expect(config).toContain('withSerwistInit from "@serwist/next"');
-    expect(config).toContain('url: "/zh/offline"');
-    expect(config).toContain('url: "/en/offline"');
     expect(config).toContain("cacheOnNavigation: false");
     expect(config).toContain("/chunks\\/app\\/api\\//");
-    expect(config).toContain("/chunks\\/app\\/.*\\(protected\\)\\//");
-    expect(worker).toContain("NAVIGATION_TIMEOUT_MS = 8_000");
-    expect(worker).toContain('request.mode === "navigate"');
-    expect(worker).toContain("handler: ({ request }) => fetchNavigation(request)");
-    expect(worker).toContain("caches.match(fallbackUrl");
-    expect(worker).toContain("/\\/offline\\/?$/.test");
-    expect(worker).not.toContain("caches.put");
-    expect(config).not.toContain("next-pwa");
-    expect(config).not.toContain("cacheStartUrl: true");
+    expect(config).not.toContain("/chunks\\/app\\/.*\\(protected\\)\\//");
+    expect(config).not.toContain("additionalPrecacheEntries");
+    expect(config).not.toContain("/offline");
+    expect(worker).toContain("new Serwist");
+    expect(worker).toContain("precacheEntries: self.__SW_MANIFEST");
+    expect(worker).toContain("skipWaiting: true");
+    expect(worker).toContain("clientsClaim: true");
+    expect(worker).not.toContain("navigate");
+    expect(worker).not.toContain("offline");
+    expect(worker).not.toContain("fetchNavigation");
+    expect(worker).not.toContain("caches.match");
+    expect(read("src/components/ServiceWorkerUpdate.tsx")).toContain("controllerchange");
   });
 
-  it("uses locale-specific installed-app entry points", () => {
-    const manifest = read("src/app/[locale]/manifest.webmanifest/route.ts");
-    const layout = read("src/app/[locale]/layout.tsx");
-    expect(manifest).toContain("start_url: `/${locale}`");
-    expect(manifest).toContain("scope: `/${locale}/`");
-    expect(layout).toContain("manifest: `/${locale}/manifest.webmanifest`");
-    const navigation = read("src/modules/offline/OfflineNavigation.tsx");
-    expect(navigation).toContain('status === "online" || status === "recovered"');
-    expect(navigation).toContain("returnUrl.current ?? `/${locale}`");
+  it("removes the offline mode, offline route, health probe, and connection UI", () => {
+    expect(exists("src/modules/offline")).toBe(false);
+    expect(exists("src/app/[locale]/offline")).toBe(false);
+    expect(exists("src/app/api/health")).toBe(false);
+    expect(read("src/proxy.ts")).not.toContain("api/health");
+    expect(read("src/components/providers.tsx")).not.toContain("ConnectionStateProvider");
+    expect(read("src/modules/workspace/ui/AppShell.tsx")).not.toContain("ConnectionBanner");
+    expect(read("src/modules/workspace/ui/TabNavigation.tsx")).not.toContain("offline?");
+    expect(read("src/app/[locale]/(protected)/_active-shell.tsx")).not.toContain(
+      'status === "offline"'
+    );
+    const sourceFiles = collectSourceFiles(resolve(root, "src"));
+    for (const file of sourceFiles) {
+      const relative = file.slice(root.length + 1);
+      const source = readFileSync(file, "utf8");
+      expect(source).not.toContain('from "@/modules/offline/');
+      expect(source).not.toContain("offlineImageUrls");
+      expect(source).not.toContain("cashier:offline-snapshot");
+      expect(relative).not.toContain("/offline/");
+    }
+  });
+
+  it("ships a startup preview that is read-only and has no refresh or mutation controls", () => {
+    const preview = read("src/modules/workspace/ui/LedgerStartupPreview.tsx");
+    const stream = read("src/modules/workspace/ui/LedgerStartupStreamPreview.tsx");
+    const details = read("src/modules/workspace/ui/LedgerStartupDetailsPreview.tsx");
+    const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
+    expect(preview).toContain("readLedgerStartupSnapshot");
+    expect(preview).toContain('"正在加载最新数据"');
+    expect(preview).toContain("SettingsTabSkeleton");
+    for (const source of [preview, stream, details]) {
+      expect(source).not.toContain("useMutation");
+      expect(source).not.toContain("PullToRefresh");
+    }
+    expect(stream).toContain("readOnly");
+    expect(stream).toContain("CACHED_STREAM_PREVIEW_LIMIT");
+    expect(details).toContain("CACHED_DETAILS_PREVIEW_LIMIT");
+    expect(card).toContain("READ_ONLY_RECOVERY");
+  });
+
+  it("keeps server-rendered cache keys outside the client IndexedDB module", () => {
+    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
+    expect(activeTab).toContain('from "@/modules/workspace/ledger-startup-cache-constants"');
+    expect(activeTab).toContain("ledgerStartupCacheKey");
+    expect(activeTab).not.toContain("ledger-startup-cache-store");
+  });
+
+  it("caches document images on demand with LRU limits and cached preview URLs", () => {
+    const imageCache = read("src/modules/source-document/image-cache.ts");
+    const viewDetails = read("src/modules/source-document/ui/SourceDocumentViewDetails.tsx");
+    const groups = read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx");
+    expect(imageCache).toContain("CACHED_IMAGE_COUNT_LIMIT = 100");
+    expect(imageCache).toContain("CACHED_IMAGE_BYTES_LIMIT = 10 * 1024 * 1024");
+    expect(imageCache).toContain("storedFileReadUrl");
+    expect(imageCache).not.toContain("cacheOfflineImages");
+    expect(viewDetails).toContain("useCachedSourceImages");
+    expect(viewDetails).toContain("cachedImageUrls");
+    expect(viewDetails).not.toContain("cacheOfflineImage");
+    expect(viewDetails).not.toContain("rememberViewedDocument");
+    expect(groups).toContain("cachedImageUrls");
   });
 
   it("keeps protected stored files out of the browser HTTP cache", () => {
     expect(read("src/app/api/stored-files/[fileId]/route.ts")).toContain('"private, no-store"');
-  });
-
-  it("keeps the database-free health probe outside session auth and removes v2", () => {
-    const proxy = read("src/proxy.ts");
-    expect(proxy).toContain("api/health");
-    expect(proxy).not.toContain("api/v2");
-  });
-
-  it("ships an offline reader without offline mutation controls", () => {
-    const offline = read("src/modules/offline/OfflineLedgerView.tsx");
-    const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
-    expect(offline).toContain("readOfflineSnapshot");
-    expect(offline).toContain("readOnly");
-    expect(card).toContain("READ_ONLY_RECOVERY");
-    expect(offline).not.toContain("useMutation");
-  });
-
-  it("keeps server-rendered snapshot keys outside the client IndexedDB module", () => {
-    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
-    expect(activeTab).toContain('from "@/modules/offline/offline-constants"');
-    expect(activeTab).not.toContain('from "@/modules/offline/offline-store"');
-  });
-
-  it("keeps checking content online and uses a connection-aware streaming fallback", () => {
-    const shell = read("src/app/[locale]/(protected)/_active-shell.tsx");
-    const client = read("src/modules/workspace/ui/LedgerPageClient.tsx");
-    const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
-    const fallback = read("src/modules/offline/ConnectionAwareLedgerFallback.tsx");
-    expect(shell).toContain('status === "offline"');
-    expect(shell).not.toContain('status === "offline" || status === "checking"');
-    expect(client).toContain('connectionStatus === "offline"');
-    expect(activeTab).toContain("ConnectionAwareLedgerFallback");
-    expect(fallback).toContain('networkStatus === "offline"');
-    expect(fallback).toContain("EntriesTabSkeleton");
   });
 });

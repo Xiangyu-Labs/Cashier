@@ -85,7 +85,7 @@ function renderDetails(count: number, isLoadingImages = false) {
       onSelectAllEntries={vi.fn()}
       onToggleSelectionMode={vi.fn()}
       readOnly
-      offlineImageUrls={urls}
+      cachedImageUrls={urls}
     />
   );
 }

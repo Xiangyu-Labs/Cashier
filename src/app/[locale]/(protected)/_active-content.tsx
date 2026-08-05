@@ -62,7 +62,6 @@ export async function ActiveContent({
     <HydrationBoundary state={pageData.dehydratedState}>
       <LedgerPageClient
         ledgerId={ledgerId}
-        userId={ledgerDto.userId}
         initialTab={initialTab}
         initialPeriod={periodParams}
         initialStatsDate={pageData.initialStatsDate}

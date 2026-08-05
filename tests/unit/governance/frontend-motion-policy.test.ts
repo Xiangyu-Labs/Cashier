@@ -51,6 +51,8 @@ describe("frontend motion policy", () => {
     );
     expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
     expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
-    expect(read("src/modules/offline/OfflineLedgerView.tsx")).toContain("<LedgerEntryGroupsView");
+    expect(read("src/modules/workspace/ui/LedgerStartupDetailsPreview.tsx")).toContain(
+      "<LedgerEntryGroupsView"
+    );
   });
 });

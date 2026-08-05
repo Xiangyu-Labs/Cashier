@@ -8,7 +8,7 @@ interface SourceDocumentCardPreviewProps {
   text: string;
   images: SourceDocumentStoredFileDto[];
   onViewDetails?: () => void;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
   readOnly?: boolean;
 }
 
@@ -16,7 +16,7 @@ export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview
   text,
   images,
   onViewDetails,
-  offlineImageUrls,
+  cachedImageUrls,
   readOnly = false,
 }: SourceDocumentCardPreviewProps) {
   const t = useTranslations("SourceDocumentCard");
@@ -25,8 +25,8 @@ export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview
       {images.length > 0 ? (
         <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
           {images.map((image, index) => {
-            const offlineUrl = offlineImageUrls?.get(image.id);
-            const src = offlineUrl ?? (!readOnly ? storedFileReadUrl(image.id) : null);
+            const cachedUrl = cachedImageUrls?.get(image.id);
+            const src = cachedUrl ?? (!readOnly ? storedFileReadUrl(image.id) : null);
             return src == null ? null : (
               <button
                 key={image.id}
@@ -39,7 +39,7 @@ export const SourceDocumentCardPreview = memo(function SourceDocumentCardPreview
                   src={src}
                   alt=""
                   fill
-                  unoptimized={offlineUrl != null}
+                  unoptimized={cachedUrl != null}
                   className="object-cover"
                 />
               </button>

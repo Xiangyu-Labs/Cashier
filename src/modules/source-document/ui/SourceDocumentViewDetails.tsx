@@ -2,7 +2,7 @@
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import Image from "next/image";
-import { type ReactNode, useEffect, useMemo, useState, memo } from "react";
+import { type ReactNode, useMemo, useState, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,8 @@ import {
   type SourceDocumentDetailDisplayEntry,
 } from "./source-document-detail-view-model";
 import { storedFileReadUrl } from "../stored-file-read";
-import {
-  cacheOfflineImage,
-  getActiveOfflineSnapshotKey,
-  rememberViewedDocument,
-} from "@/modules/offline/offline-store";
+import { getActiveStartupCacheKey } from "@/lib/client-cache";
+import { useCachedSourceImages } from "@/modules/source-document/hooks";
 
 interface CurrencyBreakdownItemProps {
   currency: string;
@@ -90,7 +87,7 @@ interface SourceDocumentViewDetailsProps {
   onSelectAllEntries: (selected: boolean) => void;
   onToggleSelectionMode: () => void;
   readOnly?: boolean;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails({
@@ -109,7 +106,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onSelectAllEntries: _onSelectAllEntries,
   onToggleSelectionMode,
   readOnly = false,
-  offlineImageUrls,
+  cachedImageUrls,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const t = useTranslations("SourceDocumentDetail");
   const tCard = useTranslations("SourceDocumentCard");
@@ -154,23 +151,17 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
   const selectedImageIndex = Math.min(activeImageIndex, Math.max(files.length - 1, 0));
 
-  useEffect(() => {
-    if (readOnly || files.length === 0) return;
-    const snapshotKey = getActiveOfflineSnapshotKey();
-    if (snapshotKey == null || !snapshotKey.endsWith(`:${sourceDocument.ledgerId}`)) return;
-    void rememberViewedDocument({ snapshotKey, document: sourceDocument, ledgerEntries }).catch(
-      () => {}
-    );
-    for (const file of files) {
-      void cacheOfflineImage({
-        snapshotKey,
-        documentId: sourceDocument.id,
-        documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
-        file,
-        viewed: true,
-      }).catch(() => false);
-    }
-  }, [files, ledgerEntries, readOnly, sourceDocument]);
+  const activeSnapshotKey = getActiveStartupCacheKey();
+  const { imageUrls: onlineImageUrls, isLoading: onlineImagesLoading } = useCachedSourceImages({
+    snapshotKey: activeSnapshotKey,
+    files,
+    documentId: sourceDocument.id,
+    documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
+    enabled: !readOnly && files.length > 0 && activeSnapshotKey != null,
+  });
+  const cachedUrls = readOnly && cachedImageUrls != null ? cachedImageUrls : onlineImageUrls;
+  const useDirectImageUrls = !readOnly && activeSnapshotKey == null;
+  const showImageLoading = isLoadingImages || (!readOnly && onlineImagesLoading);
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -306,12 +297,14 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                   <ImagePlay className="h-3 w-3 text-primary/60" />
                   {tCard("image")}
                 </h5>
-                {isLoadingImages ? (
+                {showImageLoading ? (
                   <div
                     data-testid="source-document-image-stage-loading"
                     className="aspect-[4/3] w-full animate-pulse rounded-md border border-border/50 bg-border/40 sm:max-h-[52dvh]"
                   />
-                ) : files[selectedImageIndex] != null ? (
+                ) : files[selectedImageIndex] == null ? null : cachedUrls.get(
+                    files[selectedImageIndex].id
+                  ) != null || useDirectImageUrls ? (
                   <>
                     <button
                       type="button"
@@ -320,15 +313,15 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                       onClick={() => setViewerIndex(selectedImageIndex)}
                       aria-label={tCard("imageAlt", { index: selectedImageIndex + 1 })}
                     >
-                      {offlineImageUrls?.get(files[selectedImageIndex].id) != null ? (
+                      {cachedUrls.get(files[selectedImageIndex].id) != null ? (
                         <Image
-                          src={offlineImageUrls.get(files[selectedImageIndex].id)!}
+                          src={cachedUrls.get(files[selectedImageIndex].id)!}
                           alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
                           fill
                           unoptimized
                           className="object-contain p-2"
                         />
-                      ) : !readOnly ? (
+                      ) : useDirectImageUrls ? (
                         <Image
                           src={storedFileReadUrl(files[selectedImageIndex].id)}
                           alt={tCard("imageAlt", { index: selectedImageIndex + 1 })}
@@ -346,8 +339,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                         aria-label={tCard("image")}
                       >
                         {files.map((file, index) => {
-                          const offlineUrl = offlineImageUrls?.get(file.id);
-                          const src = offlineUrl ?? (!readOnly ? storedFileReadUrl(file.id) : null);
+                          const cachedUrl = cachedUrls.get(file.id);
+                          const src =
+                            cachedUrl ?? (useDirectImageUrls ? storedFileReadUrl(file.id) : null);
                           return (
                             <button
                               key={file.id}
@@ -367,7 +361,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                                   src={src}
                                   alt=""
                                   fill
-                                  unoptimized={offlineUrl != null}
+                                  unoptimized={cachedUrl != null}
                                   className="object-cover"
                                 />
                               ) : null}
@@ -397,9 +391,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
 
       <SourceDocumentImageModal
         images={files.map((file) => ({
-          data: offlineImageUrls?.get(file.id) ?? "",
+          data: cachedUrls.get(file.id) ?? "",
           mimeType: file.contentType,
-          ...(!readOnly ? { storedFileId: file.id } : {}),
+          ...(!readOnly && cachedUrls.get(file.id) == null ? { storedFileId: file.id } : {}),
         }))}
         initialIndex={viewerIndex ?? 0}
         open={viewerIndex !== null}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOfflineEnhancedStats } from "@/modules/offline/offline-selectors";
+import { buildCachedEnhancedStats } from "@/modules/workspace/ledger-startup-cache-selectors";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -87,9 +87,9 @@ function document({
   };
 }
 
-describe("buildOfflineEnhancedStats", () => {
+describe("buildCachedEnhancedStats", () => {
   it("uses the persisted accounting projection and the same effective-date fallback", () => {
-    const result = buildOfflineEnhancedStats({
+    const result = buildCachedEnhancedStats({
       items: [
         document({
           id: "current-a",

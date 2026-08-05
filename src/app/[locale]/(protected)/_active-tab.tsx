@@ -13,8 +13,8 @@ import {
 } from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
-import { ConnectionAwareLedgerFallback } from "@/modules/offline/ConnectionAwareLedgerFallback";
-import { offlineSnapshotKey } from "@/modules/offline/offline-constants";
+import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
+import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
 import { periodToDateRange } from "@/lib/period-utils";
 
 interface ActiveTabProps {
@@ -72,8 +72,8 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
          */}
         <Suspense
           fallback={
-            <ConnectionAwareLedgerFallback
-              snapshotKey={offlineSnapshotKey(ledgerDto.userId, ledgerId)}
+            <LedgerStartupPreview
+              snapshotKey={ledgerStartupCacheKey(ledgerDto.userId, ledgerId)}
               activeTab={activeTab}
               initialFilters={{
                 ...advancedFilters,

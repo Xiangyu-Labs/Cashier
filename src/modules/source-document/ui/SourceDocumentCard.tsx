@@ -31,7 +31,7 @@ interface SourceDocumentCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   readOnly?: boolean;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 interface RecoveryControls {
@@ -88,7 +88,7 @@ function SourceDocumentCardBody({
   isSelected = false,
   onToggleSelect,
   readOnly = false,
-  offlineImageUrls,
+  cachedImageUrls,
   recovery,
 }: SourceDocumentCardProps & { recovery: RecoveryControls }) {
   const tCommon = useTranslations("Common");
@@ -163,7 +163,7 @@ function SourceDocumentCardBody({
                 text={preview.text}
                 images={preview.images}
                 {...(onViewDetails != null ? { onViewDetails } : {})}
-                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
                 readOnly={readOnly}
               />
             ) : null}

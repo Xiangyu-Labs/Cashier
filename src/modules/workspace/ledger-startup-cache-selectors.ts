@@ -11,7 +11,7 @@ import {
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import { calculateGrowth } from "@/modules/stats/utils";
 
-export interface OfflineDocumentMatch {
+export interface CachedDocumentMatch {
   document: SourceDocumentListItemDto;
   matchedEntries: SourceDocumentLedgerEntryDto[];
   displayEntries: SourceDocumentLedgerEntryDto[];
@@ -37,7 +37,7 @@ function entryAmount(entry: SourceDocumentLedgerEntryDto): Decimal | null {
   }
 }
 
-export function matchesOfflineEntry(
+export function matchesCachedEntry(
   entry: SourceDocumentLedgerEntryDto,
   filters: EntryFilters
 ): boolean {
@@ -51,12 +51,12 @@ export function matchesOfflineEntry(
   return true;
 }
 
-export function selectOfflineDocuments(
+export function selectCachedDocuments(
   items: SourceDocumentListItemDto[],
   filters: EntryFilters
-): OfflineDocumentMatch[] {
+): CachedDocumentMatch[] {
   const entryFiltered = hasEntryFilters(filters);
-  const result: OfflineDocumentMatch[] = [];
+  const result: CachedDocumentMatch[] = [];
   for (const document of items) {
     const effectiveDate = effectiveDocumentDate(document);
     if (filters.startDate != null && effectiveDate < filters.startDate) {
@@ -70,7 +70,7 @@ export function selectOfflineDocuments(
     }
     const entries = document.ledgerEntries ?? [];
     const matchedEntries = entryFiltered
-      ? entries.filter((entry) => matchesOfflineEntry(entry, filters))
+      ? entries.filter((entry) => matchesCachedEntry(entry, filters))
       : entries;
     if (entryFiltered && matchedEntries.length === 0) continue;
     const subtotal = matchedEntries
@@ -87,19 +87,19 @@ export function selectOfflineDocuments(
   return result;
 }
 
-export function totalOfflineMatches(matches: OfflineDocumentMatch[]): number {
+export function totalCachedMatches(matches: CachedDocumentMatch[]): number {
   return matches
     .filter(({ document }) => document.status === "completed")
     .reduce((total, match) => total.plus(match.subtotal), new Decimal(0))
     .toNumber();
 }
 
-interface OfflineStatsRange {
+interface CachedStatsRange {
   from: string;
   to: string;
 }
 
-interface OfflineStatsBucket {
+interface CachedStatsBucket {
   total: Decimal;
   categories: Map<
     string,
@@ -114,13 +114,13 @@ interface OfflineStatsBucket {
   days: Map<string, { total: Decimal; count: number; currencies: Set<string> }>;
 }
 
-function buildOfflineStatsBucket(
+function buildCachedStatsBucket(
   items: readonly SourceDocumentListItemDto[],
-  range: OfflineStatsRange,
+  range: CachedStatsRange,
   mainCurrency: string,
   uncategorizedLabel: string
-): OfflineStatsBucket {
-  const bucket: OfflineStatsBucket = {
+): CachedStatsBucket {
+  const bucket: CachedStatsBucket = {
     total: new Decimal(0),
     categories: new Map(),
     days: new Map(),
@@ -177,7 +177,7 @@ function calculateHeatmapStats(amounts: number[]) {
   };
 }
 
-export function buildOfflineEnhancedStats({
+export function buildCachedEnhancedStats({
   items,
   queryRange,
   compareRange,
@@ -186,14 +186,14 @@ export function buildOfflineEnhancedStats({
   today,
 }: {
   items: readonly SourceDocumentListItemDto[];
-  queryRange: OfflineStatsRange;
-  compareRange: OfflineStatsRange;
+  queryRange: CachedStatsRange;
+  compareRange: CachedStatsRange;
   mainCurrency: string;
   uncategorizedLabel: string;
   today: string;
 }): EnhancedStatsDto {
-  const current = buildOfflineStatsBucket(items, queryRange, mainCurrency, uncategorizedLabel);
-  const previous = buildOfflineStatsBucket(items, compareRange, mainCurrency, uncategorizedLabel);
+  const current = buildCachedStatsBucket(items, queryRange, mainCurrency, uncategorizedLabel);
+  const previous = buildCachedStatsBucket(items, compareRange, mainCurrency, uncategorizedLabel);
   const total = current.total.toNumber();
   const previousTotal = previous.total.toNumber();
   const totalGrowth = calculateGrowth(total, previousTotal);

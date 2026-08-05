@@ -1,27 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  OFFLINE_IMAGE_BYTES_LIMIT,
-  type OfflineImageRecord,
-  selectOfflineImageEvictions,
-  migrateOfflineSnapshot,
-  mergeOfflineDeltaItems,
-} from "@/modules/offline/offline-store";
+  migrateLedgerStartupSnapshot,
+  mergeLedgerStartupDeltaItems,
+} from "@/modules/workspace/ledger-startup-cache-store";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-
-function image(overrides: Partial<OfflineImageRecord> & Pick<OfflineImageRecord, "key">) {
-  return {
-    snapshotKey: "user:ledger",
-    fileId: overrides.key,
-    documentId: "document",
-    contentType: "image/webp",
-    byteSize: 1024,
-    blob: new Blob(["x"]),
-    viewed: false,
-    priorityAt: 1,
-    lastAccessedAt: 1,
-    ...overrides,
-  } satisfies OfflineImageRecord;
-}
 
 function document(id: string, entryDate: string): SourceDocumentListItemDto {
   return {
@@ -46,47 +28,9 @@ function document(id: string, entryDate: string): SourceDocumentListItemDto {
   };
 }
 
-describe("offline image eviction", () => {
-  it("evicts unviewed images before older viewed images", () => {
-    const records = [
-      image({ key: "viewed", viewed: true, lastAccessedAt: 1 }),
-      image({ key: "unviewed-new", priorityAt: 3 }),
-      image({ key: "unviewed-old", priorityAt: 2 }),
-    ];
-    records.forEach((record) => (record.byteSize = OFFLINE_IMAGE_BYTES_LIMIT / 3));
-
-    expect(
-      selectOfflineImageEvictions(records, OFFLINE_IMAGE_BYTES_LIMIT / 3).map((x) => x.key)
-    ).toEqual(["unviewed-old"]);
-  });
-
-  it("uses least-recently-viewed order after automatic images are gone", () => {
-    const records = [
-      image({ key: "viewed-new", viewed: true, lastAccessedAt: 20, byteSize: 6_000_000 }),
-      image({ key: "viewed-old", viewed: true, lastAccessedAt: 10, byteSize: 4_000_000 }),
-    ];
-
-    expect(selectOfflineImageEvictions(records, 2_000_000).map((x) => x.key)).toEqual([
-      "viewed-old",
-    ]);
-  });
-
-  it("does not count a replaced record twice", () => {
-    const records = [image({ key: "same", byteSize: OFFLINE_IMAGE_BYTES_LIMIT })];
-    expect(selectOfflineImageEvictions(records, 1024, "same")).toEqual([]);
-  });
-
-  it("does not evict a newer automatic image for an older incoming image", () => {
-    const records = [image({ key: "newer", priorityAt: 20, byteSize: OFFLINE_IMAGE_BYTES_LIMIT })];
-    expect(
-      selectOfflineImageEvictions(records, 1024, undefined, { viewed: false, priorityAt: 10 })
-    ).toEqual([]);
-  });
-});
-
-describe("offline snapshot migration", () => {
-  it("invalidates a v2 snapshot for a v5 rebuild", () => {
-    const migrated = migrateOfflineSnapshot({
+describe("startup snapshot migration", () => {
+  it("invalidates an old snapshot for a full rebuild", () => {
+    const migrated = migrateLedgerStartupSnapshot({
       key: "user:ledger",
       schemaVersion: 2,
       userId: "user",
@@ -109,7 +53,7 @@ describe("offline snapshot migration", () => {
 
   it("preserves a complete v4 snapshot while upgrading metadata to v5", () => {
     const item = document("preserved", "2026-08-01");
-    const migrated = migrateOfflineSnapshot({
+    const migrated = migrateLedgerStartupSnapshot({
       key: "user:ledger",
       schemaVersion: 4,
       userId: "user",
@@ -144,16 +88,35 @@ describe("offline snapshot migration", () => {
       lastSyncedAt: "2026-07-30T00:00:00.000Z",
       fullSyncAt: null,
     };
-    expect(migrateOfflineSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault ?? false).toBe(
-      false
-    );
+    expect(
+      migrateLedgerStartupSnapshot(snapshot).ledgerSettings?.collapseEntriesDefault ?? false
+    ).toBe(false);
+  });
+
+  it("drops legacy viewedItems copies from the snapshot", () => {
+    const migrated = migrateLedgerStartupSnapshot({
+      key: "user:ledger",
+      schemaVersion: 5,
+      userId: "user",
+      ledgerId: "ledger",
+      items: [document("a", "2026-08-01")],
+      viewedItems: [document("viewed", "2026-08-02")],
+      syncVersion: "1",
+      recordCount: 1,
+      complete: true,
+      truncated: false,
+      coverageLimit: 1000,
+      lastSyncedAt: "2026-08-01T00:00:00.000Z",
+      fullSyncAt: "2026-08-01T00:00:00.000Z",
+    });
+    expect(migrated).not.toHaveProperty("viewedItems");
   });
 });
 
-describe("offline delta merge", () => {
+describe("startup delta merge", () => {
   it("applies canonical replacements and tombstones in server order", () => {
     const replacement = { ...document("b", "2026-08-03"), title: "updated" };
-    const merged = mergeOfflineDeltaItems(
+    const merged = mergeLedgerStartupDeltaItems(
       [document("a", "2026-08-01"), document("b", "2026-08-02")],
       { documents: [replacement, document("c", "2026-08-04")], tombstones: ["a"] },
       1000
@@ -163,7 +126,7 @@ describe("offline delta merge", () => {
   });
 
   it("truncates incremental results to snapshot coverage", () => {
-    const merged = mergeOfflineDeltaItems(
+    const merged = mergeLedgerStartupDeltaItems(
       [document("a", "2026-08-01"), document("b", "2026-08-02")],
       { documents: [document("c", "2026-08-03")], tombstones: [] },
       2

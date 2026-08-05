@@ -101,8 +101,8 @@ export function LedgerEntriesToolbar({
         title={
           readOnly
             ? locale.startsWith("zh")
-              ? "需要联网"
-              : "Requires a connection"
+              ? "只读预览"
+              : "Read-only preview"
             : isSelectionMode
               ? t("cancelSelect")
               : t("select")

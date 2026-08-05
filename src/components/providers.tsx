@@ -1,13 +1,17 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
-import { ConnectionStateProvider } from "@/modules/offline/connection-state";
+import { migrateLegacyOfflineCache } from "@/lib/client-cache";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    void migrateLegacyOfflineCache().catch(() => {});
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -27,7 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <ConnectionStateProvider>{children}</ConnectionStateProvider>
+        {children}
         <ServiceWorkerUpdate />
         <Toaster position="top-center" richColors closeButton />
       </ThemeProvider>

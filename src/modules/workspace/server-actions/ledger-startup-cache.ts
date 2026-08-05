@@ -8,9 +8,9 @@ import { withLedgerAccess } from "@/modules/ledger/access";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import { serverComposition } from "@/application/server-composition-root";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import { OFFLINE_DOCUMENT_LIMIT } from "./offline-constants";
+import { LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT } from "../ledger-startup-cache-constants";
 
-export interface OfflineSnapshotVersionDto {
+export interface LedgerStartupCacheVersionDto {
   version: string;
   recordCount: number;
   complete: boolean;
@@ -18,7 +18,7 @@ export interface OfflineSnapshotVersionDto {
   coverageLimit: number;
 }
 
-export interface OfflineSnapshotPayloadDto extends OfflineSnapshotVersionDto {
+export interface LedgerStartupCachePayloadDto extends LedgerStartupCacheVersionDto {
   items: SourceDocumentListItemDto[];
   generatedAt: string;
 }
@@ -30,7 +30,7 @@ async function collectSnapshotRows(ledgerId: string) {
     const page = await listSourceDocuments(
       ledgerId,
       {
-        limit: Math.min(100, OFFLINE_DOCUMENT_LIMIT - items.length),
+        limit: Math.min(100, LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT - items.length),
         includeEntries: true,
         includeFiles: true,
         ...(cursor != null ? { cursor } : {}),
@@ -42,11 +42,11 @@ async function collectSnapshotRows(ledgerId: string) {
     );
     items.push(...page.items);
     cursor = page.nextCursor ?? undefined;
-  } while (cursor != null && items.length < OFFLINE_DOCUMENT_LIMIT);
+  } while (cursor != null && items.length < LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT);
   return items;
 }
 
-async function querySnapshotVersion(ledgerId: string): Promise<OfflineSnapshotVersionDto> {
+async function querySnapshotVersion(ledgerId: string): Promise<LedgerStartupCacheVersionDto> {
   const [documentState, syncState] = await Promise.all([
     db
       .select({
@@ -59,28 +59,28 @@ async function querySnapshotVersion(ledgerId: string): Promise<OfflineSnapshotVe
     db.query.ledgerSyncState.findFirst({ where: eq(ledgerSyncState.ledgerId, ledgerId) }),
   ]);
   const recordCount = Number(documentState?.count ?? 0);
-  const truncated = recordCount > OFFLINE_DOCUMENT_LIMIT;
+  const truncated = recordCount > LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT;
   return {
     version: (syncState?.version ?? BigInt(0)).toString(),
     recordCount,
     complete: !truncated,
     truncated,
-    coverageLimit: OFFLINE_DOCUMENT_LIMIT,
+    coverageLimit: LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT,
   };
 }
 
-export const getOfflineSnapshotVersion = withLedgerAccess(
-  async (ledgerId: string): Promise<OfflineSnapshotVersionDto> => {
+export const getLedgerStartupCacheVersion = withLedgerAccess(
+  async (ledgerId: string): Promise<LedgerStartupCacheVersionDto> => {
     return querySnapshotVersion(ledgerId);
   }
 );
 
-export const getOfflineLedgerSnapshot = withLedgerAccess(
-  async (ledgerId: string, expectedVersion: string): Promise<OfflineSnapshotPayloadDto> => {
+export const getLedgerStartupCacheSnapshot = withLedgerAccess(
+  async (ledgerId: string, expectedVersion: string): Promise<LedgerStartupCachePayloadDto> => {
     const items = await collectSnapshotRows(ledgerId);
     const metadata = await querySnapshotVersion(ledgerId);
     if (metadata.version !== expectedVersion) {
-      throw new ConflictError("Offline snapshot changed while it was being generated");
+      throw new ConflictError("Startup cache snapshot changed while it was being generated");
     }
     return {
       ...metadata,

@@ -23,18 +23,7 @@ const withSerwist = withSerwistInit({
   cacheOnNavigation: false,
   reloadOnOnline: false,
   disable: process.env.NODE_ENV === "development",
-  additionalPrecacheEntries: [
-    { url: "/zh/offline", revision: null },
-    { url: "/en/offline", revision: null },
-  ],
-  exclude: [
-    /middleware-manifest\.json$/,
-    /app-build-manifest\.json$/,
-    /chunks\/app\/api\//,
-    /chunks\/app\/.*\(protected\)\//,
-    /chunks\/app\/.*\/login\//,
-    /chunks\/app\/.*\/settings\//,
-  ],
+  exclude: [/middleware-manifest\.json$/, /app-build-manifest\.json$/, /chunks\/app\/api\//],
 });
 
 export default withSerwist(withNextIntl(nextConfig));

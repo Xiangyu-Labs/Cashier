@@ -31,7 +31,7 @@ export interface UnifiedStreamGroupProps {
   timeZone?: string;
   readOnly?: boolean;
   collapseEntriesDefault?: boolean;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export function LedgerEntriesUnifiedGroups({
@@ -49,7 +49,7 @@ export function LedgerEntriesUnifiedGroups({
   timeZone,
   readOnly = false,
   collapseEntriesDefault = false,
-  offlineImageUrls,
+  cachedImageUrls,
 }: UnifiedStreamGroupProps) {
   if (streamGroups.length === 0) {
     return (
@@ -87,7 +87,7 @@ export function LedgerEntriesUnifiedGroups({
                 getItemProps={getItemProps}
                 readOnly={readOnly}
                 defaultExpanded={!collapseEntriesDefault}
-                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
               />
             ))}
           </div>
@@ -110,7 +110,7 @@ interface UnifiedStreamItemRowProps {
   getItemProps: () => Record<string, unknown>;
   readOnly: boolean;
   defaultExpanded: boolean;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
@@ -126,7 +126,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
   getItemProps,
   readOnly,
   defaultExpanded,
-  offlineImageUrls,
+  cachedImageUrls,
 }: UnifiedStreamItemRowProps) {
   const sourceDocument = item.sourceDocument as SourceDocument;
   const ledgerEntries = item.ledgerEntries as LedgerEntry[];
@@ -148,7 +148,7 @@ const UnifiedStreamItemRow = memo(function UnifiedStreamItemRow({
         onToggleSelect={() => onToggleSelection(sourceDocument.id)}
         readOnly={readOnly}
         defaultExpanded={defaultExpanded}
-        {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+        {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
       />
     </div>
   );

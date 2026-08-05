@@ -1,5 +1,6 @@
 export { useBatchSourceDocumentActions } from "./useBatchSourceDocumentActions";
 export { usePendingChanges } from "./usePendingChanges";
+export { useCachedImageUrls, useCachedSourceImages } from "./use-cached-source-images";
 export { useSourceDocumentDetailData } from "./useSourceDocumentDetailData";
 export { useSourceDocumentDetailMutations } from "./useSourceDocumentDetailMutations";
 export { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";

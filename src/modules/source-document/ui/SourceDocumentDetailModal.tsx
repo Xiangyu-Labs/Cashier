@@ -55,7 +55,7 @@ interface SourceDocumentDetailModalProps {
   isAbandoning?: boolean;
   isCancelling?: boolean;
   readOnly?: boolean;
-  offlineImageUrls?: ReadonlyMap<string, string>;
+  cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
 export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal({
@@ -83,7 +83,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   isAbandoning = false,
   isCancelling = false,
   readOnly = false,
-  offlineImageUrls,
+  cachedImageUrls,
 }: SourceDocumentDetailModalProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
@@ -358,7 +358,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 onSelectAllEntries={handleSelectAllEntries}
                 onToggleSelectionMode={handleToggleSelectionMode}
                 readOnly={readOnly}
-                {...(offlineImageUrls != null ? { offlineImageUrls } : {})}
+                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
               />
             </>
           )}

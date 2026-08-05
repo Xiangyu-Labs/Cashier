@@ -11,7 +11,6 @@ interface TabNavigationProps {
   onInputIntent?: () => void;
   /** Called when an inactive destination receives pointer or keyboard intent. */
   onTabIntent?: (tab: LedgerTab) => void;
-  offline?: boolean;
 }
 
 const TAB_CONFIG: Array<{
@@ -31,7 +30,6 @@ export function TabNavigation({
   onOpenInput,
   onInputIntent,
   onTabIntent,
-  offline = false,
 }: TabNavigationProps) {
   const t = useTranslations("LedgerPage");
 
@@ -47,7 +45,6 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          disabled={false}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
           }
@@ -57,8 +54,6 @@ export function TabNavigation({
       <button
         type="button"
         onClick={onOpenInput}
-        disabled={offline}
-        title={offline ? "需要联网" : undefined}
         onPointerEnter={onInputIntent}
         onPointerDown={onInputIntent}
         onFocus={onInputIntent}
@@ -75,7 +70,6 @@ export function TabNavigation({
           icon={Icon}
           label={t(labelKey)}
           onClick={() => onTabChange(value)}
-          disabled={offline && value === "settings"}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
           }
