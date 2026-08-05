@@ -21,6 +21,7 @@ export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "processing",
   "completed",
   "candidate_pending",
+  "duplicate_pending",
   "anomaly",
   "failed",
   "cancelled",

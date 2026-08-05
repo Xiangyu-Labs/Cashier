@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import {
   addPeriod,
   formatCivilDate,
@@ -20,6 +19,7 @@ import {
   DEFAULT_STATS_RANGE_TYPE,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
+import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 
 interface StatsTabProps {
   ledgerId?: string;
@@ -78,7 +78,11 @@ export function StatsTab({
     endDateStr,
     prevDateStartStr,
     prevDateEndStr,
-  } = useMemo(() => getStatsInitialQueryState(currentDate, rangeType), [currentDate, rangeType]);
+    mode,
+  } = useMemo(
+    () => getStatsInitialQueryState(currentDate, rangeType, { currentPeriod: periodOffset === 0 }),
+    [currentDate, periodOffset, rangeType]
+  );
 
   const label = useMemo(() => {
     switch (rangeType) {
@@ -99,6 +103,7 @@ export function StatsTab({
     compareStartDate: prevDateStartStr,
     compareEndDate: prevDateEndStr,
     rangeType,
+    comparisonMode: mode,
     ...(ledger?.settings.mainCurrency !== undefined
       ? { mainCurrency: ledger.settings.mainCurrency }
       : {}),
@@ -116,6 +121,7 @@ export function StatsTab({
           from: prevDateStartStr,
           to: prevDateEndStr,
         },
+        comparisonMode: mode,
       }),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
@@ -129,29 +135,29 @@ export function StatsTab({
     ]);
   }, [queryClient, ledgerId]);
 
+  useRegisterPullToRefresh(handleRefresh);
+
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <StatsContentView
-        rangeType={rangeType}
-        onRangeTypeChange={(type) => {
-          setRangeType(type);
-          setPeriodOffset(0);
-        }}
-        periodOffset={periodOffset}
-        onPeriodOffsetChange={setPeriodOffset}
-        label={label}
-        startDate={startDate}
-        endDate={endDate}
-        startDateStr={startDateStr}
-        endDateStr={endDateStr}
-        stats={stats}
-        isLoading={isLoading}
-        chartView={chartView}
-        onChartViewChange={setChartView}
-        fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}
-        {...(onCategoryDrilldown !== undefined ? { onCategoryDrilldown } : {})}
-        {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
-      />
-    </PullToRefresh>
+    <StatsContentView
+      rangeType={rangeType}
+      onRangeTypeChange={(type) => {
+        setRangeType(type);
+        setPeriodOffset(0);
+      }}
+      periodOffset={periodOffset}
+      onPeriodOffsetChange={setPeriodOffset}
+      label={label}
+      startDate={startDate}
+      endDate={endDate}
+      startDateStr={startDateStr}
+      endDateStr={endDateStr}
+      stats={stats}
+      isLoading={isLoading}
+      chartView={chartView}
+      onChartViewChange={setChartView}
+      fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}
+      {...(onCategoryDrilldown !== undefined ? { onCategoryDrilldown } : {})}
+      {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
+    />
   );
 }

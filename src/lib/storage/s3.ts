@@ -3,6 +3,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -20,6 +21,18 @@ export interface S3ObjectMetadata {
   byteSize: number;
   contentType: string;
   metadata: Readonly<Record<string, string>>;
+}
+
+export interface S3ListedObject {
+  key: string;
+  byteSize: number;
+  lastModified: Date | null;
+}
+
+export interface S3ListObjectsPage {
+  objects: S3ListedObject[];
+  isTruncated: boolean;
+  nextContinuationToken: string | null;
 }
 
 function isNotFound(error: unknown): boolean {
@@ -219,6 +232,48 @@ export class S3StorageProvider implements StorageProvider {
     } catch (error) {
       const mapped = storageError("Failed to delete file from S3", "S3_DELETE_FAILED", key, error);
       return { success: false, key, error: mapped };
+    }
+  }
+
+  /**
+   * List a page of objects under a prefix using S3 pagination.
+   *
+   * The bucket is never fully loaded into memory: callers iterate pages via
+   * `nextContinuationToken` and process each page in batches.
+   */
+  async listObjectsPage(
+    prefix: string,
+    continuationToken?: string | null,
+    maxKeys = 1000
+  ): Promise<S3ListObjectsPage> {
+    try {
+      const response = await this.getClient().send(
+        new ListObjectsV2Command({
+          Bucket: this.getBucket(),
+          Prefix: prefix,
+          MaxKeys: maxKeys,
+          ...(continuationToken == null || continuationToken === ""
+            ? {}
+            : { ContinuationToken: continuationToken }),
+        })
+      );
+      const objects: S3ListedObject[] = (response.Contents ?? []).flatMap((object) => {
+        if (object.Key == null || object.Key === "") return [];
+        return [
+          {
+            key: object.Key,
+            byteSize: object.Size ?? 0,
+            lastModified: object.LastModified ?? null,
+          },
+        ];
+      });
+      return {
+        objects,
+        isTruncated: response.IsTruncated === true,
+        nextContinuationToken: response.NextContinuationToken ?? null,
+      };
+    } catch (error) {
+      throw storageError("Failed to list S3 objects", "S3_LIST_FAILED", prefix, error);
     }
   }
 }

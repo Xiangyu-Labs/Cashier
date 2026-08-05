@@ -20,6 +20,8 @@ import {
   batchUpdateSourceDocuments,
   acceptCandidateRevision,
   abandonCandidateRevision,
+  activateDuplicatePendingRevision,
+  discardDuplicatePendingRevision,
   cancelPendingRevision,
 } from "@/application/adapters/postgres";
 import {
@@ -90,6 +92,8 @@ export const serverComposition = {
   sourceDocumentLifecycle: {
     acceptCandidate: acceptCandidateRevision,
     abandonCandidate: abandonCandidateRevision,
+    keepDuplicate: activateDuplicatePendingRevision,
+    discardDuplicate: discardDuplicatePendingRevision,
     cancelPending: cancelPendingRevision,
   },
   sourceDocumentRevisions: postgresRevisionAdapter,

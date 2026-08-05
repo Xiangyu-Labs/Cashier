@@ -13,6 +13,7 @@ import {
   MAX_NORMALIZED_BYTES_PER_REVISION,
 } from "@/modules/source-document/upload-policy";
 import {
+  duplicateReviews,
   ledgerEntries,
   ledgers,
   revisionFiles,
@@ -232,6 +233,25 @@ export async function createPendingRevisionInTransaction(
       position,
     });
   }
+
+  // A retry/supersede retires any pending duplicate review: the new revision
+  // replaces the reviewed one, so keep/discard must no longer act on it and
+  // the status trigger must not keep forcing duplicate_pending.
+  await tx
+    .update(duplicateReviews)
+    .set({
+      status: "discarded",
+      decision: "superseded",
+      decidedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, input.ledgerId),
+        eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+        eq(duplicateReviews.status, "pending")
+      )
+    );
 
   const updatedDocument = await tx
     .update(sourceDocuments)

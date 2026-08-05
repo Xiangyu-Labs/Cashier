@@ -23,6 +23,8 @@ export interface LedgerReadPort {
   listEntriesBySourceDocumentIds(input: {
     ledgerId: string;
     sourceDocumentIds: string[];
+    /** Also load pending-revision entries of duplicate_pending documents. */
+    includeDuplicatePending?: boolean;
   }): Promise<Map<string, LedgerEntryEmbeddedViewDto[]>>;
 }
 

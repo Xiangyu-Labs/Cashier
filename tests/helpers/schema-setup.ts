@@ -169,7 +169,10 @@ export async function activateTestSourceDocumentProjection(
     let revisionId = document.activeRevisionId ?? document.pendingRevisionId;
     if (revisionId == null) {
       const outcome =
-        document.currentStatus === "candidate_pending" ? "completed" : document.currentStatus;
+        document.currentStatus === "candidate_pending" ||
+        document.currentStatus === "duplicate_pending"
+          ? "completed"
+          : document.currentStatus;
       const revision = requireDefined(
         (
           await tx

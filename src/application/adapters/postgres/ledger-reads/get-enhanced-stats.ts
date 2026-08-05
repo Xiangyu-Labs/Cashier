@@ -157,6 +157,7 @@ export async function getEnhancedStatsQuery({
   ledgerId,
   queryRange,
   compareRange,
+  comparisonMode,
 }: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
   const currentStart = parseDateString(queryRange.from);
   const currentEnd = parseDateString(queryRange.to);
@@ -209,10 +210,17 @@ export async function getEnhancedStatsQuery({
     .map(([date, total]) => ({ date, total }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const effectiveEnd = currentEnd > new Date() ? new Date() : currentEnd;
-  const oneDay = 24 * 60 * 60 * 1000;
+  // Civil-day length of the effective range. The client already truncates the
+  // current period to today, so the server must not re-clamp with its own
+  // clock — that would introduce a timezone offset for cross-timezone ledgers.
   const daysDiff =
-    Math.round(Math.abs((effectiveEnd.getTime() - currentStart.getTime()) / oneDay)) + 1;
+    Math.round(
+      Math.abs(
+        (Date.UTC(currentEnd.getFullYear(), currentEnd.getMonth(), currentEnd.getDate()) -
+          Date.UTC(currentStart.getFullYear(), currentStart.getMonth(), currentStart.getDate())) /
+          86_400_000
+      )
+    ) + 1;
 
   const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries())
     .map(([date, totalAmount]) => {
@@ -227,6 +235,7 @@ export async function getEnhancedStatsQuery({
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const totalGrowth = calculateGrowth(Number(currentStats.total), Number(prevStats.total));
+  const amountDelta = new Decimal(currentStats.total).minus(prevStats.total).toFixed();
 
   return {
     summary: {
@@ -237,6 +246,14 @@ export async function getEnhancedStatsQuery({
         amount: String(totalGrowth.amount),
       },
       dailyAverage: daysDiff > 0 ? Number(currentStats.total) / daysDiff : 0,
+      comparison: {
+        mode: comparisonMode ?? "same_period",
+        from: queryRange.from,
+        to: queryRange.to,
+        previousTotal: prevStats.total,
+        amountDelta,
+        percent: totalGrowth.percent,
+      },
     },
     categories,
     chart,

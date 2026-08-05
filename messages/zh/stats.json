@@ -71,6 +71,15 @@
     "year": "年",
     "vsPreviousPeriod": "较上期",
     "noStats": "暂无统计",
-    "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。"
+    "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。",
+    "lastWeek": "上周",
+    "lastMonth": "上月",
+    "lastYear": "去年",
+    "samePeriodMore": "较{period}同期多 {amount}（+{percent}%）",
+    "samePeriodLess": "较{period}同期少 {amount}（-{percent}%）",
+    "samePeriodEqual": "与{period}同期持平",
+    "fullPeriodMore": "较{period}多 {amount}（+{percent}%）",
+    "fullPeriodLess": "较{period}少 {amount}（-{percent}%）",
+    "fullPeriodEqual": "与{period}持平"
   }
 }

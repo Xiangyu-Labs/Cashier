@@ -71,6 +71,15 @@
     "year": "Year",
     "vsPreviousPeriod": "vs previous period",
     "noStats": "No stats yet",
-    "noStatsDesc": "Record a few entries and this section will show where the money went."
+    "noStatsDesc": "Record a few entries and this section will show where the money went.",
+    "lastWeek": "last week",
+    "lastMonth": "last month",
+    "lastYear": "last year",
+    "samePeriodMore": "+{amount} vs same {period} (+{percent}%)",
+    "samePeriodLess": "-{amount} vs same {period} (-{percent}%)",
+    "samePeriodEqual": "No change vs same {period}",
+    "fullPeriodMore": "+{amount} vs {period} (+{percent}%)",
+    "fullPeriodLess": "-{amount} vs {period} (-{percent}%)",
+    "fullPeriodEqual": "No change vs {period}"
   }
 }

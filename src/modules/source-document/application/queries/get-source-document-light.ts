@@ -49,7 +49,11 @@ export async function getSourceDocumentLight(
   const [document, entriesByDocId] = await Promise.all([
     ports.documents.get(accessContext.ledgerId, sourceDocumentId),
     listLedgerEntryViewsBySourceDocumentIds(
-      { ledgerId: accessContext.ledgerId, sourceDocumentIds: [sourceDocumentId] },
+      {
+        ledgerId: accessContext.ledgerId,
+        sourceDocumentIds: [sourceDocumentId],
+        includeDuplicatePending: true,
+      },
       ports.ledgerReads
     ),
   ]);
@@ -73,7 +77,7 @@ export async function getSourceDocumentLightForLedger(
   const [document, entriesByDocId] = await Promise.all([
     ports.documents.get(ledgerId, sourceDocumentId),
     listLedgerEntryViewsBySourceDocumentIds(
-      { ledgerId, sourceDocumentIds: [sourceDocumentId] },
+      { ledgerId, sourceDocumentIds: [sourceDocumentId], includeDuplicatePending: true },
       ports.ledgerReads
     ),
   ]);

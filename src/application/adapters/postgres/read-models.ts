@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type {
   SourceDocumentStoredFileDto,
@@ -9,6 +9,9 @@ import type {
   SourceDocumentCandidateProjectionSummary,
   SourceDocumentCandidateReviewDto,
   SourceDocumentCandidateReviewEntryDto,
+  SourceDocumentDuplicateReviewDetailDto,
+  SourceDocumentDuplicateReviewDto,
+  SourceDocumentLedgerEntryDto,
 } from "@/modules/source-document/contracts";
 import {
   PROCESSING_FAILURE_CODES,
@@ -20,6 +23,7 @@ import {
 import { parseAmount } from "@/lib/formatters";
 import { add as decimalAdd, normalize as decimalNormalize } from "@/lib/money/decimal";
 import {
+  duplicateReviews,
   entryCategories,
   ledgerEntries,
   revisionFiles,
@@ -180,6 +184,210 @@ export async function getSourceDocumentCandidateReview(
     sourceDocumentId,
     active: buildRevision(document.activeRevisionId),
     candidate: buildRevision(document.pendingRevisionId),
+  };
+}
+
+async function loadDuplicateReviewMap(
+  rows: readonly SourceDocumentRow[]
+): Promise<Map<string, SourceDocumentDuplicateReviewDto>> {
+  const ids = rows.map((row) => row.id);
+  if (ids.length === 0) return new Map();
+  const reviews = await db
+    .select()
+    .from(duplicateReviews)
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, rows[0]!.ledgerId),
+        inArray(duplicateReviews.sourceDocumentId, ids)
+      )
+    );
+  const result = new Map<string, SourceDocumentDuplicateReviewDto>();
+  for (const review of reviews) {
+    // Only an unresolved review is surfaced on the DTO; resolved reviews are
+    // no longer actionable in the UI.
+    if (review.status !== "pending") continue;
+    result.set(review.sourceDocumentId, {
+      sourceDocumentId: review.sourceDocumentId,
+      revisionId: review.revisionId,
+      matchedSourceDocumentId: review.matchedSourceDocumentId,
+      status: review.status,
+      reason: review.reason,
+      confidence: review.confidence == null ? null : Number(review.confidence),
+    });
+  }
+  return result;
+}
+
+async function loadDuplicateReviewSide(
+  ledgerId: string,
+  revisionId: string
+): Promise<{
+  entries: SourceDocumentLedgerEntryDto[];
+  files: SourceDocumentStoredFileDto[];
+}> {
+  const [entries, files] = await Promise.all([
+    db
+      .select({
+        id: ledgerEntries.id,
+        itemName: ledgerEntries.itemName,
+        description: ledgerEntries.description,
+        amount: ledgerEntries.amount,
+        currency: ledgerEntries.currency,
+        convertedAmount: ledgerEntries.convertedAmount,
+      })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, ledgerId),
+          eq(ledgerEntries.sourceDocumentRevisionId, revisionId),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      .orderBy(asc(ledgerEntries.position)),
+    db
+      .select({
+        id: storedFiles.id,
+        contentType: storedFiles.contentType,
+        byteSize: storedFiles.byteSize,
+        originalFilename: storedFiles.originalFilename,
+      })
+      .from(revisionFiles)
+      .innerJoin(
+        storedFiles,
+        and(
+          eq(storedFiles.id, revisionFiles.storedFileId),
+          eq(storedFiles.ledgerId, revisionFiles.ledgerId),
+          isNull(storedFiles.deletedAt)
+        )
+      )
+      .where(and(eq(revisionFiles.ledgerId, ledgerId), eq(revisionFiles.revisionId, revisionId)))
+      .orderBy(asc(revisionFiles.position)),
+  ]);
+  return {
+    entries: entries.map((entry) => ({
+      id: entry.id,
+      ledgerId,
+      categoryId: null,
+      sourceDocumentId: null,
+      amount: entry.amount,
+      currency: entry.currency,
+      itemName: entry.itemName,
+      description: entry.description,
+      convertedAmount: entry.convertedAmount,
+      exchangeRate: null,
+      createdAt: "",
+      updatedAt: "",
+      deletedAt: null,
+    })),
+    files: files.map((file) => ({
+      id: file.id,
+      contentType: file.contentType,
+      byteSize: file.byteSize,
+      originalFilename: file.originalFilename,
+    })),
+  };
+}
+
+/**
+ * Loads the side-by-side duplicate review payload: the review record, the
+ * duplicate document's pending revision data, and the matched document's
+ * projection. The matched document may be null if it was deleted meanwhile.
+ */
+export async function getSourceDocumentDuplicateReview(
+  ledgerId: string,
+  sourceDocumentId: string
+): Promise<SourceDocumentDuplicateReviewDetailDto> {
+  const review = await db
+    .select()
+    .from(duplicateReviews)
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, ledgerId),
+        eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+      )
+    )
+    .then((rows) => rows[0]);
+  if (review == null) throw new NotFoundError("Duplicate review");
+
+  const duplicateDoc = await db
+    .select({
+      id: sourceDocuments.id,
+      title: sourceDocuments.title,
+      entryDate: sourceDocuments.entryDate,
+      createdAt: sourceDocuments.createdAt,
+    })
+    .from(sourceDocuments)
+    .where(and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)))
+    .then((rows) => rows[0]);
+  if (duplicateDoc == null) throw new NotFoundError("Source document");
+
+  const duplicateSide = await loadDuplicateReviewSide(ledgerId, review.revisionId);
+  // First-parsed documents start with a null title; the parsed title lives on
+  // the pending revision until the document is kept.
+  const duplicateRevision = await db
+    .select({ title: sourceDocumentRevisions.title })
+    .from(sourceDocumentRevisions)
+    .where(
+      and(
+        eq(sourceDocumentRevisions.ledgerId, ledgerId),
+        eq(sourceDocumentRevisions.id, review.revisionId),
+        eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId)
+      )
+    )
+    .then((rows) => rows[0]);
+  const matchedDoc = await db
+    .select({
+      id: sourceDocuments.id,
+      title: sourceDocuments.title,
+      entryDate: sourceDocuments.entryDate,
+      createdAt: sourceDocuments.createdAt,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+      pendingRevisionId: sourceDocuments.pendingRevisionId,
+    })
+    .from(sourceDocuments)
+    .where(
+      and(
+        eq(sourceDocuments.ledgerId, ledgerId),
+        eq(sourceDocuments.id, review.matchedSourceDocumentId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .then((rows) => rows[0]);
+
+  let matched: SourceDocumentDuplicateReviewDetailDto["matched"] = null;
+  if (matchedDoc != null) {
+    const matchedRevisionId = matchedDoc.activeRevisionId ?? matchedDoc.pendingRevisionId;
+    if (matchedRevisionId != null) {
+      const side = await loadDuplicateReviewSide(ledgerId, matchedRevisionId);
+      matched = {
+        id: matchedDoc.id,
+        title: matchedDoc.title,
+        entryDate: matchedDoc.entryDate,
+        createdAt: matchedDoc.createdAt.toISOString(),
+        entries: side.entries,
+        files: side.files,
+      };
+    }
+  }
+
+  return {
+    review: {
+      sourceDocumentId: review.sourceDocumentId,
+      revisionId: review.revisionId,
+      matchedSourceDocumentId: review.matchedSourceDocumentId,
+      status: review.status,
+      reason: review.reason,
+      confidence: review.confidence == null ? null : Number(review.confidence),
+    },
+    duplicate: {
+      id: duplicateDoc.id,
+      title: duplicateRevision?.title ?? duplicateDoc.title,
+      entryDate: duplicateDoc.entryDate,
+      createdAt: duplicateDoc.createdAt.toISOString(),
+      entries: duplicateSide.entries,
+      files: duplicateSide.files,
+    },
+    matched,
   };
 }
 
@@ -625,6 +833,7 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
     loadCandidateComparisonMap(pageRows, revisions),
     loadActiveResultSummaryMap(pageRows, revisions),
   ]);
+  const duplicateReviewMap = await loadDuplicateReviewMap(pageRows);
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => {
@@ -640,6 +849,10 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
         if (summary !== undefined) {
           item.activeResultSummary = summary;
         }
+      }
+      const duplicateReview = duplicateReviewMap.get(row.id);
+      if (duplicateReview !== undefined) {
+        item.duplicateReview = duplicateReview;
       }
       return item;
     }),
@@ -667,6 +880,7 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
     loadCandidateComparisonMap(resultRows, revisions),
     loadActiveResultSummaryMap(resultRows, revisions),
   ]);
+  const duplicateReviewMap = await loadDuplicateReviewMap(resultRows);
   return {
     items: resultRows.map((row) => {
       const item = mapListItem(row, revisions, files);
@@ -681,6 +895,10 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
         if (summary !== undefined) {
           item.activeResultSummary = summary;
         }
+      }
+      const duplicateReview = duplicateReviewMap.get(row.id);
+      if (duplicateReview !== undefined) {
+        item.duplicateReview = duplicateReview;
       }
       return item;
     }),
@@ -701,7 +919,7 @@ export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
   const result = await db
     .select({
       processingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'processing')`,
-      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('candidate_pending', 'anomaly', 'failed'))`,
+      attentionCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('candidate_pending', 'duplicate_pending', 'anomaly', 'failed'))`,
     })
     .from(sourceDocuments)
     .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
@@ -729,6 +947,7 @@ export async function getTargetSourceDocument(
     loadRevisionFacts([row]),
     loadFiles([row]),
   ]);
+  const duplicateReviewMap = await loadDuplicateReviewMap([row]);
   const selectedRevisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const selectedRevision =
     selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
@@ -741,6 +960,7 @@ export async function getTargetSourceDocument(
     const summaryMap = await loadActiveResultSummaryMap([row], revisions);
     activeResultSummary = summaryMap.get(row.id);
   }
+  const duplicateReview = duplicateReviewMap.get(row.id);
 
   return {
     id: row.id,
@@ -768,6 +988,7 @@ export async function getTargetSourceDocument(
     ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
     pendingRevisionId: row.pendingRevisionId,
+    ...(duplicateReview !== undefined ? { duplicateReview } : {}),
     ...(activeResultSummary !== undefined ? { activeResultSummary } : {}),
   };
 }

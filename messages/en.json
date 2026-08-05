@@ -182,7 +182,16 @@
     "year": "Year",
     "vsPreviousPeriod": "vs previous period",
     "noStats": "No stats yet",
-    "noStatsDesc": "Record a few entries and this section will show where the money went."
+    "noStatsDesc": "Record a few entries and this section will show where the money went.",
+    "lastWeek": "last week",
+    "lastMonth": "last month",
+    "lastYear": "last year",
+    "samePeriodMore": "+{amount} vs same {period} (+{percent}%)",
+    "samePeriodLess": "-{amount} vs same {period} (-{percent}%)",
+    "samePeriodEqual": "No change vs same {period}",
+    "fullPeriodMore": "+{amount} vs {period} (+{percent}%)",
+    "fullPeriodLess": "-{amount} vs {period} (-{percent}%)",
+    "fullPeriodEqual": "No change vs {period}"
   },
   "LedgerEntriesTab": {
     "retry": "Edit & Retry",
@@ -248,7 +257,8 @@
     "submittedGroupSuffix": "(submitted)",
     "today": "Today",
     "yesterday": "Yesterday",
-    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
+    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved.",
+    "duplicatePendingTitle": "Possible duplicate"
   },
   "QuickEntryForm": {
     "selectCategory": "Select a category",
@@ -293,7 +303,8 @@
     "loadMore": "Load More",
     "discard": "Discard",
     "confirm": "Confirm",
-    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
+    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
+    "statusDuplicatePending": "Duplicate pending"
   },
   "SourceDocumentInput": {
     "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
@@ -456,12 +467,11 @@
     "timeZoneAuto": "Automatic",
     "timeZoneAutoDetected": "Automatic ({timeZone})",
     "preferredCurrencies": "Preferred Currencies",
-    "preferredCurrenciesDesc": "Choose currencies to prioritize in entry forms and filters.",
+    "preferredCurrenciesDesc": "List of currencies used in this ledger.",
     "preferredCurrenciesNone": "No currencies selected",
     "preferredCurrenciesSummary": "{currencies} ({count})",
     "preferredCurrenciesSearch": "Search currencies",
     "preferredCurrenciesNoResults": "No matching currencies",
-    "preferredCurrenciesDesc": "List of currencies used in this ledger.",
     "categories": "Categories",
     "categoriesDesc": "Manage expense categories and their order in this ledger.",
     "manageCategories": "Manage categories",
@@ -788,5 +798,21 @@
     "loginEmailLabel": "Email:",
     "loginSafe": "If this was you, no action is needed.",
     "loginWarn": "If you did not sign in, please secure your account immediately."
+  },
+  "DuplicateReview": {
+    "title": "Possible duplicate bill",
+    "confidence": "Confidence {percent}%",
+    "original": "Original bill",
+    "newBill": "New bill",
+    "matchedMissing": "The matched bill is no longer available.",
+    "untitled": "Untitled",
+    "date": "Date: {date}",
+    "noEntries": "No entries",
+    "keep": "Keep this bill",
+    "discard": "Delete duplicate",
+    "cancel": "Cancel",
+    "loadError": "The review is no longer available.",
+    "reload": "Reload",
+    "actionFailed": "Action failed, please retry."
   }
 }

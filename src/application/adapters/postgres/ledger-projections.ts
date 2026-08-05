@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidDecimal } from "@/lib/money/decimal";
 import {
+  duplicateReviews,
   entryCategories,
   ledgerEntries,
   processingAttempts,
@@ -178,6 +179,232 @@ export async function storeCandidateRevision(
       })
       .where(eq(sourceDocumentRevisions.id, revisionId));
     // The candidate title is committed only if this revision is accepted.
+    return true;
+  });
+}
+
+/**
+ * Store a completed, non-activated revision for a first parse that was flagged
+ * as a likely duplicate. The document stays without an active revision (and
+ * therefore outside stats) until a human keeps or discards it.
+ */
+export async function storeDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string,
+  title: string | null | undefined,
+  entries: readonly LedgerProjectionEntryContract[],
+  review: {
+    matchedSourceDocumentId: string;
+    reason: string | null;
+    confidence: number | null;
+  }
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
+      return false;
+    }
+    const revision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, revisionId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (revision == null || revision.outcome !== "processing") return false;
+
+    const now = new Date();
+    assertEntryValues(entries);
+    await assertCategoryOwnership(tx, ledgerId, entries);
+    await tx
+      .insert(duplicateReviews)
+      .values({
+        ledgerId,
+        sourceDocumentId,
+        revisionId,
+        matchedSourceDocumentId: review.matchedSourceDocumentId,
+        status: "pending",
+        reason: review.reason,
+        confidence: review.confidence == null ? null : String(review.confidence),
+      })
+      .onConflictDoNothing({ target: duplicateReviews.sourceDocumentId });
+    await insertRevisionEntries(tx, { ledgerId, sourceDocumentId, revisionId, entries });
+    await tx
+      .update(sourceDocumentRevisions)
+      .set({
+        title: title ?? null,
+        outcome: "completed",
+        finalizedAt: now,
+        anomalyReason: null,
+        failureCode: null,
+      })
+      .where(eq(sourceDocumentRevisions.id, revisionId));
+    // Touch the document so the status trigger recomputes `duplicate_pending`
+    // from the now-pending duplicate review.
+    await tx
+      .update(sourceDocuments)
+      .set({ updatedAt: now })
+      .where(activeDocumentWhere(ledgerId, sourceDocumentId));
+    return true;
+  });
+}
+
+/**
+ * Keep a duplicate-pending document: atomically activate its completed
+ * pending revision and mark the review as kept. Idempotent.
+ */
+export async function activateDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    let document: typeof sourceDocuments.$inferSelect;
+    try {
+      document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    } catch (error) {
+      if (error instanceof NotFoundError) return false;
+      throw error;
+    }
+    if (document.deletedAt != null) return false;
+    if (document.activeRevisionId === revisionId && document.pendingRevisionId == null) {
+      return true;
+    }
+
+    const review = await tx
+      .select()
+      .from(duplicateReviews)
+      .where(
+        and(
+          eq(duplicateReviews.ledgerId, ledgerId),
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (review == null) {
+      throw new ConflictError("Duplicate review record is missing");
+    }
+    if (review.status === "kept" && review.revisionId === revisionId) return true;
+    if (review.status !== "pending" || review.revisionId !== revisionId) {
+      throw new ConflictError("Duplicate review is no longer pending");
+    }
+    if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
+      throw new ConflictError("Duplicate pending revision does not match");
+    }
+
+    const revision = await tx
+      .select()
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocumentId),
+          eq(sourceDocumentRevisions.id, revisionId),
+          eq(sourceDocumentRevisions.outcome, "completed")
+        )
+      )
+      .then((rows) => rows[0]);
+    if (revision == null) {
+      throw new ConflictError("Duplicate pending revision is not completed");
+    }
+
+    const now = new Date();
+    // Decide the review BEFORE touching the document so the status trigger
+    // computes `completed` instead of `duplicate_pending`.
+    await tx
+      .update(duplicateReviews)
+      .set({ status: "kept", decision: "keep_duplicate", decidedAt: now, updatedAt: now })
+      .where(eq(duplicateReviews.id, review.id));
+    const updated = await tx
+      .update(sourceDocuments)
+      .set({
+        activeRevisionId: revisionId,
+        pendingRevisionId: null,
+        ...(revision.title == null || revision.title === "" ? {} : { title: revision.title }),
+        updatedAt: now,
+      })
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, revisionId),
+          isNull(sourceDocuments.activeRevisionId)
+        )
+      )
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (updated == null) {
+      throw new ConflictError("Source document changed during duplicate keep");
+    }
+    return true;
+  });
+}
+
+/**
+ * Discard a duplicate-pending document: mark the review as discarded and
+ * soft-delete the new document. Idempotent.
+ */
+export async function discardDuplicatePendingRevision(
+  ledgerId: string,
+  sourceDocumentId: string,
+  revisionId: string
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    let document: typeof sourceDocuments.$inferSelect;
+    try {
+      document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    } catch (error) {
+      // The document was already discarded (soft-deleted): idempotent success.
+      if (error instanceof NotFoundError) return true;
+      throw error;
+    }
+    if (document.deletedAt != null) return true;
+
+    const review = await tx
+      .select()
+      .from(duplicateReviews)
+      .where(
+        and(
+          eq(duplicateReviews.ledgerId, ledgerId),
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (review != null && review.status === "discarded" && review.revisionId === revisionId) {
+      return true;
+    }
+    if (review == null || review.status !== "pending" || review.revisionId !== revisionId) {
+      throw new ConflictError("Duplicate review is no longer pending");
+    }
+    if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
+      throw new ConflictError("Duplicate pending revision does not match");
+    }
+
+    const now = new Date();
+    await tx
+      .update(duplicateReviews)
+      .set({ status: "discarded", decision: "discard_duplicate", decidedAt: now, updatedAt: now })
+      .where(eq(duplicateReviews.id, review.id));
+    const deleted = await tx
+      .update(sourceDocuments)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          activeDocumentWhere(ledgerId, sourceDocumentId),
+          eq(sourceDocuments.pendingRevisionId, revisionId),
+          isNull(sourceDocuments.activeRevisionId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (deleted == null) {
+      throw new ConflictError("Source document changed during duplicate discard");
+    }
     return true;
   });
 }

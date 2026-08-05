@@ -92,6 +92,7 @@ export const queryKeys = {
       compareStartDate?: string | null | undefined;
       compareEndDate?: string | null | undefined;
       rangeType?: string | null | undefined;
+      comparisonMode?: string | null | undefined;
       mainCurrency?: string | null | undefined;
     }
   ) =>
@@ -103,6 +104,7 @@ export const queryKeys = {
       params?.compareStartDate ?? null,
       params?.compareEndDate ?? null,
       params?.rangeType ?? null,
+      params?.comparisonMode ?? null,
       params?.mainCurrency ?? null,
     ] as const,
 

@@ -15,15 +15,26 @@ export type EnhancedCategoryStatDto = {
   };
 };
 
+export type StatsComparisonMode = "same_period" | "full_period";
+
 export interface EnhancedStatsDto {
   summary: {
     total: string;
     currency: string;
+    /** Kept for one compatibility round; UI prefers `comparison`. */
     trend: {
       percent: number;
       amount: string;
     };
     dailyAverage: number;
+    comparison: {
+      mode: StatsComparisonMode;
+      from: string;
+      to: string;
+      previousTotal: string;
+      amountDelta: string;
+      percent: number;
+    };
   };
   categories: EnhancedCategoryStatDto[];
   chart: { date: string; total: number }[];

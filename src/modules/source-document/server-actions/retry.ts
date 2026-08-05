@@ -1,7 +1,5 @@
 "use server";
-import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { serverComposition } from "@/application/server-composition-root";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import type {
@@ -14,7 +12,8 @@ import {
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
+import { scheduleProcessingAfter } from "./schedule-processing";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { processImage } from "@/lib/storage/image-processing";
 
@@ -37,7 +36,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
       Partial<{ reconciliation: RetrySourceDocumentReconciliationDto["reconciliation"] }>
   > => {
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      after(() => executeSingleProcessingIntent(intent));
+      scheduleProcessingAfter(intent);
     };
 
     const result = await retrySourceDocument(
@@ -51,7 +50,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     );
 
     // Also recover any missed processing intents
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
 
     if (operationId != null) {
       return {
@@ -90,7 +89,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
 
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      after(() => executeSingleProcessingIntent(intent));
+      scheduleProcessingAfter(intent);
     };
 
     const result = await retrySourceDocument(
@@ -108,7 +107,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     );
 
     // Also recover any missed processing intents
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
 
     if (operationId != null) {
       return {

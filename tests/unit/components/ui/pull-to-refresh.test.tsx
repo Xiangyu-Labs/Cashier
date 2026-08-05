@@ -1,53 +1,60 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { PullToRefreshSurface } from "@/components/ui/pull-to-refresh";
+import {
+  PullToRefreshProvider,
+  useRegisterPullToRefresh,
+} from "@/modules/workspace/pull-to-refresh-context";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
-describe("PullToRefresh", () => {
+function RefreshTarget({
+  onRefresh,
+  enabled = true,
+  children,
+}: {
+  onRefresh: () => Promise<void>;
+  enabled?: boolean;
+  children?: React.ReactNode;
+}) {
+  useRegisterPullToRefresh(onRefresh, enabled);
+  return <div data-testid="target">{children}</div>;
+}
+
+function renderShell(children: React.ReactNode) {
+  return render(
+    <PullToRefreshProvider>
+      <main data-pull-to-refresh-surface="">
+        <PullToRefreshSurface>{children}</PullToRefreshSurface>
+      </main>
+    </PullToRefreshProvider>
+  );
+}
+
+describe("PullToRefreshSurface", () => {
   beforeEach(() => {
     Object.defineProperty(window, "ontouchstart", { configurable: true, value: null });
   });
 
-  it("renders its indicator before the header and page content", async () => {
-    render(
-      <PullToRefresh
-        onRefresh={async () => {}}
-        header={<header data-testid="toolbar">Toolbar</header>}
-      >
-        <main data-testid="content">Content</main>
-      </PullToRefresh>
-    );
+  it("renders the indicator above the page content", async () => {
+    renderShell(<RefreshTarget onRefresh={async () => {}}>Content</RefreshTarget>);
 
     await waitFor(() =>
       expect(screen.getByTestId("pull-to-refresh-indicator")).toBeInTheDocument()
     );
     const indicator = screen.getByTestId("pull-to-refresh-indicator");
-    const toolbar = screen.getByTestId("toolbar");
-    const content = screen.getByTestId("content");
+    const content = screen.getByText("Content");
 
     expect(
-      indicator.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(
-      toolbar.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING
+      indicator.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
 
-  it("starts from the whole marked main surface and prevents only a downward pull", async () => {
+  it("starts from the whole marked main surface and triggers the registered callback", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
-    render(
-      <>
-        <nav data-testid="navigation">Navigation</nav>
-        <main data-pull-to-refresh-surface="">
-          <PullToRefresh onRefresh={onRefresh}>
-            <div data-testid="short-list">Short list</div>
-          </PullToRefresh>
-        </main>
-      </>
-    );
+    renderShell(<RefreshTarget onRefresh={onRefresh}>Short list</RefreshTarget>);
 
     const surface = document.querySelector("main");
     expect(surface).not.toBeNull();
@@ -64,22 +71,14 @@ describe("PullToRefresh", () => {
     await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
   });
 
-  it("ignores navigation and hidden pull-to-refresh roots", async () => {
-    const hiddenRefresh = vi.fn().mockResolvedValue(undefined);
+  it("ignores nav and inputs", async () => {
     const visibleRefresh = vi.fn().mockResolvedValue(undefined);
-    render(
+    renderShell(
       <>
         <nav data-testid="navigation">Navigation</nav>
-        <main data-pull-to-refresh-surface="">
-          <div aria-hidden="true">
-            <PullToRefresh onRefresh={hiddenRefresh}>
-              <div>Hidden view</div>
-            </PullToRefresh>
-          </div>
-          <PullToRefresh onRefresh={visibleRefresh}>
-            <div>Visible view</div>
-          </PullToRefresh>
-        </main>
+        <RefreshTarget onRefresh={visibleRefresh}>
+          <input data-testid="blocked-input" />
+        </RefreshTarget>
       </>
     );
 
@@ -89,7 +88,14 @@ describe("PullToRefresh", () => {
       dispatchTouch(navigation, "touchmove", [{ clientX: 0, clientY: 140 }]);
       dispatchTouch(navigation, "touchend", [], [{ clientX: 0, clientY: 140 }]);
     });
-    expect(hiddenRefresh).not.toHaveBeenCalled();
+    expect(visibleRefresh).not.toHaveBeenCalled();
+
+    const input = screen.getByTestId("blocked-input");
+    act(() => {
+      dispatchTouch(input, "touchstart", [{ clientX: 0, clientY: 0 }]);
+      dispatchTouch(input, "touchmove", [{ clientX: 0, clientY: 140 }]);
+      dispatchTouch(input, "touchend", [], [{ clientX: 0, clientY: 140 }]);
+    });
     expect(visibleRefresh).not.toHaveBeenCalled();
 
     const surface = document.querySelector("main");
@@ -102,26 +108,27 @@ describe("PullToRefresh", () => {
     });
 
     await waitFor(() => expect(visibleRefresh).toHaveBeenCalledTimes(1));
-    expect(hiddenRefresh).not.toHaveBeenCalled();
-
-    const hiddenView = screen.getByText("Hidden view");
-    act(() => {
-      dispatchTouch(hiddenView, "touchstart", [{ clientX: 0, clientY: 0 }]);
-      dispatchTouch(hiddenView, "touchmove", [{ clientX: 0, clientY: 140 }]);
-      dispatchTouch(hiddenView, "touchend", [], [{ clientX: 0, clientY: 140 }]);
-    });
-    expect(hiddenRefresh).not.toHaveBeenCalled();
   });
 
-  it("resets the pull distance when the browser cancels the gesture", () => {
+  it("allows pulls that start on a button", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
-    render(
-      <main data-pull-to-refresh-surface="">
-        <PullToRefresh onRefresh={onRefresh}>
-          <div>Content</div>
-        </PullToRefresh>
-      </main>
+    renderShell(
+      <RefreshTarget onRefresh={onRefresh}>
+        <button data-testid="allowed-button">Button</button>
+      </RefreshTarget>
     );
+    const button = screen.getByTestId("allowed-button");
+    act(() => {
+      dispatchTouch(button, "touchstart", [{ clientX: 0, clientY: 0 }]);
+      dispatchTouch(button, "touchmove", [{ clientX: 0, clientY: 140 }]);
+      dispatchTouch(button, "touchend", [], [{ clientX: 0, clientY: 140 }]);
+    });
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+  });
+
+  it("resets the pull distance when the browser cancels the gesture", async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    renderShell(<RefreshTarget onRefresh={onRefresh}>Content</RefreshTarget>);
 
     const surface = document.querySelector("main");
     expect(surface).not.toBeNull();
@@ -139,15 +146,9 @@ describe("PullToRefresh", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it("does not intercept an upward or horizontal gesture", () => {
+  it("does not intercept an upward or horizontal gesture", async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
-    render(
-      <main data-pull-to-refresh-surface="">
-        <PullToRefresh onRefresh={onRefresh}>
-          <div>Content</div>
-        </PullToRefresh>
-      </main>
-    );
+    renderShell(<RefreshTarget onRefresh={onRefresh}>Content</RefreshTarget>);
 
     const surface = document.querySelector("main");
     expect(surface).not.toBeNull();
@@ -162,9 +163,36 @@ describe("PullToRefresh", () => {
       horizontal = dispatchTouch(surface, "touchmove", [{ clientX: 40, clientY: 20 }]);
     });
     expect(upward?.defaultPrevented).toBe(false);
-
     expect(horizontal?.defaultPrevented).toBe(false);
     expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("only calls the currently registered callback after unmount/switch", async () => {
+    const first = vi.fn().mockResolvedValue(undefined);
+    const second = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = renderShell(<RefreshTarget onRefresh={first} />);
+
+    rerender(
+      <PullToRefreshProvider>
+        <main data-pull-to-refresh-surface="">
+          <PullToRefreshSurface>
+            <RefreshTarget onRefresh={second} />
+          </PullToRefreshSurface>
+        </main>
+      </PullToRefreshProvider>
+    );
+
+    const surface = document.querySelector("main");
+    expect(surface).not.toBeNull();
+    if (surface == null) return;
+    act(() => {
+      dispatchTouch(surface, "touchstart", [{ clientX: 0, clientY: 0 }]);
+      dispatchTouch(surface, "touchmove", [{ clientX: 0, clientY: 140 }]);
+      dispatchTouch(surface, "touchend", [], [{ clientX: 0, clientY: 140 }]);
+    });
+
+    await waitFor(() => expect(second).toHaveBeenCalledTimes(1));
+    expect(first).not.toHaveBeenCalled();
   });
 });
 

@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   timestamp,
   jsonb,
+  numeric,
   uuid,
   pgEnum,
   bigint,
@@ -63,6 +64,11 @@ export const uploadFileStatusEnum = pgEnum("upload_file_status", [
   "rejected",
 ]);
 export const idempotencyStatusEnum = pgEnum("idempotency_status", ["pending", "completed"]);
+export const duplicateReviewStatusEnum = pgEnum("duplicate_review_status", [
+  "pending",
+  "kept",
+  "discarded",
+]);
 
 export const sourceDocumentRevisions = pgTable(
   "source_document_revisions",
@@ -224,6 +230,46 @@ export const processingOutbox = pgTable(
       table.nextAvailableAt
     ),
     check("ck_processing_outbox_attempt_number", sql`${table.attemptNumber} > 0`),
+  ]
+);
+
+export const duplicateReviews = pgTable(
+  "duplicate_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledgerId: uuid("ledger_id").notNull(),
+    sourceDocumentId: uuid("source_document_id").notNull(),
+    revisionId: uuid("revision_id").notNull(),
+    matchedSourceDocumentId: uuid("matched_source_document_id").notNull(),
+    status: duplicateReviewStatusEnum("status").notNull().default("pending"),
+    reason: text("reason"),
+    confidence: numeric("confidence", { precision: 4, scale: 3 }),
+    decision: text("decision"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: requiredTimestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("uq_duplicate_reviews_document").on(table.sourceDocumentId),
+    index("idx_duplicate_reviews_ledger_status")
+      .on(table.ledgerId, table.status)
+      .where(sql`${table.status} = 'pending'`),
+    index("idx_duplicate_reviews_matched").on(table.ledgerId, table.matchedSourceDocumentId),
+    foreignKey({
+      columns: [table.ledgerId, table.sourceDocumentId],
+      foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
+      name: "fk_duplicate_reviews_document_ledger",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.revisionId],
+      foreignColumns: [sourceDocumentRevisions.ledgerId, sourceDocumentRevisions.id],
+      name: "fk_duplicate_reviews_revision_ledger",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.matchedSourceDocumentId],
+      foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
+      name: "fk_duplicate_reviews_matched_ledger",
+    }).onDelete("cascade"),
   ]
 );
 

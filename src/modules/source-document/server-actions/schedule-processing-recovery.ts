@@ -1,9 +1,9 @@
 import { after } from "next/server";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
 import { PostgresProcessingIntentAdapter } from "@/application/adapters/postgres/processing-intents";
+import { scheduleProcessingAfter } from "./schedule-processing";
 
 const processingRecovery = new PostgresProcessingIntentAdapter();
 
@@ -36,6 +36,20 @@ export async function scheduleProcessingRecovery(ledgerId: string): Promise<void
   logger.debug({ ledgerId, count: recoverable.length }, "Scheduling processing recovery intents");
 
   for (const intent of recoverable) {
-    after(() => executeSingleProcessingIntent(intent));
+    scheduleProcessingAfter(intent);
   }
+}
+
+/**
+ * Schedules the recovery pass itself as a request-bound `after()` callback
+ * with unified failure logging. Call from authenticated request boundaries.
+ */
+export function scheduleProcessingRecoveryAfter(ledgerId: string, requestId?: string): void {
+  after(async () => {
+    try {
+      await scheduleProcessingRecovery(ledgerId);
+    } catch (error) {
+      logger.error({ error, ledgerId, requestId }, "after() processing recovery failed");
+    }
+  });
 }

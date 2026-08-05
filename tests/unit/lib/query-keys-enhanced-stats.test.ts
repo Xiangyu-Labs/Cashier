@@ -10,6 +10,7 @@ describe("queryKeys enhanced stats and source documents", () => {
         compareStartDate: "2026-02-01",
         compareEndDate: "2026-02-28",
         rangeType: "month",
+        comparisonMode: "same_period",
         mainCurrency: "USD",
       })
     ).toEqual([
@@ -20,6 +21,7 @@ describe("queryKeys enhanced stats and source documents", () => {
       "2026-02-01",
       "2026-02-28",
       "month",
+      "same_period",
       "USD",
     ]);
   });
@@ -57,6 +59,7 @@ describe("queryKeys enhanced stats and source documents", () => {
     expect(queryKeys.enhancedStats("ledger-1")).toEqual([
       "enhanced-stats",
       "ledger-1",
+      null,
       null,
       null,
       null,

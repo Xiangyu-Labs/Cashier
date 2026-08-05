@@ -91,7 +91,11 @@ export async function getLedgerDelta(
           includeFiles: true,
         });
   const entries = await listLedgerEntryViewsBySourceDocumentIds(
-    { ledgerId: request.ledgerId, sourceDocumentIds: page.items.map((item) => item.id) },
+    {
+      ledgerId: request.ledgerId,
+      sourceDocumentIds: page.items.map((item) => item.id),
+      includeDuplicatePending: true,
+    },
     ports.ledgerReads
   );
   const documents = page.items.map((item) => ({

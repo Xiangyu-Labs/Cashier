@@ -52,6 +52,7 @@ const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] =
   { status: "failed", labelKey: "statusFailed" },
   { status: "cancelled", labelKey: "statusCancelled" },
   { status: "candidate_pending", labelKey: "statusCandidatePending" },
+  { status: "duplicate_pending", labelKey: "statusDuplicatePending" },
 ];
 
 const MOBILE_FILTER_QUERY = "(max-width: 639px)";

@@ -5,6 +5,7 @@ import { type DateRangeType } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
+import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -15,6 +16,8 @@ interface StatsHeaderProps {
   totalExpense: number;
   averageDaily: number;
   currencySymbol?: string;
+  comparison?: EnhancedStatsDto["summary"]["comparison"];
+  periodLabel?: string;
   trend?: {
     percent: number;
     amount: number;
@@ -30,6 +33,8 @@ export function StatsHeader({
   totalExpense,
   averageDaily,
   currencySymbol = "CNY",
+  comparison,
+  periodLabel,
   trend,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
@@ -38,15 +43,31 @@ export function StatsHeader({
   const handleNext = () => setPeriodOffset(Math.min(0, periodOffset + 1));
   const canGoNext = periodOffset < 0;
 
-  // Trend Logic: Expense Increase = Bad (Red/Danger), Decrease = Good (Green/Primary)
-  // But color perception varies. Let's use:
-  // Increase: destructive (Red)
-  // Decrease: primary (Green/Brand)
-  const isIncrease = trend && trend.amount > 0;
-  const isDecrease = trend && trend.amount < 0;
-
-  // Formatting trend percent
-  const trendPercent = trend ? Math.abs(trend.percent).toFixed(1) : "0.0";
+  // Same-period comparison is the primary metric; the legacy trend object is
+  // only a fallback while old cached payloads drain out.
+  const delta = comparison != null ? Number(comparison.amountDelta) : (trend?.amount ?? 0);
+  const percentValue = comparison != null ? comparison.percent : (trend?.percent ?? 0);
+  const isIncrease = delta > 0;
+  const isDecrease = delta < 0;
+  const absPercent = Math.abs(percentValue).toFixed(1);
+  const amountLabel = formatCurrencyAmount(Math.abs(delta), currencySymbol, locale);
+  const comparisonMode = comparison?.mode ?? "same_period";
+  const comparisonText =
+    delta === 0
+      ? t(comparisonMode === "same_period" ? "samePeriodEqual" : "fullPeriodEqual", {
+          period: periodLabel ?? "",
+        })
+      : isIncrease
+        ? t(comparisonMode === "same_period" ? "samePeriodMore" : "fullPeriodMore", {
+            period: periodLabel ?? "",
+            amount: amountLabel,
+            percent: absPercent,
+          })
+        : t(comparisonMode === "same_period" ? "samePeriodLess" : "fullPeriodLess", {
+            period: periodLabel ?? "",
+            amount: amountLabel,
+            percent: absPercent,
+          });
 
   return (
     <div className="flex flex-col gap-6 bg-surface">
@@ -101,8 +122,8 @@ export function StatsHeader({
           {formatCurrencyAmount(totalExpense, currencySymbol, locale)}
         </AmountText>
 
-        {/* Trend Section */}
-        {trend && (
+        {/* Comparison Section */}
+        {(comparison != null || trend != null) && (
           <div
             className={cn(
               "flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full mt-1",
@@ -114,8 +135,9 @@ export function StatsHeader({
             )}
           >
             <span>
-              {isIncrease ? "+" : isDecrease ? "-" : ""}
-              {trendPercent}% {t("vsPreviousPeriod")}
+              {comparison != null
+                ? comparisonText
+                : `${isIncrease ? "+" : isDecrease ? "-" : ""}${absPercent}% ${t("vsPreviousPeriod")}`}
             </span>
           </div>
         )}

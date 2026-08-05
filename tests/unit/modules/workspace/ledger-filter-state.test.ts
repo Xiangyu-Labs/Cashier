@@ -89,9 +89,10 @@ describe("ledger-filter-state", () => {
       expect(STREAM_STATUS_PRESETS).toEqual(["needs_attention", "in_progress"]);
     });
 
-    it("needs_attention includes candidate_pending, anomaly, and failed", () => {
+    it("needs_attention includes candidate_pending, duplicate_pending, anomaly, and failed", () => {
       expect(STREAM_STATUS_PRESET_VALUES.needs_attention).toEqual([
         "candidate_pending",
+        "duplicate_pending",
         "anomaly",
         "failed",
       ]);

@@ -8,6 +8,7 @@ export interface SourceDocumentGroup<T> {
 export interface GroupedSourceDocuments<T> {
   processing: SourceDocumentGroup<T>[];
   candidate_pending: SourceDocumentGroup<T>[];
+  duplicate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
   cancelled: SourceDocumentGroup<T>[];
@@ -17,6 +18,7 @@ export interface GroupedSourceDocuments<T> {
 export interface PendingGroups<T> {
   processing: SourceDocumentGroup<T>[];
   candidate_pending: SourceDocumentGroup<T>[];
+  duplicate_pending: SourceDocumentGroup<T>[];
   anomaly: SourceDocumentGroup<T>[];
   failed: SourceDocumentGroup<T>[];
   cancelled: SourceDocumentGroup<T>[];
@@ -30,6 +32,7 @@ export function groupSourceDocumentsByStatus<
   const groups: GroupedSourceDocuments<T> = {
     processing: [],
     candidate_pending: [],
+    duplicate_pending: [],
     anomaly: [],
     failed: [],
     cancelled: [],
@@ -50,6 +53,9 @@ export function groupSourceDocumentsByStatus<
         break;
       case "candidate_pending":
         groups.candidate_pending.push(group);
+        break;
+      case "duplicate_pending":
+        groups.duplicate_pending.push(group);
         break;
       case "anomaly":
         groups.anomaly.push(group);
@@ -81,6 +87,7 @@ export function groupPendingSourceDocuments<
   return {
     processing: groups.processing,
     candidate_pending: groups.candidate_pending,
+    duplicate_pending: groups.duplicate_pending,
     anomaly: groups.anomaly,
     failed: groups.failed,
     cancelled: groups.cancelled,
@@ -90,11 +97,12 @@ export function groupPendingSourceDocuments<
 export function calculateSourceDocumentStats<T>(
   groups: Pick<
     GroupedSourceDocuments<T>,
-    "processing" | "candidate_pending" | "anomaly" | "failed" | "cancelled"
+    "processing" | "candidate_pending" | "duplicate_pending" | "anomaly" | "failed" | "cancelled"
   >
 ) {
   return {
     processingCount: groups.processing.length,
+    duplicatePendingCount: groups.duplicate_pending.length,
     anomalyCount: groups.anomaly.length,
     failedCount: groups.failed.length,
     cancelledCount: groups.cancelled.length,
@@ -105,6 +113,7 @@ export function calculatePendingTotal<T>(groups: PendingGroups<T>): number {
   return (
     groups.processing.length +
     groups.candidate_pending.length +
+    groups.duplicate_pending.length +
     groups.anomaly.length +
     groups.failed.length +
     groups.cancelled.length

@@ -65,6 +65,7 @@ function getProcessingStatus(status: SourceDocumentStatusType) {
     status === "processing" ||
     status === "completed" ||
     status === "candidate_pending" ||
+    status === "duplicate_pending" ||
     status === "cancelled"
   ) {
     return status;
@@ -112,7 +113,8 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
       status === "failed" ||
       status === "processing" ||
       status === "cancelled" ||
-      status === "candidate_pending");
+      status === "candidate_pending" ||
+      status === "duplicate_pending");
 
   // Derive stable error code for display
   const stableErrorCode =

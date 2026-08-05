@@ -1,15 +1,19 @@
 "use client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
+import { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
 import {
   useSourceDocumentDetailData,
   useSourceDocumentDetailMutations,
   useSourceDocumentRecoveryMutations,
 } from "@/modules/source-document/hooks";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import type { Ledger } from "@/modules/ledger/contracts";
+import { queryKeys } from "@/lib/query-keys";
 
 interface SourceDocumentDetailWrapperProps {
   id: string;
@@ -33,6 +37,9 @@ export function SourceDocumentDetailWrapper({
   ledgerEntries: initialLedgerEntries,
 }: SourceDocumentDetailWrapperProps) {
   const tCommon = useTranslations("Common");
+  const queryClient = useQueryClient();
+  const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
+  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const {
     sourceDocument,
     currentLedgerEntries,
@@ -92,6 +99,22 @@ export function SourceDocumentDetailWrapper({
       onClose();
     }
   }, [isLoading, sourceDocument, open, onClose]);
+
+  if (
+    open &&
+    sourceDocument?.status === "duplicate_pending" &&
+    sourceDocument.duplicateReview != null
+  ) {
+    return (
+      <SourceDocumentDuplicateReviewDialog
+        ledgerId={detailLedgerId ?? ledgerId}
+        sourceDocumentId={id}
+        open={open}
+        onOpenChange={onClose}
+        mainCurrency={mainCurrency}
+      />
+    );
+  }
 
   return (
     <SourceDocumentDetailModal

@@ -11,7 +11,6 @@ import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-actio
 import type { GroupedEntry } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import type { PeriodParams } from "@/lib/period-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -24,6 +23,7 @@ import {
 import { DetailsToolbar } from "./DetailsToolbar";
 import { EmptyState } from "./EmptyState";
 import type { useDetailsBatchController } from "./useDetailsBatchController";
+import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 
 type BatchController = ReturnType<typeof useDetailsBatchController>;
 type LedgerEntryUpdate = Partial<Omit<LedgerEntry, "amount">> & { amount?: number };
@@ -91,73 +91,71 @@ export function DetailsTabView(props: DetailsTabViewProps) {
   const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
 
+  useRegisterPullToRefresh(onRefresh, !batch.isSelectionMode);
+
   return (
-    <PullToRefresh
-      onRefresh={onRefresh}
-      header={
-        <DetailsToolbar
-          {...(!batch.isSelectionMode
-            ? {
-                totalLabel: formatCurrencyAmount(
-                  Number(monthStats.mainTotal),
-                  monthStats.mainCurrency,
-                  locale
-                ),
-              }
-            : {})}
-          batchActions={
-            batch.isSelectionMode ? (
-              <LedgerEntriesBatchActionToolbar
-                variant="inline"
-                selectedCount={batch.selectedIds.length}
-                totalCount={entries.length}
-                isAllSelected={batch.isAllSelected}
-                hasMoreData={hasNextPage}
-                onSelectAll={batch.selectAll}
-                onClearSelection={batch.clearSelection}
-                categories={categories}
-                preferredCurrencies={ledger?.settings.currencies ?? []}
-                onChangeCategory={async (categoryId) => {
-                  await batch.update.mutateAsync({ categoryId });
-                }}
-                onChangeCurrency={async (currency) => {
-                  await batch.update.mutateAsync({ currency });
-                }}
-                onChangeDate={() => batch.previewDate.mutate()}
-                onDelete={() => batch.setDeleteDialogOpen(true)}
-                isProcessing={batch.isPending}
-              />
-            ) : undefined
-          }
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={batch.toggleSelectionMode}
-            className="h-8 w-8"
-            aria-label={batch.isSelectionMode ? t("cancelSelect") : t("select")}
-          >
-            {batch.isSelectionMode ? (
-              <ArrowLeft className="h-4 w-4" />
-            ) : (
-              <CheckSquare className="h-4 w-4" />
-            )}
-          </Button>
-          {!batch.isSelectionMode ? (
-            <EntryFilterPanel
-              filters={filters}
-              onFiltersChange={onFiltersChange}
-              periodParams={periodParams}
+    <>
+      <DetailsToolbar
+        {...(!batch.isSelectionMode
+          ? {
+              totalLabel: formatCurrencyAmount(
+                Number(monthStats.mainTotal),
+                monthStats.mainCurrency,
+                locale
+              ),
+            }
+          : {})}
+        batchActions={
+          batch.isSelectionMode ? (
+            <LedgerEntriesBatchActionToolbar
+              variant="inline"
+              selectedCount={batch.selectedIds.length}
+              totalCount={entries.length}
+              isAllSelected={batch.isAllSelected}
+              hasMoreData={hasNextPage}
+              onSelectAll={batch.selectAll}
+              onClearSelection={batch.clearSelection}
               categories={categories}
               preferredCurrencies={ledger?.settings.currencies ?? []}
-              showStatus={false}
-              className="flex-1 sm:flex-none"
-              onResetFilters={onResetFilters}
+              onChangeCategory={async (categoryId) => {
+                await batch.update.mutateAsync({ categoryId });
+              }}
+              onChangeCurrency={async (currency) => {
+                await batch.update.mutateAsync({ currency });
+              }}
+              onChangeDate={() => batch.previewDate.mutate()}
+              onDelete={() => batch.setDeleteDialogOpen(true)}
+              isProcessing={batch.isPending}
             />
-          ) : null}
-        </DetailsToolbar>
-      }
-    >
+          ) : undefined
+        }
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={batch.toggleSelectionMode}
+          className="h-8 w-8"
+          aria-label={batch.isSelectionMode ? t("cancelSelect") : t("select")}
+        >
+          {batch.isSelectionMode ? (
+            <ArrowLeft className="h-4 w-4" />
+          ) : (
+            <CheckSquare className="h-4 w-4" />
+          )}
+        </Button>
+        {!batch.isSelectionMode ? (
+          <EntryFilterPanel
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+            periodParams={periodParams}
+            categories={categories}
+            preferredCurrencies={ledger?.settings.currencies ?? []}
+            showStatus={false}
+            className="flex-1 sm:flex-none"
+            onResetFilters={onResetFilters}
+          />
+        ) : null}
+      </DetailsToolbar>
       <div className="space-y-4">
         <div className="space-y-6 pt-2">
           <LedgerEntryGroupsView
@@ -266,6 +264,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           </DialogContent>
         </Dialog>
       </div>
-    </PullToRefresh>
+    </>
   );
 }

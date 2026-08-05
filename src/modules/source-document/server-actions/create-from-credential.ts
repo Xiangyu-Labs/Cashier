@@ -1,18 +1,20 @@
 "use server";
 
-import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { ValidationError } from "@/lib/errors";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { preparedApiV1SourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
 import { serverComposition } from "@/application/server-composition-root";
+import { scheduleProcessingAfter } from "./schedule-processing";
+import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
+import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 
 export async function createSourceDocumentFromCredentialAction(input: {
   credentialId: string;
   ledgerId: string;
   idempotencyKey?: string;
+  requestId?: string;
   payload: unknown;
 }): Promise<CreateSourceDocumentResponseDto> {
   const parsed = preparedApiV1SourceDocumentInputSchema.safeParse(input.payload);
@@ -21,10 +23,10 @@ export async function createSourceDocumentFromCredentialAction(input: {
   }
 
   const scheduleProcessing = (intent: ProcessingIntentContract) => {
-    after(() => executeSingleProcessingIntent(intent));
+    scheduleProcessingAfter(intent, input.requestId);
   };
 
-  return createSourceDocumentFromCredential(
+  const result = await createSourceDocumentFromCredential(
     {
       credentialId: input.credentialId,
       ledgerId: input.ledgerId,
@@ -42,4 +44,11 @@ export async function createSourceDocumentFromCredentialAction(input: {
       storedFiles: serverComposition.storedFiles,
     }
   );
+
+  // Also recover older pending intents for the ledger and run bounded
+  // maintenance. The claim CAS makes duplicate scheduling harmless.
+  scheduleProcessingRecoveryAfter(input.ledgerId, input.requestId);
+  scheduleRequestMaintenance();
+
+  return result;
 }

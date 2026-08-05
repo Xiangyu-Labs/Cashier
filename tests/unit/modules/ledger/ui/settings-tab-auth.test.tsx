@@ -80,6 +80,7 @@ vi.mock("@/modules/ledger/ui/CollapsibleSection", () => ({
 }));
 
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
+import { PullToRefreshProvider } from "@/modules/workspace/pull-to-refresh-context";
 
 describe("SettingsTab account authentication controls", () => {
   it("renders email change and sign-out, but not destructive account mutations", () => {
@@ -90,12 +91,14 @@ describe("SettingsTab account authentication controls", () => {
     } as unknown as Ledger;
 
     render(
-      <SettingsTab
-        ledger={ledger}
-        initialCategories={[]}
-        ledgerId="ledger-1"
-        userEmail="person@example.com"
-      />
+      <PullToRefreshProvider>
+        <SettingsTab
+          ledger={ledger}
+          initialCategories={[]}
+          ledgerId="ledger-1"
+          userEmail="person@example.com"
+        />
+      </PullToRefreshProvider>
     );
 
     // Required: email and sign-out command

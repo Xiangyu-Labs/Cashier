@@ -32,4 +32,9 @@ export {
   cancelSourceDocumentProcessingAction,
   getSourceDocumentCandidateReviewAction,
 } from "./server-actions/candidates";
+export {
+  getSourceDocumentDuplicateReviewAction,
+  keepDuplicateSourceDocumentAction,
+  discardDuplicateSourceDocumentAction,
+} from "./server-actions/duplicate-reviews";
 export { getStreamRefreshAction } from "./server-actions/refresh";

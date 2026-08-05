@@ -182,7 +182,16 @@
     "year": "年",
     "vsPreviousPeriod": "较上期",
     "noStats": "暂无统计",
-    "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。"
+    "noStatsDesc": "记录几笔账后，这里会显示钱花在哪里。",
+    "lastWeek": "上周",
+    "lastMonth": "上月",
+    "lastYear": "去年",
+    "samePeriodMore": "较{period}同期多 {amount}（+{percent}%）",
+    "samePeriodLess": "较{period}同期少 {amount}（-{percent}%）",
+    "samePeriodEqual": "与{period}同期持平",
+    "fullPeriodMore": "较{period}多 {amount}（+{percent}%）",
+    "fullPeriodLess": "较{period}少 {amount}（-{percent}%）",
+    "fullPeriodEqual": "与{period}持平"
   },
   "LedgerEntriesTab": {
     "processing": "处理中",
@@ -248,7 +257,8 @@
     "submittedGroupSuffix": "（提交）",
     "today": "今天",
     "yesterday": "昨天",
-    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。"
+    "activeResultNotice": "当前结果（{count} 笔 · {total}）仍有效，待重试处理。",
+    "duplicatePendingTitle": "疑似重复账单"
   },
   "QuickEntryForm": {
     "selectCategory": "选择分类",
@@ -293,7 +303,8 @@
     "deselectAll": "取消全选",
     "loadMore": "加载更多",
     "discard": "放弃",
-    "saveAllSuccess": "已保存 {count} 处修改"
+    "saveAllSuccess": "已保存 {count} 处修改",
+    "statusDuplicatePending": "待确认重复"
   },
   "SourceDocumentInput": {
     "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
@@ -456,12 +467,11 @@
     "timeZoneAuto": "自动",
     "timeZoneAutoDetected": "自动（{timeZone}）",
     "preferredCurrencies": "偏好货币",
-    "preferredCurrenciesDesc": "选择在记账表单和筛选中优先显示的币种。",
+    "preferredCurrenciesDesc": "此账本中常用的货币列表。",
     "preferredCurrenciesNone": "未选择币种",
     "preferredCurrenciesSummary": "{currencies}（{count} 种）",
     "preferredCurrenciesSearch": "搜索币种",
     "preferredCurrenciesNoResults": "没有匹配的币种",
-    "preferredCurrenciesDesc": "此账本中常用的货币列表。",
     "categories": "分类",
     "categoriesDesc": "管理此账本的支出分类和顺序。",
     "manageCategories": "管理分类",
@@ -788,5 +798,21 @@
     "loginEmailLabel": "登录邮箱：",
     "loginSafe": "如果这是您本人操作，无需采取任何行动。",
     "loginWarn": "如果不是您本人登录，请立即保护您的账户安全。"
+  },
+  "DuplicateReview": {
+    "title": "疑似重复账单",
+    "confidence": "置信度 {percent}%",
+    "original": "原始账单",
+    "newBill": "新账单",
+    "matchedMissing": "匹配的原始账单已不可用。",
+    "untitled": "未命名",
+    "date": "日期：{date}",
+    "noEntries": "暂无明细",
+    "keep": "仍然保留",
+    "discard": "删除重复",
+    "cancel": "取消",
+    "loadError": "该重复审查已不可用。",
+    "reload": "重新加载",
+    "actionFailed": "操作失败，请重试。"
   }
 }

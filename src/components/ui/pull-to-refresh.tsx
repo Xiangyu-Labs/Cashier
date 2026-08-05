@@ -1,58 +1,57 @@
 "use client";
-import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import {
+  usePullToRefreshContext,
+  type PullToRefreshCallback,
+} from "@/modules/workspace/pull-to-refresh-context";
 
-interface PullToRefreshProps {
-  onRefresh: () => Promise<void>;
-  children: ReactNode;
-  threshold?: number;
-  disabled?: boolean;
-  className?: string;
-  header?: ReactNode;
-  indicator?: (state: {
-    isRefreshing: boolean;
-    pullDistance: number;
-    releaseToRefresh: boolean;
-  }) => ReactNode;
-}
-
-interface PullToRefreshController {
+interface PullToRefreshSurfaceController {
   root: HTMLElement;
+  getRefresh: () => PullToRefreshCallback | null;
   handleTouchStart: (event: TouchEvent) => void;
   handleTouchMove: (event: TouchEvent) => void;
   handleTouchEnd: (event: TouchEvent) => void;
   handleTouchCancel: (event: TouchEvent) => void;
 }
 
-const pullToRefreshControllers = new Set<PullToRefreshController>();
+const pullToRefreshControllers = new Set<PullToRefreshSurfaceController>();
 
-export function PullToRefresh({
-  onRefresh,
-  children,
-  threshold = 60,
-  disabled = false,
-  className,
-  header,
-  indicator,
-}: PullToRefreshProps) {
+interface PullToRefreshSurfaceProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/**
+ * Single App-Shell-level pull-to-refresh surface.
+ *
+ * The AppShell owns exactly one of these. Tabs register their refresh
+ * callbacks through `useRegisterPullToRefresh`; this component only renders
+ * the indicator and the gesture handling for the marked `<main>` surface.
+ *
+ * Gesture rules:
+ * - The whole marked main surface (including margins and short-list
+ *   whitespace below a `min-h-full` root) can start a downward pull.
+ * - Only a clearly downward gesture at scroll position 0 is intercepted.
+ * - Inputs, editable elements, dialogs, nav and `[data-no-pull-to-refresh]`
+ *   areas never start a pull. Buttons, heatmap cells, chart points and cards
+ *   are intentionally allowed so tapping/dragging cards can refresh.
+ */
+export function PullToRefreshSurface({ children, className }: PullToRefreshSurfaceProps) {
   const t = useTranslations("PullToRefresh");
+  const { getRefresh } = usePullToRefreshContext();
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startXRef = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement | null>(null);
   const lastRefreshTime = useRef(0);
   const isPullingRef = useRef(false);
   const isRefreshingRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const mountedRef = useRef(true);
-  // Keep the latest refresh callback available without re-registering touch listeners.
-  const onRefreshRef = useRef(onRefresh);
-
-  useLayoutEffect(() => {
-    onRefreshRef.current = onRefresh;
-  }, [onRefresh]);
 
   useLayoutEffect(() => {
     isRefreshingRef.current = isRefreshing;
@@ -66,11 +65,11 @@ export function PullToRefresh({
   }, []);
 
   useEffect(() => {
-    // If disabled or non-touch device, don't add document listeners.
-    if (disabled || !("ontouchstart" in window)) return;
+    // Non-touch devices never register document listeners.
+    if (!("ontouchstart" in window)) return;
 
-    const container = containerRef.current;
-    if (!container) return;
+    const root = rootRef.current;
+    if (root == null) return;
 
     const resetPullState = () => {
       isPullingRef.current = false;
@@ -81,15 +80,15 @@ export function PullToRefresh({
       if (mountedRef.current) setPullDistance(0);
     };
 
-    const handleTouchStart = (e: TouchEvent) => {
+    const handleTouchStart = (event: TouchEvent) => {
       if (isRefreshingRef.current) return;
 
-      const target = toElement(e.target);
+      const target = toElement(event.target);
       const surface = findPullToRefreshSurface(target);
-      if (surface == null || findActivePullToRefreshRoot(surface, target) !== container) return;
+      if (surface == null || findActivePullToRefreshRoot(surface, target) !== root) return;
       if (isBlockedTarget(target) || getScrollTop(surface) !== 0) return;
 
-      const firstTouch = e.touches[0];
+      const firstTouch = event.touches[0];
       if (firstTouch == null) return;
       surfaceRef.current = surface;
       startYRef.current = firstTouch.clientY;
@@ -98,14 +97,13 @@ export function PullToRefresh({
       isPullingRef.current = true;
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
+    const handleTouchMove = (event: TouchEvent) => {
       if (!isPullingRef.current || isRefreshingRef.current) return;
 
-      const firstTouch = e.touches[0];
+      const firstTouch = event.touches[0];
       if (firstTouch == null) return;
 
-      const currentY = firstTouch.clientY;
-      const distanceY = currentY - startYRef.current;
+      const distanceY = firstTouch.clientY - startYRef.current;
       const distanceX = firstTouch.clientX - startXRef.current;
       const surface = surfaceRef.current;
 
@@ -114,21 +112,18 @@ export function PullToRefresh({
         return;
       }
 
-      // Let upward and horizontal gestures continue through the browser/tab
-      // swipe handlers. The native overscroll is intercepted only after the
-      // gesture is clearly a downward pull.
+      // Direction lock: let upward and horizontal gestures pass through
+      // untouched (tab swipe, heatmap horizontal scroll, browser overscroll).
       if (distanceY <= 0 || distanceY <= Math.abs(distanceX)) {
         if (Math.abs(distanceY) > 8 || Math.abs(distanceX) > 8) resetPullState();
         return;
       }
 
-      if (e.cancelable) e.preventDefault();
+      if (event.cancelable) event.preventDefault();
 
-      // Apply the existing damping and max distance.
       const maxDistance = 80;
       const damping = 0.5;
       const dampedDistance = Math.min(distanceY * damping, maxDistance);
-
       pullDistanceRef.current = dampedDistance;
       if (mountedRef.current) setPullDistance(dampedDistance);
     };
@@ -140,9 +135,7 @@ export function PullToRefresh({
       surfaceRef.current = null;
       const currentPullDistance = pullDistanceRef.current;
 
-      // Trigger refresh if threshold exceeded
-      if (currentPullDistance > threshold) {
-        // Debounce: 500ms between refreshes
+      if (currentPullDistance > 60) {
         const now = Date.now();
         if (now - lastRefreshTime.current < 500) {
           resetPullState();
@@ -154,7 +147,7 @@ export function PullToRefresh({
         setIsRefreshing(true);
 
         try {
-          await onRefreshRef.current();
+          await getRefresh()?.();
         } catch (error) {
           console.error("Pull to refresh error:", error);
         } finally {
@@ -167,7 +160,6 @@ export function PullToRefresh({
           }
         }
       } else {
-        // Not enough distance, bounce back
         resetPullState();
       }
     };
@@ -176,36 +168,27 @@ export function PullToRefresh({
       if (!isRefreshingRef.current) resetPullState();
     };
 
-    // Register at document level so the entire marked main surface, including
-    // its margins and short-list whitespace, can start a pull gesture. The
-    // module keeps one shared set of document listeners for all instances.
     return registerPullToRefreshController({
-      root: container,
+      root,
+      getRefresh,
       handleTouchStart,
       handleTouchMove,
       handleTouchEnd,
       handleTouchCancel,
     });
-  }, [disabled, threshold]);
+  }, [getRefresh]);
 
-  if (disabled) {
-    return (
-      <div className={className}>
-        {header}
-        {children}
-      </div>
-    );
-  }
-
-  // 计算指示器状态
   const indicatorScale = isRefreshing || pullDistance > 30 ? 1 : pullDistance / 30;
   const showText = isRefreshing || pullDistance > 20;
-  const releaseToRefresh = pullDistance > threshold;
+  const releaseToRefresh = pullDistance > 60;
   const isVisible = pullDistance > 0 || isRefreshing;
 
   return (
-    <div ref={containerRef} data-pull-to-refresh-root="" className={className}>
-      {/* Pull-down indicator — CSS transitions replace Framer Motion */}
+    <div
+      ref={rootRef}
+      data-pull-to-refresh-root=""
+      className={cn("flex min-h-full w-full min-w-0 flex-1 flex-col", className)}
+    >
       <div
         data-testid="pull-to-refresh-indicator"
         className="overflow-hidden transition-opacity duration-[var(--motion-state)] ease-[var(--motion-enter)]"
@@ -215,45 +198,38 @@ export function PullToRefresh({
         }}
       >
         <div className="flex flex-col items-center justify-end overflow-hidden" role="status">
-          {indicator?.({ isRefreshing, pullDistance, releaseToRefresh }) ?? (
-            <div className="flex items-center gap-2 pb-2">
-              {/* Spinner indicator — CSS animation replaces motion.div */}
+          <div className="flex items-center gap-2 pb-2">
+            <div
+              style={{
+                transform: `scale(${indicatorScale})`,
+                transition: "transform var(--motion-state) var(--motion-enter)",
+              }}
+            >
               <div
-                style={{
-                  transform: `scale(${indicatorScale})`,
-                  transition: "transform var(--motion-state) var(--motion-enter)",
-                }}
-              >
-                <div
-                  className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
-              </div>
-
-              {/* Text hint */}
-              {showText && (
-                <span className="transition-opacity duration-200 text-xs text-muted-foreground">
-                  {isRefreshing
-                    ? t("refreshing")
-                    : releaseToRefresh
-                      ? t("releaseToRefresh")
-                      : t("pullToRefresh")}
-                </span>
-              )}
+                className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
             </div>
-          )}
+
+            {showText && (
+              <span className="transition-opacity duration-200 text-xs text-muted-foreground">
+                {isRefreshing
+                  ? t("refreshing")
+                  : releaseToRefresh
+                    ? t("releaseToRefresh")
+                    : t("pullToRefresh")}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-
-      {header}
-      {/* 子内容 */}
       {children}
     </div>
   );
 }
 
-function registerPullToRefreshController(controller: PullToRefreshController) {
+function registerPullToRefreshController(controller: PullToRefreshSurfaceController) {
   const wasEmpty = pullToRefreshControllers.size === 0;
   pullToRefreshControllers.add(controller);
   if (wasEmpty) {
@@ -335,10 +311,15 @@ function isVisible(element: HTMLElement): boolean {
   return true;
 }
 
+/**
+ * Only inputs, editable elements, dialogs, nav and explicitly marked regions
+ * are blocked. Buttons, heatmap cells, chart points and card surfaces are
+ * allowed to start a pull.
+ */
 function isBlockedTarget(target: Element | null): boolean {
   return (
     target?.closest(
-      "nav, [role='dialog'], [data-no-pull-to-refresh], button, input, textarea, select, option, a, [contenteditable='true']"
+      "nav, [role='dialog'], [data-no-pull-to-refresh], input, textarea, select, option, [contenteditable='true']"
     ) != null
   );
 }

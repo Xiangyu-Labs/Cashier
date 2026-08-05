@@ -1,7 +1,5 @@
 "use server";
-import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { serverComposition } from "@/application/server-composition-root";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
@@ -12,7 +10,8 @@ import {
 import { omitUndefinedProperties } from "@/lib/validation";
 import { createAndQueueSourceDocument } from "../application/use-cases/create-and-queue-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
+import { scheduleProcessingAfter } from "./schedule-processing";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 
@@ -36,7 +35,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     const payload = omitUndefinedProperties(validated);
 
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
-      after(() => executeSingleProcessingIntent(intent));
+      scheduleProcessingAfter(intent);
     };
 
     const result = await createAndQueueSourceDocument(
@@ -50,7 +49,7 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     );
 
     // Also recover any missed processing intents
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     scheduleRequestMaintenance();
 
     if (operationId != null) {

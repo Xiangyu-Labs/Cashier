@@ -32,7 +32,7 @@ export async function listEntriesBySourceDocumentIds(
   }
 
   const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
-    { ledgerId, sourceDocumentIds },
+    { ledgerId, sourceDocumentIds, includeDuplicatePending: true },
     ports.ledgerReads
   );
 
@@ -64,7 +64,15 @@ export async function querySourceDocumentPage(
   const statuses = status
     ?.split(",")
     .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
-      ["processing", "completed", "anomaly", "failed", "cancelled"].includes(value)
+      [
+        "processing",
+        "completed",
+        "anomaly",
+        "failed",
+        "cancelled",
+        "candidate_pending",
+        "duplicate_pending",
+      ].includes(value)
     );
   const page = await ports.documents.list({
     ledgerId,

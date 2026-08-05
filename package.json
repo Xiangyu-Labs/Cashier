@@ -31,6 +31,7 @@
     "db:bootstrap": "node scripts/bootstrap-initial-user.mjs",
     "db:studio": "drizzle-kit studio",
     "db:drop": "drizzle-kit drop",
+    "prune": "node scripts/prune-storage.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

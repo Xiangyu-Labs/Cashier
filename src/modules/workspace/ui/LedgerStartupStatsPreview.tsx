@@ -33,8 +33,11 @@ export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPrevie
     [periodOffset, rangeType, todayKey]
   );
   const range = useMemo(
-    () => getStatsInitialQueryState(currentDate, rangeType),
-    [currentDate, rangeType]
+    () =>
+      getStatsInitialQueryState(currentDate, rangeType, {
+        currentPeriod: periodOffset === 0,
+      }),
+    [currentDate, periodOffset, rangeType]
   );
   const label = useMemo(() => {
     switch (rangeType) {

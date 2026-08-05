@@ -20,6 +20,8 @@ export type {
   SourceDocumentCountsDto,
   SourceDocumentDto,
   SourceDocumentEntryCategoryDto,
+  SourceDocumentDuplicateReviewDto,
+  SourceDocumentDuplicateReviewDetailDto,
   SourceDocumentFullDto,
   SourceDocumentGroupDto,
   SourceDocumentLedgerEntryDto,
@@ -66,12 +68,14 @@ export interface QuickEntryResponseDto {
 export interface PendingSourceDocumentsResponseDto {
   groups: {
     processing: SourceDocumentGroupDto[];
+    duplicate_pending: SourceDocumentGroupDto[];
     anomaly: SourceDocumentGroupDto[];
     failed: SourceDocumentGroupDto[];
     cancelled: SourceDocumentGroupDto[];
   };
   stats: {
     processingCount: number;
+    duplicatePendingCount: number;
     anomalyCount: number;
     failedCount: number;
     cancelledCount: number;

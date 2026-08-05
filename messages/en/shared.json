@@ -28,7 +28,8 @@
     "loadMore": "Load More",
     "discard": "Discard",
     "confirm": "Confirm",
-    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
+    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
+    "statusDuplicatePending": "Duplicate pending"
   },
   "Error": {
     "title": "Application Error",

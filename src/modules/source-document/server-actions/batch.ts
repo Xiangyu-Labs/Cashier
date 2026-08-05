@@ -1,14 +1,13 @@
 "use server";
 
-import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { sourceDocumentIdsSchema } from "@/modules/source-document/contract-schemas";
 import { deleteSourceDocument } from "@/modules/source-document/application/use-cases/delete-source-document";
 import { retrySourceDocument } from "@/modules/source-document/application/use-cases/retry-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
+import { scheduleProcessingAfter } from "./schedule-processing";
 
 export const batchDeleteSourceDocumentsAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, inputIds: string[]): Promise<BatchActionResult> => {
@@ -65,8 +64,7 @@ export const batchRetrySourceDocumentsAction = withSourceDocumentLedgerAccess(
         else result.failed.push({ id, reason: message });
       }
     }
-    if (intents.length > 0)
-      after(async () => Promise.all(intents.map(executeSingleProcessingIntent)));
+    for (const intent of intents) scheduleProcessingAfter(intent);
     return result;
   }
 );

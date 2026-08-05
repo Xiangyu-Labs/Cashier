@@ -93,7 +93,8 @@ function SourceDocumentCardBody({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const contentId = `source-document-card-${useId().replaceAll(":", "")}`;
   const sortedEntries = useMemo(() => sortSourceDocumentEntries(ledgerEntries), [ledgerEntries]);
-  const hasExpandableContent = status === "completed" && sortedEntries.length > 0;
+  const hasExpandableContent =
+    (status === "completed" || status === "duplicate_pending") && sortedEntries.length > 0;
   const supportedActions: readonly SupportedSourceDocumentAction[] = readOnly
     ? []
     : "supportedActions" in sourceDocument

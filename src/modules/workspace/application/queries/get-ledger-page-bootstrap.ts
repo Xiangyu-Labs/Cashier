@@ -1,4 +1,3 @@
-import { after } from "next/server";
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { queryKeys } from "@/lib/query-keys";
@@ -21,7 +20,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { scheduleProcessingRecovery } from "@/modules/source-document/server-actions/schedule-processing-recovery";
+import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import type { CategoryPort } from "@/application/contracts";
 import type { ServiceCredentialPort } from "@/application/contracts";
@@ -235,6 +234,7 @@ export async function getLedgerPageBootstrap(
             queryKey: queryKeys.enhancedStats(input.ledgerId, {
               startDate: statsState.startDateStr,
               rangeType: statsState.rangeType,
+              comparisonMode: statsState.mode,
               mainCurrency,
             }),
             queryFn: () =>
@@ -249,6 +249,7 @@ export async function getLedgerPageBootstrap(
                     from: statsState.prevDateStartStr,
                     to: statsState.prevDateEndStr,
                   },
+                  comparisonMode: statsState.mode,
                 },
                 dependencies.stats
               ),
@@ -274,7 +275,7 @@ export async function getLedgerPageBootstrap(
   const initialCategories = await categoriesPromise;
 
   // Schedule recovery of any missed processing intents after the response is sent
-  after(() => scheduleProcessingRecovery(input.ledgerId));
+  scheduleProcessingRecoveryAfter(input.ledgerId);
 
   return {
     dehydratedState: dehydrate(queryClient),

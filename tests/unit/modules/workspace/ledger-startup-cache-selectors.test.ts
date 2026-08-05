@@ -134,6 +134,14 @@ describe("buildCachedEnhancedStats", () => {
       currency: "CNY",
       trend: { percent: expect.closeTo(185.71428571428572), amount: "65" },
       dailyAverage: 50,
+      comparison: {
+        mode: "same_period",
+        from: "2026-08-01",
+        to: "2026-08-31",
+        previousTotal: "35",
+        amountDelta: "65",
+        percent: expect.closeTo(185.71428571428572),
+      },
     });
     expect(result.categories).toMatchObject([
       {

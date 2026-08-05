@@ -1,4 +1,4 @@
-import { and, inArray } from "drizzle-orm";
+import { and, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
@@ -9,11 +9,14 @@ import { buildLedgerEntryVisibilityCondition } from "./ledger-entry-visibility";
 interface ListLedgerEntryViewsBySourceDocumentIdsInput {
   ledgerId: string;
   sourceDocumentIds: string[];
+  /** Also load pending-revision entries of duplicate_pending documents. */
+  includeDuplicatePending?: boolean;
 }
 
 export async function listLedgerEntryViewsBySourceDocumentIds({
   ledgerId,
   sourceDocumentIds,
+  includeDuplicatePending = false,
 }: ListLedgerEntryViewsBySourceDocumentIdsInput): Promise<
   Map<string, LedgerEntryEmbeddedViewDto[]>
 > {
@@ -32,6 +35,25 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
     ),
     with: { category: true },
   });
+
+  if (includeDuplicatePending) {
+    const duplicateEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        q.whereActive,
+        inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
+        sql`EXISTS (
+          SELECT 1 FROM source_documents sd
+          WHERE sd.ledger_id = ${ledgerEntries.ledgerId}
+            AND sd.id = ${ledgerEntries.sourceDocumentId}
+            AND sd.deleted_at IS NULL
+            AND sd.current_status = 'duplicate_pending'
+            AND sd.pending_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+        )`
+      ),
+      with: { category: true },
+    });
+    entries.push(...duplicateEntries);
+  }
 
   for (const entry of entries) {
     if (entry.sourceDocumentId == null || entry.sourceDocumentId === "") {

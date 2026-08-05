@@ -14,7 +14,7 @@ export async function getPendingSourceDocumentsQuery(
   const result = await querySourceDocumentPage(
     ledgerId,
     {
-      status: "processing,anomaly,failed,cancelled",
+      status: "processing,duplicate_pending,anomaly,failed,cancelled",
       includeLedgerEntries: true,
     },
     ports

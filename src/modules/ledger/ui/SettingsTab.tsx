@@ -9,7 +9,6 @@ import { ServiceCredentialSection } from "./ServiceCredentialSection";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
 import { PasswordForm } from "@/modules/auth/ui/PasswordForm";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import {
   useCategoryMutations,
@@ -37,6 +36,7 @@ import { clearUserCacheData } from "@/lib/client-cache";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -118,210 +118,210 @@ export function SettingsTab({
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
 
+  useRegisterPullToRefresh(handleRefresh);
+
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
 
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
-        <SettingsSection title={t("appearanceAndLanguage")}>
-          <SettingsField title={t("theme")}>
-            <Select value={theme ?? "system"} onValueChange={setTheme} disabled={isPending}>
-              <SelectTrigger aria-label={t("theme")} className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(["system", "light", "dark"] as const).map((themeName) => (
-                  <SelectItem key={themeName} value={themeName}>
-                    {t(themeKeyMap[themeName])}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-          <SettingsField title={t("uiLanguage")}>
-            <Select
-              value={languagePreference}
-              onValueChange={(value) => {
-                const preference = value as InterfaceLanguage;
-                startLanguageTransition(async () => {
-                  try {
-                    const saved = await updateUserPreferencesAction({
-                      interfaceLanguage: preference,
-                    });
-                    setLanguagePreference(saved.interfaceLanguage);
-                    const queryString = searchParams.toString();
-                    const query = queryString !== "" ? `?${queryString}` : "";
-                    if (saved.interfaceLanguage === "auto") {
-                      document.cookie =
-                        "NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
-                      window.location.assign(`${pathname}${query}`);
-                      return;
-                    }
-                    document.cookie = `NEXT_LOCALE=${saved.interfaceLanguage}; path=/; max-age=31536000; samesite=lax`;
-                    if (saved.interfaceLanguage === locale) router.refresh();
-                    else
-                      router.push(`${pathname}${query}`, {
-                        locale: saved.interfaceLanguage,
-                      });
-                  } catch {
-                    toast.error(t("uiLanguageSaveFailed"));
-                  }
-                });
-              }}
-              disabled={isPending || languagePending}
-            >
-              <SelectTrigger aria-label={t("uiLanguage")} className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {UI_LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.value} value={lang.value}>
-                    {lang.value === "auto" ? t("uiLanguageAuto") : lang.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-        </SettingsSection>
-
-        <SettingsSection title={t("bookkeepingRules")}>
-          <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
-            <Switch
-              aria-label={t("collapseEntries")}
-              checked={settingsLedger.settings.collapseEntriesDefault ?? false}
-              onCheckedChange={(checked) => {
-                updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
-              }}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
-            <Select
-              value={settingsLedger.settings.timeZone ?? "auto"}
-              onValueChange={(value) => {
-                updateLedgerMutation.mutate({
-                  timeZone: value === "auto" ? null : value,
-                });
-              }}
-              disabled={isPending}
-            >
-              <SelectTrigger aria-label={t("timeZone")} className="w-full sm:w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value="auto">
-                  {deviceTimeZone == null
-                    ? t("timeZoneAuto")
-                    : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
+    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
+      <SettingsSection title={t("appearanceAndLanguage")}>
+        <SettingsField title={t("theme")}>
+          <Select value={theme ?? "system"} onValueChange={setTheme} disabled={isPending}>
+            <SelectTrigger aria-label={t("theme")} className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(["system", "light", "dark"] as const).map((themeName) => (
+                <SelectItem key={themeName} value={themeName}>
+                  {t(themeKeyMap[themeName])}
                 </SelectItem>
-                {[
-                  "Asia/Shanghai",
-                  "Asia/Tokyo",
-                  "Asia/Singapore",
-                  "Europe/London",
-                  "Europe/Paris",
-                  "America/New_York",
-                  "America/Chicago",
-                  "America/Denver",
-                  "America/Los_Angeles",
-                  "Australia/Sydney",
-                  "UTC",
-                ].map((timeZone) => (
-                  <SelectItem key={timeZone} value={timeZone}>
-                    {timeZone}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-          <CurrencySection
-            settings={{
-              ...settingsLedger.settings,
-              currencies: settingsLedger.settings.currencies || [],
-            }}
-            onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
-          />
-          {categories.length > 0 && (
-            <CategorySection
-              categories={categories}
-              uncategorizedCount={uncategorizedCount}
-              onCreateCategory={(name) => createCategory.mutateAsync({ name })}
-              onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
-              onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
-              onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
-              generatingCategoryIds={generatingCategoryIds}
-              failedCategoryIds={failedCategoryIds}
-              onRetryMetadata={retryCategoryMetadata}
-              isReordering={reorderCategories.isPending}
-              isCreating={createCategory.isPending}
-            />
-          )}
-        </SettingsSection>
-
-        <SettingsSection title={t("aiParsing")}>
-          <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
-            <Select
-              value={settingsLedger.settings.aiLanguage ?? "zh-CN"}
-              onValueChange={(value) => updateLedgerMutation.mutate({ aiLanguage: value })}
-              disabled={isPending}
-            >
-              <SelectTrigger aria-label={t("aiLanguage")} className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {AI_LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-          <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
-            <Textarea
-              defaultValue={settingsLedger.settings.aiCustomPrompt ?? ""}
-              onBlur={(e) => {
-                const newValue = e.target.value;
-                const currentValue = settingsLedger.settings.aiCustomPrompt ?? "";
-                if (newValue !== currentValue) {
-                  updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
+        <SettingsField title={t("uiLanguage")}>
+          <Select
+            value={languagePreference}
+            onValueChange={(value) => {
+              const preference = value as InterfaceLanguage;
+              startLanguageTransition(async () => {
+                try {
+                  const saved = await updateUserPreferencesAction({
+                    interfaceLanguage: preference,
+                  });
+                  setLanguagePreference(saved.interfaceLanguage);
+                  const queryString = searchParams.toString();
+                  const query = queryString !== "" ? `?${queryString}` : "";
+                  if (saved.interfaceLanguage === "auto") {
+                    document.cookie =
+                      "NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+                    window.location.assign(`${pathname}${query}`);
+                    return;
+                  }
+                  document.cookie = `NEXT_LOCALE=${saved.interfaceLanguage}; path=/; max-age=31536000; samesite=lax`;
+                  if (saved.interfaceLanguage === locale) router.refresh();
+                  else
+                    router.push(`${pathname}${query}`, {
+                      locale: saved.interfaceLanguage,
+                    });
+                } catch {
+                  toast.error(t("uiLanguageSaveFailed"));
                 }
-              }}
-              disabled={isPending}
-              aria-label={t("aiPrompt")}
-              placeholder={t("aiPromptPlaceholder")}
-              className="min-h-[100px] w-full resize-y"
-            />
-          </SettingsField>
-        </SettingsSection>
+              });
+            }}
+            disabled={isPending || languagePending}
+          >
+            <SelectTrigger aria-label={t("uiLanguage")} className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {UI_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value}>
+                  {lang.value === "auto" ? t("uiLanguageAuto") : lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
+      </SettingsSection>
 
-        <SettingsSection title={t("account")}>
-          <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-            <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
-          </SettingsField>
-          <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
-            <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
-          </SettingsField>
-          <ServiceCredentialSection
-            credentials={credentials ?? []}
-            onCreateCredential={(name) => createCredential.mutateAsync(name)}
-            onDeleteCredential={(id) => deleteCredential.mutate(id)}
+      <SettingsSection title={t("bookkeepingRules")}>
+        <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
+          <Switch
+            aria-label={t("collapseEntries")}
+            checked={settingsLedger.settings.collapseEntriesDefault ?? false}
+            onCheckedChange={(checked) => {
+              updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
+            }}
+            disabled={isPending}
           />
-          <SettingsField title={t("signOut")}>
-            <Button
-              variant="outline"
-              onClick={async () => {
-                await clearUserCacheData(ledger.userId).catch(() => {});
-                await signOut({ callbackUrl: "/login" });
-              }}
-              disabled={isPending}
-            >
-              {t("signOut")}
-            </Button>
-          </SettingsField>
-        </SettingsSection>
-      </div>
-    </PullToRefresh>
+        </SettingsField>
+        <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
+          <Select
+            value={settingsLedger.settings.timeZone ?? "auto"}
+            onValueChange={(value) => {
+              updateLedgerMutation.mutate({
+                timeZone: value === "auto" ? null : value,
+              });
+            }}
+            disabled={isPending}
+          >
+            <SelectTrigger aria-label={t("timeZone")} className="w-full sm:w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="auto">
+                {deviceTimeZone == null
+                  ? t("timeZoneAuto")
+                  : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
+              </SelectItem>
+              {[
+                "Asia/Shanghai",
+                "Asia/Tokyo",
+                "Asia/Singapore",
+                "Europe/London",
+                "Europe/Paris",
+                "America/New_York",
+                "America/Chicago",
+                "America/Denver",
+                "America/Los_Angeles",
+                "Australia/Sydney",
+                "UTC",
+              ].map((timeZone) => (
+                <SelectItem key={timeZone} value={timeZone}>
+                  {timeZone}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
+        <CurrencySection
+          settings={{
+            ...settingsLedger.settings,
+            currencies: settingsLedger.settings.currencies || [],
+          }}
+          onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
+        />
+        {categories.length > 0 && (
+          <CategorySection
+            categories={categories}
+            uncategorizedCount={uncategorizedCount}
+            onCreateCategory={(name) => createCategory.mutateAsync({ name })}
+            onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
+            onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
+            onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
+            generatingCategoryIds={generatingCategoryIds}
+            failedCategoryIds={failedCategoryIds}
+            onRetryMetadata={retryCategoryMetadata}
+            isReordering={reorderCategories.isPending}
+            isCreating={createCategory.isPending}
+          />
+        )}
+      </SettingsSection>
+
+      <SettingsSection title={t("aiParsing")}>
+        <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
+          <Select
+            value={settingsLedger.settings.aiLanguage ?? "zh-CN"}
+            onValueChange={(value) => updateLedgerMutation.mutate({ aiLanguage: value })}
+            disabled={isPending}
+          >
+            <SelectTrigger aria-label={t("aiLanguage")} className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {AI_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value}>
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsField>
+        <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
+          <Textarea
+            defaultValue={settingsLedger.settings.aiCustomPrompt ?? ""}
+            onBlur={(e) => {
+              const newValue = e.target.value;
+              const currentValue = settingsLedger.settings.aiCustomPrompt ?? "";
+              if (newValue !== currentValue) {
+                updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
+              }
+            }}
+            disabled={isPending}
+            aria-label={t("aiPrompt")}
+            placeholder={t("aiPromptPlaceholder")}
+            className="min-h-[100px] w-full resize-y"
+          />
+        </SettingsField>
+      </SettingsSection>
+
+      <SettingsSection title={t("account")}>
+        <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
+          <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
+        </SettingsField>
+        <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
+          <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
+        </SettingsField>
+        <ServiceCredentialSection
+          credentials={credentials ?? []}
+          onCreateCredential={(name) => createCredential.mutateAsync(name)}
+          onDeleteCredential={(id) => deleteCredential.mutate(id)}
+        />
+        <SettingsField title={t("signOut")}>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await clearUserCacheData(ledger.userId).catch(() => {});
+              await signOut({ callbackUrl: "/login" });
+            }}
+            disabled={isPending}
+          >
+            {t("signOut")}
+          </Button>
+        </SettingsField>
+      </SettingsSection>
+    </div>
   );
 }

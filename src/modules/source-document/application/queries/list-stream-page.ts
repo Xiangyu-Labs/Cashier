@@ -142,7 +142,11 @@ export async function listStreamPage(
 
   // Batch-load ledger entries for items that need them (completed cards etc.)
   const entriesByDocId = await listLedgerEntryViewsBySourceDocumentIds(
-    { ledgerId, sourceDocumentIds: page.items.map((item) => item.id) },
+    {
+      ledgerId,
+      sourceDocumentIds: page.items.map((item) => item.id),
+      includeDuplicatePending: true,
+    },
     ports.ledgerReads
   );
 

@@ -16,6 +16,8 @@ const getEnhancedStatsInputSchema = z.object({
   ledgerId: z.string().regex(UUID_REGEX, "Invalid ledgerId"),
   queryRange: dateRangeSchema,
   compareRange: dateRangeSchema,
+  /** Optional semantic label for the comparison window. */
+  comparisonMode: z.enum(["same_period", "full_period"]).optional(),
 });
 
 export type GetEnhancedStatsInput = z.infer<typeof getEnhancedStatsInputSchema>;

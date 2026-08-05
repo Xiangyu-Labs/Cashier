@@ -3,7 +3,6 @@ import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import { queryKeys } from "@/lib/query-keys";
@@ -28,6 +27,7 @@ import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { buildStreamTotalQuery, useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
+import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -67,6 +67,9 @@ export function LedgerEntriesTab({
   );
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const [candidateReviewDocument, setCandidateReviewDocument] = useState<SourceDocument | null>(
+    null
+  );
+  const [duplicateReviewDocument, setDuplicateReviewDocument] = useState<SourceDocument | null>(
     null
   );
 
@@ -168,6 +171,10 @@ export function LedgerEntriesTab({
         setCandidateReviewDocument(group.sourceDocument);
         return;
       }
+      if (group.sourceDocument.status === "duplicate_pending") {
+        setDuplicateReviewDocument(group.sourceDocument);
+        return;
+      }
       patchExistingSourceDocumentDetail(queryClient, group.sourceDocument);
       pushModal({
         type: "source-document",
@@ -212,38 +219,36 @@ export function LedgerEntriesTab({
     rootMargin: "400px",
   });
 
+  useRegisterPullToRefresh(handleRefresh, !isSelectionMode);
+
   return (
-    <PullToRefresh
-      onRefresh={handleRefresh}
-      header={
-        <LedgerEntriesToolbar
-          isSelectionMode={isSelectionMode}
-          isAllSelected={isAllSelected}
-          selectedCount={selectedIds.length}
-          onToggleSelectionMode={handleToggleSelectionMode}
-          onSelectAll={selectAll}
-          onClearSelection={clearSelection}
-          onUpdateDates={handleBatchUpdateDates}
-          isUpdatingDates={batchUpdateDates.isPending}
-          onRetry={async () => {
-            await batchRetry.mutateAsync(selectedIds);
-          }}
-          onDelete={async () => {
-            await batchDelete.mutateAsync(selectedIds);
-          }}
-          isRetrying={batchRetry.isPending}
-          isDeleting={batchDelete.isPending}
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          periodParams={periodParams}
-          {...(!hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
-          mainCurrency={mainCurrency}
-          filteredTotal={filteredTotal}
-          onResetFilters={onResetFilters}
-          {...(onApplyPreset != null ? { onApplyPreset } : {})}
-        />
-      }
-    >
+    <>
+      <LedgerEntriesToolbar
+        isSelectionMode={isSelectionMode}
+        isAllSelected={isAllSelected}
+        selectedCount={selectedIds.length}
+        onToggleSelectionMode={handleToggleSelectionMode}
+        onSelectAll={selectAll}
+        onClearSelection={clearSelection}
+        onUpdateDates={handleBatchUpdateDates}
+        isUpdatingDates={batchUpdateDates.isPending}
+        onRetry={async () => {
+          await batchRetry.mutateAsync(selectedIds);
+        }}
+        onDelete={async () => {
+          await batchDelete.mutateAsync(selectedIds);
+        }}
+        isRetrying={batchRetry.isPending}
+        isDeleting={batchDelete.isPending}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        periodParams={periodParams}
+        {...(!hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
+        mainCurrency={mainCurrency}
+        filteredTotal={filteredTotal}
+        onResetFilters={onResetFilters}
+        {...(onApplyPreset != null ? { onApplyPreset } : {})}
+      />
       <div className="space-y-4">
         {isLoading ? (
           <LedgerEntriesLoading />
@@ -316,8 +321,10 @@ export function LedgerEntriesTab({
         ledgerId={ledgerId}
         candidateReviewDocument={candidateReviewDocument}
         onCandidateReviewOpenChange={(open) => !open && setCandidateReviewDocument(null)}
+        duplicateReviewDocument={duplicateReviewDocument}
+        onDuplicateReviewOpenChange={(open) => !open && setDuplicateReviewDocument(null)}
         mainCurrency={mainCurrency}
       />
-    </PullToRefresh>
+    </>
   );
 }

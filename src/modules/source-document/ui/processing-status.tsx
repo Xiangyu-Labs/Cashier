@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export type ProcessingStatusType =
-  "processing" | "completed" | "error" | "candidate_pending" | "cancelled";
+  "processing" | "completed" | "error" | "candidate_pending" | "duplicate_pending" | "cancelled";
 
 interface ProcessingStatusProps {
   status: ProcessingStatusType;
@@ -34,6 +34,11 @@ export function ProcessingStatus({ status, label, className }: ProcessingStatusP
     },
     candidate_pending: {
       label: t("candidatePendingTitle"),
+      colorClass: "text-warning",
+      bgClass: "bg-warning",
+    },
+    duplicate_pending: {
+      label: t("duplicatePendingTitle"),
       colorClass: "text-warning",
       bgClass: "bg-warning",
     },

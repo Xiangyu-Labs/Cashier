@@ -78,6 +78,7 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
       compareStartDate: state.prevDateStartStr,
       compareEndDate: state.prevDateEndStr,
       rangeType: state.rangeType,
+      comparisonMode: state.mode,
       mainCurrency,
     }),
     queryFn: () =>
@@ -85,6 +86,7 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
         ledgerId,
         queryRange: { from: state.startDateStr, to: state.endDateStr },
         compareRange: { from: state.prevDateStartStr, to: state.prevDateEndStr },
+        comparisonMode: state.mode,
       }),
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });

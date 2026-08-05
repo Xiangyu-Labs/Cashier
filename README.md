@@ -106,6 +106,51 @@ Source document parsing (AI-powered receipt/expense extraction) uses the followi
 - **Idempotency**: Processing intents support idempotent dispatch, claim-based concurrency control, and lease expiry to handle restarts.
 - **Runtime boundary**: `after()` uses the same application path on Vercel and Docker. On Vercel it remains bounded by the Function `maxDuration`; Docker packaging does not impose that serverless lifecycle limit.
 
+### Request-bound reliability boundary
+
+API v1 returns `201` only after image processing, R2 upload, and database
+persistence complete — it does **not** wait for AI parsing. Parsing is scheduled
+with Next.js `after()` and a PostgreSQL durable outbox with claim leases and
+heartbeat renewal. If the AI call fails or the serverless lifecycle cuts the
+request short, the pending intent stays recoverable and is re-claimed by the
+next upload, app query, or Stream refresh for the same ledger. With no new
+request at all, recovery does not happen automatically — there is no cron,
+worker, or external queue by design.
+
+Cancelling the HTTP request after it was delivered does not undo the upload:
+the server may still report the document later. For at-most-once creation,
+send the same `Idempotency-Key` header on retries; a replayed key returns the
+already-created document instead of creating a second one.
+
+### Storage maintenance
+
+`npm run prune` removes provably unreferenced database/runtime data and R2
+objects. It is **dry-run by default** and deletes nothing unless `--apply` is
+passed. Soft-deleted source documents and their revisions are never touched.
+
+```bash
+npm run prune                       # scan + summary only
+npm run prune -- --apply            # delete what the scan found
+npm run prune -- --json --batch-size 500 --orphan-grace-days 14 --temporary-grace-hours 48
+```
+
+What it cleans:
+
+- Expired rate-limit buckets, OTP tokens, idempotency records, upload
+  sessions, change-log batches, and stale object-cleanup jobs.
+- `stored_files` older than `--orphan-grace-days` (default 7) with no
+  `revision_files` or valid upload-session reference: the database row is
+  claimed with a reference recheck, then the R2 object is removed. A failed
+  object delete leaves a durable orphan that the next prune removes.
+- Durable R2 objects older than the grace period with no `stored_files` row
+  at all.
+- `temporary/*` objects older than `--temporary-grace-hours` (default 24)
+  that no open/finalizing upload session references.
+
+Rows whose R2 object is already missing are reported (`missingObjects`) and
+kept, never auto-deleted. A PostgreSQL advisory lock serialises prune runs
+against each other and maintenance.
+
 ## License
 
 Private

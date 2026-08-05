@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   SourceDocumentCandidateReviewDialog,
+  SourceDocumentDuplicateReviewDialog,
   SourceDocumentEditRetryDialog,
 } from "@/modules/source-document/ui";
 import type { SourceDocument } from "@/modules/source-document/contracts";
@@ -16,6 +17,8 @@ interface LedgerEntriesOverlaysProps {
   ledgerId: string;
   candidateReviewDocument: SourceDocument | null;
   onCandidateReviewOpenChange: (open: boolean) => void;
+  duplicateReviewDocument: SourceDocument | null;
+  onDuplicateReviewOpenChange: (open: boolean) => void;
   mainCurrency: string;
 }
 
@@ -29,6 +32,8 @@ export function LedgerEntriesOverlays({
   ledgerId,
   candidateReviewDocument,
   onCandidateReviewOpenChange,
+  duplicateReviewDocument,
+  onDuplicateReviewOpenChange,
   mainCurrency,
 }: LedgerEntriesOverlaysProps) {
   return (
@@ -58,6 +63,16 @@ export function LedgerEntriesOverlays({
           sourceDocumentId={candidateReviewDocument.id}
           open={true}
           onOpenChange={onCandidateReviewOpenChange}
+          mainCurrency={mainCurrency}
+        />
+      )}
+
+      {duplicateReviewDocument != null && (
+        <SourceDocumentDuplicateReviewDialog
+          ledgerId={ledgerId}
+          sourceDocumentId={duplicateReviewDocument.id}
+          open={true}
+          onOpenChange={onDuplicateReviewOpenChange}
           mainCurrency={mainCurrency}
         />
       )}

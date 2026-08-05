@@ -62,6 +62,7 @@ export interface SourceDocumentDto {
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
+  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface SourceDocumentCandidateProjectionSummary {
@@ -98,6 +99,36 @@ export interface SourceDocumentCandidateReviewDto {
   candidate: SourceDocumentCandidateReviewRevisionDto;
 }
 
+export interface SourceDocumentDuplicateReviewDto {
+  sourceDocumentId: string;
+  revisionId: string;
+  matchedSourceDocumentId: string;
+  status: "pending" | "kept" | "discarded";
+  reason: string | null;
+  confidence: number | null;
+}
+
+/** Side-by-side review payload for a duplicate-pending document. */
+export interface SourceDocumentDuplicateReviewDetailDto {
+  review: SourceDocumentDuplicateReviewDto;
+  duplicate: {
+    id: string;
+    title: string | null;
+    entryDate: string | null;
+    createdAt: string;
+    entries: SourceDocumentLedgerEntryDto[];
+    files: SourceDocumentStoredFileDto[];
+  };
+  matched: {
+    id: string;
+    title: string | null;
+    entryDate: string | null;
+    createdAt: string;
+    entries: SourceDocumentLedgerEntryDto[];
+    files: SourceDocumentStoredFileDto[];
+  } | null;
+}
+
 export interface SourceDocumentListItemDto {
   id: string;
   ledgerId: string;
@@ -119,6 +150,7 @@ export interface SourceDocumentListItemDto {
   pendingRevisionId: string | null;
   candidateComparison?: SourceDocumentCandidateComparisonDto;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
+  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface SourceDocumentLightDto {
@@ -137,6 +169,7 @@ export interface SourceDocumentLightDto {
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
+  duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
 
 export interface SourceDocumentGroupDto {

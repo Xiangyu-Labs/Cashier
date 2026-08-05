@@ -28,7 +28,9 @@ export type SupportedSourceDocumentAction =
   | "delete"
   | "accept_candidate"
   | "abandon_candidate"
-  | "cancel_processing";
+  | "cancel_processing"
+  | "keep_duplicate"
+  | "discard_duplicate";
 
 export interface SourceDocumentContract {
   id: SourceDocumentId;
@@ -71,7 +73,14 @@ export function supportedSourceDocumentActions(input: {
     return ["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"];
   }
 
-  // First parse completed successfully (no active revision yet)
+  // First parse completed successfully (no active revision yet). In practice
+  // this state only exists while a duplicate review is pending — normal first
+  // parses activate immediately — so the keep/discard actions are offered.
+  // Retry/edit-retry are intentionally withheld: superseding the review would
+  // strand the pending duplicate_reviews row on a stale revision.
+  if (input.pendingOutcome === "completed") {
+    return ["keep_duplicate", "discard_duplicate", "delete"];
+  }
   return ["retry", "edit_retry", "delete"];
 }
 

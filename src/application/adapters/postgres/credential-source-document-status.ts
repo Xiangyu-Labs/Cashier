@@ -34,9 +34,15 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     });
     if (revision == null || revision.outcome === "abandoned") return null;
 
-    const status = revision.outcome as CredentialSourceDocumentStatusResult["status"];
+    // A document awaiting a duplicate review has no active projection yet.
+    // Keep reporting "processing" so API clients keep polling until the human
+    // decision activates (completed) or discards (not found) the document.
+    const status =
+      document.currentStatus === "duplicate_pending"
+        ? "processing"
+        : (revision.outcome as CredentialSourceDocumentStatusResult["status"]);
     let result: CredentialSourceDocumentStatusResult["result"] = null;
-    if (status === "completed") {
+    if (status === "completed" && document.activeRevisionId != null) {
       const rows = await db
         .select({
           name: ledgerEntries.itemName,

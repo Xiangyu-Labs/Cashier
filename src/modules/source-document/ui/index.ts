@@ -1,5 +1,6 @@
 export { SourceDocumentCard } from "./SourceDocumentCard";
 export { SourceDocumentCandidateReviewDialog } from "./SourceDocumentCandidateReviewDialog";
+export { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
 export { SourceDocumentActions } from "./batch-action-toolbar";
 export { SourceDocumentDetailWrapper } from "./SourceDocumentDetailWrapper";
 export { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";

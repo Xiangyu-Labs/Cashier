@@ -40,6 +40,7 @@ describe("grouping helpers", () => {
     expect(pendingGroups.cancelled).toHaveLength(1);
     expect(calculateSourceDocumentStats(pendingGroups)).toEqual({
       processingCount: 1,
+      duplicatePendingCount: 0,
       anomalyCount: 1,
       failedCount: 1,
       cancelledCount: 1,
@@ -58,5 +59,27 @@ describe("grouping helpers", () => {
     expect(groups.candidate_pending).toHaveLength(1); // candidate-1
     expect(groups.candidate_pending[0]?.sourceDocument.id).toBe("candidate-1");
     expect(groups.failed.some((g) => g.sourceDocument.id === "candidate-1")).toBe(false);
+  });
+
+  it("groups duplicate_pending documents into their own group and counts them", () => {
+    const docs = [
+      { id: "processing-1", status: "processing" as const, ledgerEntries: [] },
+      { id: "duplicate-1", status: "duplicate_pending" as const, ledgerEntries: [] },
+      { id: "completed-1", status: "completed" as const, ledgerEntries: [] },
+    ];
+    const groups = groupSourceDocumentsByStatus(docs);
+    expect(groups.duplicate_pending).toHaveLength(1);
+    expect(groups.duplicate_pending[0]?.sourceDocument.id).toBe("duplicate-1");
+
+    const pendingGroups = groupPendingSourceDocuments(docs);
+    expect(pendingGroups.duplicate_pending).toHaveLength(1);
+    expect(calculateSourceDocumentStats(pendingGroups)).toEqual({
+      processingCount: 1,
+      duplicatePendingCount: 1,
+      anomalyCount: 0,
+      failedCount: 0,
+      cancelledCount: 0,
+    });
+    expect(calculatePendingTotal(pendingGroups)).toBe(2);
   });
 });

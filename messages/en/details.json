@@ -253,7 +253,8 @@
     "loadMore": "Load More",
     "discard": "Discard",
     "confirm": "Confirm",
-    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}"
+    "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
+    "statusDuplicatePending": "Duplicate pending"
   },
   "LedgerEntryDetail": {
     "category": "Transaction Category",
@@ -466,7 +467,8 @@
     "submittedGroupSuffix": "(submitted)",
     "today": "Today",
     "yesterday": "Yesterday",
-    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved."
+    "activeResultNotice": "Active entries ({count} {count, plural, one {entry} other {entries}} · {total}) remain in use while this retry is resolved.",
+    "duplicatePendingTitle": "Possible duplicate"
   },
   "SourceDocumentDetail": {
     "title": "Bill Details",
@@ -529,5 +531,21 @@
     "pendingChangesCloseDescription": "Save or discard the current edit before closing.",
     "pendingChangesLeaveDescription": "Save or discard the current edit before returning to preview.",
     "continueEditing": "Continue editing"
+  },
+  "DuplicateReview": {
+    "title": "Possible duplicate bill",
+    "confidence": "Confidence {percent}%",
+    "original": "Original bill",
+    "newBill": "New bill",
+    "matchedMissing": "The matched bill is no longer available.",
+    "untitled": "Untitled",
+    "date": "Date: {date}",
+    "noEntries": "No entries",
+    "keep": "Keep this bill",
+    "discard": "Delete duplicate",
+    "cancel": "Cancel",
+    "loadError": "The review is no longer available.",
+    "reload": "Reload",
+    "actionFailed": "Action failed, please retry."
   }
 }

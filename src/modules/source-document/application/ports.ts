@@ -102,6 +102,12 @@ export interface SourceDocumentLifecyclePort {
     sourceDocumentId: string,
     revisionId: string
   ): Promise<boolean>;
+  keepDuplicate(ledgerId: string, sourceDocumentId: string, revisionId: string): Promise<boolean>;
+  discardDuplicate(
+    ledgerId: string,
+    sourceDocumentId: string,
+    revisionId: string
+  ): Promise<boolean>;
   cancelPending(
     ledgerId: string,
     sourceDocumentId: string,

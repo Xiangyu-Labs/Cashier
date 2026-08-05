@@ -8,12 +8,15 @@ import {
   postgresLedgerProjectionAdapter,
   storeCandidateRevision,
 } from "@/application/adapters/postgres/ledger-projections";
+import { storeDuplicatePendingRevision } from "@/application/adapters/postgres/ledger-projections";
+import { listDuplicateDetectionCandidates } from "@/application/adapters/postgres/duplicate-candidates";
 import { postgresRevisionAdapter } from "@/application/adapters/postgres/revisions";
 import { postgresSettingsAdapter } from "@/application/adapters/postgres/business-ports";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
 import {
+  duplicateReviews,
   entryCategories,
   revisionFiles,
   sourceDocumentRevisions,
@@ -32,6 +35,7 @@ import {
 } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { toParseSourceDocumentOutput } from "@/modules/source-document/application/parse-source-document/result-mapper";
 import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
+import { detectDuplicateBill } from "@/modules/source-document/application/duplicate-detection";
 import {
   isFailedLoadImageResult,
   isSuccessfulLoadImageResult,
@@ -191,6 +195,61 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       exchangeRate: entry.exchangeRate,
       createdAt: entry.entryDate,
     }));
+
+    if (document.activeRevisionId == null && document.type === "ai_parsed") {
+      // Retries/re-parses after a duplicate flag are never re-checked: a prior
+      // review (pending or retired) marks this document as already judged.
+      const priorReview = await db.query.duplicateReviews.findFirst({
+        where: and(
+          eq(duplicateReviews.ledgerId, request.ledgerId),
+          eq(duplicateReviews.sourceDocumentId, request.sourceDocumentId)
+        ),
+        columns: { id: true },
+      });
+      const detection =
+        document.entryDate == null || priorReview != null
+          ? null
+          : await detectDuplicateBill({
+              ledgerId: request.ledgerId,
+              mainCurrency,
+              sourceDocumentId: request.sourceDocumentId,
+              currentCreatedAt: document.createdAt.toISOString(),
+              currentTitle: output.title ?? null,
+              currentEntries: entryInputs,
+              currentStoredFileIds: files.map((file) => file.id),
+              candidates: await listDuplicateDetectionCandidates(
+                request.ledgerId,
+                document.entryDate,
+                request.sourceDocumentId
+              ),
+              loadImages: async (storedFileIds) => {
+                const loaded = await loadStoredFilesForAI(request.ledgerId, [...storedFileIds]);
+                return loaded
+                  .filter(isSuccessfulLoadImageResult)
+                  .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
+              },
+              ai: this.options.createAIContext(controller.signal),
+              signal: controller.signal,
+            });
+      if (detection?.duplicate === true && detection.matchedSourceDocumentId != null) {
+        const stored = await storeDuplicatePendingRevision(
+          request.ledgerId,
+          request.sourceDocumentId,
+          request.revisionId,
+          output.title,
+          entryInputs,
+          {
+            matchedSourceDocumentId: detection.matchedSourceDocumentId,
+            reason: detection.reason,
+            confidence: detection.confidence,
+          }
+        );
+        if (!stored) {
+          throw new Error("Failed to store duplicate pending revision");
+        }
+        return { outcome: "completed" };
+      }
+    }
 
     if (document.activeRevisionId == null) {
       // First parse: activate revision (replace projection, update pointers)

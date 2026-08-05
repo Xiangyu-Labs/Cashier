@@ -40,10 +40,10 @@ describe("target application contracts", () => {
     ).toEqual(["accept_candidate", "abandon_candidate", "retry", "edit_retry", "delete"]);
   });
 
-  it("offers retry actions for first-parse completed with no active revision", () => {
+  it("offers keep/discard (without retry) for a pending duplicate review", () => {
     expect(
       supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: "completed" })
-    ).toEqual(["retry", "edit_retry", "delete"]);
+    ).toEqual(["keep_duplicate", "discard_duplicate", "delete"]);
   });
 
   it("does not allow actions for deleted source documents", () => {

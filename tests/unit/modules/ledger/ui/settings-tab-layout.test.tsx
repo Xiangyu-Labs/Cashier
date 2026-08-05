@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { PullToRefreshProvider } from "@/modules/workspace/pull-to-refresh-context";
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { email: "me@example.com" } } }),
@@ -94,8 +95,15 @@ const ledger: Ledger = {
 };
 
 describe("SettingsTab layout", () => {
+  const renderSettings = () =>
+    render(
+      <PullToRefreshProvider>
+        <SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />
+      </PullToRefreshProvider>
+    );
+
   it("renders workflow sections in the agreed order", () => {
-    render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
+    renderSettings();
 
     const sectionHeadings = screen
       .getAllByRole("heading", { level: 2 })
@@ -105,7 +113,7 @@ describe("SettingsTab layout", () => {
   });
 
   it("puts API keys in the account section and removes automation", () => {
-    render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
+    renderSettings();
 
     const apiKeyHeading = screen.getByRole("heading", { name: "API 密钥" });
     expect(apiKeyHeading.closest("section")).toHaveTextContent("账户");
@@ -114,7 +122,7 @@ describe("SettingsTab layout", () => {
 
   it("uses the theme select, detected automatic time zone, and stacked prompt", async () => {
     const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
+    renderSettings();
 
     expect(screen.getByRole("combobox", { name: "主题" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "默认折叠记录" })).not.toBeChecked();

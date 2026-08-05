@@ -45,7 +45,7 @@ async function readBoundedJson(request: NextRequest): Promise<{ data: unknown; b
 export async function POST(request: NextRequest) {
   return handleApiV1Route(request, {
     logContext: "api/v1/source-documents",
-    handler: async ({ credential, request: authorizedRequest }) => {
+    handler: async ({ credential, request: authorizedRequest, requestId }) => {
       const bodyReadStart = performance.now();
       let bodyBytes = 0;
       let bodyReadMs = 0;
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
           ...(authorizedRequest.headers.get("Idempotency-Key") == null
             ? {}
             : { idempotencyKey: authorizedRequest.headers.get("Idempotency-Key")! }),
+          requestId,
           payload: parsed.data,
         });
         const createMs = performance.now() - createStart;

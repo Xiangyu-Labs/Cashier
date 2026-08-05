@@ -1,5 +1,4 @@
 "use server";
-import { after } from "next/server";
 import { ValidationError } from "@/lib/errors";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
@@ -24,7 +23,7 @@ import {
   streamTotalInputSchema,
   type ListSourceDocumentsInput,
 } from "@/modules/source-document/contract-schemas";
-import { scheduleProcessingRecovery } from "./schedule-processing-recovery";
+import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
 
 const queryPorts = {
@@ -35,7 +34,7 @@ const queryPorts = {
 export const getSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string, params: ListSourceDocumentsInput): Promise<SourceDocumentPageDto> => {
     // Schedule processing recovery alongside data reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return listSourceDocuments(ledgerId, params, queryPorts);
   }
 );
@@ -47,7 +46,7 @@ export const getSourceDocumentsAction = withLedgerAccess(
 export const getPendingSourceDocumentsAction = withLedgerAccess(
   async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
     // Schedule processing recovery alongside data reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return getPendingSourceDocuments(ledgerId, queryPorts);
   }
 );
@@ -59,7 +58,7 @@ export const getPendingSourceDocumentsAction = withLedgerAccess(
 export const getSourceDocumentAttentionAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentAttentionDto> => {
     // Schedule processing recovery alongside attention reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return getSourceDocumentAttentionQuery(ledgerId, queryPorts.documents);
   }
 );
@@ -70,7 +69,7 @@ export const getSourceDocumentAttentionAction = withLedgerAccess(
 export const getSourceDocumentCountsAction = withLedgerAccess(
   async (ledgerId: string): Promise<SourceDocumentCountsDto> => {
     // Schedule processing recovery alongside count reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return getSourceDocumentCountsQuery(ledgerId, queryPorts.documents);
   }
 );
@@ -86,7 +85,7 @@ export const getSourceDocumentFullAction = withLedgerAccess(
     }
 
     // Schedule processing recovery alongside detail reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return getSourceDocumentFullQuery(ledgerId, parsed.data, queryPorts.documents);
   }
 );
@@ -106,7 +105,7 @@ export const listStreamPageAction = withLedgerAccess(
       parsed.data;
 
     // Schedule processing recovery alongside data reads
-    after(() => scheduleProcessingRecovery(ledgerId));
+    scheduleProcessingRecoveryAfter(ledgerId);
     return listStreamPage(
       ledgerId,
       {

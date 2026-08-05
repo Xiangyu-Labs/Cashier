@@ -50,11 +50,15 @@ export function StatsContentView({
   const t = useTranslations("StatsTab");
   const locale = useLocale();
   const currencySymbol = stats?.summary.currency ?? fallbackCurrency;
+  const periodLabel = t(
+    rangeType === "week" ? "lastWeek" : rangeType === "month" ? "lastMonth" : "lastYear"
+  );
   const statsTrend = stats?.summary.trend;
   const trend =
     statsTrend == null
       ? undefined
       : { percent: statsTrend.percent, amount: Number(statsTrend.amount) };
+  const comparison = stats?.summary.comparison;
 
   return (
     <div className="space-y-6 pb-24">
@@ -67,6 +71,8 @@ export function StatsContentView({
         totalExpense={Number(stats?.summary.total ?? 0)}
         averageDaily={stats?.summary.dailyAverage ?? 0}
         currencySymbol={currencySymbol}
+        periodLabel={periodLabel}
+        {...(comparison !== undefined ? { comparison } : {})}
         {...(trend !== undefined ? { trend } : {})}
       />
 

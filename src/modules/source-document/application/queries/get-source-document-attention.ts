@@ -3,7 +3,7 @@ import type { SourceDocumentReadPort } from "../ports";
 
 /**
  * Attention query that fetches documents with status:
- * processing, candidate_pending, anomaly, failed.
+ * processing, candidate_pending, duplicate_pending, anomaly, failed.
  *
  * This is independently bounded (hard limit of 50) and does NOT respect
  * date/amount filters — attention items must always be visible.
@@ -16,7 +16,7 @@ export async function getSourceDocumentAttentionQuery(
 ): Promise<SourceDocumentAttentionDto> {
   const result = await documents.list({
     ledgerId,
-    statuses: ["processing", "candidate_pending", "anomaly", "failed"],
+    statuses: ["processing", "candidate_pending", "duplicate_pending", "anomaly", "failed"],
     limit: ATTENTION_HARD_LIMIT,
   });
 
