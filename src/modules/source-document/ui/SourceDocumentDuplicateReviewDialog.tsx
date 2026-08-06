@@ -161,7 +161,7 @@ export function SourceDocumentDuplicateReviewDialog({
       : normalizeDuplicateReason({
           reason: data.review.reason,
           currentSourceDocumentId: data.duplicate.id,
-          candidateSourceDocumentIds: [data.matched.id],
+          candidateSourceDocumentIds: data.matched == null ? [] : [data.matched.id],
           aiLanguage: locale,
         });
   return (
@@ -199,19 +199,29 @@ export function SourceDocumentDuplicateReviewDialog({
             </div>
           ) : (
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              {(data.matchedState === "modified" || data.matchedState === "deleted") && (
-                <div className="col-span-full rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 text-sm text-text">
-                  {data.matchedState === "modified" ? t("matchedModified") : t("matchedDeleted")}
+              {data.matched != null ? (
+                <>
+                  {(data.matchedState === "modified" || data.matchedState === "deleted") && (
+                    <div className="col-span-full rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 text-sm text-text">
+                      {data.matchedState === "modified"
+                        ? t("matchedModified")
+                        : t("matchedDeleted")}
+                    </div>
+                  )}
+                  <ReviewPanel
+                    side={data.matched}
+                    label={t("original")}
+                    tone="original"
+                    badge={t("snapshotVersion")}
+                    mainCurrency={mainCurrency}
+                    locale={locale}
+                  />
+                </>
+              ) : (
+                <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-surface px-4 text-center text-sm text-muted-foreground">
+                  {t("matchedMissing")}
                 </div>
               )}
-              <ReviewPanel
-                side={data.matched}
-                label={t("original")}
-                tone="original"
-                badge={t("snapshotVersion")}
-                mainCurrency={mainCurrency}
-                locale={locale}
-              />
               <ReviewPanel
                 side={data.duplicate}
                 label={t("newBill")}

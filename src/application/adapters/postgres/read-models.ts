@@ -413,12 +413,41 @@ export async function getSourceDocumentDuplicateReview(
         ? "modified"
         : "unchanged";
 
+  // Legacy reviews may point at a matched bill with no surviving revision: the
+  // snapshot was never recoverable, so the matched side is unavailable while
+  // the review record itself stays readable.
+  const matchedRevisionId = review.matchedRevisionId;
+  const matchedCreatedAt = review.matchedCreatedAt;
+  if (matchedRevisionId == null || matchedCreatedAt == null) {
+    return {
+      review: {
+        sourceDocumentId: review.sourceDocumentId,
+        revisionId: review.revisionId,
+        matchedSourceDocumentId: review.matchedSourceDocumentId,
+        matchedRevisionId: review.matchedRevisionId,
+        status: review.status,
+        reason: review.reason,
+        confidence: review.confidence == null ? null : Number(review.confidence),
+      },
+      duplicate: {
+        id: duplicateDoc.id,
+        title: effectiveDocumentTitle(duplicateDoc.title, duplicateRevision?.title),
+        entryDate: duplicateDoc.entryDate,
+        createdAt: duplicateDoc.createdAt.toISOString(),
+        entries: duplicateSide.entries,
+        files: duplicateSide.files,
+      },
+      matched: null,
+      matchedState: "deleted",
+    };
+  }
+
   // Comparison content always loads from the revision captured at detection
   // time, never from the matched bill's current active revision. The
   // snapshot's entries stay readable even after the matched bill was edited
   // or soft-deleted (both soft-delete the old revision's ledger rows).
   const [side, matchedRevision] = await Promise.all([
-    loadDuplicateReviewSide(ledgerId, review.matchedRevisionId, {
+    loadDuplicateReviewSide(ledgerId, matchedRevisionId, {
       includeDeletedEntries: true,
     }),
     db
@@ -427,7 +456,7 @@ export async function getSourceDocumentDuplicateReview(
       .where(
         and(
           eq(sourceDocumentRevisions.ledgerId, ledgerId),
-          eq(sourceDocumentRevisions.id, review.matchedRevisionId),
+          eq(sourceDocumentRevisions.id, matchedRevisionId),
           eq(sourceDocumentRevisions.sourceDocumentId, review.matchedSourceDocumentId)
         )
       )
@@ -456,7 +485,7 @@ export async function getSourceDocumentDuplicateReview(
       id: review.matchedSourceDocumentId,
       title: effectiveDocumentTitle(review.matchedTitle, matchedRevision?.title),
       entryDate: review.matchedEntryDate,
-      createdAt: review.matchedCreatedAt.toISOString(),
+      createdAt: matchedCreatedAt.toISOString(),
       entries: side.entries,
       files: side.files,
     },

@@ -180,8 +180,8 @@ describe("duplicate review edge cases", () => {
 
     const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
     expect(payload.matchedState).toBe("deleted");
-    expect(payload.matched.id).toBe(a.sourceDocumentId);
-    expect(payload.matched.entries[0]?.itemName).toBe("Latte");
+    expect(payload.matched?.id).toBe(a.sourceDocumentId);
+    expect(payload.matched?.entries[0]?.itemName).toBe("Latte");
     expect(payload.review.reason).toBe("Same bill");
     expect(payload.review.confidence).toBe(0.92);
 
@@ -223,7 +223,7 @@ describe("duplicate review edge cases", () => {
     const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
     expect(payload.matchedState).toBe("modified");
     expect(payload.review.matchedRevisionId).toBe(a.revisionId);
-    expect(payload.matched.entries[0]?.itemName).toBe("Latte");
+    expect(payload.matched?.entries[0]?.itemName).toBe("Latte");
     expect(payload.review.reason).toBe("Same bill");
     expect(payload.review.confidence).toBe(0.9);
   });
@@ -280,8 +280,8 @@ describe("duplicate review edge cases", () => {
     for (const document of documents) {
       const payload = await getSourceDocumentDuplicateReview(ledgerId, document.sourceDocumentId);
       expect(payload.matchedState).toBe("deleted");
-      expect(payload.matched.id).toBe(a.sourceDocumentId);
-      expect(payload.matched.entries).toHaveLength(1);
+      expect(payload.matched?.id).toBe(a.sourceDocumentId);
+      expect(payload.matched?.entries).toHaveLength(1);
     }
   });
 
@@ -543,5 +543,66 @@ describe("duplicate review edge cases", () => {
     const original = await findReview(db, b.sourceDocumentId, b.revisionId);
     expect(original?.status).toBe("discarded");
     expect(original?.decision).toBe("superseded");
+  });
+
+  it("keeps a legacy review readable when the matched bill has no surviving revision", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "edge-null-snapshot");
+    // A matched bill that was never projected has no revision pointers at all
+    // (legacy rows that pre-date projection backfills).
+    const revisionlessMatched = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        title: "Ghost bill",
+        type: "ai_parsed",
+        currentStatus: "completed",
+        entryDate: "2026-08-05",
+      })
+      .returning({ id: sourceDocuments.id })
+      .then((rows) => rows[0]);
+    if (revisionlessMatched == null) throw new Error("Expected matched fixture");
+
+    const b = await createDocument(db, ledgerId);
+    const a = await createCompletedAiDocument(db, ledgerId);
+    await storeDuplicate(
+      db,
+      ledgerId,
+      b,
+      a,
+      "Duplicate B",
+      reviewSnapshot(a, { reason: "Legacy verdict", confidence: 0.9 })
+    );
+    // Simulate a legacy row whose snapshot was never backfillable: re-point
+    // the review at a matched bill with no revision and clear the snapshot.
+    await db
+      .update(duplicateReviews)
+      .set({
+        matchedSourceDocumentId: revisionlessMatched.id,
+        matchedRevisionId: null,
+        matchedTitle: null,
+        matchedEntryDate: null,
+        matchedCreatedAt: null,
+      })
+      .where(
+        and(
+          eq(duplicateReviews.sourceDocumentId, b.sourceDocumentId),
+          eq(duplicateReviews.revisionId, b.revisionId)
+        )
+      );
+
+    const document = await findDocument(db, b.sourceDocumentId);
+    expect(document?.currentStatus).toBe("duplicate_pending");
+    const payload = await getSourceDocumentDuplicateReview(ledgerId, b.sourceDocumentId);
+    expect(payload.matched).toBeNull();
+    expect(payload.matchedState).toBe("deleted");
+    expect(payload.review.matchedRevisionId).toBeNull();
+    expect(payload.review.reason).toBe("Legacy verdict");
+    expect(payload.duplicate.entries[0]?.itemName).toBe("Latte");
+
+    // Keep/discard remain executable without a snapshot.
+    await expect(
+      activateDuplicatePendingRevision(ledgerId, b.sourceDocumentId, b.revisionId)
+    ).resolves.toBe(true);
   });
 });

@@ -32,12 +32,16 @@ ALTER TABLE duplicate_reviews
 --> statement-breakpoint
 -- Backfill snapshots from the matched document's current revision. Historical
 -- reviews can only recover the best available state: the revision the matched
--- document points at while this migration runs. When no revision exists the
--- migration fails loudly with the review ID instead of fabricating a snapshot.
+-- document points at while this migration runs. Reviews whose matched bill
+-- has no revision at all (legacy rows whose projection was never created or
+-- was removed) keep a NULL snapshot: the review record is preserved for audit
+-- and the UI falls back to "matched bill unavailable". The review ID is
+-- reported instead of silently fabricating a snapshot.
 DO $$
 DECLARE
   review_row RECORD;
   snapshot RECORD;
+  skipped_count integer := 0;
 BEGIN
   FOR review_row IN
     SELECT id, ledger_id, matched_source_document_id
@@ -69,10 +73,12 @@ BEGIN
     ELSIF snapshot.pending_revision_id IS NOT NULL THEN
       review_row.matched_revision_id := snapshot.pending_revision_id;
     ELSE
-      RAISE EXCEPTION
-        'Cannot backfill duplicate review %: matched source document % has no revision',
+      RAISE WARNING
+        'Duplicate review % skipped: matched source document % has no revision; keeping NULL snapshot',
         review_row.id,
         review_row.matched_source_document_id;
+      skipped_count := skipped_count + 1;
+      CONTINUE;
     END IF;
 
     IF NOT EXISTS (
@@ -95,11 +101,14 @@ BEGIN
         matched_created_at = snapshot.created_at
     WHERE id = review_row.id;
   END LOOP;
+  IF skipped_count > 0 THEN
+    RAISE NOTICE 'Backfilled % duplicate reviews with a NULL snapshot (unresolvable matched bill)', skipped_count;
+  END IF;
 END $$;
 --> statement-breakpoint
-ALTER TABLE duplicate_reviews
-  ALTER COLUMN matched_revision_id SET NOT NULL,
-  ALTER COLUMN matched_created_at SET NOT NULL;
+-- The snapshot columns stay nullable: a small number of legacy reviews point
+-- at matched bills that have no surviving revision, and those reviews keep a
+-- NULL snapshot instead of being dropped or fabricated.
 --> statement-breakpoint
 -- A document may now accumulate several historical reviews (one per accepted
 -- or superseded revision). The old single-review-per-document constraint is

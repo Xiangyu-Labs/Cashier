@@ -248,10 +248,12 @@ export const duplicateReviews = pgTable(
     sourceDocumentId: uuid("source_document_id").notNull(),
     revisionId: uuid("revision_id").notNull(),
     matchedSourceDocumentId: uuid("matched_source_document_id").notNull(),
-    matchedRevisionId: uuid("matched_revision_id").notNull(),
+    // Nullable for legacy reviews whose matched bill has no surviving
+    // revision; new reviews always store a snapshot.
+    matchedRevisionId: uuid("matched_revision_id"),
     matchedTitle: text("matched_title"),
     matchedEntryDate: date("matched_entry_date", { mode: "string" }),
-    matchedCreatedAt: requiredTimestamp("matched_created_at"),
+    matchedCreatedAt: timestamp("matched_created_at", { withTimezone: true }),
     status: duplicateReviewStatusEnum("status").notNull().default("pending"),
     reason: text("reason"),
     confidence: numeric("confidence", { precision: 4, scale: 3 }),

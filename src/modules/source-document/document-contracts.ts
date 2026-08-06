@@ -103,7 +103,7 @@ export interface SourceDocumentDuplicateReviewDto {
   sourceDocumentId: string;
   revisionId: string;
   matchedSourceDocumentId: string;
-  matchedRevisionId: string;
+  matchedRevisionId: string | null;
   status: "pending" | "kept" | "discarded";
   reason: string | null;
   confidence: number | null;
@@ -111,8 +111,9 @@ export interface SourceDocumentDuplicateReviewDto {
 
 /**
  * Side-by-side review payload for a duplicate-pending document. The `matched`
- * side always renders the revision snapshot captured at detection time, so a
- * later edit or soft-delete of the matched bill never changes the evidence.
+ * side renders the revision snapshot captured at detection time, so a later
+ * edit or soft-delete of the matched bill never changes the evidence. It is
+ * null only for legacy reviews whose matched bill has no surviving revision.
  * `matchedState` describes what happened to the matched bill since detection.
  */
 export interface SourceDocumentDuplicateReviewDetailDto {
@@ -132,7 +133,7 @@ export interface SourceDocumentDuplicateReviewDetailDto {
     createdAt: string;
     entries: SourceDocumentLedgerEntryDto[];
     files: SourceDocumentStoredFileDto[];
-  };
+  } | null;
   matchedState: "unchanged" | "modified" | "deleted";
 }
 

@@ -322,4 +322,22 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     const keepButton = await screen.findByRole("button", { name: "仍然保留" });
     expect(keepButton).not.toBeDisabled();
   });
+
+  it("falls back to the unavailable matched message when the snapshot is missing", async () => {
+    reviewActionMock.mockResolvedValue({
+      ...reviewDetail(),
+      matched: null,
+      matchedRevisionId: null,
+      matchedState: "deleted",
+    });
+    const queryClient = createQueryClient();
+    const onCaughtError = vi.fn();
+    renderDialog({ queryClient, onCaughtError });
+
+    expect(await screen.findByText("匹配的原始账单已不可用。")).toBeInTheDocument();
+    expect(screen.queryByText("检测时版本")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Duplicate bill").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "删除重复" })).not.toBeDisabled();
+    expect(onCaughtError).not.toHaveBeenCalled();
+  });
 });

@@ -698,10 +698,11 @@ describe("duplicate review lifecycle", () => {
     expect(payload.duplicate.id).toBe(sourceDocumentId);
     expect(payload.duplicate.title).toBe("Coffee Shop");
     expect(payload.duplicate.entries[0]?.itemName).toBe("Latte");
-    expect(payload.matched.id).toBe(matched.sourceDocumentId);
-    expect(payload.matched.title).toBe("Coffee Shop");
-    expect(payload.matched.entryDate).toBe("2026-08-05");
-    expect(payload.matched.createdAt).toBe("2026-08-05T08:00:00.000Z");
+    expect(payload.matched).not.toBeNull();
+    expect(payload.matched?.id).toBe(matched.sourceDocumentId);
+    expect(payload.matched?.title).toBe("Coffee Shop");
+    expect(payload.matched?.entryDate).toBe("2026-08-05");
+    expect(payload.matched?.createdAt).toBe("2026-08-05T08:00:00.000Z");
     expect(payload.matchedState).toBe("unchanged");
   });
 });
