@@ -148,7 +148,7 @@ describe("Enhanced Stats Actions", () => {
       ).rejects.toThrow("Ledger");
     });
 
-    it("should filter by entryDate not createdAt", async () => {
+    it("should filter by effective date (entry date with createdAt fallback)", async () => {
       const db = getTestDb();
 
       // Create source document with entryDate in Jan but created in March

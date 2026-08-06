@@ -1,7 +1,8 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgers, sourceDocuments } from "@/persistence";
+import { ledgers, processingOutbox, sourceDocuments } from "@/persistence";
 import { NotFoundError } from "@/lib/errors";
+import type { ProcessingLeaseContract } from "@/application/contracts";
 
 /** Drizzle transaction client type used by all Postgres adapters. */
 export type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -64,4 +65,33 @@ export async function lockSourceDocumentForUpdate(
   }
 
   return rows[0]!;
+}
+
+/**
+ * Verify that the caller still holds the processing lease inside the current
+ * transaction. Takes a `FOR UPDATE` lock on the outbox row so a concurrent
+ * reclaim cannot interleave between this check and the transaction commit.
+ *
+ * Returns true when no lease is supplied (unleased callers keep the existing
+ * behavior) or when the outbox row is still claimed by the supplied token and
+ * has not expired.
+ */
+export async function assertProcessingLeaseHeld(
+  tx: PostgresTransaction,
+  lease: ProcessingLeaseContract | null | undefined
+): Promise<boolean> {
+  if (lease == null) return true;
+  const rows = await tx
+    .select({ id: processingOutbox.id })
+    .from(processingOutbox)
+    .where(
+      and(
+        eq(processingOutbox.id, lease.intentId),
+        eq(processingOutbox.status, "claimed"),
+        eq(processingOutbox.claimToken, lease.claimToken),
+        sql`${processingOutbox.claimExpiresAt} > now()`
+      )
+    )
+    .for("update");
+  return rows.length > 0;
 }

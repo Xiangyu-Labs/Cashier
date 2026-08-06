@@ -21,6 +21,7 @@ ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
 ENV API_KEY_PEPPER=build-placeholder
 ENV OPENAI_API_KEY=build-placeholder
 ENV AUTH_SECRET=build-placeholder
+ENV AUTH_OTP_PEPPER=build-placeholder
 ENV APP_URL=http://localhost:3000
 ENV S3_ENDPOINT=http://127.0.0.1:9000
 ENV S3_BUCKET=cashier

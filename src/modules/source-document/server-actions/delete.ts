@@ -3,9 +3,10 @@ import type {
   DeleteSourceDocumentReconciliationDto,
   DeleteSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
+import { parseMutationIdentity } from "@/modules/source-document/contract-schemas";
 import { deleteSourceDocument } from "../application/use-cases/delete-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { buildDeleteReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 
 /**
@@ -23,27 +24,28 @@ export const deleteSourceDocumentAction = withSourceDocumentLedgerAccess(
     DeleteSourceDocumentResultDto &
       Partial<{ reconciliation: DeleteSourceDocumentReconciliationDto["reconciliation"] }>
   > => {
-    // Read authoritative updatedAt BEFORE soft-delete sets deletedAt
-    const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceId);
+    const identity = parseMutationIdentity({
+      sourceDocumentId: sourceId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
 
     const result = await deleteSourceDocument(
       {
         ledgerId,
-        sourceDocumentId: sourceId,
+        sourceDocumentId: identity.sourceDocumentId,
       },
       serverComposition.sourceDocumentRevisions
     );
 
-    if (operationId != null && result.deleted) {
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        null, // Tombstone for delete
-        now,
-        true,
-        false
-      );
-      return { ...result, reconciliation: entity };
+    if (identity.operationId != null && result.deleted) {
+      return {
+        ...result,
+        reconciliation: await buildDeleteReconciliation(
+          identity.operationId,
+          ledgerId,
+          identity.sourceDocumentId
+        ),
+      };
     }
 
     return result;

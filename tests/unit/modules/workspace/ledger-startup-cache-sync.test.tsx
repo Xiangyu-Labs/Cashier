@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const clientCache = vi.hoisted(() => ({
-  clearUserCacheData: vi.fn(async () => {}),
+  clearUserCacheDataSafely: vi.fn(async () => true),
   getActiveStartupCacheKey: vi.fn<() => string | null>(() => null),
 }));
 const store = vi.hoisted(() => ({
@@ -191,7 +191,11 @@ describe("syncStartupCache", () => {
   it("clears stale user data when the active cache belongs to another user", async () => {
     clientCache.getActiveStartupCacheKey.mockReturnValue("other:ledger");
     await syncStartupCache(props, new AbortController().signal);
-    expect(clientCache.clearUserCacheData).toHaveBeenCalledWith();
+    expect(clientCache.clearUserCacheDataSafely).toHaveBeenCalledWith(
+      undefined,
+      props,
+      "Failed to clear startup cache during user switch"
+    );
   });
 
   it("does not replace the snapshot after the signal aborts", async () => {
@@ -202,5 +206,27 @@ describe("syncStartupCache", () => {
     });
     await syncStartupCache(props, controller.signal);
     expect(store.replaceLedgerStartupSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("retries snapshot conflicts twice and preserves the old snapshot when still conflicting", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const conflict = new Error("snapshot changed");
+      (conflict as Error & { code?: string }).code = "CONFLICT";
+      serverActions.getLedgerStartupCacheSnapshot.mockRejectedValue(conflict);
+
+      const promise = syncStartupCache(props, controller.signal);
+      const rejection = expect(promise).rejects.toThrow("snapshot changed");
+      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(300);
+
+      await rejection;
+      expect(serverActions.getLedgerStartupCacheSnapshot).toHaveBeenCalledTimes(3);
+      expect(serverActions.getLedgerStartupCacheVersion).toHaveBeenCalledTimes(3);
+      expect(store.replaceLedgerStartupSnapshot).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

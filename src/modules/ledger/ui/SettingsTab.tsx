@@ -27,7 +27,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
-import { clearUserCacheData } from "@/lib/client-cache";
+import { clearUserCacheDataSafely } from "@/lib/client-cache";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
 
@@ -136,7 +136,11 @@ export function SettingsTab({
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
   const handleSignOut = async () => {
-    await clearUserCacheData(ledger.userId).catch(() => {});
+    await clearUserCacheDataSafely(
+      ledger.userId,
+      { userId: ledger.userId, ledgerId },
+      "Failed to clear startup cache before sign-out"
+    );
     await signOut({ callbackUrl: "/login" });
   };
 

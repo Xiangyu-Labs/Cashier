@@ -22,6 +22,8 @@ interface StatsContentViewProps {
   endDateStr: string;
   stats: EnhancedStatsDto | undefined;
   isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   chartView: "trend" | "heatmap";
   onChartViewChange: (view: "trend" | "heatmap") => void;
   fallbackCurrency?: string;
@@ -41,6 +43,8 @@ export function StatsContentView({
   endDateStr,
   stats,
   isLoading = false,
+  isError = false,
+  onRetry,
   chartView,
   onChartViewChange,
   fallbackCurrency = "CNY",
@@ -61,8 +65,39 @@ export function StatsContentView({
       : { percent: statsTrend.percent, amount: Number(statsTrend.amount) };
   const comparison = stats?.summary.comparison;
 
+  if (isError && stats == null) {
+    return (
+      <div className="space-y-6 pb-24">
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-3 rounded-lg border border-danger/30 bg-danger/5 px-4 py-8 text-center"
+        >
+          <p className="text-sm text-foreground">{t("loadFailed")}</p>
+          {onRetry != null ? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("retry")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-24">
+      {isError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm"
+        >
+          <span className="text-danger">{t("loadFailed")}</span>
+          {onRetry != null ? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("retry")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <StatsHeader
         rangeType={rangeType}
         setRangeType={onRangeTypeChange}
@@ -95,6 +130,7 @@ export function StatsContentView({
               variant={chartView === "heatmap" ? "default" : "ghost"}
               size="sm"
               onClick={() => onChartViewChange("heatmap")}
+              aria-pressed={chartView === "heatmap"}
               className="h-7 px-2"
             >
               <Grid3X3 className="mr-1 h-4 w-4" />
@@ -104,6 +140,7 @@ export function StatsContentView({
               variant={chartView === "trend" ? "default" : "ghost"}
               size="sm"
               onClick={() => onChartViewChange("trend")}
+              aria-pressed={chartView === "trend"}
               className="h-7 px-2"
             >
               <BarChart3 className="mr-1 h-4 w-4" />

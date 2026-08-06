@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   generateOTP,
@@ -38,25 +39,24 @@ describe("OTP Utility Functions", () => {
   });
 
   describe("hashOTP", () => {
-    it("should produce SHA-256 hash with embedded salt", () => {
+    it("should produce a versioned keyed HMAC hash with a per-token salt", () => {
       const otp = "123456";
       const hash = hashOTP(otp);
 
-      // New format: hash:salt (64 hex chars + 1 colon + 32 hex salt = 97 chars)
-      expect(hash).toHaveLength(97);
-      expect(hash).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
+      expect(hash).toHaveLength(100);
+      expect(hash).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
     });
 
-    it("should produce different hashes for same input (due to random salt)", () => {
+    it("should include per-token entropy so identical OTPs produce distinct hashes", () => {
       const otp = "123456";
       const hash1 = hashOTP(otp);
       const hash2 = hashOTP(otp);
 
-      // Different salts means different hashes
       expect(hash1).not.toBe(hash2);
-      // But both should be valid formats
-      expect(hash1).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
-      expect(hash2).toMatch(/^[a-f0-9]{64}:[a-f0-9]{32}$/);
+      expect(hash1).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
+      expect(hash2).toMatch(/^v2:[a-f0-9]{64}:[a-f0-9]{32}$/);
+      expect(verifyOTP(otp, hash1)).toBe(true);
+      expect(verifyOTP(otp, hash2)).toBe(true);
     });
 
     it("should produce different hashes for different inputs", () => {
@@ -64,6 +64,18 @@ describe("OTP Utility Functions", () => {
       const hash2 = hashOTP("654321");
 
       expect(hash1).not.toBe(hash2);
+    });
+
+    it("keeps the legacy hash:salt verification branch working", () => {
+      const otp = "123456";
+      const salt = "legacy-salt";
+      const legacyHash = `${crypto
+        .createHash("sha256")
+        .update(otp + salt)
+        .digest("hex")}:${salt}`;
+
+      expect(verifyOTP(otp, legacyHash)).toBe(true);
+      expect(verifyOTP("654321", legacyHash)).toBe(false);
     });
   });
 
@@ -85,6 +97,26 @@ describe("OTP Utility Functions", () => {
     it("should be case sensitive (though OTPs are numeric)", () => {
       const hash = hashOTP("123456");
       expect(verifyOTP("123456", hash)).toBe(true);
+    });
+
+    it("rejects unknown version prefixes and malformed v2 hashes", () => {
+      const otp = "123456";
+      const v2 = hashOTP(otp);
+
+      expect(verifyOTP(otp, `v3:${v2.slice(3)}`)).toBe(false);
+      expect(verifyOTP(otp, `${v2}:extra`)).toBe(false);
+      expect(verifyOTP(otp, "v2:not-hex:not-hex")).toBe(false);
+      expect(verifyOTP(otp, "v2:not-hex")).toBe(false);
+      expect(verifyOTP(otp, "v2::")).toBe(false);
+      expect(verifyOTP(otp, "v2")).toBe(false);
+      expect(verifyOTP(otp, "")).toBe(false);
+    });
+
+    it("rejects legacy hashes with invalid hash formats", () => {
+      expect(verifyOTP("123456", "not-hex:salt")).toBe(false);
+      expect(verifyOTP("123456", "abcdef:salt")).toBe(false);
+      expect(verifyOTP("123456", "cafebabe")).toBe(false);
+      expect(verifyOTP("123456", "v2:")).toBe(false);
     });
   });
 

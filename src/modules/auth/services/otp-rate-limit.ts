@@ -1,6 +1,7 @@
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
+import { RateLimitUnavailableError } from "@/lib/errors";
 import { getResendCooldown } from "./otp";
 import type { RateLimitPort } from "../application/ports";
 
@@ -65,7 +66,7 @@ export async function checkSendRateLimit(
       { error, subject: logIdentifier("email", email) },
       "OTP send rate limit check failed"
     );
-    return { allowed: true, remainingAttempts: getSendMaxAttempts() };
+    throw new RateLimitUnavailableError();
   }
 }
 
@@ -108,7 +109,7 @@ export async function checkSendRateLimitByIP(
       { error, subject: logIdentifier("ip", ip) },
       "OTP send IP rate limit check failed"
     );
-    return { allowed: true, remainingAttempts: getIpMaxAttempts() };
+    throw new RateLimitUnavailableError();
   }
 }
 
@@ -142,7 +143,7 @@ export async function checkResendCooldown(
       { error, subject: logIdentifier("email", email) },
       "OTP resend cooldown check failed"
     );
-    return { allowed: true };
+    throw new RateLimitUnavailableError();
   }
 }
 
@@ -157,6 +158,7 @@ export async function setResendCooldown(email: string, rateLimiter: RateLimitPor
       { error, subject: logIdentifier("email", email) },
       "Failed to set OTP resend cooldown"
     );
+    throw new RateLimitUnavailableError();
   }
 }
 
@@ -206,6 +208,6 @@ export async function checkVerifyRateLimit(
     return true;
   } catch (error) {
     logger.error({ error, subject: logIdentifier("ip", ip) }, "OTP verify rate limit check failed");
-    return true;
+    throw new RateLimitUnavailableError();
   }
 }

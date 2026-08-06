@@ -1,0 +1,78 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getEnhancedStats } from "@/modules/stats/actions";
+import { StatsTab } from "@/modules/workspace/ui/StatsTab";
+import { PullToRefreshProvider } from "@/modules/workspace/pull-to-refresh-context";
+import type { EnhancedStatsDto } from "@/modules/stats/contracts";
+import type { Ledger } from "@/modules/ledger/contracts";
+
+vi.mock("@/modules/stats/actions", () => ({
+  getEnhancedStats: vi.fn(),
+}));
+
+const ledgerFixture: Ledger = {
+  id: "ledger-1",
+  userId: "user-1",
+  settings: { mainCurrency: "CNY" },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
+const statsFixture: EnhancedStatsDto = {
+  unconvertedCount: 0,
+  summary: {
+    total: "120",
+    currency: "CNY",
+    trend: { percent: 100, amount: "60" },
+    dailyAverage: 20,
+    comparison: {
+      mode: "same_period",
+      from: "2026-07-01",
+      to: "2026-07-06",
+      previousTotal: "60",
+      amountDelta: "60",
+      percent: 100,
+    },
+  },
+  categories: [],
+  chart: [],
+  heatmap: {
+    days: [],
+    stats: { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 },
+  },
+};
+
+function renderStatsTab() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <PullToRefreshProvider>
+        <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} />
+      </PullToRefreshProvider>
+    </QueryClientProvider>
+  );
+  return queryClient;
+}
+
+describe("StatsTab", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows the error panel on failure and refetches via the retry button", async () => {
+    vi.mocked(getEnhancedStats).mockRejectedValue(new Error("boom"));
+    renderStatsTab();
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("总支出")).not.toBeInTheDocument();
+
+    vi.mocked(getEnhancedStats).mockResolvedValueOnce(statsFixture);
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+    await waitFor(() => expect(getEnhancedStats).toHaveBeenCalledTimes(2));
+    await screen.findByText("¥120.00");
+  });
+});

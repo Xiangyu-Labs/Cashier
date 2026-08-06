@@ -1,6 +1,7 @@
 import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import type { LedgerDto } from "@/modules/ledger/contracts";
+import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
@@ -16,6 +17,8 @@ interface ActiveContentProps {
   passwordUpdatedAt?: string | null;
   interfaceLanguage?: InterfaceLanguage;
   locale?: string;
+  initialCategories?: EntryCategoryWithCount[];
+  initialStatsDate?: Date;
 }
 
 export function ActiveContent({
@@ -28,6 +31,8 @@ export function ActiveContent({
   hasPassword,
   passwordUpdatedAt,
   interfaceLanguage,
+  initialCategories,
+  initialStatsDate,
 }: ActiveContentProps) {
   return (
     <LedgerPageClient
@@ -35,6 +40,8 @@ export function ActiveContent({
       initialLedger={ledgerDto}
       initialTab={initialTab}
       initialPeriod={periodParams}
+      {...(initialCategories !== undefined ? { initialCategories } : {})}
+      {...(initialStatsDate !== undefined ? { initialStatsDate } : {})}
       {...(userEmail !== undefined ? { userEmail } : {})}
       {...(hasPassword !== undefined ? { hasPassword } : {})}
       {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}

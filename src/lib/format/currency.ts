@@ -1,22 +1,25 @@
+import { getCurrencyDecimals } from "@/lib/money/currency-precision";
+
 export function formatCurrencyAmount(
   amount: number,
   currency: string,
   locale?: string,
   options: Intl.NumberFormatOptions = {}
 ): string {
+  const decimals = getCurrencyDecimals(currency);
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
       ...options,
     }).format(amount);
   } catch {
     const formatted = new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
       ...options,
     }).format(amount);
 

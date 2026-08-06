@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchWithRetry,
   formatExchangeRateDate,
-} from "@/modules/currency/application/services/exchange-rate";
+} from "@/application/adapters/postgres/exchange-rate";
 
 describe("formatExchangeRateDate", () => {
   it("returns date-only value from ISO datetime strings", () => {
@@ -27,20 +27,20 @@ describe("fetchWithRetry", () => {
     const response = new Response(JSON.stringify({ ok: true }), { status: 200 });
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
 
-    const result = await fetchWithRetry("https://example.com/rates", 3, 1);
+    const result = await fetchWithRetry("https://example.com/rates");
 
     expect(result).toBe(response);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("retries after a failure and then succeeds", async () => {
+  it("retries a network failure and then succeeds", async () => {
     const response = new Response(JSON.stringify({ ok: true }), { status: 200 });
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValueOnce(new Error("network down"))
       .mockResolvedValueOnce(response);
 
-    const result = await fetchWithRetry("https://example.com/rates", 2, 1);
+    const result = await fetchWithRetry("https://example.com/rates", 3, 1);
 
     expect(result).toBe(response);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -51,9 +51,44 @@ describe("fetchWithRetry", () => {
       .spyOn(globalThis, "fetch")
       .mockRejectedValue(new Error("still unavailable"));
 
-    await expect(fetchWithRetry("https://example.com/rates", 2, 1)).rejects.toThrow(
+    await expect(fetchWithRetry("https://example.com/rates", 3, 1)).rejects.toThrow(
       "still unavailable"
     );
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([408, 429, 500, 502, 503])(
+    "retries HTTP %i and succeeds on a later attempt",
+    async (status) => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response(null, { status }))
+        .mockResolvedValueOnce(new Response(null, { status }))
+        .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+      const result = await fetchWithRetry("https://example.com/rates", 3, 1);
+
+      expect(result.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+    }
+  );
+
+  it("throws when a retryable status persists across all attempts", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 503 }));
+
+    await expect(fetchWithRetry("https://example.com/rates", 3, 1)).rejects.toThrow("HTTP 503");
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([400, 404, 422])("returns HTTP %i immediately without retrying", async (status) => {
+    const response = new Response(null, { status });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+
+    const result = await fetchWithRetry("https://example.com/rates", 3, 1);
+
+    expect(result).toBe(response);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,6 +8,8 @@ const DEFAULT_OTP_EXPIRES_SECONDS = 300;
 const DEFAULT_LOCKOUT_MINUTES = 15;
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+const V2_HASH_PATTERN = /^v2:([a-f0-9]{64}):([a-f0-9]{32})$/;
+const LEGACY_HASH_PATTERN = /^([a-f0-9]{64}):([^:]+)$/;
 
 export function generateOTP(): string {
   const maxValue = Math.pow(10, OTP_LENGTH);
@@ -15,26 +17,41 @@ export function generateOTP(): string {
 }
 
 export function hashOTP(otp: string): string {
+  // Per-token salt keeps token hashes unique even when two accounts receive
+  // the same six-digit code; otp_tokens.token_hash has a global unique index.
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto
-    .createHash("sha256")
-    .update(otp + salt)
+    .createHmac("sha256", runtimeEnv.authOtpPepper)
+    .update(`${salt}:${otp}`)
     .digest("hex");
-  return `${hash}:${salt}`;
+  return `v2:${hash}:${salt}`;
 }
 
 export function verifyOTP(otp: string, storedHash: string): boolean {
-  const [hash, salt] = storedHash.split(":");
+  const v2Match = V2_HASH_PATTERN.exec(storedHash);
+  let expectedHash: string;
+  let computed: string;
 
-  if (hash == null || hash === "" || salt == null || salt === "") {
-    return false;
+  if (v2Match != null) {
+    expectedHash = v2Match[1]!;
+    const salt = v2Match[2]!;
+    computed = crypto
+      .createHmac("sha256", runtimeEnv.authOtpPepper)
+      .update(`${salt}:${otp}`)
+      .digest("hex");
+  } else {
+    // Compatibility window for tokens created before the keyed v2 format.
+    const legacyMatch = LEGACY_HASH_PATTERN.exec(storedHash);
+    if (legacyMatch == null) return false;
+    expectedHash = legacyMatch[1]!;
+    const salt = legacyMatch[2]!;
+    computed = crypto
+      .createHash("sha256")
+      .update(otp + salt)
+      .digest("hex");
   }
 
-  const computed = crypto
-    .createHash("sha256")
-    .update(otp + salt)
-    .digest("hex");
-  const hashBuf = Buffer.from(hash, "hex");
+  const hashBuf = Buffer.from(expectedHash, "hex");
   const computedBuf = Buffer.from(computed, "hex");
 
   if (hashBuf.length !== computedBuf.length) {

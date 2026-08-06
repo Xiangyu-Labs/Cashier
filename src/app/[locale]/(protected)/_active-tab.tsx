@@ -1,8 +1,12 @@
+import { Suspense } from "react";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
+import { HydrationBoundary } from "@tanstack/react-query";
 import { redirect } from "@/i18n/routing";
 import { resolveAuthenticatedHome } from "@/lib/request-cache";
 import { UnauthorizedError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
@@ -12,6 +16,27 @@ import {
 } from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
+import { LedgerBootstrapFallback } from "./_ledger-bootstrap-fallback";
+import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
+import { serverComposition } from "@/application/server-composition-root";
+import type { AuthenticatedHomeContext } from "@/lib/request-cache";
+import type { LedgerDto } from "@/modules/ledger/contracts";
+import type { PeriodParams } from "@/lib/period-utils";
+import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
+import type { LedgerTab } from "@/modules/workspace/tabs";
+
+type PageBootstrapResult = Awaited<ReturnType<typeof getLedgerPageBootstrap>>;
+
+interface ActiveTabBootstrapProps {
+  pageDataPromise: Promise<PageBootstrapResult>;
+  ledgerId: string;
+  ledgerDto: LedgerDto;
+  activeTab: LedgerTab;
+  periodParams: PeriodParams;
+  advancedFilters: LedgerAdvancedFilters;
+  session: AuthenticatedHomeContext["session"];
+}
 
 interface ActiveTabProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -42,6 +67,30 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
     getScopedLedgerSearchParams(urlSearchParams, filterScope)
   );
   const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
+  const pageDataPromise = getLedgerPageBootstrap(
+    {
+      ledgerId,
+      initialTab: activeTab,
+      periodParams,
+      advancedFilters,
+      ledgerDto,
+    },
+    {
+      categories: serverComposition.categories,
+      ledgerReads: serverComposition.ledgerReads,
+      stats: serverComposition.stats,
+      sourceDocuments: {
+        documents: serverComposition.sourceDocumentReads,
+        ledgerReads: serverComposition.ledgerReads,
+      },
+      credentials: serverComposition.serviceCredentials,
+    }
+  );
+  // Authenticated request boundary for processing recovery: the bootstrap
+  // query stays side-effect free, but every visit to this route still gets
+  // a recovery pass after the response finishes.
+  scheduleProcessingRecoveryAfter(ledgerId);
+
   const allMessages = await messagesPromise;
   const activeFeature =
     activeTab === "details"
@@ -59,19 +108,70 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   return (
     <NextIntlClientProvider messages={activeMessages} locale={locale}>
       <ActiveShell ledgerId={ledgerId}>
-        <ActiveContent
-          ledgerId={ledgerId}
-          ledgerDto={ledgerDto}
-          initialTab={activeTab}
-          periodParams={periodParams}
-          advancedFilters={advancedFilters}
-          {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
-          hasPassword={session.user?.hasPassword ?? false}
-          passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}
-          interfaceLanguage={session.user?.interfaceLanguage ?? "auto"}
-        />
+        <Suspense
+          fallback={
+            <LedgerBootstrapFallback
+              userId={context.userId}
+              ledgerId={ledgerId}
+              activeTab={activeTab}
+            />
+          }
+        >
+          <ActiveTabBootstrap
+            pageDataPromise={pageDataPromise}
+            ledgerId={ledgerId}
+            ledgerDto={ledgerDto}
+            activeTab={activeTab}
+            periodParams={periodParams}
+            advancedFilters={advancedFilters}
+            session={session}
+          />
+        </Suspense>
       </ActiveShell>
     </NextIntlClientProvider>
+  );
+}
+
+async function ActiveTabBootstrap({
+  pageDataPromise,
+  ledgerId,
+  ledgerDto,
+  activeTab,
+  periodParams,
+  advancedFilters,
+  session,
+}: ActiveTabBootstrapProps) {
+  let pageData: PageBootstrapResult;
+  try {
+    pageData = await pageDataPromise;
+  } catch (error) {
+    logger.error(
+      { error, ledgerSubject: logIdentifier("ledger", ledgerId) },
+      "Ledger page bootstrap failed; falling back to client queries"
+    );
+    pageData = null;
+  }
+
+  return (
+    <HydrationBoundary state={pageData?.dehydratedState}>
+      <ActiveContent
+        ledgerId={ledgerId}
+        ledgerDto={ledgerDto}
+        initialTab={activeTab}
+        periodParams={periodParams}
+        advancedFilters={advancedFilters}
+        {...(pageData?.initialCategories !== undefined
+          ? { initialCategories: pageData.initialCategories }
+          : {})}
+        {...(pageData?.initialStatsDate !== undefined
+          ? { initialStatsDate: pageData.initialStatsDate }
+          : {})}
+        {...(session.user?.email != null ? { userEmail: session.user.email } : {})}
+        hasPassword={session.user?.hasPassword ?? false}
+        passwordUpdatedAt={session.user?.passwordUpdatedAt ?? null}
+        interfaceLanguage={session.user?.interfaceLanguage ?? "auto"}
+      />
+    </HydrationBoundary>
   );
 }
 

@@ -677,10 +677,46 @@ async function loadFiles(
   return result;
 }
 
+async function loadFileData(
+  rows: readonly SourceDocumentRow[],
+  includeFiles: boolean
+): Promise<{
+  files: Map<string, SourceDocumentStoredFileDto[]>;
+  hasImages: Map<string, boolean>;
+}> {
+  if (includeFiles) {
+    const files = await loadFiles(rows);
+    return {
+      files,
+      hasImages: new Map(rows.map((row) => [row.id, (files.get(row.id)?.length ?? 0) > 0])),
+    };
+  }
+
+  const selected = new Map(
+    rows.flatMap((row) => {
+      const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
+      return revisionId == null ? [] : [[revisionId, row.id] as const];
+    })
+  );
+  if (selected.size === 0) return { files: new Map(), hasImages: new Map() };
+
+  const revisionsWithFiles = await db
+    .selectDistinct({ revisionId: revisionFiles.revisionId })
+    .from(revisionFiles)
+    .where(inArray(revisionFiles.revisionId, [...selected.keys()]));
+  const revisionIds = new Set(revisionsWithFiles.map((row) => row.revisionId));
+  const hasImages = new Map<string, boolean>();
+  for (const [revisionId, documentId] of selected) {
+    if (revisionIds.has(revisionId)) hasImages.set(documentId, true);
+  }
+  return { files: new Map(), hasImages };
+}
+
 function mapListItem(
   row: SourceDocumentRow,
   revisions: ReadonlyMap<string, typeof sourceDocumentRevisions.$inferSelect>,
   files: ReadonlyMap<string, readonly SourceDocumentStoredFileDto[]>,
+  hasImages: ReadonlyMap<string, boolean>,
   includeFiles = false
 ): SourceDocumentListItemDto {
   const revisionId = row.pendingRevisionId ?? row.activeRevisionId;
@@ -699,7 +735,7 @@ function mapListItem(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: null,
-    hasImages: (files.get(row.id)?.length ?? 0) > 0,
+    hasImages: hasImages.get(row.id) ?? (files.get(row.id)?.length ?? 0) > 0,
     supportedActions: [
       ...supportedSourceDocumentActions({
         activeRevisionId: row.activeRevisionId,
@@ -903,16 +939,25 @@ export async function listTargetSourceDocuments(input: TargetSourceDocumentListI
   const rows = await fetchRows(input, true);
   const hasMore = rows.length > input.limit;
   const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, files] = await Promise.all([loadRevisionFacts(pageRows), loadFiles(pageRows)]);
-  const [candidateComparisonMap, activeResultSummaryMap] = await Promise.all([
+  const [revisions, fileData] = await Promise.all([
+    loadRevisionFacts(pageRows),
+    loadFileData(pageRows, input.includeFiles === true),
+  ]);
+  const [candidateComparisonMap, activeResultSummaryMap, duplicateReviewMap] = await Promise.all([
     loadCandidateComparisonMap(pageRows, revisions),
     loadActiveResultSummaryMap(pageRows, revisions),
+    loadDuplicateReviewMap(pageRows),
   ]);
-  const duplicateReviewMap = await loadDuplicateReviewMap(pageRows);
   const last = pageRows.at(-1);
   return {
     items: pageRows.map((row) => {
-      const item = mapListItem(row, revisions, files, input.includeFiles === true);
+      const item = mapListItem(
+        row,
+        revisions,
+        fileData.files,
+        fileData.hasImages,
+        input.includeFiles === true
+      );
       if (item.status === "candidate_pending") {
         const comparison = candidateComparisonMap.get(row.id);
         if (comparison !== undefined) {
@@ -947,18 +992,24 @@ export async function collectTargetSourceDocuments(input: TargetSourceDocumentLi
   ]);
   const hasMore = rows.length > input.limit;
   const resultRows = hasMore ? rows.slice(0, input.limit) : rows;
-  const [revisions, files] = await Promise.all([
+  const [revisions, fileData] = await Promise.all([
     loadRevisionFacts(resultRows),
-    loadFiles(resultRows),
+    loadFileData(resultRows, input.includeFiles === true),
   ]);
-  const [candidateComparisonMap, activeResultSummaryMap] = await Promise.all([
+  const [candidateComparisonMap, activeResultSummaryMap, duplicateReviewMap] = await Promise.all([
     loadCandidateComparisonMap(resultRows, revisions),
     loadActiveResultSummaryMap(resultRows, revisions),
+    loadDuplicateReviewMap(resultRows),
   ]);
-  const duplicateReviewMap = await loadDuplicateReviewMap(resultRows);
   return {
     items: resultRows.map((row) => {
-      const item = mapListItem(row, revisions, files);
+      const item = mapListItem(
+        row,
+        revisions,
+        fileData.files,
+        fileData.hasImages,
+        input.includeFiles === true
+      );
       if (item.status === "candidate_pending") {
         const comparison = candidateComparisonMap.get(row.id);
         if (comparison !== undefined) {
@@ -1018,15 +1069,15 @@ export async function getTargetSourceDocument(
     ),
   });
   if (row == null) return null;
-  const [revisions, filesByDocument] = await Promise.all([
+  const [revisions, fileData] = await Promise.all([
     loadRevisionFacts([row]),
-    loadFiles([row]),
+    loadFileData([row], true),
   ]);
   const duplicateReviewMap = await loadDuplicateReviewMap([row]);
   const selectedRevisionId = row.pendingRevisionId ?? row.activeRevisionId;
   const selectedRevision =
     selectedRevisionId == null ? null : (revisions.get(selectedRevisionId) ?? null);
-  const files = filesByDocument.get(row.id) ?? [];
+  const files = fileData.files.get(row.id) ?? [];
   const status = statusForRow(row, revisions);
 
   // Load active result summary for anomaly/failed documents with an active revision

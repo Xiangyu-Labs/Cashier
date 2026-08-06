@@ -1,11 +1,11 @@
 import { ConflictError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
 import type {
   LedgerChangeReadPort,
   SourceDocumentQueryPorts,
 } from "@/modules/source-document/application/ports";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
-import { LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT } from "../../ledger-startup-cache-constants";
 
 export interface LedgerStartupCacheVersionDto {
   version: string;
@@ -25,13 +25,14 @@ export async function getLedgerStartupCacheVersion(
   changes: Pick<LedgerChangeReadPort, "getSnapshotMetadata">
 ): Promise<LedgerStartupCacheVersionDto> {
   const metadata = await changes.getSnapshotMetadata(ledgerId);
-  const truncated = metadata.recordCount > LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT;
+  const documentLimit = runtimeEnv.ledgerStartupCacheDocumentLimit;
+  const truncated = metadata.recordCount > documentLimit;
   return {
     version: metadata.version.toString(),
     recordCount: metadata.recordCount,
     complete: !truncated,
     truncated,
-    coverageLimit: LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT,
+    coverageLimit: documentLimit,
   };
 }
 
@@ -44,12 +45,13 @@ export async function getLedgerStartupCacheSnapshot(
   }
 ): Promise<LedgerStartupCachePayloadDto> {
   const items: SourceDocumentListItemDto[] = [];
+  const documentLimit = runtimeEnv.ledgerStartupCacheDocumentLimit;
   let cursor: string | undefined;
   do {
     const page = await listSourceDocuments(
       ledgerId,
       {
-        limit: Math.min(100, LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT - items.length),
+        limit: Math.min(100, documentLimit - items.length),
         includeEntries: true,
         includeFiles: true,
         ...(cursor != null ? { cursor } : {}),
@@ -58,7 +60,7 @@ export async function getLedgerStartupCacheSnapshot(
     );
     items.push(...page.items);
     cursor = page.nextCursor ?? undefined;
-  } while (cursor != null && items.length < LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT);
+  } while (cursor != null && items.length < documentLimit);
 
   const metadata = await getLedgerStartupCacheVersion(ledgerId, dependencies.changes);
   if (metadata.version !== expectedVersion) {

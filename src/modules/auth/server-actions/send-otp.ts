@@ -18,6 +18,7 @@ export type SendOTPActionResult =
       ok: false;
       code:
         | "rate_limited"
+        | "rate_limit_unavailable"
         | "invalid_email"
         | "email_not_configured"
         | "email_send_failed"
@@ -35,6 +36,9 @@ function sendOTPFailure(error: unknown): SendOTPActionResult {
   }
 
   if (error instanceof AppError) {
+    if (error.code === "AUTH_RATE_LIMIT_UNAVAILABLE") {
+      return { ok: false, code: "rate_limit_unavailable" };
+    }
     switch (error.code) {
       case "VALIDATION_ERROR":
         return { ok: false, code: "invalid_email" };
@@ -68,6 +72,7 @@ export async function sendOTPAction(email: string, locale?: string): Promise<Sen
       {
         emailDelivery: serverComposition.email,
         tokens: serverComposition.otpTokens,
+        users: serverComposition.userAccounts,
         rateLimiter: serverComposition.rateLimiter,
       }
     );

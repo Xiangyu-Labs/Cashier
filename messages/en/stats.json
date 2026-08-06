@@ -81,6 +81,10 @@
     "samePeriodEqual": "No change vs same {period}",
     "fullPeriodMore": "+{amount} vs {period} (+{percent}%)",
     "fullPeriodLess": "-{amount} vs {period} (-{percent}%)",
-    "fullPeriodEqual": "No change vs {period}"
+    "fullPeriodEqual": "No change vs {period}",
+    "loadFailed": "Failed to load statistics. Please try again.",
+    "retry": "Retry",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period"
   }
 }

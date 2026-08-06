@@ -7,6 +7,7 @@ const rateBook = { getRates: vi.fn() } as unknown as FxRateBook;
 describe("convertAmountsBatch", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("loads rates once per unique date and preserves the original input order", async () => {
@@ -106,5 +107,44 @@ describe("convertAmountsBatch", () => {
         rateBook
       )
     ).rejects.toThrow("upstream rates unavailable");
+  });
+
+  it("never queries rates for an all-same-currency batch", async () => {
+    const getRatesSpy = vi.spyOn(rateBook, "getRates");
+
+    const results = await convertAmountsBatch(
+      [
+        { amount: "10", fromCurrency: "USD", date: "2026-02-04" },
+        { amount: "20", fromCurrency: "USD", date: "2026-02-03" },
+      ],
+      "USD",
+      rateBook
+    );
+
+    expect(getRatesSpy).not.toHaveBeenCalled();
+    expect(results).toEqual([
+      { convertedAmount: "10", exchangeRate: "1" },
+      { convertedAmount: "20", exchangeRate: "1" },
+    ]);
+  });
+
+  it("keeps the real exchange rate for zero-amount cross-currency items", async () => {
+    vi.spyOn(rateBook, "getRates").mockResolvedValue({
+      base: "EUR",
+      date: "2026-02-04",
+      rates: {
+        USD: 1.1,
+        CNY: 7.5,
+      },
+    });
+
+    const results = await convertAmountsBatch(
+      [{ amount: "0", fromCurrency: "USD", toCurrency: "CNY", date: "2026-02-04" }],
+      "CNY",
+      rateBook
+    );
+
+    expect(results[0]?.convertedAmount).toBe("0");
+    expect(Number.parseFloat(results[0]?.exchangeRate ?? "")).toBeCloseTo(6.818181818181818, 12);
   });
 });

@@ -4,7 +4,8 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { SettingsPageClient } from "@/modules/ledger/ui/SettingsPageClient";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { auth } from "@/auth";
-import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { getLedgerSettingsBootstrap } from "@/modules/workspace/application/queries/get-ledger-settings-bootstrap";
+import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { serverComposition } from "@/application/server-composition-root";
 
 interface SettingsPageProps {
@@ -25,21 +26,15 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     return <div>{t("notFound")}</div>;
   }
 
-  const pageData = await getLedgerPageBootstrap(
+  scheduleProcessingRecoveryAfter(ledgerId);
+
+  const pageData = await getLedgerSettingsBootstrap(
     {
       ledgerId,
-      initialTab: "settings",
-      periodParams: { period: "thisMonth" },
       ledgerDto: ledger,
     },
     {
       categories: serverComposition.categories,
-      ledgerReads: serverComposition.ledgerReads,
-      stats: serverComposition.stats,
-      sourceDocuments: {
-        documents: serverComposition.sourceDocumentReads,
-        ledgerReads: serverComposition.ledgerReads,
-      },
       credentials: serverComposition.serviceCredentials,
     }
   );
