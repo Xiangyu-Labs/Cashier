@@ -10,9 +10,7 @@ import type {
 import { StoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
-  postgresIdempotencyAdapter,
   postgresRevisionAdapter,
-  postgresServiceCredentialAdapter,
 } from "@/application/adapters/postgres";
 
 class ContractFileStore {
@@ -107,15 +105,8 @@ applicationContractSuite("real Postgres/object-storage/in-process adapter compos
     return current;
   }
 
-  let credential: Awaited<ReturnType<typeof postgresServiceCredentialAdapter.create>> | null = null;
-
   return {
     sourceDocumentActions: supportedSourceDocumentActions,
-    executeIdempotently: async (key, operation) => {
-      const { ledgerId } = await getSetup();
-      credential ??= await postgresServiceCredentialAdapter.create(ledgerId, "Contract");
-      return postgresIdempotencyAdapter.execute(credential.id, key, operation);
-    },
     files,
     processing: processingPort,
     plan,

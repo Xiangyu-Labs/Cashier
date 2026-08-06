@@ -37,9 +37,6 @@ describe("useLedgerMutation cache targeting", () => {
     const request = new Promise<void>((resolve) => {
       resolveRequest = resolve;
     });
-    const optimisticUpdate = vi.fn((client: QueryClient) => {
-      client.setQueryData(queryKey, [{ id: "new", name: "Optimistic" }]);
-    });
 
     const { result } = renderHook(
       () =>
@@ -47,7 +44,6 @@ describe("useLedgerMutation cache targeting", () => {
           mutationFn: () => request,
           successMessage: null,
           errorMessage: null,
-          onOptimisticUpdate: optimisticUpdate,
         }),
       { wrapper }
     );
@@ -55,7 +51,6 @@ describe("useLedgerMutation cache targeting", () => {
     act(() => result.current.mutate());
     await waitFor(() => expect(result.current.isPending).toBe(true));
     expect(queryClient.getQueryData(queryKey)).toEqual([{ id: "old", name: "Original" }]);
-    expect(optimisticUpdate).not.toHaveBeenCalled();
 
     await act(async () => resolveRequest());
   });
@@ -124,6 +119,7 @@ describe("useLedgerMutation cache targeting", () => {
   it("still resolves when the server action succeeds but cache invalidation fails", async () => {
     const { queryClient, wrapper } = setup();
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onRefreshSettled = vi.fn();
     const invalidate = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockRejectedValue(new Error("refresh failed"));
@@ -135,19 +131,23 @@ describe("useLedgerMutation cache targeting", () => {
           successMessage: null,
           errorMessage: null,
           invalidatePredicates: [affected],
+          onRefreshSettled,
         }),
       { wrapper }
     );
 
     await act(async () => {
-      await expect(result.current.mutateAsync()).resolves.toBe("saved");
+      await expect(result.current.mutateAsync(undefined)).resolves.toBe("saved");
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidate).toHaveBeenCalledWith({ predicate: affected });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
+    expect(onRefreshSettled).toHaveBeenCalledWith(
+      queryClient,
+      undefined,
+      expect.objectContaining({ message: "refresh failed" })
+    );
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining("background cache invalidation failed"),
       expect.objectContaining({ ledgerId: "ledger-1" })
@@ -160,6 +160,8 @@ describe("useLedgerMutation cache targeting", () => {
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("refresh failed"));
     const onSuccessExtra = vi.fn();
     const onErrorExtra = vi.fn();
+    const onMutationSettled = vi.fn();
+    const onRefreshSettled = vi.fn();
     const affected = (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "affected";
     const { result } = renderHook(
       () =>
@@ -170,6 +172,8 @@ describe("useLedgerMutation cache targeting", () => {
           invalidatePredicates: [affected],
           onSuccessExtra,
           onErrorExtra,
+          onMutationSettled,
+          onRefreshSettled,
         }),
       { wrapper }
     );
@@ -182,14 +186,90 @@ describe("useLedgerMutation cache targeting", () => {
     expect(onErrorExtra).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(onMutationSettled).toHaveBeenCalledTimes(1);
 
     // Let the failed background refresh settle; callbacks must not re-run.
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
     expect(onSuccessExtra).toHaveBeenCalledTimes(1);
     expect(onErrorExtra).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(onMutationSettled).toHaveBeenCalledTimes(1);
+    expect(onRefreshSettled).toHaveBeenCalledWith(
+      queryClient,
+      undefined,
+      expect.objectContaining({ message: "refresh failed" })
+    );
+  });
+
+  it("invokes onMutationSettled on success without waiting for background invalidation", async () => {
+    const { queryClient, wrapper } = setup();
+    let releaseRefresh!: () => void;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(async () => {
+      await refreshGate;
+    });
+    const onMutationSettled = vi.fn();
+    const onRefreshSettled = vi.fn();
+    const affected = (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "affected";
+    const { result } = renderHook(
+      () =>
+        useLedgerMutation("ledger-1", {
+          mutationFn: async () => "saved",
+          successMessage: null,
+          errorMessage: null,
+          invalidatePredicates: [affected],
+          onMutationSettled,
+          onRefreshSettled,
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await result.current.mutateAsync(undefined);
+    });
+
+    expect(onMutationSettled).toHaveBeenCalledTimes(1);
+    expect(onMutationSettled).toHaveBeenCalledWith(queryClient, undefined, "saved", null);
+    expect(onRefreshSettled).not.toHaveBeenCalled();
+
+    await act(async () => releaseRefresh());
+    await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
+    expect(onRefreshSettled).toHaveBeenCalledWith(queryClient, undefined, null);
+  });
+
+  it("invokes onMutationSettled on error and never runs the refresh callback", async () => {
+    const { queryClient, wrapper } = setup();
+    const onMutationSettled = vi.fn();
+    const onRefreshSettled = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useLedgerMutation("ledger-1", {
+          mutationFn: async () => {
+            throw new Error("server action failed");
+          },
+          successMessage: null,
+          errorMessage: null,
+          invalidatePredicates: [() => false],
+          onMutationSettled,
+          onRefreshSettled,
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await expect(result.current.mutateAsync(undefined)).rejects.toThrow("server action failed");
+    });
+
+    expect(onMutationSettled).toHaveBeenCalledTimes(1);
+    expect(onMutationSettled).toHaveBeenCalledWith(
+      queryClient,
+      undefined,
+      undefined,
+      expect.objectContaining({ message: "server action failed" })
+    );
+    expect(onRefreshSettled).not.toHaveBeenCalled();
   });
 });

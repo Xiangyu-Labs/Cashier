@@ -14,7 +14,6 @@ export interface ApplicationContractHarness {
     activeRevisionId: string | null;
     pendingOutcome: "failed" | "processing";
   }): readonly string[];
-  executeIdempotently<T>(key: string, operation: () => Promise<T>): Promise<T>;
   files: StoredFilePort;
   processing: ProcessingPort;
   plan(): Promise<UploadPlanContract>;
@@ -41,19 +40,6 @@ export function applicationContractSuite(
           pendingOutcome: "processing",
         })
       ).toEqual(["cancel_processing", "retry", "edit_retry", "delete"]);
-    });
-
-    it("enforces idempotency", async () => {
-      const harness = await create();
-      let calls = 0;
-      const operation = async () => ({ value: ++calls });
-      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({
-        value: 1,
-      });
-      await expect(harness.executeIdempotently("same-request", operation)).resolves.toEqual({
-        value: 1,
-      });
-      expect(calls).toBe(1);
     });
 
     it("finalizes an upload into opaque stored-file identities and authorizes reads", async () => {

@@ -3,7 +3,6 @@ import type {
   AuthenticationPort,
   CategoryPort,
   CurrencyPort,
-  IdempotencyPort,
   LedgerPort,
   ServiceCredentialPort,
   SettingsPort,
@@ -18,7 +17,6 @@ import { multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/m
 import {
   currencyRates,
   entryCategories,
-  idempotencyRecords,
   ledgerEntries,
   ledgers,
   otpTokens,
@@ -718,110 +716,6 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
       )
       .returning({ id: serviceCredentials.id });
     return result.length === 1;
-  },
-};
-
-const IDEMPOTENCY_WAIT_ATTEMPTS = 10;
-const IDEMPOTENCY_LEASE_MS = 30_000;
-const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export const postgresIdempotencyAdapter: IdempotencyPort = {
-  async execute<T>(
-    credentialId: string,
-    key: string,
-    operation: () => Promise<T>,
-    contentFingerprint?: string
-  ): Promise<T> {
-    if (key.trim() === "" || key.length > 512) {
-      throw new ValidationError("Idempotency key must contain between 1 and 512 characters");
-    }
-
-    const now = new Date();
-    const leaseToken = crypto.randomUUID();
-    const claimed = await db
-      .insert(idempotencyRecords)
-      .values({
-        credentialId,
-        key,
-        status: "pending",
-        contentFingerprint: contentFingerprint ?? null,
-        leaseToken,
-        leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
-        expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
-      })
-      .onConflictDoUpdate({
-        target: [idempotencyRecords.credentialId, idempotencyRecords.key],
-        set: {
-          leaseToken,
-          leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
-          expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
-        },
-        setWhere: sql`${idempotencyRecords.status} = 'pending'
-          AND ${idempotencyRecords.leaseExpiresAt} < ${now}
-          AND ${idempotencyRecords.contentFingerprint} IS NOT DISTINCT FROM ${contentFingerprint ?? null}`,
-      })
-      .returning({ key: idempotencyRecords.key });
-    if (claimed.length === 1) {
-      try {
-        const result = await operation();
-        const committed = await db
-          .update(idempotencyRecords)
-          .set({
-            status: "completed",
-            result: { value: result },
-            completedAt: new Date(),
-            leaseToken: null,
-            leaseExpiresAt: null,
-          })
-          .where(
-            and(
-              eq(idempotencyRecords.credentialId, credentialId),
-              eq(idempotencyRecords.key, key),
-              eq(idempotencyRecords.leaseToken, leaseToken)
-            )
-          )
-          .returning({ key: idempotencyRecords.key });
-        if (committed.length !== 1) {
-          throw new ConflictError("The idempotency lease expired before the result was committed");
-        }
-        return result;
-      } catch (error) {
-        await db
-          .delete(idempotencyRecords)
-          .where(
-            and(
-              eq(idempotencyRecords.credentialId, credentialId),
-              eq(idempotencyRecords.key, key),
-              eq(idempotencyRecords.leaseToken, leaseToken)
-            )
-          );
-        throw error;
-      }
-    }
-
-    for (let attempt = 0; attempt < IDEMPOTENCY_WAIT_ATTEMPTS; attempt += 1) {
-      const record = await db.query.idempotencyRecords.findFirst({
-        where: and(
-          eq(idempotencyRecords.credentialId, credentialId),
-          eq(idempotencyRecords.key, key)
-        ),
-      });
-      if (record != null && record.contentFingerprint !== (contentFingerprint ?? null)) {
-        throw new ConflictError("Idempotency key was already used with different content");
-      }
-      if (record?.status === "completed") {
-        return (record.result as { value: T }).value;
-      }
-      if (record == null) {
-        return this.execute(credentialId, key, operation, contentFingerprint);
-      }
-      await wait(Math.min(25 * 2 ** attempt, 500));
-    }
-    throw new ConflictError("The idempotent request is still in progress");
   },
 };
 

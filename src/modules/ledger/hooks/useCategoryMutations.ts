@@ -69,7 +69,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       ]);
       generateMetadata.mutate(category.id);
     },
-    onSettledExtra: (client, _variables, _data, error) => {
+    onMutationSettled: (client, _variables, _data, error) => {
       if (error != null) {
         void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
       }
@@ -95,7 +95,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
-    onSettledExtra: (client, _ids, _data, error) => {
+    onMutationSettled: (client, _ids, _data, error) => {
       if (error != null)
         void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
     },
@@ -121,7 +121,12 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
-    skipInvalidation: true,
+    invalidatePredicates: [
+      invalidateEntryCategories(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+    ],
     onSuccessExtra: (_result, categoryIds) => {
       const positions = new Map(categoryIds.map((id, index) => [id, index]));
       queryClient.setQueryData<EntryCategory[]>(
@@ -130,15 +135,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
           .sort((a, b) => (positions.get(a.id) ?? 0) - (positions.get(b.id) ?? 0))
           .map((category, index) => ({ ...category, sortOrder: index }))
       );
-    },
-    onSettledExtra: async (client, _ids, _data, error) => {
-      if (error != null) return;
-      await Promise.all([
-        client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) }),
-        client.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-        client.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-        client.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-      ]);
     },
   });
 

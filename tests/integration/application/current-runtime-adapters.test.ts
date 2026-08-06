@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
@@ -7,7 +7,6 @@ import {
   createPostgresAuthenticationAdapter,
   postgresCategoryAdapter,
   postgresCurrencyAdapter,
-  postgresIdempotencyAdapter,
   postgresLedgerAdapter,
   postgresLedgerProjectionAdapter,
   postgresRevisionAdapter,
@@ -395,7 +394,7 @@ describe("current-runtime target adapters", () => {
     ).not.toBeNull();
   });
 
-  it("implements ledger, category, currency, settings, auth, credential, and idempotency ports", async () => {
+  it("implements ledger, category, currency, settings, auth, and credential ports", async () => {
     const db = getTestDb();
     const { userId, ledgerId } = await createTestUserWithLedger(db);
     await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
@@ -433,79 +432,6 @@ describe("current-runtime target adapters", () => {
       id: credentialId,
       ledgerId,
     });
-
-    let calls = 0;
-    const operation = vi.fn(async () => {
-      calls += 1;
-      await Promise.resolve();
-      return { id: calls };
-    });
-    const results = await Promise.all([
-      postgresIdempotencyAdapter.execute(credentialId, "same-key", operation),
-      postgresIdempotencyAdapter.execute(credentialId, "same-key", operation),
-    ]);
-    expect(results).toEqual([{ id: 1 }, { id: 1 }]);
-    expect(operation).toHaveBeenCalledTimes(1);
-
-    const secondCredentialId = crypto.randomUUID();
-    await db.insert(serviceCredentials).values({
-      id: secondCredentialId,
-      ledgerId,
-      tokenHash: computeHash("second-secret-key"),
-      tokenPrefix: "second-s",
-      tokenSuffix: "-key",
-      name: "Second API",
-    });
-    await expect(
-      postgresIdempotencyAdapter.execute(secondCredentialId, "same-key", operation)
-    ).resolves.toEqual({ id: 2 });
-    expect(operation).toHaveBeenCalledTimes(2);
-  });
-
-  it("rejects a different fingerprint while an idempotent request is pending", async () => {
-    const db = getTestDb();
-    const { ledgerId } = await createTestUserWithLedger(db);
-    const credentialId = crypto.randomUUID();
-    await db.insert(serviceCredentials).values({
-      id: credentialId,
-      ledgerId,
-      tokenHash: computeHash("fingerprint-secret"),
-      tokenPrefix: "fingerpr",
-      tokenSuffix: "cret",
-      name: "Fingerprint API",
-    });
-
-    let releaseOperation!: () => void;
-    let markStarted!: () => void;
-    const operationStarted = new Promise<void>((resolve) => {
-      markStarted = resolve;
-    });
-    const operationGate = new Promise<void>((resolve) => {
-      releaseOperation = resolve;
-    });
-    const first = postgresIdempotencyAdapter.execute(
-      credentialId,
-      "pending-fingerprint-key",
-      async () => {
-        markStarted();
-        await operationGate;
-        return { id: "created-once" };
-      },
-      "fingerprint-a"
-    );
-    await operationStarted;
-
-    await expect(
-      postgresIdempotencyAdapter.execute(
-        credentialId,
-        "pending-fingerprint-key",
-        async () => ({ id: "must-not-run" }),
-        "fingerprint-b"
-      )
-    ).rejects.toThrow("Idempotency key was already used with different content");
-
-    releaseOperation();
-    await expect(first).resolves.toEqual({ id: "created-once" });
   });
 
   it("plans, validates, finalizes, expires, and authorizes R2 stored files", async () => {

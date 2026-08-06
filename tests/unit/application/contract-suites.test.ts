@@ -14,7 +14,6 @@ import {
 } from "@/application/contracts";
 
 function createCurrentRuntimeHarness(): ApplicationContractHarness {
-  const idempotentResults = new Map<string, unknown>();
   const files = new Map<string, StoredFileContract>();
   const completed = new Map<string, ProcessingCompletionContract>();
   const dispatched = new Set<string>();
@@ -52,12 +51,6 @@ function createCurrentRuntimeHarness(): ApplicationContractHarness {
 
   return {
     sourceDocumentActions: supportedSourceDocumentActions,
-    async executeIdempotently<T>(key: string, operation: () => Promise<T>) {
-      if (idempotentResults.has(key)) return idempotentResults.get(key) as T;
-      const result = await operation();
-      idempotentResults.set(key, result);
-      return result;
-    },
     files: filePort,
     processing: {
       async dispatch(intent: ProcessingIntentContract) {

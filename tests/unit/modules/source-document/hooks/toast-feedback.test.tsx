@@ -10,17 +10,11 @@ const {
   retrySourceDocumentActionMock,
   toastSuccessMock,
   toastErrorMock,
-  commitOperationMock,
-  rollbackOperationMock,
-  startOperationMock,
 } = vi.hoisted(() => ({
   deleteSourceDocumentActionMock: vi.fn(),
   retrySourceDocumentActionMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
-  commitOperationMock: vi.fn(),
-  rollbackOperationMock: vi.fn(),
-  startOperationMock: vi.fn(),
 }));
 
 vi.mock("next-intl", () => ({
@@ -37,14 +31,6 @@ vi.mock("@/modules/source-document/actions", () => ({
   batchUpdateSourceDocumentsAction: vi.fn(),
   deleteSourceDocumentAction: deleteSourceDocumentActionMock,
   retrySourceDocumentAction: retrySourceDocumentActionMock,
-}));
-
-vi.mock("@/lib/mutations/cache-transaction", () => ({
-  getLedgerTransactionManager: () => ({
-    startOperation: startOperationMock,
-    commitOperation: commitOperationMock,
-    rollbackOperation: rollbackOperationMock,
-  }),
 }));
 
 vi.mock("@/modules/source-document/hooks/source-document-optimistic-cache", () => ({
@@ -71,11 +57,6 @@ function createWrapper() {
 describe("source document mutation toast ownership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    let operation = 0;
-    startOperationMock.mockImplementation(() => ({
-      operationId: `operation-${++operation}`,
-      patches: [],
-    }));
   });
 
   it("reports list deletion success and failure exactly once", async () => {

@@ -444,14 +444,6 @@ export interface ServiceCredentialPort {
   create(ledgerId: LedgerId, name: string): Promise<CreatedServiceCredentialContract>;
   revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
 }
-export interface IdempotencyPort {
-  execute<T>(
-    credentialId: string,
-    key: string,
-    operation: () => Promise<T>,
-    contentFingerprint?: string
-  ): Promise<T>;
-}
 
 export interface EmailDeliveryPort {
   send(input: {

@@ -1,7 +1,6 @@
 import {
   postgresCategoryAdapter,
   postgresCurrencyAdapter,
-  postgresIdempotencyAdapter,
   postgresLedgerAdapter,
   postgresOtpTokenAdapter,
   postgresServiceCredentialAdapter,
@@ -68,7 +67,6 @@ export const serverComposition = {
   email: resendEmailAdapter,
   exchangeRates: postgresFxRateBook,
   fetchExchangeRatesWithRetry,
-  idempotency: postgresIdempotencyAdapter,
   ledgers: postgresLedgerAdapter,
   ledgerProjections: postgresLedgerProjectionAdapter,
   ledgerMutations: {
