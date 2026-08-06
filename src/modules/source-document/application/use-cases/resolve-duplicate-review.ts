@@ -127,7 +127,7 @@ export async function batchResolveDuplicateReviews(
       } else {
         result.failed.push({
           id: sourceDocumentId,
-          reason: error instanceof Error ? error.message : "unknown_error",
+          reason: "internal",
         });
       }
     }

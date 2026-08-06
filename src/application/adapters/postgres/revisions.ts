@@ -21,7 +21,7 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
-import { lockSourceDocumentForUpdate } from "./transaction-locks";
+import { assertProcessingLeaseHeld, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -354,6 +354,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
+      if (!(await assertProcessingLeaseHeld(tx, input.lease))) return false;
       if (document.pendingRevisionId !== input.revisionId) return false;
       const updated = await tx
         .update(sourceDocumentRevisions)

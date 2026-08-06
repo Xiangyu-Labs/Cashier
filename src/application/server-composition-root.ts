@@ -49,10 +49,7 @@ import { getLedgerEntryDetail } from "@/application/adapters/postgres/ledger-rea
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-views-by-source-document-ids";
 import { hasActiveLedgerEntries } from "@/application/adapters/postgres/ledger-reads/has-active-entries";
-import {
-  getEnhancedStats,
-  getEnhancedStatsQuery,
-} from "@/application/adapters/postgres/ledger-reads/get-enhanced-stats";
+import { getEnhancedStatsQuery } from "@/application/adapters/postgres/ledger-reads/get-enhanced-stats";
 import {
   postgresFxRateBook,
   fetchWithRetry as fetchExchangeRatesWithRetry,
@@ -88,7 +85,6 @@ export const serverComposition = {
   },
   categoryMetadataGenerator: categoryMetadataGeneratorAdapter,
   stats: {
-    getEnhanced: getEnhancedStats,
     queryEnhanced: getEnhancedStatsQuery,
   },
   otpTokens: postgresOtpTokenAdapter,

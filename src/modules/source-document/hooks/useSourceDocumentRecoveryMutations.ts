@@ -202,7 +202,7 @@ export function useSourceDocumentRecoveryMutations({
     if (actionLockRef.current) return;
     actionLockRef.current = true;
     try {
-      await retryMutation.mutateAsync({ operationId: "retry-" + crypto.randomUUID() });
+      await retryMutation.mutateAsync({ operationId: crypto.randomUUID() });
     } finally {
       actionLockRef.current = false;
     }
@@ -212,7 +212,7 @@ export function useSourceDocumentRecoveryMutations({
     if (actionLockRef.current) return;
     actionLockRef.current = true;
     try {
-      await cancelMutation.mutateAsync({ operationId: "cancel-" + crypto.randomUUID() });
+      await cancelMutation.mutateAsync({ operationId: crypto.randomUUID() });
     } finally {
       actionLockRef.current = false;
     }

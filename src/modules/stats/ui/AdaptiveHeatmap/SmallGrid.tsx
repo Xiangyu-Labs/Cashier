@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
 import { formatDate, parseDate } from "../../lib/date-utils";
 import { resolveHeatmapRange } from "../../lib/heatmap-range";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
 import { DayCellSmall } from "./DayCellSmall";
 
@@ -40,9 +41,10 @@ export function SmallGridHeatmap({
     return map;
   }, [days]);
 
+  const range = useMemo(() => resolveHeatmapRange(days, queryRange), [days, queryRange]);
+
   // Generate weeks from query start to max(latest data, today)
   const weeks = useMemo(() => {
-    const range = resolveHeatmapRange(days, queryRange);
     if (range == null) return [];
     const startDate = range.startDate;
     const endDate = parseDate(range.endDate);
@@ -80,7 +82,7 @@ export function SmallGridHeatmap({
     }
 
     return result;
-  }, [days, dayMap, queryRange]);
+  }, [dayMap, range]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rangeKey = `${queryRange?.startDate ?? ""}:${queryRange?.endDate ?? ""}`;
@@ -108,31 +110,43 @@ export function SmallGridHeatmap({
   return (
     <div ref={scrollRef} className={cn("w-full overflow-x-auto pb-2", className)}>
       {/* Inner container with overflow-visible to allow tooltip to show outside */}
-      <div className="flex gap-[2px] min-h-[100px]">
-        {weeks.map((week) => (
-          <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
-            {week.days.map(({ date, dayData }) => {
-              const amount = dayData?.totalAmount ?? 0;
-              const count = dayData?.entryCount ?? 0;
-              const level = getHeatmapLevel(amount, stats);
+      <TooltipProvider>
+        <div className="flex gap-[2px] min-h-[100px]">
+          {weeks.map((week) => (
+            <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
+              {week.days.map(({ date, dayData }) => {
+                const amount = dayData?.totalAmount ?? 0;
+                const count = dayData?.entryCount ?? 0;
+                const level = getHeatmapLevel(amount, stats);
+                const inRange = range != null && date >= range.startDate && date <= range.endDate;
 
-              return (
-                <div key={date} data-heatmap-date={date}>
-                  <DayCellSmall
-                    date={date}
-                    amount={amount}
-                    count={count}
-                    level={level}
-                    currency={currency}
-                    locale={locale}
-                    onClick={() => onDayClick?.(date)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+                return (
+                  <div key={date} data-heatmap-date={date}>
+                    {inRange ? (
+                      <DayCellSmall
+                        date={date}
+                        amount={amount}
+                        count={count}
+                        level={level}
+                        currency={currency}
+                        locale={locale}
+                        onClick={() => onDayClick?.(date)}
+                      />
+                    ) : (
+                      // Padding cells keep the week grid aligned but must never
+                      // trigger drilldown, tooltips, or keyboard focus.
+                      <div
+                        aria-hidden="true"
+                        className="h-3 w-3 flex-shrink-0 rounded-sm bg-surface2/40"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </TooltipProvider>
     </div>
   );
 }

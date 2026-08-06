@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { type DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { buildChartPoints } from "@/modules/stats/lib/chart-points";
 
 interface StatsChartProps {
   data: { date: string; total: number }[];
@@ -25,103 +26,18 @@ export function StatsChart({
   const t = useTranslations("StatsChart");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // Find the latest date with actual data
-  const latestDataDate = useMemo(() => {
-    if (data.length === 0) return null;
-    const sortedDates = [...data].sort((a, b) => a.date.localeCompare(b.date));
-    return sortedDates[sortedDates.length - 1]?.date ?? null;
-  }, [data]);
-
-  // Process Data based on Range Type
+  // The queried range is already truncated to the ledger-timezone today by the
+  // stats state; do not re-clamp with the browser clock here.
   const chartPoints = useMemo(() => {
     if (isLoading) return [];
-
-    const points: { label: string; value: number; fullDate: string }[] = [];
-
-    // Get today's date for comparison
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (rangeType === "year") {
-      // Aggregate by Month - show up to max(latest data month, current month)
-      const year = startDate.getFullYear();
-      const currentMonth = today.getMonth() + 1; // 1-12
-
-      // Find month with latest data
-      let dataMaxMonth = currentMonth;
-      if (latestDataDate != null && latestDataDate.startsWith(String(year))) {
-        const [, monthPart] = latestDataDate.split("-");
-        if (monthPart != null) {
-          const parsedMonth = Number.parseInt(monthPart, 10);
-          if (!Number.isNaN(parsedMonth)) {
-            dataMaxMonth = parsedMonth;
-          }
-        }
-      }
-
-      // Show up to the later of: current month or month with latest data
-      const maxMonth = Math.max(currentMonth, dataMaxMonth);
-
-      for (let month = 0; month < maxMonth; month++) {
-        // Determine pattern for this month: "YYYY-MM"
-        const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
-
-        // Sum all entries starting with this prefix
-        const total = data
-          .filter((d) => d.date.startsWith(monthPrefix))
-          .reduce((sum, d) => sum + d.total, 0);
-
-        const monthLabel = new Date(year, month, 1).toLocaleString(locale, { month: "short" });
-
-        points.push({
-          label: monthLabel,
-          value: total,
-          fullDate: monthPrefix, // Just for key/ref
-        });
-      }
-    } else {
-      // Daily granularity (Week or Month) - show up to max(latest data, today)
-      const curr = new Date(startDate);
-
-      // End date is the later of: today or latest data date
-      let effectiveEndDate: Date;
-      if (latestDataDate != null) {
-        const latestDate = new Date(latestDataDate);
-        effectiveEndDate = latestDate > today ? latestDate : today;
-      } else {
-        effectiveEndDate = today;
-      }
-
-      // Don't exceed original endDate (for future periods)
-      const originalEnd = new Date(endDate);
-      const end = effectiveEndDate < originalEnd ? effectiveEndDate : originalEnd;
-
-      // Safety break to prevent infinite loops if dates are weird
-      let safety = 0;
-      while (curr <= end && safety < 400) {
-        const dateStr = formatDateTimeForApi(curr);
-        const found = data.find((d) => d.date === dateStr);
-
-        let label = "";
-        if (rangeType === "week") {
-          label = curr.toLocaleString(locale, { weekday: "short" });
-        } else {
-          // Day number for Month view
-          label = String(curr.getDate());
-        }
-
-        points.push({
-          label,
-          value: found ? found.total : 0,
-          fullDate: dateStr,
-        });
-
-        curr.setDate(curr.getDate() + 1);
-        safety++;
-      }
-    }
-    return points;
-  }, [data, rangeType, startDate, endDate, isLoading, locale, latestDataDate]);
+    return buildChartPoints({
+      data,
+      rangeType,
+      startDate: formatDateTimeForApi(startDate)!,
+      endDate: formatDateTimeForApi(endDate)!,
+      locale,
+    });
+  }, [data, endDate, isLoading, locale, rangeType, startDate]);
 
   // 计算95th percentile作为Y轴显示上限，处理异常值
   const { yAxisMax, hasOutliers } = useMemo(() => {

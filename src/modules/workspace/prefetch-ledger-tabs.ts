@@ -7,6 +7,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
 import { getDetailsInitialQueryState, getStatsInitialQueryState } from "./initial-query-state";
+import { buildStatsQueryDescriptor } from "./stats-query";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 type LedgerEntriesPage = Awaited<
@@ -71,24 +72,11 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
   const state = getStatsInitialQueryState(
     zonedToday != null ? parseDateString(zonedToday) : new Date()
   );
+  const descriptor = buildStatsQueryDescriptor({ ledgerId, state, mainCurrency });
 
   await queryClient.prefetchQuery({
-    queryKey: queryKeys.enhancedStats(ledgerId, {
-      startDate: state.startDateStr,
-      endDate: state.endDateStr,
-      compareStartDate: state.prevDateStartStr,
-      compareEndDate: state.prevDateEndStr,
-      rangeType: state.rangeType,
-      comparisonMode: state.mode,
-      mainCurrency,
-    }),
-    queryFn: () =>
-      getEnhancedStats({
-        ledgerId,
-        queryRange: { from: state.startDateStr, to: state.endDateStr },
-        compareRange: { from: state.prevDateStartStr, to: state.prevDateEndStr },
-        comparisonMode: state.mode,
-      }),
+    queryKey: descriptor.queryKey,
+    queryFn: () => getEnhancedStats(descriptor.input),
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 }

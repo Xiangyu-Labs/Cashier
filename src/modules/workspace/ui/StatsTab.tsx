@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
-import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerStats } from "@/lib/query-keys";
 import {
   addPeriod,
   formatCivilDate,
@@ -19,6 +19,7 @@ import {
   DEFAULT_STATS_RANGE_TYPE,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
+import { buildStatsQueryDescriptor } from "@/modules/workspace/stats-query";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "./tab-query-state";
 
@@ -72,20 +73,11 @@ export function StatsTab({
   );
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
 
-  const {
-    startDate,
-    endDate,
-    prevDateStart: _prevDateStart,
-    prevDateEnd: _prevDateEnd,
-    startDateStr,
-    endDateStr,
-    prevDateStartStr,
-    prevDateEndStr,
-    mode,
-  } = useMemo(
+  const statsState = useMemo(
     () => getStatsInitialQueryState(currentDate, rangeType, { currentPeriod: periodOffset === 0 }),
     [currentDate, periodOffset, rangeType]
   );
+  const { startDate, endDate, startDateStr, endDateStr } = statsState;
 
   const label = useMemo(() => {
     switch (rangeType) {
@@ -100,40 +92,23 @@ export function StatsTab({
     }
   }, [endDateStr, locale, rangeType, startDateStr]);
 
-  const enhancedStatsKey = useMemo(
+  const statsDescriptor = useMemo(
     () =>
-      queryKeys.enhancedStats(ledgerId ?? "", {
-        startDate: startDateStr,
-        endDate: endDateStr,
-        compareStartDate: prevDateStartStr,
-        compareEndDate: prevDateEndStr,
-        rangeType,
-        comparisonMode: mode,
-        ...(ledger?.settings.mainCurrency !== undefined
-          ? { mainCurrency: ledger.settings.mainCurrency }
-          : {}),
+      buildStatsQueryDescriptor({
+        ledgerId: ledgerId ?? "",
+        state: statsState,
+        mainCurrency: ledger?.settings.mainCurrency ?? "CNY",
       }),
-    [endDateStr, ledger, ledgerId, mode, prevDateEndStr, prevDateStartStr, rangeType, startDateStr]
+    [ledger, ledgerId, statsState]
   );
+  const enhancedStatsKey = statsDescriptor.queryKey;
   const statsQuery = useQuery({
     queryKey: enhancedStatsKey,
-    queryFn: () =>
-      getEnhancedStats({
-        ledgerId: ledgerId ?? "",
-        queryRange: {
-          from: startDateStr,
-          to: endDateStr,
-        },
-        compareRange: {
-          from: prevDateStartStr,
-          to: prevDateEndStr,
-        },
-        comparisonMode: mode,
-      }),
+    queryFn: () => getEnhancedStats(statsDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
-  const { data: stats, isLoading } = statsQuery;
+  const { data: stats, isLoading, isError, refetch } = statsQuery;
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -171,6 +146,10 @@ export function StatsTab({
       endDateStr={endDateStr}
       stats={stats}
       isLoading={isLoading}
+      isError={isError}
+      onRetry={() => {
+        void refetch();
+      }}
       chartView={chartView}
       onChartViewChange={setChartView}
       fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}
