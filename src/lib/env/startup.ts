@@ -29,6 +29,7 @@ export const ENV_DEFAULTS = {
   MAX_IMAGE_QUALITY: "85",
   LOG_LEVEL: "info",
   DEV_AUTH_BYPASS: "false",
+  DATABASE_POOL_MAX: "2",
   PROCESSING_RECOVERY_MAX_BATCH: "5",
   PROCESSING_RECOVERY_MAX_ATTEMPTS: "5",
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: "60",
@@ -163,6 +164,15 @@ const startupEnvFields = {
   ),
   LOG_LEVEL: stringWithDefault("LOG_LEVEL"),
   DEV_AUTH_BYPASS: booleanStringWithDefault("DEV_AUTH_BYPASS"),
+  DATABASE_POOL_MAX: z.preprocess(
+    blankToUndefined,
+    z.coerce
+      .number()
+      .int("DATABASE_POOL_MAX must be an integer")
+      .min(1, "DATABASE_POOL_MAX must be between 1 and 50")
+      .max(50, "DATABASE_POOL_MAX must be between 1 and 50")
+      .default(Number.parseInt(getDefaultString("DATABASE_POOL_MAX"), 10))
+  ),
   PROCESSING_RECOVERY_MAX_BATCH: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_BATCH"),
   PROCESSING_RECOVERY_MAX_ATTEMPTS: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_ATTEMPTS"),
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: positiveIntWithDefault(

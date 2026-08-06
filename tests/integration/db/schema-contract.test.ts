@@ -1,0 +1,202 @@
+import { describe, expect, it } from "vitest";
+import { sql } from "drizzle-orm";
+import { getTestDb } from "../../setup";
+import { createTestSourceDocument, createTestUserWithLedger } from "../../helpers/schema-setup";
+import { entryCategories, ledgerEntries } from "@/persistence";
+
+interface ConstraintRow {
+  conname: string;
+  definition: string;
+}
+
+interface IndexRow {
+  indexname: string;
+  indexdef: string;
+}
+
+interface TriggerRow {
+  tgname: string;
+}
+
+interface ColumnRow {
+  columnName: string;
+  isGenerated: string;
+  generationExpression: string | null;
+}
+
+async function fetchConstraints(): Promise<ConstraintRow[]> {
+  const result = await getTestDb().execute<ConstraintRow & Record<string, unknown>>(sql`
+    SELECT con.conname, pg_get_constraintdef(con.oid) AS definition
+    FROM pg_constraint con
+    JOIN pg_class cls ON cls.oid = con.conrelid
+    JOIN pg_namespace ns ON ns.oid = cls.relnamespace
+    WHERE ns.nspname = current_schema()
+    ORDER BY con.conname
+  `);
+  return result.rows;
+}
+
+async function fetchIndexes(): Promise<IndexRow[]> {
+  const result = await getTestDb().execute<IndexRow & Record<string, unknown>>(sql`
+    SELECT indexname, indexdef
+    FROM pg_indexes
+    WHERE schemaname = current_schema()
+    ORDER BY indexname
+  `);
+  return result.rows;
+}
+
+async function fetchTriggers(): Promise<TriggerRow[]> {
+  const result = await getTestDb().execute<TriggerRow & Record<string, unknown>>(sql`
+    SELECT trigger.tgname
+    FROM pg_trigger trigger
+    JOIN pg_class cls ON cls.oid = trigger.tgrelid
+    JOIN pg_namespace ns ON ns.oid = cls.relnamespace
+    WHERE ns.nspname = current_schema()
+      AND NOT trigger.tgname LIKE 'pg\\_%'
+    ORDER BY trigger.tgname
+  `);
+  return result.rows;
+}
+
+async function fetchColumns(tableName: string): Promise<ColumnRow[]> {
+  const result = await getTestDb().execute<ColumnRow & Record<string, unknown>>(sql`
+    SELECT column_name AS "columnName",
+      is_generated AS "isGenerated",
+      generation_expression AS "generationExpression"
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = ${tableName}
+    ORDER BY ordinal_position
+  `);
+  return result.rows;
+}
+
+describe("PostgreSQL schema contract", () => {
+  const compact = (definition: string | undefined) => definition?.replace(/[\s()]/g, "") ?? "";
+
+  it("keeps every tenant-scoped composite foreign key", async () => {
+    const byName = new Map((await fetchConstraints()).map((row) => [row.conname, row.definition]));
+    const expected = [
+      "fk_ledger_entries_document_ledger",
+      "fk_ledger_entries_revision_ledger",
+      "fk_ledger_entries_document_revision",
+      "fk_ledger_entries_category_ledger",
+      "fk_revision_files_revision_ledger",
+      "fk_revision_files_stored_file_ledger",
+      "fk_processing_attempts_revision_ledger",
+      "fk_processing_outbox_revision_ledger",
+      "fk_processing_outbox_document_ledger",
+      "fk_upload_session_files_session_ledger",
+      "fk_upload_session_files_stored_file_ledger",
+      "fk_duplicate_reviews_document_ledger",
+      "fk_duplicate_reviews_revision_ledger",
+      "fk_duplicate_reviews_matched_ledger",
+      "fk_source_documents_active_revision",
+      "fk_source_documents_pending_revision",
+      "fk_ledger_change_items_batch",
+    ];
+    for (const name of expected) {
+      expect(byName.has(name), `missing foreign key ${name}`).toBe(true);
+    }
+
+    // The category FK must be ledger-scoped and keep the set-null behavior.
+    expect(byName.get("fk_ledger_entries_category_ledger")).toContain(
+      "FOREIGN KEY (ledger_id, category_id)"
+    );
+    expect(byName.get("fk_ledger_entries_category_ledger")).toContain(
+      "ON DELETE SET NULL (category_id)"
+    );
+    // The legacy single-column FK must be gone.
+    expect(byName.has("ledger_entries_category_id_entry_categories_id_fk")).toBe(false);
+  });
+
+  it("keeps duplicate review checks and sync version guards", async () => {
+    const byName = new Map((await fetchConstraints()).map((row) => [row.conname, row.definition]));
+
+    expect(compact(byName.get("ck_duplicate_reviews_confidence"))).toContain("confidence>=0");
+    expect(compact(byName.get("ck_duplicate_reviews_confidence"))).toContain("confidence<=1");
+    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'keep_duplicate'");
+    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'discard_duplicate'");
+    expect(byName.get("ck_duplicate_reviews_decision")).toContain("'superseded'");
+
+    // 0016 declared these inline, so PostgreSQL auto-named them.
+    expect(compact(byName.get("ledger_sync_state_version_check"))).toContain("version>=0");
+    expect(compact(byName.get("ledger_change_batches_version_check"))).toContain("version>0");
+  });
+
+  it("keeps status and change-log triggers", async () => {
+    const names = new Set((await fetchTriggers()).map((row) => row.tgname));
+    for (const name of [
+      "trg_source_documents_refresh_status",
+      "trg_revisions_refresh_document_status",
+      "trg_source_documents_change_log",
+      "trg_source_document_revisions_change_log",
+      "trg_ledger_entries_change_log",
+      "trg_entry_categories_change_log",
+      "trg_ledgers_settings_change_log",
+    ]) {
+      expect(names.has(name), `missing trigger ${name}`).toBe(true);
+    }
+  });
+
+  it("keeps effective_date as a generated UTC-fallback column", async () => {
+    const effective = (await fetchColumns("source_documents")).find(
+      (column) => column.columnName === "effective_date"
+    );
+    expect(effective).toBeDefined();
+    expect(effective?.isGenerated).toBe("ALWAYS");
+    expect(effective?.generationExpression ?? "").toContain("entry_date");
+    expect(effective?.generationExpression ?? "").toContain("created_at");
+    expect(effective?.generationExpression ?? "").toContain("UTC");
+  });
+
+  it("keeps the key partial indexes and tenant unique keys", async () => {
+    const byName = new Map((await fetchIndexes()).map((row) => [row.indexname, row.indexdef]));
+    for (const name of [
+      "uq_entry_categories_ledger_id_id",
+      "uq_ledger_entries_revision_position",
+      "idx_source_documents_active_feed",
+      "idx_ledger_entries_active_feed",
+      "idx_ledger_entries_active_category",
+      "idx_ledger_entries_active_currency",
+      "idx_ledger_entries_active_amount",
+      "idx_ledger_entries_search",
+    ]) {
+      expect(byName.has(name), `missing index ${name}`).toBe(true);
+    }
+    expect(byName.get("idx_source_documents_active_feed")).toContain("effective_date");
+    expect(byName.get("idx_ledger_entries_active_amount")).toContain("converted_amount");
+    expect(byName.get("idx_ledger_entries_active_amount")).toContain("WHERE");
+    expect(byName.get("idx_ledger_entries_search")).toContain("gin");
+  });
+
+  it("rejects cross-ledger category assignment with an FK violation", async () => {
+    const db = getTestDb();
+    const { ledgerId: firstLedger } = await createTestUserWithLedger(db);
+    const { ledgerId: secondLedger } = await createTestUserWithLedger(
+      db,
+      undefined,
+      undefined,
+      "22222222-2222-4222-8222-222222222222"
+    );
+    const category = (
+      await db
+        .insert(entryCategories)
+        .values({ ledgerId: firstLedger, name: "Other Ledger" })
+        .returning()
+    )[0];
+    if (category == null) throw new Error("Expected category insert to return a row");
+
+    const sourceDocumentId = await createTestSourceDocument(db, secondLedger);
+    await expect(
+      db.insert(ledgerEntries).values({
+        ledgerId: secondLedger,
+        sourceDocumentId,
+        categoryId: category.id,
+        amount: "1.00",
+        itemName: "Cross-ledger category",
+      })
+    ).rejects.toMatchObject({ cause: expect.objectContaining({ code: "23503" }) });
+  });
+});

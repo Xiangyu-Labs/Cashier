@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, max } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
 import type { LedgerProjectionEntryContract, LedgerProjectionPort } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -9,7 +9,6 @@ import {
   ledgerEntries,
   processingAttempts,
   processingOutbox,
-  revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
@@ -67,10 +66,10 @@ async function insertRevisionEntries(
     entries: readonly LedgerProjectionEntryContract[];
   }
 ): Promise<void> {
-  for (const [position, entry] of input.entries.entries()) {
-    const ledgerEntryId = entry.id ?? crypto.randomUUID();
-    await tx.insert(ledgerEntries).values({
-      id: ledgerEntryId,
+  if (input.entries.length === 0) return;
+  await tx.insert(ledgerEntries).values(
+    input.entries.map((entry, position) => ({
+      id: entry.id ?? crypto.randomUUID(),
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
       sourceDocumentRevisionId: input.revisionId,
@@ -83,8 +82,8 @@ async function insertRevisionEntries(
       convertedAmount: entry.convertedAmount,
       exchangeRate: entry.exchangeRate,
       ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-    });
-  }
+    }))
+  );
 }
 
 async function replaceProjection(
@@ -109,25 +108,7 @@ async function replaceProjection(
         isNull(ledgerEntries.deletedAt)
       )
     );
-
-  for (const [position, entry] of input.entries.entries()) {
-    const ledgerEntryId = entry.id ?? crypto.randomUUID();
-    await tx.insert(ledgerEntries).values({
-      id: ledgerEntryId,
-      ledgerId: input.ledgerId,
-      sourceDocumentId: input.sourceDocumentId,
-      sourceDocumentRevisionId: input.revisionId,
-      position,
-      categoryId: entry.categoryId,
-      amount: entry.amount,
-      currency: entry.currency,
-      itemName: entry.itemName,
-      description: entry.description,
-      convertedAmount: entry.convertedAmount,
-      exchangeRate: entry.exchangeRate,
-      ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-    });
-  }
+  await insertRevisionEntries(tx, input);
 }
 
 /**
@@ -759,88 +740,142 @@ async function replaceManualProjection(
       )
     );
   const previousById = new Map(previousEntries.map((entry) => [entry.id, entry]));
-  for (const id of requestedIds) {
-    if (previousById.has(id)) continue;
+  const foreignRequestedIds = requestedIds.filter((id) => !previousById.has(id));
+  if (foreignRequestedIds.length > 0) {
     const existing = await tx
       .select({ id: ledgerEntries.id })
       .from(ledgerEntries)
-      .where(eq(ledgerEntries.id, id))
-      .then((rows) => rows[0]);
-    if (existing != null) throw new NotFoundError("Active ledger entry projection");
+      .where(inArray(ledgerEntries.id, foreignRequestedIds));
+    if (existing.length > 0) throw new NotFoundError("Active ledger entry projection");
   }
 
   const now = new Date();
   const retainedIds = new Set(requestedIds);
   const retainedEntries = previousEntries.filter((previous) => retainedIds.has(previous.id));
-  for (const [index, previous] of retainedEntries.entries()) {
+  if (retainedEntries.length > 0) {
+    // Retained rows move to the new revision in one statement; their positions
+    // are appended after the new input entries.
+    await tx.execute(sql`
+      UPDATE ledger_entries entry
+      SET source_document_revision_id = ${input.revisionId},
+          position = positions.position + ${input.entries.length},
+          updated_at = ${now}
+      FROM (VALUES ${sql.join(
+        retainedEntries.map((previous, index) => sql`(${previous.id}::uuid, ${index}::integer)`),
+        sql`, `
+      )}) AS positions(id, position)
+      WHERE entry.id = positions.id
+        AND entry.ledger_id = ${input.ledgerId}
+    `);
+  }
+
+  if (retainedEntries.length > 0) {
+    // Preserve the historical rows as soft-deleted archives in one insert.
+    await tx.insert(ledgerEntries).values(
+      retainedEntries.map((previous) => ({
+        ...previous,
+        id: crypto.randomUUID(),
+        deletedAt: now,
+        updatedAt: now,
+      }))
+    );
+  }
+
+  const removedIds = previousEntries
+    .filter((previous) => !retainedIds.has(previous.id))
+    .map((previous) => previous.id);
+  if (removedIds.length > 0) {
     await tx
       .update(ledgerEntries)
-      .set({
-        sourceDocumentRevisionId: input.revisionId,
-        position: input.entries.length + index,
-        updatedAt: now,
-      })
-      .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, previous.id)));
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, input.ledgerId),
+          inArray(ledgerEntries.id, removedIds),
+          isNull(ledgerEntries.deletedAt)
+        )
+      );
   }
 
-  for (const previous of retainedEntries) {
-    const archivedId = crypto.randomUUID();
-    await tx.insert(ledgerEntries).values({
-      ...previous,
-      id: archivedId,
-      deletedAt: now,
-      updatedAt: now,
-    });
-  }
-
-  for (const previous of previousEntries) {
-    if (!retainedIds.has(previous.id)) {
-      await tx
-        .update(ledgerEntries)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, previous.id)));
-    }
-  }
-
-  for (const [position, entry] of input.entries.entries()) {
+  const newEntries = input.entries.flatMap((entry, position) => {
     const existing = entry.id == null ? null : (previousById.get(entry.id) ?? null);
-    const ledgerEntryId = existing?.id ?? entry.id ?? crypto.randomUUID();
-    if (existing == null) {
-      await tx.insert(ledgerEntries).values({
-        id: ledgerEntryId,
-        ledgerId: input.ledgerId,
-        sourceDocumentId: input.sourceDocumentId,
-        sourceDocumentRevisionId: input.revisionId,
-        position,
-        categoryId: entry.categoryId,
-        amount: entry.amount,
-        currency: entry.currency,
-        itemName: entry.itemName,
-        description: entry.description,
-        convertedAmount: entry.convertedAmount,
-        exchangeRate: entry.exchangeRate,
-        ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
-      });
-    } else {
-      await tx
-        .update(ledgerEntries)
-        .set({
-          sourceDocumentRevisionId: input.revisionId,
-          position,
-          categoryId: entry.categoryId,
-          amount: entry.amount,
-          currency: entry.currency,
-          itemName: entry.itemName,
-          description: entry.description,
-          convertedAmount: entry.convertedAmount,
-          exchangeRate: entry.exchangeRate,
-          deletedAt: null,
-          updatedAt: now,
-        })
-        .where(
-          and(eq(ledgerEntries.ledgerId, input.ledgerId), eq(ledgerEntries.id, ledgerEntryId))
-        );
-    }
+    return existing == null
+      ? [
+          {
+            id: entry.id ?? crypto.randomUUID(),
+            ledgerId: input.ledgerId,
+            sourceDocumentId: input.sourceDocumentId,
+            sourceDocumentRevisionId: input.revisionId,
+            position,
+            categoryId: entry.categoryId,
+            amount: entry.amount,
+            currency: entry.currency,
+            itemName: entry.itemName,
+            description: entry.description,
+            convertedAmount: entry.convertedAmount,
+            exchangeRate: entry.exchangeRate,
+            ...(entry.createdAt == null ? {} : { createdAt: new Date(entry.createdAt) }),
+          },
+        ]
+      : [];
+  });
+  if (newEntries.length > 0) {
+    await tx.insert(ledgerEntries).values(newEntries);
+  }
+
+  const updatedEntries = input.entries.flatMap((entry, position) => {
+    const existing = entry.id == null ? null : (previousById.get(entry.id) ?? null);
+    return existing == null
+      ? []
+      : [
+          {
+            id: existing.id,
+            position,
+            categoryId: entry.categoryId,
+            amount: entry.amount,
+            currency: entry.currency,
+            itemName: entry.itemName,
+            description: entry.description,
+            convertedAmount: entry.convertedAmount,
+            exchangeRate: entry.exchangeRate,
+          },
+        ];
+  });
+  if (updatedEntries.length > 0) {
+    await tx.execute(sql`
+      UPDATE ledger_entries entry
+      SET source_document_revision_id = ${input.revisionId},
+          position = updates.position,
+          category_id = updates.category_id,
+          amount = updates.amount,
+          currency = updates.currency,
+          item_name = updates.item_name,
+          description = updates.description,
+          converted_amount = updates.converted_amount,
+          exchange_rate = updates.exchange_rate,
+          deleted_at = NULL,
+          updated_at = ${now}
+      FROM (VALUES ${sql.join(
+        updatedEntries.map(
+          (row) =>
+            sql`(
+              ${row.id}::uuid,
+              ${row.position}::integer,
+              ${row.categoryId}::uuid,
+              ${row.amount}::numeric,
+              ${row.currency}::varchar(3),
+              ${row.itemName}::text,
+              ${row.description}::text,
+              ${row.convertedAmount}::numeric,
+              ${row.exchangeRate}::numeric
+            )`
+        ),
+        sql`, `
+      )}) AS updates(id, position, category_id, amount, currency, item_name,
+        description, converted_amount, exchange_rate)
+      WHERE entry.id = updates.id
+        AND entry.ledger_id = ${input.ledgerId}
+    `);
   }
 }
 
@@ -906,23 +941,15 @@ async function copyRevisionFiles(
   tx: PostgresTransaction,
   input: { ledgerId: string; fromRevisionId: string; toRevisionId: string }
 ): Promise<void> {
-  const files = await tx
-    .select({ storedFileId: revisionFiles.storedFileId, position: revisionFiles.position })
-    .from(revisionFiles)
-    .where(
-      and(
-        eq(revisionFiles.ledgerId, input.ledgerId),
-        eq(revisionFiles.revisionId, input.fromRevisionId)
-      )
-    );
-  for (const file of files) {
-    await tx.insert(revisionFiles).values({
-      ledgerId: input.ledgerId,
-      revisionId: input.toRevisionId,
-      storedFileId: file.storedFileId,
-      position: file.position,
-    });
-  }
+  // The source rows are already tenant-scoped by the WHERE clause, so the
+  // copy inherits their ownership in a single INSERT ... SELECT.
+  await tx.execute(sql`
+    INSERT INTO revision_files (ledger_id, revision_id, stored_file_id, position, created_at)
+    SELECT ledger_id, ${input.toRevisionId}, stored_file_id, position, now()
+    FROM revision_files
+    WHERE ledger_id = ${input.ledgerId}
+      AND revision_id = ${input.fromRevisionId}
+  `);
 }
 
 export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {

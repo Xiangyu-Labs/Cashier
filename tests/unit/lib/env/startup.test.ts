@@ -111,6 +111,7 @@ describe("validateStartupEnv", () => {
       "AUTH_RATE_LIMIT_MAX",
       "AUTH_RATE_LIMIT_WINDOW",
       "CURRENCY_STALE_TIME_MS",
+      "DATABASE_POOL_MAX",
       "DEV_AUTH_BYPASS",
       "DISABLE_REGISTRATION",
       "LOG_LEVEL",

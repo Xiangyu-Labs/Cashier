@@ -59,7 +59,7 @@ async function fetchAggregatedRows(
         ('current'::text, ${current.from}::date, ${current.to}::date),
         ('previous'::text, ${previous.from}::date, ${previous.to}::date)
     )
-    SELECT ranges.period, documents.entry_date AS "entryDate",
+    SELECT ranges.period, documents.effective_date AS "entryDate",
       entries.currency, entries.category_id AS "categoryId",
       categories.name AS "categoryName", categories.icon AS "categoryIcon",
       sum(entries.converted_amount)::text AS "totalAmount",
@@ -69,7 +69,7 @@ async function fetchAggregatedRows(
     FROM ranges
     JOIN source_documents documents
       ON documents.ledger_id = ${ledgerId}
-      AND documents.entry_date BETWEEN ranges.from_date AND ranges.to_date
+      AND documents.effective_date BETWEEN ranges.from_date AND ranges.to_date
       AND documents.deleted_at IS NULL
     JOIN ledger_entries entries
       ON entries.ledger_id = documents.ledger_id
@@ -78,7 +78,7 @@ async function fetchAggregatedRows(
       AND entries.deleted_at IS NULL
     JOIN ledgers ON ledgers.id = documents.ledger_id AND ledgers.deleted_at IS NULL
     LEFT JOIN entry_categories categories ON categories.id = entries.category_id
-    GROUP BY ranges.period, documents.entry_date, entries.currency, entries.category_id,
+    GROUP BY ranges.period, documents.effective_date, entries.currency, entries.category_id,
       categories.name, categories.icon, ledgers.main_currency
     UNION ALL
     SELECT 'current', NULL, NULL, NULL, NULL, NULL, NULL, 0, main_currency, 0

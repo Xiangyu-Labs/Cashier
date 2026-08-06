@@ -257,8 +257,10 @@ export const postgresLedgerAdapter: LedgerPort = {
           .returning()
           .then((rows) => rows[0]);
         if (row == null) throw new ConflictError("Failed to create ledger");
-        for (const category of input.categories) {
-          await tx.insert(entryCategories).values({ ...category, ledgerId: row.id });
+        if (input.categories.length > 0) {
+          await tx
+            .insert(entryCategories)
+            .values(input.categories.map((category) => ({ ...category, ledgerId: row.id })));
         }
         return {
           id: row.id,
@@ -394,39 +396,43 @@ export const postgresCategoryAdapter: CategoryPort = {
   },
 
   async updateMissingMetadata(ledgerId, categoryId, input) {
-    return db.transaction(async (tx) => {
-      const now = new Date();
-      const [iconRows, descriptionRows] = await Promise.all([
-        tx
-          .update(entryCategories)
-          .set({ icon: input.icon, updatedAt: now })
-          .where(
-            and(
-              eq(entryCategories.id, categoryId),
-              eq(entryCategories.ledgerId, ledgerId),
-              isNull(entryCategories.deletedAt),
-              or(isNull(entryCategories.icon), eq(entryCategories.icon, ""))
-            )
-          )
-          .returning({ id: entryCategories.id }),
-        tx
-          .update(entryCategories)
-          .set({ description: input.description, updatedAt: now })
-          .where(
-            and(
-              eq(entryCategories.id, categoryId),
-              eq(entryCategories.ledgerId, ledgerId),
-              isNull(entryCategories.deletedAt),
-              or(isNull(entryCategories.description), eq(entryCategories.description, ""))
-            )
-          )
-          .returning({ id: entryCategories.id }),
-      ]);
-      return {
-        wroteIcon: iconRows.length > 0,
-        wroteDescription: descriptionRows.length > 0,
-      };
-    });
+    // Single atomic statement: the missing-value predicates are evaluated
+    // against the row's own current columns, so a concurrent backfill that
+    // commits first wins and the loser re-checks the predicates against the
+    // updated row (READ COMMITTED EvalPlanQual) instead of overwriting it.
+    // The wrote flags come from RETURNING, never from a stale pre-read.
+    const now = new Date();
+    const result = await db.execute<{
+      wroteIcon: boolean;
+      wroteDescription: boolean;
+    }>(sql`
+      UPDATE entry_categories category
+      SET icon = CASE
+            WHEN category.icon IS NULL OR category.icon = '' THEN ${input.icon}
+            ELSE category.icon
+          END,
+          description = CASE
+            WHEN category.description IS NULL OR category.description = ''
+              THEN ${input.description}
+            ELSE category.description
+          END,
+          updated_at = ${now}
+      WHERE category.id = ${categoryId}
+        AND category.ledger_id = ${ledgerId}
+        AND category.deleted_at IS NULL
+        AND (
+          category.icon IS NULL OR category.icon = ''
+          OR category.description IS NULL OR category.description = ''
+        )
+      RETURNING
+        category.icon IS NOT DISTINCT FROM ${input.icon} AS "wroteIcon",
+        category.description IS NOT DISTINCT FROM ${input.description} AS "wroteDescription"
+    `);
+    const row = result.rows[0];
+    return {
+      wroteIcon: row?.wroteIcon ?? false,
+      wroteDescription: row?.wroteDescription ?? false,
+    };
   },
 
   async delete(ledgerId, categoryId) {

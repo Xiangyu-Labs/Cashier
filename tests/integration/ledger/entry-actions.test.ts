@@ -529,6 +529,136 @@ describe("getLedgerEntriesAction", () => {
     expect(result.nextCursor).toBeDefined();
   });
 
+  it("paginates same-day same-timestamp documents without duplicates or gaps", async () => {
+    const db = getTestDb();
+    const createdAt = new Date("2026-05-15T08:00:00.000Z");
+    const entriesByDoc: Array<{ a: string; b: string }> = [];
+
+    for (let i = 0; i < 3; i++) {
+      const doc = await seedDoc(db, ledgerId, "2026-05-15");
+      await db.update(sourceDocuments).set({ createdAt }).where(eq(sourceDocuments.id, doc.id));
+      const [a, b] = await db
+        .insert(ledgerEntries)
+        .values([
+          {
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: doc.id,
+            itemName: `A-${i}`,
+            amount: "10.00",
+            currency: "CNY",
+          },
+          {
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: doc.id,
+            itemName: `B-${i}`,
+            amount: "20.00",
+            currency: "CNY",
+          },
+        ])
+        .returning();
+      if (a == null || b == null) {
+        throw new Error("Expected two ledger entries per document");
+      }
+      entriesByDoc.push({ a: a.id, b: b.id });
+    }
+
+    const collected: string[] = [];
+    let cursor: string | null | undefined;
+    for (let pageNum = 0; pageNum < 10; pageNum++) {
+      const result = await getTargetLedgerEntriesAction(ledgerId, {
+        cursor: cursor ?? undefined,
+        limit: 2,
+      });
+      collected.push(...result.items.map((item) => item.id));
+      cursor = result.nextCursor;
+      if (cursor == null) break;
+    }
+
+    expect(collected).toHaveLength(6);
+    expect(new Set(collected).size).toBe(6);
+    // Within each document, position 0 must sort before position 1.
+    for (const { a, b } of entriesByDoc) {
+      const aIndex = collected.indexOf(a);
+      const bIndex = collected.indexOf(b);
+      expect(aIndex).toBeGreaterThanOrEqual(0);
+      expect(bIndex).toBeGreaterThan(aIndex);
+    }
+  });
+
+  it("rejects a cursor whose fingerprint does not match the query", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId);
+    await db.insert(ledgerEntries).values([
+      {
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "First",
+        amount: "10.00",
+        currency: "CNY",
+      },
+      {
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Second",
+        amount: "20.00",
+        currency: "CNY",
+      },
+      {
+        id: uuidv4(),
+        ledgerId,
+        sourceDocumentId: doc.id,
+        itemName: "Third",
+        amount: "30.00",
+        currency: "CNY",
+      },
+    ]);
+
+    const firstPage = await getTargetLedgerEntriesAction(ledgerId, { limit: 2 });
+    expect(firstPage.nextCursor).toBeDefined();
+    if (firstPage.nextCursor == null) {
+      throw new Error("Expected a next cursor on the first page");
+    }
+
+    await expect(
+      getTargetLedgerEntriesAction(ledgerId, {
+        cursor: firstPage.nextCursor,
+        categoryId: uuidv4(),
+      })
+    ).rejects.toThrow("Ledger entry cursor does not match the query");
+  });
+
+  it("includes undated documents on their effective (UTC creation) date", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId);
+    await db
+      .update(sourceDocuments)
+      .set({ createdAt: new Date("2026-06-12T18:00:00.000Z") })
+      .where(eq(sourceDocuments.id, doc.id));
+    await db.insert(ledgerEntries).values({
+      id: uuidv4(),
+      ledgerId,
+      sourceDocumentId: doc.id,
+      itemName: "Undated",
+      amount: "10.00",
+      currency: "CNY",
+    });
+
+    const inRange = await getTargetLedgerEntriesAction(ledgerId, {
+      startDate: "2026-06-12",
+      endDate: "2026-06-12",
+    });
+    expect(inRange.items.map((item) => item.itemName)).toEqual(["Undated"]);
+
+    const outside = await getTargetLedgerEntriesAction(ledgerId, {
+      startDate: "2026-06-13",
+    });
+    expect(outside.items).toHaveLength(0);
+  });
+
   it("filters by categoryId", async () => {
     const db = getTestDb();
     const catId = uuidv4();

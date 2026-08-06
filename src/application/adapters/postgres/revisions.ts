@@ -226,13 +226,16 @@ export async function createPendingRevisionInTransaction(
     );
   }
 
-  for (const [position, storedFileRow] of storedFileRows.entries()) {
-    await tx.insert(revisionFiles).values({
-      ledgerId: input.ledgerId,
-      revisionId: revision.id,
-      storedFileId: storedFileRow.id,
-      position,
-    });
+  // Ownership checks completed above; the file rows are inserted in one batch.
+  if (storedFileRows.length > 0) {
+    await tx.insert(revisionFiles).values(
+      storedFileRows.map((file, position) => ({
+        ledgerId: input.ledgerId,
+        revisionId: revision.id,
+        storedFileId: file.id,
+        position,
+      }))
+    );
   }
 
   // A retry/supersede retires any pending duplicate review: the new revision

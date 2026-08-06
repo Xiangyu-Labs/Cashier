@@ -217,6 +217,11 @@ export const processingOutbox = pgTable(
       foreignColumns: [sourceDocumentRevisions.ledgerId, sourceDocumentRevisions.id],
       name: "fk_processing_outbox_revision_ledger",
     }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.sourceDocumentId],
+      foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
+      name: "fk_processing_outbox_document_ledger",
+    }).onDelete("cascade"),
     uniqueIndex("uq_processing_outbox_revision_attempt").on(table.revisionId, table.attemptNumber),
     index("idx_processing_outbox_pending_dispatch")
       .on(table.availableAt, table.createdAt)
@@ -270,6 +275,14 @@ export const duplicateReviews = pgTable(
       foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
       name: "fk_duplicate_reviews_matched_ledger",
     }).onDelete("cascade"),
+    check(
+      "ck_duplicate_reviews_confidence",
+      sql`${table.confidence} IS NULL OR (${table.confidence} >= 0 AND ${table.confidence} <= 1)`
+    ),
+    check(
+      "ck_duplicate_reviews_decision",
+      sql`${table.decision} IS NULL OR ${table.decision} IN ('keep_duplicate', 'discard_duplicate', 'superseded')`
+    ),
   ]
 );
 
@@ -391,13 +404,17 @@ export const idempotencyRecords = pgTable(
   ]
 );
 
-export const ledgerSyncState = pgTable("ledger_sync_state", {
-  ledgerId: uuid("ledger_id")
-    .primaryKey()
-    .references(() => ledgers.id, { onDelete: "cascade" }),
-  version: bigint("version", { mode: "bigint" }).notNull().default(BigInt(0)),
-  updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
-});
+export const ledgerSyncState = pgTable(
+  "ledger_sync_state",
+  {
+    ledgerId: uuid("ledger_id")
+      .primaryKey()
+      .references(() => ledgers.id, { onDelete: "cascade" }),
+    version: bigint("version", { mode: "bigint" }).notNull().default(BigInt(0)),
+    updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => [check("ck_ledger_sync_state_version", sql`${table.version} >= 0`)]
+);
 
 export const ledgerChangeBatches = pgTable(
   "ledger_change_batches",
@@ -418,6 +435,7 @@ export const ledgerChangeBatches = pgTable(
     primaryKey({ columns: [table.ledgerId, table.version] }),
     uniqueIndex("uq_ledger_change_batches_transaction").on(table.ledgerId, table.transactionId),
     index("idx_ledger_change_batches_created").on(table.createdAt),
+    check("ck_ledger_change_batches_version", sql`${table.version} > 0`),
   ]
 );
 

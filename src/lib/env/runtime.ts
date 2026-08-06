@@ -37,6 +37,7 @@ export interface RuntimeEnv {
   readonly disableRegistration: boolean;
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
+  readonly databasePoolMax: number;
   readonly logLevel: string;
   readonly devAuthBypass: boolean;
   readonly processingRecoveryMaxBatch: number;
@@ -158,6 +159,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get maxImageQuality() {
     return getStartupEnvValue("MAX_IMAGE_QUALITY");
+  },
+  get databasePoolMax() {
+    return getStartupEnvValue("DATABASE_POOL_MAX");
   },
   get logLevel() {
     return getStartupEnvValue("LOG_LEVEL");
