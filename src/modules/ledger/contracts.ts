@@ -99,6 +99,7 @@ export type LedgerSettingsDto = {
 export type Settings = LedgerSettingsDto;
 
 export interface LedgerSummaryDto {
+  unconvertedCount: number;
   convertedTotal: {
     total: string;
     currency: string;

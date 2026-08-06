@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -8,14 +8,18 @@ import {
   effectiveDocumentDate,
   matchesLiteralEntrySearch,
 } from "@/modules/ledger/entry-filter-semantics";
-import type { EnhancedStatsDto } from "@/modules/stats/contracts";
-import { calculateGrowth } from "@/modules/stats/utils";
+import type { EnhancedStatsDto, StatsComparisonMode } from "@/modules/stats/contracts";
+import {
+  buildEnhancedStatsDto,
+  type EnhancedStatsBucket,
+} from "@/modules/stats/application/build-enhanced-stats";
 
 export interface CachedDocumentMatch {
   document: SourceDocumentListItemDto;
   matchedEntries: SourceDocumentLedgerEntryDto[];
   displayEntries: SourceDocumentLedgerEntryDto[];
   subtotal: string;
+  unconvertedCount: number;
   filteredSubtotal: boolean;
 }
 
@@ -30,8 +34,9 @@ export function hasEntryFilters(filters: EntryFilters): boolean {
 }
 
 function entryAmount(entry: SourceDocumentLedgerEntryDto): Decimal | null {
+  if (entry.convertedAmount == null) return null;
   try {
-    return new Decimal(entry.convertedAmount ?? entry.amount);
+    return new Decimal(entry.convertedAmount);
   } catch {
     return null;
   }
@@ -42,9 +47,12 @@ export function matchesCachedEntry(
   filters: EntryFilters
 ): boolean {
   const amount = entryAmount(entry);
-  if (amount == null) return false;
-  if (filters.minAmount != null && amount.lessThan(filters.minAmount)) return false;
-  if (filters.maxAmount != null && amount.greaterThan(filters.maxAmount)) return false;
+  if (filters.minAmount != null && (amount == null || amount.lessThan(filters.minAmount))) {
+    return false;
+  }
+  if (filters.maxAmount != null && (amount == null || amount.greaterThan(filters.maxAmount))) {
+    return false;
+  }
   if (filters.categoryId && entry.categoryId !== filters.categoryId) return false;
   if (filters.currency && entry.currency !== filters.currency) return false;
   if (!matchesLiteralEntrySearch(entry, filters.search)) return false;
@@ -76,11 +84,13 @@ export function selectCachedDocuments(
     const subtotal = matchedEntries
       .reduce((total, entry) => total.plus(entryAmount(entry) ?? 0), new Decimal(0))
       .toFixed();
+    const unconvertedCount = matchedEntries.filter((entry) => entry.convertedAmount == null).length;
     result.push({
       document,
       matchedEntries,
       displayEntries: entryFiltered ? matchedEntries : entries,
       subtotal,
+      unconvertedCount,
       filteredSubtotal: entryFiltered,
     });
   }
@@ -96,24 +106,21 @@ export function totalCachedMatches(matches: CachedDocumentMatch[]): number {
     .toNumber();
 }
 
+export function totalCachedUnconvertedMatches(matches: CachedDocumentMatch[]): number {
+  return matches
+    .filter(
+      ({ document }) => document.status === "completed" || document.status === "duplicate_pending"
+    )
+    .reduce((total, match) => total + match.unconvertedCount, 0);
+}
+
 interface CachedStatsRange {
   from: string;
   to: string;
 }
 
-interface CachedStatsBucket {
-  total: Decimal;
-  categories: Map<
-    string,
-    {
-      id: string | null;
-      name: string;
-      icon: string | null;
-      total: Decimal;
-      count: number;
-    }
-  >;
-  days: Map<string, { total: Decimal; count: number; currencies: Set<string> }>;
+interface CachedStatsBucket extends EnhancedStatsBucket {
+  unconvertedCount: number;
 }
 
 function buildCachedStatsBucket(
@@ -124,18 +131,21 @@ function buildCachedStatsBucket(
 ): CachedStatsBucket {
   const bucket: CachedStatsBucket = {
     total: new Decimal(0),
+    unconvertedCount: 0,
     categories: new Map(),
     days: new Map(),
   };
 
   for (const document of items) {
-    if (document.status !== "completed" && document.status !== "duplicate_pending") continue;
     const date = effectiveDocumentDate(document);
     if (date < range.from || date > range.to) continue;
 
     for (const entry of document.ledgerEntries ?? []) {
       const amount = entryAmount(entry);
-      if (amount == null) continue;
+      if (amount == null) {
+        bucket.unconvertedCount += 1;
+        continue;
+      }
       bucket.total = bucket.total.plus(amount);
 
       const categoryKey = entry.categoryId ?? "uncategorized";
@@ -164,93 +174,30 @@ function buildCachedStatsBucket(
   return bucket;
 }
 
-function calculateHeatmapStats(amounts: number[]) {
-  if (amounts.length === 0) {
-    return { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 };
-  }
-  const sorted = amounts.toSorted((left, right) => left - right);
-  const minAmount = sorted[0] ?? 0;
-  const maxAmount = sorted.at(-1) ?? minAmount;
-  return {
-    minAmount,
-    maxAmount,
-    avgAmount: amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length,
-    p80Amount: sorted[Math.max(0, Math.ceil(sorted.length * 0.8) - 1)] ?? maxAmount,
-  };
-}
-
 export function buildCachedEnhancedStats({
   items,
   queryRange,
   compareRange,
   mainCurrency,
   uncategorizedLabel,
-  today,
+  comparisonMode,
 }: {
   items: readonly SourceDocumentListItemDto[];
   queryRange: CachedStatsRange;
   compareRange: CachedStatsRange;
   mainCurrency: string;
   uncategorizedLabel: string;
-  today: string;
+  comparisonMode?: StatsComparisonMode;
 }): EnhancedStatsDto {
   const current = buildCachedStatsBucket(items, queryRange, mainCurrency, uncategorizedLabel);
   const previous = buildCachedStatsBucket(items, compareRange, mainCurrency, uncategorizedLabel);
-  const total = current.total.toNumber();
-  const previousTotal = previous.total.toNumber();
-  const totalGrowth = calculateGrowth(total, previousTotal);
-  const categories = [...current.categories.entries()]
-    .map(([key, category]) => {
-      const previousAmount = previous.categories.get(key)?.total.toNumber() ?? 0;
-      const growth = calculateGrowth(category.total.toNumber(), previousAmount);
-      return {
-        id: category.id,
-        name: category.name,
-        icon: category.icon,
-        totalOriginal: "0",
-        totalConverted: category.total.toFixed(),
-        currency: mainCurrency,
-        percent: current.total.isZero()
-          ? 0
-          : category.total.div(current.total).times(100).toNumber(),
-        count: category.count,
-        trend: { percent: growth.percent, amount: String(growth.amount) },
-      };
-    })
-    .toSorted((left, right) => Number(right.totalConverted) - Number(left.totalConverted));
-  const heatmapDays = [...current.days.entries()]
-    .map(([date, day]) => ({
-      date,
-      totalAmount: day.total.toNumber(),
-      entryCount: day.count,
-      currencies: [...day.currencies],
-    }))
-    .toSorted((left, right) => left.date.localeCompare(right.date));
-  const effectiveEnd = queryRange.to < today ? queryRange.to : today;
-  const startTime = Date.parse(`${queryRange.from}T00:00:00Z`);
-  const endTime = Date.parse(`${effectiveEnd}T00:00:00Z`);
-  const days = endTime >= startTime ? Math.round((endTime - startTime) / 86_400_000) + 1 : 0;
-
-  return {
-    summary: {
-      total: current.total.toFixed(),
-      currency: mainCurrency,
-      trend: { percent: totalGrowth.percent, amount: String(totalGrowth.amount) },
-      dailyAverage: days > 0 ? total / days : 0,
-      comparison: {
-        mode: "same_period",
-        from: queryRange.from,
-        to: queryRange.to,
-        previousTotal: previous.total.toFixed(),
-        amountDelta: current.total.minus(previous.total).toFixed(),
-        percent: totalGrowth.percent,
-      },
-    },
-    categories,
-    chart: heatmapDays.map(({ date, totalAmount }) => ({ date, total: totalAmount })),
-    heatmap: {
-      days: heatmapDays,
-      stats: calculateHeatmapStats(heatmapDays.map((day) => day.totalAmount)),
-    },
-  };
+  return buildEnhancedStatsDto({
+    unconvertedCount: current.unconvertedCount,
+    mainCurrency,
+    current,
+    previous,
+    queryRange,
+    compareRange,
+    comparisonMode,
+  });
 }

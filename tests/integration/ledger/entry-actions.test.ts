@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTestDb } from "../../setup";
-import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
+import {
+  ledgers,
+  ledgerEntries,
+  entryCategories,
+  sourceDocumentRevisions,
+  users,
+} from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 const { convertAmountMock } = vi.hoisted(() => ({
   convertAmountMock: vi.fn(async () => "100.00"),
@@ -21,6 +27,7 @@ import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
+  batchDeleteLedgerEntriesAction,
   getLedgerEntriesAction,
 } from "@/modules/ledger/actions";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
@@ -380,6 +387,113 @@ describe("batchUpdateLedgerEntriesAction", () => {
       });
       expect(entry?.categoryId).toBeNull();
     }
+  });
+});
+
+describe("batchDeleteLedgerEntriesAction", () => {
+  let ledgerId: string;
+
+  beforeEach(async () => {
+    const db = getTestDb();
+    ledgerId = uuidv4();
+    await db.insert(ledgers).values({
+      id: ledgerId,
+      userId: TEST_USER_ID,
+      mainCurrency: "CNY",
+    });
+  });
+
+  it("creates one replacement revision when deleting multiple entries from one document", async () => {
+    const db = getTestDb();
+    const doc = await seedDoc(db, ledgerId);
+    const entries = await db
+      .insert(ledgerEntries)
+      .values(
+        [10, 20, 30].map((amount, index) => ({
+          id: uuidv4(),
+          ledgerId,
+          sourceDocumentId: doc.id,
+          itemName: `Item ${index}`,
+          amount: String(amount),
+          currency: "CNY",
+          convertedAmount: String(amount),
+        }))
+      )
+      .returning();
+    await activateTestSourceDocumentProjection(db, doc.id);
+
+    const beforeRevisionCount = await db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, doc.id));
+    const result = await batchDeleteLedgerEntriesAction(
+      ledgerId,
+      entries.slice(0, 2).map((entry) => entry.id)
+    );
+
+    expect(result.succeededIds).toEqual(entries.slice(0, 2).map((entry) => entry.id));
+    expect(result.failed).toHaveLength(0);
+    const afterRevisionCount = await db
+      .select({ id: sourceDocumentRevisions.id })
+      .from(sourceDocumentRevisions)
+      .where(eq(sourceDocumentRevisions.sourceDocumentId, doc.id));
+    expect(afterRevisionCount).toHaveLength(beforeRevisionCount.length + 1);
+
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.sourceDocumentId, doc.id),
+        eq(ledgerEntries.sourceDocumentRevisionId, document!.activeRevisionId!)
+      ),
+    });
+    expect(activeEntries).toHaveLength(1);
+    expect(activeEntries[0]?.itemName).toBe("Item 2");
+  });
+
+  it("resolves legacy projections before deletion instead of skipping their entries", async () => {
+    const db = getTestDb();
+    const [doc] = await db
+      .insert(sourceDocuments)
+      .values({
+        id: uuidv4(),
+        ledgerId,
+        currentStatus: "completed",
+        type: "ai_parsed",
+        entryDate: null,
+      })
+      .returning();
+    expect(doc).toBeDefined();
+    const entries = await db
+      .insert(ledgerEntries)
+      .values(
+        [10, 20].map((amount, index) => ({
+          id: uuidv4(),
+          ledgerId,
+          sourceDocumentId: doc!.id,
+          itemName: `Legacy ${index}`,
+          amount: String(amount),
+          currency: "CNY",
+          convertedAmount: String(amount),
+        }))
+      )
+      .returning();
+
+    const result = await batchDeleteLedgerEntriesAction(
+      ledgerId,
+      entries.map((entry) => entry.id)
+    );
+
+    // The legacy document has no canonical active projection, so the entries
+    // cannot be deleted. The per-entry delete path reports this as a failure
+    // (the projection resolution throws) instead of a silent skip.
+    expect(result.succeededIds).toEqual([]);
+    expect(result.skipped).toEqual([]);
+    expect(result.failed.map((failure) => failure.id).sort()).toEqual(
+      entries.map((entry) => entry.id).sort()
+    );
+    expect(result.failed[0]?.reason).toContain("canonical active revision");
   });
 });
 

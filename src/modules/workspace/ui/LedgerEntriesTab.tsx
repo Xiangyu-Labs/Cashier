@@ -9,14 +9,14 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
-import { useLedgerEntriesMutations } from "@/modules/ledger/hooks";
+import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
 import {
   useBatchSourceDocumentActions,
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
 import { getStreamTotalAction } from "@/modules/source-document/actions";
 import { useNotifyRevisionRefresh } from "@/modules/source-document/hooks/revision-state-refresh";
-import { type EntryFilters } from "@/modules/ledger/ui";
+import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
@@ -315,6 +315,14 @@ export function LedgerEntriesTab({
         onResetFilters={onResetFilters}
         {...(onApplyPreset != null ? { onApplyPreset } : {})}
       />
+      {streamTotalData?.unconvertedCount != null && streamTotalData.unconvertedCount > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {tCommon("incompleteAccountingProjection")}
+        </div>
+      ) : null}
       <div className="space-y-4">
         {isLoading ? (
           <LedgerEntriesLoading />

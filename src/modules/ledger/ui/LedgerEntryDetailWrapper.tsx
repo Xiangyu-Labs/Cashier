@@ -8,8 +8,11 @@ import {
   invalidateSourceDocuments,
   queryKeys,
 } from "@/lib/query-keys";
-import { getLedgerEntryAction } from "@/modules/ledger/actions";
-import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import { getLedgerEntryAction } from "@/modules/ledger/server-actions/get-entry";
+import {
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";

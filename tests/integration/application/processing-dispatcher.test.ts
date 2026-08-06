@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
@@ -26,6 +26,11 @@ vi.mock("@/lib/tasks/ai-context", () => ({
   createAIContext: vi.fn(),
 }));
 import { createAIContext } from "@/lib/tasks/ai-context";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 /**
  * Creates a pending revision + intent for a single source document.
@@ -426,7 +431,206 @@ describe("PostgresProcessingIntentAdapter", () => {
   });
 });
 
+describe("leased processor fencing", () => {
+  async function reclaimedLease(intent: ProcessingIntentContract) {
+    const db = getTestDb();
+    const adapter = new PostgresProcessingIntentAdapter();
+    await adapter.dispatch(intent);
+    const first = await adapter.claim(intent.id);
+    expect(first).not.toBeNull();
+    // Expire the first claim and let a second worker reclaim the outbox row.
+    await db
+      .update(processingOutbox)
+      .set({ claimExpiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(processingOutbox.id, intent.id));
+    const second = await adapter.claim(intent.id);
+    expect(second).not.toBeNull();
+    return { adapter, firstToken: first!.claimToken, secondToken: second!.claimToken };
+  }
+
+  it("does not commit a projection after the worker lease is reclaimed", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
+    const { firstToken } = await reclaimedLease(intent);
+
+    const generate = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    }));
+    const processor = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate }),
+    });
+
+    await expect(
+      processor.process({
+        ledgerId,
+        sourceDocumentId: intent.sourceDocumentId,
+        revisionId: intent.revisionId,
+        lease: { intentId: intent.id, claimToken: firstToken },
+      })
+    ).rejects.toThrow("Processing cancelled");
+
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+    });
+    expect(revision?.outcome).toBe("processing");
+    expect(document?.activeRevisionId).toBeNull();
+    expect(document?.pendingRevisionId).toBe(intent.revisionId);
+    expect(await db.select().from(ledgerEntries)).toHaveLength(0);
+  });
+
+  it("does not persist a terminal outcome after the worker lease is reclaimed", async () => {
+    const db = getTestDb();
+    const { ledgerId, intent } = await pendingIntent(
+      "2026-07-15T00:00:00.000Z",
+      crypto.randomUUID()
+    );
+    const { firstToken } = await reclaimedLease(intent);
+
+    const generate = vi.fn(async () => ({
+      content: JSON.stringify({
+        outcome: "anomaly",
+        anomaly_reason: "Image too blurry",
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "blurry image",
+      }),
+    }));
+    const processor = new CurrentRevisionProcessor({
+      createAIContext: () => ({ generate }),
+    });
+
+    await expect(
+      processor.process({
+        ledgerId,
+        sourceDocumentId: intent.sourceDocumentId,
+        revisionId: intent.revisionId,
+        lease: { intentId: intent.id, claimToken: firstToken },
+      })
+    ).rejects.toThrow("Processing cancelled");
+
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    expect(revision?.outcome).toBe("processing");
+    expect(revision?.anomalyReason).toBeNull();
+    expect(await db.select().from(ledgerEntries)).toHaveLength(0);
+  });
+});
+
 describe("executeSingleProcessingIntent — standalone function with real adapter/processor", () => {
+  it.each([
+    ["returns null", "null"],
+    ["throws", "throw"],
+  ] as const)("aborts the worker when lease renewal %s", async (_label, mode) => {
+    vi.useFakeTimers();
+    const db = getTestDb();
+    const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());
+
+    let releaseGeneration!: (value: { content: string }) => void;
+    let markGenerationStarted!: () => void;
+    const generationStarted = new Promise<void>((resolve) => {
+      markGenerationStarted = resolve;
+    });
+    const generation = new Promise<{ content: string }>((resolve) => {
+      releaseGeneration = resolve;
+    });
+    const generate = vi.fn(() => {
+      markGenerationStarted();
+      return generation;
+    });
+    let processingSignal: AbortSignal | undefined;
+    vi.mocked(createAIContext).mockImplementation(({ signal }) => {
+      processingSignal = signal;
+      return { generate };
+    });
+
+    const renew = vi
+      .spyOn(PostgresProcessingIntentAdapter.prototype, "renew")
+      .mockImplementation(async () => {
+        if (mode === "null") return null;
+        throw new Error("lease backend unavailable");
+      });
+    const adapter = new PostgresProcessingIntentAdapter();
+    await adapter.dispatch(intent);
+
+    const execution = executeSingleProcessingIntent(intent);
+    await generationStarted;
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(renew).toHaveBeenCalledTimes(1);
+    expect(processingSignal?.aborted).toBe(true);
+
+    releaseGeneration({
+      content: JSON.stringify({
+        outcome: "success",
+        anomaly_reason: null,
+        title: "Lunch",
+        receipt_count: 1,
+        receipt_totals: [{ receipt_index: 0, amount: "12.50", currency: "CNY" }],
+        ledger_entries: [
+          {
+            receipt_index: 0,
+            item_name: "Lunch",
+            amount: "12.50",
+            currency: "CNY",
+            category_index: 0,
+            notes: null,
+          },
+        ],
+        order_adjustments: [],
+        reasoning: "single item",
+      }),
+    });
+
+    await expect(execution).resolves.toBe(true);
+    const document = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, intent.sourceDocumentId),
+    });
+    const revision = await db.query.sourceDocumentRevisions.findFirst({
+      where: eq(sourceDocumentRevisions.id, intent.revisionId),
+    });
+    expect(document?.activeRevisionId).toBeNull();
+    expect(document?.pendingRevisionId).toBe(intent.revisionId);
+    expect(revision?.outcome).toBe("processing");
+    expect(await db.select().from(ledgerEntries)).toHaveLength(0);
+  });
+
   it("processes successfully, setting outbox and revision outcomes to completed", async () => {
     const db = getTestDb();
     const { intent } = await pendingIntent("2026-07-15T00:00:00.000Z", crypto.randomUUID());

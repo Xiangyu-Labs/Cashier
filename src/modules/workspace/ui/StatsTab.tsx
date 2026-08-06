@@ -102,7 +102,7 @@ export function StatsTab({
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
-  const { data: stats, isLoading } = statsQuery;
+  const { data: stats, isLoading, isError, refetch } = statsQuery;
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -146,6 +146,8 @@ export function StatsTab({
       endDateStr={endDateStr}
       stats={stats}
       isLoading={isLoading}
+      isError={isError}
+      onRetry={() => void refetch()}
       chartView={chartView}
       onChartViewChange={setChartView}
       fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}

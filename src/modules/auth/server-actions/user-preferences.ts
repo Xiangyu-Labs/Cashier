@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { auth } from "@/auth";
 import { UnauthorizedError } from "@/lib/errors";
 import type { UserPreferences } from "@/modules/auth/contracts";
@@ -8,6 +9,10 @@ import {
   updateUserPreferences,
 } from "@/modules/auth/application/use-cases/user-preferences";
 import { serverComposition } from "@/application/server-composition-root";
+
+const userPreferencesSchema = z.object({
+  interfaceLanguage: z.enum(["auto", "zh", "en"]),
+});
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -24,5 +29,6 @@ export async function updateUserPreferencesAction(
   input: UserPreferences
 ): Promise<UserPreferences> {
   const userId = await requireUserId();
-  return updateUserPreferences(userId, input, serverComposition.userPreferences);
+  const validated = userPreferencesSchema.parse(input);
+  return updateUserPreferences(userId, validated, serverComposition.userPreferences);
 }

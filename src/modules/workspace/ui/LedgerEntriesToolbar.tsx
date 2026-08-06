@@ -3,7 +3,7 @@ import { ArrowLeft, CheckSquare, RefreshCw, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui";
+import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams } from "@/lib/period-utils";
 import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";

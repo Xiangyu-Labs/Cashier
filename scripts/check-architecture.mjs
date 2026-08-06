@@ -78,9 +78,7 @@ for (const file of files) {
   const source = readFileSync(file, "utf8");
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
-  const isAuthOrWorkspaceServerAction = /^src\/modules\/(?:auth|workspace)\/server-actions\//.test(
-    relative
-  );
+  const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relative);
   const moduleName = relative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
 
   for (const importPattern of importPatterns) {
@@ -91,13 +89,6 @@ for (const file of files) {
         /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/.test(specifier)
       ) {
         violations.push(`${relative}: application code must not import transport frameworks`);
-      }
-
-      if (
-        isAuthOrWorkspaceServerAction &&
-        /^(?:@\/lib\/db|@\/persistence)(?:\/|$)/.test(specifier)
-      ) {
-        violations.push(`${relative}: auth/workspace server actions must use ports`);
       }
 
       const target = resolveImport(file, specifier);
@@ -129,6 +120,17 @@ for (const file of files) {
     /["']@\/(?:application\/adapters|persistence|lib\/db)(?:\/|["'])/.test(source)
   ) {
     violations.push(`${relative}: application code must not import infrastructure adapters`);
+  }
+  if (
+    isServerAction &&
+    [
+      /from\s+["'](?:drizzle-orm|@\/lib\/db|@\/persistence)["']/,
+      /from\s+["']@\/application\/adapters(?:\/|["'])/,
+      /from\s+["'](?:ai|openai|resend)["']/,
+      /from\s+["']@(?:ai-sdk|aws-sdk|google|anthropic-ai)\/[^"']+["']/,
+    ].some((pattern) => pattern.test(source))
+  ) {
+    violations.push(`${relative}: server actions must call application ports/use cases`);
   }
 }
 

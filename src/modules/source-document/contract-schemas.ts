@@ -84,6 +84,27 @@ export const sourceDocumentIdsSchema = z.preprocess(
   z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
 );
 
+/**
+ * Identity values carried by source-document mutations are opaque correlation
+ * values at the transport boundary, but they must still be real UUID v4
+ * values before they reach an application adapter.
+ */
+export const mutationIdentitySchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  revisionId: uuidSchema.optional(),
+  operationId: uuidSchema.optional(),
+});
+
+export const revisionMutationIdentitySchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  revisionId: uuidSchema,
+  operationId: uuidSchema.optional(),
+});
+
+export const operationIdentitySchema = strictObjectSchema({
+  operationId: uuidSchema.optional(),
+});
+
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z
     .string()
@@ -332,6 +353,20 @@ function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T
   }
 
   return result.data;
+}
+
+export function parseMutationIdentity(input: unknown): z.infer<typeof mutationIdentitySchema> {
+  return parseSourceDocumentContract(mutationIdentitySchema, input);
+}
+
+export function parseRevisionMutationIdentity(
+  input: unknown
+): z.infer<typeof revisionMutationIdentitySchema> {
+  return parseSourceDocumentContract(revisionMutationIdentitySchema, input);
+}
+
+export function parseOperationIdentity(input: unknown): z.infer<typeof operationIdentitySchema> {
+  return parseSourceDocumentContract(operationIdentitySchema, input);
 }
 
 export function parseCreateSourceDocumentInput(input: unknown): CreateSourceDocumentInputContract {

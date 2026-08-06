@@ -6,10 +6,15 @@ import {
   createLedgerEntryWithConversion,
   updateLedgerEntryWithConversion,
 } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
+import { batchDeleteLedgerEntries } from "@/modules/ledger/application/use-cases/batch-delete-ledger-entries";
+import { getBatchEntryDateImpact } from "@/modules/ledger/application/queries/get-batch-entry-date-impact";
+import { updateLedgerEntryDates } from "@/modules/ledger/application/use-cases/update-ledger-entry-dates";
+import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
 import { deleteLedgerEntry } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
+  parseBatchUpdateLedgerEntryDatesInput,
   parseCreateLedgerEntryInput,
   parseLedgerEntryId,
   parseLedgerEntryIds,
@@ -25,33 +30,11 @@ import {
 } from "@/modules/source-document/server-actions/reconciliation";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
 import type { BatchActionResult } from "@/lib/batch-ids";
-import { db } from "@/lib/db";
-import { entryCategories, ledgerEntries, sourceDocuments } from "@/persistence";
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
-import { NotFoundError } from "@/lib/errors";
 import { serverComposition } from "@/application/server-composition-root";
-
-async function assertCategoryBelongsToLedger(
-  ledgerId: string,
-  categoryId: string | null | undefined
-) {
-  if (categoryId == null) return;
-  const category = await db.query.entryCategories.findFirst({
-    where: and(
-      eq(entryCategories.id, categoryId),
-      eq(entryCategories.ledgerId, ledgerId),
-      isNull(entryCategories.deletedAt)
-    ),
-    columns: { id: true },
-  });
-  if (category == null) throw new NotFoundError("Category");
-}
 
 export const createLedgerEntryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
     const validated = parseCreateLedgerEntryInput(data);
-    await assertCategoryBelongsToLedger(ledgerId, validated.categoryId);
     const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
       amount: String(validated.amount),
@@ -61,7 +44,10 @@ export const createLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
     if (validated.description !== undefined) payload.description = validated.description;
-    return createLedgerEntryWithConversion(payload, serverComposition.ledgerMutations);
+    return createLedgerEntryWithConversion(payload, {
+      mutations: serverComposition.ledgerMutations,
+      categories: serverComposition.categories,
+    });
   }
 );
 
@@ -76,7 +62,6 @@ export const updateLedgerEntryAction = withLedgerAccess(
   > => {
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
-    await assertCategoryBelongsToLedger(ledgerId, validated.categoryId);
     const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
       ledgerId,
       ledgerEntryId: validatedLedgerEntryId,
@@ -86,10 +71,10 @@ export const updateLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     if (validated.description !== undefined) payload.description = validated.description;
-    const result = await updateLedgerEntryWithConversion(
-      payload,
-      serverComposition.ledgerMutations
-    );
+    const result = await updateLedgerEntryWithConversion(payload, {
+      mutations: serverComposition.ledgerMutations,
+      categories: serverComposition.categories,
+    });
 
     if (operationId != null && result.sourceDocumentId != null) {
       // C3: Read authoritative source document from DB instead of fabricating
@@ -145,7 +130,6 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
   ): Promise<{ ledgerEntryIds: string[]; affectedCount: number }> => {
     const validatedLedgerEntryIds = parseLedgerEntryIds(ledgerEntryIds);
     const validated = parseBatchUpdateLedgerEntriesInput(data);
-    await assertCategoryBelongsToLedger(ledgerId, validated.categoryId);
     const payload: Parameters<typeof batchUpdateLedgerEntries>[0] = {
       ledgerId,
       ledgerEntryIds: validatedLedgerEntryIds,
@@ -155,10 +139,10 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
     if (validated.amount !== undefined) payload.amount = String(validated.amount);
     if (validated.description !== undefined) payload.description = validated.description;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
-    const affectedCount = await batchUpdateLedgerEntries(
-      payload,
-      serverComposition.ledgerMutations
-    );
+    const affectedCount = await batchUpdateLedgerEntries(payload, {
+      mutations: serverComposition.ledgerMutations,
+      categories: serverComposition.categories,
+    });
 
     return {
       ledgerEntryIds: validatedLedgerEntryIds,
@@ -170,111 +154,44 @@ export const batchUpdateLedgerEntriesAction = withLedgerAccess(
 export const batchDeleteLedgerEntriesAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[]): Promise<BatchActionResult> => {
     const ids = parseLedgerEntryIds(inputIds);
-    const result: BatchActionResult = {
-      requestedCount: ids.length,
-      succeededIds: [],
-      skipped: [],
-      failed: [],
-    };
-    for (const id of ids) {
-      try {
-        const deleted = await deleteLedgerEntry(ledgerId, id, serverComposition.ledgerMutations);
-        if (deleted.deleted) result.succeededIds.push(id);
-        else result.skipped.push({ id, reason: "not_available" });
-      } catch (error) {
-        result.failed.push({
-          id,
-          reason: error instanceof Error ? error.message : "unknown_error",
-        });
-      }
-    }
-    return result;
+    return batchDeleteLedgerEntries(
+      { ledgerId, ledgerEntryIds: ids },
+      serverComposition.ledgerMutations
+    );
+  }
+);
+export const previewBatchLedgerEntryDateAction = withLedgerAccess(
+  async (ledgerId: string, inputIds: string[]) => {
+    const entryIds = parseLedgerEntryIds(inputIds);
+    return getBatchEntryDateImpact(
+      { ledgerId, ledgerEntryIds: entryIds },
+      serverComposition.ledgerReads
+    );
   }
 );
 
-export interface BatchEntryDateImpact {
-  selectedEntryCount: number;
-  sourceDocumentCount: number;
-  affectedEntryCount: number;
-  sourceDocumentIds: string[];
-}
-
-async function getBatchEntryDateImpact(
-  ledgerId: string,
-  inputIds: string[]
-): Promise<BatchEntryDateImpact> {
-  const ids = parseLedgerEntryIds(inputIds);
-  const selected = await db
-    .select({ id: ledgerEntries.id, sourceDocumentId: ledgerEntries.sourceDocumentId })
-    .from(ledgerEntries)
-    .innerJoin(
-      sourceDocuments,
-      and(
-        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .where(
-      and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        inArray(ledgerEntries.id, ids),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
-  const sourceDocumentIds = [
-    ...new Set(
-      selected.flatMap((row) => (row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))
-    ),
-  ];
-  if (selected.length !== ids.length) {
-    throw new NotFoundError("Selected ledger entry");
-  }
-  if (sourceDocumentIds.length === 0) {
-    return {
-      selectedEntryCount: selected.length,
-      sourceDocumentCount: 0,
-      affectedEntryCount: 0,
-      sourceDocumentIds: [],
-    };
-  }
-  const affected = await db
-    .select({ id: ledgerEntries.id })
-    .from(ledgerEntries)
-    .innerJoin(
-      sourceDocuments,
-      and(
-        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .where(
-      and(
-        eq(ledgerEntries.ledgerId, ledgerId),
-        inArray(ledgerEntries.sourceDocumentId, sourceDocumentIds),
-        isNull(ledgerEntries.deletedAt)
-      )
-    );
-  return {
-    selectedEntryCount: selected.length,
-    sourceDocumentCount: sourceDocumentIds.length,
-    affectedEntryCount: affected.length,
-    sourceDocumentIds,
-  };
-}
-
-export const previewBatchLedgerEntryDateAction = withLedgerAccess(getBatchEntryDateImpact);
-
 export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
   async (ledgerId: string, inputIds: string[], entryDate: string) => {
-    const impact = await getBatchEntryDateImpact(ledgerId, inputIds);
+    const validated = parseBatchUpdateLedgerEntryDatesInput({
+      entryIds: inputIds,
+      entryDate,
+    });
+    const impact = await updateLedgerEntryDates(
+      {
+        ledgerId,
+        ledgerEntryIds: validated.entryIds,
+        entryDate: validated.entryDate,
+      },
+      {
+        reads: serverComposition.ledgerReads,
+      }
+    );
     if (impact.sourceDocumentIds.length > 0) {
       await batchUpdateSourceDocuments(
         {
           ledgerId,
           sourceDocumentIds: impact.sourceDocumentIds,
-          data: { entryDate },
+          data: { entryDate: validated.entryDate },
         },
         serverComposition.sourceDocumentUpdates
       );

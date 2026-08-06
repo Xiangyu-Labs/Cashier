@@ -7,7 +7,7 @@ import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { parseISO } from "date-fns";
-import { useConvertedAmount } from "@/modules/currency/client";
+import { useAmountDisplay } from "@/modules/currency/client";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { EntryHeader } from "./LedgerEntryViewDetails/components/EntryHeader";
@@ -75,21 +75,17 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
-  const { converted } = useConvertedAmount(
-    ledgerEntry.ledgerId,
-    displayData.amount,
-    displayData.currency,
+  const hasPendingAmountOrCurrency =
+    pendingChanges.amount !== undefined || pendingChanges.currency !== undefined;
+  const { converted, isDifferentCurrency, status } = useAmountDisplay({
+    ledgerId: ledgerEntry.ledgerId,
+    amount: displayData.amount,
+    currency: displayData.currency,
     mainCurrency,
-    entryDate != null && entryDate !== "" ? entryDate : ledgerEntry.createdAt
-  );
-
-  const isDifferentCurrency = Boolean(
-    displayData.currency !== "" &&
-    displayData.currency !== null &&
-    displayData.currency !== undefined &&
-    displayData.currency !== mainCurrency &&
-    displayData.currency !== "unknown"
-  );
+    date: entryDate != null && entryDate !== "" ? entryDate : ledgerEntry.createdAt,
+    // The persisted value is authoritative until amount/currency are edited.
+    persistedConvertedAmount: hasPendingAmountOrCurrency ? null : ledgerEntry.convertedAmount,
+  });
 
   const { isExpanded, setIsExpanded, needsFolding, contentRef } = useTextFolding([
     displayData.description,
@@ -122,7 +118,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           currency={displayData.currency}
           preferredCurrencies={preferredCurrencies}
           mainCurrency={mainCurrency}
-          convertedAmount={converted}
+          convertedAmount={status === "success" && converted != null ? converted : null}
           isDifferentCurrency={isDifferentCurrency}
           onFieldChange={handleFieldChange}
           {...(category !== undefined ? { category } : {})}

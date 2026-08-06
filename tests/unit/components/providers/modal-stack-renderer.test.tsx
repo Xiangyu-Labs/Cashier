@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 
-vi.mock("@/modules/ledger/ui", () => ({
+vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
   LedgerEntryDetailWrapper: ({
     open,
     onClose,

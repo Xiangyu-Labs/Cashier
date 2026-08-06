@@ -9,7 +9,6 @@ import {
   invalidateLedgerSettingsView,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateUncategorizedCount,
   queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -18,9 +17,8 @@ import {
   updateEntryCategoryAction,
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
-  generateEntryCategoryMetadataAction,
-} from "@/modules/ledger/actions";
-import { fireAndForget } from "@/lib/safe-async";
+} from "@/modules/ledger/server-actions/categories";
+import { generateEntryCategoryMetadataAction } from "@/modules/ledger/server-actions/category-metadata";
 import type {
   DeleteEntryCategoryResultDto,
   ReorderEntryCategoriesResultDto,
@@ -110,19 +108,12 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
-      invalidateUncategorizedCount(ledgerId),
       invalidateLedgerSettingsView(ledgerId),
       invalidateLedgerEntries(ledgerId),
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSettledExtra: (queryClient) => {
-      fireAndForget(
-        queryClient.invalidateQueries({ queryKey: queryKeys.uncategorizedCount(ledgerId) }),
-        { context: "use-category-mutations" }
-      );
-    },
   });
 
   const reorderCategories = useLedgerMutation<ReorderEntryCategoriesResultDto, string[]>(ledgerId, {

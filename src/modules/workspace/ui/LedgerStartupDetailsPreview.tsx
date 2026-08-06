@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { EntryFilterPanel } from "@/modules/ledger/ui";
+import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
 import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
 import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import { SourceDocumentDetailModal } from "@/modules/source-document/ui/SourceDocumentDetailModal";
@@ -18,6 +18,7 @@ import {
 import {
   selectCachedDocuments,
   totalCachedMatches,
+  totalCachedUnconvertedMatches,
 } from "@/modules/workspace/ledger-startup-cache-selectors";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
 
@@ -32,6 +33,7 @@ export function LedgerStartupDetailsPreview({
 }: LedgerStartupDetailsPreviewProps) {
   const locale = useLocale();
   const t = useTranslations("LedgerPage");
+  const tCommon = useTranslations("Common");
   const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
   const mainCurrency = snapshot.mainCurrency ?? "CNY";
@@ -78,6 +80,14 @@ export function LedgerStartupDetailsPreview({
           onResetFilters={() => setFilters({})}
         />
       </EntriesToolbarShell>
+      {totalCachedUnconvertedMatches(matches) > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {tCommon("incompleteAccountingProjection")}
+        </div>
+      ) : null}
       {groupedItems.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
           {t("cachedNoRecords")}

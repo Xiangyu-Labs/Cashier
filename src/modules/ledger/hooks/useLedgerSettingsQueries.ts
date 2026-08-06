@@ -4,11 +4,9 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSmartPolling } from "@/hooks/use-smart-polling";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  getEntryCategoriesAction,
-  getLedgerAction,
-  getLedgerSettingsAction,
-} from "@/modules/ledger/actions";
+import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/categories";
+import { getLedgerAction } from "@/modules/ledger/server-actions/get";
+import { getLedgerSettingsAction } from "@/modules/ledger/server-actions/settings";
 import type { EntryCategoryWithCount, Ledger, ServiceCredential } from "@/modules/ledger/contracts";
 
 interface UseLedgerSettingsQueriesParams {

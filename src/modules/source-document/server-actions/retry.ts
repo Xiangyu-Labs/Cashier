@@ -7,6 +7,7 @@ import type {
   RetrySourceDocumentResponseDto,
 } from "@/modules/source-document/contracts";
 import {
+  parseMutationIdentity,
   retrySourceDocumentInputSchema,
   type RetrySourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
@@ -35,12 +36,16 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     RetrySourceDocumentResponseDto &
       Partial<{ reconciliation: RetrySourceDocumentReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseMutationIdentity({
+      sourceDocumentId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       scheduleProcessingAfter(intent);
     };
 
     const result = await retrySourceDocument(
-      { ledgerId, sourceDocumentId },
+      { ledgerId, sourceDocumentId: identity.sourceDocumentId },
       {
         submissions: serverComposition.sourceDocumentSubmissions,
         storedFiles: serverComposition.storedFiles,
@@ -52,13 +57,13 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     // Also recover any missed processing intents
     scheduleProcessingRecoveryAfter(ledgerId);
 
-    if (operationId != null) {
+    if (identity.operationId != null) {
       return {
         ...result,
         reconciliation: await buildAuthoritativeReconciliation(
-          operationId,
+          identity.operationId,
           ledgerId,
-          sourceDocumentId
+          identity.sourceDocumentId
         ),
       };
     }
@@ -85,6 +90,10 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     RetrySourceDocumentResponseDto &
       Partial<{ reconciliation: RetrySourceDocumentReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseMutationIdentity({
+      sourceDocumentId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const validatedInput =
       input == null ? null : omitUndefinedProperties(retrySourceDocumentInputSchema.parse(input));
 
@@ -95,7 +104,7 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     const result = await retrySourceDocument(
       {
         ledgerId,
-        sourceDocumentId,
+        sourceDocumentId: identity.sourceDocumentId,
         ...(validatedInput == null ? {} : { input: validatedInput }),
       },
       {
@@ -109,13 +118,13 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
     // Also recover any missed processing intents
     scheduleProcessingRecoveryAfter(ledgerId);
 
-    if (operationId != null) {
+    if (identity.operationId != null) {
       return {
         ...result,
         reconciliation: await buildAuthoritativeReconciliation(
-          operationId,
+          identity.operationId,
           ledgerId,
-          sourceDocumentId
+          identity.sourceDocumentId
         ),
       };
     }

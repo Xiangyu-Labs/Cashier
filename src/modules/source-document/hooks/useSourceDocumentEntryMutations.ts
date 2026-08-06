@@ -3,7 +3,7 @@ import {
   batchUpdateLedgerEntriesAction,
   deleteLedgerEntryAction,
   updateLedgerEntryAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { round } from "@/lib/money/decimal";
 import { useTranslations } from "next-intl";
@@ -66,16 +66,13 @@ export function useSourceDocumentEntryMutations({
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),
     ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      ? {
+          invalidatePredicates: [
+            ...(sourceDocumentAndEntriesPredicates ?? []),
+            ...sourceDocumentEntriesSummaryPredicates,
+          ],
+        }
       : {}),
-    onSettledExtra: (client) => {
-      for (const predicate of [
-        ...(sourceDocumentAndEntriesPredicates ?? []),
-        ...(sourceDocumentEntriesSummaryPredicates ?? []),
-      ]) {
-        void client.invalidateQueries({ predicate });
-      }
-    },
   });
 
   const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {

@@ -54,13 +54,15 @@ export function buildLedgerEntryFilterConditions(
 
   if (filters.minAmount !== undefined && filters.minAmount !== null) {
     conditions.push(
-      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) >= ${filters.minAmount}`
+      sql`${ledgerEntries.convertedAmount} IS NOT NULL
+        AND ${ledgerEntries.convertedAmount} >= ${filters.minAmount}`
     );
   }
 
   if (filters.maxAmount !== undefined && filters.maxAmount !== null) {
     conditions.push(
-      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) <= ${filters.maxAmount}`
+      sql`${ledgerEntries.convertedAmount} IS NOT NULL
+        AND ${ledgerEntries.convertedAmount} <= ${filters.maxAmount}`
     );
   }
 

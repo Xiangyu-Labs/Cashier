@@ -10,18 +10,16 @@ import type {
   AbandonCandidateResponseDto,
   CancelProcessingReconciliationDto,
   CancelProcessingResponseDto,
-  SourceDocumentListItemDto,
   SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
-import { getSourceDocumentCandidateReview } from "@/application/adapters/postgres";
+import { parseRevisionMutationIdentity } from "@/modules/source-document/contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
-    getSourceDocumentCandidateReview(ledgerId, sourceDocumentId)
+    serverComposition.sourceDocumentReads.candidateReview(ledgerId, sourceDocumentId)
 );
 
 /**
@@ -40,42 +38,29 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
     AcceptCandidateResponseDto &
       Partial<{ reconciliation: AcceptCandidateReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseRevisionMutationIdentity({
+      sourceDocumentId,
+      revisionId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const result = await acceptSourceDocumentCandidate(
-      { ledgerId, sourceDocumentId, revisionId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        revisionId: identity.revisionId,
+      },
       serverComposition.sourceDocumentLifecycle
     );
 
-    if (operationId != null) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        {
-          id: sourceDocumentId,
+    if (identity.operationId != null) {
+      return {
+        ...result,
+        reconciliation: await buildAuthoritativeReconciliation(
+          identity.operationId,
           ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as unknown as SourceDocumentListItemDto,
-        now,
-        true,
-        false
-      );
-      return { ...result, reconciliation: entity };
+          identity.sourceDocumentId
+        ),
+      };
     }
 
     return result;
@@ -99,42 +84,29 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
     AbandonCandidateResponseDto &
       Partial<{ reconciliation: AbandonCandidateReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseRevisionMutationIdentity({
+      sourceDocumentId,
+      revisionId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const result = await abandonSourceDocumentCandidate(
-      { ledgerId, sourceDocumentId, revisionId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        revisionId: identity.revisionId,
+      },
       serverComposition.sourceDocumentLifecycle
     );
 
-    if (operationId != null) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceDocumentId);
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        {
-          id: sourceDocumentId,
+    if (identity.operationId != null) {
+      return {
+        ...result,
+        reconciliation: await buildAuthoritativeReconciliation(
+          identity.operationId,
           ledgerId,
-          title: null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: null,
-          metadata: {},
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as unknown as SourceDocumentListItemDto,
-        now,
-        true,
-        false
-      );
-      return { ...result, reconciliation: entity };
+          identity.sourceDocumentId
+        ),
+      };
     }
 
     return result;
@@ -151,17 +123,26 @@ export const cancelSourceDocumentProcessingAction = withSourceDocumentLedgerAcce
     CancelProcessingResponseDto &
       Partial<{ reconciliation: CancelProcessingReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseRevisionMutationIdentity({
+      sourceDocumentId,
+      revisionId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const result = await cancelSourceDocumentProcessing(
-      { ledgerId, sourceDocumentId, revisionId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        revisionId: identity.revisionId,
+      },
       serverComposition.sourceDocumentLifecycle
     );
-    if (operationId == null) return result;
+    if (identity.operationId == null) return result;
     return {
       ...result,
       reconciliation: await buildAuthoritativeReconciliation(
-        operationId,
+        identity.operationId,
         ledgerId,
-        sourceDocumentId
+        identity.sourceDocumentId
       ),
     };
   }

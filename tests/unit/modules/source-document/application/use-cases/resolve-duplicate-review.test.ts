@@ -64,7 +64,7 @@ describe("batchResolveDuplicateReviews", () => {
       requestedCount: 3,
       succeededIds: ["duplicate-1"],
       skipped: [{ id: "duplicate-2", reason: "already_processed" }],
-      failed: [{ id: "duplicate-3", reason: "database unavailable" }],
+      failed: [{ id: "duplicate-3", reason: "internal" }],
     });
   });
 });

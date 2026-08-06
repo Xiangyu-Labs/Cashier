@@ -1,79 +1,35 @@
 "use server";
 
-import { ConflictError } from "@/lib/errors";
-import { runtimeEnv } from "@/lib/env/runtime";
-import { withLedgerAccess } from "@/modules/ledger/access";
-import { listSourceDocuments } from "@/modules/source-document/application/queries/list-source-document-page";
+import { z } from "zod";
 import { serverComposition } from "@/application/server-composition-root";
-import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
+import { withLedgerAccess } from "@/modules/ledger/access";
+import {
+  getLedgerStartupCacheSnapshot as getSnapshot,
+  getLedgerStartupCacheVersion as getVersion,
+  type LedgerStartupCachePayloadDto,
+  type LedgerStartupCacheVersionDto,
+} from "@/modules/workspace/application/queries/get-ledger-startup-cache";
 
-export interface LedgerStartupCacheVersionDto {
-  version: string;
-  recordCount: number;
-  complete: boolean;
-  truncated: boolean;
-  coverageLimit: number;
-}
+const versionSchema = z.string().regex(/^\d+$/, "Invalid startup cache version");
 
-export interface LedgerStartupCachePayloadDto extends LedgerStartupCacheVersionDto {
-  items: SourceDocumentListItemDto[];
-  generatedAt: string;
-}
+const queryPorts = {
+  documents: {
+    documents: serverComposition.sourceDocumentReads,
+    ledgerReads: serverComposition.ledgerReads,
+  },
+  changes: serverComposition.ledgerChanges,
+};
 
-async function collectSnapshotRows(ledgerId: string, documentLimit: number) {
-  const items: SourceDocumentListItemDto[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await listSourceDocuments(
-      ledgerId,
-      {
-        limit: Math.min(100, documentLimit - items.length),
-        includeEntries: true,
-        includeFiles: true,
-        ...(cursor != null ? { cursor } : {}),
-      },
-      {
-        documents: serverComposition.sourceDocumentReads,
-        ledgerReads: serverComposition.ledgerReads,
-      }
-    );
-    items.push(...page.items);
-    cursor = page.nextCursor ?? undefined;
-  } while (cursor != null && items.length < documentLimit);
-  return items;
-}
-
-async function querySnapshotVersion(ledgerId: string): Promise<LedgerStartupCacheVersionDto> {
-  const documentLimit = runtimeEnv.ledgerStartupCacheDocumentLimit;
-  const metadata = await serverComposition.ledgerStartupCache.get(ledgerId);
-  const recordCount = metadata.recordCount;
-  const truncated = recordCount > documentLimit;
-  return {
-    version: metadata.version.toString(),
-    recordCount,
-    complete: !truncated,
-    truncated,
-    coverageLimit: documentLimit,
-  };
-}
+export type { LedgerStartupCachePayloadDto, LedgerStartupCacheVersionDto };
 
 export const getLedgerStartupCacheVersion = withLedgerAccess(
-  async (ledgerId: string): Promise<LedgerStartupCacheVersionDto> => {
-    return querySnapshotVersion(ledgerId);
-  }
+  async (ledgerId: string): Promise<LedgerStartupCacheVersionDto> =>
+    getVersion(ledgerId, queryPorts.changes)
 );
 
 export const getLedgerStartupCacheSnapshot = withLedgerAccess(
   async (ledgerId: string, expectedVersion: string): Promise<LedgerStartupCachePayloadDto> => {
-    const items = await collectSnapshotRows(ledgerId, runtimeEnv.ledgerStartupCacheDocumentLimit);
-    const metadata = await querySnapshotVersion(ledgerId);
-    if (metadata.version !== expectedVersion) {
-      throw new ConflictError("Startup cache snapshot changed while it was being generated");
-    }
-    return {
-      ...metadata,
-      items,
-      generatedAt: new Date().toISOString(),
-    };
+    const validatedVersion = versionSchema.parse(expectedVersion);
+    return getSnapshot(ledgerId, validatedVersion, queryPorts);
   }
 );

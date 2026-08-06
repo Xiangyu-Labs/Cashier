@@ -18,6 +18,7 @@ export interface UseDetailsTabDataReturn {
   monthStats: {
     mainTotal: string;
     mainCurrency: string;
+    unconvertedCount: number;
     hasMultipleCurrencies: boolean;
     breakdown: { currency: string; total: string; count: number }[];
   };
@@ -104,6 +105,7 @@ export function useDetailsTabData({
     return {
       mainTotal,
       mainCurrency: convertedTotal?.currency ?? mainCurrency,
+      unconvertedCount: summaryData?.unconvertedCount ?? 0,
       hasMultipleCurrencies,
       breakdown: totals,
     };

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -102,7 +102,8 @@ describe("LedgerStartupStreamPreview filtering", () => {
     expect(screen.queryByTestId("card-doc-1")).not.toBeInTheDocument();
     expect(cardProps).toHaveBeenCalledTimes(1);
     const toolbar = screen.getByTestId("entries-toolbar");
-    expect(within(toolbar).getByText(formatCurrencyAmount(1, "CNY", "zh"))).toBeInTheDocument();
+    expect(within(toolbar).getByText(formatCurrencyAmount(0, "CNY", "zh"))).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("部分记录缺少汇率");
   });
 
   it("renders only the first 20 matches while the total covers all matches", () => {
@@ -117,6 +118,7 @@ describe("LedgerStartupStreamPreview filtering", () => {
     expect(screen.queryByTestId("card-doc-21")).not.toBeInTheDocument();
     expect(cardProps).toHaveBeenCalledTimes(20);
     const toolbar = screen.getByTestId("entries-toolbar");
-    expect(within(toolbar).getByText(formatCurrencyAmount(25, "CNY", "zh"))).toBeInTheDocument();
+    expect(within(toolbar).getByText(formatCurrencyAmount(0, "CNY", "zh"))).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("部分记录缺少汇率");
   });
 });

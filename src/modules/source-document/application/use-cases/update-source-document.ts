@@ -21,7 +21,7 @@ export function batchUpdateSourceDocuments(
     sourceDocumentIds: string[];
     data: BatchUpdateSourceDocumentsInput;
   },
-  updates: SourceDocumentUpdatePort
+  updates: Pick<SourceDocumentUpdatePort, "batchUpdate">
 ) {
   return updates.batchUpdate(input);
 }

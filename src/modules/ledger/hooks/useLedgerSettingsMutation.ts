@@ -9,7 +9,7 @@ import {
   invalidateSourceDocuments,
   queryKeys,
 } from "@/lib/query-keys";
-import { updateLedgerAction } from "@/modules/ledger/actions";
+import { updateLedgerAction } from "@/modules/ledger/server-actions/update";
 import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -75,20 +75,16 @@ export function useLedgerSettingsMutation({
     },
     successMessage,
     errorMessage: null,
-    skipInvalidation: true,
+    invalidatePredicates: [
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
     onSuccessExtra: (data) => {
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
     },
     onErrorExtra: (error) => toast.error(error.message || errorMessage),
-    onSettledExtra: async (qc, variables, _data, error) => {
-      if (error != null || variables.mainCurrency === undefined) return;
-      await Promise.all([
-        qc.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-        qc.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-        qc.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-        qc.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
-      ]);
-    },
   });
 }
 

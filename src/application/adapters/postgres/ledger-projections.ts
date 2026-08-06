@@ -1,5 +1,10 @@
-import { and, eq, inArray, isNotNull, isNull, max } from "drizzle-orm";
-import type { LedgerProjectionEntryContract, LedgerProjectionPort } from "@/application/contracts";
+import { and, eq, inArray, isNotNull, isNull, max, or, sql } from "drizzle-orm";
+import type {
+  LedgerProjectionEntryContract,
+  LedgerProjectionEntryFingerprint,
+  LedgerProjectionPort,
+  ProcessingLeaseContract,
+} from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidDecimal } from "@/lib/money/decimal";
@@ -13,7 +18,11 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import {
+  assertProcessingLeaseHeld,
+  lockLedgerForUpdate,
+  lockSourceDocumentForUpdate,
+} from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
 
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
@@ -22,6 +31,27 @@ function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
     eq(sourceDocuments.id, sourceDocumentId),
     isNull(sourceDocuments.deletedAt)
   )!;
+}
+
+function sameProjectionFingerprints(
+  left: readonly LedgerProjectionEntryFingerprint[],
+  right: readonly LedgerProjectionEntryFingerprint[]
+): boolean {
+  if (left.length !== right.length) return false;
+  const sort = (entries: readonly LedgerProjectionEntryFingerprint[]) =>
+    [...entries].sort((a, b) => a.id.localeCompare(b.id));
+  const expected = sort(left);
+  const actual = sort(right);
+  return expected.every((entry, index) => {
+    const current = actual[index];
+    return (
+      current != null &&
+      current.id === entry.id &&
+      current.amount === entry.amount &&
+      current.currency === entry.currency &&
+      current.sourceDocumentRevisionId === entry.sourceDocumentRevisionId
+    );
+  });
 }
 
 function assertEntryValues(entries: readonly LedgerProjectionEntryContract[]): void {
@@ -140,11 +170,14 @@ export async function storeCandidateRevision(
   sourceDocumentId: string,
   revisionId: string,
   title: string | null | undefined,
-  entries: readonly LedgerProjectionEntryContract[]
+  entries: readonly LedgerProjectionEntryContract[],
+  lease?: ProcessingLeaseContract
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     // Lock the source document to serialize concurrent operations.
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+
+    if (!(await assertProcessingLeaseHeld(tx, lease))) return false;
 
     // Re-verify pointer ownership inside the lock.
     if (document.pendingRevisionId !== revisionId) return false;
@@ -199,10 +232,12 @@ export async function storeDuplicatePendingRevision(
     matchedSourceDocumentId: string;
     reason: string | null;
     confidence: number | null;
-  }
+  },
+  lease?: ProcessingLeaseContract
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+    if (!(await assertProcessingLeaseHeld(tx, lease))) return false;
     if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
       return false;
     }
@@ -942,6 +977,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
+      if (!(await assertProcessingLeaseHeld(tx, input.lease))) return false;
       if (document.pendingRevisionId !== input.revisionId) return false;
       const revision = await tx
         .select()
@@ -1025,6 +1061,13 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async replaceManual(input) {
     return db.transaction(async (tx) => {
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      if (
+        input.expectedMainCurrency !== undefined &&
+        ledger.mainCurrency !== input.expectedMainCurrency
+      ) {
+        throw new ConflictError("Ledger currency changed before the manual edit");
+      }
       const document = await lockSourceDocumentForUpdate(
         tx,
         input.ledgerId,
@@ -1038,6 +1081,63 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         document.activeRevisionId !== input.expectedActiveRevisionId
       ) {
         throw new ConflictError("Manual entry changed before the edit was committed");
+      }
+      if (input.expectedProjection !== undefined) {
+        const currentProjection = await tx
+          .select({
+            id: ledgerEntries.id,
+            amount: ledgerEntries.amount,
+            currency: ledgerEntries.currency,
+            sourceDocumentRevisionId: ledgerEntries.sourceDocumentRevisionId,
+          })
+          .from(ledgerEntries)
+          .where(
+            and(
+              eq(ledgerEntries.ledgerId, input.ledgerId),
+              eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+              isNull(ledgerEntries.deletedAt),
+              or(
+                eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
+                ...(document.pendingRevisionId == null
+                  ? []
+                  : [eq(ledgerEntries.sourceDocumentRevisionId, document.pendingRevisionId)])
+              )
+            )
+          );
+        if (!sameProjectionFingerprints(input.expectedProjection, currentProjection)) {
+          throw new ConflictError("Ledger entries changed before the manual edit");
+        }
+      }
+      if (input.projectionConversions !== undefined && input.projectionConversions.length > 0) {
+        const changesJson = JSON.stringify(
+          input.projectionConversions.map((update) => ({
+            id: update.ledgerEntryId,
+            converted_amount: update.convertedAmount,
+            exchange_rate: update.exchangeRate,
+          }))
+        );
+        const updatedEntries = await tx.execute(sql`
+          WITH changes AS (
+            SELECT * FROM jsonb_to_recordset(${changesJson}::jsonb) AS value(
+              id uuid,
+              converted_amount numeric,
+              exchange_rate numeric
+            )
+          )
+          UPDATE ledger_entries AS entry
+          SET converted_amount = changes.converted_amount,
+              exchange_rate = changes.exchange_rate,
+              updated_at = ${new Date()}
+          FROM changes
+          WHERE entry.id = changes.id
+            AND entry.ledger_id = ${input.ledgerId}
+            AND entry.source_document_id = ${input.sourceDocumentId}
+            AND entry.deleted_at IS NULL
+          RETURNING entry.id
+        `);
+        if (updatedEntries.rows.length !== input.projectionConversions.length) {
+          throw new ConflictError("Ledger entries changed before the manual edit");
+        }
       }
       if (document.pendingRevisionId != null) {
         const pending = await tx

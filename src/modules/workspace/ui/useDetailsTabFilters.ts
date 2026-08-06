@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { type PeriodParams } from "@/lib/period-utils";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { buildLedgerEntryFilters, buildLedgerFilterKey } from "../ledger-filter-state";
 import type { LedgerAdvancedFilters } from "../initial-query-state";
 

@@ -191,8 +191,10 @@ export function useSourceDocumentStream(
 
   useEffect(() => {
     const pageItems = data?.pages.flatMap((page) => page.items) ?? [];
-    if (pageItems.length > 0) seedSourceDocumentEntities(queryClient, ledgerId, pageItems);
-  }, [data, ledgerId, queryClient]);
+    if (pageItems.length > 0) {
+      seedSourceDocumentEntities(queryClient, ledgerId, pageItems, streamPageKey);
+    }
+  }, [data, ledgerId, queryClient, streamPageKey]);
 
   // A new filter window starts fresh: generation/restart state from the
   // previous window must not trigger a background restart for the new key.
@@ -295,8 +297,14 @@ export function useSourceDocumentStream(
       (data?.pages.flatMap((page) => page.items) ?? []).map((item) => [item.id, item])
     );
     return windowItemIds.flatMap((id) => {
-      const item = entities[id] ?? pageFallbacks.get(id);
-      return item == null ? [] : [item];
+      const pageItem = pageFallbacks.get(id);
+      if (pageItem == null) return [];
+      const entity = entities[id];
+      if (entity == null) return [pageItem];
+      // Prefer the canonical entity's fresher scalar fields, but keep the
+      // page item's entry projection so a filtered window never renders or
+      // totals entries that did not match the query.
+      return [{ ...pageItem, ...entity, ledgerEntries: pageItem.ledgerEntries ?? [] }];
     });
   }, [data, entities, windowItemIds]);
   // Keep the scope subscribed for the lifetime of the mounted stream. The

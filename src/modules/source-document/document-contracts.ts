@@ -193,6 +193,7 @@ export interface StreamPage {
 
 export interface StreamTotalDto {
   total: string;
+  unconvertedCount: number;
 }
 
 export interface SourceDocumentCollectionDto {

@@ -148,7 +148,7 @@ describe("Enhanced Stats Actions", () => {
       ).rejects.toThrow("Ledger");
     });
 
-    it("should filter by entryDate not createdAt", async () => {
+    it("should filter by effective date (entry date with createdAt fallback)", async () => {
       const db = getTestDb();
 
       // Create source document with entryDate in Jan but created in March
@@ -179,6 +179,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: docA.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "Jan Item",
         categoryId: testCategoryId,
@@ -188,6 +189,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: docB.id,
         amount: "200",
+        convertedAmount: "200",
         currency: "CNY",
         itemName: "Mar Item",
         categoryId: testCategoryId,
@@ -248,7 +250,9 @@ describe("Enhanced Stats Actions", () => {
       expect(query).toContain("entries.deleted_at is null");
       expect(query).toContain("documents.ledger_id = $");
       expect(query).toContain("documents.deleted_at is null");
-      expect(query).toContain("documents.entry_date between ranges.from_date and ranges.to_date");
+      expect(query).toContain(
+        "documents.effective_date between ranges.from_date and ranges.to_date"
+      );
     });
 
     it("should calculate correct summary totals", async () => {
@@ -271,6 +275,7 @@ describe("Enhanced Stats Actions", () => {
           ledgerId: testLedgerId,
           sourceDocumentId: doc.id,
           amount: "100",
+          convertedAmount: "100",
           currency: "CNY",
           itemName: `${date} Item`,
           categoryId: testCategoryId,
@@ -306,6 +311,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "Food Item",
         categoryId: testCategoryId,
@@ -315,6 +321,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "50",
+        convertedAmount: "50",
         currency: "CNY",
         itemName: "Transport Item",
         categoryId: otherCategoryId,
@@ -359,6 +366,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: currentDoc.id,
         amount: "200",
+        convertedAmount: "200",
         currency: "CNY",
         itemName: "Current Item",
         categoryId: testCategoryId,
@@ -379,6 +387,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: prevDoc.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "Previous Item",
         categoryId: testCategoryId,
@@ -413,6 +422,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "300",
+        convertedAmount: "300",
         currency: "CNY",
         itemName: "Items",
         categoryId: testCategoryId,
@@ -445,6 +455,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "Active Item",
         categoryId: testCategoryId,
@@ -454,6 +465,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "200",
+        convertedAmount: "200",
         currency: "CNY",
         itemName: "Deleted Item",
         categoryId: testCategoryId,
@@ -494,6 +506,7 @@ describe("Enhanced Stats Actions", () => {
           ledgerId: testLedgerId,
           sourceDocumentId: doc.id,
           amount: entry.amount,
+          convertedAmount: entry.amount,
           currency: "CNY",
           itemName: `${entry.date} Item`,
           categoryId: testCategoryId,
@@ -529,6 +542,7 @@ describe("Enhanced Stats Actions", () => {
         ledgerId: testLedgerId,
         sourceDocumentId: doc.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "Uncategorized Item",
         categoryId: null, // No category

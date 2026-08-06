@@ -1,6 +1,11 @@
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ledgerChangeBatches, ledgerChangeItems, ledgerSyncState } from "@/persistence";
+import {
+  ledgerChangeBatches,
+  ledgerChangeItems,
+  ledgerSyncState,
+  sourceDocuments,
+} from "@/persistence";
 import type { LedgerChangeReadPort } from "@/modules/source-document/application/ports";
 
 export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
@@ -10,6 +15,24 @@ export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
       columns: { version: true },
     });
     return state?.version ?? BigInt(0);
+  },
+
+  async getSnapshotMetadata(ledgerId) {
+    const [documentState, syncState] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(sourceDocuments)
+        .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
+        .then((rows) => rows[0]),
+      db.query.ledgerSyncState.findFirst({
+        where: eq(ledgerSyncState.ledgerId, ledgerId),
+        columns: { version: true },
+      }),
+    ]);
+    return {
+      version: syncState?.version ?? BigInt(0),
+      recordCount: Number(documentState?.count ?? 0),
+    };
   },
 
   async listBatches(input) {

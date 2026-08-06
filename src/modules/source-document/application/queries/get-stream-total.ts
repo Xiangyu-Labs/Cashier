@@ -22,7 +22,7 @@ export async function getStreamTotal(
     input.statuses.length > 0 &&
     !input.statuses.some((status) => status === "completed" || status === "duplicate_pending")
   ) {
-    return { total: "0" };
+    return { total: "0", unconvertedCount: 0 };
   }
 
   const search = normalizeSearchTerm(input.search);

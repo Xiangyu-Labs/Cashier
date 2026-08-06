@@ -1,51 +1,25 @@
 import Decimal from "decimal.js";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { parseDateString } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
+import type { GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import {
-  parseEnhancedStatsInput,
-  type GetEnhancedStatsInput,
-} from "@/modules/stats/contract-schemas";
-import { calculateGrowth } from "@/modules/stats/utils";
-import type { EnhancedCategoryStatDto, EnhancedStatsDto } from "@/modules/stats/contracts";
-import type { CalendarDayData, CalendarHeatmapStats } from "@/types/calendar";
-
-function calculateStats(amounts: number[]): CalendarHeatmapStats {
-  if (amounts.length === 0) {
-    return {
-      minAmount: 0,
-      maxAmount: 0,
-      avgAmount: 0,
-      p80Amount: 0,
-    };
-  }
-
-  const sorted = [...amounts].sort((a, b) => a - b);
-  const min = sorted[0] ?? 0;
-  const max = sorted[sorted.length - 1] ?? min;
-  const avg = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
-  const p80Index = Math.max(0, Math.ceil(sorted.length * 0.8) - 1);
-
-  return {
-    minAmount: min,
-    maxAmount: max,
-    avgAmount: avg,
-    p80Amount: sorted[p80Index] ?? max,
-  };
-}
+  buildEnhancedStatsDto,
+  type EnhancedStatsBucket,
+} from "@/modules/stats/application/build-enhanced-stats";
+import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 
 interface AggregatedRow {
   period: "current" | "previous";
-  entryDate: string | null;
+  effectiveDate: string | null;
   currency: string | null;
   categoryId: string | null;
   categoryName: string | null;
   categoryIcon: string | null;
-  totalAmount: string;
+  totalAmount: string | null;
   entryCount: number;
   mainCurrency: string;
-  missingProjectionCount: number;
+  unconvertedCount: number;
 }
 
 async function fetchAggregatedRows(
@@ -59,19 +33,17 @@ async function fetchAggregatedRows(
         ('current'::text, ${current.from}::date, ${current.to}::date),
         ('previous'::text, ${previous.from}::date, ${previous.to}::date)
     )
-    SELECT ranges.period, documents.entry_date AS "entryDate",
+    SELECT ranges.period, documents.effective_date AS "effectiveDate",
       entries.currency, entries.category_id AS "categoryId",
       categories.name AS "categoryName", categories.icon AS "categoryIcon",
-      sum(coalesce(entries.converted_amount, entries.amount))::text AS "totalAmount",
-      count(*)::int AS "entryCount", ledgers.main_currency AS "mainCurrency",
-      count(*) FILTER (
-        WHERE entries.converted_amount IS NULL
-          AND coalesce(entries.currency, 'CNY') <> ledgers.main_currency
-      )::int AS "missingProjectionCount"
+      sum(entries.converted_amount)::text AS "totalAmount",
+      count(*) FILTER (WHERE entries.converted_amount IS NOT NULL)::int AS "entryCount",
+      ledgers.main_currency AS "mainCurrency",
+      count(*) FILTER (WHERE entries.converted_amount IS NULL)::int AS "unconvertedCount"
     FROM ranges
     JOIN source_documents documents
       ON documents.ledger_id = ${ledgerId}
-      AND documents.entry_date BETWEEN ranges.from_date AND ranges.to_date
+      AND documents.effective_date BETWEEN ranges.from_date AND ranges.to_date
       AND documents.deleted_at IS NULL
     JOIN ledger_entries entries
       ON entries.ledger_id = documents.ledger_id
@@ -80,77 +52,57 @@ async function fetchAggregatedRows(
       AND entries.deleted_at IS NULL
     JOIN ledgers ON ledgers.id = documents.ledger_id AND ledgers.deleted_at IS NULL
     LEFT JOIN entry_categories categories ON categories.id = entries.category_id
-    GROUP BY ranges.period, documents.entry_date, entries.currency, entries.category_id,
+    GROUP BY ranges.period, documents.effective_date, entries.currency, entries.category_id,
       categories.name, categories.icon, ledgers.main_currency
     UNION ALL
-    SELECT 'current', NULL, NULL, NULL, NULL, NULL, '0', 0, main_currency, 0
+    SELECT 'current', NULL, NULL, NULL, NULL, NULL, NULL, 0, main_currency, 0
     FROM ledgers WHERE id = ${ledgerId} AND deleted_at IS NULL
   `);
   return result.rows.map((row) => ({
     ...row,
     entryCount: Number(row.entryCount),
-    missingProjectionCount: Number(row.missingProjectionCount),
+    unconvertedCount: Number(row.unconvertedCount),
   }));
 }
 
-function processBatch(rows: AggregatedRow[], mainCurrency: string) {
-  let total = new Decimal(0);
-  const categoryMap = new Map<
-    string,
-    {
-      id: string | null;
-      name: string;
-      icon: string | null;
-      amount: Decimal;
-      count: number;
-    }
-  >();
-  const dailyMap = new Map<string, Decimal>();
-  const dateInfoMap = new Map<string, { entryCount: number; currencies: Set<string> }>();
+function buildBucket(rows: readonly AggregatedRow[], mainCurrency: string): EnhancedStatsBucket {
+  const bucket: EnhancedStatsBucket = {
+    total: new Decimal(0),
+    categories: new Map(),
+    days: new Map(),
+  };
 
   for (const row of rows) {
-    if (row.entryCount === 0) continue;
-    const dateStr = row.entryDate ?? "";
+    if (row.entryCount === 0 || row.totalAmount == null) continue;
     const converted = new Decimal(row.totalAmount);
-
-    total = total.plus(converted);
+    bucket.total = bucket.total.plus(converted);
 
     const categoryKey = row.categoryId ?? "uncategorized";
-    const categoryName = row.categoryName ?? "Uncategorized";
-    const categoryIcon = row.categoryIcon ?? null;
+    const category = bucket.categories.get(categoryKey) ?? {
+      id: row.categoryId,
+      name: row.categoryName ?? "Uncategorized",
+      icon: row.categoryIcon ?? null,
+      total: new Decimal(0),
+      count: 0,
+    };
+    category.total = category.total.plus(converted);
+    category.count += row.entryCount;
+    bucket.categories.set(categoryKey, category);
 
-    if (!categoryMap.has(categoryKey)) {
-      categoryMap.set(categoryKey, {
-        id: row.categoryId,
-        name: categoryName,
-        icon: categoryIcon,
-        amount: new Decimal(0),
+    const date = row.effectiveDate ?? "";
+    if (date !== "") {
+      const day = bucket.days.get(date) ?? {
+        total: new Decimal(0),
         count: 0,
-      });
-    }
-
-    const cat = categoryMap.get(categoryKey)!;
-    cat.amount = cat.amount.plus(converted);
-    cat.count += row.entryCount;
-
-    if (dateStr !== "") {
-      dailyMap.set(dateStr, (dailyMap.get(dateStr) ?? new Decimal(0)).plus(converted));
-
-      if (!dateInfoMap.has(dateStr)) {
-        dateInfoMap.set(dateStr, { entryCount: 0, currencies: new Set<string>() });
-      }
-      const dateInfo = dateInfoMap.get(dateStr)!;
-      dateInfo.entryCount += row.entryCount;
-      dateInfo.currencies.add(row.currency ?? mainCurrency);
+        currencies: new Set<string>(),
+      };
+      day.total = day.total.plus(converted);
+      day.count += row.entryCount;
+      day.currencies.add(row.currency ?? mainCurrency);
+      bucket.days.set(date, day);
     }
   }
-
-  return {
-    total: total.toFixed(),
-    categoryMap,
-    dailyMap: new Map(Array.from(dailyMap.entries()).map(([d, v]) => [d, v.toNumber()])),
-    dateInfoMap,
-  };
+  return bucket;
 }
 
 export async function getEnhancedStatsQuery({
@@ -159,112 +111,33 @@ export async function getEnhancedStatsQuery({
   compareRange,
   comparisonMode,
 }: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
-  const currentStart = parseDateString(queryRange.from);
-  const currentEnd = parseDateString(queryRange.to);
-
   const rows = await fetchAggregatedRows(ledgerId, queryRange, compareRange);
   const mainCurrency = rows[0]?.mainCurrency ?? "CNY";
-  const missingProjectionCount = rows.reduce((total, row) => total + row.missingProjectionCount, 0);
-  if (missingProjectionCount > 0) {
+  const unconvertedCount = rows
+    .filter((row) => row.period === "current")
+    .reduce((total, row) => total + row.unconvertedCount, 0);
+  if (unconvertedCount > 0) {
     logger.warn(
-      { ledgerId, missingProjectionCount, operation: "enhanced_stats" },
-      "Historical entries used audited original-amount compatibility"
+      { unconvertedCount, operation: "enhanced_stats" },
+      "Entries missing exchange rates were excluded from main-currency statistics"
     );
   }
-  const currentStats = processBatch(
+  const current = buildBucket(
     rows.filter((row) => row.period === "current"),
     mainCurrency
   );
-  const prevStats = processBatch(
+  const previous = buildBucket(
     rows.filter((row) => row.period === "previous"),
     mainCurrency
   );
 
-  const categories: EnhancedCategoryStatDto[] = Array.from(currentStats.categoryMap.values())
-    .map((category) => {
-      const prevCategory = prevStats.categoryMap.get(category.id ?? "uncategorized");
-      const prevAmount = prevCategory?.amount ?? new Decimal(0);
-      const categoryTotal = category.amount.toFixed();
-      const prevTotal = prevAmount.toFixed();
-      const growth = calculateGrowth(Number(categoryTotal), Number(prevTotal));
-      return {
-        id: category.id,
-        name: category.name,
-        icon: category.icon,
-        totalOriginal: "0",
-        totalConverted: categoryTotal,
-        currency: mainCurrency,
-        percent: new Decimal(currentStats.total).gt(0)
-          ? category.amount.dividedBy(currentStats.total).times(100).toNumber()
-          : 0,
-        count: category.count,
-        trend: {
-          percent: growth.percent,
-          amount: String(growth.amount),
-        },
-      };
-    })
-    .sort((a, b) => Number(b.totalConverted) - Number(a.totalConverted));
-
-  const chart = Array.from(currentStats.dailyMap.entries())
-    .map(([date, total]) => ({ date, total }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  // Civil-day length of the effective range. The client already truncates the
-  // current period to today, so the server must not re-clamp with its own
-  // clock — that would introduce a timezone offset for cross-timezone ledgers.
-  const daysDiff =
-    Math.round(
-      Math.abs(
-        (Date.UTC(currentEnd.getFullYear(), currentEnd.getMonth(), currentEnd.getDate()) -
-          Date.UTC(currentStart.getFullYear(), currentStart.getMonth(), currentStart.getDate())) /
-          86_400_000
-      )
-    ) + 1;
-
-  const heatmapDays: CalendarDayData[] = Array.from(currentStats.dailyMap.entries())
-    .map(([date, totalAmount]) => {
-      const dateInfo = currentStats.dateInfoMap.get(date);
-      return {
-        date,
-        totalAmount,
-        entryCount: dateInfo?.entryCount ?? 0,
-        currencies: dateInfo ? [...dateInfo.currencies] : [],
-      };
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const totalGrowth = calculateGrowth(Number(currentStats.total), Number(prevStats.total));
-  const amountDelta = new Decimal(currentStats.total).minus(prevStats.total).toFixed();
-
-  return {
-    summary: {
-      total: currentStats.total,
-      currency: mainCurrency,
-      trend: {
-        percent: totalGrowth.percent,
-        amount: String(totalGrowth.amount),
-      },
-      dailyAverage: daysDiff > 0 ? Number(currentStats.total) / daysDiff : 0,
-      comparison: {
-        mode: comparisonMode ?? "same_period",
-        from: queryRange.from,
-        to: queryRange.to,
-        previousTotal: prevStats.total,
-        amountDelta,
-        percent: totalGrowth.percent,
-      },
-    },
-    categories,
-    chart,
-    heatmap: {
-      days: heatmapDays,
-      stats: calculateStats(heatmapDays.map((day) => day.totalAmount)),
-    },
-  };
-}
-
-export async function getEnhancedStats(input: GetEnhancedStatsInput): Promise<EnhancedStatsDto> {
-  const validatedInput = parseEnhancedStatsInput(input);
-  return getEnhancedStatsQuery(validatedInput);
+  return buildEnhancedStatsDto({
+    mainCurrency,
+    unconvertedCount,
+    current,
+    previous,
+    queryRange,
+    compareRange,
+    comparisonMode,
+  });
 }

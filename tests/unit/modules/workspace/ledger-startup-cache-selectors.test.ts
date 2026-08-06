@@ -88,7 +88,7 @@ function document({
 }
 
 describe("buildCachedEnhancedStats", () => {
-  it("uses the persisted accounting projection and the same effective-date fallback", () => {
+  it("aggregates the active projection regardless of document status", () => {
     const result = buildCachedEnhancedStats({
       items: [
         document({
@@ -111,70 +111,103 @@ describe("buildCachedEnhancedStats", () => {
           ],
         }),
         document({
-          id: "previous",
-          date: "2026-07-01",
-          entries: [entry({ id: "c", amount: "5", convertedAmount: "35" })],
-        }),
-        document({
-          id: "ignored",
+          id: "current-c",
           date: "2026-08-03",
           status: "processing",
           entries: [entry({ id: "d", amount: "100", convertedAmount: "700" })],
+        }),
+        document({
+          id: "current-uncategorized",
+          date: "2026-08-03",
+          entries: [
+            entry({
+              id: "u",
+              amount: "5",
+              convertedAmount: "5",
+              categoryId: null,
+              currency: "CNY",
+            }),
+          ],
+        }),
+        document({
+          id: "previous",
+          date: "2026-07-01",
+          entries: [entry({ id: "c", amount: "5", convertedAmount: "35" })],
         }),
       ],
       queryRange: { from: "2026-08-01", to: "2026-08-31" },
       compareRange: { from: "2026-07-01", to: "2026-07-31" },
       mainCurrency: "CNY",
       uncategorizedLabel: "Uncategorized",
-      today: "2026-08-02",
     });
 
     expect(result.summary).toEqual({
-      total: "100",
+      total: "775",
       currency: "CNY",
-      trend: { percent: expect.closeTo(185.71428571428572), amount: "65" },
-      dailyAverage: 50,
+      trend: { percent: (740 / 35) * 100, amount: "740" },
+      dailyAverage: 775 / 31,
       comparison: {
         mode: "same_period",
-        from: "2026-08-01",
-        to: "2026-08-31",
+        from: "2026-07-01",
+        to: "2026-07-31",
         previousTotal: "35",
-        amountDelta: "65",
-        percent: expect.closeTo(185.71428571428572),
+        amountDelta: "740",
+        percent: (740 / 35) * 100,
       },
     });
-    expect(result.categories).toMatchObject([
-      {
-        id: "food",
-        name: "Food",
-        totalConverted: "70",
-        percent: 70,
-        count: 1,
-        trend: { amount: "35", percent: 100 },
-      },
-      {
-        id: null,
-        name: "Uncategorized",
-        totalConverted: "30",
-        percent: 30,
-        count: 1,
-      },
-    ]);
+    expect(result.unconvertedCount).toBe(1); // current-b entry missing a rate
+    expect(result.categories).toHaveLength(2);
+    expect(result.categories[0]).toMatchObject({
+      id: "food",
+      name: "Food",
+      totalConverted: "770",
+      count: 2,
+      trend: { amount: "735", percent: 2100 },
+    });
+    expect(result.categories[0]?.percent).toBeCloseTo((770 / 775) * 100, 5);
+    expect(result.categories[1]).toMatchObject({
+      id: null,
+      name: "Uncategorized",
+      totalConverted: "5",
+      count: 1,
+    });
+    expect(result.categories[1]?.percent).toBeCloseTo((5 / 775) * 100, 5);
     expect(result.chart).toEqual([
       { date: "2026-08-01", total: 70 },
-      { date: "2026-08-02", total: 30 },
+      { date: "2026-08-03", total: 705 },
     ]);
-    expect(result.heatmap.days[1]).toEqual({
-      date: "2026-08-02",
-      totalAmount: 30,
-      entryCount: 1,
-      currencies: ["CNY"],
-    });
+    expect(result.heatmap.days).toEqual([
+      { date: "2026-08-01", totalAmount: 70, entryCount: 1, currencies: ["USD"] },
+      { date: "2026-08-03", totalAmount: 705, entryCount: 2, currencies: ["USD", "CNY"] },
+    ]);
     expect(result.heatmap.stats).toEqual({
-      minAmount: 30,
-      maxAmount: 70,
-      avgAmount: 50,
-      p80Amount: 70,
+      minAmount: 70,
+      maxAmount: 705,
+      avgAmount: (70 + 705) / 2,
+      p80Amount: 705,
+    });
+  });
+
+  it("propagates the requested comparison mode and compare range", () => {
+    const result = buildCachedEnhancedStats({
+      items: [
+        document({
+          id: "current-a",
+          date: "2026-08-01",
+          entries: [entry({ id: "a", amount: "10", convertedAmount: "70" })],
+        }),
+      ],
+      queryRange: { from: "2026-08-01", to: "2026-08-31" },
+      compareRange: { from: "2026-07-01", to: "2026-07-31" },
+      mainCurrency: "CNY",
+      uncategorizedLabel: "Uncategorized",
+      comparisonMode: "full_period",
+    });
+
+    expect(result.summary.comparison).toMatchObject({
+      mode: "full_period",
+      from: "2026-07-01",
+      to: "2026-07-31",
     });
   });
 });

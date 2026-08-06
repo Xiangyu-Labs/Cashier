@@ -12,7 +12,10 @@ import {
 import type { ProcessingFailureCode, ProcessingIntentContract } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
 import { CurrentRevisionProcessor } from "./revision-processor";
-import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
+import {
+  ProcessingCancelledError,
+  ProcessingFailure,
+} from "@/modules/source-document/application/parse-source-document/contracts";
 
 function toFailureCode(error: unknown): ProcessingFailureCode {
   if (error instanceof ProcessingFailure) return error.code;
@@ -95,15 +98,46 @@ export async function executeSingleProcessingIntent(
     columns: { ledgerId: true },
   });
   if (row == null) throw new Error("Processing intent disappeared after claim");
-  const heartbeat = setInterval(() => {
-    void adapter.renew(claim.intent.id, claim.claimToken);
-  }, 60_000);
+  const controller = new AbortController();
+  let stopped = false;
+  let renewalTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const renewLease = async (): Promise<void> => {
+    if (stopped || controller.signal.aborted) return;
+    try {
+      const renewedUntil = await adapter.renew(claim.intent.id, claim.claimToken);
+      if (renewedUntil == null) {
+        logger.warn(
+          { processingIntentId: claim.intent.id },
+          "Processing lease was lost or cancelled; aborting worker"
+        );
+        controller.abort();
+        return;
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          processingIntentId: claim.intent.id,
+          errorCode: error instanceof AppError ? error.code : "UNKNOWN",
+        },
+        "Processing lease renewal failed; aborting worker"
+      );
+      controller.abort();
+      return;
+    }
+    if (!stopped && !controller.signal.aborted) {
+      renewalTimer = setTimeout(() => void renewLease(), 15_000);
+    }
+  };
+  renewalTimer = setTimeout(() => void renewLease(), 15_000);
 
   try {
     const result = await processor.process({
       ledgerId: row.ledgerId,
       sourceDocumentId: claim.intent.sourceDocumentId,
       revisionId: claim.intent.revisionId,
+      signal: controller.signal,
+      lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
     });
     await adapter.complete({
       intentId: claim.intent.id,
@@ -111,12 +145,16 @@ export async function executeSingleProcessingIntent(
       outcome: result.outcome,
     });
   } catch (error) {
+    if (error instanceof ProcessingCancelledError || controller.signal.aborted) {
+      return true;
+    }
     await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId: row.ledgerId,
       sourceDocumentId: claim.intent.sourceDocumentId,
       revisionId: claim.intent.revisionId,
       outcome: "failed",
       failureCode: toFailureCode(error),
+      lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
     });
     await adapter.complete({
       intentId: claim.intent.id,
@@ -124,7 +162,8 @@ export async function executeSingleProcessingIntent(
       outcome: "failed",
     });
   } finally {
-    clearInterval(heartbeat);
+    stopped = true;
+    if (renewalTimer != null) clearTimeout(renewalTimer);
   }
 
   return true;
