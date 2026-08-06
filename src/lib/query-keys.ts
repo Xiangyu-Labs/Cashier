@@ -114,8 +114,8 @@ export const queryKeys = {
     ] as const,
 
   // === Currency ===
-  convert: (ledgerId: string, amount: number, from: string, to: string, date?: string) =>
-    ["convert", ledgerId, amount, from, to, date] as const,
+  convert: (amount: number, from: string, to: string, date: string) =>
+    ["convert", amount, from, to, date] as const,
   batchConvert: (cacheKey: string, targetCurrency: string) =>
     ["batchConvert", cacheKey, targetCurrency] as const,
 

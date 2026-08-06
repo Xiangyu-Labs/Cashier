@@ -9,6 +9,7 @@ export interface RuntimeEnv {
   readonly appUrl: string;
   readonly authResendKey: string | undefined;
   readonly authEmailFrom: string;
+  readonly authOtpPepper: string;
   readonly s3Endpoint: string;
   readonly s3PublicEndpoint: string | undefined;
   readonly s3Region: string;
@@ -30,6 +31,10 @@ export interface RuntimeEnv {
   readonly otpResendCooldownSeconds: number;
   readonly authRateLimitMax: number;
   readonly authRateLimitWindow: number;
+  readonly authPasswordEmailMaxAttempts: number;
+  readonly authPasswordIpMaxAttempts: number;
+  readonly authPasswordRateLimitWindowSeconds: number;
+  readonly ledgerStartupCacheDocumentLimit: number;
   readonly otpIpMaxAttemptsPerHour: number;
   readonly otpVerifyMaxAttemptsPerMinute: number;
   readonly apiRateLimitPerMinute: number;
@@ -37,6 +42,7 @@ export interface RuntimeEnv {
   readonly disableRegistration: boolean;
   readonly maxInputPixels: number;
   readonly maxImageQuality: number;
+  readonly databasePoolMax: number;
   readonly logLevel: string;
   readonly devAuthBypass: boolean;
   readonly processingRecoveryMaxBatch: number;
@@ -74,6 +80,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get authEmailFrom() {
     return getStartupEnvValue("AUTH_EMAIL_FROM");
+  },
+  get authOtpPepper() {
+    return getStartupEnvValue("AUTH_OTP_PEPPER");
   },
   get s3Endpoint() {
     return getStartupEnvValue("S3_ENDPOINT");
@@ -138,6 +147,18 @@ export const runtimeEnv: RuntimeEnv = {
   get authRateLimitWindow() {
     return getStartupEnvValue("AUTH_RATE_LIMIT_WINDOW");
   },
+  get authPasswordEmailMaxAttempts() {
+    return getStartupEnvValue("AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS");
+  },
+  get authPasswordIpMaxAttempts() {
+    return getStartupEnvValue("AUTH_PASSWORD_IP_MAX_ATTEMPTS");
+  },
+  get authPasswordRateLimitWindowSeconds() {
+    return getStartupEnvValue("AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS");
+  },
+  get ledgerStartupCacheDocumentLimit() {
+    return getStartupEnvValue("LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT");
+  },
   get otpIpMaxAttemptsPerHour() {
     return getStartupEnvValue("OTP_IP_MAX_ATTEMPTS_PER_HOUR");
   },
@@ -158,6 +179,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get maxImageQuality() {
     return getStartupEnvValue("MAX_IMAGE_QUALITY");
+  },
+  get databasePoolMax() {
+    return getStartupEnvValue("DATABASE_POOL_MAX");
   },
   get logLevel() {
     return getStartupEnvValue("LOG_LEVEL");

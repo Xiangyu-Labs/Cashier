@@ -49,6 +49,9 @@ const moduleHooksPattern = /^@\/modules\/[^/]+\/hooks(?:\/|$)/;
 const moduleUiPattern = /^@\/modules\/[^/]+\/ui(?:\/|$)/;
 const moduleEventsPattern = /^@\/modules\/[^/]+\/events(?:\/|$)/;
 const providerSdkPattern = /^(?:pg|openai|resend)$|^drizzle-orm(?:\/|$)|^@aws-sdk\//;
+const transportFrameworkPattern = /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/;
+const moduleServerActionsPattern = /^@\/modules\/[^/]+\/server-actions(?:\/|$)/;
+const moduleActionsBarrelPattern = /^@\/modules\/[^/]+\/actions$/;
 
 function collectSpecifiers(source) {
   const specifiers = [];
@@ -76,9 +79,13 @@ export function findBoundaryViolations(relativePath, source) {
   const isLib = /^src\/lib\//.test(relativePath);
   const isProviders = /^src\/components\/providers\//.test(relativePath);
   const isContracts = /^src\/application\/contracts\//.test(relativePath);
+  const isApiRoute = /^src\/app\/api\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
 
   for (const specifier of specifiers) {
+    if (isModuleApplication && transportFrameworkPattern.test(specifier)) {
+      violations.push(`${relativePath}: application code must not import transport frameworks`);
+    }
     if ((isModuleApplication || isAuthInternal) && serverCompositionRootPattern.test(specifier)) {
       violations.push(`${relativePath}: application code must receive ports explicitly`);
     }
@@ -139,6 +146,22 @@ export function findBoundaryViolations(relativePath, source) {
     ) {
       violations.push(
         `${relativePath}: client components must not import server-only infrastructure`
+      );
+    }
+    if (
+      isApiRoute &&
+      (applicationAdaptersPattern.test(specifier) ||
+        persistencePattern.test(specifier) ||
+        libDbPattern.test(specifier))
+    ) {
+      violations.push(`${relativePath}: api routes must not import infrastructure adapters or db`);
+    }
+    if (
+      isApiRoute &&
+      (moduleServerActionsPattern.test(specifier) || moduleActionsBarrelPattern.test(specifier))
+    ) {
+      violations.push(
+        `${relativePath}: api routes must not import module server actions or actions barrels`
       );
     }
   }

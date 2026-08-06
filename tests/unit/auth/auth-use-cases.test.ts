@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EmailDeliveryPort, LedgerPort, UserAccountPort } from "@/application/contracts";
+import type { EmailDeliveryPort, UserAccountPort } from "@/application/contracts";
 
-const { ensureUserLedgerMock, findFirstMock, sendLoginNotificationMock } = vi.hoisted(() => ({
-  ensureUserLedgerMock: vi.fn(),
+const { findFirstMock, sendLoginNotificationMock } = vi.hoisted(() => ({
   findFirstMock: vi.fn(),
   sendLoginNotificationMock: vi.fn(),
-}));
-
-vi.mock("@/modules/workspace/application/use-cases/ensure-user-ledger", () => ({
-  ensureUserLedger: ensureUserLedgerMock,
 }));
 
 vi.mock("@/modules/auth/services/notifications", () => ({
@@ -25,11 +20,9 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
 import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
 import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
 
-const ledgers = {} as LedgerPort;
 const emailDelivery = {} as EmailDeliveryPort;
 const users = { findByEmail: findFirstMock } as unknown as UserAccountPort;
 
@@ -49,30 +42,16 @@ describe("auth lifecycle use cases", () => {
     }
   });
 
-  it("initializes a ledger when an auth user is created with an id", async () => {
-    await handleAuthUserCreated({ userId: "user-create" }, ledgers);
-
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith({ userId: "user-create" }, ledgers);
-  });
-
-  it("skips ledger initialization when auth user creation has no id", async () => {
-    await handleAuthUserCreated({ userId: "" }, ledgers);
-
-    expect(ensureUserLedgerMock).not.toHaveBeenCalled();
-  });
-
-  it("ensures a ledger and sends a notification for existing-user sign-in", async () => {
+  it("sends a notification for existing-user sign-in", async () => {
     await handleAuthUserSignedIn(
       {
-        userId: "user-signin",
         email: "user@example.com",
         locale: "en",
         isNewUser: false,
       },
-      { ledgers, emailDelivery }
+      { emailDelivery }
     );
 
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith({ userId: "user-signin" }, ledgers);
     expect(sendLoginNotificationMock).toHaveBeenCalledWith(
       expect.objectContaining({ email: "user@example.com" }),
       emailDelivery
@@ -80,16 +59,9 @@ describe("auth lifecycle use cases", () => {
   });
 
   it("skips existing-user sign-in side effects for new users or missing email", async () => {
-    await handleAuthUserSignedIn(
-      { userId: "new-user", email: "new@example.com", isNewUser: true },
-      { ledgers, emailDelivery }
-    );
-    await handleAuthUserSignedIn(
-      { userId: "user-signin", email: "", isNewUser: false },
-      { ledgers, emailDelivery }
-    );
+    await handleAuthUserSignedIn({ email: "new@example.com", isNewUser: true }, { emailDelivery });
+    await handleAuthUserSignedIn({ email: "", isNewUser: false }, { emailDelivery });
 
-    expect(ensureUserLedgerMock).not.toHaveBeenCalled();
     expect(sendLoginNotificationMock).not.toHaveBeenCalled();
   });
 

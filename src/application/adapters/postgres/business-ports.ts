@@ -8,8 +8,8 @@ import type {
   SettingsPort,
   OtpTokenPort,
   UserAccountPort,
+  UserPreferencesPort,
 } from "@/application/contracts";
-import type { UserPreferencesPort } from "@/modules/auth/application/ports";
 import { db } from "@/lib/db";
 import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
@@ -26,6 +26,9 @@ import {
 } from "@/persistence";
 import { createToken, computeHash } from "@/lib/security/service-credential-token";
 import { lockLedgerForUpdate } from "./transaction-locks";
+
+/** lastUsedAt updates are throttled to once per five minutes per credential. */
+const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
 
 function toIso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
@@ -80,7 +83,9 @@ type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function recalculateCurrentEntries(
   tx: PostgresTransaction,
   ledgerId: string,
-  mainCurrency: string
+  mainCurrency: string,
+  entryDate?: string,
+  includeUndated = false
 ): Promise<number> {
   const entries = await tx
     .select({
@@ -99,7 +104,14 @@ async function recalculateCurrentEntries(
           eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
           eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
         ),
-        isNull(sourceDocuments.deletedAt)
+        isNull(sourceDocuments.deletedAt),
+        ...(entryDate != null
+          ? [
+              includeUndated
+                ? or(eq(sourceDocuments.entryDate, entryDate), isNull(sourceDocuments.entryDate))
+                : eq(sourceDocuments.entryDate, entryDate),
+            ]
+          : [])
       )
     )
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
@@ -255,8 +267,10 @@ export const postgresLedgerAdapter: LedgerPort = {
           .returning()
           .then((rows) => rows[0]);
         if (row == null) throw new ConflictError("Failed to create ledger");
-        for (const category of input.categories) {
-          await tx.insert(entryCategories).values({ ...category, ledgerId: row.id });
+        if (input.categories.length > 0) {
+          await tx
+            .insert(entryCategories)
+            .values(input.categories.map((category) => ({ ...category, ledgerId: row.id })));
         }
         return {
           id: row.id,
@@ -392,39 +406,43 @@ export const postgresCategoryAdapter: CategoryPort = {
   },
 
   async updateMissingMetadata(ledgerId, categoryId, input) {
-    return db.transaction(async (tx) => {
-      const now = new Date();
-      const [iconRows, descriptionRows] = await Promise.all([
-        tx
-          .update(entryCategories)
-          .set({ icon: input.icon, updatedAt: now })
-          .where(
-            and(
-              eq(entryCategories.id, categoryId),
-              eq(entryCategories.ledgerId, ledgerId),
-              isNull(entryCategories.deletedAt),
-              or(isNull(entryCategories.icon), eq(entryCategories.icon, ""))
-            )
-          )
-          .returning({ id: entryCategories.id }),
-        tx
-          .update(entryCategories)
-          .set({ description: input.description, updatedAt: now })
-          .where(
-            and(
-              eq(entryCategories.id, categoryId),
-              eq(entryCategories.ledgerId, ledgerId),
-              isNull(entryCategories.deletedAt),
-              or(isNull(entryCategories.description), eq(entryCategories.description, ""))
-            )
-          )
-          .returning({ id: entryCategories.id }),
-      ]);
-      return {
-        wroteIcon: iconRows.length > 0,
-        wroteDescription: descriptionRows.length > 0,
-      };
-    });
+    // Single atomic statement: the missing-value predicates are evaluated
+    // against the row's own current columns, so a concurrent backfill that
+    // commits first wins and the loser re-checks the predicates against the
+    // updated row (READ COMMITTED EvalPlanQual) instead of overwriting it.
+    // The wrote flags come from RETURNING, never from a stale pre-read.
+    const now = new Date();
+    const result = await db.execute<{
+      wroteIcon: boolean;
+      wroteDescription: boolean;
+    }>(sql`
+      UPDATE entry_categories category
+      SET icon = CASE
+            WHEN category.icon IS NULL OR category.icon = '' THEN ${input.icon}
+            ELSE category.icon
+          END,
+          description = CASE
+            WHEN category.description IS NULL OR category.description = ''
+              THEN ${input.description}
+            ELSE category.description
+          END,
+          updated_at = ${now}
+      WHERE category.id = ${categoryId}
+        AND category.ledger_id = ${ledgerId}
+        AND category.deleted_at IS NULL
+        AND (
+          category.icon IS NULL OR category.icon = ''
+          OR category.description IS NULL OR category.description = ''
+        )
+      RETURNING
+        category.icon IS NOT DISTINCT FROM ${input.icon} AS "wroteIcon",
+        category.description IS NOT DISTINCT FROM ${input.description} AS "wroteDescription"
+    `);
+    const row = result.rows[0];
+    return {
+      wroteIcon: row?.wroteIcon ?? false,
+      wroteDescription: row?.wroteDescription ?? false,
+    };
   },
 
   async delete(ledgerId, categoryId) {
@@ -611,6 +629,15 @@ export const postgresCurrencyAdapter: CurrencyPort = {
       return recalculateCurrentEntries(tx, ledgerId, mainCurrency);
     });
   },
+  async recalculateLedgerForDate(ledgerId, mainCurrency, date) {
+    const targetDate = date.split("T")[0] ?? date;
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      // Entries dated on the event use that date's rates; undated entries use
+      // the latest stored rate, so both must be refreshed.
+      return recalculateCurrentEntries(tx, ledgerId, mainCurrency, targetDate, true);
+    });
+  },
 };
 
 export function createPostgresAuthenticationAdapter(
@@ -636,7 +663,11 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
     const computedHash = computeHash(key);
 
     const hashMatch = await db
-      .select({ id: serviceCredentials.id, ledgerId: serviceCredentials.ledgerId })
+      .select({
+        id: serviceCredentials.id,
+        ledgerId: serviceCredentials.ledgerId,
+        lastUsedAt: serviceCredentials.lastUsedAt,
+      })
       .from(serviceCredentials)
       .innerJoin(
         ledgers,
@@ -648,19 +679,46 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
       .then((rows) => rows[0]);
 
     if (hashMatch) {
-      try {
-        const [updated] = await db
-          .update(serviceCredentials)
-          .set({ lastUsedAt: new Date() })
+      // Throttle the lastUsedAt write: credentials used within the last five
+      // minutes skip the UPDATE entirely, so status polling cannot amplify
+      // write load for hot credentials.
+      const lastUsedAt = hashMatch.lastUsedAt;
+      const stale =
+        lastUsedAt == null ||
+        Date.now() - lastUsedAt.getTime() > SERVICE_CREDENTIAL_LAST_USED_STALE_MS;
+      if (stale) {
+        try {
+          const [updated] = await db
+            .update(serviceCredentials)
+            .set({ lastUsedAt: new Date() })
+            .where(
+              and(eq(serviceCredentials.id, hashMatch.id), isNull(serviceCredentials.deletedAt))
+            )
+            .returning({ id: serviceCredentials.id });
+          // Revoke-race guard: if credential was revoked between SELECT and UPDATE,
+          // the UPDATE returns 0 rows — return null to prevent auth through revoked credential.
+          if (!updated) return null;
+        } catch (error) {
+          logError("modules/ledger:authenticate-service-credential:update-last-used", error);
+        }
+      } else {
+        // Fresh path: skip the lastUsedAt write, but keep the revocation fence
+        // with a locking re-read. FOR SHARE waits for any in-flight revoke and
+        // re-evaluates the deletedAt predicate against the committed row, so a
+        // credential revoked after the hash lookup still fails this request —
+        // the same guarantee the stale path gets from its conditional UPDATE.
+        const active = await db
+          .select({ id: serviceCredentials.id })
+          .from(serviceCredentials)
           .where(and(eq(serviceCredentials.id, hashMatch.id), isNull(serviceCredentials.deletedAt)))
-          .returning({ id: serviceCredentials.id });
-        // Revoke-race guard: if credential was revoked between SELECT and UPDATE,
-        // the UPDATE returns 0 rows — return null to prevent auth through revoked credential.
-        if (!updated) return null;
-      } catch (error) {
-        logError("modules/ledger:authenticate-service-credential:update-last-used", error);
+          .for("share")
+          .limit(1)
+          .then((rows) => rows[0]);
+        if (active == null) return null;
       }
-      return hashMatch;
+      // The authenticated contract is deliberately bounded to id + ledgerId;
+      // lastUsedAt is read internally only to throttle the write.
+      return { id: hashMatch.id, ledgerId: hashMatch.ledgerId };
     }
 
     return null;
@@ -805,6 +863,13 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
       .returning({ id: otpTokens.id });
     return rows.length === 1;
   },
+  async discard(input) {
+    const rows = await db
+      .delete(otpTokens)
+      .where(and(eq(otpTokens.email, input.email), eq(otpTokens.tokenHash, input.tokenHash)))
+      .returning({ id: otpTokens.id });
+    return rows.length === 1;
+  },
   async delete(email) {
     await db.delete(otpTokens).where(eq(otpTokens.email, email));
   },
@@ -919,13 +984,14 @@ export const postgresUserPreferencesAdapter: UserPreferencesPort = {
     });
     return row?.preferences ?? null;
   },
-  async update(userId, preferences) {
-    const row = await db
+
+  async update(input) {
+    const updated = await db
       .update(users)
-      .set({ preferences, updatedAt: new Date() })
-      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .set({ preferences: input.preferences, updatedAt: new Date() })
+      .where(and(eq(users.id, input.userId), isNull(users.deletedAt)))
       .returning({ preferences: users.preferences })
       .then((rows) => rows[0]);
-    return row?.preferences ?? null;
+    return updated?.preferences ?? null;
   },
 };

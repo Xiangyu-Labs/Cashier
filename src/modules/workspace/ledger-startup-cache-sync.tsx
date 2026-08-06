@@ -4,7 +4,11 @@ import { useEffect } from "react";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { getStreamRefreshAction } from "@/modules/source-document/actions";
 import type { LedgerDeltaResult } from "@/modules/source-document/contract-refresh";
-import { clearUserCacheData, getActiveStartupCacheKey } from "@/lib/client-cache";
+import {
+  clearUserCacheDataSafely,
+  getActiveStartupCacheKey,
+  reportClientCacheError,
+} from "@/lib/client-cache";
 import {
   LEDGER_STARTUP_CACHE_FULL_SYNC_INTERVAL_MS,
   ledgerStartupCacheKey,
@@ -18,6 +22,54 @@ import {
   getLedgerStartupCacheSnapshot,
   getLedgerStartupCacheVersion,
 } from "./server-actions/ledger-startup-cache";
+
+const SNAPSHOT_CONFLICT_RETRY_DELAYS_MS = [100, 300] as const;
+
+function isSnapshotConflict(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { code?: unknown }).code;
+  return code === "CONFLICT" || error.message.includes("snapshot changed");
+}
+
+function waitForRetry(delayMs: number, signal: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, delayMs);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      resolve(false);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function getSnapshotWithConflictRetry(
+  input: Pick<LedgerStartupCacheSyncProps, "userId" | "ledgerId">,
+  expectedVersion: string,
+  signal: AbortSignal
+) {
+  let currentVersion = expectedVersion;
+  for (let attempt = 0; attempt <= SNAPSHOT_CONFLICT_RETRY_DELAYS_MS.length; attempt += 1) {
+    if (signal.aborted) return null;
+    try {
+      return await getLedgerStartupCacheSnapshot(input.ledgerId, currentVersion);
+    } catch (error) {
+      if (!isSnapshotConflict(error) || attempt === SNAPSHOT_CONFLICT_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      const shouldRetry = await waitForRetry(SNAPSHOT_CONFLICT_RETRY_DELAYS_MS[attempt]!, signal);
+      if (!shouldRetry) return null;
+      currentVersion = (await getLedgerStartupCacheVersion(input.ledgerId)).version;
+    }
+  }
+  return null;
+}
 
 export interface LedgerStartupCacheSyncProps {
   userId: string;
@@ -33,7 +85,14 @@ export interface LedgerStartupCacheSyncProps {
 export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signal: AbortSignal) {
   const activeKey = getActiveStartupCacheKey();
   if (activeKey != null && !activeKey.startsWith(`${input.userId}:`)) {
-    await clearUserCacheData().catch(() => {});
+    const cleared = await clearUserCacheDataSafely(
+      undefined,
+      input,
+      "Failed to clear startup cache during user switch"
+    );
+    if (!cleared) {
+      return;
+    }
   }
   const key = ledgerStartupCacheKey(input.userId, input.ledgerId);
   const previous = await readLedgerStartupSnapshot(key);
@@ -109,8 +168,9 @@ export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signa
       return;
     }
   }
-  const payload = await getLedgerStartupCacheSnapshot(input.ledgerId, version.version);
+  const payload = await getSnapshotWithConflictRetry(input, version.version, signal);
   if (signal.aborted) return;
+  if (payload == null) return;
   await replaceLedgerStartupSnapshot({
     key,
     schemaVersion: 1,
@@ -175,17 +235,26 @@ export function LedgerStartupCacheSync(props: LedgerStartupCacheSyncProps) {
         },
         controller.signal
       )
-        .catch(() => {})
+        .catch((error) => {
+          if (!controller.signal.aborted) {
+            reportClientCacheError(
+              error,
+              { userId, ledgerId },
+              "Failed to synchronize ledger startup cache"
+            );
+          }
+        })
         .finally(() => {
           running = false;
           if (rerunRequested && !controller.signal.aborted) {
             rerunRequested = false;
-            run();
+            timerId = setTimeout(run, 500);
           }
         });
     };
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
+    let mutationTimerId: ReturnType<typeof setTimeout> | null = null;
     const periodicId = setInterval(run, LEDGER_STARTUP_CACHE_FULL_SYNC_INTERVAL_MS);
     if ("requestIdleCallback" in window) {
       idleId = window.requestIdleCallback(run, { timeout: 5000 });
@@ -193,7 +262,9 @@ export function LedgerStartupCacheSync(props: LedgerStartupCacheSyncProps) {
       timerId = setTimeout(run, 1500);
     }
     const onMutation = (event: Event) => {
-      if ((event as CustomEvent<string>).detail === ledgerId) run();
+      if ((event as CustomEvent<string>).detail !== ledgerId) return;
+      if (mutationTimerId != null) clearTimeout(mutationTimerId);
+      mutationTimerId = setTimeout(run, 500);
     };
     const onOnline = () => run();
     window.addEventListener("cashier:ledger-mutated", onMutation);
@@ -204,6 +275,7 @@ export function LedgerStartupCacheSync(props: LedgerStartupCacheSyncProps) {
       window.removeEventListener("online", onOnline);
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);
+      if (mutationTimerId != null) clearTimeout(mutationTimerId);
       clearInterval(periodicId);
     };
   }, [

@@ -11,6 +11,11 @@ describe("currency formatting", () => {
     expect(formatCurrencyAmount(1234.5, "USD", "en-US")).toBe("$1,234.50");
   });
 
+  it("uses currency-specific decimals (zero-decimal currencies)", () => {
+    expect(formatCurrencyAmount(1234.5, "JPY", "en-US")).toBe("¥1,235");
+    expect(formatCurrencyAmount(1234.5, "KRW", "en-US")).toBe("₩1,235");
+  });
+
   it("formats compact amounts with a narrow currency symbol", () => {
     expect(formatCompactCurrencyAmount(12500, "CNY", "en-US")).toBe("¥12.5K");
   });

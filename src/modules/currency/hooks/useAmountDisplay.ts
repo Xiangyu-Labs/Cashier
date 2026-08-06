@@ -8,17 +8,26 @@ interface UseAmountDisplayOptions {
   currency: string | null | undefined;
   mainCurrency: string;
   date?: string | null;
+  /**
+   * Persisted accounting amount (authoritative for read-only entries). When
+   * present for a different currency, the live conversion query is skipped.
+   */
+  persistedConvertedAmount?: string | null;
 }
 
+export type UseAmountDisplayStatus = "idle" | "loading" | "success" | "error";
+
 interface UseAmountDisplayReturn {
-  /** The converted amount (same as amount if same currency) */
-  converted: number;
+  /** The converted amount, or null while loading/errored */
+  converted: number | null;
   /** The amount to display (converted if different currency) */
   displayAmount: number;
   /** Whether the currency is different from main currency */
   isDifferentCurrency: boolean;
+  status: UseAmountDisplayStatus;
   /** Whether the conversion is loading */
   isLoading: boolean;
+  isError: boolean;
   /** The original currency code */
   originalCurrency: string;
   /** The main currency code */
@@ -35,25 +44,93 @@ export function useAmountDisplay({
   currency,
   mainCurrency,
   date,
+  persistedConvertedAmount,
 }: UseAmountDisplayOptions): UseAmountDisplayReturn {
-  const { converted, isLoading } = useConvertedAmount(
-    ledgerId,
-    amount,
-    currency,
-    mainCurrency,
-    date
-  );
-
   const isDifferentCurrency = Boolean(
     currency != null && currency !== "" && currency !== mainCurrency && currency !== "unknown"
   );
+  const hasPersistedConvertedAmount =
+    persistedConvertedAmount != null && persistedConvertedAmount !== "";
+  const usePersisted = isDifferentCurrency && hasPersistedConvertedAmount;
 
-  return {
-    converted,
-    displayAmount: isDifferentCurrency ? converted : amount,
-    isDifferentCurrency,
-    isLoading,
-    originalCurrency: currency ?? "?",
-    mainCurrency,
-  };
+  const conversion = useConvertedAmount(ledgerId, amount, currency, mainCurrency, date, {
+    enabled: !usePersisted,
+  });
+  const originalCurrency = currency ?? "?";
+
+  if (usePersisted) {
+    const converted = Number.parseFloat(persistedConvertedAmount!);
+    return {
+      converted,
+      displayAmount: converted,
+      isDifferentCurrency: true,
+      status: "success",
+      isLoading: false,
+      isError: false,
+      originalCurrency,
+      mainCurrency,
+    };
+  }
+
+  if (!isDifferentCurrency) {
+    return {
+      converted: amount,
+      displayAmount: amount,
+      isDifferentCurrency: false,
+      status: "idle",
+      isLoading: false,
+      isError: false,
+      originalCurrency,
+      mainCurrency,
+    };
+  }
+
+  switch (conversion.status) {
+    case "idle":
+      return {
+        converted: amount,
+        displayAmount: amount,
+        isDifferentCurrency: true,
+        status: "idle",
+        isLoading: false,
+        isError: false,
+        originalCurrency,
+        mainCurrency,
+      };
+    case "loading":
+      return {
+        converted: null,
+        displayAmount: amount,
+        isDifferentCurrency: true,
+        status: "loading",
+        isLoading: true,
+        isError: false,
+        originalCurrency,
+        mainCurrency,
+      };
+    case "error":
+      return {
+        converted: null,
+        displayAmount: amount,
+        isDifferentCurrency: true,
+        status: "error",
+        isLoading: false,
+        isError: true,
+        originalCurrency,
+        mainCurrency,
+      };
+    case "success":
+      return {
+        converted: conversion.converted,
+        displayAmount: conversion.converted,
+        isDifferentCurrency: true,
+        status: "success",
+        isLoading: false,
+        isError: false,
+        originalCurrency,
+        mainCurrency,
+      };
+  }
+
+  throw new Error("Unreachable useAmountDisplay state");
 }

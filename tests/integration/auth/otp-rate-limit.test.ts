@@ -9,6 +9,7 @@ import {
 } from "@/modules/auth/services/otp-rate-limit";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { db } from "@/lib/db";
+import { RateLimitUnavailableError } from "@/lib/errors";
 import { sql } from "drizzle-orm";
 
 const checkSendRateLimit = (value: string) => checkSendRateLimitUseCase(value, postgresRateLimiter);
@@ -73,12 +74,12 @@ describe("OTP Rate Limiting", () => {
       expect(result2.remainingAttempts).toBe(0);
     });
 
-    it("should fail open on error", async () => {
+    it("should fail closed on error", async () => {
       vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
-      const result = await checkSendRateLimit("test@example.com");
-      expect(result.allowed).toBe(true);
-      expect(result.remainingAttempts).toBe(10); // Default max attempts
+      await expect(checkSendRateLimit("test@example.com")).rejects.toBeInstanceOf(
+        RateLimitUnavailableError
+      );
     });
   });
 
@@ -117,12 +118,12 @@ describe("OTP Rate Limiting", () => {
       expect(result.retryAfter).toBeLessThanOrEqual(60 * 60); // Max 1 hour
     });
 
-    it("should fail open on error", async () => {
+    it("should fail closed on error", async () => {
       vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
-      const result = await checkSendRateLimitByIP("192.168.1.1");
-      expect(result.allowed).toBe(true);
-      expect(result.remainingAttempts).toBe(10);
+      await expect(checkSendRateLimitByIP("192.168.1.1")).rejects.toBeInstanceOf(
+        RateLimitUnavailableError
+      );
     });
   });
 
@@ -155,13 +156,14 @@ describe("OTP Rate Limiting", () => {
       expect(result.allowed).toBe(false);
     });
 
-    it("should fail open on error", async () => {
+    it("should fail closed on error", async () => {
       vi.spyOn(postgresRateLimiter, "getCooldownRemaining").mockRejectedValue(
         new Error("DB error")
       );
 
-      const result = await checkResendCooldown("test@example.com");
-      expect(result.allowed).toBe(true);
+      await expect(checkResendCooldown("test@example.com")).rejects.toBeInstanceOf(
+        RateLimitUnavailableError
+      );
     });
   });
 
@@ -224,11 +226,12 @@ describe("OTP Rate Limiting", () => {
       expect(result).toBe(false);
     });
 
-    it("should fail open on error", async () => {
+    it("should fail closed on verification limit errors", async () => {
       vi.spyOn(postgresRateLimiter, "increment").mockRejectedValue(new Error("DB error"));
 
-      const result = await checkVerifyRateLimit("192.168.1.1");
-      expect(result).toBe(true); // Fail open
+      await expect(checkVerifyRateLimit("192.168.1.1")).rejects.toBeInstanceOf(
+        RateLimitUnavailableError
+      );
     });
   });
 

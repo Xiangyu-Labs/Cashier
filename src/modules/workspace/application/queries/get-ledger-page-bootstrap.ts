@@ -9,18 +9,12 @@ import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanc
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import type { StreamPage } from "@/modules/source-document/contracts";
-import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { requireLedgerAccess } from "@/modules/ledger/access";
-import {
-  type LedgerAdvancedFilters,
-  getDetailsInitialQueryState,
-  getStatsInitialQueryState,
-} from "@/modules/workspace/initial-query-state";
+import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { scheduleProcessingRecoveryAfter } from "@/modules/source-document/server-actions/schedule-processing-recovery";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import type { CategoryPort } from "@/application/contracts";
 import type { ServiceCredentialPort } from "@/application/contracts";
@@ -29,6 +23,11 @@ import type { StatsReadPort } from "@/modules/stats/application/ports";
 import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
 import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
 import type { EntryCategoryWithCountDto } from "@/modules/ledger/contracts";
+import {
+  buildDetailsQueryDescriptor,
+  buildStatsQueryDescriptor,
+  buildStreamQueryDescriptor,
+} from "@/modules/workspace/ledger-tab-query-descriptors";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
@@ -86,27 +85,27 @@ export async function getLedgerPageBootstrap(
   const fixedTimeZone = ledgerDto.settings.timeZone ?? undefined;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const initialStatsDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
-  const detailsState = getDetailsInitialQueryState(
-    input.periodParams,
-    input.advancedFilters,
-    fixedTimeZone
-  );
-  const statsState = getStatsInitialQueryState(initialStatsDate);
-  const canonicalStreamStatuses = canonicalizeSourceDocumentStatuses(
-    input.advancedFilters?.statuses
-  );
-  const streamStatusesKey = canonicalStreamStatuses?.join(",") ?? null;
-  const streamFilterInput = {
-    ...(detailsState.startDateStr !== null ? { startDate: detailsState.startDateStr } : {}),
-    ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
-    ...(input.advancedFilters?.minAmount != null
-      ? { minAmount: input.advancedFilters.minAmount }
-      : {}),
-    ...(input.advancedFilters?.maxAmount != null
-      ? { maxAmount: input.advancedFilters.maxAmount }
-      : {}),
-    ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
-  };
+  const detailsDescriptor = buildDetailsQueryDescriptor({
+    ledgerId: input.ledgerId,
+    periodParams: input.periodParams,
+    ...(input.advancedFilters !== undefined ? { advancedFilters: input.advancedFilters } : {}),
+    ...(fixedTimeZone !== undefined ? { timeZone: fixedTimeZone } : {}),
+    mainCurrency,
+  });
+  const statsDescriptor = buildStatsQueryDescriptor({
+    ledgerId: input.ledgerId,
+    currentDate: initialStatsDate,
+    mainCurrency,
+  });
+  const streamDescriptor = buildStreamQueryDescriptor({
+    ledgerId: input.ledgerId,
+    startDate: detailsDescriptor.startDateStr,
+    endDate: detailsDescriptor.endDateStr,
+    minAmount: input.advancedFilters?.minAmount,
+    maxAmount: input.advancedFilters?.maxAmount,
+    statuses: input.advancedFilters?.statuses,
+    search: input.advancedFilters?.search,
+  });
 
   const categoriesPromise = queryClient.fetchQuery({
     queryKey: queryKeys.entryCategories(input.ledgerId),
@@ -118,31 +117,11 @@ export async function getLedgerPageBootstrap(
       ? [
           // First stream page (all-statuses, filtered by period+amount, paginated)
           queryClient.prefetchInfiniteQuery({
-            queryKey: queryKeys.sourceDocumentStream(input.ledgerId, {
-              startDate: detailsState.startDateStr,
-              endDate: detailsState.endDateStr,
-              minAmount: input.advancedFilters?.minAmount,
-              maxAmount: input.advancedFilters?.maxAmount,
-              statuses: streamStatusesKey,
-            }),
+            queryKey: streamDescriptor.queryKey,
             queryFn: ({ pageParam }) =>
               listStreamPage(
                 input.ledgerId,
-                {
-                  ...(detailsState.startDateStr !== null
-                    ? { startDate: detailsState.startDateStr }
-                    : {}),
-                  ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
-                  ...(input.advancedFilters?.minAmount != null
-                    ? { minAmount: input.advancedFilters.minAmount }
-                    : {}),
-                  ...(input.advancedFilters?.maxAmount != null
-                    ? { maxAmount: input.advancedFilters.maxAmount }
-                    : {}),
-                  ...(canonicalStreamStatuses != null ? { statuses: canonicalStreamStatuses } : {}),
-                  cursor: pageParam as string | undefined,
-                  limit: 20,
-                },
+                streamDescriptor.getPageInput(pageParam as string | undefined),
                 dependencies.sourceDocuments
               ),
             initialPageParam: undefined as string | undefined,
@@ -150,17 +129,11 @@ export async function getLedgerPageBootstrap(
             staleTime: runtimeEnv.sourceDocStaleTimeMs,
           }),
           queryClient.prefetchQuery({
-            queryKey: queryKeys.sourceDocumentStreamTotal(input.ledgerId, {
-              startDate: detailsState.startDateStr,
-              endDate: detailsState.endDateStr,
-              minAmount: input.advancedFilters?.minAmount,
-              maxAmount: input.advancedFilters?.maxAmount,
-              statuses: streamStatusesKey,
-            }),
+            queryKey: streamDescriptor.totalQueryKey,
             queryFn: () =>
               getStreamTotal(
                 input.ledgerId,
-                streamFilterInput,
+                streamDescriptor.totalInput,
                 dependencies.sourceDocuments.documents
               ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
@@ -170,55 +143,24 @@ export async function getLedgerPageBootstrap(
     ...(input.initialTab === "details"
       ? [
           queryClient.prefetchQuery({
-            queryKey: queryKeys.summary(
-              input.ledgerId,
-              detailsState.startDateStr,
-              detailsState.endDateStr,
-              mainCurrency,
-              detailsState.filterKey
-            ),
+            queryKey: detailsDescriptor.summaryQueryKey,
             queryFn: () =>
               calculateLedgerStats(
                 input.ledgerId,
-                detailsState.startDateStr ?? undefined,
-                detailsState.endDateStr ?? undefined,
-                mainCurrency,
-                input.advancedFilters,
+                detailsDescriptor.summaryParams.startDate,
+                detailsDescriptor.summaryParams.endDate,
+                detailsDescriptor.summaryParams.mainCurrency,
+                detailsDescriptor.summaryParams.filters,
                 dependencies.ledgerReads
               ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
           queryClient.prefetchInfiniteQuery({
-            queryKey: queryKeys.ledgerEntries(
-              input.ledgerId,
-              "infinite",
-              detailsState.startDateStr,
-              detailsState.endDateStr,
-              detailsState.filterKey
-            ),
+            queryKey: detailsDescriptor.entriesQueryKey,
             queryFn: ({ pageParam }) =>
               listLedgerEntries(
                 input.ledgerId,
-                {
-                  ...(detailsState.startDateStr !== null
-                    ? { startDate: detailsState.startDateStr }
-                    : {}),
-                  ...(detailsState.endDateStr !== null ? { endDate: detailsState.endDateStr } : {}),
-                  ...(input.advancedFilters?.categoryId != null
-                    ? { categoryId: input.advancedFilters.categoryId }
-                    : {}),
-                  ...(input.advancedFilters?.currency != null
-                    ? { currency: input.advancedFilters.currency }
-                    : {}),
-                  ...(input.advancedFilters?.minAmount != null
-                    ? { minAmount: input.advancedFilters.minAmount }
-                    : {}),
-                  ...(input.advancedFilters?.maxAmount != null
-                    ? { maxAmount: input.advancedFilters.maxAmount }
-                    : {}),
-                  cursor: pageParam,
-                  limit: 50,
-                },
+                detailsDescriptor.getEntriesInput(pageParam as string | undefined),
                 dependencies.ledgerReads
               ),
             initialPageParam: undefined as string | undefined,
@@ -231,28 +173,8 @@ export async function getLedgerPageBootstrap(
     ...(input.initialTab === "stats"
       ? [
           queryClient.prefetchQuery({
-            queryKey: queryKeys.enhancedStats(input.ledgerId, {
-              startDate: statsState.startDateStr,
-              rangeType: statsState.rangeType,
-              comparisonMode: statsState.mode,
-              mainCurrency,
-            }),
-            queryFn: () =>
-              getEnhancedStats(
-                {
-                  ledgerId: input.ledgerId,
-                  queryRange: {
-                    from: statsState.startDateStr,
-                    to: statsState.endDateStr,
-                  },
-                  compareRange: {
-                    from: statsState.prevDateStartStr,
-                    to: statsState.prevDateEndStr,
-                  },
-                  comparisonMode: statsState.mode,
-                },
-                dependencies.stats
-              ),
+            queryKey: statsDescriptor.queryKey,
+            queryFn: () => getEnhancedStats(statsDescriptor.input, dependencies.stats),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
         ]
@@ -273,9 +195,6 @@ export async function getLedgerPageBootstrap(
     categoriesPromise,
   ]);
   const initialCategories = await categoriesPromise;
-
-  // Schedule recovery of any missed processing intents after the response is sent
-  scheduleProcessingRecoveryAfter(input.ledgerId);
 
   return {
     dehydratedState: dehydrate(queryClient),

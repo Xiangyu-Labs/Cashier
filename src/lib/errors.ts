@@ -63,11 +63,33 @@ export class ConflictError extends AppError {
  */
 export class RateLimitError extends AppError {
   retryAfter?: number;
+  metadata?: {
+    limit?: number;
+    remaining?: number;
+    resetTime?: number;
+  };
 
-  constructor(message: string = "Too many requests", retryAfter?: number) {
+  constructor(
+    message: string = "Too many requests",
+    retryAfter?: number,
+    metadata?: { limit?: number; remaining?: number; resetTime?: number }
+  ) {
     super(message, "RATE_LIMIT", 429);
     if (retryAfter !== undefined) {
       this.retryAfter = retryAfter;
     }
+    if (metadata !== undefined) {
+      this.metadata = metadata;
+    }
+  }
+}
+
+/**
+ * The rate-limit backend is unavailable. Authentication and verification
+ * callers should fail closed instead of treating this as an empty bucket.
+ */
+export class RateLimitUnavailableError extends AppError {
+  constructor(message: string = "Authentication rate limiting is temporarily unavailable") {
+    super(message, "AUTH_RATE_LIMIT_UNAVAILABLE", 503);
   }
 }

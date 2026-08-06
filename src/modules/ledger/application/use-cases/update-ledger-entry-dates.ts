@@ -1,7 +1,10 @@
-import type { SourceDocumentUpdatePort } from "@/modules/source-document/application/ports";
 import type { BatchEntryDateImpact, LedgerReadPort } from "../ports";
-import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
 
+/**
+ * Computes the ledger-entry date change impact. Cross-module application
+ * (updating the linked source documents) is orchestrated by the server
+ * action so ledger application code never calls another domain's use case.
+ */
 export async function updateLedgerEntryDates(
   input: {
     ledgerId: string;
@@ -10,22 +13,10 @@ export async function updateLedgerEntryDates(
   },
   dependencies: {
     reads: Pick<LedgerReadPort, "getBatchEntryDateImpact">;
-    sourceDocuments: Pick<SourceDocumentUpdatePort, "batchUpdate">;
   }
 ): Promise<BatchEntryDateImpact> {
-  const impact = await dependencies.reads.getBatchEntryDateImpact({
+  return dependencies.reads.getBatchEntryDateImpact({
     ledgerId: input.ledgerId,
     ledgerEntryIds: input.ledgerEntryIds,
   });
-  if (impact.sourceDocumentIds.length > 0) {
-    await batchUpdateSourceDocuments(
-      {
-        ledgerId: input.ledgerId,
-        sourceDocumentIds: impact.sourceDocumentIds,
-        data: { entryDate: input.entryDate },
-      },
-      dependencies.sourceDocuments
-    );
-  }
-  return impact;
 }

@@ -160,7 +160,14 @@
       "idx": 22,
       "version": "7",
       "when": 1787404800000,
-      "tag": "0022_durable_exchange_rate_recalculation",
+      "tag": "0022_data_layer_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787491200000,
+      "tag": "0023_durable_exchange_rate_recalculation",
       "breakpoints": true
     }
   ]

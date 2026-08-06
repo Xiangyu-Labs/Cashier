@@ -10,10 +10,9 @@ import { serverComposition } from "@/application/server-composition-root";
  * Read a source document directly from DB after a write to obtain authoritative
  * version data. Returns a minimal list-item DTO suitable for reconciliation.
  *
- * This is a lightweight query on the source_documents table only — it does not
- * load revisions, files, or compute status from revision facts. For full
- * resolution of derived fields (supportedActions, errorCode, candidate data),
- * the refresh coordinator overlays missing data during its update cycle.
+ * The read model is the single authority for status, type, title, actions,
+ * error code, and revision pointers. The reconciliation payload remains sparse
+ * for files and entries because those are overlaid by the normal refresh path.
  */
 export async function readSourceDocumentListItem(
   ledgerId: string,
@@ -80,19 +79,6 @@ export function buildReconciliationEntity(arg: {
     pendingRevisionId: null,
     ledgerEntries: [],
   };
-}
-
-/**
- * Read the authoritative updatedAt from the DB for a source document.
- * Returns the committed timestamp, or null if the document no longer exists.
- */
-export async function readSourceDocumentUpdatedAt(
-  ledgerId: string,
-  sourceDocumentId: string
-): Promise<string | null> {
-  return (
-    (await serverComposition.sourceDocumentReads.get(ledgerId, sourceDocumentId))?.updatedAt ?? null
-  );
 }
 
 /**

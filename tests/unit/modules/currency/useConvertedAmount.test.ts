@@ -37,7 +37,7 @@ describe("useConvertedAmount", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.status).toBe("success");
     });
 
     expect(mockConvertCurrencyAction).toHaveBeenCalledTimes(1);
@@ -48,8 +48,7 @@ describe("useConvertedAmount", () => {
       "USD",
       "2026-02-04"
     );
-    expect(result.current.converted).toBe(42);
-    expect(result.current.error).toBeNull();
+    expect(result.current).toEqual({ status: "success", converted: 42 });
   });
 
   it("returns amount directly when conversion input is missing", () => {
@@ -57,9 +56,39 @@ describe("useConvertedAmount", () => {
       wrapper: createWrapper(),
     });
 
-    expect(result.current.converted).toBe(88);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
+    expect(result.current).toEqual({ status: "idle", converted: 88 });
     expect(mockConvertCurrencyAction).not.toHaveBeenCalled();
+  });
+
+  it("does not run a query when disabled (persisted value is authoritative)", async () => {
+    const { result } = renderHook(
+      () =>
+        useConvertedAmount(ledgerId, 100, "CNY", "USD", "2026-02-04", {
+          enabled: false,
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    expect(result.current).toEqual({ status: "idle", converted: 100 });
+    expect(mockConvertCurrencyAction).not.toHaveBeenCalled();
+  });
+
+  it("reports loading and error states from the query", async () => {
+    mockConvertCurrencyAction.mockRejectedValueOnce(new Error("rates unavailable"));
+    const { result } = renderHook(
+      () => useConvertedAmount(ledgerId, 100, "CNY", "USD", "2026-02-04"),
+      { wrapper: createWrapper() }
+    );
+
+    expect(result.current.status).toBe("loading");
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("error");
+    });
+    expect(result.current).toMatchObject({
+      status: "error",
+      converted: null,
+      error: expect.any(Error),
+    });
   });
 });

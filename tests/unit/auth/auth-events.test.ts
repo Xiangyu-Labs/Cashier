@@ -4,15 +4,15 @@ import { UnauthorizedError } from "@/lib/errors";
 const {
   nextAuthMock,
   authenticateWithOTPMock,
+  completeInteractiveSignInMock,
   getSessionUserMock,
-  handleAuthUserCreatedMock,
   handleAuthUserSignedInMock,
   isAuthSignInAllowedMock,
 } = vi.hoisted(() => ({
   nextAuthMock: vi.fn(),
   authenticateWithOTPMock: vi.fn(),
+  completeInteractiveSignInMock: vi.fn(),
   getSessionUserMock: vi.fn(),
-  handleAuthUserCreatedMock: vi.fn(),
   handleAuthUserSignedInMock: vi.fn(),
   isAuthSignInAllowedMock: vi.fn().mockResolvedValue(true),
 }));
@@ -37,12 +37,12 @@ vi.mock("@/modules/auth/application/use-cases/authenticate-with-otp", () => ({
   authenticateWithOTP: authenticateWithOTPMock,
 }));
 
-vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () => ({
-  authenticateWithPassword: vi.fn(),
+vi.mock("@/application/use-cases/complete-interactive-sign-in", () => ({
+  completeInteractiveSignIn: completeInteractiveSignInMock,
 }));
 
-vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
-  handleAuthUserCreated: handleAuthUserCreatedMock,
+vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () => ({
+  authenticateWithPassword: vi.fn(),
 }));
 
 vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
@@ -77,6 +77,7 @@ describe("auth.ts adapter wiring", () => {
       name: "User",
       image: null,
     });
+    completeInteractiveSignInMock.mockImplementation(async (principal) => principal);
     isAuthSignInAllowedMock.mockResolvedValue(true);
     getSessionUserMock.mockResolvedValue({
       id: "db-user",
@@ -119,20 +120,13 @@ describe("auth.ts adapter wiring", () => {
     expect(result).toMatchObject({ email: "user@example.com" });
   });
 
-  it("delegates createUser events to the auth user-created use case", async () => {
+  it("does not register a duplicate createUser ledger hook", async () => {
     const { authModule, authOptions } = await loadAuthOptions();
     const createUserEvent = authOptions?.events?.createUser as
       ((params: { user: { id?: string | null } }) => Promise<void>) | undefined;
 
     expect(authModule).toBeDefined();
-    expect(createUserEvent).toBeTypeOf("function");
-
-    await createUserEvent?.({ user: { id: "user-create" } });
-
-    expect(handleAuthUserCreatedMock).toHaveBeenCalledWith(
-      { userId: "user-create" },
-      expect.any(Object)
-    );
+    expect(createUserEvent).toBeUndefined();
   });
 
   it("delegates signIn events to the auth user-signed-in use case", async () => {
@@ -151,12 +145,11 @@ describe("auth.ts adapter wiring", () => {
 
     expect(handleAuthUserSignedInMock).toHaveBeenCalledWith(
       {
-        userId: "user-signin",
         email: "user@example.com",
         locale: "en",
         isNewUser: false,
       },
-      expect.any(Object)
+      { emailDelivery: expect.any(Object) }
     );
   });
 

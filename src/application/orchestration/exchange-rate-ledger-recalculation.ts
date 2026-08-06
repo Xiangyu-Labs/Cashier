@@ -17,7 +17,7 @@ import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
 
 const CLAIM_LIMIT = 25;
 const CLAIM_LEASE_MS = 300_000;
-const MAX_CONCURRENT_LEDGERS = 2;
+export const MAX_CONCURRENT_LEDGERS = 2;
 
 let orchestrationInitialized = false;
 let recalculateServicePromise: Promise<
@@ -114,10 +114,11 @@ async function processRecalculationJob(
   }
 
   try {
-    const { recalculateEntriesConvertedAmount } = await loadRecalculateService();
-    await recalculateEntriesConvertedAmount(
+    const { recalculateEntriesConvertedAmountForDate } = await loadRecalculateService();
+    await recalculateEntriesConvertedAmountForDate(
       job.ledgerId,
       mainCurrency,
+      job.rateDate,
       serverComposition.currencies
     );
     await completeExchangeRateRecalculation({

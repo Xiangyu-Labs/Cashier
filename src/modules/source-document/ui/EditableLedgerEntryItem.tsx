@@ -75,12 +75,24 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
     description: pendingChanges?.description ?? ledgerEntry.description,
   };
 
-  const { converted, isDifferentCurrency } = useAmountDisplay({
+  // Only convert live while amount, currency, or the source-document date has
+  // unsaved changes; otherwise the persisted accounting value is authoritative.
+  const hasPendingValueChanges =
+    pendingChanges?.amount !== undefined || pendingChanges?.currency !== undefined;
+  const dateHasPendingChange =
+    sourceDocumentEntryDate != null &&
+    sourceDocumentEntryDate !== "" &&
+    sourceDocumentEntryDate !== (ledgerEntry.sourceDocument?.entryDate ?? "");
+  const persistedConvertedAmount =
+    !hasPendingValueChanges && !dateHasPendingChange ? ledgerEntry.convertedAmount : null;
+
+  const { converted, isDifferentCurrency, status } = useAmountDisplay({
     ledgerId: ledgerEntry.ledgerId,
     amount: parseAmount(displayData.amount),
     currency: displayData.currency,
     mainCurrency,
     date: sourceDocumentEntryDate ?? ledgerEntry.createdAt,
+    persistedConvertedAmount,
   });
 
   const category = categories.find((c) => c.id === displayData.categoryId);
@@ -177,7 +189,7 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         />
       </div>
 
-      {isDifferentCurrency && (
+      {isDifferentCurrency && status === "success" && converted != null && (
         <AmountText variant="secondary" className="shrink-0">
           ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
         </AmountText>

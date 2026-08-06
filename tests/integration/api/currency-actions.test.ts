@@ -66,10 +66,9 @@ describe("Currency Actions", () => {
       expect(Number.parseFloat(result.converted)).toBeCloseTo(750, 0);
     });
 
-    it("returns error for missing amount", async () => {
-      await expect(convertCurrencyAction(TEST_LEDGER_ID, 0, "CNY", "USD")).rejects.toThrow(
-        "Missing required parameters"
-      );
+    it("converts a zero amount without inventing a 1:1 rate", async () => {
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 0, "CNY", "USD", testDate);
+      expect(result.converted).toBe("0");
     });
 
     it("returns error for missing fromCurrency", async () => {
@@ -82,6 +81,11 @@ describe("Currency Actions", () => {
       await expect(convertCurrencyAction(TEST_LEDGER_ID, 100, "CNY", "")).rejects.toThrow(
         "Missing required parameters"
       );
+    });
+
+    it("normalizes lowercase currency codes", async () => {
+      const result = await convertCurrencyAction(TEST_LEDGER_ID, 100, "cny", "usd", testDate);
+      expect(Number.parseFloat(result.converted)).toBeCloseTo(14.67, 1);
     });
   });
 
@@ -114,11 +118,11 @@ describe("Currency Actions", () => {
       expect(result.results).toEqual(["100", "200"]);
     });
 
-    it("handles items without currency (passes through amount)", async () => {
+    it("rejects items without a supported currency", async () => {
       const items = [{ amount: 100, currency: "", date: testDate }];
 
       await expect(batchConvertCurrencyAction(TEST_LEDGER_ID, items, "CNY")).rejects.toThrow(
-        "Currency not found"
+        "Missing required parameters"
       );
     });
 

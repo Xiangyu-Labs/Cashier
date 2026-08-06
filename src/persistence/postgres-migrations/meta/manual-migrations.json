@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "comment": "SHA-256 of hand-written SQL migrations applied after the last Drizzle snapshot (0014). Migrations are immutable once shipped; update this registry only when a migration file is intentionally rewritten before any deployment ran it.",
+  "migrations": [
+    {
+      "file": "0015_model_convergence.sql",
+      "sha256": "226a9f638457a47429d4864154f5d851df42ea2255078a5f845d83ca8eb585f2"
+    },
+    {
+      "file": "0016_incremental_sync.sql",
+      "sha256": "38d017ca51486a4065506651772c1bacd180b4ca8aee82abf4a63c285cae8713"
+    },
+    {
+      "file": "0017_object_cleanup_queue.sql",
+      "sha256": "511fde03284862a81c226032df737aba3dd5b89d42059af385b866180c367163"
+    },
+    {
+      "file": "0018_accounting_projection_backfill.sql",
+      "sha256": "7deeada6410f5ce97504bbec6cea9d23da4cfb1a578e1911b77f047173199e12"
+    },
+    {
+      "file": "0019_duplicate_review.sql",
+      "sha256": "ddb42d6bdfc1f0adccf8cab90010afc6bcad1c20dcfcdfdefe1ad32870d7af05"
+    },
+    {
+      "file": "0020_duplicate_detection_enabled.sql",
+      "sha256": "4278255305a2ec00018369f950b52e86ce63eb75429abea87f6e5cd9c7324110"
+    },
+    {
+      "file": "0021_converted_amount_index.sql",
+      "sha256": "3fb602863b0f8abfa57289090def78bc1393feef75b9277b265c47e29c9e88f2"
+    },
+    {
+      "file": "0022_data_layer_integrity.sql",
+      "sha256": "f1e6a9fc20089d0690f603a09389c11e1e9cff9cc0a39b90d607a8c7474b005c"
+    },
+    {
+      "file": "0023_durable_exchange_rate_recalculation.sql",
+      "sha256": "85a3c80c0dc4df68289dd4551e74749681bbfaa3641879afc7e78f2514535ffb"
+    }
+  ]
+}

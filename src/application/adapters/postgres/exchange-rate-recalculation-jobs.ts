@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { exchangeRateRecalculationJobs, ledgers } from "@/persistence";
+import { exchangeRateRecalculationJobs, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 
 export interface ClaimedExchangeRateRecalculation {
   rateDate: string;
@@ -14,9 +14,10 @@ export const DEFAULT_EXCHANGE_RATE_CLAIM_LIMIT = 25;
 export const DEFAULT_EXCHANGE_RATE_CLAIM_LEASE_MS = 300_000;
 
 /**
- * Insert one pending job per active ledger for the given rate date.
- * Uses a single INSERT ... SELECT so the event handler never loads the full
- * ledger set into the application process.
+ * Insert one pending job per active ledger that has active or pending entries
+ * dated on the rate date (undated entries are recalculated with the latest
+ * stored rate). Uses a single INSERT ... SELECT so the event handler never
+ * loads the ledger set into the application process.
  */
 export async function enqueueExchangeRateRecalculations(rateDate: string): Promise<number> {
   const result = await db.execute<{ inserted: number }>(sql`
@@ -24,6 +25,21 @@ export async function enqueueExchangeRateRecalculations(rateDate: string): Promi
       INSERT INTO ${exchangeRateRecalculationJobs} (rate_date, ledger_id)
       SELECT ${rateDate}, ${ledgers.id}
       FROM ${ledgers}
+      INNER JOIN ${sourceDocuments}
+        ON ${sourceDocuments.ledgerId} = ${ledgers.id}
+        AND (
+          ${sourceDocuments.entryDate} = ${rateDate}
+          OR ${sourceDocuments.entryDate} IS NULL
+        )
+        AND ${sourceDocuments.deletedAt} IS NULL
+      INNER JOIN ${ledgerEntries}
+        ON ${ledgerEntries.ledgerId} = ${ledgers.id}
+        AND ${ledgerEntries.sourceDocumentId} = ${sourceDocuments.id}
+        AND ${ledgerEntries.deletedAt} IS NULL
+        AND (
+          ${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
+          OR ${sourceDocuments.pendingRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
+        )
       WHERE ${ledgers.deletedAt} IS NULL
       ON CONFLICT (rate_date, ledger_id) DO NOTHING
       RETURNING 1

@@ -58,9 +58,9 @@ export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPrevie
         compareRange: { from: range.prevDateStartStr, to: range.prevDateEndStr },
         mainCurrency: currency,
         uncategorizedLabel: t("uncategorized"),
-        today: todayKey,
+        comparisonMode: range.mode,
       }),
-    [currency, range, snapshot.items, t, todayKey]
+    [currency, range, snapshot.items, t]
   );
 
   return (

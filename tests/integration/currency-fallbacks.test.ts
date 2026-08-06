@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb } from "../setup";
 import { currencyRates } from "@/persistence/schema/currency";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
@@ -61,5 +61,18 @@ describe("currency fallbacks integration", () => {
     await expect(
       convertCurrency({ amount: 100, from: "ZZZ", to: "USD", date: testDate }, ExchangeRateService)
     ).rejects.toThrow("Currency not found: ZZZ");
+  });
+
+  it("same-currency batch succeeds without stored rates or network access", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockRejectedValue(new Error("network down"));
+
+    const result = await convertAmountsBatch(
+      [{ amount: "100", fromCurrency: "USD", date: testDate }],
+      "USD",
+      ExchangeRateService
+    );
+
+    expect(result).toEqual([{ convertedAmount: "100", exchangeRate: "1" }]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

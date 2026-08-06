@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -29,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0022_durable_exchange_rate_recalculation");
+    expect(journal.entries.at(-1)?.tag).toBe("0023_durable_exchange_rate_recalculation");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {
@@ -44,5 +46,64 @@ describe("Postgres migration journal", () => {
     expect(sql).toContain('DROP CONSTRAINT IF EXISTS "ck_source_document_revisions_outcome"');
     expect(sql).toContain("'cancelled'");
     expect(sql).toContain("'abandoned'");
+  });
+
+  it("keeps the journal in sync with the actual migration files", () => {
+    const sqlFiles = readdirSync(migrationsDirectory)
+      .filter((file) => /^\d{4}_.+\.sql$/.test(file))
+      .sort();
+    const sqlByPrefix = new Map(sqlFiles.map((file) => [file.slice(0, 4), file]));
+
+    expect(sqlFiles.length).toBeGreaterThan(0);
+    for (const entry of journal.entries) {
+      const prefix = entry.tag.split("_")[0]!;
+      const hasSnapshot = existsSync(
+        path.join(migrationsDirectory, "meta", `${prefix}_snapshot.json`)
+      );
+      if (hasSnapshot) continue;
+      const sqlFile = sqlByPrefix.get(prefix);
+      if (sqlFile == null) {
+        throw new Error(`journal entry ${entry.tag} needs a SQL migration file`);
+      }
+      expect(entry.tag).toBe(sqlFile.replace(/\.sql$/, ""));
+    }
+
+    // The journal's last entry must name the newest SQL migration exactly.
+    const newestSqlFile = sqlFiles[sqlFiles.length - 1]!;
+    expect(journal.entries.at(-1)?.tag).toBe(newestSqlFile.replace(/\.sql$/, ""));
+  });
+
+  it("registers every hand-written migration after 0014 with a matching SHA-256", () => {
+    const manual = JSON.parse(
+      readFileSync(path.join(migrationsDirectory, "meta", "manual-migrations.json"), "utf8")
+    ) as { migrations: Array<{ file: string; sha256: string }> };
+    const registered = new Map(manual.migrations.map((entry) => [entry.file, entry.sha256]));
+    const sqlFiles = readdirSync(migrationsDirectory)
+      .filter((file) => /^\d{4}_.+\.sql$/.test(file) && file.slice(0, 4) >= "0015")
+      .sort();
+
+    expect(sqlFiles.length).toBeGreaterThan(0);
+    for (const file of sqlFiles) {
+      const sha256 = createHash("sha256")
+        .update(readFileSync(path.join(migrationsDirectory, file)))
+        .digest("hex");
+      expect(
+        registered.get(file),
+        `${file} must be registered in meta/manual-migrations.json`
+      ).toBe(sha256);
+    }
+  });
+
+  it("refuses db:generate while the snapshot baseline is behind the journal", () => {
+    let message = "";
+    try {
+      execFileSync(process.execPath, ["scripts/guard-drizzle-generate.mjs"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain("[db:generate] blocked");
   });
 });

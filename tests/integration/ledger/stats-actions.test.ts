@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { sql } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { ledgers, ledgerEntries, entryCategories, users } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
@@ -109,7 +110,7 @@ describe("getLedgerStatsAction", () => {
     expect(thirdTrend?.date).toBe("2024-01-03");
   });
 
-  it("filters by startDate using sourceDocument.entryDate", async () => {
+  it("filters by startDate using the source document accounting date", async () => {
     const db = getTestDb();
     await seedEntry(db, ledgerId, { amount: "100.00", currency: "CNY", entryDate: "2024-01-01" });
     await seedEntry(db, ledgerId, { amount: "200.00", currency: "CNY", entryDate: "2024-02-01" });
@@ -121,7 +122,7 @@ describe("getLedgerStatsAction", () => {
     expect(cny!.total).toBe("500");
   });
 
-  it("filters by endDate using sourceDocument.entryDate", async () => {
+  it("filters by endDate using the source document accounting date", async () => {
     const db = getTestDb();
     await seedEntry(db, ledgerId, { amount: "100.00", currency: "CNY", entryDate: "2024-01-01" });
     await seedEntry(db, ledgerId, { amount: "200.00", currency: "CNY", entryDate: "2024-02-01" });
@@ -248,6 +249,61 @@ describe("getLedgerStatsAction", () => {
     expect(result.convertedTotal).not.toBeNull();
     expect(result.convertedTotal?.total).toBe("150");
     expect(result.convertedTotal?.currency).toBe("CNY");
+  });
+
+  it("includes undated documents on their effective (UTC creation) date", async () => {
+    const db = getTestDb();
+    await seedEntry(db, ledgerId, { amount: "75.00", currency: "CNY" });
+    // Point the undated document at a fixed UTC creation date.
+    await db
+      .update(sourceDocuments)
+      .set({ createdAt: new Date("2024-04-08T20:00:00Z") })
+      .where(sql`${sourceDocuments.ledgerId} = ${ledgerId}`);
+
+    const unfiltered = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
+    expect(unfiltered.convertedTotal?.total).toBe("75");
+    expect(unfiltered.trend).toEqual([{ date: "2024-04-08", total: "75" }]);
+
+    const filtered = await getLedgerStatsAction(ledgerId, "2024-04-08", "2024-04-08", "CNY");
+    const cny = filtered.totals.find((total) => total.currency === "CNY");
+    expect(cny?.count).toBe(1);
+
+    const outside = await getLedgerStatsAction(ledgerId, "2024-04-09", undefined, "CNY");
+    expect(outside.totals).toHaveLength(0);
+    expect(outside.trend).toHaveLength(0);
+  });
+
+  it("executes the summary as a single SQL statement", async () => {
+    const db = getTestDb();
+    await seedEntry(db, ledgerId, { amount: "10.00", currency: "CNY", entryDate: "2024-01-01" });
+    await seedEntry(db, ledgerId, { amount: "20.00", currency: "USD", entryDate: "2024-01-02" });
+
+    const dbWithClient = getTestDb() as unknown as {
+      $client?: {
+        query: (query: string | { text?: string }, ...args: unknown[]) => Promise<unknown>;
+      };
+    };
+    const client = dbWithClient.$client;
+    if (client == null) {
+      throw new Error("Expected drizzle client to exist in integration tests");
+    }
+    const originalQuery = client.query.bind(client);
+    const statements: string[] = [];
+    client.query = ((query: string | { text?: string }, ...args: unknown[]) => {
+      statements.push(typeof query === "string" ? query : (query.text ?? ""));
+      return originalQuery(query, ...args);
+    }) as typeof client.query;
+
+    try {
+      await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
+    } finally {
+      client.query = originalQuery;
+    }
+
+    const summaryStatements = statements
+      .map((statement) => statement.toLowerCase().replace(/\s+/g, " ").trim())
+      .filter((statement) => statement.includes("visible_entries"));
+    expect(summaryStatements).toHaveLength(1);
   });
 
   it("throws 'Unauthorized' when ledger belongs to another user", async () => {

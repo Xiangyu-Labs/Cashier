@@ -5,6 +5,7 @@ import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   createSourceDocumentInputSchema,
+  parseOperationIdentity,
   type CreateSourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
@@ -31,6 +32,9 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     CreateSourceDocumentResponseDto &
       Partial<{ reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>> }>
   > => {
+    const identity = parseOperationIdentity({
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const validated = createSourceDocumentInputSchema.parse(input);
     const payload = omitUndefinedProperties(validated);
 
@@ -52,11 +56,11 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
     scheduleProcessingRecoveryAfter(ledgerId);
     scheduleRequestMaintenance();
 
-    if (operationId != null) {
+    if (identity.operationId != null) {
       return {
         ...result,
         reconciliation: await buildAuthoritativeReconciliation(
-          operationId,
+          identity.operationId,
           ledgerId,
           result.sourceDocumentId,
           clientSubmissionId

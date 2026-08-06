@@ -1,6 +1,5 @@
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { round } from "@/lib/money/decimal";
-import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
+import { divide, round } from "@/lib/money/decimal";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import type { FxRateBook } from "@/modules/currency/application/ports";
@@ -35,17 +34,18 @@ async function resolveConversion(
   date: string,
   rates: FxRateBook
 ): Promise<ConversionResult> {
-  const result = await convertEntryAmount(
-    {
-      amount: String(amount),
-      fromCurrency,
-      toCurrency,
-      date,
-    },
-    rates
-  );
+  if (fromCurrency === toCurrency) {
+    return {
+      convertedAmount: round(String(amount), 2),
+      exchangeRate: "1",
+    };
+  }
 
-  return result;
+  const converted = await rates.convert(String(amount), fromCurrency, toCurrency, date);
+  return {
+    convertedAmount: round(converted, 2),
+    exchangeRate: round(divide(converted, String(amount)), 6),
+  };
 }
 
 async function createQuickEntryAtomically(

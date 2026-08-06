@@ -46,6 +46,7 @@
     "tryAgain": "重试",
     "rateLimited": "请求过于频繁",
     "rateLimitedDesc": "请等待一分钟后再试。",
+    "rateLimitUnavailableDesc": "登录保护服务暂时不可用，请稍后重试。",
     "otpLockedDesc": "验证码尝试次数过多，请稍后再试。",
     "sendCodeFailed": "发送验证码失败",
     "unexpectedError": "发生意外错误",

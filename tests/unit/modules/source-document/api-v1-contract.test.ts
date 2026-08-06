@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  apiV1IdempotencyKeySchema,
   createSourceDocumentInputSchemaV1,
   preparedApiV1SourceDocumentInputSchema,
 } from "@/modules/source-document/contract-schemas";
@@ -140,5 +141,33 @@ describe("API v1 source-document contract", () => {
         ],
       }).success
     ).toBe(false);
+  });
+
+  describe("apiV1IdempotencyKeySchema", () => {
+    it("accepts a 1-character key", () => {
+      expect(apiV1IdempotencyKeySchema.parse("a")).toBe("a");
+    });
+
+    it("accepts a 512-character key", () => {
+      const key = "x".repeat(512);
+      expect(apiV1IdempotencyKeySchema.parse(key)).toBe(key);
+    });
+
+    it("rejects an empty key", () => {
+      expect(apiV1IdempotencyKeySchema.safeParse("").success).toBe(false);
+    });
+
+    it("rejects a whitespace-only key", () => {
+      expect(apiV1IdempotencyKeySchema.safeParse(" \t\n ").success).toBe(false);
+    });
+
+    it("rejects a 513-character key", () => {
+      expect(apiV1IdempotencyKeySchema.safeParse("x".repeat(513)).success).toBe(false);
+    });
+
+    it("does not trim or transform legal key content", () => {
+      expect(apiV1IdempotencyKeySchema.parse("  spaced-key  ")).toBe("  spaced-key  ");
+      expect(apiV1IdempotencyKeySchema.parse("MiXeD-CaSe-Key")).toBe("MiXeD-CaSe-Key");
+    });
   });
 });

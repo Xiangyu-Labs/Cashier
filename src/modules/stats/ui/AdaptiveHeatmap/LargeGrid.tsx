@@ -6,6 +6,7 @@
 "use client";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { parseDateString } from "@/lib/date-utils";
 import { getHeatmapLevel } from "../../lib/heatmap-colors";
 import { generateHeatmapDateKeys, resolveHeatmapRange } from "../../lib/heatmap-range";
 import type { CalendarDayData, CalendarHeatmapStats } from "../../types";
@@ -47,10 +48,25 @@ export function LargeGridHeatmap({
     });
   }, [days, dayMap, queryRange]);
 
+  // Empty leading cells align the first day with the Monday-first week layout.
+  const leadingEmptyCells = useMemo(() => {
+    const range = resolveHeatmapRange(days, queryRange);
+    if (range == null) return 0;
+    const dayOfWeek = parseDateString(range.startDate).getDay(); // 0 = Sunday
+    return (dayOfWeek + 6) % 7;
+  }, [days, queryRange]);
+
   return (
     <div className={cn("w-full flex justify-center", className)}>
       {/* 7-column grid for days of week layout */}
       <div className="grid min-w-0 w-full grid-cols-7 gap-1.5 sm:gap-2 lg:max-w-[800px] lg:gap-3 xl:max-w-[900px] xl:gap-4">
+        {Array.from({ length: leadingEmptyCells }, (_, index) => (
+          <div
+            key={`offset-${index}`}
+            aria-hidden="true"
+            className="aspect-square w-full min-w-0"
+          />
+        ))}
         {gridDays.map(({ date, dayData }) => {
           const amount = dayData?.totalAmount ?? 0;
           const level = getHeatmapLevel(amount, stats);

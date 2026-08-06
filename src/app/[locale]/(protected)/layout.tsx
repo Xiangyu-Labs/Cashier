@@ -18,7 +18,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <Providers>
+    <Providers userId={context.userId}>
       <LocalePreferenceSync preference={context.session.user?.interfaceLanguage ?? "auto"} />
       {children}
     </Providers>

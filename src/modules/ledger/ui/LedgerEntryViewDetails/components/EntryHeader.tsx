@@ -17,7 +17,7 @@ interface EntryHeaderProps {
   category?: EntryCategory;
   preferredCurrencies: string[];
   mainCurrency: string;
-  convertedAmount: number;
+  convertedAmount: number | null;
   isDifferentCurrency: boolean;
   onFieldChange: (
     field: "itemName" | "amount" | "currency",
@@ -93,7 +93,7 @@ export function EntryHeader({
             />
           </div>
 
-          {isDifferentCurrency && (
+          {isDifferentCurrency && convertedAmount != null && (
             <AmountText variant="secondary" className="mt-0.5">
               ≈ {formatCurrencyAmount(convertedAmount, mainCurrency, locale)}
             </AmountText>

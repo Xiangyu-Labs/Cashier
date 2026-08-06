@@ -52,4 +52,11 @@ describe("createSourceDocumentAction omission semantics", () => {
     expect(deps).toBeDefined();
     expect(typeof deps.scheduleProcessing).toBe("function");
   });
+
+  it("rejects an invalid operation UUID before invoking the use case", async () => {
+    await expect(
+      createSourceDocumentAction("ledger-1", { text: "Lunch" }, "operation-not-a-uuid")
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(createAndQueueSourceDocumentMock).not.toHaveBeenCalled();
+  });
 });

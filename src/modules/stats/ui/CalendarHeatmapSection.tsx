@@ -102,6 +102,7 @@ export function CalendarHeatmapSection({
               key={item.level}
               className="w-4 h-4 rounded-sm"
               style={{ backgroundColor: item.color }}
+              aria-label={t(HEATMAP_LABEL_KEYS[item.level])}
               title={t(HEATMAP_LABEL_KEYS[item.level])}
             />
           ))}

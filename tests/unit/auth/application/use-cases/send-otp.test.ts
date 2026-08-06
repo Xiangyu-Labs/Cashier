@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   createOTPTokenMock,
+  discardOTPTokenMock,
   checkResendCooldownMock,
   checkSendRateLimitMock,
   checkSendRateLimitByIPMock,
   getCanResendAtMock,
   setResendCooldownMock,
   generateOTPMock,
+  getResendCooldownMock,
   otpEmailMock,
   resendSendMock,
   loggerWarnMock,
@@ -15,12 +17,14 @@ const {
   loggerErrorMock,
 } = vi.hoisted(() => ({
   createOTPTokenMock: vi.fn(),
+  discardOTPTokenMock: vi.fn(),
   checkResendCooldownMock: vi.fn(),
   checkSendRateLimitMock: vi.fn(),
   checkSendRateLimitByIPMock: vi.fn(),
   getCanResendAtMock: vi.fn(),
   setResendCooldownMock: vi.fn(),
   generateOTPMock: vi.fn(),
+  getResendCooldownMock: vi.fn(),
   otpEmailMock: vi.fn(),
   resendSendMock: vi.fn(),
   loggerWarnMock: vi.fn(),
@@ -30,6 +34,7 @@ const {
 
 vi.mock("@/modules/auth/repositories/otp-repository", () => ({
   createOTPToken: createOTPTokenMock,
+  discardOTPToken: discardOTPTokenMock,
 }));
 
 vi.mock("@/modules/auth/services/otp-rate-limit", () => ({
@@ -42,6 +47,7 @@ vi.mock("@/modules/auth/services/otp-rate-limit", () => ({
 
 vi.mock("@/modules/auth/services/otp", () => ({
   generateOTP: generateOTPMock,
+  getResendCooldown: getResendCooldownMock,
 }));
 
 vi.mock("@/emails/otp-email", () => ({
@@ -74,13 +80,15 @@ vi.mock("@/lib/logger", () => ({
 import { RateLimitError } from "@/lib/errors";
 import { sendOTP as sendOTPUseCase } from "@/modules/auth/application/use-cases/send-otp";
 import { serverComposition } from "@/application/server-composition-root";
-import type { OtpTokenPort } from "@/application/contracts";
+import type { OtpTokenPort, UserAccountPort } from "@/application/contracts";
 
 const tokens = {} as OtpTokenPort;
+const users = {} as UserAccountPort;
 const sendOTP = (input: Parameters<typeof sendOTPUseCase>[0]) =>
   sendOTPUseCase(input, {
     emailDelivery: serverComposition.email,
     tokens,
+    users,
     rateLimiter: serverComposition.rateLimiter,
   });
 
@@ -93,6 +101,7 @@ function validEmail(email: string) {
 describe("sendOTP use case", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;
   const originalEmailFrom = process.env.AUTH_EMAIL_FROM;
+  const originalDisableRegistration = process.env.DISABLE_REGISTRATION;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -102,7 +111,9 @@ describe("sendOTP use case", () => {
     createOTPTokenMock.mockResolvedValue({
       expiresAt: new Date(Date.now() + 300_000),
       success: true,
+      tokenHash: "token-hash-1",
     });
+    discardOTPTokenMock.mockResolvedValue(true);
     checkResendCooldownMock.mockResolvedValue({ allowed: true });
     checkSendRateLimitMock.mockResolvedValue({
       allowed: true,
@@ -115,6 +126,7 @@ describe("sendOTP use case", () => {
     getCanResendAtMock.mockResolvedValue(1_234_567_890);
     setResendCooldownMock.mockResolvedValue(undefined);
     generateOTPMock.mockReturnValue("123456");
+    getResendCooldownMock.mockReturnValue(60);
     otpEmailMock.mockReturnValue({ kind: "otp-email-component" });
     resendSendMock.mockResolvedValue({ id: "mail-id" });
   });
@@ -131,9 +143,16 @@ describe("sendOTP use case", () => {
     } else {
       process.env.AUTH_EMAIL_FROM = originalEmailFrom;
     }
+
+    if (originalDisableRegistration == null) {
+      delete process.env.DISABLE_REGISTRATION;
+    } else {
+      process.env.DISABLE_REGISTRATION = originalDisableRegistration;
+    }
   });
 
   it("rejects when IP rate limit is exceeded", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
     checkSendRateLimitByIPMock.mockResolvedValueOnce({
       allowed: false,
       retryAfter: 120,
@@ -212,6 +231,36 @@ describe("sendOTP use case", () => {
       }),
       "Send OTP use case error"
     );
+    expect(discardOTPTokenMock).toHaveBeenCalledWith("test@example.com", "token-hash-1", tokens);
+  });
+
+  it("returns a virtual success without creating or sending a token for unknown users", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    process.env.DISABLE_REGISTRATION = "true";
+    const findByEmail = vi.fn().mockResolvedValue(null);
+
+    const result = await sendOTPUseCase(
+      {
+        email: validEmail("new@example.com"),
+        ip: "203.0.113.2",
+        host: "cashier.example",
+      },
+      {
+        emailDelivery: serverComposition.email,
+        tokens,
+        users: { findByEmail } as unknown as UserAccountPort,
+        rateLimiter: serverComposition.rateLimiter,
+      }
+    );
+
+    expect(result).toEqual({
+      expiresIn: 300,
+      expiresAt: expect.any(Number),
+      canResendAt: expect.any(Number),
+    });
+    expect(findByEmail).toHaveBeenCalledWith("new@example.com");
+    expect(createOTPTokenMock).not.toHaveBeenCalled();
+    expect(resendSendMock).not.toHaveBeenCalled();
   });
 
   it("builds a Chinese subject and localized OTP template props", async () => {

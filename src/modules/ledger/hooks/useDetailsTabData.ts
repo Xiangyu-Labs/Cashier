@@ -2,13 +2,11 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getLedgerEntriesAction } from "@/modules/ledger/server-actions/entries";
-import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
-import { queryKeys } from "@/lib/query-keys";
+import { getLedgerEntriesAction, getLedgerStatsAction } from "@/modules/ledger/actions";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
-import { getDetailsInitialQueryState } from "./query-state";
+import { buildDetailsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 
 export interface UseDetailsTabDataReturn {
   entries: LedgerEntry[];
@@ -54,55 +52,36 @@ export function useDetailsTabData({
   timeZone,
 }: UseDetailsTabDataProps): UseDetailsTabDataReturn {
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
-  const { startDateStr, endDateStr, filterKey } = useMemo(
-    () => getDetailsInitialQueryState(periodParams, advancedFilters, timeZone),
-    [periodParams, advancedFilters, timeZone]
+  const descriptor = useMemo(
+    () =>
+      buildDetailsQueryDescriptor({
+        ledgerId,
+        periodParams,
+        advancedFilters,
+        ...(timeZone !== undefined ? { timeZone } : {}),
+        mainCurrency,
+      }),
+    [advancedFilters, ledgerId, mainCurrency, periodParams, timeZone]
   );
 
   const { data: summaryData } = useQuery({
-    queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, filterKey),
+    queryKey: descriptor.summaryQueryKey,
     queryFn: () =>
       getLedgerStatsAction(
         ledgerId,
-        startDateStr ?? undefined,
-        endDateStr ?? undefined,
-        mainCurrency,
-        {
-          ...(advancedFilters.categoryId !== undefined
-            ? { categoryId: advancedFilters.categoryId }
-            : {}),
-          ...(advancedFilters.currency !== undefined ? { currency: advancedFilters.currency } : {}),
-          ...(advancedFilters.minAmount !== undefined
-            ? { minAmount: advancedFilters.minAmount }
-            : {}),
-          ...(advancedFilters.maxAmount !== undefined
-            ? { maxAmount: advancedFilters.maxAmount }
-            : {}),
-          ...(advancedFilters.search !== undefined ? { search: advancedFilters.search } : {}),
-        }
+        descriptor.summaryParams.startDate,
+        descriptor.summaryParams.endDate,
+        descriptor.summaryParams.mainCurrency,
+        descriptor.summaryParams.filters
       ),
     enabled: true,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 
-  const entriesQueryKey = useMemo(
-    () => queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
-    [endDateStr, filterKey, ledgerId, startDateStr]
-  );
   const entriesQuery = useInfiniteQuery({
-    queryKey: entriesQueryKey,
+    queryKey: descriptor.entriesQueryKey,
     queryFn: ({ pageParam }) =>
-      getLedgerEntriesAction(ledgerId, {
-        limit: 50,
-        ...(startDateStr !== null ? { startDate: startDateStr } : {}),
-        ...(endDateStr !== null ? { endDate: endDateStr } : {}),
-        ...(advancedFilters.categoryId != null ? { categoryId: advancedFilters.categoryId } : {}),
-        ...(advancedFilters.currency != null ? { currency: advancedFilters.currency } : {}),
-        ...(advancedFilters.minAmount != null ? { minAmount: advancedFilters.minAmount } : {}),
-        ...(advancedFilters.maxAmount != null ? { maxAmount: advancedFilters.maxAmount } : {}),
-        ...(advancedFilters.search != null ? { search: advancedFilters.search } : {}),
-        ...(pageParam !== undefined ? { cursor: pageParam } : {}),
-      }),
+      getLedgerEntriesAction(ledgerId, descriptor.getEntriesInput(pageParam as string | undefined)),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
@@ -140,10 +119,10 @@ export function useDetailsTabData({
     hasNextPage,
     fetchNextPage,
     monthStats,
-    filterKey,
-    startDateStr,
-    endDateStr,
-    queryKey: entriesQueryKey,
+    filterKey: descriptor.filterKey,
+    startDateStr: descriptor.startDateStr,
+    endDateStr: descriptor.endDateStr,
+    queryKey: descriptor.entriesQueryKey,
     queryStatus: entriesQuery.status,
     queryIsFetching: entriesQuery.isFetching,
   };

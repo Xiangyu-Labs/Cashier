@@ -8,6 +8,9 @@ export const AUTH_ERROR_CODES = {
   OTP_REQUIRED: "otp_required",
   OTP_INVALID_FOR_ACTION: "otp_invalid_for_action",
   INVALID_CREDENTIALS: "invalid_credentials",
+  PASSWORD_RATE_LIMITED: "password_rate_limited",
+  PASSWORD_RATE_LIMIT_UNAVAILABLE: "password_rate_limit_unavailable",
+  AUTH_RATE_LIMIT_UNAVAILABLE: "auth_rate_limit_unavailable",
   PASSWORD_TOO_SHORT: "password_too_short",
   PASSWORD_REQUIREMENTS_NOT_MET: "password_requirements_not_met",
   PASSWORD_MISMATCH: "password_mismatch",
@@ -15,3 +18,11 @@ export const AUTH_ERROR_CODES = {
 } as const;
 
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
+
+export class AuthSignInError extends Error {
+  override readonly name = "AuthSignInError";
+
+  constructor(public readonly code: AuthErrorCode) {
+    super(code);
+  }
+}

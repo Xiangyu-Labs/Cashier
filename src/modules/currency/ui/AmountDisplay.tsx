@@ -36,6 +36,7 @@ interface AmountDisplayProps {
   currency: string | null | undefined;
   mainCurrency: string;
   date?: string | null;
+  persistedConvertedAmount?: string | null;
   className?: string;
   variant?: AmountVariant;
   showOriginal?: boolean;
@@ -47,19 +48,35 @@ export function AmountDisplay({
   currency,
   mainCurrency,
   date,
+  persistedConvertedAmount,
   className = "",
   variant = "item",
   showOriginal = true,
 }: AmountDisplayProps) {
   const locale = useLocale();
-  const amountDisplayInput =
-    date == null
-      ? { ledgerId, amount, currency, mainCurrency }
-      : { ledgerId, amount, currency, mainCurrency, date };
-
-  const { displayAmount, isDifferentCurrency, originalCurrency } = useAmountDisplay({
-    ...amountDisplayInput,
+  const { displayAmount, isDifferentCurrency, originalCurrency, status } = useAmountDisplay({
+    ledgerId,
+    amount,
+    currency,
+    mainCurrency,
+    ...(date != null ? { date } : {}),
+    ...(persistedConvertedAmount != null ? { persistedConvertedAmount } : {}),
   });
+
+  // While loading or after a failed conversion the original amount is shown in
+  // its own currency; the main-currency symbol must never label it.
+  if (status === "loading" || status === "error") {
+    return (
+      <div
+        className={`flex flex-col items-end ${className}`}
+        {...(status === "loading" ? { "aria-busy": true } : {})}
+      >
+        <AmountText variant={variant}>
+          {formatCurrencyAmount(amount, originalCurrency, locale)}
+        </AmountText>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col items-end ${className}`}>

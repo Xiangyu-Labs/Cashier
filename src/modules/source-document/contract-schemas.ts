@@ -79,10 +79,47 @@ const imagesSchema = z
   });
 
 export const sourceDocumentIdSchema = uuidSchema;
+
+/**
+ * Idempotency-Key header contract for POST /api/v1/source-documents.
+ *
+ * The value is validated but deliberately NOT trimmed or normalized: the raw
+ * header bytes are the key identity, so a legal value is passed through
+ * unchanged and an all-whitespace value is rejected.
+ */
+export const apiV1IdempotencyKeySchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .refine((value) => value.trim() !== "", {
+    message: "Idempotency key must contain between 1 and 512 characters",
+  });
+
 export const sourceDocumentIdsSchema = z.preprocess(
   (value) => (Array.isArray(value) ? [...new Set(value)] : value),
   z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE)
 );
+
+/**
+ * Identity values carried by source-document mutations are opaque correlation
+ * values at the transport boundary, but they must still be real UUID v4
+ * values before they reach an application adapter.
+ */
+export const mutationIdentitySchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  revisionId: uuidSchema.optional(),
+  operationId: uuidSchema.optional(),
+});
+
+export const revisionMutationIdentitySchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  revisionId: uuidSchema,
+  operationId: uuidSchema.optional(),
+});
+
+export const operationIdentitySchema = strictObjectSchema({
+  operationId: uuidSchema.optional(),
+});
 
 const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z
@@ -332,6 +369,20 @@ function parseSourceDocumentContract<T>(schema: z.ZodType<T>, input: unknown): T
   }
 
   return result.data;
+}
+
+export function parseMutationIdentity(input: unknown): z.infer<typeof mutationIdentitySchema> {
+  return parseSourceDocumentContract(mutationIdentitySchema, input);
+}
+
+export function parseRevisionMutationIdentity(
+  input: unknown
+): z.infer<typeof revisionMutationIdentitySchema> {
+  return parseSourceDocumentContract(revisionMutationIdentitySchema, input);
+}
+
+export function parseOperationIdentity(input: unknown): z.infer<typeof operationIdentitySchema> {
+  return parseSourceDocumentContract(operationIdentitySchema, input);
 }
 
 export function parseCreateSourceDocumentInput(input: unknown): CreateSourceDocumentInputContract {

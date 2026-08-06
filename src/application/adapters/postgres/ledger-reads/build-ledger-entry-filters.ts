@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { eq, isNull, sql, type SQL } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
 import { forLedger } from "@/lib/db/scoped-query";
-import { ledgerEntries, sourceDocuments } from "@/persistence";
+import { ledgerEntries } from "@/persistence";
 import {
   buildLedgerEntrySourceDocumentDateCondition,
   buildLedgerEntryVisibilityCondition,
@@ -14,33 +14,16 @@ import { serializeLedgerQuery } from "@/modules/ledger/ledger-query";
 
 export type { LedgerEntryFilterParams } from "@/modules/ledger/filters";
 
-export function buildLedgerEntryFilterConditions(
-  ledgerId: string,
-  filters: LedgerEntryFilterParams
-): SQL<unknown>[] {
-  const q = forLedger(ledgerEntries, ledgerId);
+/**
+ * Entry-value filters (category, currency, amount range, search).
+ *
+ * These conditions reference `ledger_entries` columns and may be reused by
+ * any query whose FROM item is the plain `ledger_entries` table. The
+ * visibility and date-range conditions are owned by the callers that join
+ * `source_documents` under the conventional `documents` alias.
+ */
+export function buildLedgerEntryValueConditions(filters: LedgerEntryFilterParams): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [];
-  if (q.whereActive != null) {
-    conditions.push(q.whereActive);
-  }
-
-  const sourceDocumentDateRange: { startDate?: string | null; endDate?: string | null } = {};
-  if (filters.startDate !== undefined) {
-    sourceDocumentDateRange.startDate = filters.startDate;
-  }
-  if (filters.endDate !== undefined) {
-    sourceDocumentDateRange.endDate = filters.endDate;
-  }
-
-  const sourceDocumentDateCondition = buildLedgerEntrySourceDocumentDateCondition(
-    ledgerId,
-    sourceDocumentDateRange
-  );
-  if (sourceDocumentDateCondition != null) {
-    conditions.push(sourceDocumentDateCondition);
-  } else {
-    conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
-  }
 
   if (filters.uncategorizedOnly) {
     conditions.push(isNull(ledgerEntries.categoryId));
@@ -77,26 +60,59 @@ export function buildLedgerEntryFilterConditions(
   return conditions;
 }
 
+/**
+ * Accounting-date range conditions over the generated `effective_date`
+ * column. Callers must join `source_documents` under the `documents` alias.
+ */
+export function buildLedgerEntryEffectiveDateConditions(
+  filters: LedgerEntryFilterParams
+): SQL<unknown>[] {
+  const conditions: SQL<unknown>[] = [];
+  if (filters.startDate != null && filters.startDate !== "") {
+    conditions.push(sql`documents.effective_date >= ${filters.startDate}::date`);
+  }
+  if (filters.endDate != null && filters.endDate !== "") {
+    conditions.push(sql`documents.effective_date <= ${filters.endDate}::date`);
+  }
+  return conditions;
+}
+
+export function buildLedgerEntryFilterConditions(
+  ledgerId: string,
+  filters: LedgerEntryFilterParams
+): SQL<unknown>[] {
+  const q = forLedger(ledgerEntries, ledgerId);
+  const conditions: SQL<unknown>[] = [];
+  if (q.whereActive != null) {
+    conditions.push(q.whereActive);
+  }
+
+  const sourceDocumentDateRange: { startDate?: string | null; endDate?: string | null } = {};
+  if (filters.startDate !== undefined) {
+    sourceDocumentDateRange.startDate = filters.startDate;
+  }
+  if (filters.endDate !== undefined) {
+    sourceDocumentDateRange.endDate = filters.endDate;
+  }
+
+  const sourceDocumentDateCondition = buildLedgerEntrySourceDocumentDateCondition(
+    ledgerId,
+    sourceDocumentDateRange
+  );
+  if (sourceDocumentDateCondition != null) {
+    conditions.push(sourceDocumentDateCondition);
+  } else {
+    conditions.push(buildLedgerEntryVisibilityCondition(ledgerId));
+  }
+
+  return [...conditions, ...buildLedgerEntryValueConditions(filters)];
+}
+
 function queryFingerprint(filters: LedgerEntryFilterParams): string {
   return createHash("sha256")
     .update(serializeLedgerQuery(filters))
     .digest("base64url")
     .slice(0, 16);
-}
-
-export function ledgerEntryOrderingExpressions(ledgerId: string) {
-  const effectiveDate = sql<string>`(
-    SELECT COALESCE(document.entry_date, document.created_at::date)::text
-    FROM ${sourceDocuments} document
-    WHERE document.id = ${ledgerEntries.sourceDocumentId}
-      AND document.ledger_id = ${ledgerId}
-  )`;
-  const documentCreatedAt = sql<Date>`(
-    SELECT document.created_at FROM ${sourceDocuments} document
-    WHERE document.id = ${ledgerEntries.sourceDocumentId}
-      AND document.ledger_id = ${ledgerId}
-  )`;
-  return { effectiveDate, documentCreatedAt };
 }
 
 interface LedgerEntryCursor {
@@ -117,10 +133,30 @@ export function encodeLedgerEntryCursor(
   );
 }
 
+export interface LedgerEntryCursorColumns {
+  effectiveDate: SQL;
+  documentCreatedAt: SQL;
+  documentId: SQL;
+  position: SQL;
+  entryId: SQL;
+}
+
+// Defaults reference the `visible_entries` CTE projection used by
+// listLedgerEntryPage. Callers that place the predicate inside the CTE body
+// must pass the underlying qualified columns instead.
+const cursorColumns = (): LedgerEntryCursorColumns => ({
+  effectiveDate: sql`effective_date`,
+  documentCreatedAt: sql`document_created_at`,
+  documentId: sql`document_id`,
+  position: sql`position`,
+  entryId: sql`id`,
+});
+
 export function buildLedgerEntryCursorCondition(
   cursor: string | null | undefined,
   ledgerId: string,
-  filters: LedgerEntryFilterParams
+  filters: LedgerEntryFilterParams,
+  columns: LedgerEntryCursorColumns = cursorColumns()
 ): SQL<unknown> | null {
   if (cursor == null || cursor === "") {
     return null;
@@ -142,16 +178,22 @@ export function buildLedgerEntryCursorCondition(
   ) {
     throw new ValidationError("Ledger entry cursor does not match the query");
   }
-  const { effectiveDate, documentCreatedAt } = ledgerEntryOrderingExpressions(ledgerId);
+
   return sql`(
-    ${effectiveDate} < ${value.effectiveDate}
-    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} < ${new Date(value.documentCreatedAt)})
-    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
-      AND ${ledgerEntries.sourceDocumentId} < ${value.documentId})
-    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
-      AND ${ledgerEntries.sourceDocumentId} = ${value.documentId} AND ${ledgerEntries.position} > ${value.position})
-    OR (${effectiveDate} = ${value.effectiveDate} AND ${documentCreatedAt} = ${new Date(value.documentCreatedAt)}
-      AND ${ledgerEntries.sourceDocumentId} = ${value.documentId} AND ${ledgerEntries.position} = ${value.position}
-      AND ${ledgerEntries.id} > ${value.entryId})
+    ${columns.effectiveDate} < ${value.effectiveDate}
+    OR (${columns.effectiveDate} = ${value.effectiveDate}
+      AND ${columns.documentCreatedAt} < ${new Date(value.documentCreatedAt)})
+    OR (${columns.effectiveDate} = ${value.effectiveDate}
+      AND ${columns.documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${columns.documentId} < ${value.documentId})
+    OR (${columns.effectiveDate} = ${value.effectiveDate}
+      AND ${columns.documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${columns.documentId} = ${value.documentId}
+      AND ${columns.position} > ${value.position})
+    OR (${columns.effectiveDate} = ${value.effectiveDate}
+      AND ${columns.documentCreatedAt} = ${new Date(value.documentCreatedAt)}
+      AND ${columns.documentId} = ${value.documentId}
+      AND ${columns.position} = ${value.position}
+      AND ${columns.entryId} > ${value.entryId})
   )`;
 }
