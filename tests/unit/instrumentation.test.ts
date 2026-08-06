@@ -15,7 +15,7 @@ vi.mock("@/lib/logger", () => ({
   logger,
 }));
 
-vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
+vi.mock("@/application/orchestration/exchange-rate-ledger-recalculation", () => ({
   initializeExchangeRateLedgerRecalculationOrchestration,
 }));
 

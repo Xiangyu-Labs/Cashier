@@ -23,7 +23,7 @@ vi.mock("@/application/server-composition-root", () => ({
   },
 }));
 
-vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
+vi.mock("@/application/orchestration/exchange-rate-ledger-recalculation", () => ({
   initializeExchangeRateLedgerRecalculationOrchestration: vi.fn(),
 }));
 

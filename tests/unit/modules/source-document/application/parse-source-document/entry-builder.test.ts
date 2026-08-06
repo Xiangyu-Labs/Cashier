@@ -9,7 +9,7 @@ vi.mock("@/lib/date-utils", () => ({
   formatDateTimeForApi: formatDateTimeForApiMock,
 }));
 
-vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
+vi.mock("@/application/orchestration/exchange-rate-ledger-recalculation", () => ({
   initializeExchangeRateLedgerRecalculationOrchestration: vi.fn(),
 }));
 

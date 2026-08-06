@@ -23,7 +23,7 @@ export async function register() {
     );
 
     const { initializeExchangeRateLedgerRecalculationOrchestration } =
-      await import("@/lib/orchestration/exchange-rate-ledger-recalculation");
+      await import("@/application/orchestration/exchange-rate-ledger-recalculation");
     initializeExchangeRateLedgerRecalculationOrchestration();
   } catch (error) {
     logger.error({ error }, "Failed during startup initialization");
