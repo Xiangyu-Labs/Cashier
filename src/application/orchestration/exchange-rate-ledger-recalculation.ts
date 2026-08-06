@@ -1,3 +1,4 @@
+import "server-only";
 import { createHash } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import { serverComposition } from "@/application/server-composition-root";

@@ -12,7 +12,7 @@ const { resolveAuthenticatedHomeMock, getMessagesMock } = vi.hoisted(() => ({
 // --------------------------------------------------------------------------
 // Module mocks — installed before components are imported
 // --------------------------------------------------------------------------
-vi.mock("@/lib/request-cache", () => ({
+vi.mock("@/modules/workspace/server/resolve-authenticated-home", () => ({
   resolveAuthenticatedHome: resolveAuthenticatedHomeMock,
 }));
 

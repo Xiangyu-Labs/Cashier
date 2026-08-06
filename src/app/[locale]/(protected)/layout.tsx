@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { Providers } from "@/components/providers";
-import { resolveAuthenticatedHome } from "@/lib/request-cache";
+import { resolveAuthenticatedHome } from "@/modules/workspace/server/resolve-authenticated-home";
 import { UnauthorizedError } from "@/lib/errors";
 import { LocalePreferenceSync } from "@/components/LocalePreferenceSync";
 

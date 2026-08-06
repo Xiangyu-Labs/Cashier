@@ -49,22 +49,22 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
     setClosingKey(null);
   };
 
-  return stack.map((stackItem, index) => {
-    const key = `${stackItem.type}:${stackItem.ledgerId}:${stackItem.id}`;
-    const isTop = index === stack.length - 1;
-    const sharedProps = {
-      id: stackItem.id,
-      ledgerId: stackItem.ledgerId,
-      open: isTop && open,
-      onClose: isTop ? () => startExit("close-all") : () => {},
-      ...(isTop ? { onExitComplete } : {}),
-      ...(isTop && stack.length > 1 ? { onBack: () => startExit("back") } : {}),
-      categories,
-    };
-    return stackItem.type === "source-document" ? (
-      <SourceDocumentDetailWrapper key={key} {...sharedProps} />
-    ) : (
-      <LedgerEntryDetailWrapper key={key} {...sharedProps} />
-    );
-  });
+  // Only the top of the stack is mounted. Lower stack items are kept as plain
+  // ModalItem history and are re-mounted (and refetched through the
+  // ledger-scoped React Query cache) when the top closes with "back".
+  const sharedProps = {
+    id: item.id,
+    ledgerId: item.ledgerId,
+    open,
+    onClose: () => startExit("close-all"),
+    onExitComplete,
+    ...(stack.length > 1 ? { onBack: () => startExit("back") } : {}),
+    categories,
+  };
+
+  return item.type === "source-document" ? (
+    <SourceDocumentDetailWrapper key={itemKey} {...sharedProps} />
+  ) : (
+    <LedgerEntryDetailWrapper key={itemKey} {...sharedProps} />
+  );
 }

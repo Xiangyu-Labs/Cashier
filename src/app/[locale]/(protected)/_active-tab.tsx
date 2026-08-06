@@ -1,7 +1,7 @@
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { redirect } from "@/i18n/routing";
-import { resolveAuthenticatedHome } from "@/lib/request-cache";
+import { resolveAuthenticatedHome } from "@/modules/workspace/server/resolve-authenticated-home";
 import { UnauthorizedError } from "@/lib/errors";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import { parseLedgerTab } from "@/modules/workspace/tabs";

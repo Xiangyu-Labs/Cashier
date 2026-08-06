@@ -8,6 +8,7 @@ export const resolveAliases = {
   "@": path.resolve(configDirectory, "src"),
   messages: path.resolve(configDirectory, "messages"),
   tests: path.resolve(configDirectory, "tests"),
+  "server-only": path.resolve(configDirectory, "tests/stubs/server-only.ts"),
 };
 
 export const coverageConfig = {

@@ -86,7 +86,7 @@ function InputFormLoadingFallback() {
 
 const ModalStackRenderer = dynamic(
   () =>
-    import("@/components/providers/ModalStackRenderer").then((module) => ({
+    import("@/modules/workspace/ui/ModalStackRenderer").then((module) => ({
       default: module.ModalStackRenderer,
     })),
   { ssr: false, loading: () => <ModalStackLoadingFallback /> }

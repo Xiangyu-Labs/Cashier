@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ModalStackRenderer } from "@/components/providers/ModalStackRenderer";
+import { ModalStackRenderer } from "@/modules/workspace/ui/ModalStackRenderer";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 
 vi.mock("@/modules/ledger/ui/LedgerEntryDetailWrapper", () => ({
@@ -78,6 +78,31 @@ describe("ModalStackRenderer", () => {
     expect(useModalStackStore.getState().stack).toEqual([
       { type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" },
     ]);
+    expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
+  });
+
+  it("mounts only the top wrapper when the stack is deeper than one", async () => {
+    render(<ModalStackRenderer categories={[]} />);
+    act(() => {
+      useModalStackStore
+        .getState()
+        .push({ type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" });
+      useModalStackStore
+        .getState()
+        .push({ type: "ledger-entry", id: "entry-2", ledgerId: "ledger-1" });
+    });
+
+    const modals = screen.getAllByTestId("ledger-modal");
+    expect(modals).toHaveLength(1);
+    expect(modals[0]).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "back" }));
+    fireEvent.click(screen.getByRole("button", { name: "exit complete" }));
+
+    expect(useModalStackStore.getState().stack).toEqual([
+      { type: "ledger-entry", id: "entry-1", ledgerId: "ledger-1" },
+    ]);
+    expect(screen.getAllByTestId("ledger-modal")).toHaveLength(1);
     expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
   });
 });

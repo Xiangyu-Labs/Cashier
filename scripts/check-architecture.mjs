@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { findBoundaryViolations } from "./architecture-rules.mjs";
 
 const root = process.cwd();
 const sourceRoot = path.join(root, "src");
@@ -76,32 +77,7 @@ for (const file of files) visit(file);
 for (const file of files) {
   const relative = path.relative(root, file).split(path.sep).join("/");
   const source = readFileSync(file, "utf8");
-  const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
-  const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
-  const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relative);
-  if (
-    (isModuleApplication || isAuthInternal) &&
-    source.includes("@/application/server-composition-root")
-  ) {
-    violations.push(`${relative}: application code must receive ports explicitly`);
-  }
-  if (
-    (isModuleApplication || isAuthInternal) &&
-    /["']@\/(?:application\/adapters|persistence|lib\/db)(?:\/|["'])/.test(source)
-  ) {
-    violations.push(`${relative}: application code must not import infrastructure adapters`);
-  }
-  if (
-    isServerAction &&
-    [
-      /from\s+["'](?:drizzle-orm|@\/lib\/db|@\/persistence)["']/,
-      /from\s+["']@\/application\/adapters(?:\/|["'])/,
-      /from\s+["'](?:ai|openai|resend)["']/,
-      /from\s+["']@(?:ai-sdk|aws-sdk|google|anthropic-ai)\/[^"']+["']/,
-    ].some((pattern) => pattern.test(source))
-  ) {
-    violations.push(`${relative}: server actions must call application ports/use cases`);
-  }
+  violations.push(...findBoundaryViolations(relative, source));
 }
 
 if (cycles.length > 0 || violations.length > 0) {
