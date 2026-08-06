@@ -42,5 +42,12 @@ async function main() {
 
 main().catch((error) => {
   console.error(`[db:migrate] ${error instanceof Error ? error.message : String(error)}`);
+  // Drizzle wraps the underlying PostgreSQL error in `error.cause`; print the
+  // whole cause chain so deployment logs show the real failure reason.
+  let cause = error?.cause;
+  while (cause instanceof Error) {
+    console.error(`[db:migrate] caused by: ${cause.message}`);
+    cause = cause.cause;
+  }
   process.exitCode = 1;
 });

@@ -41,6 +41,7 @@ DO $$
 DECLARE
   review_row RECORD;
   snapshot RECORD;
+  resolved_revision_id uuid;
   skipped_count integer := 0;
 BEGIN
   FOR review_row IN
@@ -69,9 +70,9 @@ BEGIN
       AND documents.id = review_row.matched_source_document_id;
 
     IF snapshot.active_revision_id IS NOT NULL THEN
-      review_row.matched_revision_id := snapshot.active_revision_id;
+      resolved_revision_id := snapshot.active_revision_id;
     ELSIF snapshot.pending_revision_id IS NOT NULL THEN
-      review_row.matched_revision_id := snapshot.pending_revision_id;
+      resolved_revision_id := snapshot.pending_revision_id;
     ELSE
       RAISE WARNING
         'Duplicate review % skipped: matched source document % has no revision; keeping NULL snapshot',
@@ -86,16 +87,16 @@ BEGIN
       FROM source_document_revisions AS revisions
       WHERE revisions.ledger_id = review_row.ledger_id
         AND revisions.source_document_id = review_row.matched_source_document_id
-        AND revisions.id = review_row.matched_revision_id
+        AND revisions.id = resolved_revision_id
     ) THEN
       RAISE EXCEPTION
         'Cannot backfill duplicate review %: matched revision % is missing',
         review_row.id,
-        review_row.matched_revision_id;
+        resolved_revision_id;
     END IF;
 
     UPDATE duplicate_reviews
-    SET matched_revision_id = review_row.matched_revision_id,
+    SET matched_revision_id = resolved_revision_id,
         matched_title = snapshot.title,
         matched_entry_date = snapshot.entry_date,
         matched_created_at = snapshot.created_at
