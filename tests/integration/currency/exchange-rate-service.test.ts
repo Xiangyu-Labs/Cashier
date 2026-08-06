@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ExchangeRateService } from "@/application/adapters/postgres/exchange-rate";
 import { db } from "@/lib/db";
 import { currencyRates } from "@/persistence/schema/currency";
+import { eq } from "drizzle-orm";
 
 describe("ExchangeRateService", () => {
   beforeEach(async () => {
@@ -95,5 +96,51 @@ describe("ExchangeRateService", () => {
     });
 
     unsubscribe();
+  });
+
+  it("rejects an invalid provider payload without writing to the database", async () => {
+    const onStored = vi.fn();
+    const unsubscribe = ExchangeRateService.registerRatesStoredHandler(onStored);
+
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        base: "EUR",
+        date: "not-a-date",
+        rates: { USD: 1.1 },
+      }),
+    } as Response);
+
+    await expect(ExchangeRateService.getRates("2024-01-22")).rejects.toThrow(
+      "Invalid exchange-rate provider response"
+    );
+
+    const persisted = await db.query.currencyRates.findFirst({
+      where: eq(currencyRates.date, "2024-01-22"),
+    });
+    expect(persisted).toBeUndefined();
+    expect(onStored).not.toHaveBeenCalled();
+
+    unsubscribe();
+  });
+
+  it("rejects unsupported or non-positive provider rates without writing", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        base: "EUR",
+        date: "2024-01-23",
+        rates: { USD: -1.1, CNY: 7.8 },
+      }),
+    } as Response);
+
+    await expect(ExchangeRateService.getRates("2024-01-23")).rejects.toThrow(
+      "Invalid exchange-rate provider response"
+    );
+
+    const persisted = await db.query.currencyRates.findFirst({
+      where: eq(currencyRates.date, "2024-01-23"),
+    });
+    expect(persisted).toBeUndefined();
   });
 });

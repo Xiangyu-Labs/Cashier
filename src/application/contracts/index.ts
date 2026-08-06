@@ -426,6 +426,7 @@ export interface CategoryPort {
 export interface CurrencyPort {
   convert(amount: string, from: string, to: string, date?: string): Promise<string>;
   recalculateLedger(ledgerId: LedgerId, mainCurrency: string): Promise<number>;
+  recalculateLedgerForDate(ledgerId: LedgerId, mainCurrency: string, date: string): Promise<number>;
 }
 export interface SettingsPort {
   get(ledgerId: LedgerId): Promise<LedgerSettingsContract | null>;

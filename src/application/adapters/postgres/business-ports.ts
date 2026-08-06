@@ -82,7 +82,9 @@ type PostgresTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function recalculateCurrentEntries(
   tx: PostgresTransaction,
   ledgerId: string,
-  mainCurrency: string
+  mainCurrency: string,
+  entryDate?: string,
+  includeUndated = false
 ): Promise<number> {
   const entries = await tx
     .select({
@@ -101,7 +103,14 @@ async function recalculateCurrentEntries(
           eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
           eq(sourceDocuments.pendingRevisionId, ledgerEntries.sourceDocumentRevisionId)
         ),
-        isNull(sourceDocuments.deletedAt)
+        isNull(sourceDocuments.deletedAt),
+        ...(entryDate != null
+          ? [
+              includeUndated
+                ? or(eq(sourceDocuments.entryDate, entryDate), isNull(sourceDocuments.entryDate))
+                : eq(sourceDocuments.entryDate, entryDate),
+            ]
+          : [])
       )
     )
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
@@ -611,6 +620,15 @@ export const postgresCurrencyAdapter: CurrencyPort = {
       // Lock the ledger to serialise with concurrent settings changes.
       await lockLedgerForUpdate(tx, ledgerId);
       return recalculateCurrentEntries(tx, ledgerId, mainCurrency);
+    });
+  },
+  async recalculateLedgerForDate(ledgerId, mainCurrency, date) {
+    const targetDate = date.split("T")[0] ?? date;
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      // Entries dated on the event use that date's rates; undated entries use
+      // the latest stored rate, so both must be refreshed.
+      return recalculateCurrentEntries(tx, ledgerId, mainCurrency, targetDate, true);
     });
   },
 };
