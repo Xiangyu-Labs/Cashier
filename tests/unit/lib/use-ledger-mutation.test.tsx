@@ -110,7 +110,7 @@ describe("useLedgerMutation cache targeting", () => {
       await expect(result.current.mutateAsync(undefined)).rejects.toThrow("server action failed");
     });
 
-    expect(result.current.isError).toBe(true);
+    await waitFor(() => expect(result.current.isError).toBe(true));
     expect(onErrorExtra).toHaveBeenCalledWith(expect.any(Error), undefined);
     expect(toastErrorMock).toHaveBeenCalledWith("Operation failed");
     expect(toastSuccessMock).not.toHaveBeenCalled();

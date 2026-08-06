@@ -184,7 +184,10 @@ describe("OTP Rate Limiting", () => {
       const canResendAt = await getCanResendAt(email);
       expect(canResendAt).not.toBeNull();
       expect(canResendAt!).toBeGreaterThan(now);
-      expect(canResendAt!).toBeLessThanOrEqual(now + 60); // Within 60 seconds
+      // remaining is capped at the cooldown (60s); re-read the wall clock after
+      // the DB round trips so a second boundary cannot break the upper bound.
+      const nowAtRead = Math.floor(Date.now() / 1000);
+      expect(canResendAt!).toBeLessThanOrEqual(nowAtRead + 60); // Within 60 seconds
     });
 
     it("should fail open on error", async () => {
