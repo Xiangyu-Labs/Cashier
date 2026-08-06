@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { getLedgerPageBootstrap as getLedgerPageBootstrapUseCase } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
+import { getStatsInitialQueryState } from "@/modules/workspace/initial-query-state";
+import { buildStatsQueryDescriptor } from "@/modules/workspace/stats-query";
 import type { CategoryPort } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import type { StatsReadPort } from "@/modules/stats/application/ports";
@@ -305,6 +307,46 @@ describe("getLedgerPageBootstrap", () => {
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
+  });
+
+  it("prefetches stats with the full unified query key used by the stats tab", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T12:00:00Z"));
+    try {
+      const result = await getLedgerPageBootstrap({
+        ledgerId: "ledger-1",
+        initialTab: "stats",
+        periodParams: { period: "thisMonth" },
+        ledgerDto: createPreAuthorizedLedgerDto(),
+      });
+
+      const statsQuery = result?.dehydratedState.queries.find(
+        (query) => query.queryKey[0] === "enhanced-stats"
+      );
+      expect(statsQuery).toBeDefined();
+
+      const expectedDescriptor = buildStatsQueryDescriptor({
+        ledgerId: "ledger-1",
+        state: getStatsInitialQueryState(new Date("2026-08-06T12:00:00Z")),
+        mainCurrency: "USD",
+      });
+      expect(statsQuery?.queryKey).toEqual(expectedDescriptor.queryKey);
+      expect(statsQuery?.queryKey).toHaveLength(9);
+      expect(statsQuery?.queryKey[0]).toBe("enhanced-stats");
+      expect(statsQuery?.queryKey[1]).toBe("ledger-1");
+      // All seven query dimensions are populated, including endDate and the
+      // complete comparison window that the SSR prefetch previously omitted.
+      for (const dimension of statsQuery?.queryKey.slice(2) ?? []) {
+        expect(dimension).toEqual(expect.any(String));
+        expect(String(dimension)).not.toBe("");
+      }
+      expect(getEnhancedStatsMock).toHaveBeenCalledWith(
+        expectedDescriptor.input,
+        bootstrapDependencies.stats
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {

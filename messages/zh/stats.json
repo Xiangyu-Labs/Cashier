@@ -81,6 +81,10 @@
     "samePeriodEqual": "与{period}同期持平",
     "fullPeriodMore": "较{period}多 {amount}（+{percent}%）",
     "fullPeriodLess": "较{period}少 {amount}（-{percent}%）",
-    "fullPeriodEqual": "与{period}持平"
+    "fullPeriodEqual": "与{period}持平",
+    "loadFailed": "统计数据加载失败，请重试。",
+    "retry": "重试",
+    "previousPeriod": "上一周期",
+    "nextPeriod": "下一周期"
   }
 }

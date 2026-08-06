@@ -1,4 +1,7 @@
-import type { GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
+import {
+  parseEnhancedStatsInput,
+  type GetEnhancedStatsInput,
+} from "@/modules/stats/contract-schemas";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { StatsReadPort } from "../ports";
 
@@ -9,9 +12,10 @@ export function getEnhancedStatsQuery(
   return stats.queryEnhanced(input);
 }
 
-export function getEnhancedStats(
-  input: GetEnhancedStatsInput,
+export async function getEnhancedStats(
+  input: unknown,
   stats: StatsReadPort
 ): Promise<EnhancedStatsDto> {
-  return stats.getEnhanced(input);
+  const validatedInput = parseEnhancedStatsInput(input);
+  return stats.queryEnhanced(validatedInput);
 }

@@ -8,8 +8,11 @@ import {
   effectiveDocumentDate,
   matchesLiteralEntrySearch,
 } from "@/modules/ledger/entry-filter-semantics";
-import type { EnhancedStatsDto } from "@/modules/stats/contracts";
-import { calculateGrowth } from "@/modules/stats/utils";
+import type { EnhancedStatsDto, StatsComparisonMode } from "@/modules/stats/contracts";
+import {
+  buildEnhancedStatsDto,
+  type EnhancedStatsBucket,
+} from "@/modules/stats/application/build-enhanced-stats";
 
 export interface CachedDocumentMatch {
   document: SourceDocumentListItemDto;
@@ -116,20 +119,8 @@ interface CachedStatsRange {
   to: string;
 }
 
-interface CachedStatsBucket {
-  total: Decimal;
+interface CachedStatsBucket extends EnhancedStatsBucket {
   unconvertedCount: number;
-  categories: Map<
-    string,
-    {
-      id: string | null;
-      name: string;
-      icon: string | null;
-      total: Decimal;
-      count: number;
-    }
-  >;
-  days: Map<string, { total: Decimal; count: number; currencies: Set<string> }>;
 }
 
 function buildCachedStatsBucket(
@@ -146,7 +137,6 @@ function buildCachedStatsBucket(
   };
 
   for (const document of items) {
-    if (document.status !== "completed" && document.status !== "duplicate_pending") continue;
     const date = effectiveDocumentDate(document);
     if (date < range.from || date > range.to) continue;
 
@@ -184,94 +174,30 @@ function buildCachedStatsBucket(
   return bucket;
 }
 
-function calculateHeatmapStats(amounts: number[]) {
-  if (amounts.length === 0) {
-    return { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 };
-  }
-  const sorted = amounts.toSorted((left, right) => left - right);
-  const minAmount = sorted[0] ?? 0;
-  const maxAmount = sorted.at(-1) ?? minAmount;
-  return {
-    minAmount,
-    maxAmount,
-    avgAmount: amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length,
-    p80Amount: sorted[Math.max(0, Math.ceil(sorted.length * 0.8) - 1)] ?? maxAmount,
-  };
-}
-
 export function buildCachedEnhancedStats({
   items,
   queryRange,
   compareRange,
   mainCurrency,
   uncategorizedLabel,
-  today,
+  comparisonMode,
 }: {
   items: readonly SourceDocumentListItemDto[];
   queryRange: CachedStatsRange;
   compareRange: CachedStatsRange;
   mainCurrency: string;
   uncategorizedLabel: string;
-  today: string;
+  comparisonMode?: StatsComparisonMode;
 }): EnhancedStatsDto {
   const current = buildCachedStatsBucket(items, queryRange, mainCurrency, uncategorizedLabel);
   const previous = buildCachedStatsBucket(items, compareRange, mainCurrency, uncategorizedLabel);
-  const total = current.total.toNumber();
-  const previousTotal = previous.total.toNumber();
-  const totalGrowth = calculateGrowth(total, previousTotal);
-  const categories = [...current.categories.entries()]
-    .map(([key, category]) => {
-      const previousAmount = previous.categories.get(key)?.total.toNumber() ?? 0;
-      const growth = calculateGrowth(category.total.toNumber(), previousAmount);
-      return {
-        id: category.id,
-        name: category.name,
-        icon: category.icon,
-        totalOriginal: "0",
-        totalConverted: category.total.toFixed(),
-        currency: mainCurrency,
-        percent: current.total.isZero()
-          ? 0
-          : category.total.div(current.total).times(100).toNumber(),
-        count: category.count,
-        trend: { percent: growth.percent, amount: String(growth.amount) },
-      };
-    })
-    .toSorted((left, right) => Number(right.totalConverted) - Number(left.totalConverted));
-  const heatmapDays = [...current.days.entries()]
-    .map(([date, day]) => ({
-      date,
-      totalAmount: day.total.toNumber(),
-      entryCount: day.count,
-      currencies: [...day.currencies],
-    }))
-    .toSorted((left, right) => left.date.localeCompare(right.date));
-  const effectiveEnd = queryRange.to < today ? queryRange.to : today;
-  const startTime = Date.parse(`${queryRange.from}T00:00:00Z`);
-  const endTime = Date.parse(`${effectiveEnd}T00:00:00Z`);
-  const days = endTime >= startTime ? Math.round((endTime - startTime) / 86_400_000) + 1 : 0;
-
-  return {
+  return buildEnhancedStatsDto({
     unconvertedCount: current.unconvertedCount,
-    summary: {
-      total: current.total.toFixed(),
-      currency: mainCurrency,
-      trend: { percent: totalGrowth.percent, amount: String(totalGrowth.amount) },
-      dailyAverage: days > 0 ? total / days : 0,
-      comparison: {
-        mode: "same_period",
-        from: queryRange.from,
-        to: queryRange.to,
-        previousTotal: previous.total.toFixed(),
-        amountDelta: current.total.minus(previous.total).toFixed(),
-        percent: totalGrowth.percent,
-      },
-    },
-    categories,
-    chart: heatmapDays.map(({ date, totalAmount }) => ({ date, total: totalAmount })),
-    heatmap: {
-      days: heatmapDays,
-      stats: calculateHeatmapStats(heatmapDays.map((day) => day.totalAmount)),
-    },
-  };
+    mainCurrency,
+    current,
+    previous,
+    queryRange,
+    compareRange,
+    comparisonMode,
+  });
 }
