@@ -1,16 +1,22 @@
-"use server";
-
 import type { ProcessingIntentContract } from "@/application/contracts";
+import { serverComposition } from "@/application/server-composition-root";
 import { ValidationError } from "@/lib/errors";
+import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { preparedApiV1SourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";
-import { serverComposition } from "@/application/server-composition-root";
-import { scheduleProcessingAfter } from "./schedule-processing";
-import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
-import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
+import { scheduleProcessingAfter } from "../server-actions/schedule-processing";
+import { scheduleProcessingRecoveryAfter } from "../server-actions/schedule-processing-recovery";
 
-export async function createSourceDocumentFromCredentialAction(input: {
+/**
+ * Server-only facade for POST /api/v1/source-documents.
+ *
+ * A plain module function (not a "use server" action) that owns the prepared-
+ * input validation, port injection, and request-bound `after()` callbacks for
+ * the credential ingestion use case. The API route calls this facade instead
+ * of assembling adapters or touching persistence directly.
+ */
+export async function createSourceDocumentFromCredentialRequest(input: {
   credentialId: string;
   ledgerId: string;
   idempotencyKey?: string;

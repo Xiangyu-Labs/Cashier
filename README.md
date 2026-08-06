@@ -180,3 +180,13 @@ Ledger-entry update/delete server actions accept an optional `operationId` param
 ### Storage And API
 
 Web images are uploaded directly to private R2 with short-lived signed PUT URLs. The server verifies object MIME type, size, and SHA-256 metadata before copying to a durable key. Reads remain authenticated and stream through `/api/stored-files/:fileId`; API v1 inline images continue using the server-side upload path. `/api/v1` is the stable long-lived public contract and has no scheduled sunset. There is no `/api/v2` route surface. Mobile and automation clients should reuse the same `Idempotency-Key` when retrying a `POST /api/v1/source-documents` so a network retry cannot create duplicate documents or files; every API v1 response includes an `X-Request-Id` header that can be used for request correlation.
+
+### Public API v1 Contract
+
+`POST /api/v1/source-documents` and `GET /api/v1/source-documents/{id}` accept `Authorization: Bearer <token>` (scheme matching is case-insensitive). Successful credential-limited responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` (Unix seconds); `429` responses add `Retry-After` plus the same three headers. `401` responses include `WWW-Authenticate: Bearer`. A successful `POST` returns `201` with a relative `Location: /api/v1/source-documents/{sourceDocumentId}` header.
+
+The optional `Idempotency-Key` header must contain between 1 and 512 characters and may not be all whitespace. The value is validated before the request body is read and is never trimmed or normalized, so retries must send the exact original value. An invalid key returns `400` without reading or uploading the request content.
+
+Rate limits are fixed 60-second windows backed by PostgreSQL. `API_RATE_LIMIT_PER_MINUTE` (default `60`) is a per-credential quota shared by `POST` and `GET` across all client IPs. When `TRUSTED_PROXY` is configured, a pre-authentication per-IP ceiling of 120 requests/minute protects authentication work, and invalid bearer attempts are capped at 30/minute per IP and token shard.
+
+The completed status projection reports accounting totals in the ledger's main currency: `result.total` is the sum of the selected revision's `convertedAmount` values and `result.totalCurrency` is the ledger's three-letter ISO main currency (for example `"12.50"` with `"CNY"`). The entries array keeps the original `amount` and `currency` per line and does not expose `convertedAmount`. If a completed revision contains an entry without an accounting amount, the endpoint returns a sanitized `500` rather than mixing raw currencies.

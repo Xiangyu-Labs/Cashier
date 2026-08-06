@@ -79,6 +79,7 @@ for (const file of files) {
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
   const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relative);
+  const isApiRoute = /^src\/app\/api\//.test(relative);
   if (
     (isModuleApplication || isAuthInternal) &&
     source.includes("@/application/server-composition-root")
@@ -101,6 +102,20 @@ for (const file of files) {
     ].some((pattern) => pattern.test(source))
   ) {
     violations.push(`${relative}: server actions must call application ports/use cases`);
+  }
+  if (
+    isApiRoute &&
+    /["']@\/(?:application\/adapters|persistence|lib\/db)(?:\/|["'])/.test(source)
+  ) {
+    violations.push(`${relative}: api routes must not import infrastructure adapters or db`);
+  }
+  if (
+    isApiRoute &&
+    /["']@\/modules\/[^"']*(?:\/server-actions(?:\/|["'])|(?:\/actions)["'])/.test(source)
+  ) {
+    violations.push(
+      `${relative}: api routes must not import module server actions or actions barrels`
+    );
   }
 }
 

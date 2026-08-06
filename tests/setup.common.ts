@@ -15,6 +15,37 @@ process.env.S3_BUCKET = process.env.S3_BUCKET ?? "cashier-test-images";
 process.env.S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID ?? "test-access-key";
 process.env.S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY ?? "test-secret-key";
 
+/**
+ * Promises of fire-and-forget `after()` callbacks registered during tests.
+ * Tests await them via `flushAfterCallbacks()` before destructive setup (for
+ * example the per-test TRUNCATE) so request-bound work cannot deadlock with
+ * the next test's table locks.
+ */
+const { pendingAfterCallbacks } = vi.hoisted(() => ({
+  pendingAfterCallbacks: [] as Promise<unknown>[],
+}));
+
+/**
+ * Drain pending `after()` callbacks within a bounded budget, including
+ * callbacks registered by earlier callbacks (the recovery pass schedules
+ * intent execution). Long-running work such as AI requests holds no database
+ * locks and is left running in the background; only the quick database work
+ * that could deadlock against a subsequent TRUNCATE needs to settle first.
+ */
+export async function flushAfterCallbacks(timeoutMs = 2500): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const pending = pendingAfterCallbacks.splice(0);
+    if (pending.length === 0) return;
+    const remaining = Math.max(1, deadline - Date.now());
+    await Promise.all(
+      pending.map((promise) =>
+        Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, remaining))])
+      )
+    );
+  }
+}
+
 vi.mock("@/auth", () => ({
   auth: (...args: unknown[]) => {
     if (args.length === 1 && typeof args[0] === "function") {
@@ -113,7 +144,7 @@ vi.mock("next/server", async (importOriginal) => {
     // Wraps fn() in try/catch for sync throws and .catch() for async rejections.
     after: (fn: () => void) => {
       try {
-        void Promise.resolve(fn()).catch(() => {});
+        pendingAfterCallbacks.push(Promise.resolve(fn()).catch(() => {}));
       } catch {}
     },
   };

@@ -7,14 +7,9 @@
 
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import type { RateLimiterPort, RateLimitResult } from "@/application/contracts";
 
-export interface RateLimitResult {
-  success: boolean;
-  remaining: number;
-  resetTime: number; // Unix timestamp in milliseconds
-}
-
-class PostgresRateLimiter {
+class PostgresRateLimiter implements RateLimiterPort {
   /**
    * Atomically increment the counter for a bucket key.
    *
@@ -72,6 +67,27 @@ class PostgresRateLimiter {
       remaining: Math.max(0, limit - currCount),
       resetTime,
     };
+  }
+
+  /**
+   * Read the counter for the current fixed window without incrementing.
+   *
+   * Returns 0 when the bucket is missing or its stored window has already
+   * expired, so callers can pre-check a bucket without mutating state.
+   *
+   * @param bucketKey - Unique key identifying the rate-limit bucket
+   * @param windowSeconds - Time window in seconds
+   */
+  async current(bucketKey: string, windowSeconds: number): Promise<number> {
+    const windowStart = Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds;
+    const result = await db.execute<{ curr_count: number }>(sql`
+      SELECT count AS curr_count
+      FROM rate_limit_buckets
+      WHERE bucket_key = ${bucketKey}
+        AND window_start = ${new Date(windowStart * 1000)}
+    `);
+    const row = result.rows?.[0];
+    return row == null ? 0 : Number(row.curr_count);
   }
 
   /**

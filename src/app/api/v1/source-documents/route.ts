@@ -1,17 +1,34 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 120;
-import { createSourceDocumentFromCredentialAction } from "@/modules/source-document/actions";
+import { createSourceDocumentFromCredentialRequest } from "@/modules/source-document/server/create-from-credential-request";
 import { ValidationError } from "@/lib/errors";
 import { ApiV1HandlerFailure, handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
 import { toApiV1SourceDocumentCreateResponse } from "@/app/api/v1/_shared/compatibility";
-import { createSourceDocumentInputSchemaV1 } from "@/modules/source-document/contract-schemas";
+import {
+  apiV1IdempotencyKeySchema,
+  createSourceDocumentInputSchemaV1,
+} from "@/modules/source-document/contract-schemas";
 import { API_V1_MAX_REQUEST_BYTES } from "@/modules/source-document/api-v1-policy";
+
+/**
+ * Request-body bound violation. Carries the number of bytes actually consumed
+ * from the stream so failure metrics can report how far the request got
+ * before rejection.
+ */
+class RequestBodyTooLargeError extends ValidationError {
+  readonly bytesRead: number;
+
+  constructor(bytesRead: number) {
+    super(`JSON request body exceeds ${API_V1_MAX_REQUEST_BYTES} bytes`);
+    this.bytesRead = bytesRead;
+  }
+}
 
 async function readBoundedJson(request: NextRequest): Promise<{ data: unknown; bytes: number }> {
   const declaredLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > API_V1_MAX_REQUEST_BYTES) {
-    throw new ValidationError(`JSON request body exceeds ${API_V1_MAX_REQUEST_BYTES} bytes`);
+    throw new RequestBodyTooLargeError(0);
   }
   if (request.body == null) throw new ValidationError("Invalid JSON body");
   const reader = request.body.getReader();
@@ -23,7 +40,7 @@ async function readBoundedJson(request: NextRequest): Promise<{ data: unknown; b
     bytes += value.byteLength;
     if (bytes > API_V1_MAX_REQUEST_BYTES) {
       await reader.cancel();
-      throw new ValidationError(`JSON request body exceeds ${API_V1_MAX_REQUEST_BYTES} bytes`);
+      throw new RequestBodyTooLargeError(bytes);
     }
     chunks.push(value);
   }
@@ -49,39 +66,61 @@ export async function POST(request: NextRequest) {
       const bodyReadStart = performance.now();
       let bodyBytes = 0;
       let bodyReadMs = 0;
+      let parseMs = 0;
+      let createMs = 0;
       let imageCount = 0;
       let decodedBytes = 0;
       try {
+        // Validate Idempotency-Key before reading or decoding the request
+        // body, so an invalid key can never trigger image decoding or uploads.
+        const idempotencyHeader = authorizedRequest.headers.get("Idempotency-Key");
+        let idempotencyKey: string | undefined;
+        if (idempotencyHeader != null) {
+          const parsedKey = apiV1IdempotencyKeySchema.safeParse(idempotencyHeader);
+          if (!parsedKey.success) {
+            throw new ValidationError("Validation failed", {
+              issues: parsedKey.error.issues,
+            });
+          }
+          idempotencyKey = parsedKey.data;
+        }
+
         const body = await readBoundedJson(authorizedRequest);
         bodyBytes = body.bytes;
         bodyReadMs = performance.now() - bodyReadStart;
 
         const parseStart = performance.now();
         const parsed = createSourceDocumentInputSchemaV1.safeParse(body.data);
+        parseMs = performance.now() - parseStart;
         if (!parsed.success) {
           throw new ValidationError("Validation failed", {
             issues: parsed.error.issues,
           });
         }
-        const parseMs = performance.now() - parseStart;
         imageCount = parsed.data.images.length;
         decodedBytes = parsed.data.images.reduce((total, image) => total + image.bytes.length, 0);
 
         const createStart = performance.now();
-        const createResult = await createSourceDocumentFromCredentialAction({
-          credentialId: credential.id,
-          ledgerId: credential.ledgerId,
-          ...(authorizedRequest.headers.get("Idempotency-Key") == null
-            ? {}
-            : { idempotencyKey: authorizedRequest.headers.get("Idempotency-Key")! }),
-          requestId,
-          payload: parsed.data,
-        });
-        const createMs = performance.now() - createStart;
+        let createResult: Awaited<ReturnType<typeof createSourceDocumentFromCredentialRequest>>;
+        try {
+          createResult = await createSourceDocumentFromCredentialRequest({
+            credentialId: credential.id,
+            ledgerId: credential.ledgerId,
+            ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
+            requestId,
+            payload: parsed.data,
+          });
+        } finally {
+          createMs = performance.now() - createStart;
+        }
 
         const response = NextResponse.json(toApiV1SourceDocumentCreateResponse(createResult), {
           status: 201,
         });
+        response.headers.set(
+          "Location",
+          `/api/v1/source-documents/${createResult.sourceDocumentId}`
+        );
         return {
           response,
           metrics: {
@@ -96,11 +135,18 @@ export async function POST(request: NextRequest) {
           },
         };
       } catch (error) {
+        const bodyLimitHit = error instanceof RequestBodyTooLargeError;
         throw new ApiV1HandlerFailure(error, {
-          requestBytes: bodyBytes,
+          requestBytes: bodyLimitHit ? error.bytesRead : bodyBytes,
           imageCount,
           decodedBytes,
-          stages: { bodyReadMs: Math.round(bodyReadMs) },
+          stages: {
+            bodyReadMs: Math.round(
+              bodyReadMs === 0 ? performance.now() - bodyReadStart : bodyReadMs
+            ),
+            parseMs: Math.round(parseMs),
+            createMs: Math.round(createMs),
+          },
         });
       }
     },

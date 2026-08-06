@@ -5,7 +5,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import * as schema from "@/persistence";
 import { memoryStore } from "@/lib/memory-store";
-import "./setup.common";
+import { flushAfterCallbacks } from "./setup.common";
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
@@ -62,6 +62,37 @@ export function getTestDb() {
   return testDatabase.db;
 }
 
+/**
+ * TRUNCATE every table in the worker schema. A leftover request-bound
+ * transaction (see `flushAfterCallbacks`) can occasionally make PostgreSQL
+ * choose this statement as a deadlock victim; retrying is safe because the
+ * whole TRUNCATE statement is atomic and rolled back on deadlock.
+ */
+async function truncateAllTables(database: TestDatabase): Promise<void> {
+  const tables = await database.pool.query<{ table_name: string }>(
+    `SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = current_schema()
+       AND table_type = 'BASE TABLE'
+     ORDER BY table_name`
+  );
+  const tableNames = tables.rows.map(
+    ({ table_name }) => `${quoteIdentifier(database.schemaName)}.${quoteIdentifier(table_name)}`
+  );
+  if (tableNames.length === 0) return;
+  const statement = `TRUNCATE TABLE ${tableNames.join(", ")} RESTART IDENTITY CASCADE`;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      await database.pool.query(statement);
+      return;
+    } catch (error) {
+      const code = (error as { code?: unknown } | null)?.code;
+      if (code !== "40P01" || attempt === 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+    }
+  }
+}
+
 beforeAll(async () => {
   const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
   const adminClient = await admin.connect();
@@ -103,22 +134,14 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await memoryStore.flushall();
+  // Drain request-bound `after()` work from the previous test before taking
+  // exclusive table locks, otherwise maintenance/processing transactions can
+  // deadlock against the per-test TRUNCATE.
+  await flushAfterCallbacks();
   const database = testDatabase;
   if (database == null) throw new Error("Test PostgreSQL database is not initialized");
 
-  const tables = await database.pool.query<{ table_name: string }>(
-    `SELECT table_name
-     FROM information_schema.tables
-     WHERE table_schema = current_schema()
-       AND table_type = 'BASE TABLE'
-     ORDER BY table_name`
-  );
-  const tableNames = tables.rows.map(
-    ({ table_name }) => `${quoteIdentifier(database.schemaName)}.${quoteIdentifier(table_name)}`
-  );
-  if (tableNames.length > 0) {
-    await database.pool.query(`TRUNCATE TABLE ${tableNames.join(", ")} RESTART IDENTITY CASCADE`);
-  }
+  await truncateAllTables(database);
 
   await database.db.insert(schema.users).values({
     id: "00000000-0000-0000-0000-000000000000",
