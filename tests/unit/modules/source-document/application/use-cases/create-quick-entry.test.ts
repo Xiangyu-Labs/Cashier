@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  convertEntryAmountMock,
-  formatDateTimeForApiMock,
-  getEntryCategoryNameMock,
-  createManualMock,
-} = vi.hoisted(() => ({
-  convertEntryAmountMock: vi.fn(),
+const { formatDateTimeForApiMock, getEntryCategoryNameMock, createManualMock } = vi.hoisted(() => ({
   formatDateTimeForApiMock: vi.fn(),
   getEntryCategoryNameMock: vi.fn(),
   createManualMock: vi.fn(),
@@ -27,10 +21,6 @@ vi.mock("@/lib/orchestration/exchange-rate-ledger-recalculation", () => ({
   initializeExchangeRateLedgerRecalculationOrchestration: vi.fn(),
 }));
 
-vi.mock("@/modules/currency/application/use-cases/convert-entry-amount", () => ({
-  convertEntryAmount: convertEntryAmountMock,
-}));
-
 vi.mock("@/modules/ledger/source-document-queries", () => ({
   getEntryCategoryName: getEntryCategoryNameMock,
 }));
@@ -41,7 +31,7 @@ import type { QuickEntryPorts } from "@/modules/source-document/application/port
 const ports = {
   categories: {},
   projections: { createManual: createManualMock },
-  rates: {},
+  rates: { convert: vi.fn() },
 } as unknown as QuickEntryPorts;
 
 describe("createQuickEntry", () => {
@@ -51,10 +41,7 @@ describe("createQuickEntry", () => {
     vi.clearAllMocks();
     formatDateTimeForApiMock.mockReturnValue("2026-03-20");
     getEntryCategoryNameMock.mockResolvedValue("Food");
-    convertEntryAmountMock.mockResolvedValue({
-      convertedAmount: "100.00",
-      exchangeRate: "1.0000",
-    });
+    (ports.rates.convert as ReturnType<typeof vi.fn>).mockResolvedValue("100.00");
     createManualMock.mockResolvedValue({ sourceDocumentId: "doc-1", revisionId: "revision-1" });
     randomUuidSpy = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValueOnce("entry-1");
   });
@@ -81,15 +68,7 @@ describe("createQuickEntry", () => {
       ports
     );
 
-    expect(convertEntryAmountMock).toHaveBeenCalledWith(
-      {
-        amount: "100",
-        fromCurrency: "USD",
-        toCurrency: "USD",
-        date: "2026-03-20",
-      },
-      ports.rates
-    );
+    expect(ports.rates.convert).not.toHaveBeenCalled();
     expect(createManualMock).toHaveBeenCalledWith({
       ledgerId: "ledger-1",
       title: "Food",
@@ -132,15 +111,7 @@ describe("createQuickEntry", () => {
       ports
     );
 
-    expect(convertEntryAmountMock).toHaveBeenCalledWith(
-      {
-        amount: "25",
-        fromCurrency: "CNY",
-        toCurrency: "USD",
-        date: "2026-01-31",
-      },
-      ports.rates
-    );
+    expect(ports.rates.convert).toHaveBeenCalledWith("25", "CNY", "USD", "2026-01-31");
     expect(createManualMock).toHaveBeenCalledWith(
       expect.objectContaining({
         entryDate: "2026-01-31",

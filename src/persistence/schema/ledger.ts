@@ -7,6 +7,7 @@ import {
   timestamp,
   boolean,
   check,
+  foreignKey,
   numeric,
   uuid,
   varchar,
@@ -103,9 +104,7 @@ export const ledgerEntries = pgTable(
     ledgerId: uuid("ledger_id")
       .notNull()
       .references(() => ledgers.id, { onDelete: "cascade" }),
-    categoryId: uuid("category_id").references(() => entryCategories.id, {
-      onDelete: "set null",
-    }),
+    categoryId: uuid("category_id"),
     sourceDocumentId: uuid("source_document_id"),
     sourceDocumentRevisionId: uuid("source_document_revision_id"),
     position: integer("position").notNull().default(0),
@@ -161,6 +160,16 @@ export const ledgerEntries = pgTable(
       sql`${table.currency} IS NULL OR ${table.currency} ~ '^[A-Z]{3}$'`
     ),
     check("ck_ledger_entries_position", sql`${table.position} >= 0`),
+    // The live database (migration 0022) declares this FK as
+    // `ON DELETE SET NULL (category_id)` — PostgreSQL 15+ column-list form —
+    // so deleting a category nulls only category_id and never the NOT NULL
+    // ledger_id. Drizzle cannot express the column list, so the delete action
+    // is intentionally omitted here and enforced by the migration.
+    foreignKey({
+      columns: [table.ledgerId, table.categoryId],
+      foreignColumns: [entryCategories.ledgerId, entryCategories.id],
+      name: "fk_ledger_entries_category_ledger",
+    }),
   ]
 );
 

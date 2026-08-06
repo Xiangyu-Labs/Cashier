@@ -83,3 +83,13 @@ export class RateLimitError extends AppError {
     }
   }
 }
+
+/**
+ * The rate-limit backend is unavailable. Authentication and verification
+ * callers should fail closed instead of treating this as an empty bucket.
+ */
+export class RateLimitUnavailableError extends AppError {
+  constructor(message: string = "Authentication rate limiting is temporarily unavailable") {
+    super(message, "AUTH_RATE_LIMIT_UNAVAILABLE", 503);
+  }
+}

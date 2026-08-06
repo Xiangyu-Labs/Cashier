@@ -1,15 +1,23 @@
 "use client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
+import { clearUserCacheDataSafely, getActiveStartupCacheKey } from "@/lib/client-cache";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, userId }: { children: React.ReactNode; userId?: string }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({
+          onError: (error) => {
+            if (getErrorStatus(error) === 401 && typeof window !== "undefined") {
+              window.dispatchEvent(new Event("cashier:auth-session-expired"));
+            }
+          },
+        }),
         defaultOptions: {
           queries: {
             staleTime: QUERY.DEFAULT_STALE_TIME_MS, // 5 minutes
@@ -23,6 +31,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
+  useEffect(() => {
+    const clearCurrentUserCache = () =>
+      void clearUserCacheDataSafely(
+        userId,
+        userId == null ? {} : { userId },
+        userId == null
+          ? "Failed to clear startup cache after session expiry"
+          : "Failed to synchronize startup cache for authenticated user"
+      );
+    const clearAllUserCache = () =>
+      void clearUserCacheDataSafely(
+        undefined,
+        userId == null ? {} : { userId },
+        "Failed to clear startup cache during user switch"
+      );
+
+    const activeKey = getActiveStartupCacheKey();
+    if (userId != null && activeKey != null && !activeKey.startsWith(`${userId}:`)) {
+      clearAllUserCache();
+    }
+
+    const onSessionExpired = clearCurrentUserCache;
+    window.addEventListener("cashier:auth-session-expired", onSessionExpired);
+    return () => {
+      window.removeEventListener("cashier:auth-session-expired", onSessionExpired);
+    };
+  }, [userId]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -32,6 +68,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (typeof error !== "object" || error == null) return null;
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  if (typeof candidate.status === "number") return candidate.status;
+  if (typeof candidate.statusCode === "number") return candidate.statusCode;
+  return null;
 }
 
 function shouldRetryQuery(failureCount: number, error: unknown): boolean {

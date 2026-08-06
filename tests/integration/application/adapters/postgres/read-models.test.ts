@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { describe, it, expect } from "vitest";
-import { countSourceDocumentsByStatus } from "@/application/adapters/postgres/read-models";
+import {
+  collectTargetSourceDocuments,
+  countSourceDocumentsByStatus,
+  listTargetSourceDocuments,
+} from "@/application/adapters/postgres/read-models";
+import { getSourceDocumentAttentionQuery } from "@/modules/source-document/application/queries/get-source-document-attention";
 import { createTestUserWithLedger } from "tests/helpers/schema-setup";
+import { createTestSourceDocument } from "tests/helpers/schema-setup";
 import { getTestDb } from "tests/setup";
 import { sourceDocuments, sourceDocumentRevisions } from "@/persistence";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
@@ -200,5 +206,67 @@ describe("countSourceDocumentsByStatus", () => {
     const result = await countSourceDocumentsByStatus(ledgerId);
 
     expect(result.attentionCount).toBe(0);
+  });
+});
+
+describe("getSourceDocumentAttentionQuery", () => {
+  it("returns a bounded page and the full attention total", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+
+    for (let index = 0; index < 51; index += 1) {
+      await createTestSourceDocument(db, ledgerId, {
+        status: "anomaly",
+        text: `Anomaly document ${index}`,
+      });
+    }
+
+    const attention = await getSourceDocumentAttentionQuery(ledgerId, {
+      list: listTargetSourceDocuments,
+      counts: countSourceDocumentsByStatus,
+    });
+
+    expect(attention.items).toHaveLength(50);
+    expect(attention.total).toBe(51);
+  });
+
+  it("includes processing documents in the attention total", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+
+    await createTestSourceDocument(db, ledgerId, { status: "processing" });
+    await createTestSourceDocument(db, ledgerId, { status: "processing" });
+    await createTestSourceDocument(db, ledgerId, { status: "anomaly" });
+
+    const attention = await getSourceDocumentAttentionQuery(ledgerId, {
+      list: listTargetSourceDocuments,
+      counts: countSourceDocumentsByStatus,
+    });
+
+    expect(attention.items).toHaveLength(3);
+    expect(attention.total).toBe(3);
+  });
+});
+
+describe("collectTargetSourceDocuments", () => {
+  it("returns complete file DTOs when includeFiles is enabled", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    await createTestSourceDocument(db, ledgerId, {
+      imageUrls: ["receipt.jpg"],
+    });
+
+    const result = await collectTargetSourceDocuments({
+      ledgerId,
+      limit: 20,
+      includeFiles: true,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.files).toHaveLength(1);
+    expect(result.items[0]?.files[0]).toMatchObject({
+      contentType: "image/jpeg",
+      byteSize: 1,
+    });
   });
 });

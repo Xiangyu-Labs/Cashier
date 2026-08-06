@@ -148,7 +148,7 @@ describe("Enhanced Stats Actions", () => {
       ).rejects.toThrow("Ledger");
     });
 
-    it("should filter by entryDate not createdAt", async () => {
+    it("should filter by effective date (entry date with createdAt fallback)", async () => {
       const db = getTestDb();
 
       // Create source document with entryDate in Jan but created in March
@@ -250,7 +250,92 @@ describe("Enhanced Stats Actions", () => {
       expect(query).toContain("entries.deleted_at is null");
       expect(query).toContain("documents.ledger_id = $");
       expect(query).toContain("documents.deleted_at is null");
-      expect(query).toContain("documents.entry_date between ranges.from_date and ranges.to_date");
+      expect(query).toContain(
+        "documents.effective_date between ranges.from_date and ranges.to_date"
+      );
+    });
+
+    it("includes undated documents on their effective (UTC creation) date", async () => {
+      const db = getTestDb();
+
+      // No explicit entry_date: effective_date falls back to the UTC creation date.
+      const createdDoc = await db
+        .insert(sourceDocuments)
+        .values({
+          ledgerId: testLedgerId,
+          currentStatus: "completed",
+          entryDate: null,
+          createdAt: new Date("2024-03-10T22:30:00Z"),
+        })
+        .returning();
+      const doc = requireFirst(createdDoc, "source document");
+
+      await db.insert(ledgerEntries).values({
+        ledgerId: testLedgerId,
+        sourceDocumentId: doc.id,
+        amount: "120",
+        convertedAmount: "120",
+        currency: "CNY",
+        itemName: "Undated Item",
+        categoryId: testCategoryId,
+      });
+
+      const result = await getTargetEnhancedStats({
+        ledgerId: testLedgerId,
+        queryRange: { from: "2024-03-01", to: "2024-03-31" },
+        compareRange: { from: "2024-02-01", to: "2024-02-29" },
+      });
+
+      expect(result.summary.total).toBe("120");
+      expect(result.chart).toHaveLength(1);
+      expect(requireFirst(result.chart, "chart point").date).toBe("2024-03-10");
+
+      const outside = await getTargetEnhancedStats({
+        ledgerId: testLedgerId,
+        queryRange: { from: "2024-03-11", to: "2024-03-31" },
+        compareRange: { from: "2024-02-01", to: "2024-02-29" },
+      });
+      expect(outside.summary.total).toBe("0");
+    });
+
+    it("keeps current and previous range boundaries inclusive", async () => {
+      const db = getTestDb();
+
+      for (const [date, amount] of [
+        ["2024-03-01", "10"],
+        ["2024-03-31", "20"],
+        ["2024-02-01", "30"],
+        ["2024-02-29", "40"],
+      ] as const) {
+        const createdDoc = await db
+          .insert(sourceDocuments)
+          .values({
+            ledgerId: testLedgerId,
+            currentStatus: "completed",
+            entryDate: date,
+          })
+          .returning();
+        const doc = requireFirst(createdDoc, "source document");
+        await db.insert(ledgerEntries).values({
+          ledgerId: testLedgerId,
+          sourceDocumentId: doc.id,
+          amount,
+          convertedAmount: amount,
+          currency: "CNY",
+          itemName: `${date} Boundary`,
+          categoryId: testCategoryId,
+        });
+      }
+
+      const result = await getTargetEnhancedStats({
+        ledgerId: testLedgerId,
+        queryRange: { from: "2024-03-01", to: "2024-03-31" },
+        compareRange: { from: "2024-02-01", to: "2024-02-29" },
+      });
+
+      expect(result.summary.total).toBe("30");
+      expect(result.summary.comparison.previousTotal).toBe("70");
+      expect(result.chart).toHaveLength(2);
     });
 
     it("should calculate correct summary totals", async () => {

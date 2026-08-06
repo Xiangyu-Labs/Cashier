@@ -1,12 +1,12 @@
 "use server";
 import type {
   BatchUpdateSourceDocumentsResultDto,
-  SourceDocumentListItemDto,
   UpdateSourceDocumentReconciliationDto,
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import {
   batchUpdateSourceDocumentsInputSchema,
+  parseMutationIdentity,
   sourceDocumentIdsSchema,
   updateSourceDocumentInputSchema,
   type BatchUpdateSourceDocumentsInput,
@@ -17,7 +17,7 @@ import {
   updateSourceDocument,
 } from "../application/use-cases/update-source-document";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
+import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 
 /**
@@ -36,47 +36,29 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
     UpdateSourceDocumentResultDto &
       Partial<{ reconciliation: UpdateSourceDocumentReconciliationDto["reconciliation"] }>
   > => {
+    const identity = parseMutationIdentity({
+      sourceDocumentId: sourceId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const validated = updateSourceDocumentInputSchema.parse(data);
     const result = await updateSourceDocument(
       {
         ledgerId,
-        sourceDocumentId: sourceId,
+        sourceDocumentId: identity.sourceDocumentId,
         data: validated,
       },
       serverComposition.sourceDocumentUpdates
     );
 
-    if (operationId != null && result.updated) {
-      // Read authoritative updatedAt from DB
-      const authoritativeUpdatedAt = await readSourceDocumentUpdatedAt(ledgerId, sourceId);
-      const now = authoritativeUpdatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(
-        operationId,
-        {
-          id: sourceId,
+    if (identity.operationId != null && result.updated) {
+      return {
+        ...result,
+        reconciliation: await buildAuthoritativeReconciliation(
+          identity.operationId,
           ledgerId,
-          title: validated.title ?? null,
-          text: null,
-          files: [],
-          status: "completed",
-          type: "ai_parsed",
-          anomalyReason: null,
-          entryDate: validated.entryDate ?? null,
-          metadata: {},
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-          hasImages: false,
-          supportedActions: [],
-          errorCode: null,
-          pendingRevisionId: null,
-          ledgerEntries: [],
-        } as SourceDocumentListItemDto,
-        now,
-        true,
-        true
-      );
-      return { ...result, reconciliation: entity };
+          identity.sourceDocumentId
+        ),
+      };
     }
 
     return result;

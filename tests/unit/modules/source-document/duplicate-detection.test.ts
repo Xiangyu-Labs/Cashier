@@ -4,6 +4,7 @@ import {
   normalizeDuplicateReason,
   type DuplicateCandidateContract,
   type DuplicateDetectionInput,
+  type DuplicateEvidenceImage,
 } from "@/modules/source-document/application/duplicate-detection";
 
 function candidate(
@@ -342,6 +343,90 @@ describe("detectDuplicateBill", () => {
     const visualCall = generate.mock.calls[1]?.[0];
     const content = visualCall?.messages?.[0]?.content;
     expect(JSON.stringify(content)).toContain("candidate-1");
+  });
+
+  it("loads current and candidate images in parallel", async () => {
+    let activeLoads = 0;
+    let maxConcurrentLoads = 0;
+    const loadImages = vi.fn(async (ids: readonly string[]) => {
+      activeLoads += 1;
+      maxConcurrentLoads = Math.max(maxConcurrentLoads, activeLoads);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeLoads -= 1;
+      return ids.map((id) => ({ url: id, dataUrl: `data:image/jpeg;base64,${id}` }));
+    });
+    const input = buildInput({
+      candidates: [
+        candidate({ sourceDocumentId: "candidate-1" }),
+        candidate({ sourceDocumentId: "candidate-2" }),
+      ],
+      loadImages,
+      ai: {
+        generate: vi.fn().mockResolvedValue({
+          content: JSON.stringify({
+            duplicate: false,
+            matchedSourceDocumentId: null,
+            confidence: 0,
+            reason: null,
+          }),
+        }),
+      },
+    });
+
+    await detectDuplicateBill(input);
+
+    expect(loadImages).toHaveBeenCalledTimes(3);
+    expect(maxConcurrentLoads).toBe(3);
+  });
+
+  it("fails open when image loading exceeds the visual timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const input = buildInput({
+        loadImages: vi.fn(
+          (): Promise<DuplicateEvidenceImage[]> => new Promise<DuplicateEvidenceImage[]>(() => {})
+        ),
+      });
+      const resultPromise = detectDuplicateBill(input);
+
+      await vi.advanceTimersByTimeAsync(40_000);
+
+      await expect(resultPromise).resolves.toMatchObject({
+        duplicate: false,
+        matchedSourceDocumentId: null,
+      });
+      expect(input.ai.generate).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not start the vision AI call when image loading settles after the timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseImages!: () => void;
+      const images = new Promise<DuplicateEvidenceImage[]>((resolve) => {
+        releaseImages = () => resolve([]);
+      });
+      const generate = vi.fn().mockResolvedValue({ content: "{}" });
+      const input = buildInput({
+        loadImages: vi.fn(() => images),
+        ai: { generate },
+      });
+      const resultPromise = detectDuplicateBill(input);
+
+      await vi.advanceTimersByTimeAsync(40_000);
+      releaseImages();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(resultPromise).resolves.toMatchObject({
+        duplicate: false,
+        matchedSourceDocumentId: null,
+      });
+      expect(generate).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

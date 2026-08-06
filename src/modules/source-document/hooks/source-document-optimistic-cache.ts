@@ -11,13 +11,69 @@ import {
   mergeStreamPageData,
   STREAM_PAGE_LIMIT,
 } from "@/modules/source-document/stream-cache-merge";
+import {
+  hasStreamEntryFilters,
+  matchesStreamDocument,
+  projectStreamDocument,
+  type StreamFilterPolicy,
+} from "@/modules/source-document/stream-filter-policy";
 
 export type SourceDocumentEntityStore = Record<string, SourceDocumentListItemDto>;
+
+type StreamQueryFilters = StreamFilterPolicy & {
+  statuses: string | null;
+};
+
+type EntryMergeMode = "preserve" | "replace" | "keep-existing";
+
+interface CanonicalMergeOptions {
+  entries: EntryMergeMode;
+  files: "preserve" | "replace";
+}
+
+function mergeEntrySnapshots(
+  existing: SourceDocumentListItemDto["ledgerEntries"],
+  incoming: SourceDocumentListItemDto["ledgerEntries"]
+): NonNullable<SourceDocumentListItemDto["ledgerEntries"]> {
+  const byId = new Map((existing ?? []).map((entry) => [entry.id, entry]));
+  for (const entry of incoming ?? []) byId.set(entry.id, entry);
+  return [...byId.values()];
+}
+
+function mergeCanonicalEntity(
+  existing: SourceDocumentListItemDto | undefined,
+  incoming: SourceDocumentListItemDto,
+  options: CanonicalMergeOptions
+): SourceDocumentListItemDto {
+  if (existing == null) {
+    return {
+      ...incoming,
+      ledgerEntries: options.entries === "keep-existing" ? [] : (incoming.ledgerEntries ?? []),
+    };
+  }
+  return {
+    ...existing,
+    ...incoming,
+    files:
+      options.files === "replace"
+        ? incoming.files
+        : incoming.files.length > 0
+          ? incoming.files
+          : existing.files,
+    ledgerEntries:
+      options.entries === "preserve"
+        ? mergeEntrySnapshots(existing.ledgerEntries, incoming.ledgerEntries)
+        : options.entries === "replace"
+          ? (incoming.ledgerEntries ?? [])
+          : (existing.ledgerEntries ?? []),
+  };
+}
 
 export function seedSourceDocumentEntities(
   queryClient: QueryClient,
   ledgerId: string,
-  items: readonly SourceDocumentListItemDto[]
+  items: readonly SourceDocumentListItemDto[],
+  streamQueryKey?: readonly unknown[]
 ): void {
   // Page responses are authoritative snapshots for these IDs. Replace stale
   // optimistic/detail data while preserving unrelated entities in the store.
@@ -26,13 +82,22 @@ export function seedSourceDocumentEntities(
     (current = {}) => {
       let changed = false;
       const next = { ...current };
+      const filters = streamQueryKey == null ? null : extractFiltersFromQueryKey(streamQueryKey);
+      const filteredEntries = filters != null && hasStreamEntryFilters(filters);
       for (const item of items) {
         // Page responses are authoritative snapshots, but a stale page
         // response must never overwrite a newer reconciliation entity.
         const existing = next[item.id];
         if (existing != null && existing.updatedAt > item.updatedAt) continue;
-        if (existing !== item) {
-          next[item.id] = item;
+        // A filtered page only carries matching entries, which must never be
+        // written into the canonical entity store; the filtered projection
+        // stays in the page cache and is what the stream renders.
+        const merged = mergeCanonicalEntity(existing, item, {
+          entries: filteredEntries ? "keep-existing" : "replace",
+          files: "preserve",
+        });
+        if (existing !== merged) {
+          next[item.id] = merged;
           changed = true;
         }
       }
@@ -115,62 +180,8 @@ function extractFiltersFromQueryKey(queryKey: readonly unknown[]): {
  * If the query has no filters, the item always belongs.
  * Returns false if the item should be excluded from this query's results.
  */
-function itemMatchesFilters(
-  item: SourceDocumentListItemDto,
-  filters: {
-    startDate: string | null;
-    endDate: string | null;
-    statuses: string | null;
-    minAmount: number | null;
-    maxAmount: number | null;
-    search: string | null;
-  }
-): boolean {
-  // Check status filter
-  if (filters.statuses != null && filters.statuses !== "") {
-    const statusList = filters.statuses.split(",").map((s) => s.trim());
-    if (!statusList.includes(item.status)) {
-      return false;
-    }
-  }
-
-  // Stream filtering uses the business date, falling back to the submission date.
-  const effectiveDate = item.entryDate ?? item.createdAt.slice(0, 10);
-  if (filters.startDate != null && effectiveDate < filters.startDate) return false;
-  if (filters.endDate != null && effectiveDate > filters.endDate) return false;
-
-  if (filters.search != null && filters.search !== "") {
-    const needle = filters.search.toLocaleLowerCase();
-    const titleMatch = item.title?.toLocaleLowerCase().includes(needle) ?? false;
-    const entryMatch = (item.ledgerEntries ?? []).some(
-      (entry) =>
-        entry.itemName.toLocaleLowerCase().includes(needle) ||
-        (entry.description?.toLocaleLowerCase().includes(needle) ?? false)
-    );
-    if (!titleMatch && !entryMatch) return false;
-  }
-
-  // I2: Check the persisted main-currency amount range. Entries without a
-  // conversion are intentionally not treated as 1:1 matches.
-  if (filters.minAmount != null || filters.maxAmount != null) {
-    const amounts = (item.ledgerEntries ?? [])
-      .map((e) => {
-        if (e.convertedAmount == null) return null;
-        const n = Number(e.convertedAmount);
-        return Number.isNaN(n) ? null : n;
-      })
-      .filter((n): n is number => n != null);
-
-    if (amounts.length === 0) return false;
-    const matchesRange = amounts.some(
-      (amount) =>
-        (filters.minAmount == null || amount >= filters.minAmount) &&
-        (filters.maxAmount == null || amount <= filters.maxAmount)
-    );
-    if (!matchesRange) return false;
-  }
-
-  return true;
+function itemMatchesFilters(item: SourceDocumentListItemDto, filters: StreamQueryFilters): boolean {
+  return matchesStreamDocument(item, filters);
 }
 
 /**
@@ -192,7 +203,14 @@ export function applyOptimisticUpsert(
   // Mutation reconciliation entities are intentionally minimal (files and
   // entries are overlaid by the refresh cycle), so rollback/reconciliation
   // must not be blocked by version guards.
-  upsertSourceDocumentEntity(queryClient, ledgerId, item, false);
+  const existing = queryClient.getQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId)
+  )?.[item.id];
+  const canonical = mergeCanonicalEntity(existing, item, {
+    entries: "preserve",
+    files: "preserve",
+  });
+  upsertSourceDocumentEntity(queryClient, ledgerId, canonical, false);
   const matches = getStreamQueryMatches(queryClient, ledgerId);
 
   for (const [queryKey, data] of matches) {
@@ -200,11 +218,12 @@ export function applyOptimisticUpsert(
     const filters = extractFiltersFromQueryKey(queryKey);
     const belongs = (candidate: SourceDocumentListItemDto) =>
       filters == null || itemMatchesFilters(candidate, filters);
+    const projected = filters == null ? canonical : projectStreamDocument(canonical, filters);
     queryClient.setQueryData<InfiniteData<StreamPage>>(
       queryKey,
       mergeStreamPageData(
         data,
-        { upserts: [item], tombstones: [] },
+        { upserts: [projected], tombstones: [] },
         belongs,
         STREAM_PAGE_LIMIT,
         ledgerId,
@@ -228,24 +247,34 @@ export function applyServerRefreshUpsert(
   ledgerId: string,
   item: SourceDocumentListItemDto
 ): void {
-  upsertSourceDocumentEntity(queryClient, ledgerId, item);
+  const existing = queryClient.getQueryData<SourceDocumentEntityStore>(
+    queryKeys.sourceDocumentEntities(ledgerId)
+  )?.[item.id];
+  // getLedgerDelta DTOs include complete files and entries, so both replace
+  // stale canonical data — including an authoritative empty file list.
+  const canonical = mergeCanonicalEntity(existing, item, {
+    entries: "replace",
+    files: "replace",
+  });
+  upsertSourceDocumentEntity(queryClient, ledgerId, canonical);
   for (const [queryKey, data] of getStreamQueryMatches(queryClient, ledgerId)) {
     if (data == null) continue;
     const filters = extractFiltersFromQueryKey(queryKey);
     const belongs = (candidate: SourceDocumentListItemDto) =>
       filters == null || itemMatchesFilters(candidate, filters);
+    const projected = filters == null ? canonical : projectStreamDocument(canonical, filters);
     queryClient.setQueryData<InfiniteData<StreamPage>>(
       queryKey,
       mergeStreamPageData(
         data,
-        { upserts: [item], tombstones: [] },
+        { upserts: [projected], tombstones: [] },
         belongs,
         STREAM_PAGE_LIMIT,
         ledgerId
       )
     );
   }
-  upsertDetailCache(queryClient, ledgerId, item);
+  upsertDetailCache(queryClient, ledgerId, item, true);
 }
 
 /**
@@ -359,7 +388,8 @@ export function applySourceDocumentReconciliation(
 /**
  * Merge a minimal reconciliation entity over the cached entity. Fields the
  * reconciliation intentionally leaves empty (files, entries, hasImages) and
- * absent values (title/entryDate) never blank existing card data.
+ * Files and entries are sparse in the reconciliation payload, while title and
+ * entryDate are authoritative values and may legitimately be empty.
  */
 function mergeReconciliationItem(
   existing: SourceDocumentListItemDto | undefined,
@@ -369,11 +399,8 @@ function mergeReconciliationItem(
   return {
     ...existing,
     ...incoming,
-    title: incoming.title != null && incoming.title !== "" ? incoming.title : existing.title,
-    entryDate:
-      incoming.entryDate != null && incoming.entryDate !== ""
-        ? incoming.entryDate
-        : existing.entryDate,
+    title: incoming.title,
+    entryDate: incoming.entryDate,
     files: incoming.files.length > 0 ? incoming.files : existing.files,
     hasImages: incoming.hasImages || existing.hasImages,
     ledgerEntries:
@@ -471,7 +498,8 @@ export function findSourceDocByEntryId(
 function upsertDetailCache(
   queryClient: QueryClient,
   ledgerId: string,
-  item: SourceDocumentListItemDto
+  item: SourceDocumentListItemDto,
+  filesAuthoritative = false
 ): void {
   // Update light detail cache if it exists
   const lightKey = queryKeys.sourceDocumentLight(item.id);
@@ -485,6 +513,7 @@ function upsertDetailCache(
       updatedAt: item.updatedAt,
       supportedActions: item.supportedActions,
       errorCode: item.errorCode,
+      ...(filesAuthoritative ? { files: item.files, hasImages: item.hasImages } : {}),
     });
   }
 
@@ -500,6 +529,7 @@ function upsertDetailCache(
       updatedAt: item.updatedAt,
       supportedActions: item.supportedActions,
       errorCode: item.errorCode,
+      ...(filesAuthoritative ? { files: item.files, hasImages: item.hasImages } : {}),
     });
   }
 }

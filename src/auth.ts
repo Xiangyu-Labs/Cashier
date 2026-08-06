@@ -1,10 +1,10 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import { CredentialsSignin } from "@auth/core/errors";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
 import { authenticateDevUser } from "@/modules/auth/application/use-cases/authenticate-dev-user";
-import { handleAuthUserCreated } from "@/modules/auth/application/use-cases/handle-auth-user-created";
 import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
 import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
 import { getSessionUser } from "@/modules/auth/application/queries/get-session-user";
@@ -12,6 +12,38 @@ import { isDevAuthBypassEnabled } from "@/modules/auth/dev-auth";
 import { TIME_SECONDS } from "@/lib/constants";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { serverComposition } from "@/application/server-composition-root";
+import { completeInteractiveSignIn } from "@/application/use-cases/complete-interactive-sign-in";
+import { AuthSignInError } from "@/modules/auth/errors";
+import type { AuthenticatedPrincipal } from "@/modules/auth/contracts";
+
+class AuthCredentialsSigninError extends CredentialsSignin {
+  constructor(code: string) {
+    super();
+    this.code = code;
+  }
+}
+
+async function completeSignIn(principal: AuthenticatedPrincipal) {
+  return completeInteractiveSignIn(principal, {
+    ledgers: serverComposition.ledgers,
+    otpTokens: serverComposition.otpTokens,
+  });
+}
+
+async function authorizeInteractiveSignIn(
+  authenticate: () => Promise<AuthenticatedPrincipal | null>
+) {
+  try {
+    const principal = await authenticate();
+    if (principal == null) return null;
+    return await completeSignIn(principal);
+  } catch (error) {
+    if (error instanceof AuthSignInError) {
+      throw new AuthCredentialsSigninError(error.code);
+    }
+    throw error;
+  }
+}
 
 const providers: NextAuthConfig["providers"] = [
   Credentials({
@@ -35,20 +67,23 @@ const providers: NextAuthConfig["providers"] = [
       if (typeof credentials.email !== "string" || typeof credentials.otp !== "string") {
         return null;
       }
+      const email = credentials.email;
+      const otp = credentials.otp;
 
-      return authenticateWithOTP(
-        {
-          email: credentials.email,
-          otp: credentials.otp,
-          locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
-          requestHeaders: request.headers,
-        },
-        {
-          userAccounts: serverComposition.userAccounts,
-          otpTokens: serverComposition.otpTokens,
-          ledgers: serverComposition.ledgers,
-          rateLimiter: serverComposition.rateLimiter,
-        }
+      return authorizeInteractiveSignIn(() =>
+        authenticateWithOTP(
+          {
+            email,
+            otp,
+            locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
+            requestHeaders: request.headers,
+          },
+          {
+            userAccounts: serverComposition.userAccounts,
+            otpTokens: serverComposition.otpTokens,
+            rateLimiter: serverComposition.rateLimiter,
+          }
+        )
       );
     },
   }),
@@ -59,13 +94,24 @@ const providers: NextAuthConfig["providers"] = [
       email: { type: "email" },
       password: { type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       if (typeof credentials?.email !== "string" || typeof credentials.password !== "string") {
         return null;
       }
-      return authenticateWithPassword(
-        { email: credentials.email, password: credentials.password },
-        serverComposition.userAccounts
+      const email = credentials.email;
+      const password = credentials.password;
+      return authorizeInteractiveSignIn(() =>
+        authenticateWithPassword(
+          {
+            email,
+            password,
+            requestHeaders: request.headers,
+          },
+          {
+            users: serverComposition.userAccounts,
+            rateLimiter: serverComposition.rateLimiter,
+          }
+        )
       );
     },
   }),
@@ -80,11 +126,13 @@ if (isDevAuthBypassEnabled()) {
         locale: { type: "text" },
       },
       async authorize(credentials) {
-        return authenticateDevUser(
-          {
-            locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
-          },
-          { users: serverComposition.userAccounts, ledgers: serverComposition.ledgers }
+        return authorizeInteractiveSignIn(() =>
+          authenticateDevUser(
+            {
+              locale: typeof credentials?.locale === "string" ? credentials.locale : "zh-CN",
+            },
+            { users: serverComposition.userAccounts }
+          )
         );
       },
     })
@@ -101,21 +149,14 @@ export const authOptions = {
   },
   pages: authConfig.pages,
   events: {
-    async createUser({ user }) {
-      await handleAuthUserCreated(
-        user.id != null ? { userId: user.id } : {},
-        serverComposition.ledgers
-      );
-    },
     async signIn({ user, isNewUser }) {
       await handleAuthUserSignedIn(
         {
-          ...(user.id != null ? { userId: user.id } : {}),
           ...(user.email != null ? { email: user.email } : {}),
           ...(typeof user.locale === "string" ? { locale: user.locale } : {}),
           ...(isNewUser != null ? { isNewUser } : {}),
         },
-        { ledgers: serverComposition.ledgers, emailDelivery: serverComposition.email }
+        { emailDelivery: serverComposition.email }
       );
     },
   },

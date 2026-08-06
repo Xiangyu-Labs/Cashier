@@ -13,6 +13,7 @@ import {
 import { serverComposition } from "@/application/server-composition-root";
 import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
+import { completeInteractiveSignIn } from "@/application/use-cases/complete-interactive-sign-in";
 
 vi.mock("resend", () => ({
   Resend: class MockResend {
@@ -28,7 +29,6 @@ const authenticateWithOTP = (input: Parameters<typeof authenticateWithOTPUseCase
   authenticateWithOTPUseCase(input, {
     userAccounts: serverComposition.userAccounts,
     otpTokens: serverComposition.otpTokens,
-    ledgers: serverComposition.ledgers,
     rateLimiter: serverComposition.rateLimiter,
   });
 
@@ -77,16 +77,27 @@ describe("authenticateWithOTP", () => {
   it("signs in successfully with a valid OTP", async () => {
     await createTestOTP(TEST_EMAIL, "123456");
 
-    const result = await authenticateWithOTP({
+    const principal = await authenticateWithOTP({
       email: TEST_EMAIL,
       otp: "123456",
       locale: "zh",
       requestHeaders: REQUEST_HEADERS,
     });
-
-    expect(result).toMatchObject({ email: TEST_EMAIL });
+    expect(principal).toMatchObject({ email: TEST_EMAIL });
 
     const db = getTestDb();
+    const claimed = await db.query.otpTokens.findFirst({
+      where: eq(otpTokens.email, TEST_EMAIL),
+    });
+    expect(claimed?.verifiedAt).toBeInstanceOf(Date);
+
+    // The token is consumed only after the cross-module completion step
+    // (default ledger setup) succeeds, so a failed setup can release it.
+    await completeInteractiveSignIn(principal, {
+      ledgers: serverComposition.ledgers,
+      otpTokens: serverComposition.otpTokens,
+    });
+
     const token = await db.query.otpTokens.findFirst({
       where: eq(otpTokens.email, TEST_EMAIL),
     });

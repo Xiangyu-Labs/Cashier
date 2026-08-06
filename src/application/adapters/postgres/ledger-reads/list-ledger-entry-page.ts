@@ -1,15 +1,16 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { forLedger } from "@/lib/db/scoped-query";
 import { mapLedgerEntryDto } from "./mappers";
 import {
   buildLedgerEntryCursorCondition,
-  buildLedgerEntryFilterConditions,
+  buildLedgerEntryEffectiveDateConditions,
+  buildLedgerEntryValueConditions,
   encodeLedgerEntryCursor,
-  ledgerEntryOrderingExpressions,
   type LedgerEntryFilterParams,
 } from "./build-ledger-entry-filters";
-import { ledgerEntries, revisionFiles, sourceDocuments } from "@/persistence";
+import { ledgerEntries, revisionFiles } from "@/persistence";
 
 interface ListLedgerEntryPageInput {
   ledgerId: string;
@@ -18,132 +19,80 @@ interface ListLedgerEntryPageInput {
   filters: LedgerEntryFilterParams;
 }
 
+interface VisibleEntryRow {
+  id: string;
+  position: number;
+  effectiveDate: string;
+  // Drizzle raw executes return timestamptz as strings.
+  documentCreatedAt: string;
+  documentId: string;
+}
+
 export async function listLedgerEntryPage({
   ledgerId,
   limit = 20,
   cursor,
   filters,
 }: ListLedgerEntryPageInput) {
-  const conditions = buildLedgerEntryFilterConditions(ledgerId, filters);
-  const cursorCondition = buildLedgerEntryCursorCondition(cursor, ledgerId, filters);
-  if (cursorCondition != null) {
-    conditions.push(cursorCondition);
-  }
+  const tenantCondition = forLedger(ledgerEntries, ledgerId).whereActive;
+  const cursorCondition = buildLedgerEntryCursorCondition(cursor, ledgerId, filters, {
+    effectiveDate: sql`documents.effective_date`,
+    documentCreatedAt: sql`documents.created_at`,
+    documentId: sql`documents.id`,
+    position: sql`ledger_entries.position`,
+    entryId: sql`ledger_entries.id`,
+  });
+  const whereConditions = [
+    tenantCondition,
+    ...buildLedgerEntryEffectiveDateConditions(filters),
+    ...buildLedgerEntryValueConditions(filters),
+    cursorCondition,
+  ].filter((condition): condition is SQL<unknown> => condition != null);
 
-  const hasEntryFilters =
-    filters.uncategorizedOnly === true ||
-    (filters.categoryId != null && filters.categoryId !== "") ||
-    (filters.currency != null && filters.currency !== "") ||
-    filters.minAmount != null ||
-    filters.maxAmount != null ||
-    (filters.search != null && filters.search !== "");
-  const optimizedIds =
-    cursor == null && !hasEntryFilters
-      ? await db.execute<{ id: string }>(sql`
-          SELECT entry.id
-          FROM ${sourceDocuments} document
-          CROSS JOIN LATERAL (
-            SELECT candidate.id, candidate.position
-            FROM ${ledgerEntries} candidate
-            WHERE candidate.ledger_id = document.ledger_id
-              AND candidate.source_document_id = document.id
-              AND candidate.source_document_revision_id = document.active_revision_id
-              AND candidate.deleted_at IS NULL
-            ORDER BY candidate.position ASC, candidate.id ASC
-            OFFSET 0
-          ) entry
-          WHERE document.ledger_id = ${ledgerId}
-            AND document.deleted_at IS NULL
-            AND document.active_revision_id IS NOT NULL
-            ${
-              filters.startDate != null && filters.startDate !== ""
-                ? sql`AND document.effective_date >= ${filters.startDate}::date`
-                : sql``
-            }
-            ${
-              filters.endDate != null && filters.endDate !== ""
-                ? sql`AND document.effective_date <= ${filters.endDate}::date`
-                : sql``
-            }
-          ORDER BY document.effective_date DESC, document.created_at DESC, document.id DESC,
-            entry.position ASC, entry.id ASC
-          LIMIT ${limit + 1}
-        `)
-      : null;
-  const optimizedOrder = new Map((optimizedIds?.rows ?? []).map((row, index) => [row.id, index]));
-  const rows = await db.query.ledgerEntries
-    .findMany({
-      where: and(...conditions),
-      orderBy: (entries) => {
-        const ordering = ledgerEntryOrderingExpressions(ledgerId);
-        return [
-          desc(ordering.effectiveDate),
-          desc(ordering.documentCreatedAt),
-          desc(entries.sourceDocumentId),
-          asc(entries.position),
-          asc(entries.id),
-        ];
-      },
-      ...(optimizedIds == null
-        ? { limit: limit + 1 }
-        : {
-            where:
-              optimizedIds.rows.length === 0
-                ? sql`false`
-                : and(
-                    eq(ledgerEntries.ledgerId, ledgerId),
-                    isNull(ledgerEntries.deletedAt),
-                    inArray(
-                      ledgerEntries.id,
-                      optimizedIds.rows.map((row) => row.id)
-                    )
-                  ),
-          }),
-      with: {
-        category: true,
-        sourceDocument: {
-          columns: {
-            id: true,
-            ledgerId: true,
-            title: true,
-            currentStatus: true,
-            type: true,
-            entryDate: true,
-            createdAt: true,
-            updatedAt: true,
-            deletedAt: true,
-          },
-        },
-      },
-    })
-    .then((found) =>
-      optimizedIds == null
-        ? found
-        : found.toSorted(
-            (left, right) =>
-              (optimizedOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-              (optimizedOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-          )
-    );
+  // Phase 1: a bounded keyset page over one scan of the active projection.
+  // The CTE applies visibility (active revision + soft delete), the
+  // accounting-date range, entry filters and the cursor predicate in SQL, so
+  // no ordering scalar subquery is re-executed per row or per cursor branch.
+  const page = await db.execute<VisibleEntryRow & Record<string, unknown>>(sql`
+    WITH visible_entries AS (
+      SELECT
+        ledger_entries.id,
+        ledger_entries.position,
+        ledger_entries.source_document_id,
+        ledger_entries.source_document_revision_id,
+        documents.effective_date,
+        documents.created_at AS document_created_at,
+        documents.id AS document_id
+      FROM ledger_entries
+      INNER JOIN source_documents documents
+        ON documents.ledger_id = ledger_entries.ledger_id
+       AND documents.id = ledger_entries.source_document_id
+       AND documents.deleted_at IS NULL
+       AND documents.active_revision_id = ledger_entries.source_document_revision_id
+      WHERE ${sql.join(whereConditions, sql` AND `)}
+    )
+    SELECT id, position, effective_date::text AS "effectiveDate",
+      document_created_at AS "documentCreatedAt", document_id AS "documentId"
+    FROM visible_entries
+    ORDER BY effective_date DESC, document_created_at DESC, document_id DESC,
+      position ASC, id ASC
+    LIMIT ${limit + 1}
+  `);
+
+  const hasMore = page.rows.length > limit;
+  const pagedRows = hasMore ? page.rows.slice(0, limit) : page.rows;
 
   let nextCursor: string | undefined;
-  let pagedRows = rows;
-  if (rows.length > limit) {
-    pagedRows = rows.slice(0, limit);
+  if (hasMore) {
     const lastItem = pagedRows.at(-1);
     if (lastItem == null) {
       throw new AppError("Expected next ledger entry page cursor row", "INVARIANT_VIOLATION");
     }
-    if (lastItem.sourceDocument == null || lastItem.sourceDocumentId == null) {
-      throw new AppError("Expected ledger entry source document", "INVARIANT_VIOLATION");
-    }
     nextCursor = encodeLedgerEntryCursor(
       {
-        effectiveDate:
-          lastItem.sourceDocument.entryDate ??
-          lastItem.sourceDocument.createdAt.toISOString().slice(0, 10),
-        documentCreatedAt: lastItem.sourceDocument.createdAt.toISOString(),
-        documentId: lastItem.sourceDocumentId,
+        effectiveDate: lastItem.effectiveDate,
+        documentCreatedAt: new Date(lastItem.documentCreatedAt).toISOString(),
+        documentId: lastItem.documentId,
         position: lastItem.position,
         entryId: lastItem.id,
       },
@@ -151,7 +100,48 @@ export async function listLedgerEntryPage({
     );
   }
 
-  const revisionIds = pagedRows.flatMap((row) =>
+  // Phase 2: bounded hydration of exactly the page rows, preserving the
+  // keyset order from phase 1.
+  const order = new Map(pagedRows.map((row, index) => [row.id, index]));
+  const rows =
+    pagedRows.length === 0
+      ? []
+      : await db.query.ledgerEntries
+          .findMany({
+            where: and(
+              eq(ledgerEntries.ledgerId, ledgerId),
+              isNull(ledgerEntries.deletedAt),
+              inArray(
+                ledgerEntries.id,
+                pagedRows.map((row) => row.id)
+              )
+            ),
+            with: {
+              category: true,
+              sourceDocument: {
+                columns: {
+                  id: true,
+                  ledgerId: true,
+                  title: true,
+                  currentStatus: true,
+                  type: true,
+                  entryDate: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  deletedAt: true,
+                },
+              },
+            },
+          })
+          .then((found) =>
+            found.toSorted(
+              (left, right) =>
+                (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+                (order.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+            )
+          );
+
+  const revisionIds = rows.flatMap((row) =>
     row.sourceDocumentRevisionId == null ? [] : [row.sourceDocumentRevisionId]
   );
   const revisionsWithFiles = new Set(
@@ -165,7 +155,7 @@ export async function listLedgerEntryPage({
         ).map((row) => row.revisionId)
   );
 
-  const items = pagedRows.map((row) => {
+  const items = rows.map((row) => {
     const dto = mapLedgerEntryDto({
       ...row,
       category: row.category,

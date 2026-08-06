@@ -3,33 +3,10 @@ import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
-import { compare } from "@/lib/money/decimal";
 import type { SourceDocumentQueryPorts } from "../ports";
+import { filterStreamEntries } from "../../stream-filter-policy";
 
 const STREAM_PAGE_LIMIT = 20;
-
-function filterCardEntries(
-  entries: SourceDocumentListItemDto["ledgerEntries"],
-  input: Pick<ListStreamPageInput, "minAmount" | "maxAmount" | "search">
-) {
-  if (entries == null) return [];
-  const query = input.search?.toLocaleLowerCase();
-  if (input.minAmount == null && input.maxAmount == null && !query) return entries;
-  return entries.filter((entry) => {
-    const amount = entry.convertedAmount;
-    if (amount == null) return false;
-    if (input.minAmount != null && compare(amount, String(input.minAmount)) < 0) return false;
-    if (input.maxAmount != null && compare(amount, String(input.maxAmount)) > 0) return false;
-    if (query) {
-      const text = [entry.itemName, entry.description]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase();
-      if (!text.includes(query)) return false;
-    }
-    return true;
-  });
-}
 
 export interface ListStreamPageInput {
   startDate?: string | null | undefined;
@@ -153,7 +130,7 @@ export async function listStreamPage(
 
   const items = page.items.map((item) => ({
     ...item,
-    ledgerEntries: filterCardEntries(entriesByDocId.get(item.id) ?? [], {
+    ledgerEntries: filterStreamEntries(entriesByDocId.get(item.id) ?? [], {
       ...(input.minAmount != null ? { minAmount: input.minAmount } : {}),
       ...(input.maxAmount != null ? { maxAmount: input.maxAmount } : {}),
       ...(search != null ? { search } : {}),

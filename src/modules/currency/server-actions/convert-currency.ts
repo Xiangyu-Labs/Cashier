@@ -1,8 +1,7 @@
 "use server";
-import { ValidationError } from "@/lib/errors";
 import { convertAmountsBatch } from "../application/use-cases/convert-amounts-batch";
 import { convertCurrency } from "../application/use-cases/convert-currency";
-import { parseConvertCurrencyInput } from "../contract-schemas";
+import { parseBatchConvertCurrencyInput, parseConvertCurrencyInput } from "../contract-schemas";
 import type {
   BatchConversionItem,
   BatchConvertCurrencyResult,
@@ -36,18 +35,16 @@ export const batchConvertCurrencyAction = withLedgerAccess(
     items: BatchConversionItem[],
     targetCurrency: string
   ): Promise<BatchConvertCurrencyResult> => {
-    if (items.length === 0 || targetCurrency === "") {
-      throw new ValidationError("Missing required parameters");
-    }
+    const parsed = parseBatchConvertCurrencyInput({ items, targetCurrency });
 
     const results = await convertAmountsBatch(
-      items.map((item) => ({
+      parsed.items.map((item) => ({
         amount: String(item.amount),
         fromCurrency: item.currency,
-        toCurrency: targetCurrency,
+        toCurrency: parsed.targetCurrency,
         ...(item.date != null ? { date: item.date } : {}),
       })),
-      targetCurrency,
+      parsed.targetCurrency,
       serverComposition.exchangeRates
     );
 

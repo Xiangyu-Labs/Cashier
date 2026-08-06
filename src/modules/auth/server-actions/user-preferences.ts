@@ -4,11 +4,11 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { UnauthorizedError } from "@/lib/errors";
 import type { UserPreferences } from "@/modules/auth/contracts";
-import { serverComposition } from "@/application/server-composition-root";
 import {
   getUserPreferences,
   updateUserPreferences,
-} from "@/modules/auth/application/use-cases/manage-user-preferences";
+} from "@/modules/auth/application/use-cases/user-preferences";
+import { serverComposition } from "@/application/server-composition-root";
 
 const userPreferencesSchema = z.object({
   interfaceLanguage: z.enum(["auto", "zh", "en"]),

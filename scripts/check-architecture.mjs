@@ -79,7 +79,37 @@ for (const file of files) {
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
   const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relative);
+  const moduleName = relative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
   const isApiRoute = /^src\/app\/api\//.test(relative);
+
+  for (const importPattern of importPatterns) {
+    for (const match of source.matchAll(importPattern)) {
+      const specifier = match[1];
+      if (
+        isModuleApplication &&
+        /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/.test(specifier)
+      ) {
+        violations.push(`${relative}: application code must not import transport frameworks`);
+      }
+
+      const target = resolveImport(file, specifier);
+      if (isModuleApplication && target != null) {
+        const targetRelative = path.relative(root, target).split(path.sep).join("/");
+        const targetModule = targetRelative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
+        if (
+          moduleName != null &&
+          targetModule != null &&
+          targetModule !== moduleName &&
+          /^src\/modules\/[^/]+\/application\/use-cases\//.test(targetRelative)
+        ) {
+          violations.push(
+            `${relative}: application use cases must not call another domain's use case (${targetRelative})`
+          );
+        }
+      }
+    }
+  }
+
   if (
     (isModuleApplication || isAuthInternal) &&
     source.includes("@/application/server-composition-root")

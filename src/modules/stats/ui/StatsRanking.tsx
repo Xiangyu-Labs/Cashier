@@ -79,6 +79,7 @@ export function StatsRanking({
       <div className="space-y-5">
         {sorted.map((cat, idx) => {
           const percent = cat.percent;
+          const displayName = cat.id === null ? t("uncategorized") : cat.name;
           const handleClick = () => {
             if (onCategoryClick) {
               // Use "__uncategorized__" for null ids to match DetailsTab convention
@@ -90,7 +91,7 @@ export function StatsRanking({
               type="button"
               key={idx}
               disabled={onCategoryClick == null}
-              aria-label={`${cat.name}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
+              aria-label={`${displayName}, ${formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}, ${percent.toFixed(0)}%`}
               className={cn(
                 "flex w-full items-center gap-3 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 onCategoryClick &&
@@ -110,7 +111,7 @@ export function StatsRanking({
               <div className="flex-1 space-y-1.5">
                 {/* Top Line: Name + Amount */}
                 <div className="flex justify-between items-center text-sm">
-                  <div className="font-medium text-text">{cat.name}</div>
+                  <div className="font-medium text-text">{displayName}</div>
                   <AmountText variant="item">
                     {formatCurrencyAmount(cat.totalConverted, currencySymbol, locale)}
                   </AmountText>

@@ -19,6 +19,10 @@ export const ENV_DEFAULTS = {
   OTP_RESEND_COOLDOWN_SECONDS: "60",
   AUTH_RATE_LIMIT_MAX: "10",
   AUTH_RATE_LIMIT_WINDOW: "900",
+  AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS: "10",
+  AUTH_PASSWORD_IP_MAX_ATTEMPTS: "50",
+  AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS: "900",
+  LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT: "300",
   API_RATE_LIMIT_PER_MINUTE: "60",
   OTP_IP_MAX_ATTEMPTS_PER_HOUR: "10",
   OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE: "5",
@@ -29,6 +33,7 @@ export const ENV_DEFAULTS = {
   MAX_IMAGE_QUALITY: "85",
   LOG_LEVEL: "info",
   DEV_AUTH_BYPASS: "false",
+  DATABASE_POOL_MAX: "2",
   PROCESSING_RECOVERY_MAX_BATCH: "5",
   PROCESSING_RECOVERY_MAX_ATTEMPTS: "5",
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: "60",
@@ -104,6 +109,7 @@ const startupEnvFields = {
   AUTH_SECRET: requiredString("AUTH_SECRET"),
   APP_URL: urlWithDefault("APP_URL"),
   AUTH_RESEND_KEY: z.preprocess(blankToUndefined, z.string().trim().optional()),
+  AUTH_OTP_PEPPER: requiredString("AUTH_OTP_PEPPER"),
   AUTH_EMAIL_FROM: z.preprocess(
     blankToUndefined,
     z
@@ -146,6 +152,14 @@ const startupEnvFields = {
   OTP_RESEND_COOLDOWN_SECONDS: nonNegativeIntWithDefault("OTP_RESEND_COOLDOWN_SECONDS"),
   AUTH_RATE_LIMIT_MAX: positiveIntWithDefault("AUTH_RATE_LIMIT_MAX"),
   AUTH_RATE_LIMIT_WINDOW: positiveIntWithDefault("AUTH_RATE_LIMIT_WINDOW"),
+  AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS: positiveIntWithDefault("AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS"),
+  AUTH_PASSWORD_IP_MAX_ATTEMPTS: positiveIntWithDefault("AUTH_PASSWORD_IP_MAX_ATTEMPTS"),
+  AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS: positiveIntWithDefault(
+    "AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS"
+  ),
+  LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT: positiveIntWithDefault(
+    "LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT"
+  ),
   API_RATE_LIMIT_PER_MINUTE: positiveIntWithDefault("API_RATE_LIMIT_PER_MINUTE"),
   OTP_IP_MAX_ATTEMPTS_PER_HOUR: positiveIntWithDefault("OTP_IP_MAX_ATTEMPTS_PER_HOUR"),
   OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE: positiveIntWithDefault("OTP_VERIFY_MAX_ATTEMPTS_PER_MINUTE"),
@@ -163,6 +177,15 @@ const startupEnvFields = {
   ),
   LOG_LEVEL: stringWithDefault("LOG_LEVEL"),
   DEV_AUTH_BYPASS: booleanStringWithDefault("DEV_AUTH_BYPASS"),
+  DATABASE_POOL_MAX: z.preprocess(
+    blankToUndefined,
+    z.coerce
+      .number()
+      .int("DATABASE_POOL_MAX must be an integer")
+      .min(1, "DATABASE_POOL_MAX must be between 1 and 50")
+      .max(50, "DATABASE_POOL_MAX must be between 1 and 50")
+      .default(Number.parseInt(getDefaultString("DATABASE_POOL_MAX"), 10))
+  ),
   PROCESSING_RECOVERY_MAX_BATCH: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_BATCH"),
   PROCESSING_RECOVERY_MAX_ATTEMPTS: positiveIntWithDefault("PROCESSING_RECOVERY_MAX_ATTEMPTS"),
   PROCESSING_RECOVERY_COOLDOWN_SECONDS: positiveIntWithDefault(

@@ -7,7 +7,7 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { HeatmapLevel } from "../../types";
 
 interface DayCellSmallProps {
@@ -32,34 +32,32 @@ export function DayCellSmall({
   const t = useTranslations("Calendar");
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
-            onClick={onClick}
-            className={cn(
-              "h-3 w-3 flex-shrink-0 rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
-              "hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            )}
-            style={{ backgroundColor: getHeatmapColor(level) }}
-          />
-        </TooltipTrigger>
-        <TooltipContent side="top" align="center">
-          <div className="font-medium">{date}</div>
-          {amount > 0 ? (
-            <>
-              <div>
-                {t("expense")}: {formatCellAmount(amount, currency, locale)}
-              </div>
-              <div>{t("count", { count })}</div>
-            </>
-          ) : (
-            <div className="text-muted-foreground">{t("noConsumption")}</div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+          onClick={onClick}
+          className={cn(
+            "h-3 w-3 flex-shrink-0 rounded-sm transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+            "hover:ring-1 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          style={{ backgroundColor: getHeatmapColor(level) }}
+        />
+      </TooltipTrigger>
+      <TooltipContent side="top" align="center">
+        <div className="font-medium">{date}</div>
+        {amount > 0 ? (
+          <>
+            <div>
+              {t("expense")}: {formatCellAmount(amount, currency, locale)}
+            </div>
+            <div>{t("count", { count })}</div>
+          </>
+        ) : (
+          <div className="text-muted-foreground">{t("noConsumption")}</div>
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }

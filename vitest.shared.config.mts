@@ -50,6 +50,10 @@ export const sharedProjectTestConfig = {
   pool: "threads" as const,
   fileParallelism: true,
   isolate: true,
+  // Database-backed workers create a schema and apply the full migration
+  // journal in a setup hook; under coverage or slower machines that can take
+  // longer than the default 10s hook budget. Tests keep their own timeouts.
+  hookTimeout: 60_000,
 };
 
 export const unitProjects = [

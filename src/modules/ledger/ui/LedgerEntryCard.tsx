@@ -112,6 +112,7 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
                 currency={ledgerEntry.currency}
                 mainCurrency={mainCurrency}
                 date={ledgerEntry.sourceDocument?.entryDate ?? ledgerEntry.createdAt}
+                persistedConvertedAmount={ledgerEntry.convertedAmount}
                 variant="item"
               />
             </div>

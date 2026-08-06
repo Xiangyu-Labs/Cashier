@@ -1,12 +1,13 @@
-import { CredentialsSignin } from "@auth/core/errors";
-import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
+import { AUTH_ERROR_CODES, AuthSignInError } from "@/modules/auth/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
 import type { UserAccountPort } from "@/application/contracts";
 
-export class RegistrationDisabledError extends CredentialsSignin {
-  code = AUTH_ERROR_CODES.REGISTRATION_DISABLED;
+export class RegistrationDisabledError extends AuthSignInError {
+  constructor() {
+    super(AUTH_ERROR_CODES.REGISTRATION_DISABLED);
+  }
 }
 
 export async function isRegistrationAllowed(

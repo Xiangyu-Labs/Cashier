@@ -1,6 +1,5 @@
-import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { sendLoginNotification } from "@/modules/auth/services/notifications";
-import type { EmailDeliveryPort, LedgerPort } from "@/application/contracts";
+import type { EmailDeliveryPort } from "@/application/contracts";
 
 export async function handleAuthUserSignedIn(
   params: {
@@ -9,22 +8,15 @@ export async function handleAuthUserSignedIn(
     locale?: string | null;
     isNewUser?: boolean;
   },
-  dependencies: { ledgers: LedgerPort; emailDelivery: EmailDeliveryPort }
+  dependencies: { emailDelivery: EmailDeliveryPort }
 ): Promise<void> {
   if (params.isNewUser === true) {
     return;
   }
 
-  if (
-    params.userId == null ||
-    params.userId === "" ||
-    params.email == null ||
-    params.email === ""
-  ) {
+  if (params.email == null || params.email === "") {
     return;
   }
-
-  await ensureUserLedger({ userId: params.userId }, dependencies.ledgers);
 
   await sendLoginNotification(
     {

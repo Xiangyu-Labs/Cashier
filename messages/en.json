@@ -206,7 +206,11 @@
     "samePeriodEqual": "No change vs same {period}",
     "fullPeriodMore": "+{amount} vs {period} (+{percent}%)",
     "fullPeriodLess": "-{amount} vs {period} (-{percent}%)",
-    "fullPeriodEqual": "No change vs {period}"
+    "fullPeriodEqual": "No change vs {period}",
+    "loadFailed": "Failed to load statistics. Please try again.",
+    "retry": "Retry",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period"
   },
   "LedgerEntriesTab": {
     "retry": "Edit & Retry",
@@ -731,6 +735,7 @@
     "tryAgain": "Try Again",
     "rateLimited": "Too Many Requests",
     "rateLimitedDesc": "Please wait a minute before trying again.",
+    "rateLimitUnavailableDesc": "Sign-in protection is temporarily unavailable. Please try again shortly.",
     "otpLockedDesc": "Too many failed verification attempts. Please try again later.",
     "sendCodeFailed": "Failed to send verification code",
     "unexpectedError": "An unexpected error occurred",

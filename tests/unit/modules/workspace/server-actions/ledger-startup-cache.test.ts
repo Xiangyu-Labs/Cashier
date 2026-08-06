@@ -55,7 +55,7 @@ describe("ledger startup cache server actions", () => {
       recordCount: 12,
       complete: true,
       truncated: false,
-      coverageLimit: 1000,
+      coverageLimit: 300,
     });
   });
 
@@ -64,7 +64,7 @@ describe("ledger startup cache server actions", () => {
     const result = await getLedgerStartupCacheVersion("ledger");
     expect(result.truncated).toBe(true);
     expect(result.complete).toBe(false);
-    expect(result.coverageLimit).toBe(1000);
+    expect(result.coverageLimit).toBe(300);
   });
 
   it("collects a bounded snapshot payload", async () => {

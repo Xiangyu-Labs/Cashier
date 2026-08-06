@@ -1,7 +1,6 @@
-import Decimal from "decimal.js";
-import { multiply, divide } from "@/lib/money/decimal";
 import { AppError } from "@/lib/errors";
 import type { ExchangeRates, FxRateBook } from "../ports";
+import { convertWithRates } from "../services/rate-calculation";
 
 export interface CurrencyBatchConversionItem {
   amount: string;
@@ -48,27 +47,7 @@ function resolveBatchItemConversion(
     };
   }
 
-  const rates = { ...ratesData.rates, [ratesData.base]: 1.0 };
-  const fromRate = rates[item.fromCurrency];
-  const toRate = rates[targetCurrency];
-
-  if (fromRate === undefined || toRate === undefined) {
-    throw new AppError(
-      `Currency not found: ${fromRate === undefined ? item.fromCurrency : targetCurrency}`,
-      "CURRENCY_NOT_FOUND"
-    );
-  }
-
-  // Decimal arithmetic: Amount * (ToRate / FromRate)
-  const rateRatio = divide(String(toRate), String(fromRate));
-  const convertedAmount = multiply(item.amount, rateRatio);
-  const exchangeRate = new Decimal(item.amount).isZero()
-    ? "1"
-    : new Decimal(convertedAmount).dividedBy(item.amount).toFixed();
-  return {
-    convertedAmount,
-    exchangeRate,
-  };
+  return convertWithRates(item.amount, ratesData, item.fromCurrency, targetCurrency);
 }
 
 export async function convertAmountsBatch(
@@ -80,9 +59,22 @@ export async function convertAmountsBatch(
     return [];
   }
 
-  const ratesByDate = await loadRatesByDate(items, rateBook);
+  // Only items that actually cross currencies need rate data; same-currency
+  // items must not touch the database or the external provider.
+  const crossCurrencyItems = items.filter(
+    (item) => item.fromCurrency !== (item.toCurrency ?? defaultTargetCurrency)
+  );
+  const ratesByDate = await loadRatesByDate(crossCurrencyItems, rateBook);
 
   return items.map((item) => {
+    const targetCurrency = item.toCurrency ?? defaultTargetCurrency;
+    if (item.fromCurrency === targetCurrency) {
+      return {
+        convertedAmount: item.amount,
+        exchangeRate: "1",
+      };
+    }
+
     const dateKey = getDateKey(item.date);
     const ratesData = ratesByDate.get(dateKey);
     if (ratesData == null) {
@@ -92,6 +84,6 @@ export async function convertAmountsBatch(
       );
     }
 
-    return resolveBatchItemConversion(item, item.toCurrency ?? defaultTargetCurrency, ratesData);
+    return resolveBatchItemConversion(item, targetCurrency, ratesData);
   });
 }

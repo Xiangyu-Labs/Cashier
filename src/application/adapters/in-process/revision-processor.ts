@@ -34,7 +34,11 @@ import {
   runParsePipeline,
 } from "@/modules/source-document/application/parse-source-document/pipeline";
 import { toParseSourceDocumentOutput } from "@/modules/source-document/application/parse-source-document/result-mapper";
-import { ProcessingFailure } from "@/modules/source-document/application/parse-source-document/contracts";
+import {
+  ProcessingCancelledError,
+  ProcessingFailure,
+  throwIfProcessingCancelled,
+} from "@/modules/source-document/application/parse-source-document/contracts";
 import { detectDuplicateBill } from "@/modules/source-document/application/duplicate-detection";
 import {
   isFailedLoadImageResult,
@@ -52,6 +56,8 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
   async process(
     request: RevisionProcessingRequestContract
   ): Promise<RevisionProcessingResultContract> {
+    const signal = request.signal ?? AbortSignal.any([]);
+    throwIfProcessingCancelled(signal);
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: and(
         eq(sourceDocumentRevisions.ledgerId, request.ledgerId),
@@ -73,6 +79,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     if (document.pendingRevisionId !== request.revisionId) {
       throw new Error("Revision processing request is stale");
     }
+    throwIfProcessingCancelled(signal);
 
     // Load current ledger settings for parser input
     const ledgerSettings = await postgresSettingsAdapter.get(request.ledgerId);
@@ -99,11 +106,12 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           asc(entryCategories.id)
         ),
     ]);
-    const controller = new AbortController();
+    throwIfProcessingCancelled(signal);
     const loadedEvidence = await loadStoredFilesForAI(
       request.ledgerId,
       files.map((file) => file.id)
     );
+    throwIfProcessingCancelled(signal);
     const failedEvidence = loadedEvidence.filter(isFailedLoadImageResult);
     if (failedEvidence.length > 0) {
       throw new ProcessingFailure(
@@ -113,6 +121,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       );
     }
     const evidence = loadedEvidence.filter(isSuccessfulLoadImageResult);
+    const ai = this.options.createAIContext(signal);
     const pipeline = await runParsePipeline(
       {
         ...(revision.submittedText == null ? {} : { text: revision.submittedText }),
@@ -131,34 +140,44 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           : {}),
       },
       buildStageContext({
-        signal: controller.signal,
-        ai: this.options.createAIContext(controller.signal),
+        signal,
+        ai,
         setProgress: async () => {},
         docId: request.revisionId,
         ledgerId: request.ledgerId,
       })
     );
+    throwIfProcessingCancelled(signal);
     const output = toParseSourceDocumentOutput(pipeline);
     if (output.verificationStatus !== "passed") {
       const anomalyReason =
         output.anomalyReason ??
         (output.verificationStatus === "invalid" ? "Invalid content" : "Parsing results diverged");
-      await postgresRevisionAdapter.preserveTerminalOutcome({
+      const preserved = await postgresRevisionAdapter.preserveTerminalOutcome({
         ...request,
+        ...(request.lease == null ? {} : { lease: request.lease }),
         outcome: "anomaly",
         anomalyReason,
       });
+      if (!preserved && request.lease != null) {
+        throw new ProcessingCancelledError();
+      }
       return { outcome: "anomaly", anomalyReason };
     }
 
     const validation = validateEntries(output.ledgerEntries);
+    throwIfProcessingCancelled(signal);
     if (!validation.isValid) {
       const anomalyReason = validation.reason ?? "No valid entries";
-      await postgresRevisionAdapter.preserveTerminalOutcome({
+      const preserved = await postgresRevisionAdapter.preserveTerminalOutcome({
         ...request,
+        ...(request.lease == null ? {} : { lease: request.lease }),
         outcome: "anomaly",
         anomalyReason,
       });
+      if (!preserved && request.lease != null) {
+        throw new ProcessingCancelledError();
+      }
       return { outcome: "anomaly", anomalyReason };
     }
     const mainCurrency = ledgerSettings?.mainCurrency ?? "CNY";
@@ -185,6 +204,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
         };
       },
     });
+    throwIfProcessingCancelled(signal);
     const entryInputs = entries.map((entry) => ({
       categoryId: entry.categoryId,
       amount: entry.amount,
@@ -238,10 +258,12 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
                   .filter(isSuccessfulLoadImageResult)
                   .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
               },
-              ai: this.options.createAIContext(controller.signal),
-              signal: controller.signal,
+              ai,
+              signal,
             });
+      throwIfProcessingCancelled(signal);
       if (detection?.duplicate === true && detection.matchedSourceDocumentId != null) {
+        throwIfProcessingCancelled(signal);
         const stored = await storeDuplicatePendingRevision(
           request.ledgerId,
           request.sourceDocumentId,
@@ -252,9 +274,11 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
             matchedSourceDocumentId: detection.matchedSourceDocumentId,
             reason: detection.reason,
             confidence: detection.confidence,
-          }
+          },
+          request.lease
         );
         if (!stored) {
+          if (request.lease != null) throw new ProcessingCancelledError();
           throw new Error("Failed to store duplicate pending revision");
         }
         return { outcome: "completed" };
@@ -263,12 +287,15 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
 
     if (document.activeRevisionId == null) {
       // First parse: activate revision (replace projection, update pointers)
+      throwIfProcessingCancelled(signal);
       const activated = await postgresLedgerProjectionAdapter.activateRevision({
         ...request,
+        ...(request.lease == null ? {} : { lease: request.lease }),
         ...(output.title == null ? {} : { title: output.title }),
         entries: entryInputs,
       });
       if (!activated) {
+        if (request.lease != null) throw new ProcessingCancelledError();
         const current = await postgresRevisionAdapter.get(
           request.ledgerId,
           request.sourceDocumentId
@@ -279,14 +306,17 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       }
     } else {
       // Document already has an active projection -> store as candidate revision
+      throwIfProcessingCancelled(signal);
       const stored = await storeCandidateRevision(
         request.ledgerId,
         request.sourceDocumentId,
         request.revisionId,
         output.title,
-        entryInputs
+        entryInputs,
+        request.lease
       );
       if (!stored) {
+        if (request.lease != null) throw new ProcessingCancelledError();
         throw new Error("Failed to store candidate revision");
       }
     }

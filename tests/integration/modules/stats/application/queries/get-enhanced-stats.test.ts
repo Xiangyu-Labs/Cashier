@@ -74,7 +74,7 @@ describe("getEnhancedStatsQuery", () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it("converts mixed currencies by entry date using ledger main currency", async () => {
+  it("converts mixed currencies by effective date using ledger main currency", async () => {
     const db = getTestDb();
     await db.update(ledgers).set({ mainCurrency: "CNY" }).where(eq(ledgers.id, ledgerId));
 
@@ -144,10 +144,88 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.summary.currency).toBe("CNY");
     expect(result.summary.total).toBe("70");
+    expect(result.summary.comparison).toMatchObject({
+      mode: "same_period",
+      from: "2024-02-01",
+      to: "2024-02-29",
+    });
     expect(result.chart).toEqual([
       { date: "2024-03-01", total: 40 },
       { date: "2024-03-02", total: 30 },
     ]);
+  });
+
+  it("counts documents with a null entry date by their effective date", async () => {
+    const db = getTestDb();
+
+    const insertedDoc = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        currentStatus: "completed",
+        entryDate: null,
+        createdAt: new Date("2024-03-10T12:00:00Z"),
+      })
+      .returning();
+    const doc = requireFirst(insertedDoc, "document");
+
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId: doc.id,
+      amount: "40",
+      convertedAmount: "40",
+      currency: "CNY",
+      itemName: "null entry date item",
+      categoryId,
+    });
+
+    const result = await getTargetEnhancedStatsQuery({
+      ledgerId,
+      queryRange: { from: "2024-03-01", to: "2024-03-31" },
+      compareRange: { from: "2024-02-01", to: "2024-02-29" },
+    });
+
+    expect(result.summary.total).toBe("40");
+    expect(result.chart).toEqual([{ date: "2024-03-10", total: 40 }]);
+  });
+
+  it("counts active projections even while the document is pending", async () => {
+    const db = getTestDb();
+
+    const insertedDoc = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        currentStatus: "candidate_pending",
+        entryDate: "2024-03-12",
+      })
+      .returning();
+    const doc = requireFirst(insertedDoc, "document");
+
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId: doc.id,
+      amount: "55",
+      convertedAmount: "55",
+      currency: "CNY",
+      itemName: "pending reprocess item",
+      categoryId,
+    });
+    // Activate the projection, then simulate an in-flight reprocessing pass
+    // that leaves the previous active projection in place.
+    await activateTestSourceDocumentProjection(db, doc.id);
+    await db
+      .update(sourceDocuments)
+      .set({ currentStatus: "processing" })
+      .where(eq(sourceDocuments.id, doc.id));
+
+    const result = await getTargetEnhancedStatsQuery({
+      ledgerId,
+      queryRange: { from: "2024-03-01", to: "2024-03-31" },
+      compareRange: { from: "2024-02-01", to: "2024-02-29" },
+    });
+
+    expect(result.summary.total).toBe("55");
   });
 
   it("filters out entries linked to soft-deleted source documents", async () => {
@@ -437,5 +515,64 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.heatmap.stats.minAmount).toBe(800);
     expect(result.heatmap.stats.maxAmount).toBe(800);
+  });
+
+  it("keeps full numeric precision beyond Number.MAX_SAFE_INTEGER", async () => {
+    const db = getTestDb();
+    const hugeA = "9007199254740993"; // 2^53 + 1
+    const hugeB = "9007199254740994"; // 2^53 + 2
+
+    const insertedSecondCategory = await db
+      .insert(entryCategories)
+      .values({
+        ledgerId,
+        name: "大额",
+        sortOrder: 9,
+      })
+      .returning();
+    const secondCategoryId = requireFirst(insertedSecondCategory, "second category").id;
+
+    const insertedDoc = await db
+      .insert(sourceDocuments)
+      .values({
+        ledgerId,
+        currentStatus: "completed",
+        entryDate: "2024-08-01",
+      })
+      .returning();
+    const doc = requireFirst(insertedDoc, "document");
+
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId: doc.id,
+        amount: hugeA,
+        convertedAmount: hugeA,
+        currency: "CNY",
+        itemName: "huge A",
+        categoryId,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: doc.id,
+        amount: hugeB,
+        convertedAmount: hugeB,
+        currency: "CNY",
+        itemName: "huge B",
+        categoryId: secondCategoryId,
+      },
+    ]);
+
+    const result = await getTargetEnhancedStatsQuery({
+      ledgerId,
+      queryRange: { from: "2024-08-01", to: "2024-08-31" },
+      compareRange: { from: "2024-07-01", to: "2024-07-31" },
+    });
+
+    expect(result.summary.total).toBe("18014398509481987");
+    expect(result.summary.comparison.amountDelta).toBe("18014398509481987");
+    // Decimal sort keeps the truly larger category first.
+    expect(result.categories.map((category) => category.totalConverted)).toEqual([hugeB, hugeA]);
+    expect(result.categories[0]?.trend.amount).toBe(hugeB);
   });
 });

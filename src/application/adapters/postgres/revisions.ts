@@ -21,7 +21,7 @@ import {
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
-import { lockSourceDocumentForUpdate } from "./transaction-locks";
+import { assertProcessingLeaseHeld, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -226,13 +226,16 @@ export async function createPendingRevisionInTransaction(
     );
   }
 
-  for (const [position, storedFileRow] of storedFileRows.entries()) {
-    await tx.insert(revisionFiles).values({
-      ledgerId: input.ledgerId,
-      revisionId: revision.id,
-      storedFileId: storedFileRow.id,
-      position,
-    });
+  // Ownership checks completed above; the file rows are inserted in one batch.
+  if (storedFileRows.length > 0) {
+    await tx.insert(revisionFiles).values(
+      storedFileRows.map((file, position) => ({
+        ledgerId: input.ledgerId,
+        revisionId: revision.id,
+        storedFileId: file.id,
+        position,
+      }))
+    );
   }
 
   // A retry/supersede retires any pending duplicate review: the new revision
@@ -354,6 +357,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
+      if (!(await assertProcessingLeaseHeld(tx, input.lease))) return false;
       if (document.pendingRevisionId !== input.revisionId) return false;
       const updated = await tx
         .update(sourceDocumentRevisions)

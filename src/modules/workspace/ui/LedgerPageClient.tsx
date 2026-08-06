@@ -31,7 +31,7 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerStartupCacheSync } from "@/modules/workspace/ledger-startup-cache-sync";
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
 import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
-import type { LedgerDto } from "@/modules/ledger/contracts";
+import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import type { TabQueryStateReport } from "./tab-query-state";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
@@ -137,6 +137,7 @@ interface LedgerPageClientProps {
   initialTab: LedgerTab;
   initialPeriod: PeriodParams;
   initialStatsDate?: Date;
+  initialCategories?: EntryCategoryWithCount[];
   /** Server-derived user email for the Settings tab (avoids useSession). */
   userEmail?: string;
   hasPassword?: boolean;
@@ -189,6 +190,7 @@ function LedgerPageClientContent({
   initialTab,
   initialPeriod,
   initialStatsDate,
+  initialCategories,
   userEmail,
   hasPassword,
   passwordUpdatedAt,
@@ -211,6 +213,7 @@ function LedgerPageClientContent({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
     staleTime: STALE_TIME,
+    ...(initialCategories !== undefined ? { initialData: initialCategories } : {}),
   });
 
   const { activeTab, handleTabChange: _handleTabChange } = useLedgerTabs({
