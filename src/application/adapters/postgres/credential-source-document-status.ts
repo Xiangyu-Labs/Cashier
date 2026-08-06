@@ -1,13 +1,15 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { db } from "@/persistence/db";
 import {
   entryCategories,
   ledgerEntries,
+  ledgers,
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
 import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
+import { AppError } from "@/lib/errors";
 import type {
   CredentialSourceDocumentReadPort,
   CredentialSourceDocumentStatusResult,
@@ -15,24 +17,39 @@ import type {
 
 export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocumentReadPort = {
   async getStatus(ledgerId, sourceDocumentId) {
-    const document = await db.query.sourceDocuments.findFirst({
-      where: and(
-        eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt)
-      ),
-    });
-    if (document == null) return null;
-    const revisionId = document.pendingRevisionId ?? document.activeRevisionId;
-    if (revisionId == null) return null;
-    const revision = await db.query.sourceDocumentRevisions.findFirst({
-      where: and(
-        eq(sourceDocumentRevisions.id, revisionId),
-        eq(sourceDocumentRevisions.sourceDocumentId, document.id),
-        eq(sourceDocumentRevisions.ledgerId, ledgerId)
-      ),
-    });
-    if (revision == null || revision.outcome === "abandoned") return null;
+    // Load the document, its selected revision (pending ?? active), and the
+    // ledger's main currency in a single query so status polling does not fan
+    // out into three sequential reads. The revision must belong to both the
+    // document and the same ledger.
+    const selectedRevisionId = sql<string>`COALESCE(${sourceDocuments.pendingRevisionId}, ${sourceDocuments.activeRevisionId})`;
+    const rows = await db
+      .select({
+        document: sourceDocuments,
+        revision: sourceDocumentRevisions,
+        mainCurrency: ledgers.mainCurrency,
+      })
+      .from(sourceDocuments)
+      .innerJoin(
+        sourceDocumentRevisions,
+        and(
+          eq(sourceDocumentRevisions.id, selectedRevisionId),
+          eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id),
+          eq(sourceDocumentRevisions.ledgerId, ledgerId)
+        )
+      )
+      .innerJoin(ledgers, eq(ledgers.id, sourceDocuments.ledgerId))
+      .where(
+        and(
+          eq(sourceDocuments.id, sourceDocumentId),
+          eq(sourceDocuments.ledgerId, ledgerId),
+          isNull(sourceDocuments.deletedAt)
+        )
+      )
+      .limit(1);
+    const row = rows[0];
+    if (row == null) return null;
+    const { document, revision } = row;
+    if (revision.outcome === "abandoned") return null;
 
     // Keep the legacy credential API's processing response while a human
     // decision is pending, even though the internal accounting projection is
@@ -49,6 +66,7 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
           description: ledgerEntries.description,
           amount: ledgerEntries.amount,
           currency: ledgerEntries.currency,
+          convertedAmount: ledgerEntries.convertedAmount,
           category: entryCategories.name,
         })
         .from(ledgerEntries)
@@ -61,8 +79,30 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
           )
         )
         .orderBy(asc(ledgerEntries.position));
-      const total = rows.reduce((sum, row) => sum.plus(row.amount), new Decimal(0));
-      result = { title: document.title, total: total.toFixed(2), entries: rows };
+      const total = rows.reduce((sum, entry) => {
+        if (entry.convertedAmount == null) {
+          // Accounting totals may only be derived from converted amounts.
+          // Falling back to raw amounts would silently mix currencies.
+          throw new AppError(
+            "Completed source document has entries without accounting amounts",
+            "ACCOUNTING_AMOUNT_UNAVAILABLE",
+            500
+          );
+        }
+        return sum.plus(entry.convertedAmount);
+      }, new Decimal(0));
+      result = {
+        title: document.title,
+        total: total.toFixed(2),
+        totalCurrency: row.mainCurrency,
+        entries: rows.map(({ name, description, amount, currency, category }) => ({
+          name,
+          description,
+          amount,
+          currency,
+          category,
+        })),
+      };
     }
     const error =
       status === "failed"

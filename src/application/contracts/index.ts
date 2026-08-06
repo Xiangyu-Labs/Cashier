@@ -456,6 +456,20 @@ export interface ServiceCredentialPort {
   create(ledgerId: LedgerId, name: string): Promise<CreatedServiceCredentialContract>;
   revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
 }
+
+export interface RateLimitResult {
+  success: boolean;
+  remaining: number;
+  /** Unix timestamp in milliseconds when the current fixed window resets. */
+  resetTime: number;
+}
+
+export interface RateLimiterPort {
+  increment(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult>;
+  /** Read-only count for the current fixed window; 0 when missing or expired. */
+  current(key: string, windowSeconds: number): Promise<number>;
+}
+
 export interface IdempotencyPort {
   execute<T>(
     credentialId: string,

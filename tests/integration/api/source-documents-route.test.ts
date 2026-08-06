@@ -176,6 +176,7 @@ describe("API v1 source-documents route", () => {
       description: "Noodles",
       amount: "12.50",
       currency: "CNY",
+      convertedAmount: "12.50",
       position: 0,
     });
     await db
@@ -201,6 +202,7 @@ describe("API v1 source-documents route", () => {
     expect(body.result).toEqual({
       title: "Lunch receipt",
       total: "12.50",
+      totalCurrency: "CNY",
       entries: [
         {
           name: "Lunch",
@@ -224,6 +226,128 @@ describe("API v1 source-documents route", () => {
     expect(missing.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("totals converted amounts in the ledger main currency instead of raw amounts", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const db = getTestDb();
+    await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
+    await db.insert(ledgerEntries).values([
+      {
+        ledgerId,
+        sourceDocumentId: created.sourceDocumentId,
+        sourceDocumentRevisionId: created.revisionId,
+        itemName: "USD purchase",
+        description: null,
+        amount: "10.00",
+        currency: "USD",
+        convertedAmount: "10.00",
+        position: 0,
+      },
+      {
+        ledgerId,
+        sourceDocumentId: created.sourceDocumentId,
+        sourceDocumentRevisionId: created.revisionId,
+        itemName: "Local coffee",
+        description: null,
+        amount: "5.00",
+        currency: "CNY",
+        convertedAmount: "0.70",
+        position: 1,
+      },
+    ]);
+    await db
+      .update(sourceDocumentRevisions)
+      .set({ outcome: "completed", finalizedAt: new Date() })
+      .where(eq(sourceDocumentRevisions.id, created.revisionId));
+    await db
+      .update(sourceDocuments)
+      .set({
+        title: "Mixed receipt",
+        activeRevisionId: created.revisionId,
+        pendingRevisionId: null,
+      })
+      .where(eq(sourceDocuments.id, created.sourceDocumentId));
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.result.total).toBe("10.70");
+    expect(body.result.total).not.toBe("15.00");
+    expect(body.result.totalCurrency).toBe("USD");
+    expect(body.result.entries).toEqual([
+      {
+        name: "USD purchase",
+        description: null,
+        amount: "10.00",
+        currency: "USD",
+        category: null,
+      },
+      {
+        name: "Local coffee",
+        description: null,
+        amount: "5.00",
+        currency: "CNY",
+        category: null,
+      },
+    ]);
+  });
+
+  it("returns a sanitized 500 when a completed entry lacks an accounting amount", async () => {
+    const image = await validJpegBase64();
+    const created = await POST(
+      new NextRequest("http://localhost/api/v1/source-documents", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${credentialKey}` },
+        body: JSON.stringify({ images: [{ data: image, mimeType: "image/jpeg" }] }),
+      })
+    ).then((response) => response.json());
+    const db = getTestDb();
+    await db.insert(ledgerEntries).values({
+      ledgerId,
+      sourceDocumentId: created.sourceDocumentId,
+      sourceDocumentRevisionId: created.revisionId,
+      itemName: "Broken entry",
+      amount: "12.50",
+      currency: "CNY",
+      position: 0,
+    });
+    await db
+      .update(sourceDocumentRevisions)
+      .set({ outcome: "completed", finalizedAt: new Date() })
+      .where(eq(sourceDocumentRevisions.id, created.revisionId));
+    await db
+      .update(sourceDocuments)
+      .set({
+        activeRevisionId: created.revisionId,
+        pendingRevisionId: null,
+      })
+      .where(eq(sourceDocuments.id, created.sourceDocumentId));
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/v1/source-documents/${created.sourceDocumentId}`, {
+        headers: { Authorization: `Bearer ${credentialKey}` },
+      }),
+      { params: Promise.resolve({ sourceDocumentId: created.sourceDocumentId }) }
+    );
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error.code).toBe("INTERNAL");
+    expect(body.error.message).toBe("The request could not be completed.");
+    expect(JSON.stringify(body)).not.toMatch(/converted|accounting|stack|sourceDocumentId/i);
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   it("POST /api/v1/source-documents returns 201 for valid credential request", async () => {
     const image = await validJpegBase64();
     const request = new NextRequest("http://localhost/api/v1/source-documents", {
@@ -243,6 +367,9 @@ describe("API v1 source-documents route", () => {
     expect(data.revisionState).toBe("processing");
     expect(data.sourceDocumentId).toEqual(expect.any(String));
     expect(data.revisionId).toEqual(expect.any(String));
+    expect(response.headers.get("location")).toBe(
+      `/api/v1/source-documents/${data.sourceDocumentId}`
+    );
 
     const db = getTestDb();
     const created = await db.query.sourceDocuments.findFirst({

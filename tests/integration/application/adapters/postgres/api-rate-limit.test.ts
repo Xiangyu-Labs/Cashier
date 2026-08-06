@@ -115,6 +115,26 @@ describe("PostgresRateLimiter", () => {
     expect(result.resetTime).toBeGreaterThan(Date.now());
   });
 
+  it("current() returns the count of the current window", async () => {
+    await postgresRateLimiter.increment("test-current-live", 10, 60);
+    await postgresRateLimiter.increment("test-current-live", 10, 60);
+    await postgresRateLimiter.increment("test-current-live", 10, 60);
+
+    expect(await postgresRateLimiter.current("test-current-live", 60)).toBe(3);
+  });
+
+  it("current() returns 0 for a missing bucket", async () => {
+    expect(await postgresRateLimiter.current("test-current-missing", 60)).toBe(0);
+  });
+
+  it("current() returns 0 once the window has expired", async () => {
+    await postgresRateLimiter.increment("test-current-expired", 10, 1);
+    expect(await postgresRateLimiter.current("test-current-expired", 1)).toBe(1);
+
+    vi.advanceTimersByTime(1100);
+    expect(await postgresRateLimiter.current("test-current-expired", 1)).toBe(0);
+  });
+
   it("enforces shared limit across concurrent callers", async () => {
     const bucketKey = "test-concurrent";
     const limit = 10;
