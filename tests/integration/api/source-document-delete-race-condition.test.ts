@@ -92,7 +92,7 @@ describe("SourceDocument Delete Race Condition", () => {
   });
 
   it("should silently succeed when trying to delete non-existent source document (idempotent)", async () => {
-    const nonExistentId = "00000000-0000-0000-0000-000000000000";
+    const nonExistentId = "00000000-0000-4000-8000-000000000000";
 
     // Should silently succeed (idempotent)
     await expect(deleteSourceDocumentAction(testLedgerId, nonExistentId)).resolves.toEqual({

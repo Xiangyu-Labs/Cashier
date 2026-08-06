@@ -144,6 +144,16 @@ export interface ProcessingIntentContract {
   attempt: number;
 }
 
+/**
+ * Claim identity for a leased processing worker. Writes that finalize a
+ * revision or projection must verify this lease inside their transaction so a
+ * worker whose lease was lost or reclaimed cannot commit stale results.
+ */
+export interface ProcessingLeaseContract {
+  intentId: ProcessingIntentId;
+  claimToken: string;
+}
+
 export type ProcessingRetryClassification = "retryable" | "permanent" | "anomaly";
 
 export interface ProcessingDiagnostic {
@@ -346,6 +356,7 @@ export interface SourceDocumentPort {
     outcome: "anomaly" | "failed";
     anomalyReason?: string | null;
     failureCode?: string | null;
+    lease?: ProcessingLeaseContract;
   }): Promise<boolean>;
   softDelete(ledgerId: LedgerId, sourceDocumentId: SourceDocumentId): Promise<boolean>;
 }
@@ -607,6 +618,13 @@ export interface LedgerProjectionEntryContract {
   createdAt?: string;
 }
 
+export interface LedgerProjectionEntryFingerprint {
+  id: string;
+  amount: string;
+  currency: string | null;
+  sourceDocumentRevisionId: string | null;
+}
+
 export interface LedgerProjectionPort {
   activateRevision(input: {
     ledgerId: LedgerId;
@@ -614,6 +632,7 @@ export interface LedgerProjectionPort {
     revisionId: RevisionId;
     title?: string | null;
     entries: readonly LedgerProjectionEntryContract[];
+    lease?: ProcessingLeaseContract;
   }): Promise<boolean>;
   createManual(input: {
     ledgerId: LedgerId;
@@ -630,6 +649,13 @@ export interface LedgerProjectionPort {
     submittedText?: string | null;
     title?: string | null;
     entryDate?: string | null;
+    expectedMainCurrency?: string;
+    expectedProjection?: readonly LedgerProjectionEntryFingerprint[];
+    projectionConversions?: readonly {
+      ledgerEntryId: string;
+      convertedAmount: string;
+      exchangeRate: string;
+    }[];
     entries: readonly LedgerProjectionEntryContract[];
   }): Promise<RevisionId>;
   replaceActive(input: {
@@ -667,6 +693,8 @@ export interface RevisionProcessingRequestContract {
   ledgerId: LedgerId;
   sourceDocumentId: SourceDocumentId;
   revisionId: RevisionId;
+  signal?: AbortSignal;
+  lease?: ProcessingLeaseContract;
 }
 
 export interface RevisionProcessingResultContract {

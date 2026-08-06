@@ -311,15 +311,16 @@ function visualPromptParts(
   return (async () => {
     const currentSummary = summarizeEntries(input.currentEntries);
     const parts: AiMessageContentPart[] = [];
+    const imageSets = await Promise.all([
+      input.loadImages(input.currentStoredFileIds),
+      ...shortlist.map((candidate) => input.loadImages(candidate.storedFileIds)),
+    ]);
 
     parts.push({
       type: "text",
       text: `CURRENT document id=${input.sourceDocumentId}\nCURRENT parsed JSON=${JSON.stringify(currentSummary)}`,
     });
-    const currentImages = (await input.loadImages(input.currentStoredFileIds)).slice(
-      0,
-      MAX_IMAGES_PER_DOCUMENT
-    );
+    const currentImages = (imageSets[0] ?? []).slice(0, MAX_IMAGES_PER_DOCUMENT);
     for (const [index, image] of currentImages.entries()) {
       parts.push({ type: "text", text: `CURRENT image ${index + 1}/${currentImages.length}:` });
       parts.push({ type: "image_url", image_url: { url: image.dataUrl } });
@@ -331,10 +332,7 @@ function visualPromptParts(
         type: "text",
         text: `CANDIDATE_${index + 1} document id=${candidate.sourceDocumentId}\nCANDIDATE_${index + 1} parsed JSON=${JSON.stringify(summary)}`,
       });
-      const images = (await input.loadImages(candidate.storedFileIds)).slice(
-        0,
-        MAX_IMAGES_PER_DOCUMENT
-      );
+      const images = (imageSets[index + 1] ?? []).slice(0, MAX_IMAGES_PER_DOCUMENT);
       for (const [imageIndex, image] of images.entries()) {
         parts.push({
           type: "text",
@@ -365,25 +363,41 @@ async function finalVisualComparison(
   input: DuplicateDetectionInput,
   shortlist: readonly DuplicateCandidateContract[]
 ): Promise<DuplicateVerdict> {
-  const parts = await visualPromptParts(input, shortlist);
-  const response = await withTimeout(
-    input.ai.generate({
-      prompt: [
-        "You compare receipts to detect duplicates.",
-        duplicateAiContext(input),
-        "Receipts are separated by explicit text boundaries; do not merge them.",
-        "Return strict JSON only.",
-      ].join("\n"),
-      messages: [{ role: "user", content: parts }],
-      model: "vision",
-      maxTokens: 300,
-      temperature: 0,
-      requireJson: true,
-    }),
-    VISUAL_TIMEOUT_MS,
-    input.signal
-  );
-  return parseVerdict(response.content);
+  // The visual stage owns an internal controller so that once the outer
+  // timeout (or an external abort) settles the comparison, image loading that
+  // is still in flight cannot start a late, unbounded AI request.
+  const stageController = new AbortController();
+  const onOuterAbort = () => stageController.abort();
+  input.signal?.addEventListener("abort", onOuterAbort, { once: true });
+  try {
+    const response = await withTimeout(
+      (async () => {
+        const parts = await visualPromptParts(input, shortlist);
+        if (stageController.signal.aborted) {
+          throw new Error("Duplicate detection aborted");
+        }
+        return input.ai.generate({
+          prompt: [
+            "You compare receipts to detect duplicates.",
+            duplicateAiContext(input),
+            "Receipts are separated by explicit text boundaries; do not merge them.",
+            "Return strict JSON only.",
+          ].join("\n"),
+          messages: [{ role: "user", content: parts }],
+          model: "vision",
+          maxTokens: 300,
+          temperature: 0,
+          requireJson: true,
+        });
+      })(),
+      VISUAL_TIMEOUT_MS,
+      input.signal
+    );
+    return parseVerdict(response.content);
+  } finally {
+    stageController.abort();
+    input.signal?.removeEventListener("abort", onOuterAbort);
+  }
 }
 
 /**

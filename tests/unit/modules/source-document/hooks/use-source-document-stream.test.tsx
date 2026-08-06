@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { queryKeys } from "@/lib/query-keys";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const useRevisionStateRefreshMock = vi.hoisted(() => vi.fn());
@@ -327,5 +328,65 @@ describe("useSourceDocumentStream", () => {
         )
       ).toEqual(["doc-9"]);
     });
+  });
+
+  it("renders the filtered page projection while preferring canonical scalar fields", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          gcTime: 0,
+        },
+      },
+    });
+    const entryLatte = {
+      id: "entry-latte",
+      ledgerId: "ledger-1",
+      categoryId: null,
+      sourceDocumentId: "doc-1",
+      amount: "20.00",
+      currency: "USD",
+      itemName: "Latte",
+      description: null,
+      convertedAmount: "20.00",
+      exchangeRate: "1.000000",
+      createdAt: "2026-07-01T10:00:00.000Z",
+      updatedAt: "2026-07-01T10:00:00.000Z",
+      deletedAt: null,
+      category: null,
+    };
+    const entryCake = { ...entryLatte, id: "entry-cake", itemName: "Cake" };
+    queryClient.setQueryData(queryKeys.sourceDocumentEntities("ledger-1"), {
+      "doc-1": makeItem("doc-1", {
+        title: "Fresh title",
+        updatedAt: "2026-07-01T11:00:00.000Z",
+        ledgerEntries: [entryLatte, entryCake],
+      }),
+    });
+    listStreamPageActionMock.mockResolvedValue({
+      items: [
+        makeItem("doc-1", {
+          title: "Stale page title",
+          updatedAt: "2026-07-01T10:00:00.000Z",
+          ledgerEntries: [entryLatte],
+        }),
+      ],
+      nextCursor: null,
+      generation: 1,
+    });
+
+    const { result } = renderHook(() => useSourceDocumentStream("ledger-1", { search: "latte" }), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const rendered = result.current.streamGroups[0]?.items[0];
+    expect(rendered?.sourceDocument.title).toBe("Fresh title");
+    expect(rendered?.ledgerEntries.map((entry) => entry.id)).toEqual(["entry-latte"]);
   });
 });

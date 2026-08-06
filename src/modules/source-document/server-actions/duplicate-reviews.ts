@@ -12,7 +12,10 @@ import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 import type { ResolveDuplicateReviewResult } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
 import type { BatchActionResult } from "@/lib/batch-ids";
-import { sourceDocumentIdsSchema } from "@/modules/source-document/contract-schemas";
+import {
+  parseRevisionMutationIdentity,
+  sourceDocumentIdsSchema,
+} from "@/modules/source-document/contract-schemas";
 import { ValidationError } from "@/lib/errors";
 
 export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAccess(
@@ -36,17 +39,26 @@ export const keepDuplicateSourceDocumentAction = withSourceDocumentLedgerAccess(
         reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>>;
       }>
   > => {
+    const identity = parseRevisionMutationIdentity({
+      sourceDocumentId,
+      revisionId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const result = await keepDuplicateDocument(
-      { ledgerId, sourceDocumentId, revisionId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        revisionId: identity.revisionId,
+      },
       serverComposition.sourceDocumentLifecycle
     );
-    if (operationId == null) return result;
+    if (identity.operationId == null) return result;
     return {
       ...result,
       reconciliation: await buildAuthoritativeReconciliation(
-        operationId,
+        identity.operationId,
         ledgerId,
-        sourceDocumentId
+        identity.sourceDocumentId
       ),
     };
   }
@@ -68,17 +80,26 @@ export const discardDuplicateSourceDocumentAction = withSourceDocumentLedgerAcce
         reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>>;
       }>
   > => {
+    const identity = parseRevisionMutationIdentity({
+      sourceDocumentId,
+      revisionId,
+      ...(operationId === undefined ? {} : { operationId }),
+    });
     const result = await discardDuplicateDocument(
-      { ledgerId, sourceDocumentId, revisionId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        revisionId: identity.revisionId,
+      },
       serverComposition.sourceDocumentLifecycle
     );
-    if (operationId == null) return result;
+    if (identity.operationId == null) return result;
     return {
       ...result,
       reconciliation: await buildAuthoritativeReconciliation(
-        operationId,
+        identity.operationId,
         ledgerId,
-        sourceDocumentId
+        identity.sourceDocumentId
       ),
     };
   }

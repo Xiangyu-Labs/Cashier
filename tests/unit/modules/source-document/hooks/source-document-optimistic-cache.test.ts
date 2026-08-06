@@ -8,6 +8,7 @@ import {
   applyOptimisticDelete,
   applySourceDocumentReconciliation,
   seedSourceDocumentEntities,
+  type SourceDocumentEntityStore,
 } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import { STREAM_PAGE_LIMIT } from "@/modules/source-document/stream-cache-merge";
@@ -129,6 +130,155 @@ describe("source document optimistic cache", () => {
     });
 
     expect(client.getQueryData<InfiniteData<StreamPage>>(july28Key)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("does not match a title when no entry text matches the search", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1", { search: "coffee" });
+    client.setQueryData(key, page([]));
+
+    applyOptimisticUpsert(client, "ledger-1", {
+      ...makeItem("2026-07-28"),
+      title: "Coffee Shop",
+      ledgerEntries: [makeEntry("entry-1", "Latte")],
+    });
+
+    expect(client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("requires one entry to satisfy both amount bounds", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1", {
+      minAmount: 10,
+      maxAmount: 90,
+    });
+    client.setQueryData(key, page([]));
+
+    applyOptimisticUpsert(client, "ledger-1", {
+      ...makeItem("2026-07-28"),
+      ledgerEntries: [
+        { ...makeEntry("entry-low", "Low"), amount: "5.00" },
+        { ...makeEntry("entry-high", "High"), amount: "100.00" },
+      ],
+    });
+
+    expect(client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("excludes documents without entries from amount and search windows", () => {
+    const client = new QueryClient();
+    const amountKey = queryKeys.sourceDocumentStream("ledger-1", { minAmount: 1 });
+    const searchKey = queryKeys.sourceDocumentStream("ledger-1", { search: "latte" });
+    client.setQueryData(amountKey, page([]));
+    client.setQueryData(searchKey, page([]));
+
+    applyOptimisticUpsert(client, "ledger-1", makeItem("2026-07-28"));
+
+    expect(client.getQueryData<InfiniteData<StreamPage>>(amountKey)?.pages[0]?.items).toEqual([]);
+    expect(client.getQueryData<InfiniteData<StreamPage>>(searchKey)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("keeps canonical entries complete while projecting only matching page entries", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1", { search: "latte" });
+    client.setQueryData(key, page([]));
+    const item = {
+      ...makeItem("2026-07-28"),
+      ledgerEntries: [makeEntry("entry-latte", "Latte"), makeEntry("entry-cake", "Cake")],
+    };
+
+    applyOptimisticUpsert(client, "ledger-1", item);
+
+    expect(
+      client.getQueryData<SourceDocumentEntityStore>(
+        queryKeys.sourceDocumentEntities("ledger-1")
+      )?.["doc-1"]?.ledgerEntries
+    ).toHaveLength(2);
+    expect(
+      client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0]?.ledgerEntries
+    ).toEqual([item.ledgerEntries[0]]);
+  });
+
+  it("never writes filtered page projections into the canonical entity store", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1", { search: "latte" });
+    const filteredItem = {
+      ...makeItem("2026-07-28"),
+      ledgerEntries: [makeEntry("entry-latte", "Latte")],
+    };
+    client.setQueryData(key, page([filteredItem]));
+
+    seedSourceDocumentEntities(client, "ledger-1", [filteredItem], key);
+
+    const canonical = client.getQueryData<SourceDocumentEntityStore>(
+      queryKeys.sourceDocumentEntities("ledger-1")
+    )?.["doc-1"];
+    expect(canonical?.ledgerEntries).toEqual([]);
+    expect(
+      client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0]?.ledgerEntries
+    ).toHaveLength(1);
+  });
+
+  it("keeps full canonical entries when a filtered page arrives later", () => {
+    const client = new QueryClient();
+    const full = {
+      ...makeItem("2026-07-28"),
+      ledgerEntries: [makeEntry("entry-latte", "Latte"), makeEntry("entry-cake", "Cake")],
+    };
+    seedSourceDocumentEntities(client, "ledger-1", [full]);
+
+    const key = queryKeys.sourceDocumentStream("ledger-1", { search: "latte" });
+    const filteredItem = {
+      ...full,
+      updatedAt: "2026-07-28T11:00:00.000Z",
+      ledgerEntries: [makeEntry("entry-latte", "Latte")],
+    };
+    client.setQueryData(key, page([filteredItem]));
+    seedSourceDocumentEntities(client, "ledger-1", [filteredItem], key);
+
+    const canonical = client.getQueryData<SourceDocumentEntityStore>(
+      queryKeys.sourceDocumentEntities("ledger-1")
+    )?.["doc-1"];
+    expect(canonical?.ledgerEntries?.map((entry) => entry.id).sort()).toEqual([
+      "entry-cake",
+      "entry-latte",
+    ]);
+  });
+
+  it("clears files and hasImages on an authoritative refresh", () => {
+    const client = new QueryClient();
+    const existing = {
+      ...makeItem("2026-07-28"),
+      updatedAt: "2026-07-28T10:00:00.000Z",
+      files: [{ id: "file-1", contentType: "image/png", byteSize: 10, originalFilename: null }],
+      hasImages: true,
+    };
+    seedSourceDocumentEntities(client, "ledger-1", [existing]);
+    client.setQueryData(queryKeys.sourceDocument("doc-1"), {
+      ...existing,
+      text: "full detail text",
+    });
+
+    const refreshed = {
+      ...makeItem("2026-07-28"),
+      updatedAt: "2026-07-28T11:00:00.000Z",
+      files: [],
+      hasImages: false,
+      ledgerEntries: [],
+    };
+    applyServerRefreshUpsert(client, "ledger-1", refreshed);
+
+    const canonical = client.getQueryData<SourceDocumentEntityStore>(
+      queryKeys.sourceDocumentEntities("ledger-1")
+    )?.["doc-1"];
+    expect(canonical?.files).toEqual([]);
+    expect(canonical?.hasImages).toBe(false);
+    const detail = client.getQueryData(queryKeys.sourceDocument("doc-1")) as Record<
+      string,
+      unknown
+    >;
+    expect(detail.files).toEqual([]);
+    expect(detail.hasImages).toBe(false);
   });
 
   it("replaces stale entities with the authoritative page result", () => {
@@ -272,7 +422,7 @@ describe("source document optimistic cache", () => {
     ).toBe("Fresh title");
   });
 
-  it("reconciles tombstones and minimal entities without blanking card data", () => {
+  it("reconciles tombstones while preserving sparse files and entries", () => {
     const client = new QueryClient();
     const key = queryKeys.sourceDocumentStream("ledger-1");
     const existing: SourceDocumentListItemDto = {
@@ -312,8 +462,8 @@ describe("source document optimistic cache", () => {
 
     const merged = client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0];
     expect(merged?.status).toBe("completed");
-    expect(merged?.entryDate).toBe("2026-06-10");
-    expect(merged?.title).toBe("Receipt");
+    expect(merged?.entryDate).toBeNull();
+    expect(merged?.title).toBeNull();
     expect(merged?.files).toHaveLength(1);
     expect(merged?.ledgerEntries).toHaveLength(1);
 
