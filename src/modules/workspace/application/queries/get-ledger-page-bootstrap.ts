@@ -16,6 +16,7 @@ import {
   getDetailsInitialQueryState,
   getStatsInitialQueryState,
 } from "@/modules/workspace/initial-query-state";
+import { buildStatsQueryDescriptor } from "@/modules/workspace/stats-query";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
@@ -92,6 +93,11 @@ export async function getLedgerPageBootstrap(
     fixedTimeZone
   );
   const statsState = getStatsInitialQueryState(initialStatsDate);
+  const statsQueryDescriptor = buildStatsQueryDescriptor({
+    ledgerId: input.ledgerId,
+    state: statsState,
+    mainCurrency,
+  });
   const canonicalStreamStatuses = canonicalizeSourceDocumentStatuses(
     input.advancedFilters?.statuses
   );
@@ -231,28 +237,8 @@ export async function getLedgerPageBootstrap(
     ...(input.initialTab === "stats"
       ? [
           queryClient.prefetchQuery({
-            queryKey: queryKeys.enhancedStats(input.ledgerId, {
-              startDate: statsState.startDateStr,
-              rangeType: statsState.rangeType,
-              comparisonMode: statsState.mode,
-              mainCurrency,
-            }),
-            queryFn: () =>
-              getEnhancedStats(
-                {
-                  ledgerId: input.ledgerId,
-                  queryRange: {
-                    from: statsState.startDateStr,
-                    to: statsState.endDateStr,
-                  },
-                  compareRange: {
-                    from: statsState.prevDateStartStr,
-                    to: statsState.prevDateEndStr,
-                  },
-                  comparisonMode: statsState.mode,
-                },
-                dependencies.stats
-              ),
+            queryKey: statsQueryDescriptor.queryKey,
+            queryFn: () => getEnhancedStats(statsQueryDescriptor.input, dependencies.stats),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,
           }),
         ]

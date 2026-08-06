@@ -79,6 +79,7 @@ export function StatsHeader({
             onClick={() => {
               setRangeType(type);
             }}
+            aria-pressed={rangeType === type}
             className={cn(
               "flex-1 rounded-md py-1.5 text-sm font-medium transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
               rangeType === type
@@ -96,6 +97,7 @@ export function StatsHeader({
         <div className="flex items-center gap-4">
           <button
             onClick={handlePrev}
+            aria-label={t("previousPeriod")}
             className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
           >
             <ChevronLeft size={20} />
@@ -104,6 +106,7 @@ export function StatsHeader({
           <button
             onClick={handleNext}
             disabled={!canGoNext}
+            aria-label={t("nextPeriod")}
             className={cn(
               "p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors",
               !canGoNext &&

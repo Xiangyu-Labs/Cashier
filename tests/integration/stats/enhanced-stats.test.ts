@@ -148,7 +148,7 @@ describe("Enhanced Stats Actions", () => {
       ).rejects.toThrow("Ledger");
     });
 
-    it("should filter by entryDate not createdAt", async () => {
+    it("should filter by effective date (entry date with createdAt fallback)", async () => {
       const db = getTestDb();
 
       // Create source document with entryDate in Jan but created in March
@@ -250,7 +250,9 @@ describe("Enhanced Stats Actions", () => {
       expect(query).toContain("entries.deleted_at is null");
       expect(query).toContain("documents.ledger_id = $");
       expect(query).toContain("documents.deleted_at is null");
-      expect(query).toContain("documents.entry_date between ranges.from_date and ranges.to_date");
+      expect(query).toContain(
+        "documents.effective_date between ranges.from_date and ranges.to_date"
+      );
     });
 
     it("should calculate correct summary totals", async () => {
