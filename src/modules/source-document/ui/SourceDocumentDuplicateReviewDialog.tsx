@@ -77,8 +77,10 @@ export function SourceDocumentDuplicateReviewDialog({
 
   const removeResolvedDocumentQueries = useCallback(() => {
     queryClient.removeQueries({ queryKey: reviewQueryKey });
-    queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(sourceDocumentId) });
-    queryClient.removeQueries({ queryKey: queryKeys.sourceDocumentLight(sourceDocumentId) });
+    queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(ledgerId, sourceDocumentId) });
+    queryClient.removeQueries({
+      queryKey: queryKeys.sourceDocumentLight(ledgerId, sourceDocumentId),
+    });
     queryClient.removeQueries({
       queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocumentId),
     });

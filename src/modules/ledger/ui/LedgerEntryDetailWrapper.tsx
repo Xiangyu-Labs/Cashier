@@ -48,7 +48,7 @@ export function LedgerEntryDetailWrapper({
     isLoading,
     error,
   } = useQuery({
-    queryKey: queryKeys.ledgerEntry(id),
+    queryKey: queryKeys.ledgerEntry(ledgerId, id),
     queryFn: () => getLedgerEntryAction(ledgerId, id),
     enabled: open && id !== "",
     retry: false,

@@ -35,7 +35,7 @@ export function useSourceDocumentDetailData({
     isLoading,
     error,
   } = useQuery({
-    queryKey: queryKeys.sourceDocument(id),
+    queryKey: queryKeys.sourceDocument(ledgerId, id),
     queryFn: () => getSourceDocumentLightAction(ledgerId, id),
     enabled: open && id !== "",
     staleTime: 0,

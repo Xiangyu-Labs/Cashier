@@ -60,7 +60,18 @@ describe("queryKeys", () => {
     });
 
     it("应该生成正确的ledgerEntry query key", () => {
-      expect(queryKeys.ledgerEntry("entry-456")).toEqual(["ledgerEntry", "entry-456"]);
+      expect(queryKeys.ledgerEntry("ledger-1", "entry-456")).toEqual([
+        "ledger",
+        "ledger-1",
+        "entry",
+        "entry-456",
+      ]);
+    });
+
+    it("生成不同ledger下的不同ledgerEntry key", () => {
+      expect(queryKeys.ledgerEntry("ledger-1", "entry-456")).not.toEqual(
+        queryKeys.ledgerEntry("ledger-2", "entry-456")
+      );
     });
   });
 
@@ -80,15 +91,32 @@ describe("queryKeys", () => {
     });
 
     it("应该生成正确的sourceDocument query key", () => {
-      expect(queryKeys.sourceDocument("doc-789")).toEqual(["sourceDocument", "doc-789"]);
+      expect(queryKeys.sourceDocument("ledger-1", "doc-789")).toEqual([
+        "ledger",
+        "ledger-1",
+        "source-document",
+        "doc-789",
+        "detail",
+      ]);
     });
 
     it("应该生成正确的sourceDocumentLight query key", () => {
-      expect(queryKeys.sourceDocumentLight("doc-789")).toEqual([
-        "sourceDocument",
-        "light",
+      expect(queryKeys.sourceDocumentLight("ledger-1", "doc-789")).toEqual([
+        "ledger",
+        "ledger-1",
+        "source-document",
         "doc-789",
+        "light",
       ]);
+    });
+
+    it("生成不同ledger下的不同sourceDocument key", () => {
+      expect(queryKeys.sourceDocument("ledger-1", "doc-789")).not.toEqual(
+        queryKeys.sourceDocument("ledger-2", "doc-789")
+      );
+      expect(queryKeys.sourceDocumentLight("ledger-1", "doc-789")).not.toEqual(
+        queryKeys.sourceDocumentLight("ledger-2", "doc-789")
+      );
     });
 
     it("应该生成正确的sourceDocumentStream query key with filters", () => {

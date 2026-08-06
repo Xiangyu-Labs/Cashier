@@ -91,18 +91,20 @@ describe("source document optimistic cache", () => {
       title: "Current title",
       files: [{ id: "new", contentType: "image/png", byteSize: 2, originalFilename: null }],
     };
-    client.setQueryData(queryKeys.sourceDocument("doc-1"), staleDetail);
+    client.setQueryData(queryKeys.sourceDocument("ledger-1", "doc-1"), staleDetail);
 
     patchExistingSourceDocumentDetail(client, currentItem);
 
-    const patched = client.getQueryData<typeof staleDetail>(queryKeys.sourceDocument("doc-1"));
+    const patched = client.getQueryData<typeof staleDetail>(
+      queryKeys.sourceDocument("ledger-1", "doc-1")
+    );
     expect(patched).toMatchObject({
       entryDate: "2026-07-28",
       title: "Current title",
       files: currentItem.files,
       text: "full detail text",
     });
-    expect(client.getQueryData(queryKeys.sourceDocumentLight("doc-1"))).toBeUndefined();
+    expect(client.getQueryData(queryKeys.sourceDocumentLight("ledger-1", "doc-1"))).toBeUndefined();
   });
 
   it("moves a date edit across every matching stream cache and patches details", () => {
@@ -117,7 +119,7 @@ describe("source document optimistic cache", () => {
     });
     client.setQueryData(july27Key, page([makeItem("2026-07-27")]));
     client.setQueryData(july26Key, page([]));
-    client.setQueryData(queryKeys.sourceDocument("doc-1"), makeItem("2026-07-27"));
+    client.setQueryData(queryKeys.sourceDocument("ledger-1", "doc-1"), makeItem("2026-07-27"));
 
     applyOptimisticUpsert(client, "ledger-1", makeItem("2026-07-26"));
 
@@ -126,7 +128,8 @@ describe("source document optimistic cache", () => {
       client.getQueryData<InfiniteData<StreamPage>>(july26Key)?.pages[0]?.items[0]?.entryDate
     ).toBe("2026-07-26");
     expect(
-      client.getQueryData<SourceDocumentListItemDto>(queryKeys.sourceDocument("doc-1"))?.entryDate
+      client.getQueryData<SourceDocumentListItemDto>(queryKeys.sourceDocument("ledger-1", "doc-1"))
+        ?.entryDate
     ).toBe("2026-07-26");
   });
 
@@ -145,6 +148,45 @@ describe("source document optimistic cache", () => {
     });
 
     expect(client.getQueryData<InfiniteData<StreamPage>>(july28Key)?.pages[0]?.items).toEqual([]);
+  });
+
+  it("removes only the target ledger's detail query for a shared entity id", () => {
+    const client = new QueryClient();
+    client.setQueryData(queryKeys.sourceDocument("ledger-1", "doc-1"), makeItem("2026-07-27"));
+    client.setQueryData(queryKeys.sourceDocument("ledger-2", "doc-1"), {
+      ...makeItem("2026-07-27"),
+      ledgerId: "ledger-2",
+    });
+    client.setQueryData(queryKeys.sourceDocumentLight("ledger-1", "doc-1"), makeItem("2026-07-27"));
+
+    applyOptimisticDelete(client, "ledger-1", "doc-1");
+
+    expect(client.getQueryData(queryKeys.sourceDocument("ledger-1", "doc-1"))).toBeUndefined();
+    expect(client.getQueryData(queryKeys.sourceDocumentLight("ledger-1", "doc-1"))).toBeUndefined();
+    expect(client.getQueryData(queryKeys.sourceDocument("ledger-2", "doc-1"))).toMatchObject({
+      id: "doc-1",
+      ledgerId: "ledger-2",
+    });
+  });
+
+  it("patches only the target ledger's detail cache for a shared entity id", () => {
+    const client = new QueryClient();
+    client.setQueryData(queryKeys.sourceDocument("ledger-1", "doc-1"), makeItem("2026-07-27"));
+    client.setQueryData(queryKeys.sourceDocument("ledger-2", "doc-1"), {
+      ...makeItem("2026-07-27"),
+      ledgerId: "ledger-2",
+      title: "Other ledger",
+    });
+
+    applyOptimisticUpsert(client, "ledger-1", makeItem("2026-07-28"));
+
+    expect(
+      client.getQueryData<SourceDocumentListItemDto>(queryKeys.sourceDocument("ledger-1", "doc-1"))
+        ?.entryDate
+    ).toBe("2026-07-28");
+    expect(
+      client.getQueryData<SourceDocumentListItemDto>(queryKeys.sourceDocument("ledger-2", "doc-1"))
+    ).toMatchObject({ ledgerId: "ledger-2", title: "Other ledger", entryDate: "2026-07-27" });
   });
 
   it("replaces stale entities with the authoritative page result", () => {

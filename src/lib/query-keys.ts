@@ -17,7 +17,8 @@ export const queryKeys = {
   // === Ledger Entries ===
   ledgerEntries: (ledgerId: string, ...filters: (string | null | undefined)[]) =>
     ["ledgerEntries", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
-  ledgerEntry: (id: string) => ["ledgerEntry", id] as const,
+  ledgerEntry: (ledgerId: string, entryId: string) =>
+    ["ledger", ledgerId, "entry", entryId] as const,
 
   // === Source Documents ===
   sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
@@ -70,8 +71,10 @@ export const queryKeys = {
       filters?.statuses ?? null,
       filters?.search ?? null,
     ] as const,
-  sourceDocument: (id: string) => ["sourceDocument", id] as const,
-  sourceDocumentLight: (id: string) => ["sourceDocument", "light", id] as const,
+  sourceDocument: (ledgerId: string, documentId: string) =>
+    ["ledger", ledgerId, "source-document", documentId, "detail"] as const,
+  sourceDocumentLight: (ledgerId: string, documentId: string) =>
+    ["ledger", ledgerId, "source-document", documentId, "light"] as const,
   sourceDocumentDuplicateReview: (ledgerId: string, id: string) =>
     ["sourceDocument", "duplicateReview", ledgerId, id] as const,
   sourceDocumentFull: (ledgerId: string, id: string) =>

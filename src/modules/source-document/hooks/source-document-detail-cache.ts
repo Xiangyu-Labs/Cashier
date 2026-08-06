@@ -40,19 +40,20 @@ export function patchExistingSourceDocumentDetail(
     };
   };
 
-  queryClient.setQueryData(queryKeys.sourceDocument(item.id), patch);
-  queryClient.setQueryData(queryKeys.sourceDocumentLight(item.id), patch);
+  queryClient.setQueryData(queryKeys.sourceDocument(item.ledgerId, item.id), patch);
+  queryClient.setQueryData(queryKeys.sourceDocumentLight(item.ledgerId, item.id), patch);
 }
 
 function updateDetailDocumentEntries(
   queryClient: QueryClient,
+  ledgerId: string,
   documentId: string,
   updater: (
     entries: NonNullable<SourceDocumentQueryData["ledgerEntries"]>
   ) => NonNullable<SourceDocumentQueryData["ledgerEntries"]>
 ) {
   queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocument(documentId) },
+    { queryKey: queryKeys.sourceDocument(ledgerId, documentId) },
     (old: SourceDocumentQueryData | undefined) => {
       if (!old?.ledgerEntries) return old;
       return {
@@ -65,13 +66,14 @@ function updateDetailDocumentEntries(
 
 function updateLightDocumentEntries(
   queryClient: QueryClient,
+  ledgerId: string,
   documentId: string,
   updater: (
     entries: SourceDocumentLightQueryData["ledgerEntries"]
   ) => SourceDocumentLightQueryData["ledgerEntries"]
 ) {
   queryClient.setQueriesData(
-    { queryKey: queryKeys.sourceDocumentLight(documentId) },
+    { queryKey: queryKeys.sourceDocumentLight(ledgerId, documentId) },
     (old: SourceDocumentLightQueryData | undefined) => {
       if (!old?.ledgerEntries) return old;
       return {
@@ -109,16 +111,18 @@ export function updateSourceDocumentCollectionLists(
 export function createSourceDocSnapshots(
   queryClient: QueryClient,
   documentId: string,
-  ledgerId: string | undefined
+  ledgerId: string
 ): MutationSnapshot {
-  const snapshots = createListSnapshots(queryClient, queryKeys.sourceDocument(documentId));
-  snapshots.push(...createListSnapshots(queryClient, queryKeys.sourceDocumentLight(documentId)));
-
-  if (ledgerId != null && ledgerId !== "") {
-    snapshots.push(
-      ...createListSnapshots(queryClient, queryKeys.sourceDocumentStreamPrefix(ledgerId))
-    );
-  }
+  const snapshots = createListSnapshots(
+    queryClient,
+    queryKeys.sourceDocument(ledgerId, documentId)
+  );
+  snapshots.push(
+    ...createListSnapshots(queryClient, queryKeys.sourceDocumentLight(ledgerId, documentId))
+  );
+  snapshots.push(
+    ...createListSnapshots(queryClient, queryKeys.sourceDocumentStreamPrefix(ledgerId))
+  );
 
   return snapshots;
 }
@@ -146,103 +150,94 @@ export function applyBatchEntryUpdate<
 export function updateSingleEntryInCaches(
   queryClient: QueryClient,
   documentId: string,
-  ledgerId: string | undefined,
+  ledgerId: string,
   entryId: string,
   data: Record<string, unknown>
 ) {
-  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+  updateDetailDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.map((entry) => (entry.id === entryId ? { ...entry, ...data } : entry))
   );
-  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+  updateLightDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.map((entry) => (entry.id === entryId ? { ...entry, ...data } : entry))
   );
 
-  if (ledgerId != null && ledgerId !== "") {
-    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
-      if (doc.id !== documentId) return doc;
-      return {
-        ...doc,
-        ledgerEntries:
-          doc.ledgerEntries?.map((entry) =>
-            entry.id === entryId ? { ...entry, ...data } : entry
-          ) ?? [],
-      };
-    });
-  }
+  updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
+    if (doc.id !== documentId) return doc;
+    return {
+      ...doc,
+      ledgerEntries:
+        doc.ledgerEntries?.map((entry) => (entry.id === entryId ? { ...entry, ...data } : entry)) ??
+        [],
+    };
+  });
 }
 
 export function updateBatchEntriesInCaches(
   queryClient: QueryClient,
   documentId: string,
-  ledgerId: string | undefined,
+  ledgerId: string,
   ids: string[],
   data: BatchEntryUpdateData
 ) {
-  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+  updateDetailDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.map((entry) => (ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry))
   );
-  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+  updateLightDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.map((entry) => (ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry))
   );
 
-  if (ledgerId != null && ledgerId !== "") {
-    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
-      if (doc.id !== documentId) return doc;
-      return {
-        ...doc,
-        ledgerEntries:
-          doc.ledgerEntries?.map((entry) =>
-            ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry
-          ) ?? [],
-      };
-    });
-  }
+  updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
+    if (doc.id !== documentId) return doc;
+    return {
+      ...doc,
+      ledgerEntries:
+        doc.ledgerEntries?.map((entry) =>
+          ids.includes(entry.id) ? applyBatchEntryUpdate(entry, data) : entry
+        ) ?? [],
+    };
+  });
 }
 
 export function removeSingleEntryFromCaches(
   queryClient: QueryClient,
   documentId: string,
-  ledgerId: string | undefined,
+  ledgerId: string,
   entryId: string
 ) {
-  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+  updateDetailDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.filter((entry) => entry.id !== entryId)
   );
-  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+  updateLightDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.filter((entry) => entry.id !== entryId)
   );
 
-  if (ledgerId != null && ledgerId !== "") {
-    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
-      if (doc.id !== documentId) return doc;
-      return {
-        ...doc,
-        ledgerEntries: doc.ledgerEntries?.filter((entry) => entry.id !== entryId) ?? [],
-      };
-    });
-  }
+  updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
+    if (doc.id !== documentId) return doc;
+    return {
+      ...doc,
+      ledgerEntries: doc.ledgerEntries?.filter((entry) => entry.id !== entryId) ?? [],
+    };
+  });
 }
 
 export function removeBatchEntriesFromCaches(
   queryClient: QueryClient,
   documentId: string,
-  ledgerId: string | undefined,
+  ledgerId: string,
   ids: string[]
 ) {
-  updateDetailDocumentEntries(queryClient, documentId, (entries) =>
+  updateDetailDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.filter((entry) => !ids.includes(entry.id))
   );
-  updateLightDocumentEntries(queryClient, documentId, (entries) =>
+  updateLightDocumentEntries(queryClient, ledgerId, documentId, (entries) =>
     entries.filter((entry) => !ids.includes(entry.id))
   );
 
-  if (ledgerId != null && ledgerId !== "") {
-    updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
-      if (doc.id !== documentId) return doc;
-      return {
-        ...doc,
-        ledgerEntries: doc.ledgerEntries?.filter((entry) => !ids.includes(entry.id)) ?? [],
-      };
-    });
-  }
+  updateSourceDocumentCollectionLists(queryClient, ledgerId, (doc) => {
+    if (doc.id !== documentId) return doc;
+    return {
+      ...doc,
+      ledgerEntries: doc.ledgerEntries?.filter((entry) => !ids.includes(entry.id)) ?? [],
+    };
+  });
 }

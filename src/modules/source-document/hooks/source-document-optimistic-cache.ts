@@ -274,8 +274,8 @@ export function applyOptimisticDelete(
   }
 
   // Also remove from detail caches
-  queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(itemId) });
-  queryClient.removeQueries({ queryKey: queryKeys.sourceDocumentLight(itemId) });
+  queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(ledgerId, itemId) });
+  queryClient.removeQueries({ queryKey: queryKeys.sourceDocumentLight(ledgerId, itemId) });
 }
 
 /**
@@ -474,7 +474,7 @@ function upsertDetailCache(
   item: SourceDocumentListItemDto
 ): void {
   // Update light detail cache if it exists
-  const lightKey = queryKeys.sourceDocumentLight(item.id);
+  const lightKey = queryKeys.sourceDocumentLight(ledgerId, item.id);
   const existingLight = queryClient.getQueryData(lightKey);
   if (existingLight) {
     queryClient.setQueryData(lightKey, {
@@ -489,7 +489,7 @@ function upsertDetailCache(
   }
 
   // Update full detail cache if it exists
-  const detailKey = queryKeys.sourceDocument(item.id);
+  const detailKey = queryKeys.sourceDocument(ledgerId, item.id);
   const existingDetail = queryClient.getQueryData(detailKey);
   if (existingDetail) {
     queryClient.setQueryData(detailKey, {
