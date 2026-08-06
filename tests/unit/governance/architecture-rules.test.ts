@@ -104,6 +104,25 @@ describe("findBoundaryViolations", () => {
     ]);
   });
 
+  it("detects the client directive after leading comments", () => {
+    expect(
+      findBoundaryViolations(
+        "src/modules/workspace/ui/LedgerPageClient.tsx",
+        '// Renders the active ledger.\n/* eslint-disable */\n"use client";\nimport { db } from "@/lib/db";'
+      )
+    ).toEqual([
+      "src/modules/workspace/ui/LedgerPageClient.tsx: client components must not import server-only infrastructure",
+    ]);
+    expect(
+      findBoundaryViolations(
+        "src/modules/workspace/ui/LedgerPageClient.tsx",
+        '/* Header comment. */\n"use client"\nimport { db } from "@/lib/db";'
+      )
+    ).toEqual([
+      "src/modules/workspace/ui/LedgerPageClient.tsx: client components must not import server-only infrastructure",
+    ]);
+  });
+
   it("keeps flagging import type from banned paths but allows contract types", () => {
     expect(
       findBoundaryViolations(
@@ -150,6 +169,28 @@ describe("findBoundaryViolations", () => {
     ).toEqual([
       "src/lib/lazy-client.ts: client components must not import server-only infrastructure",
     ]);
+  });
+
+  it("catches namespace re-exports from banned paths", () => {
+    expect(
+      findBoundaryViolations(
+        "src/application/contracts/index.ts",
+        'export * as db from "@/persistence";'
+      )
+    ).toEqual([
+      "src/application/contracts/index.ts: application contracts must not import persistence, database, provider SDKs, or application adapters",
+    ]);
+    expect(
+      findBoundaryViolations(
+        "src/application/contracts/index.ts",
+        'export type * as sdk from "openai";'
+      )
+    ).toEqual([
+      "src/application/contracts/index.ts: application contracts must not import persistence, database, provider SDKs, or application adapters",
+    ]);
+    expect(
+      findBoundaryViolations("src/application/contracts/index.ts", 'export * as utils from "./utils";')
+    ).toEqual([]);
   });
 
   it("keeps the existing module application and server action rules", () => {

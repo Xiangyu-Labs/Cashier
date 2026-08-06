@@ -9,8 +9,34 @@
 const importPatterns = [
   /^\s*import\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["'];?/gm,
   /^\s*export\s+(?:type\s+)?(?:\*|\{[\s\S]*?\})\s+from\s+["']([^"']+)["'];?/gm,
+  /^\s*export\s+(?:type\s+)?\*\s+as\s+[A-Za-z_$][\w$]*\s+from\s+["']([^"']+)["'];?/gm,
   /\bimport\(\s*["']([^"']+)["']\s*\)/g,
 ];
+
+/**
+ * Whether the source starts with a `"use client"` directive after any leading
+ * comments and whitespace in the module prologue.
+ */
+function hasClientDirective(source) {
+  let rest = source;
+  for (;;) {
+    rest = rest.trimStart();
+    if (rest.startsWith("//")) {
+      const newline = rest.indexOf("\n");
+      if (newline === -1) return false;
+      rest = rest.slice(newline + 1);
+      continue;
+    }
+    if (rest.startsWith("/*")) {
+      const end = rest.indexOf("*/");
+      if (end === -1) return false;
+      rest = rest.slice(end + 2);
+      continue;
+    }
+    break;
+  }
+  return /^(?:"use client"|'use client');?/.test(rest);
+}
 
 const serverCompositionRootPattern = /^@\/application\/server-composition-root(?:\/|$)/;
 const persistencePattern = /^@\/persistence(?:\/|$)/;
@@ -50,7 +76,7 @@ export function findBoundaryViolations(relativePath, source) {
   const isLib = /^src\/lib\//.test(relativePath);
   const isProviders = /^src\/components\/providers\//.test(relativePath);
   const isContracts = /^src\/application\/contracts\//.test(relativePath);
-  const isClientComponent = /^"use client";?/.test(source.trimStart());
+  const isClientComponent = hasClientDirective(source);
 
   for (const specifier of specifiers) {
     if ((isModuleApplication || isAuthInternal) && serverCompositionRootPattern.test(specifier)) {
