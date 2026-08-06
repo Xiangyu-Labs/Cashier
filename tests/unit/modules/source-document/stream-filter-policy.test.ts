@@ -89,6 +89,14 @@ describe("stream filter policy", () => {
     expect(matchesStreamDocument(item, { search: "latte" })).toBe(false);
   });
 
+  it("does not match amount windows with unconverted entries", () => {
+    const item = makeItem({
+      ledgerEntries: [makeEntry({ amount: "1.00", convertedAmount: null })],
+    });
+
+    expect(matchesStreamDocument(item, { minAmount: 1 })).toBe(false);
+  });
+
   it("uses entryDate and then the UTC created-at date as the effective date", () => {
     expect(getStreamEffectiveDate(makeItem({ entryDate: "2026-08-01" }))).toBe("2026-08-01");
     expect(

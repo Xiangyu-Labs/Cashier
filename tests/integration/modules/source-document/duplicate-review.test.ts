@@ -272,10 +272,11 @@ describe("duplicate review lifecycle", () => {
     expect(review?.status).toBe("discarded");
     expect(review?.decision).toBe("discard_duplicate");
 
-    // The active projection is excluded by the document tombstone, so all
-    // accounting reads immediately fall back to the original bill.
+    // The active projection is excluded by the document tombstone, so the
+    // surviving matched bill remains the only accounting projection.
     await expect(calculateCompletedSourceDocumentTotal({ ledgerId })).resolves.toEqual({
       total: "38",
+      unconvertedCount: 0,
     });
     await expect(
       calculateLedgerEntryStats({ ledgerId, filters: {}, mainCurrency: "CNY" })

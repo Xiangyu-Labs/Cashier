@@ -491,8 +491,8 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
         AND matched_entries.source_document_id = ${sourceDocuments.id}
         AND matched_entries.source_document_revision_id = ${sourceDocuments.activeRevisionId}
         AND matched_entries.deleted_at IS NULL
-        ${input.minAmount !== undefined ? sql`AND COALESCE(matched_entries.converted_amount, matched_entries.amount) >= ${input.minAmount}` : sql``}
-        ${input.maxAmount !== undefined ? sql`AND COALESCE(matched_entries.converted_amount, matched_entries.amount) <= ${input.maxAmount}` : sql``}
+        ${input.minAmount !== undefined ? sql`AND matched_entries.converted_amount IS NOT NULL AND matched_entries.converted_amount >= ${input.minAmount}` : sql``}
+        ${input.maxAmount !== undefined ? sql`AND matched_entries.converted_amount IS NOT NULL AND matched_entries.converted_amount <= ${input.maxAmount}` : sql``}
         ${
           input.search != null && input.search !== ""
             ? sql`AND (
@@ -513,16 +513,18 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
  */
 export async function calculateCompletedSourceDocumentTotal(
   input: TargetSourceDocumentFilterInput
-): Promise<{ total: string }> {
+): Promise<{ total: string; unconvertedCount: number }> {
   const matchedEntryConditions: SQL<unknown>[] = [];
   if (input.minAmount !== undefined) {
     matchedEntryConditions.push(
-      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) >= ${input.minAmount}`
+      sql`${ledgerEntries.convertedAmount} IS NOT NULL
+        AND ${ledgerEntries.convertedAmount} >= ${input.minAmount}`
     );
   }
   if (input.maxAmount !== undefined) {
     matchedEntryConditions.push(
-      sql`COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}) <= ${input.maxAmount}`
+      sql`${ledgerEntries.convertedAmount} IS NOT NULL
+        AND ${ledgerEntries.convertedAmount} <= ${input.maxAmount}`
     );
   }
   if (input.search != null && input.search !== "") {
@@ -533,7 +535,10 @@ export async function calculateCompletedSourceDocumentTotal(
   }
   const result = await db
     .select({
-      total: sql<string>`SUM(COALESCE(${ledgerEntries.convertedAmount}, ${ledgerEntries.amount}))`,
+      total: sql<string>`SUM(${ledgerEntries.convertedAmount})`,
+      unconvertedCount: sql<number>`COUNT(*) FILTER (
+        WHERE ${ledgerEntries.convertedAmount} IS NULL
+      )`,
     })
     .from(sourceDocuments)
     .innerJoin(
@@ -556,6 +561,7 @@ export async function calculateCompletedSourceDocumentTotal(
 
   return {
     total: decimalNormalize(String(result?.total ?? "0")),
+    unconvertedCount: Number(result?.unconvertedCount ?? 0),
   };
 }
 

@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
-import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import {
+  dateStringSchema,
+  omitUndefinedObjectFields,
+  optionalDateStringSchema,
+  UUID_REGEX,
+} from "@/lib/validation";
 import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 import { isValidTimeZone } from "@/lib/date-utils";
 import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
@@ -8,9 +13,21 @@ import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
-const currencyCodeSchema = z.string().length(3, "Currency must be a 3-letter ISO 4217 code");
+const nonEmptyStrictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
+  z.preprocess(
+    omitUndefinedObjectFields,
+    z
+      .object(shape)
+      .strict()
+      .refine((value) => Object.keys(value).length > 0, "At least one field is required")
+  );
+const currencyCodeSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim().toUpperCase() : value),
+  z.string().regex(/^[A-Z]{3}$/, "Currency must be a 3-letter ISO 4217 code")
+);
 const optionalCurrencyCodeSchema = currencyCodeSchema.optional();
 const nullableCurrencyCodeSchema = currencyCodeSchema.nullable().optional();
+const aiLanguageSchema = z.string().min(2).max(35);
 const optionalQueryNumberSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z
@@ -32,20 +49,20 @@ function parseLedgerContract<T>(schema: z.ZodType<T>, input: unknown): T {
 }
 
 export const createLedgerInputSchema = strictObjectSchema({
-  aiLanguage: z.string().max(32).optional(),
+  aiLanguage: aiLanguageSchema.optional(),
 });
 
-export const updateLedgerInputSchema = strictObjectSchema({
-  settings: strictObjectSchema({
-    aiLanguage: z.string().max(32).optional(),
+export const updateLedgerInputSchema = nonEmptyStrictObjectSchema({
+  settings: nonEmptyStrictObjectSchema({
+    aiLanguage: aiLanguageSchema.optional(),
     currencies: z.array(currencyCodeSchema).max(32).optional(),
     mainCurrency: optionalCurrencyCodeSchema,
     collapseEntriesDefault: z.boolean().optional(),
-    aiCustomPrompt: z.string().max(2000).optional(),
+    aiCustomPrompt: z.string().max(4000).optional(),
     duplicateDetectionEnabled: z.boolean().optional(),
     timeZone: z
       .string()
-      .max(100)
+      .max(50)
       .refine(isValidTimeZone, "Invalid IANA time zone")
       .nullable()
       .optional(),
@@ -59,7 +76,7 @@ export const createEntryCategoryInputSchema = strictObjectSchema({
   sortOrder: z.number().int().min(0).optional(),
 });
 
-export const updateEntryCategoryInputSchema = strictObjectSchema({
+export const updateEntryCategoryInputSchema = nonEmptyStrictObjectSchema({
   name: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
   icon: z.string().max(100).nullable().optional(),
@@ -84,7 +101,7 @@ export const createLedgerEntryInputSchema = strictObjectSchema({
   sourceDocumentId: uuidSchema,
 });
 
-export const updateLedgerEntryInputSchema = strictObjectSchema({
+export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
   amount: z
     .union([
@@ -99,12 +116,17 @@ export const updateLedgerEntryInputSchema = strictObjectSchema({
   description: z.string().max(500).nullable().optional(),
 });
 
-export const batchUpdateLedgerEntriesInputSchema = strictObjectSchema({
+export const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
   currency: nullableCurrencyCodeSchema,
   amount: z.number().positive().optional(),
   description: z.string().max(500).nullable().optional(),
   itemName: z.string().trim().min(1).max(200).optional(),
+});
+
+export const batchUpdateLedgerEntryDatesInputSchema = strictObjectSchema({
+  entryIds: ledgerEntryIdsSchema,
+  entryDate: dateStringSchema,
 });
 
 export const createServiceCredentialInputSchema = strictObjectSchema({
@@ -149,6 +171,8 @@ export const parseUpdateLedgerEntryInput = (input: unknown) =>
   parseLedgerContract(updateLedgerEntryInputSchema, input);
 export const parseBatchUpdateLedgerEntriesInput = (input: unknown) =>
   parseLedgerContract(batchUpdateLedgerEntriesInputSchema, input);
+export const parseBatchUpdateLedgerEntryDatesInput = (input: unknown) =>
+  parseLedgerContract(batchUpdateLedgerEntryDatesInputSchema, input);
 export const parseLedgerEntryId = (input: unknown) =>
   parseLedgerContract(ledgerEntryIdSchema, input);
 export const parseLedgerEntryIds = (input: unknown) =>
@@ -167,6 +191,9 @@ export type UpdateEntryCategoryInput = z.infer<typeof updateEntryCategoryInputSc
 export type CreateLedgerEntryInput = z.infer<typeof createLedgerEntryInputSchema>;
 export type UpdateLedgerEntryInput = z.infer<typeof updateLedgerEntryInputSchema>;
 export type BatchUpdateLedgerEntriesInput = z.infer<typeof batchUpdateLedgerEntriesInputSchema>;
+export type BatchUpdateLedgerEntryDatesInput = z.infer<
+  typeof batchUpdateLedgerEntryDatesInputSchema
+>;
 export type CreateServiceCredentialInput = z.infer<typeof createServiceCredentialInputSchema>;
 export type ListLedgerEntriesInput = z.input<typeof listLedgerEntriesInputSchema>;
 export type ListLedgerEntriesValidatedInput = z.infer<typeof listLedgerEntriesInputSchema>;

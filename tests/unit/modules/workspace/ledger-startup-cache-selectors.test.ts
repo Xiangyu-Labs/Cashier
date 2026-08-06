@@ -130,50 +130,38 @@ describe("buildCachedEnhancedStats", () => {
     });
 
     expect(result.summary).toEqual({
-      total: "100",
+      total: "70",
       currency: "CNY",
-      trend: { percent: expect.closeTo(185.71428571428572), amount: "65" },
-      dailyAverage: 50,
+      trend: { percent: 100, amount: "35" },
+      dailyAverage: 35,
       comparison: {
         mode: "same_period",
         from: "2026-08-01",
         to: "2026-08-31",
         previousTotal: "35",
-        amountDelta: "65",
-        percent: expect.closeTo(185.71428571428572),
+        amountDelta: "35",
+        percent: 100,
       },
     });
+    expect(result.unconvertedCount).toBe(1);
     expect(result.categories).toMatchObject([
       {
         id: "food",
         name: "Food",
         totalConverted: "70",
-        percent: 70,
+        percent: 100,
         count: 1,
         trend: { amount: "35", percent: 100 },
       },
-      {
-        id: null,
-        name: "Uncategorized",
-        totalConverted: "30",
-        percent: 30,
-        count: 1,
-      },
     ]);
-    expect(result.chart).toEqual([
-      { date: "2026-08-01", total: 70 },
-      { date: "2026-08-02", total: 30 },
+    expect(result.chart).toEqual([{ date: "2026-08-01", total: 70 }]);
+    expect(result.heatmap.days).toEqual([
+      { date: "2026-08-01", totalAmount: 70, entryCount: 1, currencies: ["USD"] },
     ]);
-    expect(result.heatmap.days[1]).toEqual({
-      date: "2026-08-02",
-      totalAmount: 30,
-      entryCount: 1,
-      currencies: ["CNY"],
-    });
     expect(result.heatmap.stats).toEqual({
-      minAmount: 30,
+      minAmount: 70,
       maxAmount: 70,
-      avgAmount: 50,
+      avgAmount: 70,
       p80Amount: 70,
     });
   });

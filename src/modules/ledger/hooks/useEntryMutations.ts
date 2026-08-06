@@ -8,7 +8,10 @@ import {
   invalidateSourceDocuments,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import {
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 

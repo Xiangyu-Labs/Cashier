@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseUpdateLedgerInput } from "@/modules/ledger/contract-schemas";
+import {
+  parseBatchUpdateLedgerEntriesInput,
+  parseBatchUpdateLedgerEntryDatesInput,
+  parseUpdateEntryCategoryInput,
+  parseUpdateLedgerEntryInput,
+  parseUpdateLedgerInput,
+} from "@/modules/ledger/contract-schemas";
 import { normalizeSearchTerm } from "@/lib/search";
 import { periodToDateRange } from "@/lib/period-utils";
 
@@ -21,9 +27,33 @@ describe("ledger settings, search, and time zones", () => {
       parseUpdateLedgerInput({ settings: { collapseEntriesDefault: true } }).settings
         ?.collapseEntriesDefault
     ).toBe(true);
+    expect(() => parseUpdateLedgerInput({ settings: {} })).toThrow("Validation failed");
+  });
+
+  it("normalizes currencies and rejects oversized or empty updates", () => {
     expect(
-      parseUpdateLedgerInput({ settings: {} }).settings?.collapseEntriesDefault
-    ).toBeUndefined();
+      parseUpdateLedgerInput({ settings: { mainCurrency: " usd " } }).settings?.mainCurrency
+    ).toBe("USD");
+    expect(() => parseUpdateLedgerInput({ settings: { timeZone: "A".repeat(51) } })).toThrow(
+      "Validation failed"
+    );
+    expect(() =>
+      parseUpdateLedgerInput({ settings: { aiCustomPrompt: "x".repeat(4001) } })
+    ).toThrow("Validation failed");
+    expect(() => parseUpdateLedgerInput({})).toThrow("Validation failed");
+    expect(() => parseUpdateEntryCategoryInput({})).toThrow("Validation failed");
+    expect(() => parseUpdateLedgerEntryInput({})).toThrow("Validation failed");
+    expect(() => parseBatchUpdateLedgerEntriesInput({})).toThrow("Validation failed");
+  });
+
+  it("validates batch date input", () => {
+    const entryId = "00000000-0000-4000-8000-000000000001";
+    expect(() =>
+      parseBatchUpdateLedgerEntryDatesInput({
+        entryIds: [entryId],
+        entryDate: "2026-8-1",
+      })
+    ).toThrow("Validation failed");
   });
 
   it("normalizes whitespace and caps search terms", () => {

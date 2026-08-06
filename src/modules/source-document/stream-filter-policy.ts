@@ -48,16 +48,21 @@ export function matchesStreamEntry(
   entry: NonNullable<SourceDocumentListItemDto["ledgerEntries"]>[number],
   filters: Pick<StreamFilterPolicy, "minAmount" | "maxAmount" | "search">
 ): boolean {
-  const amount = entry.convertedAmount ?? entry.amount;
-  try {
-    if (filters.minAmount != null && compare(amount, String(filters.minAmount)) < 0) {
+  if (filters.minAmount != null || filters.maxAmount != null) {
+    // The stream SQL only matches main-currency converted amounts; entries
+    // without a conversion must never be treated as 1:1 matches.
+    const amount = entry.convertedAmount;
+    if (amount == null || amount === "") return false;
+    try {
+      if (filters.minAmount != null && compare(amount, String(filters.minAmount)) < 0) {
+        return false;
+      }
+      if (filters.maxAmount != null && compare(amount, String(filters.maxAmount)) > 0) {
+        return false;
+      }
+    } catch {
       return false;
     }
-    if (filters.maxAmount != null && compare(amount, String(filters.maxAmount)) > 0) {
-      return false;
-    }
-  } catch {
-    return false;
   }
 
   const search = normalizedSearch(filters.search)?.toLocaleLowerCase();

@@ -48,6 +48,7 @@ export function StatsContentView({
   onDateDrilldown,
 }: StatsContentViewProps) {
   const t = useTranslations("StatsTab");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const currencySymbol = stats?.summary.currency ?? fallbackCurrency;
   const periodLabel = t(
@@ -75,6 +76,14 @@ export function StatsContentView({
         {...(comparison !== undefined ? { comparison } : {})}
         {...(trend !== undefined ? { trend } : {})}
       />
+      {stats?.unconvertedCount != null && stats.unconvertedCount > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {tCommon("incompleteAccountingProjection")}
+        </div>
+      ) : null}
 
       <div className="min-w-0 space-y-2 px-2">
         <div className="flex flex-wrap items-center justify-between gap-2">

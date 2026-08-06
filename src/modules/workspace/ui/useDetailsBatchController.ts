@@ -16,7 +16,7 @@ import {
   batchUpdateLedgerEntriesAction,
   batchUpdateLedgerEntryDatesAction,
   previewBatchLedgerEntryDateAction,
-} from "@/modules/ledger/actions";
+} from "@/modules/ledger/server-actions/entries";
 
 export function useDetailsBatchController(ledgerId: string, entryIds: readonly string[]) {
   const t = useTranslations("DetailsTab");

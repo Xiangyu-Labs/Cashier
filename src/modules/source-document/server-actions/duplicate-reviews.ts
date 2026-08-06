@@ -5,7 +5,6 @@ import {
   keepDuplicateDocument,
   discardDuplicateDocument,
 } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
-import { getSourceDocumentDuplicateReview } from "@/application/adapters/postgres";
 import type { SourceDocumentDuplicateReviewDetailDto } from "@/modules/source-document/contracts";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
@@ -20,7 +19,7 @@ import { ValidationError } from "@/lib/errors";
 
 export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentDuplicateReviewDetailDto> =>
-    getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId)
+    serverComposition.sourceDocumentReads.duplicateReview(ledgerId, sourceDocumentId)
 );
 
 /**

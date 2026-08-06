@@ -1,3 +1,10 @@
+import type { UserPreferences } from "../contracts";
+
+export interface UserPreferencesPort {
+  get(userId: string): Promise<UserPreferences | null>;
+  update(userId: string, preferences: UserPreferences): Promise<UserPreferences | null>;
+}
+
 export interface AccountSecurityPort {
   getPasswordHash(userId: string): Promise<string | null | undefined>;
   setInitialPassword(input: {

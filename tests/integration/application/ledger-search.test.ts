@@ -82,6 +82,7 @@ describe("ledger search", () => {
 
     await expect(getStreamTotal(ledgerId, { search: "morning" })).resolves.toEqual({
       total: "12.5",
+      unconvertedCount: 0,
     });
     const summary = await calculateLedgerStats(ledgerId, undefined, undefined, "CNY", {
       search: "morning",

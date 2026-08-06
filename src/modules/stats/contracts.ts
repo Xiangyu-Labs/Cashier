@@ -18,6 +18,7 @@ export type EnhancedCategoryStatDto = {
 export type StatsComparisonMode = "same_period" | "full_period";
 
 export interface EnhancedStatsDto {
+  unconvertedCount: number;
   summary: {
     total: string;
     currency: string;

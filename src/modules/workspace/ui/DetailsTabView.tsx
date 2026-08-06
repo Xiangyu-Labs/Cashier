@@ -4,8 +4,9 @@ import type { RefCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, CheckSquare } from "lucide-react";
 import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
-import type { EntryFilters } from "@/modules/ledger/ui";
-import { EntryFilterPanel, LedgerEntryDetailModal } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
+import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
+import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
 import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { GroupedEntry } from "@/modules/ledger/hooks/useDetailsTabGrouping";
@@ -47,7 +48,7 @@ interface DetailsTabViewProps {
   isLoading: boolean;
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
-  monthStats: { mainTotal: string; mainCurrency: string };
+  monthStats: { mainTotal: string; mainCurrency: string; unconvertedCount: number };
   sentinelRef: RefCallback<HTMLDivElement>;
   batch: BatchController;
   selectedLedgerEntry: LedgerEntry | null;
@@ -156,6 +157,14 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           />
         ) : null}
       </DetailsToolbar>
+      {monthStats.unconvertedCount > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {tCommon("incompleteAccountingProjection")}
+        </div>
+      ) : null}
       <div className="space-y-4">
         <div className="space-y-6 pt-2">
           <LedgerEntryGroupsView

@@ -1,21 +1,17 @@
 "use client";
-import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
+import type { EntryCategoryWithCount, Ledger } from "@/modules/ledger/contracts";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { CurrencySection } from "./CurrencySection";
-import { CategorySection } from "./CategorySection";
-import { ServiceCredentialSection } from "./ServiceCredentialSection";
+import { BookkeepingSettings } from "./settings/BookkeepingSettings";
+import { AiSettings } from "./settings/AiSettings";
+import { AccountSettings } from "./settings/AccountSettings";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
-import { PasswordForm } from "@/modules/auth/ui/PasswordForm";
 import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
-import {
-  useCategoryMutations,
-  useCredentialMutations,
-  useLedgerSettings,
-} from "@/modules/ledger/hooks";
-import type { Ledger } from "@/modules/ledger/contracts";
+import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
+import { useCredentialMutations } from "@/modules/ledger/hooks/useCredentialMutations";
+import { useLedgerSettings } from "@/modules/ledger/hooks/useLedgerSettings";
 import {
   Select,
   SelectContent,
@@ -25,17 +21,13 @@ import {
 } from "@/components/ui/select";
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
-import { UI_LANGUAGES, AI_LANGUAGES } from "@/config/languages";
+import { UI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
-import { EmailChangeForm } from "@/modules/auth/ui/EmailChangeForm";
 import { useEffect, useState, useTransition } from "react";
-import { updateUserPreferencesAction } from "@/modules/auth/actions";
+import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
 import { clearUserCacheData } from "@/lib/client-cache";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
 
@@ -65,7 +57,6 @@ export function SettingsTab({
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations("Settings");
-  const ta = useTranslations("Settings.Account");
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
   const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
@@ -144,6 +135,10 @@ export function SettingsTab({
 
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
+  const handleSignOut = async () => {
+    await clearUserCacheData(ledger.userId).catch(() => {});
+    await signOut({ callbackUrl: "/login" });
+  };
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
@@ -208,152 +203,42 @@ export function SettingsTab({
         </SettingsField>
       </SettingsSection>
 
-      <SettingsSection title={t("bookkeepingRules")}>
-        <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
-          <Switch
-            aria-label={t("collapseEntries")}
-            checked={settingsLedger.settings.collapseEntriesDefault ?? false}
-            onCheckedChange={(checked) => {
-              updateLedgerMutation.mutate({ collapseEntriesDefault: checked });
-            }}
-            disabled={isPending}
-          />
-        </SettingsField>
-        <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
-          <Select
-            value={settingsLedger.settings.timeZone ?? "auto"}
-            onValueChange={(value) => {
-              updateLedgerMutation.mutate({
-                timeZone: value === "auto" ? null : value,
-              });
-            }}
-            disabled={isPending}
-          >
-            <SelectTrigger aria-label={t("timeZone")} className="w-full sm:w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value="auto">
-                {deviceTimeZone == null
-                  ? t("timeZoneAuto")
-                  : t("timeZoneAutoDetected", { timeZone: deviceTimeZone })}
-              </SelectItem>
-              {[
-                "Asia/Shanghai",
-                "Asia/Tokyo",
-                "Asia/Singapore",
-                "Europe/London",
-                "Europe/Paris",
-                "America/New_York",
-                "America/Chicago",
-                "America/Denver",
-                "America/Los_Angeles",
-                "Australia/Sydney",
-                "UTC",
-              ].map((timeZone) => (
-                <SelectItem key={timeZone} value={timeZone}>
-                  {timeZone}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingsField>
-        <CurrencySection
-          settings={{
-            ...settingsLedger.settings,
-            currencies: settingsLedger.settings.currencies || [],
-          }}
-          onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
-        />
-        {categories.length > 0 && (
-          <CategorySection
-            categories={categories}
-            uncategorizedCount={uncategorizedCount}
-            onCreateCategory={(name) => createCategory.mutateAsync({ name })}
-            onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
-            onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
-            onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
-            generatingCategoryIds={generatingCategoryIds}
-            failedCategoryIds={failedCategoryIds}
-            onRetryMetadata={retryCategoryMetadata}
-            isReordering={reorderCategories.isPending}
-            isCreating={createCategory.isPending}
-          />
-        )}
-      </SettingsSection>
+      <BookkeepingSettings
+        settings={settingsLedger.settings}
+        categories={categories}
+        uncategorizedCount={uncategorizedCount}
+        deviceTimeZone={deviceTimeZone}
+        isPending={isPending}
+        onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
+        onCreateCategory={(name) => createCategory.mutateAsync({ name })}
+        onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
+        onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
+        onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
+        generatingCategoryIds={generatingCategoryIds}
+        failedCategoryIds={failedCategoryIds}
+        onRetryMetadata={retryCategoryMetadata}
+        isReordering={reorderCategories.isPending}
+        isCreating={createCategory.isPending}
+      />
 
-      <SettingsSection title={t("aiParsing")}>
-        <SettingsField title={t("aiLanguage")} description={t("aiLanguageDesc")}>
-          <Select
-            value={settingsLedger.settings.aiLanguage ?? "zh-CN"}
-            onValueChange={(value) => updateLedgerMutation.mutate({ aiLanguage: value })}
-            disabled={isPending}
-          >
-            <SelectTrigger aria-label={t("aiLanguage")} className="w-full sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              {AI_LANGUAGES.map((lang) => (
-                <SelectItem key={lang.value} value={lang.value}>
-                  {lang.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingsField>
-        <SettingsField title={t("duplicateDetection")} description={t("duplicateDetectionDesc")}>
-          <Switch
-            aria-label={t("duplicateDetection")}
-            checked={settingsLedger.settings.duplicateDetectionEnabled ?? true}
-            onCheckedChange={(checked) => {
-              updateLedgerMutation.mutate({ duplicateDetectionEnabled: checked });
-            }}
-            disabled={isPending}
-          />
-        </SettingsField>
-        <SettingsField title={t("aiPrompt")} description={t("aiPromptDesc")} stacked>
-          <Textarea
-            defaultValue={settingsLedger.settings.aiCustomPrompt ?? ""}
-            onBlur={(e) => {
-              const newValue = e.target.value;
-              const currentValue = settingsLedger.settings.aiCustomPrompt ?? "";
-              if (newValue !== currentValue) {
-                updateLedgerMutation.mutate({ aiCustomPrompt: newValue });
-              }
-            }}
-            disabled={isPending}
-            aria-label={t("aiPrompt")}
-            placeholder={t("aiPromptPlaceholder")}
-            className="min-h-[100px] w-full resize-y"
-          />
-        </SettingsField>
-      </SettingsSection>
+      <AiSettings
+        settings={settingsLedger.settings}
+        isPending={isPending}
+        onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
+      />
 
-      <SettingsSection title={t("account")}>
-        <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-          <EmailChangeForm currentEmail={displayEmail} onChanged={setDisplayEmail} />
-        </SettingsField>
-        <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
-          <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
-        </SettingsField>
-        <ServiceCredentialSection
-          credentials={credentials ?? []}
-          onCreateCredential={(name) => createCredential.mutateAsync(name)}
-          onDeleteCredential={(id) => deleteCredential.mutate(id)}
-        />
-        <SettingsField title={t("signOut")}>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await clearUserCacheData(ledger.userId).catch(() => {});
-              await signOut({ callbackUrl: "/login" });
-            }}
-            disabled={isPending}
-          >
-            {t("signOut")}
-          </Button>
-        </SettingsField>
-      </SettingsSection>
+      <AccountSettings
+        displayEmail={displayEmail}
+        hasPassword={hasPassword}
+        passwordUpdatedAt={passwordUpdatedAt}
+        credentials={credentials ?? []}
+        isPending={isPending}
+        onEmailChanged={setDisplayEmail}
+        onCreateCredential={(name) => createCredential.mutateAsync(name)}
+        onDeleteCredential={(id) => deleteCredential.mutate(id)}
+        onCredentialDialogClose={createCredential.reset}
+        onSignOut={handleSignOut}
+      />
     </div>
   );
 }

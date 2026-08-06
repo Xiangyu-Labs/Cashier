@@ -1,7 +1,7 @@
 import { HydrationBoundary } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
-import { SettingsPageClient } from "@/modules/ledger/ui";
+import { SettingsPageClient } from "@/modules/ledger/ui/SettingsPageClient";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { auth } from "@/auth";
 import { getLedgerPageBootstrap } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";

@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type {
   SourceDocumentLedgerEntryDto,
   SourceDocumentListItemDto,
@@ -16,6 +16,7 @@ export interface CachedDocumentMatch {
   matchedEntries: SourceDocumentLedgerEntryDto[];
   displayEntries: SourceDocumentLedgerEntryDto[];
   subtotal: string;
+  unconvertedCount: number;
   filteredSubtotal: boolean;
 }
 
@@ -30,8 +31,9 @@ export function hasEntryFilters(filters: EntryFilters): boolean {
 }
 
 function entryAmount(entry: SourceDocumentLedgerEntryDto): Decimal | null {
+  if (entry.convertedAmount == null) return null;
   try {
-    return new Decimal(entry.convertedAmount ?? entry.amount);
+    return new Decimal(entry.convertedAmount);
   } catch {
     return null;
   }
@@ -42,9 +44,12 @@ export function matchesCachedEntry(
   filters: EntryFilters
 ): boolean {
   const amount = entryAmount(entry);
-  if (amount == null) return false;
-  if (filters.minAmount != null && amount.lessThan(filters.minAmount)) return false;
-  if (filters.maxAmount != null && amount.greaterThan(filters.maxAmount)) return false;
+  if (filters.minAmount != null && (amount == null || amount.lessThan(filters.minAmount))) {
+    return false;
+  }
+  if (filters.maxAmount != null && (amount == null || amount.greaterThan(filters.maxAmount))) {
+    return false;
+  }
   if (filters.categoryId && entry.categoryId !== filters.categoryId) return false;
   if (filters.currency && entry.currency !== filters.currency) return false;
   if (!matchesLiteralEntrySearch(entry, filters.search)) return false;
@@ -76,11 +81,13 @@ export function selectCachedDocuments(
     const subtotal = matchedEntries
       .reduce((total, entry) => total.plus(entryAmount(entry) ?? 0), new Decimal(0))
       .toFixed();
+    const unconvertedCount = matchedEntries.filter((entry) => entry.convertedAmount == null).length;
     result.push({
       document,
       matchedEntries,
       displayEntries: entryFiltered ? matchedEntries : entries,
       subtotal,
+      unconvertedCount,
       filteredSubtotal: entryFiltered,
     });
   }
@@ -96,6 +103,14 @@ export function totalCachedMatches(matches: CachedDocumentMatch[]): number {
     .toNumber();
 }
 
+export function totalCachedUnconvertedMatches(matches: CachedDocumentMatch[]): number {
+  return matches
+    .filter(
+      ({ document }) => document.status === "completed" || document.status === "duplicate_pending"
+    )
+    .reduce((total, match) => total + match.unconvertedCount, 0);
+}
+
 interface CachedStatsRange {
   from: string;
   to: string;
@@ -103,6 +118,7 @@ interface CachedStatsRange {
 
 interface CachedStatsBucket {
   total: Decimal;
+  unconvertedCount: number;
   categories: Map<
     string,
     {
@@ -124,6 +140,7 @@ function buildCachedStatsBucket(
 ): CachedStatsBucket {
   const bucket: CachedStatsBucket = {
     total: new Decimal(0),
+    unconvertedCount: 0,
     categories: new Map(),
     days: new Map(),
   };
@@ -135,7 +152,10 @@ function buildCachedStatsBucket(
 
     for (const entry of document.ledgerEntries ?? []) {
       const amount = entryAmount(entry);
-      if (amount == null) continue;
+      if (amount == null) {
+        bucket.unconvertedCount += 1;
+        continue;
+      }
       bucket.total = bucket.total.plus(amount);
 
       const categoryKey = entry.categoryId ?? "uncategorized";
@@ -232,6 +252,7 @@ export function buildCachedEnhancedStats({
   const days = endTime >= startTime ? Math.round((endTime - startTime) / 86_400_000) + 1 : 0;
 
   return {
+    unconvertedCount: current.unconvertedCount,
     summary: {
       total: current.total.toFixed(),
       currency: mainCurrency,

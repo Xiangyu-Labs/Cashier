@@ -5,7 +5,7 @@ import {
   periodToDateRange,
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import {
   getScopedLedgerSearchParams,

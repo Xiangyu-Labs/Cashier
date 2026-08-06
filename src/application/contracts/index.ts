@@ -425,6 +425,11 @@ export interface CategoryPort {
     categoryId: string,
     input: Partial<CategoryMutationContract>
   ): Promise<CategoryContract | null>;
+  updateMissingMetadata(
+    ledgerId: LedgerId,
+    categoryId: string,
+    input: { icon: string; description: string }
+  ): Promise<{ wroteIcon: boolean; wroteDescription: boolean }>;
   delete(ledgerId: LedgerId, categoryId: string): Promise<boolean>;
   reorder(ledgerId: LedgerId, categoryIds: readonly string[]): Promise<number>;
   countUncategorized(ledgerId: LedgerId): Promise<number>;

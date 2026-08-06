@@ -3,15 +3,13 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { EntryCategory, Ledger } from "@/modules/ledger/contracts";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams } from "@/lib/period-utils";
 import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import {
-  useDetailsTabData,
-  useDetailsTabGrouping,
-  useEntryMutations,
-} from "@/modules/ledger/hooks";
+import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
+import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
+import { useEntryMutations } from "@/modules/ledger/hooks/useEntryMutations";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";

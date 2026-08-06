@@ -9,13 +9,17 @@ import {
   postgresSourceDocumentSubmissionAdapter,
   postgresSettingsAdapter,
   postgresUserAccountAdapter,
+  postgresUserPreferencesAdapter,
   postgresRevisionAdapter,
   collectTargetSourceDocuments,
   calculateCompletedSourceDocumentTotal,
   countSourceDocumentsByStatus,
   getTargetSourceDocument,
   getTargetSourceDocumentAccessContext,
+  getSourceDocumentCandidateReview,
+  getSourceDocumentDuplicateReview,
   listPendingDuplicateReviews,
+  PostgresProcessingIntentAdapter,
   listTargetSourceDocuments,
   updateSourceDocument,
   batchUpdateSourceDocuments,
@@ -27,6 +31,7 @@ import {
 } from "@/application/adapters/postgres";
 import {
   batchUpdateLedgerEntries,
+  batchDeleteLedgerEntries,
   createLedgerEntryWithConversion,
   updateLedgerEntryWithConversion,
 } from "@/application/adapters/postgres/mutate-ledger-entries";
@@ -39,6 +44,7 @@ import { resendEmailAdapter } from "@/application/adapters/email/resend";
 import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
 import { storedFileAdapter } from "@/application/adapters/storage";
 import { listLedgerEntryPage } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-page";
+import { getBatchEntryDateImpact } from "@/application/adapters/postgres/ledger-reads/get-batch-entry-date-impact";
 import { getLedgerEntryDetail } from "@/application/adapters/postgres/ledger-reads/get-ledger-entry-detail";
 import { calculateLedgerEntryStats } from "@/application/adapters/postgres/ledger-reads/calculate-ledger-entry-stats";
 import { listLedgerEntryViewsBySourceDocumentIds } from "@/application/adapters/postgres/ledger-reads/list-ledger-entry-views-by-source-document-ids";
@@ -51,6 +57,7 @@ import {
   postgresFxRateBook,
   fetchWithRetry as fetchExchangeRatesWithRetry,
 } from "@/application/adapters/postgres/exchange-rate";
+import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
 export const serverComposition = {
@@ -66,6 +73,7 @@ export const serverComposition = {
   ledgerProjections: postgresLedgerProjectionAdapter,
   ledgerMutations: {
     batchUpdateEntries: batchUpdateLedgerEntries,
+    batchDeleteEntries: batchDeleteLedgerEntries,
     createEntry: createLedgerEntryWithConversion,
     deleteEntry: deleteLedgerEntry,
     updateEntry: updateLedgerEntryWithConversion,
@@ -73,10 +81,12 @@ export const serverComposition = {
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,
     calculateStats: calculateLedgerEntryStats,
+    getBatchEntryDateImpact,
     getEntry: getLedgerEntryDetail,
     listEntries: listLedgerEntryPage,
     listEntriesBySourceDocumentIds: listLedgerEntryViewsBySourceDocumentIds,
   },
+  categoryMetadataGenerator: categoryMetadataGeneratorAdapter,
   stats: {
     getEnhanced: getEnhancedStats,
     queryEnhanced: getEnhancedStatsQuery,
@@ -99,9 +109,11 @@ export const serverComposition = {
   },
   sourceDocumentRevisions: postgresRevisionAdapter,
   sourceDocumentReads: {
+    candidateReview: getSourceDocumentCandidateReview,
     calculateCompletedTotal: calculateCompletedSourceDocumentTotal,
     collect: collectTargetSourceDocuments,
     counts: countSourceDocumentsByStatus,
+    duplicateReview: getSourceDocumentDuplicateReview,
     get: getTargetSourceDocument,
     getAccessContext: getTargetSourceDocumentAccessContext,
     listPendingDuplicateReviews,
@@ -109,6 +121,8 @@ export const serverComposition = {
   },
   credentialSourceDocuments: postgresCredentialSourceDocumentReadAdapter,
   ledgerChanges: postgresLedgerChangeReadAdapter,
+  processingRecovery: new PostgresProcessingIntentAdapter(),
   executeSingleProcessingIntent,
   userAccounts: postgresUserAccountAdapter,
+  userPreferences: postgresUserPreferencesAdapter,
 } as const;

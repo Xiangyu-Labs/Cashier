@@ -454,6 +454,7 @@ describe("source-document-queries", () => {
         ledgerId,
         sourceDocumentId: completedInRange.id,
         amount: "50.00",
+        convertedAmount: "50.00",
         currency: "CNY",
         itemName: "in-range item",
         categoryId,
@@ -462,6 +463,7 @@ describe("source-document-queries", () => {
         ledgerId,
         sourceDocumentId: completedOutOfRange.id,
         amount: "200.00",
+        convertedAmount: "200.00",
         currency: "CNY",
         itemName: "out-of-range item",
         categoryId,
@@ -487,7 +489,7 @@ describe("source-document-queries", () => {
     expect(page.items[0]?.id).toBe(completedInRange.id);
   });
 
-  it("uses matching-entry subtotals in Stream while preserving complete document details", async () => {
+  it("excludes unconverted entries from amount filters while preserving details", async () => {
     const db = getTestDb();
     const [document] = await db
       .insert(sourceDocuments)
@@ -522,9 +524,11 @@ describe("source-document-queries", () => {
     await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
     const stream = await listStreamPage(ledgerId, { maxAmount: 30, limit: 10 });
-    expect(stream.items).toHaveLength(1);
-    expect(stream.items[0]?.ledgerEntries?.map((entry) => entry.itemName)).toEqual(["Coffee"]);
-    await expect(getStreamTotal(ledgerId, { maxAmount: 30 })).resolves.toEqual({ total: "20" });
+    expect(stream.items).toHaveLength(0);
+    await expect(getStreamTotal(ledgerId, { maxAmount: 30 })).resolves.toEqual({
+      total: "0",
+      unconvertedCount: 0,
+    });
 
     const detail = await listSourceDocuments(ledgerId, {
       limit: 10,
@@ -624,15 +628,18 @@ describe("source-document-queries", () => {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
       })
-    ).resolves.toEqual({ total: "125.25" });
+    ).resolves.toEqual({ total: "125.25", unconvertedCount: 0 });
     await expect(getStreamTotal(ledgerId, { statuses: ["processing"] })).resolves.toEqual({
       total: "0",
+      unconvertedCount: 0,
     });
     await expect(getStreamTotal(ledgerId, { statuses: ["completed", "failed"] })).resolves.toEqual({
       total: "325.25",
+      unconvertedCount: 0,
     });
     await expect(getStreamTotal(ledgerId, { minAmount: 100, maxAmount: 150 })).resolves.toEqual({
       total: "125.25",
+      unconvertedCount: 0,
     });
   });
 

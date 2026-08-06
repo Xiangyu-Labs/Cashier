@@ -32,22 +32,30 @@ vi.mock("@/components/ui/pull-to-refresh", () => ({
   PullToRefresh: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/modules/ledger/hooks", () => ({
+vi.mock("@/modules/ledger/hooks/useLedgerSettings", () => ({
   useLedgerSettings: () => ({
     ledger: null,
     categories: [],
     uncategorizedCount: 0,
     credentials: [],
-    updateLedgerMutation: { mutate: vi.fn() },
+    updateLedgerMutation: { mutate: vi.fn(), mutateAsync: vi.fn() },
     isPending: false,
   }),
+}));
+
+vi.mock("@/modules/ledger/hooks/useCategoryMutations", () => ({
   useCategoryMutations: () => ({
-    createCategory: { mutate: vi.fn() },
-    updateCategory: { mutate: vi.fn() },
-    deleteCategory: { mutate: vi.fn() },
-    reorderCategories: { mutate: vi.fn() },
-    categoryCreatedTrigger: 0,
+    createCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
+    updateCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
+    deleteCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
+    reorderCategories: { mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false },
+    generatingCategoryIds: new Set<string>(),
+    failedCategoryIds: new Set<string>(),
+    retryCategoryMetadata: vi.fn(),
   }),
+}));
+
+vi.mock("@/modules/ledger/hooks/useCredentialMutations", () => ({
   useCredentialMutations: () => ({
     createCredential: { mutateAsync: vi.fn() },
     deleteCredential: { mutate: vi.fn() },

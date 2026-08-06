@@ -13,6 +13,7 @@ import { lockLedgerForUpdate } from "./transaction-locks";
 import { postgresFxRateBook } from "./exchange-rate";
 import { ConflictError } from "@/lib/errors";
 import { postgresSettingsAdapter } from "./business-ports";
+import type { BatchActionResult } from "@/lib/batch-ids";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
@@ -444,6 +445,146 @@ export async function batchUpdateLedgerEntries(input: {
     }
     return rows.length;
   });
+}
+
+export async function batchDeleteLedgerEntries(
+  ledgerId: string,
+  ledgerEntryIds: string[]
+): Promise<BatchActionResult> {
+  const requestedIds = [...new Set(ledgerEntryIds)];
+  const result: BatchActionResult = {
+    requestedCount: requestedIds.length,
+    succeededIds: [],
+    skipped: [],
+    failed: [],
+  };
+  if (requestedIds.length === 0) return result;
+
+  // Legacy source documents may not have a canonical active projection yet.
+  // Resolve those projections before the active-revision join below, otherwise
+  // their entries are silently excluded and reported as unavailable. The
+  // per-entry delete path resolves the same projections before deleting.
+  const linkedRows = await db
+    .select({
+      entryId: ledgerEntries.id,
+      sourceDocumentId: ledgerEntries.sourceDocumentId,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        inArray(ledgerEntries.id, requestedIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+
+  const entryIdsByDocument = new Map<string, string[]>();
+  for (const row of linkedRows) {
+    if (row.sourceDocumentId == null) continue;
+    const entryIds = entryIdsByDocument.get(row.sourceDocumentId) ?? [];
+    entryIds.push(row.entryId);
+    entryIdsByDocument.set(row.sourceDocumentId, entryIds);
+  }
+
+  const failedIds = new Set<string>();
+  for (const sourceDocumentId of [
+    ...new Set(
+      linkedRows
+        .filter((row) => row.activeRevisionId == null)
+        .flatMap((row) => (row.sourceDocumentId == null ? [] : [row.sourceDocumentId]))
+    ),
+  ].sort()) {
+    try {
+      await ensureTargetLedgerProjection(ledgerId, sourceDocumentId);
+    } catch (error) {
+      for (const id of entryIdsByDocument.get(sourceDocumentId) ?? []) {
+        failedIds.add(id);
+        result.failed.push({
+          id,
+          reason: error instanceof Error ? error.message : "unknown_error",
+        });
+      }
+    }
+  }
+
+  const selectedRows = await db
+    .select({
+      id: ledgerEntries.id,
+      sourceDocumentId: ledgerEntries.sourceDocumentId,
+      activeRevisionId: sourceDocuments.activeRevisionId,
+    })
+    .from(ledgerEntries)
+    .innerJoin(
+      sourceDocuments,
+      and(
+        eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+        eq(sourceDocuments.ledgerId, ledgerId),
+        eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+        isNull(sourceDocuments.deletedAt)
+      )
+    )
+    .where(
+      and(
+        eq(ledgerEntries.ledgerId, ledgerId),
+        inArray(ledgerEntries.id, requestedIds),
+        isNull(ledgerEntries.deletedAt)
+      )
+    );
+  const selectedById = new Map(selectedRows.map((row) => [row.id, row] as const));
+  const groups = new Map<string, { entryIds: string[]; expectedActiveRevisionId: string }>();
+
+  for (const id of requestedIds) {
+    if (failedIds.has(id)) continue;
+    const row = selectedById.get(id);
+    if (row == null || row.sourceDocumentId == null || row.activeRevisionId == null) {
+      result.skipped.push({ id, reason: "not_available" });
+      continue;
+    }
+    const group = groups.get(row.sourceDocumentId) ?? {
+      entryIds: [],
+      expectedActiveRevisionId: row.activeRevisionId,
+    };
+    group.entryIds.push(id);
+    groups.set(row.sourceDocumentId, group);
+  }
+
+  for (const [sourceDocumentId, group] of [...groups.entries()].sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    try {
+      const entries = await listActiveProjectionEntries(
+        ledgerId,
+        sourceDocumentId,
+        group.expectedActiveRevisionId
+      );
+      const selected = new Set(group.entryIds);
+      await postgresLedgerProjectionAdapter.replaceActive({
+        ledgerId,
+        sourceDocumentId,
+        expectedActiveRevisionId: group.expectedActiveRevisionId,
+        entries: entries.filter((entry) => !selected.has(entry.id)).map(toProjectionEntry),
+      });
+      result.succeededIds.push(...group.entryIds);
+    } catch (error) {
+      for (const id of group.entryIds) {
+        result.failed.push({
+          id,
+          reason: error instanceof Error ? error.message : "unknown_error",
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 function assertBatchRowsAreCurrent(

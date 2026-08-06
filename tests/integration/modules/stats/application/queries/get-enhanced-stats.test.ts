@@ -181,6 +181,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: activeDoc.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "active item",
         categoryId,
@@ -189,6 +190,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: deletedDoc.id,
         amount: "999",
+        convertedAmount: "999",
         currency: "CNY",
         itemName: "deleted item",
         categoryId,
@@ -206,7 +208,7 @@ describe("getEnhancedStatsQuery", () => {
     expect(result.heatmap.days[0]?.totalAmount).toBe(100);
   });
 
-  it("falls back to original amount when rates are missing and handles null currency", async () => {
+  it("excludes entries when rates are missing and handles null currency", async () => {
     const db = getTestDb();
     await db.update(ledgers).set({ mainCurrency: "USD" }).where(eq(ledgers.id, ledgerId));
 
@@ -252,7 +254,8 @@ describe("getEnhancedStatsQuery", () => {
     });
 
     expect(result.summary.currency).toBe("USD");
-    expect(result.summary.total).toBe("75");
+    expect(result.summary.total).toBe("0");
+    expect(result.unconvertedCount).toBe(2);
   });
 
   it("defaults summary currency to CNY when ledger main currency is absent", async () => {
@@ -272,6 +275,7 @@ describe("getEnhancedStatsQuery", () => {
       ledgerId,
       sourceDocumentId: doc.id,
       amount: "10",
+      convertedAmount: "10",
       currency: null,
       itemName: "default currency item",
       categoryId,
@@ -306,6 +310,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: String(amount),
+        convertedAmount: String(amount),
         currency: "CNY",
         itemName: `item-${day}`,
         categoryId,
@@ -350,6 +355,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: "100",
+        convertedAmount: "100",
         currency: "CNY",
         itemName: "item 1",
         categoryId,
@@ -358,6 +364,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: "200",
+        convertedAmount: "200",
         currency: "CNY",
         itemName: "item 2",
         categoryId,
@@ -366,6 +373,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: "300",
+        convertedAmount: "300",
         currency: "CNY",
         itemName: "item 3",
         categoryId,
@@ -375,6 +383,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: "50",
+        convertedAmount: "50",
         currency: "CNY",
         itemName: "item 4",
         categoryId: secondCategoryId,
@@ -383,6 +392,7 @@ describe("getEnhancedStatsQuery", () => {
         ledgerId,
         sourceDocumentId: doc!.id,
         amount: "150",
+        convertedAmount: "150",
         currency: "CNY",
         itemName: "item 5",
         categoryId: secondCategoryId,

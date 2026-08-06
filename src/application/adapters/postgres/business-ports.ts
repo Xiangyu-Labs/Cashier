@@ -10,6 +10,7 @@ import type {
   OtpTokenPort,
   UserAccountPort,
 } from "@/application/contracts";
+import type { UserPreferencesPort } from "@/modules/auth/application/ports";
 import { db } from "@/lib/db";
 import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
@@ -390,6 +391,42 @@ export const postgresCategoryAdapter: CategoryPort = {
       .returning()
       .then((rows) => rows[0]);
     return updated == null ? null : mapCategory(updated);
+  },
+
+  async updateMissingMetadata(ledgerId, categoryId, input) {
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [iconRows, descriptionRows] = await Promise.all([
+        tx
+          .update(entryCategories)
+          .set({ icon: input.icon, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.id, categoryId),
+              eq(entryCategories.ledgerId, ledgerId),
+              isNull(entryCategories.deletedAt),
+              or(isNull(entryCategories.icon), eq(entryCategories.icon, ""))
+            )
+          )
+          .returning({ id: entryCategories.id }),
+        tx
+          .update(entryCategories)
+          .set({ description: input.description, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.id, categoryId),
+              eq(entryCategories.ledgerId, ledgerId),
+              isNull(entryCategories.deletedAt),
+              or(isNull(entryCategories.description), eq(entryCategories.description, ""))
+            )
+          )
+          .returning({ id: entryCategories.id }),
+      ]);
+      return {
+        wroteIcon: iconRows.length > 0,
+        wroteDescription: descriptionRows.length > 0,
+      };
+    });
   },
 
   async delete(ledgerId, categoryId) {
@@ -977,5 +1014,24 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           passwordUpdatedAt: row.passwordUpdatedAt,
           interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
         };
+  },
+};
+
+export const postgresUserPreferencesAdapter: UserPreferencesPort = {
+  async get(userId) {
+    const row = await db.query.users.findFirst({
+      where: and(eq(users.id, userId), isNull(users.deletedAt)),
+      columns: { preferences: true },
+    });
+    return row?.preferences ?? null;
+  },
+  async update(userId, preferences) {
+    const row = await db
+      .update(users)
+      .set({ preferences, updatedAt: new Date() })
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .returning({ preferences: users.preferences })
+      .then((rows) => rows[0]);
+    return row?.preferences ?? null;
   },
 };

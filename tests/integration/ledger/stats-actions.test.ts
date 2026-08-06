@@ -15,7 +15,7 @@ async function seedEntry(
   opts: {
     amount: string;
     currency?: string;
-    convertedAmount?: string;
+    convertedAmount?: string | null;
     categoryId?: string;
     entryDate?: string;
   }
@@ -42,7 +42,7 @@ async function seedEntry(
     itemName: "Test Item",
     amount: opts.amount,
     currency: opts.currency ?? "CNY",
-    convertedAmount: opts.convertedAmount ?? opts.amount,
+    convertedAmount: opts.convertedAmount === undefined ? opts.amount : opts.convertedAmount,
     categoryId: opts.categoryId ?? null,
   });
   await activateTestSourceDocumentProjection(db, doc.id);
@@ -210,6 +210,33 @@ describe("getLedgerStatsAction", () => {
     expect(result.convertedTotal).not.toBeNull();
     expect(result.convertedTotal?.currency).toBe("CNY");
     expect(result.convertedTotal?.total).toBe("720");
+  });
+
+  it("excludes unconverted entries from the main total but keeps original currency totals", async () => {
+    const db = getTestDb();
+    await seedEntry(db, ledgerId, {
+      amount: "100.00",
+      currency: "USD",
+      convertedAmount: null,
+      entryDate: "2024-01-15",
+    });
+    await seedEntry(db, ledgerId, {
+      amount: "50.00",
+      currency: "CNY",
+      convertedAmount: "50.00",
+      entryDate: "2024-01-15",
+    });
+
+    const result = await getLedgerStatsAction(ledgerId, undefined, undefined, "CNY");
+
+    expect(result.convertedTotal?.total).toBe("50");
+    expect(result.unconvertedCount).toBe(1);
+    expect(result.totals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ currency: "USD", total: "100", count: 1 }),
+        expect.objectContaining({ currency: "CNY", total: "50", count: 1 }),
+      ])
+    );
   });
 
   it("single currency ledger: convertedTotal equals sum of amounts", async () => {
