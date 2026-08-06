@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConflictError } from "@/lib/errors";
 
 const db = vi.hoisted(() => ({
@@ -13,6 +13,9 @@ const listDocuments = vi.hoisted(() => vi.fn());
 const serverComposition = vi.hoisted(() => ({
   sourceDocumentReads: {},
   ledgerReads: {},
+  ledgerChanges: {
+    getSnapshotMetadata: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({ db }));
@@ -34,20 +37,17 @@ import {
 } from "@/modules/workspace/server-actions/ledger-startup-cache";
 
 function mockVersionQuery(version: bigint, count = "0") {
-  db.select.mockReturnValue({
-    from: vi.fn(() => ({
-      where: vi.fn(() => ({
-        then: vi.fn(
-          async (callback: (rows: Array<{ count: string; updatedAt: string }>) => unknown) =>
-            callback([{ count, updatedAt: "epoch" }])
-        ),
-      })),
-    })),
+  serverComposition.ledgerChanges.getSnapshotMetadata.mockResolvedValue({
+    version,
+    recordCount: Number(count),
   });
-  db.query.ledgerSyncState.findFirst.mockResolvedValue({ version });
 }
 
 describe("ledger startup cache server actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("returns the snapshot version from sync state and document count", async () => {
     mockVersionQuery(BigInt(7), "12");
     await expect(getLedgerStartupCacheVersion("ledger")).resolves.toEqual({

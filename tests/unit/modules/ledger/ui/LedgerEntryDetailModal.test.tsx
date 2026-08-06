@@ -154,4 +154,44 @@ describe("LedgerEntryDetailModal feedback", () => {
     expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
+
+  it("clears pending changes when the entry key changes or the modal reopens", () => {
+    const onUpdate = vi.fn(async () => undefined);
+    const { rerender } = render(
+      <LedgerEntryDetailModal
+        ledgerEntry={ledgerEntry}
+        categories={[]}
+        open
+        onClose={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn(async () => undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByText("change-name"));
+    rerender(
+      <LedgerEntryDetailModal
+        ledgerEntry={ledgerEntry}
+        categories={[]}
+        open={false}
+        onClose={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn(async () => undefined)}
+      />
+    );
+    rerender(
+      <LedgerEntryDetailModal
+        ledgerEntry={ledgerEntry}
+        categories={[]}
+        open
+        onClose={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn(async () => undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByText("save-entry"));
+
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
 });

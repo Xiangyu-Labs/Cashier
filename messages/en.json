@@ -313,6 +313,7 @@
     "sending_status": "Sending…",
     "unclassified": "Unclassified",
     "needsCurrency": "Needs Currency",
+    "incompleteAccountingProjection": "Some entries are missing exchange rates and are excluded from the main-currency total.",
     "noRecords": "No records",
     "noMore": "No more items",
     "loadMore": "Load More",

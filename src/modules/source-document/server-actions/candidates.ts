@@ -13,7 +13,6 @@ import type {
   SourceDocumentListItemDto,
   SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
-import { getSourceDocumentCandidateReview } from "@/application/adapters/postgres";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildEntityReconciliation, readSourceDocumentUpdatedAt } from "./reconciliation";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
@@ -21,7 +20,7 @@ import { serverComposition } from "@/application/server-composition-root";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
-    getSourceDocumentCandidateReview(ledgerId, sourceDocumentId)
+    serverComposition.sourceDocumentReads.candidateReview(ledgerId, sourceDocumentId)
 );
 
 /**

@@ -3,7 +3,7 @@
 import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { useTranslations } from "next-intl";
 
 interface ActiveFilterChipsProps {

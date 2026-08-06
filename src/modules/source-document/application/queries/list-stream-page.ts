@@ -16,7 +16,8 @@ function filterCardEntries(
   const query = input.search?.toLocaleLowerCase();
   if (input.minAmount == null && input.maxAmount == null && !query) return entries;
   return entries.filter((entry) => {
-    const amount = entry.convertedAmount ?? entry.amount;
+    const amount = entry.convertedAmount;
+    if (amount == null) return false;
     if (input.minAmount != null && compare(amount, String(input.minAmount)) < 0) return false;
     if (input.maxAmount != null && compare(amount, String(input.maxAmount)) > 0) return false;
     if (query) {

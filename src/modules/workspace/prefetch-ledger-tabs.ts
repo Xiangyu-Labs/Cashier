@@ -10,7 +10,7 @@ import { getDetailsInitialQueryState, getStatsInitialQueryState } from "./initia
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 
 type LedgerEntriesPage = Awaited<
-  ReturnType<(typeof import("@/modules/ledger/actions"))["getLedgerEntriesAction"]>
+  ReturnType<(typeof import("@/modules/ledger/server-actions/entries"))["getLedgerEntriesAction"]>
 >;
 
 export async function prefetchDetailsTabQuery(
@@ -19,7 +19,8 @@ export async function prefetchDetailsTabQuery(
   periodParams: PeriodParams,
   advancedFilters: LedgerAdvancedFilters
 ) {
-  const { getLedgerEntriesAction, getLedgerStatsAction } = await import("@/modules/ledger/actions");
+  const { getLedgerEntriesAction } = await import("@/modules/ledger/server-actions/entries");
+  const { getLedgerStatsAction } = await import("@/modules/ledger/server-actions/stats");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const { startDateStr, endDateStr, filterKey } = getDetailsInitialQueryState(

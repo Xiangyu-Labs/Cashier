@@ -1,6 +1,6 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { useState, useCallback, memo, useMemo, type ReactNode } from "react";
+import { useState, useCallback, memo, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -32,7 +32,7 @@ interface LedgerEntryDetailModalProps {
   onViewSourceDocument?: () => void;
 }
 
-export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
+function LedgerEntryDetailEditor({
   ledgerEntry,
   isLoading = false,
   categories,
@@ -50,22 +50,11 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
   const tCommon = useTranslations("Common");
   const t = useTranslations("LedgerEntryDetail");
 
-  const resetKey = `${open}-${ledgerEntry?.id}`;
-  const [internalResetKey, setInternalResetKey] = useState(resetKey);
   const [pendingChanges, setPendingChanges] = useState<EntryPendingChanges>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
-  if (resetKey !== internalResetKey) {
-    setInternalResetKey(resetKey);
-    if (Object.keys(pendingChanges).length > 0) {
-      setTimeout(() => setPendingChanges({}), 0);
-    }
-  }
-
-  const hasPendingChanges = useMemo(() => {
-    return Object.keys(pendingChanges).length > 0;
-  }, [pendingChanges]);
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   const getOriginalValue = useCallback(
     (field: keyof EntryPendingChanges) => {
@@ -116,6 +105,7 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
 
   const handleSave = useCallback(async (): Promise<boolean> => {
     if (!ledgerEntry) return false;
+    if (Object.keys(pendingChanges).length === 0) return true;
 
     const updateData: Parameters<typeof onUpdate>[0] = {};
 
@@ -278,4 +268,11 @@ export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal({
       </Dialog>
     </>
   );
+}
+
+export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal(
+  props: LedgerEntryDetailModalProps
+) {
+  const editorKey = `${props.open}:${props.ledgerEntry?.id ?? "empty"}`;
+  return <LedgerEntryDetailEditor key={editorKey} {...props} />;
 });

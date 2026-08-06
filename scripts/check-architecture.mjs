@@ -78,6 +78,7 @@ for (const file of files) {
   const source = readFileSync(file, "utf8");
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
+  const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relative);
   if (
     (isModuleApplication || isAuthInternal) &&
     source.includes("@/application/server-composition-root")
@@ -89,6 +90,17 @@ for (const file of files) {
     /["']@\/(?:application\/adapters|persistence|lib\/db)(?:\/|["'])/.test(source)
   ) {
     violations.push(`${relative}: application code must not import infrastructure adapters`);
+  }
+  if (
+    isServerAction &&
+    [
+      /from\s+["'](?:drizzle-orm|@\/lib\/db|@\/persistence)["']/,
+      /from\s+["']@\/application\/adapters(?:\/|["'])/,
+      /from\s+["'](?:ai|openai|resend)["']/,
+      /from\s+["']@(?:ai-sdk|aws-sdk|google|anthropic-ai)\/[^"']+["']/,
+    ].some((pattern) => pattern.test(source))
+  ) {
+    violations.push(`${relative}: server actions must call application ports/use cases`);
   }
 }
 

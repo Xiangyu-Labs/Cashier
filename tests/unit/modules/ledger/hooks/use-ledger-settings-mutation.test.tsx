@@ -10,7 +10,7 @@ const { updateLedgerAction, toastError } = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/actions", () => ({ updateLedgerAction }));
+vi.mock("@/modules/ledger/server-actions/update", () => ({ updateLedgerAction }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn() } }));
 
 const ledger: Ledger = {

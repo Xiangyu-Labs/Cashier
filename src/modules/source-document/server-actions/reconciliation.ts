@@ -1,6 +1,3 @@
-import { db } from "@/lib/db";
-import { sourceDocuments } from "@/persistence";
-import { eq, and, isNull } from "drizzle-orm";
 import type { SourceDocumentListItemDto } from "@/modules/source-document/contracts";
 import type { MutationReconciliation } from "@/modules/source-document/contracts";
 import { serverComposition } from "@/application/server-composition-root";
@@ -93,18 +90,9 @@ export async function readSourceDocumentUpdatedAt(
   ledgerId: string,
   sourceDocumentId: string
 ): Promise<string | null> {
-  const row = await db
-    .select({ updatedAt: sourceDocuments.updatedAt })
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.ledgerId, ledgerId),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .then((rows) => rows[0] ?? null);
-  return row != null ? row.updatedAt.toISOString() : null;
+  return (
+    (await serverComposition.sourceDocumentReads.get(ledgerId, sourceDocumentId))?.updatedAt ?? null
+  );
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui";
+import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 

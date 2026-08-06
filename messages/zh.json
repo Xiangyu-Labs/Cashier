@@ -311,6 +311,7 @@
     "sending_status": "发送中…",
     "unclassified": "未分类",
     "needsCurrency": "需要货币",
+    "incompleteAccountingProjection": "部分记录缺少汇率，主币种汇总未包含这些记录。",
     "noRecords": "暂无记录",
     "noMore": "没有更多了",
     "edit": "编辑",

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { buildUnifiedStreamGroups } from "@/modules/source-document/stream-grouping";
@@ -15,6 +15,7 @@ import {
 import {
   selectCachedDocuments,
   totalCachedMatches,
+  totalCachedUnconvertedMatches,
 } from "@/modules/workspace/ledger-startup-cache-selectors";
 import { LedgerEntriesToolbar } from "./LedgerEntriesToolbar";
 import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
@@ -30,6 +31,7 @@ export function LedgerStartupStreamPreview({
   initialFilters,
 }: LedgerStartupStreamPreviewProps) {
   const t = useTranslations("LedgerPage");
+  const tCommon = useTranslations("Common");
   const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
 
@@ -88,6 +90,14 @@ export function LedgerStartupStreamPreview({
         onResetFilters={() => setFilters({})}
         readOnly
       />
+      {totalCachedUnconvertedMatches(matches) > 0 ? (
+        <div
+          role="status"
+          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+        >
+          {tCommon("incompleteAccountingProjection")}
+        </div>
+      ) : null}
       <LedgerEntriesUnifiedGroups
         streamGroups={streamGroups}
         mainCurrency={mainCurrency}

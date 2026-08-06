@@ -29,7 +29,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0020_duplicate_detection_enabled");
+    expect(journal.entries.at(-1)?.tag).toBe("0021_converted_amount_index");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

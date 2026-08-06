@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import type { ProcessingIntentContract } from "@/application/contracts";
-import { executeSingleProcessingIntent } from "@/application/adapters/in-process";
+import { serverComposition } from "@/application/server-composition-root";
 import { logger } from "@/lib/logger";
 
 /**
@@ -19,7 +19,7 @@ export function scheduleProcessingAfter(
   requestId?: string
 ): void {
   after(() =>
-    executeSingleProcessingIntent(intent).catch((error: unknown) => {
+    serverComposition.executeSingleProcessingIntent(intent).catch((error: unknown) => {
       logger.error(
         {
           error,

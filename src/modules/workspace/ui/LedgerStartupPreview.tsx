@@ -10,7 +10,7 @@ import {
   SettingsTabSkeleton,
   StatsTabSkeleton,
 } from "@/components/skeletons/TabSkeletons";
-import type { EntryFilters } from "@/modules/ledger/ui";
+import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";

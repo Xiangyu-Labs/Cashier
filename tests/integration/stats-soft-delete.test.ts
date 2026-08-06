@@ -92,6 +92,7 @@ describe("Stats Soft Delete Filtering Regression", () => {
       ledgerId,
       sourceDocumentId: sourceDoc.id,
       amount: "200.00",
+      convertedAmount: "200.00",
       currency: "CNY",
       itemName: "Active Enhanced",
     });
@@ -116,5 +117,6 @@ describe("Stats Soft Delete Filtering Regression", () => {
 
     // 5. Assert
     expect(stats.summary.total).toBe("200");
+    expect(stats.unconvertedCount).toBe(0);
   });
 });

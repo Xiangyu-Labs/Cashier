@@ -62,6 +62,22 @@ function makeEntry(id: string, itemName: string) {
 }
 
 describe("source document optimistic cache", () => {
+  it("does not use original amounts for main-currency range filters", () => {
+    const client = new QueryClient();
+    const key = queryKeys.sourceDocumentStream("ledger-1", {
+      minAmount: 1,
+      maxAmount: 2,
+    });
+    client.setQueryData(key, page([]));
+
+    applyOptimisticUpsert(client, "ledger-1", {
+      ...makeItem("2026-07-27"),
+      ledgerEntries: [makeEntry("entry-1", "Unconverted")],
+    });
+
+    expect(client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items).toEqual([]);
+  });
+
   it("patches an existing stale detail from the clicked stream item", () => {
     const client = new QueryClient();
     const staleDetail = {

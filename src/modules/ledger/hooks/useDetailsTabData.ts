@@ -2,7 +2,8 @@
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getLedgerEntriesAction, getLedgerStatsAction } from "@/modules/ledger/actions";
+import { getLedgerEntriesAction } from "@/modules/ledger/server-actions/entries";
+import { getLedgerStatsAction } from "@/modules/ledger/server-actions/stats";
 import { queryKeys } from "@/lib/query-keys";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
@@ -19,6 +20,7 @@ export interface UseDetailsTabDataReturn {
   monthStats: {
     mainTotal: string;
     mainCurrency: string;
+    unconvertedCount: number;
     hasMultipleCurrencies: boolean;
     breakdown: { currency: string; total: string; count: number }[];
   };
@@ -124,6 +126,7 @@ export function useDetailsTabData({
     return {
       mainTotal,
       mainCurrency: convertedTotal?.currency ?? mainCurrency,
+      unconvertedCount: summaryData?.unconvertedCount ?? 0,
       hasMultipleCurrencies,
       breakdown: totals,
     };

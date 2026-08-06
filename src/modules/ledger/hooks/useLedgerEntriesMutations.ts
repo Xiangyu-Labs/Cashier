@@ -9,7 +9,10 @@ import {
   invalidateSourceDocuments,
   invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
-import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
+import {
+  updateLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { toast } from "sonner";

@@ -61,7 +61,7 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
     variables: TVariables,
     data: TData | undefined,
     error: Error | null
-  ) => void;
+  ) => void | Promise<void>;
 
   /**
    * Query predicates to cancel in onMutate.
@@ -180,10 +180,15 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       }
     },
 
-    onSettled: (data, error, variables) => {
-      // Run additional settled callback
-      if (onSettledExtra) {
-        onSettledExtra(queryClient, variables, data, error);
+    onSettled: async (data, error, variables) => {
+      if (onSettledExtra == null) return;
+      try {
+        await onSettledExtra(queryClient, variables, data, error);
+      } catch (settledError) {
+        console.error("[useLedgerMutation] post-settlement callback failed", {
+          ledgerId,
+          error: settledError,
+        });
       }
     },
   });

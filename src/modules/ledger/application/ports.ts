@@ -5,6 +5,23 @@ import type {
   LedgerEntrySummary,
 } from "../contracts";
 import type { LedgerEntryFilterParams } from "../filters";
+import type { BatchActionResult } from "@/lib/batch-ids";
+
+export interface BatchEntryDateImpact {
+  selectedEntryCount: number;
+  sourceDocumentCount: number;
+  affectedEntryCount: number;
+  sourceDocumentIds: string[];
+}
+
+export interface CategoryMetadataGeneratorPort {
+  generate(input: {
+    categoryName: string;
+    existingCategoryNames: readonly string[];
+    language?: string;
+    customPrompt?: string;
+  }): Promise<{ icon: string; description: string }>;
+}
 
 export interface LedgerReadPort {
   hasActiveEntries(ledgerId: string): Promise<boolean>;
@@ -20,6 +37,10 @@ export interface LedgerReadPort {
     filters: LedgerEntryFilterParams;
     mainCurrency?: string;
   }): Promise<LedgerEntrySummary>;
+  getBatchEntryDateImpact(input: {
+    ledgerId: string;
+    ledgerEntryIds: string[];
+  }): Promise<BatchEntryDateImpact>;
   listEntriesBySourceDocumentIds(input: {
     ledgerId: string;
     sourceDocumentIds: string[];
@@ -57,4 +78,5 @@ export interface LedgerMutationPort {
     itemName?: string;
   }): Promise<number>;
   deleteEntry(ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto>;
+  batchDeleteEntries(ledgerId: string, ledgerEntryIds: string[]): Promise<BatchActionResult>;
 }

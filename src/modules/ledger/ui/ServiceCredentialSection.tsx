@@ -21,12 +21,14 @@ interface ServiceCredentialSectionProps {
   credentials: ServiceCredential[];
   onCreateCredential: (name: string) => Promise<CreatedServiceCredentialDto>;
   onDeleteCredential: (id: string) => void;
+  onCredentialDialogClose?: () => void;
 }
 
 export function ServiceCredentialSection({
   credentials,
   onCreateCredential,
   onDeleteCredential,
+  onCredentialDialogClose,
 }: ServiceCredentialSectionProps) {
   const t = useTranslations("ServiceCredentials");
   const tCommon = useTranslations("Common");
@@ -68,6 +70,12 @@ export function ServiceCredentialSection({
     }
 
     toast.error(tCommon("error"));
+  };
+
+  const closeCreatedCredentialDialog = () => {
+    setCreatedCredential(null);
+    setHasCopied(false);
+    onCredentialDialogClose?.();
   };
 
   return (
@@ -146,7 +154,7 @@ export function ServiceCredentialSection({
 
       <Dialog
         open={createdCredential != null}
-        onOpenChange={(open) => !open && setCreatedCredential(null)}
+        onOpenChange={(open) => !open && closeCreatedCredentialDialog()}
       >
         <DialogContent variant="modal">
           <DialogHeader>
@@ -180,7 +188,7 @@ export function ServiceCredentialSection({
             </Button>
           </div>
           <DialogFooter>
-            <Button onClick={() => setCreatedCredential(null)}>{t("saved")}</Button>
+            <Button onClick={closeCreatedCredentialDialog}>{t("saved")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

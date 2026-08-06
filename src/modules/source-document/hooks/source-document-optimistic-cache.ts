@@ -150,22 +150,24 @@ function itemMatchesFilters(
     if (!titleMatch && !entryMatch) return false;
   }
 
-  // I2: Check amount range — if the item has any ledger entries with amounts
-  // outside the filter range, exclude it from this query
+  // I2: Check the persisted main-currency amount range. Entries without a
+  // conversion are intentionally not treated as 1:1 matches.
   if (filters.minAmount != null || filters.maxAmount != null) {
     const amounts = (item.ledgerEntries ?? [])
       .map((e) => {
-        const n = Number(e.convertedAmount ?? e.amount);
+        if (e.convertedAmount == null) return null;
+        const n = Number(e.convertedAmount);
         return Number.isNaN(n) ? null : n;
       })
       .filter((n): n is number => n != null);
 
-    if (amounts.length > 0) {
-      const minAmt = Math.min(...amounts);
-      const maxAmt = Math.max(...amounts);
-      if (filters.minAmount != null && maxAmt < filters.minAmount) return false;
-      if (filters.maxAmount != null && minAmt > filters.maxAmount) return false;
-    }
+    if (amounts.length === 0) return false;
+    const matchesRange = amounts.some(
+      (amount) =>
+        (filters.minAmount == null || amount >= filters.minAmount) &&
+        (filters.maxAmount == null || amount <= filters.maxAmount)
+    );
+    if (!matchesRange) return false;
   }
 
   return true;

@@ -2,10 +2,8 @@ import { after } from "next/server";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { logger } from "@/lib/logger";
 import { selectRecoverableProcessingIntents } from "@/modules/source-document/application/use-cases/select-recoverable-processing-intents";
-import { PostgresProcessingIntentAdapter } from "@/application/adapters/postgres/processing-intents";
 import { scheduleProcessingAfter } from "./schedule-processing";
-
-const processingRecovery = new PostgresProcessingIntentAdapter();
+import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Schedules recovery of bounded processing intents that were missed by
@@ -28,7 +26,7 @@ export async function scheduleProcessingRecovery(ledgerId: string): Promise<void
   const recoverable = await selectRecoverableProcessingIntents(
     ledgerId,
     config,
-    processingRecovery
+    serverComposition.processingRecovery
   );
 
   if (recoverable.length === 0) return;

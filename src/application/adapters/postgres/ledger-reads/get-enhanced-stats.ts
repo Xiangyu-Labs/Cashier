@@ -42,10 +42,10 @@ interface AggregatedRow {
   categoryId: string | null;
   categoryName: string | null;
   categoryIcon: string | null;
-  totalAmount: string;
+  totalAmount: string | null;
   entryCount: number;
   mainCurrency: string;
-  missingProjectionCount: number;
+  unconvertedCount: number;
 }
 
 async function fetchAggregatedRows(
@@ -62,12 +62,10 @@ async function fetchAggregatedRows(
     SELECT ranges.period, documents.entry_date AS "entryDate",
       entries.currency, entries.category_id AS "categoryId",
       categories.name AS "categoryName", categories.icon AS "categoryIcon",
-      sum(coalesce(entries.converted_amount, entries.amount))::text AS "totalAmount",
-      count(*)::int AS "entryCount", ledgers.main_currency AS "mainCurrency",
-      count(*) FILTER (
-        WHERE entries.converted_amount IS NULL
-          AND coalesce(entries.currency, 'CNY') <> ledgers.main_currency
-      )::int AS "missingProjectionCount"
+      sum(entries.converted_amount)::text AS "totalAmount",
+      count(*) FILTER (WHERE entries.converted_amount IS NOT NULL)::int AS "entryCount",
+      ledgers.main_currency AS "mainCurrency",
+      count(*) FILTER (WHERE entries.converted_amount IS NULL)::int AS "unconvertedCount"
     FROM ranges
     JOIN source_documents documents
       ON documents.ledger_id = ${ledgerId}
@@ -83,13 +81,13 @@ async function fetchAggregatedRows(
     GROUP BY ranges.period, documents.entry_date, entries.currency, entries.category_id,
       categories.name, categories.icon, ledgers.main_currency
     UNION ALL
-    SELECT 'current', NULL, NULL, NULL, NULL, NULL, '0', 0, main_currency, 0
+    SELECT 'current', NULL, NULL, NULL, NULL, NULL, NULL, 0, main_currency, 0
     FROM ledgers WHERE id = ${ledgerId} AND deleted_at IS NULL
   `);
   return result.rows.map((row) => ({
     ...row,
     entryCount: Number(row.entryCount),
-    missingProjectionCount: Number(row.missingProjectionCount),
+    unconvertedCount: Number(row.unconvertedCount),
   }));
 }
 
@@ -109,7 +107,7 @@ function processBatch(rows: AggregatedRow[], mainCurrency: string) {
   const dateInfoMap = new Map<string, { entryCount: number; currencies: Set<string> }>();
 
   for (const row of rows) {
-    if (row.entryCount === 0) continue;
+    if (row.entryCount === 0 || row.totalAmount == null) continue;
     const dateStr = row.entryDate ?? "";
     const converted = new Decimal(row.totalAmount);
 
@@ -164,11 +162,13 @@ export async function getEnhancedStatsQuery({
 
   const rows = await fetchAggregatedRows(ledgerId, queryRange, compareRange);
   const mainCurrency = rows[0]?.mainCurrency ?? "CNY";
-  const missingProjectionCount = rows.reduce((total, row) => total + row.missingProjectionCount, 0);
-  if (missingProjectionCount > 0) {
+  const unconvertedCount = rows
+    .filter((row) => row.period === "current")
+    .reduce((total, row) => total + row.unconvertedCount, 0);
+  if (unconvertedCount > 0) {
     logger.warn(
-      { ledgerId, missingProjectionCount, operation: "enhanced_stats" },
-      "Historical entries used audited original-amount compatibility"
+      { ledgerId, unconvertedCount, operation: "enhanced_stats" },
+      "Entries missing exchange rates were excluded from main-currency statistics"
     );
   }
   const currentStats = processBatch(
@@ -238,6 +238,7 @@ export async function getEnhancedStatsQuery({
   const amountDelta = new Decimal(currentStats.total).minus(prevStats.total).toFixed();
 
   return {
+    unconvertedCount,
     summary: {
       total: currentStats.total,
       currency: mainCurrency,

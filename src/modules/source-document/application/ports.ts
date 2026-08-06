@@ -47,7 +47,10 @@ export interface SourceDocumentListInput extends SourceDocumentFilterInput {
 }
 
 export interface SourceDocumentReadPort {
-  calculateCompletedTotal(input: SourceDocumentFilterInput): Promise<{ total: string }>;
+  calculateCompletedTotal(input: SourceDocumentFilterInput): Promise<{
+    total: string;
+    unconvertedCount: number;
+  }>;
   counts(ledgerId: string): Promise<SourceDocumentCountsDto>;
   listPendingDuplicateReviews(
     ledgerId: string,
@@ -178,6 +181,10 @@ export interface LedgerChangeBatchContract {
 
 export interface LedgerChangeReadPort {
   getVersion(ledgerId: string): Promise<bigint>;
+  getSnapshotMetadata(ledgerId: string): Promise<{
+    version: bigint;
+    recordCount: number;
+  }>;
   listBatches(input: {
     ledgerId: string;
     afterVersion: bigint;

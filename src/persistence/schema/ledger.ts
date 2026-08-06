@@ -148,8 +148,8 @@ export const ledgerEntries = pgTable(
       )
       .where(sql`${table.deletedAt} IS NULL`),
     index("idx_ledger_entries_active_amount")
-      .on(table.ledgerId, sql`COALESCE(${table.convertedAmount}, ${table.amount})`)
-      .where(sql`${table.deletedAt} IS NULL`),
+      .on(table.ledgerId, table.convertedAmount)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.convertedAmount} IS NOT NULL`),
     index("idx_ledger_entries_search")
       .using(
         "gin",
