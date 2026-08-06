@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { withAuth, requireAuth } from "@/lib/auth-actions";
 import { withLedgerAccess } from "@/modules/ledger/access";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { getTestDb } from "../../setup";
+import { getTestDb } from "tests/setup";
 import { ledgers } from "@/persistence";
-import { createTestUser } from "../../helpers/schema-setup";
+import { createTestUser } from "tests/helpers/schema-setup";
 
 // Mock next-auth
 vi.mock("@/auth", () => ({

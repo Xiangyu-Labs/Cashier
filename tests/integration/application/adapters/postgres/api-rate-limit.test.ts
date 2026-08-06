@@ -1,11 +1,17 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { postgresRateLimiter } from "@/application/adapters/postgres/api-rate-limit";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
 describe("PostgresRateLimiter", () => {
   beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T00:00:00.000Z"));
     await db.execute(sql`DELETE FROM rate_limit_buckets`);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("returns success when under limit", async () => {
@@ -39,7 +45,7 @@ describe("PostgresRateLimiter", () => {
     expect(withinWindow.success).toBe(false);
 
     // Wait for window to expire
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    vi.advanceTimersByTime(1100);
 
     const afterReset = await postgresRateLimiter.increment(bucketKey, 2, 1);
     expect(afterReset.success).toBe(true);
@@ -144,7 +150,7 @@ describe("PostgresRateLimiter", () => {
       const key = "cd-expired";
 
       await postgresRateLimiter.setCooldown(key, 1);
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
 
       const remaining = await postgresRateLimiter.getCooldownRemaining(key, 1);
       expect(remaining).toBe(0);
@@ -158,7 +164,7 @@ describe("PostgresRateLimiter", () => {
       expect(before).toBeGreaterThan(0);
 
       // Wait briefly, then set cooldown again
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      vi.advanceTimersByTime(200);
       await postgresRateLimiter.setCooldown(key, 60);
 
       // After refresh, remaining should be closer to 60 than before the wait

@@ -48,24 +48,22 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
   async createEmailChangeChallenge(input) {
     return db.transaction(async (tx) => {
       await tx.execute(sql`select id from users where id = ${input.userId} for update`);
-      const [current, duplicate, existing] = await Promise.all([
-        tx.query.users.findFirst({
-          where: and(eq(users.id, input.userId), isNull(users.deletedAt)),
-          columns: { email: true },
-        }),
-        tx.query.users.findFirst({
-          where: and(
-            eq(users.email, input.newEmail),
-            ne(users.id, input.userId),
-            isNull(users.deletedAt)
-          ),
-          columns: { id: true },
-        }),
-        tx.query.emailChangeChallenges.findFirst({
-          where: eq(emailChangeChallenges.userId, input.userId),
-          columns: { createdAt: true },
-        }),
-      ]);
+      const current = await tx.query.users.findFirst({
+        where: and(eq(users.id, input.userId), isNull(users.deletedAt)),
+        columns: { email: true },
+      });
+      const duplicate = await tx.query.users.findFirst({
+        where: and(
+          eq(users.email, input.newEmail),
+          ne(users.id, input.userId),
+          isNull(users.deletedAt)
+        ),
+        columns: { id: true },
+      });
+      const existing = await tx.query.emailChangeChallenges.findFirst({
+        where: eq(emailChangeChallenges.userId, input.userId),
+        columns: { createdAt: true },
+      });
       if (current == null) return "unauthorized" as const;
       if (current.email === input.newEmail) return "same_email" as const;
       if (duplicate != null) return "duplicate" as const;

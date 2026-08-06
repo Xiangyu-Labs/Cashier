@@ -1,7 +1,5 @@
-import crypto from "node:crypto";
 import path from "node:path";
-import { afterAll, beforeAll, beforeEach, expect, vi } from "vitest";
-import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, beforeEach, vi } from "vitest";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -11,6 +9,15 @@ import "./setup.common";
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? "postgresql://cashier:cashier@127.0.0.1:55432/cashier_test";
+const TEST_RUN_ID = requireEnvironment("CASHIER_TEST_RUN_ID");
+// VITEST_POOL_ID identifies a reusable worker slot; VITEST_WORKER_ID identifies the
+// isolated worker instance, so both are part of the schema name.
+const VITEST_POOL_ID = requireEnvironment("VITEST_POOL_ID");
+const VITEST_WORKER_ID = requireEnvironment("VITEST_WORKER_ID");
+const SCHEMA_NAME = `test_${sanitizeIdentifierPart(TEST_RUN_ID)}_p${sanitizeIdentifierPart(
+  VITEST_POOL_ID
+)}_w${sanitizeIdentifierPart(VITEST_WORKER_ID)}`;
+
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 
 interface TestDatabase {
@@ -19,67 +26,101 @@ interface TestDatabase {
   schemaName: string;
 }
 
-const dbInstances = new Map<string, TestDatabase>();
+let testDatabase: TestDatabase | undefined;
 
-function getCurrentTestFile(): string {
-  return expect.getState().testPath ?? "unknown";
+function requireEnvironment(name: string): string {
+  const value = process.env[name];
+  if (value == null || value === "") {
+    throw new Error(
+      `Missing ${name}. Run database-backed tests through the npm test scripts so test schemas are isolated.`
+    );
+  }
+  return value;
 }
 
-function schemaNameFor(testPath: string): string {
-  return `test_${crypto.createHash("sha256").update(testPath).digest("hex").slice(0, 16)}`;
+function sanitizeIdentifierPart(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_]/g, "_");
+  if (sanitized.length === 0) throw new Error("Cannot derive a PostgreSQL schema name");
+  if (sanitized.length > 40) {
+    throw new Error("CASHIER_TEST_RUN_ID is too long for a PostgreSQL schema name");
+  }
+  return sanitized;
+}
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function advisoryLockKey(schemaName: string): string {
+  return `cashier-test-schema:${schemaName}`;
 }
 
 export function getTestDb() {
-  const instance = dbInstances.get(getCurrentTestFile());
-  if (instance == null) throw new Error("Test PostgreSQL database is not initialized");
-  return instance.db;
+  if (testDatabase == null) {
+    throw new Error("Test PostgreSQL database is not initialized");
+  }
+  return testDatabase.db;
 }
 
 beforeAll(async () => {
-  if (process.env.NO_DB != null) return;
-  const testPath = getCurrentTestFile();
-  const schemaName = schemaNameFor(testPath);
   const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
-  await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-  await admin.query(`CREATE SCHEMA "${schemaName}"`);
-  await admin.end();
+  const adminClient = await admin.connect();
+  let pool: Pool | undefined;
 
-  const pool = new Pool({
-    connectionString: TEST_DATABASE_URL,
-    options: `-c search_path=${schemaName}`,
-    max: 2,
-  });
-  const db = drizzle(pool, { schema });
-  await migrate(db, {
-    migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
-    migrationsSchema: `${schemaName}_migrations`,
-  });
-  dbInstances.set(testPath, { pool, db, schemaName });
+  try {
+    await adminClient.query("SELECT pg_advisory_lock(hashtextextended($1, 0))", [
+      advisoryLockKey(SCHEMA_NAME),
+    ]);
+    await adminClient.query(`CREATE SCHEMA IF NOT EXISTS ${quoteIdentifier(SCHEMA_NAME)}`);
+
+    pool = new Pool({
+      connectionString: TEST_DATABASE_URL,
+      options: `-c search_path=${quoteIdentifier(SCHEMA_NAME)},public`,
+      max: 2,
+    });
+    const db = drizzle(pool, { schema });
+    await migrate(db, {
+      migrationsFolder: path.resolve("src/persistence/postgres-migrations"),
+      migrationsSchema: `${SCHEMA_NAME}_migrations`,
+    });
+    testDatabase = { pool, db, schemaName: SCHEMA_NAME };
+  } catch (error) {
+    await pool?.end();
+    throw error;
+  } finally {
+    await adminClient.query("SELECT pg_advisory_unlock(hashtextextended($1, 0))", [
+      advisoryLockKey(SCHEMA_NAME),
+    ]);
+    adminClient.release();
+    await admin.end();
+  }
 });
 
 afterAll(async () => {
-  for (const { pool, schemaName } of dbInstances.values()) {
-    await pool.end();
-    const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
-    await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-    await admin.query(`DROP SCHEMA IF EXISTS "${schemaName}_migrations" CASCADE`);
-    await admin.end();
-  }
-  dbInstances.clear();
+  await testDatabase?.pool.end();
+  testDatabase = undefined;
 });
 
 beforeEach(async () => {
   await memoryStore.flushall();
-  const db = getTestDb();
-  await db.execute(
-    sql.raw(`TRUNCATE TABLE
-    rate_limit_buckets, processing_outbox, processing_attempts, revision_files,
-    upload_session_files, upload_sessions, stored_files, source_document_revisions,
-    duplicate_reviews, idempotency_records, ledger_entries, source_documents, entry_categories,
-    service_credentials, currency_rates, email_change_challenges, otp_tokens, ledgers, users
-    RESTART IDENTITY CASCADE`)
+  const database = testDatabase;
+  if (database == null) throw new Error("Test PostgreSQL database is not initialized");
+
+  const tables = await database.pool.query<{ table_name: string }>(
+    `SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = current_schema()
+       AND table_type = 'BASE TABLE'
+     ORDER BY table_name`
   );
-  await db.insert(schema.users).values({
+  const tableNames = tables.rows.map(
+    ({ table_name }) => `${quoteIdentifier(database.schemaName)}.${quoteIdentifier(table_name)}`
+  );
+  if (tableNames.length > 0) {
+    await database.pool.query(`TRUNCATE TABLE ${tableNames.join(", ")} RESTART IDENTITY CASCADE`);
+  }
+
+  await database.db.insert(schema.users).values({
     id: "00000000-0000-0000-0000-000000000000",
     email: "test@example.com",
     name: "Test User",

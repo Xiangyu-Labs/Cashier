@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { describe, it, expect } from "vitest";
 import { countSourceDocumentsByStatus } from "@/application/adapters/postgres/read-models";
-import { createTestUserWithLedger } from "../../../../helpers/schema-setup";
-import { getTestDb } from "../../../../setup";
+import { createTestUserWithLedger } from "tests/helpers/schema-setup";
+import { getTestDb } from "tests/setup";
 import { sourceDocuments, sourceDocumentRevisions } from "@/persistence";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 

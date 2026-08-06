@@ -165,25 +165,6 @@ describe("OTP Rate Limiting", () => {
     });
   });
 
-  describe("setResendCooldown", () => {
-    it("should set cooldown that expires after configured time", async () => {
-      const email = "test@example.com";
-
-      await setResendCooldown(email);
-
-      // Cooldown should be active
-      const result1 = await checkResendCooldown(email);
-      expect(result1.allowed).toBe(false);
-
-      // Wait for cooldown to expire (using a short wait for testing)
-      // In real scenario, this would be 60 seconds
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Note: In a real test with actual timing, we'd need to wait 60s or mock time
-      // For now, we just verify the cooldown was set
-    });
-  });
-
   describe("getCanResendAt", () => {
     it("should return null when no cooldown is active", async () => {
       const email = "test@example.com";

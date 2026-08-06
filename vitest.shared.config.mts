@@ -19,10 +19,10 @@ export const coverageConfig = {
   all: true,
   include: ["src/**/*.ts", "src/**/*.tsx"],
   thresholds: {
-    lines: 50,
-    statements: 50,
-    functions: 50,
-    branches: 50,
+    lines: 70,
+    statements: 68,
+    functions: 65,
+    branches: 60,
   },
   exclude: [
     "node_modules",
@@ -52,28 +52,6 @@ export const sharedProjectTestConfig = {
   isolate: true,
 };
 
-export const dbUnitFiles = [
-  "tests/unit/application/adapters/postgres/api-rate-limit.test.ts",
-  "tests/unit/application/adapters/postgres/read-models.test.ts",
-  "tests/unit/application/adapters/postgres/storage-prune.test.ts",
-  "tests/unit/auth/application/queries/get-session-user.test.ts",
-  "tests/unit/auth/application/use-cases/registration-policy.test.ts",
-  "tests/unit/auth/repositories/otp-repository.test.ts",
-  "tests/unit/auth/otp-rate-limit.test.ts",
-  "tests/unit/auth/services/otp-verification.test.ts",
-  "tests/unit/currency/ExchangeRateService.test.ts",
-  "tests/unit/db/ledger-entries.test.ts",
-  "tests/unit/ledger/application/queries/get-ledger-entry-detail.test.ts",
-  "tests/unit/ledger/application/queries/list-service-credentials.test.ts",
-  "tests/unit/ledger/application/services/authenticate-service-credential.test.ts",
-  "tests/unit/ledger/application/services/resolve-ledger-for-service-credential.test.ts",
-  "tests/unit/scripts/hash-service-credentials.test.ts",
-  "tests/unit/ledger/application/use-cases/create-default-ledger.test.ts",
-  "tests/unit/ledger/server/actions/delete.test.ts",
-  "tests/unit/lib/auth-actions.test.ts",
-  "tests/unit/modules/source-document/application/parse-source-document/parse-result-handler.test.ts",
-];
-
 export const unitProjects = [
   defineProject({
     resolve: {
@@ -86,29 +64,11 @@ export const unitProjects = [
         groupOrder: 0,
       },
       include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
-      exclude: [...defaultProjectExcludes, ...dbUnitFiles],
+      exclude: defaultProjectExcludes,
       environment: "happy-dom",
       setupFiles: ["./tests/setup.dom.ts"],
       maxWorkers: "100%",
       testTimeout: 10000,
-    },
-  }),
-  defineProject({
-    resolve: {
-      alias: resolveAliases,
-    },
-    test: {
-      ...sharedProjectTestConfig,
-      name: "unit-db",
-      sequence: {
-        groupOrder: 1,
-      },
-      include: dbUnitFiles,
-      exclude: defaultProjectExcludes,
-      environment: "node",
-      setupFiles: ["./tests/setup.ts"],
-      maxWorkers: "50%",
-      testTimeout: 30000,
     },
   }),
 ];

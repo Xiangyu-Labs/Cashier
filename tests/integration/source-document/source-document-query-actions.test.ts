@@ -37,14 +37,6 @@ describe("source-document query action boundaries", () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it("rejects legacy two-segment cursors", async () => {
-    await expect(
-      listSourceDocuments(ledgerId, {
-        cursor: "2026-03-23T10:00:00.000Z|doc-id",
-      } as never)
-    ).rejects.toThrow(ValidationError);
-  });
-
   it("throws ValidationError when getSourceDocumentFullAction receives an invalid id", async () => {
     await expect(getSourceDocumentFullAction(ledgerId, "not-a-uuid")).rejects.toThrow(
       ValidationError

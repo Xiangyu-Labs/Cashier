@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import bcrypt from "bcryptjs";
 import type { UserAccountPort } from "@/application/contracts";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
 import { hashPassword, verifyPassword } from "@/modules/auth/services/password";
@@ -8,6 +9,7 @@ describe("password authentication", () => {
   it("hashes and verifies passwords without storing plaintext", async () => {
     const hash = await hashPassword("correct-horse-9");
     expect(hash).not.toContain("correct-horse-9");
+    expect(bcrypt.getRounds(hash)).toBe(12);
     await expect(verifyPassword("correct-horse-9", hash)).resolves.toBe(true);
     await expect(verifyPassword("wrong-password-9", hash)).resolves.toBe(false);
   });
@@ -19,7 +21,7 @@ describe("password authentication", () => {
   });
 
   it("returns the user for valid credentials and hides failure details", async () => {
-    const passwordHash = await hashPassword("valid-password-1");
+    const passwordHash = await bcrypt.hash("valid-password-1", 4);
     const account = {
       id: "user-id",
       email: "owner@example.com",

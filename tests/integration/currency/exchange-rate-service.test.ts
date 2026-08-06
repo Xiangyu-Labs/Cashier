@@ -37,18 +37,13 @@ describe("ExchangeRateService", () => {
 
   it("should handle race condition when cache is empty", async () => {
     let callCount = 0;
+    let resolveFetch!: (response: Response) => void;
+    const fetchGate = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
     vi.spyOn(global, "fetch").mockImplementation(async () => {
       callCount++;
-      // Simulate network delay
-      await new Promise((r) => setTimeout(r, 50));
-      return {
-        ok: true,
-        json: async () => ({
-          base: "EUR",
-          date: "2024-01-20",
-          rates: { USD: 1.2 },
-        }),
-      } as Response;
+      return fetchGate;
     });
 
     const date = new Date("2024-01-20");
@@ -58,7 +53,17 @@ describe("ExchangeRateService", () => {
       .fill(null)
       .map(() => ExchangeRateService.getRates(date));
 
-    const results = await Promise.all(promises);
+    const allResults = Promise.all(promises);
+    await vi.waitFor(() => expect(callCount).toBe(1));
+    resolveFetch({
+      ok: true,
+      json: async () => ({
+        base: "EUR",
+        date: "2024-01-20",
+        rates: { USD: 1.2 },
+      }),
+    } as Response);
+    const results = await allResults;
 
     // All should return the same result
     expect(new Set(results.map((r) => r.rates.USD)).size).toBe(1);
