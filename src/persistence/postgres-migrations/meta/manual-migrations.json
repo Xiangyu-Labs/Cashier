@@ -37,6 +37,10 @@
     {
       "file": "0023_durable_exchange_rate_recalculation.sql",
       "sha256": "85a3c80c0dc4df68289dd4551e74749681bbfaa3641879afc7e78f2514535ffb"
+    },
+    {
+      "file": "0024_duplicate_review_snapshots.sql",
+      "sha256": "f6f21135b090cdac9de9a2f2120150dd84a4ebc5935785b5cdc42f9e34738fb5"
     }
   ]
 }

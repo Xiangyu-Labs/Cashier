@@ -15,6 +15,7 @@ import {
   bigint,
   primaryKey,
   boolean,
+  date,
 } from "drizzle-orm/pg-core";
 import { ledgers, serviceCredentials } from "./ledger";
 import { sourceDocuments } from "./source-document";
@@ -66,6 +67,7 @@ export const uploadFileStatusEnum = pgEnum("upload_file_status", [
 export const idempotencyStatusEnum = pgEnum("idempotency_status", ["pending", "completed"]);
 export const duplicateReviewStatusEnum = pgEnum("duplicate_review_status", [
   "pending",
+  "staged",
   "kept",
   "discarded",
 ]);
@@ -246,6 +248,10 @@ export const duplicateReviews = pgTable(
     sourceDocumentId: uuid("source_document_id").notNull(),
     revisionId: uuid("revision_id").notNull(),
     matchedSourceDocumentId: uuid("matched_source_document_id").notNull(),
+    matchedRevisionId: uuid("matched_revision_id").notNull(),
+    matchedTitle: text("matched_title"),
+    matchedEntryDate: date("matched_entry_date", { mode: "string" }),
+    matchedCreatedAt: requiredTimestamp("matched_created_at"),
     status: duplicateReviewStatusEnum("status").notNull().default("pending"),
     reason: text("reason"),
     confidence: numeric("confidence", { precision: 4, scale: 3 }),
@@ -255,7 +261,16 @@ export const duplicateReviews = pgTable(
     updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => [
-    uniqueIndex("uq_duplicate_reviews_document").on(table.sourceDocumentId),
+    uniqueIndex("uq_duplicate_reviews_document_revision").on(
+      table.sourceDocumentId,
+      table.revisionId
+    ),
+    uniqueIndex("uq_duplicate_reviews_pending_per_document")
+      .on(table.sourceDocumentId)
+      .where(sql`${table.status} = 'pending'`),
+    uniqueIndex("uq_duplicate_reviews_staged_per_document")
+      .on(table.sourceDocumentId)
+      .where(sql`${table.status} = 'staged'`),
     index("idx_duplicate_reviews_ledger_status")
       .on(table.ledgerId, table.status)
       .where(sql`${table.status} = 'pending'`),
@@ -274,6 +289,15 @@ export const duplicateReviews = pgTable(
       columns: [table.ledgerId, table.matchedSourceDocumentId],
       foreignColumns: [sourceDocuments.ledgerId, sourceDocuments.id],
       name: "fk_duplicate_reviews_matched_ledger",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.matchedSourceDocumentId, table.matchedRevisionId],
+      foreignColumns: [
+        sourceDocumentRevisions.ledgerId,
+        sourceDocumentRevisions.sourceDocumentId,
+        sourceDocumentRevisions.id,
+      ],
+      name: "fk_duplicate_reviews_matched_revision_ledger",
     }).onDelete("cascade"),
     check(
       "ck_duplicate_reviews_confidence",

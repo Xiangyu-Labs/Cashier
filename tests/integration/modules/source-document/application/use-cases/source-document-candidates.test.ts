@@ -275,7 +275,7 @@ describe("source document candidates", () => {
 
     // Accept the candidate
     const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
-    expect(accepted).toBe(true);
+    expect(accepted).toBe("completed");
 
     // Verify: document pointers updated
     const document = await db.query.sourceDocuments.findFirst({
@@ -321,7 +321,7 @@ describe("source document candidates", () => {
 
     // Accept again should be idempotent
     const accepted = await acceptCandidateRevision(ledgerId, sourceDocumentId, candidateRevisionId);
-    expect(accepted).toBe(true);
+    expect(accepted).toBe("completed");
   });
 
   it("abandons a candidate, preserving the original active projection", async () => {

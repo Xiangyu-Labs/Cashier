@@ -36,7 +36,8 @@ export interface DuplicateCandidateContract {
   title: string | null;
   entryDate: string | null;
   createdAt: string;
-  revisionId: string;
+  /** The revision of the candidate that would become the matched snapshot. */
+  matchedRevisionId: string;
   entries: DuplicateCandidateEntry[];
   storedFileIds: string[];
 }
@@ -65,6 +66,9 @@ export interface DuplicateDetectionInput {
 export interface DuplicateDetectionResult {
   duplicate: boolean;
   matchedSourceDocumentId: string | null;
+  /** Revision of the matched candidate at detection time; filled from the
+   *  candidate list, never supplied by the AI. */
+  matchedRevisionId: string | null;
   confidence: number | null;
   reason: string | null;
   candidatesConsidered: number;
@@ -81,6 +85,7 @@ function noDuplicate(candidatesConsidered = 0): DuplicateDetectionResult {
   return {
     duplicate: false,
     matchedSourceDocumentId: null,
+    matchedRevisionId: null,
     confidence: null,
     reason: null,
     candidatesConsidered,
@@ -442,9 +447,23 @@ export async function detectDuplicateBill(
     if (verdict.confidence == null || verdict.confidence < HIGH_CONFIDENCE_THRESHOLD) {
       return noDuplicate(candidates.length);
     }
+    const matchedCandidate = shortlist.find(
+      (candidate) => candidate.sourceDocumentId === verdict.matchedSourceDocumentId
+    );
+    if (matchedCandidate == null) {
+      logger.warn(
+        {
+          sourceDocumentId: input.sourceDocumentId,
+          matchedSourceDocumentId: verdict.matchedSourceDocumentId,
+        },
+        "Duplicate verdict referenced a candidate without a matched revision; ignoring"
+      );
+      return noDuplicate(candidates.length);
+    }
     return {
       duplicate: true,
       matchedSourceDocumentId: verdict.matchedSourceDocumentId,
+      matchedRevisionId: matchedCandidate.matchedRevisionId,
       confidence: verdict.confidence,
       reason: normalizeDuplicateReason({
         reason: verdict.reason,

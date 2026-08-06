@@ -10,7 +10,7 @@ interface CandidateRow {
   title: string | null;
   entryDate: string | null;
   createdAt: Date | string;
-  revisionId: string;
+  matchedRevisionId: string;
 }
 
 interface EntryRow {
@@ -24,8 +24,10 @@ interface EntryRow {
 
 /**
  * Lists successfully projected AI documents in the same ledger/day that could
- * be duplicates of a first-parsed document. Includes completed documents and
- * documents that are themselves awaiting a duplicate review. Manual documents
+ * be duplicates of a parsed document. Only documents that are already
+ * confirmed completed may serve as a match baseline: a pending duplicate
+ * (or any other unconfirmed document) can never become the basis of another
+ * duplicate verdict, which prevents C→B→A duplicate chains. Manual documents
  * and retry revisions of the same document are excluded.
  */
 export async function listDuplicateDetectionCandidates(
@@ -36,13 +38,13 @@ export async function listDuplicateDetectionCandidates(
   const rows = await db.execute<CandidateRow & Record<string, unknown>>(sql`
     SELECT documents.id, documents.title, documents.entry_date AS "entryDate",
       documents.created_at AS "createdAt",
-      COALESCE(documents.active_revision_id, documents.pending_revision_id) AS "revisionId"
+      COALESCE(documents.active_revision_id, documents.pending_revision_id) AS "matchedRevisionId"
     FROM source_documents documents
     WHERE documents.ledger_id = ${ledgerId}
       AND documents.deleted_at IS NULL
       AND documents.entry_date = ${entryDate}::date
       AND documents.type = 'ai_parsed'
-      AND documents.current_status IN ('completed', 'duplicate_pending')
+      AND documents.current_status = 'completed'
       AND documents.id <> ${excludeSourceDocumentId}
     ORDER BY documents.created_at DESC, documents.id DESC
     LIMIT ${MAX_CANDIDATES}
@@ -53,11 +55,11 @@ export async function listDuplicateDetectionCandidates(
     title: row.title,
     entryDate: row.entryDate,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : row.createdAt.toISOString(),
-    revisionId: row.revisionId,
+    matchedRevisionId: row.matchedRevisionId,
   }));
   if (candidates.length === 0) return [];
 
-  const revisionIds = candidates.map((candidate) => candidate.revisionId);
+  const revisionIds = candidates.map((candidate) => candidate.matchedRevisionId);
   const [entryRows, fileRows] = await Promise.all([
     db
       .select({
@@ -104,14 +106,14 @@ export async function listDuplicateDetectionCandidates(
     title: candidate.title,
     entryDate: candidate.entryDate,
     createdAt: candidate.createdAt,
-    revisionId: candidate.revisionId,
-    entries: (entriesByRevision.get(candidate.revisionId) ?? []).map((entry) => ({
+    matchedRevisionId: candidate.matchedRevisionId,
+    entries: (entriesByRevision.get(candidate.matchedRevisionId) ?? []).map((entry) => ({
       itemName: entry.itemName,
       amount: entry.amount,
       currency: entry.currency,
       categoryId: entry.categoryId,
       convertedAmount: entry.convertedAmount,
     })),
-    storedFileIds: filesByRevision.get(candidate.revisionId) ?? [],
+    storedFileIds: filesByRevision.get(candidate.matchedRevisionId) ?? [],
   }));
 }

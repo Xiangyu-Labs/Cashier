@@ -161,7 +161,7 @@ export function SourceDocumentDuplicateReviewDialog({
       : normalizeDuplicateReason({
           reason: data.review.reason,
           currentSourceDocumentId: data.duplicate.id,
-          candidateSourceDocumentIds: data.matched == null ? [] : [data.matched.id],
+          candidateSourceDocumentIds: [data.matched.id],
           aiLanguage: locale,
         });
   return (
@@ -199,19 +199,19 @@ export function SourceDocumentDuplicateReviewDialog({
             </div>
           ) : (
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              {data.matched != null ? (
-                <ReviewPanel
-                  side={data.matched}
-                  label={t("original")}
-                  tone="original"
-                  mainCurrency={mainCurrency}
-                  locale={locale}
-                />
-              ) : (
-                <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-surface px-4 text-center text-sm text-muted-foreground">
-                  {t("matchedMissing")}
+              {(data.matchedState === "modified" || data.matchedState === "deleted") && (
+                <div className="col-span-full rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 text-sm text-text">
+                  {data.matchedState === "modified" ? t("matchedModified") : t("matchedDeleted")}
                 </div>
               )}
+              <ReviewPanel
+                side={data.matched}
+                label={t("original")}
+                tone="original"
+                badge={t("snapshotVersion")}
+                mainCurrency={mainCurrency}
+                locale={locale}
+              />
               <ReviewPanel
                 side={data.duplicate}
                 label={t("newBill")}
@@ -302,12 +302,14 @@ function ReviewPanel({
   side,
   label,
   tone,
+  badge,
   mainCurrency,
   locale,
 }: {
   side: ReviewSide;
   label: string;
   tone: "original" | "candidate";
+  badge?: string;
   mainCurrency: string;
   locale: string;
 }) {
@@ -335,9 +337,16 @@ function ReviewPanel({
         )}
       >
         <div className="min-w-0">
-          <h3 className={cn("text-sm font-semibold", tone === "candidate" && "text-primary")}>
-            {label}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className={cn("text-sm font-semibold", tone === "candidate" && "text-primary")}>
+              {label}
+            </h3>
+            {badge != null && (
+              <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">
+                {badge}
+              </span>
+            )}
+          </div>
           <p className="truncate text-xs text-muted-foreground">
             {side.title?.trim() || t("untitled")}
           </p>

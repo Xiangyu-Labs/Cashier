@@ -26,11 +26,11 @@ export async function acceptSourceDocumentCandidate(
   { ledgerId, sourceDocumentId, revisionId }: AcceptCandidateInput,
   lifecycle: SourceDocumentLifecyclePort
 ): Promise<AcceptCandidateResponseDto> {
-  await lifecycle.acceptCandidate(ledgerId, sourceDocumentId, revisionId);
+  const status = await lifecycle.acceptCandidate(ledgerId, sourceDocumentId, revisionId);
 
   return {
     sourceDocumentId,
     revisionId,
-    status: "completed",
+    status,
   };
 }

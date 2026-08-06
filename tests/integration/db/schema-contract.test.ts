@@ -92,6 +92,7 @@ describe("PostgreSQL schema contract", () => {
       "fk_duplicate_reviews_document_ledger",
       "fk_duplicate_reviews_revision_ledger",
       "fk_duplicate_reviews_matched_ledger",
+      "fk_duplicate_reviews_matched_revision_ledger",
       "fk_source_documents_active_revision",
       "fk_source_documents_pending_revision",
       "fk_ledger_change_items_batch",
@@ -156,6 +157,9 @@ describe("PostgreSQL schema contract", () => {
     for (const name of [
       "uq_entry_categories_ledger_id_id",
       "uq_ledger_entries_revision_position",
+      "uq_duplicate_reviews_document_revision",
+      "uq_duplicate_reviews_pending_per_document",
+      "uq_duplicate_reviews_staged_per_document",
       "idx_source_documents_active_feed",
       "idx_ledger_entries_active_feed",
       "idx_ledger_entries_active_category",
@@ -166,6 +170,10 @@ describe("PostgreSQL schema contract", () => {
       expect(byName.has(name), `missing index ${name}`).toBe(true);
     }
     expect(byName.get("idx_source_documents_active_feed")).toContain("effective_date");
+    expect(byName.has("uq_duplicate_reviews_document")).toBe(false);
+    expect(byName.get("uq_duplicate_reviews_pending_per_document")).toContain("WHERE");
+    expect(byName.get("uq_duplicate_reviews_pending_per_document")).toContain("'pending'");
+    expect(byName.get("uq_duplicate_reviews_staged_per_document")).toContain("'staged'");
     expect(byName.get("idx_ledger_entries_active_amount")).toContain("converted_amount");
     expect(byName.get("idx_ledger_entries_active_amount")).toContain("WHERE");
     expect(byName.get("idx_ledger_entries_search")).toContain("gin");

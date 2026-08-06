@@ -16,7 +16,6 @@ import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/errors";
 import type { AIContext } from "@/lib/tasks/types";
 import {
-  duplicateReviews,
   entryCategories,
   revisionFiles,
   sourceDocumentRevisions,
@@ -216,72 +215,99 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       createdAt: entry.entryDate,
     }));
 
+    // Every AI-parsed revision (first upload or retry) is re-checked against
+    // confirmed-completed bills of the same day. First uploads that match
+    // become an active `duplicate_pending` projection with a pending review;
+    // retries that match keep the revision pending as a candidate and store a
+    // `staged` review that is only promoted after the user accepts the retry.
     if (
-      document.activeRevisionId == null &&
       document.type === "ai_parsed" &&
-      ledgerSettings?.duplicateDetectionEnabled !== false
+      ledgerSettings?.duplicateDetectionEnabled !== false &&
+      document.entryDate != null
     ) {
-      // Retries/re-parses after a duplicate flag are never re-checked: a prior
-      // review (pending or retired) marks this document as already judged.
-      const priorReview = await db.query.duplicateReviews.findFirst({
-        where: and(
-          eq(duplicateReviews.ledgerId, request.ledgerId),
-          eq(duplicateReviews.sourceDocumentId, request.sourceDocumentId)
-        ),
-        columns: { id: true },
+      const candidates = await listDuplicateDetectionCandidates(
+        request.ledgerId,
+        document.entryDate,
+        request.sourceDocumentId
+      );
+      const detection = await detectDuplicateBill({
+        ledgerId: request.ledgerId,
+        mainCurrency,
+        ...(ledgerSettings?.aiLanguage === undefined
+          ? {}
+          : { aiLanguage: ledgerSettings.aiLanguage }),
+        ...(ledgerSettings?.aiCustomPrompt === undefined
+          ? {}
+          : { aiCustomPrompt: ledgerSettings.aiCustomPrompt }),
+        sourceDocumentId: request.sourceDocumentId,
+        currentCreatedAt: document.createdAt.toISOString(),
+        currentTitle: output.title ?? null,
+        currentEntries: entryInputs,
+        currentStoredFileIds: files.map((file) => file.id),
+        candidates,
+        loadImages: async (storedFileIds) => {
+          const loaded = await loadStoredFilesForAI(request.ledgerId, [...storedFileIds]);
+          return loaded
+            .filter(isSuccessfulLoadImageResult)
+            .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
+        },
+        ai,
+        signal,
       });
-      const detection =
-        document.entryDate == null || priorReview != null
-          ? null
-          : await detectDuplicateBill({
-              ledgerId: request.ledgerId,
-              mainCurrency,
-              ...(ledgerSettings?.aiLanguage === undefined
-                ? {}
-                : { aiLanguage: ledgerSettings.aiLanguage }),
-              ...(ledgerSettings?.aiCustomPrompt === undefined
-                ? {}
-                : { aiCustomPrompt: ledgerSettings.aiCustomPrompt }),
-              sourceDocumentId: request.sourceDocumentId,
-              currentCreatedAt: document.createdAt.toISOString(),
-              currentTitle: output.title ?? null,
-              currentEntries: entryInputs,
-              currentStoredFileIds: files.map((file) => file.id),
-              candidates: await listDuplicateDetectionCandidates(
-                request.ledgerId,
-                document.entryDate,
-                request.sourceDocumentId
-              ),
-              loadImages: async (storedFileIds) => {
-                const loaded = await loadStoredFilesForAI(request.ledgerId, [...storedFileIds]);
-                return loaded
-                  .filter(isSuccessfulLoadImageResult)
-                  .map((item) => ({ url: item.url, dataUrl: item.dataUrl }));
-              },
-              ai,
-              signal,
-            });
       throwIfProcessingCancelled(signal);
-      if (detection?.duplicate === true && detection.matchedSourceDocumentId != null) {
-        throwIfProcessingCancelled(signal);
-        const stored = await storeDuplicatePendingRevision(
-          request.ledgerId,
-          request.sourceDocumentId,
-          request.revisionId,
-          output.title,
-          entryInputs,
-          {
+      if (
+        detection?.duplicate === true &&
+        detection.matchedSourceDocumentId != null &&
+        detection.matchedRevisionId != null
+      ) {
+        const matchedCandidate = candidates.find(
+          (candidate) => candidate.sourceDocumentId === detection.matchedSourceDocumentId
+        );
+        if (matchedCandidate != null) {
+          const reviewSnapshot = {
             matchedSourceDocumentId: detection.matchedSourceDocumentId,
+            matchedRevisionId: detection.matchedRevisionId,
+            matchedTitle: matchedCandidate.title,
+            matchedEntryDate: matchedCandidate.entryDate,
+            matchedCreatedAt: matchedCandidate.createdAt,
             reason: detection.reason,
             confidence: detection.confidence,
-          },
-          request.lease
-        );
-        if (!stored) {
-          if (request.lease != null) throw new ProcessingCancelledError();
-          throw new Error("Failed to store duplicate pending revision");
+          };
+          if (document.activeRevisionId == null) {
+            // First parse: activate the projection with a pending review.
+            throwIfProcessingCancelled(signal);
+            const stored = await storeDuplicatePendingRevision(
+              request.ledgerId,
+              request.sourceDocumentId,
+              request.revisionId,
+              output.title,
+              entryInputs,
+              reviewSnapshot,
+              request.lease
+            );
+            if (!stored) {
+              if (request.lease != null) throw new ProcessingCancelledError();
+              throw new Error("Failed to store duplicate pending revision");
+            }
+            return { outcome: "completed" };
+          }
+          // Retry: keep the revision as a candidate and stage the review.
+          throwIfProcessingCancelled(signal);
+          const stored = await storeCandidateRevision(
+            request.ledgerId,
+            request.sourceDocumentId,
+            request.revisionId,
+            output.title,
+            entryInputs,
+            request.lease,
+            reviewSnapshot
+          );
+          if (!stored) {
+            if (request.lease != null) throw new ProcessingCancelledError();
+            throw new Error("Failed to store candidate revision");
+          }
+          return { outcome: "completed" };
         }
-        return { outcome: "completed" };
       }
     }
 

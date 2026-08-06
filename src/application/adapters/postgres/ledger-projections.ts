@@ -145,6 +145,11 @@ async function replaceProjection(
  * Store a completed but non-activated revision candidate.
  * Inserts ledger entries linked to the candidate revision and marks the revision as completed,
  * but does NOT update activeRevisionId or clear pendingRevisionId on the document.
+ *
+ * When `duplicateReview` is provided the same transaction also stores a
+ * `staged` duplicate review: the retry candidate was detected as a duplicate,
+ * but the user has not accepted the candidate yet, so the document remains
+ * `candidate_pending` and the review is not surfaced anywhere.
  */
 export async function storeCandidateRevision(
   ledgerId: string,
@@ -152,7 +157,16 @@ export async function storeCandidateRevision(
   revisionId: string,
   title: string | null | undefined,
   entries: readonly LedgerProjectionEntryContract[],
-  lease?: ProcessingLeaseContract
+  lease?: ProcessingLeaseContract,
+  duplicateReview?: {
+    matchedSourceDocumentId: string;
+    matchedRevisionId: string;
+    matchedTitle: string | null;
+    matchedEntryDate: string | null;
+    matchedCreatedAt: string;
+    reason: string | null;
+    confidence: number | null;
+  }
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     // Lock the source document to serialize concurrent operations.
@@ -192,6 +206,27 @@ export async function storeCandidateRevision(
         failureCode: null,
       })
       .where(eq(sourceDocumentRevisions.id, revisionId));
+    if (duplicateReview != null) {
+      await tx
+        .insert(duplicateReviews)
+        .values({
+          ledgerId,
+          sourceDocumentId,
+          revisionId,
+          matchedSourceDocumentId: duplicateReview.matchedSourceDocumentId,
+          matchedRevisionId: duplicateReview.matchedRevisionId,
+          matchedTitle: duplicateReview.matchedTitle,
+          matchedEntryDate: duplicateReview.matchedEntryDate,
+          matchedCreatedAt: new Date(duplicateReview.matchedCreatedAt),
+          status: "staged",
+          reason: duplicateReview.reason,
+          confidence:
+            duplicateReview.confidence == null ? null : String(duplicateReview.confidence),
+        })
+        .onConflictDoNothing({
+          target: [duplicateReviews.sourceDocumentId, duplicateReviews.revisionId],
+        });
+    }
     // The candidate title is committed only if this revision is accepted.
     return true;
   });
@@ -211,6 +246,10 @@ export async function storeDuplicatePendingRevision(
   entries: readonly LedgerProjectionEntryContract[],
   review: {
     matchedSourceDocumentId: string;
+    matchedRevisionId: string;
+    matchedTitle: string | null;
+    matchedEntryDate: string | null;
+    matchedCreatedAt: string;
     reason: string | null;
     confidence: number | null;
   },
@@ -256,11 +295,17 @@ export async function storeDuplicatePendingRevision(
         sourceDocumentId,
         revisionId,
         matchedSourceDocumentId: review.matchedSourceDocumentId,
+        matchedRevisionId: review.matchedRevisionId,
+        matchedTitle: review.matchedTitle,
+        matchedEntryDate: review.matchedEntryDate,
+        matchedCreatedAt: new Date(review.matchedCreatedAt),
         status: "pending",
         reason: review.reason,
         confidence: review.confidence == null ? null : String(review.confidence),
       })
-      .onConflictDoNothing({ target: duplicateReviews.sourceDocumentId })
+      .onConflictDoNothing({
+        target: [duplicateReviews.sourceDocumentId, duplicateReviews.revisionId],
+      })
       .returning({ id: duplicateReviews.id })
       .then((rows) => rows[0]);
     if (insertedReview == null) {
@@ -318,7 +363,8 @@ export async function activateDuplicatePendingRevision(
       .where(
         and(
           eq(duplicateReviews.ledgerId, ledgerId),
-          eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+          eq(duplicateReviews.revisionId, revisionId)
         )
       )
       .then((rows) => rows[0]);
@@ -410,7 +456,8 @@ export async function discardDuplicatePendingRevision(
       .where(
         and(
           eq(duplicateReviews.ledgerId, ledgerId),
-          eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+          eq(duplicateReviews.revisionId, revisionId)
         )
       )
       .then((rows) => rows[0]);
@@ -453,6 +500,12 @@ export async function discardDuplicatePendingRevision(
  * Accept a candidate revision: replace the active projection with the candidate's entries
  * and update document pointers.
  *
+ * Two-phase duplicate review: when the candidate carries a `staged` duplicate
+ * review (the retry was detected as a duplicate), the previous pending review
+ * is superseded, the staged review is promoted to `pending`, and the document
+ * becomes `duplicate_pending`. Otherwise the candidate is accepted as a normal
+ * completed document. Returns the resulting document status.
+ *
  * Acquires a source-document row lock to serialise concurrent operations on the same document.
  * Throws {@link ConflictError} when pointer ownership or CAS checks fail so the entire
  * transaction (including soft-deletes) rolls back.
@@ -461,14 +514,26 @@ export async function acceptCandidateRevision(
   ledgerId: string,
   sourceDocumentId: string,
   candidateRevisionId: string
-): Promise<boolean> {
+): Promise<"completed" | "duplicate_pending"> {
   return db.transaction(async (tx) => {
     // Lock the source document to serialise concurrent operations.
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Idempotent: candidate is already active
     if (document.activeRevisionId === candidateRevisionId && document.pendingRevisionId == null) {
-      return true;
+      const review = await tx
+        .select({ status: duplicateReviews.status })
+        .from(duplicateReviews)
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, ledgerId),
+            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+            eq(duplicateReviews.revisionId, candidateRevisionId),
+            eq(duplicateReviews.status, "pending")
+          )
+        )
+        .then((rows) => rows[0]);
+      return review == null ? "completed" : "duplicate_pending";
     }
 
     // Re-read pointers inside the lock — reject stale CAS on the spot.
@@ -495,6 +560,43 @@ export async function acceptCandidateRevision(
     }
 
     const now = new Date();
+    // Promote the staged review (if any) BEFORE updating the document pointers
+    // so the status trigger observes a pending review for the new active
+    // revision and computes `duplicate_pending`.
+    const stagedReview = await tx
+      .select({ id: duplicateReviews.id })
+      .from(duplicateReviews)
+      .where(
+        and(
+          eq(duplicateReviews.ledgerId, ledgerId),
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+          eq(duplicateReviews.revisionId, candidateRevisionId),
+          eq(duplicateReviews.status, "staged")
+        )
+      )
+      .then((rows) => rows[0]);
+
+    // Supersede the previous pending review first: it belongs to the old
+    // active revision and must never stay pending after the swap.
+    await tx
+      .update(duplicateReviews)
+      .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(duplicateReviews.ledgerId, ledgerId),
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+          eq(duplicateReviews.status, "pending"),
+          eq(duplicateReviews.revisionId, document.activeRevisionId)
+        )
+      );
+
+    if (stagedReview != null) {
+      await tx
+        .update(duplicateReviews)
+        .set({ status: "pending", decision: null, decidedAt: null, updatedAt: now })
+        .where(eq(duplicateReviews.id, stagedReview.id));
+    }
+
     // Soft-delete the old active revision's entries (safe: lock guards against concurrent mutation)
     await tx
       .update(ledgerEntries)
@@ -531,7 +633,7 @@ export async function acceptCandidateRevision(
     if (updated == null) {
       throw new ConflictError("Source document was modified concurrently during accept");
     }
-    return true;
+    return stagedReview == null ? "completed" : "duplicate_pending";
   });
 }
 
@@ -594,6 +696,22 @@ export async function abandonCandidateRevision(
     }
 
     const now = new Date();
+    // A staged duplicate review belongs to the candidate revision being
+    // abandoned: it can never be promoted once the candidate is rejected.
+    // The old active revision's pending review is deliberately left intact so
+    // the status trigger restores `duplicate_pending` when applicable.
+    await tx
+      .update(duplicateReviews)
+      .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(duplicateReviews.ledgerId, ledgerId),
+          eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+          eq(duplicateReviews.revisionId, candidateRevisionId),
+          eq(duplicateReviews.status, "staged")
+        )
+      );
+
     // Mark the revision as abandoned (safe: lock guards against concurrent mutation).
     // CAS: a completed, anomalous, or failed retry can be abandoned.
     const revisionUpdated = await tx
@@ -678,6 +796,22 @@ export async function cancelPendingRevision(
 
     const now = new Date();
     const nextOutcome = canAbandonFinishedCandidate ? "abandoned" : "cancelled";
+    if (canAbandonFinishedCandidate) {
+      // The candidate's staged duplicate review can never be promoted once
+      // the candidate is abandoned; the old active revision's pending review
+      // stays untouched so it can be restored by the status trigger.
+      await tx
+        .update(duplicateReviews)
+        .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, ledgerId),
+            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+            eq(duplicateReviews.revisionId, revisionId),
+            eq(duplicateReviews.status, "staged")
+          )
+        );
+    }
     const revisionUpdated = await tx
       .update(sourceDocumentRevisions)
       .set({ outcome: nextOutcome, finalizedAt: now })
@@ -1342,6 +1476,9 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       }
 
       const now = new Date();
+      // Supersede the document's own pending AND staged reviews. Reviews that
+      // point at this document as the *matched* bill keep their snapshots:
+      // they belong to other documents and must remain readable.
       await tx
         .update(duplicateReviews)
         .set({
@@ -1354,7 +1491,7 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
           and(
             eq(duplicateReviews.ledgerId, ledgerId),
             eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            eq(duplicateReviews.status, "pending")
+            inArray(duplicateReviews.status, ["pending", "staged"])
           )
         );
       const deleted = await tx

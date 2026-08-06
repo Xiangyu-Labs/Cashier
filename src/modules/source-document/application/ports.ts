@@ -108,7 +108,11 @@ export interface QuickEntryPorts {
 export type SourceDocumentRevisionPort = SourceDocumentPort;
 
 export interface SourceDocumentLifecyclePort {
-  acceptCandidate(ledgerId: string, sourceDocumentId: string, revisionId: string): Promise<boolean>;
+  acceptCandidate(
+    ledgerId: string,
+    sourceDocumentId: string,
+    revisionId: string
+  ): Promise<"completed" | "duplicate_pending">;
   abandonCandidate(
     ledgerId: string,
     sourceDocumentId: string,

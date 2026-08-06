@@ -359,11 +359,16 @@ describe("Source Document Update Actions", () => {
         exchangeRate: "0.2",
       });
       const activeRevisionId = await activateTestSourceDocumentProjection(db, document.id);
+      const matchedRevisionId = await activateTestSourceDocumentProjection(db, matchedDocument.id);
       await db.insert(duplicateReviews).values({
         ledgerId: ledgerData.id,
         sourceDocumentId: document.id,
         revisionId: activeRevisionId,
         matchedSourceDocumentId: matchedDocument.id,
+        matchedRevisionId,
+        matchedTitle: "Matched original",
+        matchedEntryDate: "2024-03-14",
+        matchedCreatedAt: new Date("2024-03-14T08:00:00.000Z"),
         status: "pending",
       });
       await db

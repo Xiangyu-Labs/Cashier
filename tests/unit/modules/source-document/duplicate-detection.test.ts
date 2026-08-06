@@ -15,7 +15,7 @@ function candidate(
     title: "Coffee Shop",
     entryDate: "2026-08-05",
     createdAt: "2026-08-05T08:00:00.000Z",
-    revisionId: "revision-1",
+    matchedRevisionId: "revision-1",
     entries: [
       {
         itemName: "Latte",
@@ -138,6 +138,7 @@ describe("detectDuplicateBill", () => {
     expect(result).toMatchObject({
       duplicate: true,
       matchedSourceDocumentId: "candidate-1",
+      matchedRevisionId: "revision-1",
       confidence: 0.95,
     });
   });
@@ -168,6 +169,7 @@ describe("detectDuplicateBill", () => {
     expect(result).toMatchObject({
       duplicate: true,
       matchedSourceDocumentId: "candidate-3",
+      matchedRevisionId: "revision-1",
       candidatesConsidered: 3,
     });
     expect(generate).toHaveBeenCalledTimes(2);

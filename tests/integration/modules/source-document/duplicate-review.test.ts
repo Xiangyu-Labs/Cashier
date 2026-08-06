@@ -43,6 +43,28 @@ const entry = {
   exchangeRate: "1.000000",
 } as const;
 
+function reviewSnapshot(
+  matched: { sourceDocumentId: string; revisionId: string },
+  overrides: Partial<{
+    matchedTitle: string | null;
+    matchedEntryDate: string | null;
+    matchedCreatedAt: string;
+    reason: string | null;
+    confidence: number | null;
+  }> = {}
+) {
+  return {
+    matchedSourceDocumentId: matched.sourceDocumentId,
+    matchedRevisionId: matched.revisionId,
+    matchedTitle: "Coffee Shop",
+    matchedEntryDate: "2026-08-05",
+    matchedCreatedAt: "2026-08-05T08:00:00.000Z",
+    reason: null,
+    confidence: 0.9,
+    ...overrides,
+  };
+}
+
 async function createDuplicatePendingDocument(
   db: ReturnType<typeof getTestDb>,
   ledgerId: string,
@@ -84,11 +106,10 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Coffee Shop",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
+      reviewSnapshot(matched, {
         reason: "Same merchant and total",
         confidence: 0.93,
-      }
+      })
     );
     expect(stored).toBe(true);
 
@@ -146,11 +167,7 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Original",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
-        reason: null,
-        confidence: 0.8,
-      }
+      reviewSnapshot(matched, { confidence: 0.8 })
     );
 
     const kept = await activateDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
@@ -200,10 +217,22 @@ describe("duplicate review lifecycle", () => {
       sourceDocumentId,
       revisionId,
       matchedSourceDocumentId: matched.sourceDocumentId,
+      matchedRevisionId: matched.revisionId,
+      matchedTitle: "Original",
+      matchedEntryDate: "2026-08-05",
+      matchedCreatedAt: new Date("2026-08-05T08:00:00.000Z"),
       status: "pending",
       reason: "Legacy review",
       confidence: "0.900",
     });
+    // The current status trigger derives from the pending revision first, so
+    // the legacy "pending revision + pending review without active revision"
+    // state can no longer be written through normal updates. Disable the
+    // trigger while planting the historical fixture (in real deployments the
+    // legacy rows were created before 0024 shipped).
+    await db.execute(
+      sql`ALTER TABLE source_documents DISABLE TRIGGER trg_source_documents_refresh_status`
+    );
     await db
       .update(sourceDocuments)
       .set({
@@ -213,6 +242,9 @@ describe("duplicate review lifecycle", () => {
         currentStatus: "duplicate_pending",
       })
       .where(eq(sourceDocuments.id, sourceDocumentId));
+    await db.execute(
+      sql`ALTER TABLE source_documents ENABLE TRIGGER trg_source_documents_refresh_status`
+    );
 
     const migration = readFileSync(
       path.resolve("src/persistence/postgres-migrations/0020_duplicate_detection_enabled.sql"),
@@ -251,11 +283,10 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Original",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
+      reviewSnapshot(matched, {
         reason: "Same bill",
         confidence: 0.99,
-      }
+      })
     );
 
     const discarded = await discardDuplicatePendingRevision(ledgerId, sourceDocumentId, revisionId);
@@ -320,11 +351,7 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Original",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
-        reason: "Same bill",
-        confidence: 0.9,
-      }
+      reviewSnapshot(matched, { reason: "Same bill" })
     );
 
     await expect(
@@ -363,11 +390,7 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Original",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
-        reason: "Same bill",
-        confidence: 0.9,
-      }
+      reviewSnapshot(matched, { reason: "Same bill" })
     );
 
     await expect(
@@ -401,11 +424,7 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Coffee Shop",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
-        reason: null,
-        confidence: 0.9,
-      }
+      reviewSnapshot(matched)
     );
 
     const counts = await countSourceDocumentsByStatus(ledgerId);
@@ -434,7 +453,7 @@ describe("duplicate review lifecycle", () => {
     expect(afterKeep.total).toBe("76");
   });
 
-  it("retires the pending review when a retry supersedes the revision", async () => {
+  it("keeps the pending review while a retry is in flight and defers the verdict", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-supersede");
     const matched = await postgresLedgerProjectionAdapter.createManual({
@@ -451,14 +470,14 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Coffee Shop",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
+      reviewSnapshot(matched, {
         reason: "Same bill",
         confidence: 0.95,
-      }
+      })
     );
 
-    // Retry supersedes the reviewed revision.
+    // A retry keeps the original pending review: the document is only judged
+    // again after the retry is rejected or accepted.
     const next = await db.transaction(async (tx) =>
       createPendingRevisionInTransaction(tx, {
         ledgerId,
@@ -470,8 +489,8 @@ describe("duplicate review lifecycle", () => {
     const review = await db.query.duplicateReviews.findFirst({
       where: eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
     });
-    expect(review?.status).toBe("discarded");
-    expect(review?.decision).toBe("superseded");
+    expect(review?.status).toBe("pending");
+    expect(review?.revisionId).toBe(revisionId);
 
     const document = await db.query.sourceDocuments.findFirst({
       where: eq(sourceDocuments.id, sourceDocumentId),
@@ -479,7 +498,8 @@ describe("duplicate review lifecycle", () => {
     expect(document?.pendingRevisionId).toBe(next.revision.id);
     expect(document?.currentStatus).toBe("processing");
 
-    // Keep/discard on the retired review must not be acknowledged.
+    // Keep/discard must not be acknowledged while the retry is pending: the
+    // document is `processing`, not `duplicate_pending`.
     const lifecycle = {
       keepDuplicate: activateDuplicatePendingRevision,
       discardDuplicate: discardDuplicatePendingRevision,
@@ -540,11 +560,10 @@ describe("duplicate review lifecycle", () => {
       first.revisionId,
       "Original",
       [entry],
-      {
-        matchedSourceDocumentId: original.sourceDocumentId,
+      reviewSnapshot(original, {
         reason: "Same bill",
         confidence: 0.95,
-      }
+      })
     );
     await storeDuplicatePendingRevision(
       otherLedgerId,
@@ -552,11 +571,10 @@ describe("duplicate review lifecycle", () => {
       other.revisionId,
       "Other ledger",
       [entry],
-      {
-        matchedSourceDocumentId: otherOriginal.sourceDocumentId,
+      reviewSnapshot(otherOriginal, {
         reason: "Same bill",
         confidence: 0.95,
-      }
+      })
     );
 
     const result = await batchResolveDuplicateReviews(
@@ -668,18 +686,22 @@ describe("duplicate review lifecycle", () => {
       revisionId,
       "Coffee Shop",
       [entry],
-      {
-        matchedSourceDocumentId: matched.sourceDocumentId,
+      reviewSnapshot(matched, {
         reason: "Same bill",
         confidence: 0.88,
-      }
+      })
     );
 
     const payload = await getSourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
     expect(payload.review.matchedSourceDocumentId).toBe(matched.sourceDocumentId);
+    expect(payload.review.matchedRevisionId).toBe(matched.revisionId);
     expect(payload.duplicate.id).toBe(sourceDocumentId);
     expect(payload.duplicate.title).toBe("Coffee Shop");
     expect(payload.duplicate.entries[0]?.itemName).toBe("Latte");
-    expect(payload.matched?.id).toBe(matched.sourceDocumentId);
+    expect(payload.matched.id).toBe(matched.sourceDocumentId);
+    expect(payload.matched.title).toBe("Coffee Shop");
+    expect(payload.matched.entryDate).toBe("2026-08-05");
+    expect(payload.matched.createdAt).toBe("2026-08-05T08:00:00.000Z");
+    expect(payload.matchedState).toBe("unchanged");
   });
 });

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, lt, max, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, max, or } from "drizzle-orm";
 import type {
   RevisionOutcome,
   SourceDocumentContract,
@@ -238,9 +238,11 @@ export async function createPendingRevisionInTransaction(
     );
   }
 
-  // A retry/supersede retires any pending duplicate review: the new revision
-  // replaces the reviewed one, so keep/discard must no longer act on it and
-  // the status trigger must not keep forcing duplicate_pending.
+  // A retry/supersede retires any *staged* duplicate review: the staged review
+  // belongs to the candidate revision that this retry replaces and can never
+  // be promoted. A pending duplicate review on the old active revision is
+  // deliberately kept: the document is only `duplicate_pending` again after
+  // the retry is rejected, so the original review must survive the retry.
   await tx
     .update(duplicateReviews)
     .set({
@@ -253,7 +255,7 @@ export async function createPendingRevisionInTransaction(
       and(
         eq(duplicateReviews.ledgerId, input.ledgerId),
         eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-        eq(duplicateReviews.status, "pending")
+        eq(duplicateReviews.status, "staged")
       )
     );
 
@@ -393,6 +395,8 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
       }
 
       const now = new Date();
+      // Supersede the document's own pending AND staged reviews. Reviews that
+      // point at this document as the *matched* bill keep their snapshots.
       await tx
         .update(duplicateReviews)
         .set({
@@ -405,7 +409,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
           and(
             eq(duplicateReviews.ledgerId, ledgerId),
             eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            eq(duplicateReviews.status, "pending")
+            inArray(duplicateReviews.status, ["pending", "staged"])
           )
         );
       const deleted = await tx

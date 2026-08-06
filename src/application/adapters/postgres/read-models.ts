@@ -243,6 +243,7 @@ async function loadDuplicateReviewMap(
       sourceDocumentId: review.sourceDocumentId,
       revisionId: review.revisionId,
       matchedSourceDocumentId: review.matchedSourceDocumentId,
+      matchedRevisionId: review.matchedRevisionId,
       status: review.status,
       reason: review.reason,
       confidence: review.confidence == null ? null : Number(review.confidence),
@@ -253,7 +254,8 @@ async function loadDuplicateReviewMap(
 
 async function loadDuplicateReviewSide(
   ledgerId: string,
-  revisionId: string
+  revisionId: string,
+  options: { includeDeletedEntries?: boolean } = {}
 ): Promise<{
   entries: SourceDocumentLedgerEntryDto[];
   files: SourceDocumentStoredFileDto[];
@@ -273,7 +275,7 @@ async function loadDuplicateReviewSide(
         and(
           eq(ledgerEntries.ledgerId, ledgerId),
           eq(ledgerEntries.sourceDocumentRevisionId, revisionId),
-          isNull(ledgerEntries.deletedAt)
+          ...(options.includeDeletedEntries === true ? [] : [isNull(ledgerEntries.deletedAt)])
         )
       )
       .orderBy(asc(ledgerEntries.position)),
@@ -334,8 +336,10 @@ function effectiveDocumentTitle(
 
 /**
  * Loads the side-by-side duplicate review payload: the review record, the
- * duplicate document's active review revision data, and the matched document's
- * projection. The matched document may be null if it was deleted meanwhile.
+ * duplicate document's active review revision data, and the matched revision
+ * snapshot captured at detection time. The matched side always renders the
+ * snapshot, so a later edit or soft-delete of the matched bill never changes
+ * the comparison evidence; `matchedState` reports what changed since.
  */
 export async function getSourceDocumentDuplicateReview(
   ledgerId: string,
@@ -347,11 +351,12 @@ export async function getSourceDocumentDuplicateReview(
     .where(
       and(
         eq(duplicateReviews.ledgerId, ledgerId),
-        eq(duplicateReviews.sourceDocumentId, sourceDocumentId)
+        eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
+        eq(duplicateReviews.status, "pending")
       )
     )
     .then((rows) => rows[0]);
-  if (review == null) throw new NotFoundError("Duplicate review");
+  if (review == null || review.status !== "pending") throw new NotFoundError("Duplicate review");
 
   const duplicateDoc = await db
     .select({
@@ -385,59 +390,56 @@ export async function getSourceDocumentDuplicateReview(
       )
     )
     .then((rows) => rows[0]);
+  // Current state of the matched bill (soft-deleted rows included). Only used
+  // to derive `matchedState`; the comparison below always uses the snapshot.
   const matchedDoc = await db
     .select({
       id: sourceDocuments.id,
-      title: sourceDocuments.title,
-      entryDate: sourceDocuments.entryDate,
-      createdAt: sourceDocuments.createdAt,
       activeRevisionId: sourceDocuments.activeRevisionId,
-      pendingRevisionId: sourceDocuments.pendingRevisionId,
+      deletedAt: sourceDocuments.deletedAt,
     })
     .from(sourceDocuments)
     .where(
       and(
         eq(sourceDocuments.ledgerId, ledgerId),
-        eq(sourceDocuments.id, review.matchedSourceDocumentId),
-        isNull(sourceDocuments.deletedAt)
+        eq(sourceDocuments.id, review.matchedSourceDocumentId)
       )
     )
     .then((rows) => rows[0]);
+  const matchedState: SourceDocumentDuplicateReviewDetailDto["matchedState"] =
+    matchedDoc == null || matchedDoc.deletedAt != null
+      ? "deleted"
+      : matchedDoc.activeRevisionId !== review.matchedRevisionId
+        ? "modified"
+        : "unchanged";
 
-  let matched: SourceDocumentDuplicateReviewDetailDto["matched"] = null;
-  if (matchedDoc != null) {
-    const matchedRevisionId = matchedDoc.activeRevisionId ?? matchedDoc.pendingRevisionId;
-    if (matchedRevisionId != null) {
-      const [side, matchedRevision] = await Promise.all([
-        loadDuplicateReviewSide(ledgerId, matchedRevisionId),
-        db
-          .select({ title: sourceDocumentRevisions.title })
-          .from(sourceDocumentRevisions)
-          .where(
-            and(
-              eq(sourceDocumentRevisions.ledgerId, ledgerId),
-              eq(sourceDocumentRevisions.id, matchedRevisionId),
-              eq(sourceDocumentRevisions.sourceDocumentId, matchedDoc.id)
-            )
-          )
-          .then((rows) => rows[0]),
-      ]);
-      matched = {
-        id: matchedDoc.id,
-        title: effectiveDocumentTitle(matchedDoc.title, matchedRevision?.title),
-        entryDate: matchedDoc.entryDate,
-        createdAt: matchedDoc.createdAt.toISOString(),
-        entries: side.entries,
-        files: side.files,
-      };
-    }
-  }
+  // Comparison content always loads from the revision captured at detection
+  // time, never from the matched bill's current active revision. The
+  // snapshot's entries stay readable even after the matched bill was edited
+  // or soft-deleted (both soft-delete the old revision's ledger rows).
+  const [side, matchedRevision] = await Promise.all([
+    loadDuplicateReviewSide(ledgerId, review.matchedRevisionId, {
+      includeDeletedEntries: true,
+    }),
+    db
+      .select({ title: sourceDocumentRevisions.title })
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, ledgerId),
+          eq(sourceDocumentRevisions.id, review.matchedRevisionId),
+          eq(sourceDocumentRevisions.sourceDocumentId, review.matchedSourceDocumentId)
+        )
+      )
+      .then((rows) => rows[0]),
+  ]);
 
   return {
     review: {
       sourceDocumentId: review.sourceDocumentId,
       revisionId: review.revisionId,
       matchedSourceDocumentId: review.matchedSourceDocumentId,
+      matchedRevisionId: review.matchedRevisionId,
       status: review.status,
       reason: review.reason,
       confidence: review.confidence == null ? null : Number(review.confidence),
@@ -450,7 +452,15 @@ export async function getSourceDocumentDuplicateReview(
       entries: duplicateSide.entries,
       files: duplicateSide.files,
     },
-    matched,
+    matched: {
+      id: review.matchedSourceDocumentId,
+      title: effectiveDocumentTitle(review.matchedTitle, matchedRevision?.title),
+      entryDate: review.matchedEntryDate,
+      createdAt: review.matchedCreatedAt.toISOString(),
+      entries: side.entries,
+      files: side.files,
+    },
+    matchedState,
   };
 }
 

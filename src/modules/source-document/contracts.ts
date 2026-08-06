@@ -101,7 +101,7 @@ export interface DeleteSourceDocumentResultDto {
 export interface AcceptCandidateResponseDto {
   sourceDocumentId: string;
   revisionId: string;
-  status: "completed";
+  status: "completed" | "duplicate_pending";
 }
 
 export interface AbandonCandidateResponseDto {
@@ -187,7 +187,7 @@ export interface DeleteSourceDocumentReconciliationDto {
 export interface AcceptCandidateReconciliationDto {
   sourceDocumentId: string;
   revisionId: string;
-  status: "completed";
+  status: "completed" | "duplicate_pending";
   reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
 }
 

@@ -70,6 +70,7 @@ function reviewDetail(): SourceDocumentDuplicateReviewDetailDto {
       sourceDocumentId: DUPLICATE_ID,
       revisionId: "rev-2",
       matchedSourceDocumentId: "doc-1",
+      matchedRevisionId: "rev-1",
       status: "pending",
       reason: "same amount",
       confidence: 0.98,
@@ -90,6 +91,7 @@ function reviewDetail(): SourceDocumentDuplicateReviewDetailDto {
       entries: [],
       files: [],
     },
+    matchedState: "unchanged",
   };
 }
 
@@ -287,5 +289,37 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
       queryKeys.sourceDocumentEntities(LEDGER_ID)
     );
     expect(entities?.[DUPLICATE_ID]).toBeUndefined();
+  });
+
+  it("shows the detection-time snapshot badge and a modified notice", async () => {
+    reviewActionMock.mockResolvedValue({
+      ...reviewDetail(),
+      matchedState: "modified",
+    });
+    const queryClient = createQueryClient();
+    const onCaughtError = vi.fn();
+    renderDialog({ queryClient, onCaughtError });
+
+    await screen.findByText("该账单在检测后已修改；下方仍展示检测时版本。");
+    expect(screen.getByText("检测时版本")).toBeInTheDocument();
+    expect(screen.getAllByText("Original bill").length).toBeGreaterThan(0);
+    expect(onCaughtError).not.toHaveBeenCalled();
+  });
+
+  it("shows a deleted notice while still rendering the detection snapshot", async () => {
+    reviewActionMock.mockResolvedValue({
+      ...reviewDetail(),
+      matchedState: "deleted",
+    });
+    const queryClient = createQueryClient();
+    const onCaughtError = vi.fn();
+    renderDialog({ queryClient, onCaughtError });
+
+    await screen.findByText("该账单在检测后已删除；下方仍展示检测时版本。");
+    expect(screen.getByText("检测时版本")).toBeInTheDocument();
+    expect(screen.getAllByText("Original bill").length).toBeGreaterThan(0);
+
+    const keepButton = await screen.findByRole("button", { name: "仍然保留" });
+    expect(keepButton).not.toBeDisabled();
   });
 });
