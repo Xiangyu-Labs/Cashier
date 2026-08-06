@@ -114,7 +114,8 @@ describe("SourceDocumentCard interactions", () => {
     expect(onViewDetails).not.toHaveBeenCalled();
   });
 
-  it("does not open details from the actions menu", () => {
+  it("opens the actions menu without opening details", async () => {
+    const user = userEvent.setup();
     const onViewDetails = vi.fn();
     render(
       <SourceDocumentCard
@@ -125,8 +126,26 @@ describe("SourceDocumentCard interactions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /更多操作|more actions/i }));
+    await user.click(screen.getByRole("button", { name: /更多操作|more actions/i }));
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
     expect(onViewDetails).not.toHaveBeenCalled();
+  });
+
+  it("does not open the actions menu when dragging the trigger outside the card", () => {
+    render(
+      <SourceDocumentCard
+        sourceDocument={sourceDocument}
+        ledgerEntries={[]}
+        status="completed"
+        onDelete={vi.fn()}
+      />
+    );
+
+    const trigger = screen.getByRole("button", { name: /更多操作|more actions/i });
+    fireEvent.pointerDown(trigger, { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerUp(document, { button: 0, pointerId: 1, clientY: 100 });
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("closes the non-modal actions menu with Escape and restores trigger focus", async () => {
