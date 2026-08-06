@@ -13,6 +13,7 @@ import type {
   SourceDocumentStatusType,
   StreamPage,
 } from "@/modules/source-document/contracts";
+import type { ListStreamPageInput } from "../application/queries/list-stream-page";
 import { canonicalizeSourceDocumentStatuses } from "@/modules/source-document/types";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -44,6 +45,14 @@ export interface UseSourceDocumentStreamOptions {
   search?: string;
   /** Enable refresh polling for this stream. */
   enableRefresh?: boolean;
+  /**
+   * Optional shared descriptor supplied by the workspace tab. Keeping the
+   * key and request input together prevents prefetch/hydration drift.
+   */
+  queryDescriptor?: {
+    queryKey: readonly unknown[];
+    getPageInput: (pageParam?: string) => ListStreamPageInput;
+  };
 }
 
 /**
@@ -98,6 +107,7 @@ export function useSourceDocumentStream(
     statuses: rawStatuses,
     search,
     enableRefresh = true,
+    queryDescriptor,
   } = options;
 
   const startDate = dateRange?.start ?? null;
@@ -113,7 +123,7 @@ export function useSourceDocumentStream(
     statusesKey != null ? (statusesKey.split(",") as SourceDocumentStatusType[]) : undefined;
 
   // Build stream page key that includes all filter params
-  const streamPageKey = useMemo(
+  const fallbackStreamPageKey = useMemo(
     () =>
       queryKeys.sourceDocumentStream(ledgerId, {
         startDate,
@@ -125,6 +135,7 @@ export function useSourceDocumentStream(
       }),
     [endDate, ledgerId, maxAmount, minAmount, search, startDate, statusesKey]
   );
+  const streamPageKey = queryDescriptor?.queryKey ?? fallbackStreamPageKey;
 
   // Compute filter signature for refresh coordination
   const filterSignature = useMemo(
@@ -150,18 +161,21 @@ export function useSourceDocumentStream(
   const streamQuery = useInfiniteQuery({
     queryKey: streamPageKey,
     queryFn: ({ pageParam }) =>
-      listStreamPageAction(ledgerId, {
-        ...(startDate !== null ? { startDate } : {}),
-        ...(endDate !== null ? { endDate } : {}),
-        ...(minAmount != null ? { minAmount } : {}),
-        ...(maxAmount != null ? { maxAmount } : {}),
-        ...(stableStatuses != null && stableStatuses.length > 0
-          ? { statuses: stableStatuses }
-          : {}),
-        ...(search != null && search !== "" ? { search } : {}),
-        cursor: pageParam,
-        limit: STREAM_PAGE_LIMIT,
-      }),
+      listStreamPageAction(
+        ledgerId,
+        queryDescriptor?.getPageInput(pageParam as string | undefined) ?? {
+          ...(startDate !== null ? { startDate } : {}),
+          ...(endDate !== null ? { endDate } : {}),
+          ...(minAmount != null ? { minAmount } : {}),
+          ...(maxAmount != null ? { maxAmount } : {}),
+          ...(stableStatuses != null && stableStatuses.length > 0
+            ? { statuses: stableStatuses }
+            : {}),
+          ...(search != null && search !== "" ? { search } : {}),
+          ...(pageParam != null ? { cursor: pageParam as string } : {}),
+          limit: STREAM_PAGE_LIMIT,
+        }
+      ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     refetchOnWindowFocus: false,
@@ -215,18 +229,20 @@ export function useSourceDocumentStream(
     restartingRef.current = true;
     void (async () => {
       try {
-        const fresh = await listStreamPageAction(ledgerId, {
-          ...(startDate !== null ? { startDate } : {}),
-          ...(endDate !== null ? { endDate } : {}),
-          ...(minAmount != null ? { minAmount } : {}),
-          ...(maxAmount != null ? { maxAmount } : {}),
-          ...(stableStatuses != null && stableStatuses.length > 0
-            ? { statuses: stableStatuses }
-            : {}),
-          ...(search != null && search !== "" ? { search } : {}),
-          cursor: undefined,
-          limit: STREAM_PAGE_LIMIT,
-        });
+        const fresh = await listStreamPageAction(
+          ledgerId,
+          queryDescriptor?.getPageInput(undefined) ?? {
+            ...(startDate !== null ? { startDate } : {}),
+            ...(endDate !== null ? { endDate } : {}),
+            ...(minAmount != null ? { minAmount } : {}),
+            ...(maxAmount != null ? { maxAmount } : {}),
+            ...(stableStatuses != null && stableStatuses.length > 0
+              ? { statuses: stableStatuses }
+              : {}),
+            ...(search != null && search !== "" ? { search } : {}),
+            limit: STREAM_PAGE_LIMIT,
+          }
+        );
         generationRef.current = fresh.generation;
         queryClient.setQueryData<InfiniteData<StreamPage>>(streamPageKey, {
           pages: [fresh],
@@ -245,6 +261,7 @@ export function useSourceDocumentStream(
     maxAmount,
     minAmount,
     queryClient,
+    queryDescriptor,
     search,
     stableStatuses,
     startDate,

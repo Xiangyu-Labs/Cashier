@@ -232,6 +232,39 @@ describe("getLedgerPageBootstrap", () => {
     );
   });
 
+  it("passes search filters into both stream page and total prefetch", async () => {
+    await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "stream",
+      periodParams: {
+        period: "custom",
+        startDate: "2026-07-01",
+        endDate: "2026-07-31",
+      },
+      advancedFilters: {
+        search: "  coffee ",
+      },
+      ledgerDto: createPreAuthorizedLedgerDto(),
+    });
+
+    expect(listStreamPageMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        startDate: "2026-07-01",
+        endDate: "2026-07-31",
+        search: "coffee",
+        cursor: undefined,
+        limit: 20,
+      },
+      bootstrapDependencies.sourceDocuments
+    );
+    expect(getStreamTotalMock).toHaveBeenCalledWith(
+      "ledger-1",
+      { startDate: "2026-07-01", endDate: "2026-07-31", search: "coffee" },
+      bootstrapDependencies.sourceDocuments.documents
+    );
+  });
+
   it("prefetches details tab summary and paged entries", async () => {
     await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
@@ -293,8 +326,42 @@ describe("getLedgerPageBootstrap", () => {
     );
   });
 
-  it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {
+  it("passes the details search filter to both summary and entries", async () => {
     await getLedgerPageBootstrap({
+      ledgerId: "ledger-1",
+      initialTab: "details",
+      periodParams: {
+        period: "custom",
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+      },
+      advancedFilters: { search: "  coffee " },
+      ledgerDto: createPreAuthorizedLedgerDto(),
+    });
+
+    expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
+      "ledger-1",
+      "2026-03-01",
+      "2026-03-31",
+      "USD",
+      { search: "coffee" },
+      bootstrapDependencies.ledgerReads
+    );
+    expect(listLedgerEntriesMock).toHaveBeenCalledWith(
+      "ledger-1",
+      {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        search: "coffee",
+        cursor: undefined,
+        limit: 50,
+      },
+      bootstrapDependencies.ledgerReads
+    );
+  });
+
+  it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {
+    const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stats",
       periodParams: { period: "thisMonth" },
@@ -305,6 +372,31 @@ describe("getLedgerPageBootstrap", () => {
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(getSourceDocumentCountsQueryMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
+    const statsQuery = result?.dehydratedState.queries.find(
+      (query) => query.queryKey[0] === "enhanced-stats"
+    );
+    expect(statsQuery?.queryKey).toEqual([
+      "enhanced-stats",
+      "ledger-1",
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      "month",
+      "same_period",
+      "USD",
+    ]);
+    expect(getEnhancedStatsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ledgerId: "ledger-1",
+        queryRange: expect.objectContaining({ from: expect.any(String), to: expect.any(String) }),
+        compareRange: expect.objectContaining({
+          from: expect.any(String),
+          to: expect.any(String),
+        }),
+      }),
+      bootstrapDependencies.stats
+    );
   });
 
   it("uses CNY default currency when ledger metadata has no mainCurrency", async () => {

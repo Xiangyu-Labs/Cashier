@@ -730,6 +730,7 @@
     "tryAgain": "Try Again",
     "rateLimited": "Too Many Requests",
     "rateLimitedDesc": "Please wait a minute before trying again.",
+    "rateLimitUnavailableDesc": "Sign-in protection is temporarily unavailable. Please try again shortly.",
     "otpLockedDesc": "Too many failed verification attempts. Please try again later.",
     "sendCodeFailed": "Failed to send verification code",
     "unexpectedError": "An unexpected error occurred",

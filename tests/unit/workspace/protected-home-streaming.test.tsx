@@ -4,9 +4,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 // --------------------------------------------------------------------------
 // Hoisted mocks — run before any imports
 // --------------------------------------------------------------------------
-const { resolveAuthenticatedHomeMock, getMessagesMock } = vi.hoisted(() => ({
+const {
+  resolveAuthenticatedHomeMock,
+  getMessagesMock,
+  getLedgerPageBootstrapMock,
+  scheduleProcessingRecoveryAfterMock,
+} = vi.hoisted(() => ({
   resolveAuthenticatedHomeMock: vi.fn(),
   getMessagesMock: vi.fn(),
+  getLedgerPageBootstrapMock: vi.fn(),
+  scheduleProcessingRecoveryAfterMock: vi.fn(),
 }));
 
 // --------------------------------------------------------------------------
@@ -14,6 +21,19 @@ const { resolveAuthenticatedHomeMock, getMessagesMock } = vi.hoisted(() => ({
 // --------------------------------------------------------------------------
 vi.mock("@/lib/request-cache", () => ({
   resolveAuthenticatedHome: resolveAuthenticatedHomeMock,
+}));
+
+vi.mock("@/modules/workspace/application/queries/get-ledger-page-bootstrap", () => ({
+  getLedgerPageBootstrap: getLedgerPageBootstrapMock,
+}));
+
+vi.mock("@/modules/source-document/server-actions/schedule-processing-recovery", () => ({
+  scheduleProcessingRecoveryAfter: scheduleProcessingRecoveryAfterMock,
+}));
+
+vi.mock("@/app/[locale]/(protected)/_ledger-bootstrap-fallback", () => ({
+  LedgerBootstrapFallback: () =>
+    React.createElement("div", { "data-testid": "ledger-bootstrap-fallback" }),
 }));
 
 vi.mock("@/i18n/routing", () => ({
@@ -122,6 +142,11 @@ describe("protected home streaming boundary", () => {
       Common: { notFound: "Not found" },
       LedgerPage: { stream: "Stream" },
     });
+    getLedgerPageBootstrapMock.mockResolvedValue({
+      dehydratedState: { queries: [], mutations: [] },
+      initialCategories: [],
+      initialStatsDate: new Date("2026-01-01T00:00:00.000Z"),
+    });
   });
 
   it("page.tsx returns Suspense with LedgerPageSkeleton fallback and ActiveTab child", async () => {
@@ -165,23 +190,48 @@ describe("protected home streaming boundary", () => {
     expect(activeTabElement.props.searchParams).toEqual(searchParams);
   });
 
-  it("ActiveTab calls resolveAuthenticatedHome and mounts active content immediately", async () => {
-    // ActiveTab awaits resolveAuthenticatedHome before returning JSX.
-    // The returned element is a Fragment (mocked NextIntlClientProvider),
-    // whose child is the ActiveShell component element.
+  it("mounts the shell immediately and keeps bootstrap behind a nested boundary", async () => {
     const element = await ActiveTab({ searchParams: {} });
 
-    // resolveAuthenticatedHome should have been called
     expect(resolveAuthenticatedHomeMock).toHaveBeenCalled();
+    expect(scheduleProcessingRecoveryAfterMock).toHaveBeenCalledWith("ledger-1");
 
-    // The element is a Fragment (mocked NextIntlClientProvider).
-    // Its child is a React element for ActiveShell, not a DOM element.
     const shellElement = element!.props.children;
     expect(shellElement).toBeDefined();
 
-    // The ActiveShell receives the interactive client directly.
-    const innerContent = shellElement.props.children;
+    // The shell renders immediately; the bootstrapped content stays behind
+    // a nested Suspense with a startup-preview fallback.
+    const suspenseElement = shellElement.props.children;
+    expect(suspenseElement.type).toBe(Suspense);
+    expect(suspenseElement.props.fallback).toBeDefined();
+
+    const bootstrapElement = suspenseElement.props.children;
+    expect(typeof bootstrapElement.type).toBe("function");
+    const hydrationElement = await bootstrapElement.type(bootstrapElement.props);
+    expect(hydrationElement.type.name).toBe("HydrationBoundary");
+    const innerContent = hydrationElement.props.children;
     expect(innerContent.type).toBe(ActiveContent);
+    expect(getLedgerPageBootstrapMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ledgerId: "ledger-1",
+        initialTab: "stream",
+        ledgerDto: expect.objectContaining({ id: "ledger-1" }),
+      }),
+      expect.any(Object)
+    );
+  });
+
+  it("falls back to client queries when the bootstrap fails", async () => {
+    getLedgerPageBootstrapMock.mockRejectedValueOnce(new Error("bootstrap unavailable"));
+
+    const element = await ActiveTab({ searchParams: {} });
+    const suspenseElement = element!.props.children.props.children;
+    const bootstrapElement = suspenseElement.props.children;
+
+    const contentElement = await bootstrapElement.type(bootstrapElement.props);
+
+    expect(contentElement.type.name).toBe("HydrationBoundary");
+    expect(contentElement.props.children.type).toBe(ActiveContent);
   });
 
   it("ActiveContent passes the pre-authorized ledger dto to the client", () => {

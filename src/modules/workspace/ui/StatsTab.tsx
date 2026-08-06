@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnhancedStats } from "@/modules/stats/actions";
-import { invalidateCalendar, invalidateLedgerStats, queryKeys } from "@/lib/query-keys";
+import { invalidateCalendar, invalidateLedgerStats } from "@/lib/query-keys";
 import {
   addPeriod,
   formatCivilDate,
@@ -15,10 +15,8 @@ import { StatsContentView } from "@/modules/stats/ui";
 import { useLocale } from "next-intl";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
-import {
-  DEFAULT_STATS_RANGE_TYPE,
-  getStatsInitialQueryState,
-} from "@/modules/workspace/initial-query-state";
+import { DEFAULT_STATS_RANGE_TYPE } from "@/modules/workspace/initial-query-state";
+import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "./tab-query-state";
 
@@ -72,20 +70,18 @@ export function StatsTab({
   );
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
 
-  const {
-    startDate,
-    endDate,
-    prevDateStart: _prevDateStart,
-    prevDateEnd: _prevDateEnd,
-    startDateStr,
-    endDateStr,
-    prevDateStartStr,
-    prevDateEndStr,
-    mode,
-  } = useMemo(
-    () => getStatsInitialQueryState(currentDate, rangeType, { currentPeriod: periodOffset === 0 }),
-    [currentDate, periodOffset, rangeType]
+  const statsDescriptor = useMemo(
+    () =>
+      buildStatsQueryDescriptor({
+        ledgerId: ledgerId ?? "",
+        currentDate,
+        mainCurrency: ledger?.settings.mainCurrency ?? "CNY",
+        rangeType,
+        currentPeriod: periodOffset === 0,
+      }),
+    [currentDate, ledger?.settings.mainCurrency, ledgerId, periodOffset, rangeType]
   );
+  const { startDate, endDate, startDateStr, endDateStr } = statsDescriptor.state;
 
   const label = useMemo(() => {
     switch (rangeType) {
@@ -100,36 +96,9 @@ export function StatsTab({
     }
   }, [endDateStr, locale, rangeType, startDateStr]);
 
-  const enhancedStatsKey = useMemo(
-    () =>
-      queryKeys.enhancedStats(ledgerId ?? "", {
-        startDate: startDateStr,
-        endDate: endDateStr,
-        compareStartDate: prevDateStartStr,
-        compareEndDate: prevDateEndStr,
-        rangeType,
-        comparisonMode: mode,
-        ...(ledger?.settings.mainCurrency !== undefined
-          ? { mainCurrency: ledger.settings.mainCurrency }
-          : {}),
-      }),
-    [endDateStr, ledger, ledgerId, mode, prevDateEndStr, prevDateStartStr, rangeType, startDateStr]
-  );
   const statsQuery = useQuery({
-    queryKey: enhancedStatsKey,
-    queryFn: () =>
-      getEnhancedStats({
-        ledgerId: ledgerId ?? "",
-        queryRange: {
-          from: startDateStr,
-          to: endDateStr,
-        },
-        compareRange: {
-          from: prevDateStartStr,
-          to: prevDateEndStr,
-        },
-        comparisonMode: mode,
-      }),
+    queryKey: statsDescriptor.queryKey,
+    queryFn: () => getEnhancedStats(statsDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
@@ -139,11 +108,17 @@ export function StatsTab({
     onQueryStateChange?.({
       ledgerId: ledgerId ?? "",
       tab: "stats",
-      queryKey: enhancedStatsKey,
+      queryKey: statsDescriptor.queryKey,
       status: statsQuery.status,
       isFetching: statsQuery.isFetching,
     });
-  }, [enhancedStatsKey, ledgerId, onQueryStateChange, statsQuery.isFetching, statsQuery.status]);
+  }, [
+    ledgerId,
+    onQueryStateChange,
+    statsDescriptor.queryKey,
+    statsQuery.isFetching,
+    statsQuery.status,
+  ]);
 
   const handleRefresh = useCallback(async () => {
     const activeLedgerId = ledgerId ?? "";

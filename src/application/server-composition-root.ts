@@ -9,6 +9,7 @@ import {
   postgresSourceDocumentSubmissionAdapter,
   postgresSettingsAdapter,
   postgresUserAccountAdapter,
+  postgresUserPreferencesAdapter,
   postgresRevisionAdapter,
   collectTargetSourceDocuments,
   calculateCompletedSourceDocumentTotal,
@@ -47,6 +48,7 @@ import {
   getEnhancedStats,
   getEnhancedStatsQuery,
 } from "@/application/adapters/postgres/ledger-reads/get-enhanced-stats";
+import { postgresLedgerStartupCacheMetadataAdapter } from "@/application/adapters/postgres/ledger-startup-cache";
 import {
   postgresFxRateBook,
   fetchWithRetry as fetchExchangeRatesWithRetry,
@@ -109,6 +111,8 @@ export const serverComposition = {
   },
   credentialSourceDocuments: postgresCredentialSourceDocumentReadAdapter,
   ledgerChanges: postgresLedgerChangeReadAdapter,
+  ledgerStartupCache: postgresLedgerStartupCacheMetadataAdapter,
   executeSingleProcessingIntent,
   userAccounts: postgresUserAccountAdapter,
+  userPreferences: postgresUserPreferencesAdapter,
 } as const;

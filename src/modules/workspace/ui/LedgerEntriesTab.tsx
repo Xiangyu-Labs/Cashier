@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
-import { queryKeys } from "@/lib/query-keys";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
@@ -25,7 +24,8 @@ import { LedgerEntriesLoading } from "./LedgerEntriesLoading";
 import { LedgerEntriesUnifiedGroups } from "./LedgerEntriesCompletedGroups";
 import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
-import { buildStreamTotalQuery, useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
+import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
+import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "./tab-query-state";
@@ -76,21 +76,30 @@ export function LedgerEntriesTab({
     null
   );
 
-  const { input: streamTotalInput, statusesKey } = buildStreamTotalQuery(
-    filters,
-    startDateStr,
-    endDateStr
+  const streamQueryDescriptor = useMemo(
+    () =>
+      buildStreamQueryDescriptor({
+        ledgerId,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        minAmount: filters.minAmount,
+        maxAmount: filters.maxAmount,
+        statuses: filters.statuses,
+        search: filters.search,
+      }),
+    [
+      endDateStr,
+      filters.maxAmount,
+      filters.minAmount,
+      filters.search,
+      filters.statuses,
+      ledgerId,
+      startDateStr,
+    ]
   );
   const { data: streamTotalData } = useQuery({
-    queryKey: queryKeys.sourceDocumentStreamTotal(ledgerId, {
-      startDate: startDateStr,
-      endDate: endDateStr,
-      minAmount: filters.minAmount,
-      maxAmount: filters.maxAmount,
-      statuses: statusesKey,
-      search: filters.search,
-    }),
-    queryFn: () => getStreamTotalAction(ledgerId, streamTotalInput),
+    queryKey: streamQueryDescriptor.totalQueryKey,
+    queryFn: () => getStreamTotalAction(ledgerId, streamQueryDescriptor.totalInput),
   });
   const filteredTotal = Number(streamTotalData?.total ?? 0);
   const hasActiveFilters =
@@ -134,6 +143,7 @@ export function LedgerEntriesTab({
       ? { statuses: filters.statuses }
       : {}),
     ...(filters.search != null ? { search: filters.search } : {}),
+    queryDescriptor: streamQueryDescriptor,
   });
   useEffect(() => {
     onQueryStateChange?.({

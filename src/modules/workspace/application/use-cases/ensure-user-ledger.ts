@@ -2,6 +2,7 @@ import type { LedgerPort } from "@/application/contracts";
 import { getDefaultLedger } from "@/config/default-ledger";
 import { ConflictError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 
 export interface EnsureUserLedgerInput {
   userId: string;
@@ -25,7 +26,13 @@ export async function ensureUserLedger(
 ): Promise<EnsureUserLedgerResult> {
   const existing = await ledgers.listIdsForUser(input.userId);
   if (existing.length > 1) {
-    logger.error({ userId: input.userId, ledgerIds: existing }, "Expected one active ledger");
+    logger.error(
+      {
+        userSubject: logIdentifier("user", input.userId),
+        ledgerSubjects: existing.map((ledgerId) => logIdentifier("ledger", ledgerId)),
+      },
+      "Expected one active ledger"
+    );
   }
   if (existing[0] != null) return { ledgerId: existing[0], created: false };
   const defaults = getDefaultLedger(input.locale ?? "zh");

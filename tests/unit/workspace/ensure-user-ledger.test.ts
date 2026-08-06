@@ -49,7 +49,13 @@ describe("ensureUserLedger", () => {
     test.listIdsForUser.mockResolvedValue(["ledger-newer", "ledger-older"]);
     await ensureUserLedger({ userId: "user-1" }, test.port);
     expect(loggerError).toHaveBeenCalledWith(
-      { userId: "user-1", ledgerIds: ["ledger-newer", "ledger-older"] },
+      {
+        userSubject: expect.stringMatching(/^user:[a-f0-9]{16}$/),
+        ledgerSubjects: [
+          expect.stringMatching(/^ledger:[a-f0-9]{16}$/),
+          expect.stringMatching(/^ledger:[a-f0-9]{16}$/),
+        ],
+      },
       "Expected one active ledger"
     );
   });

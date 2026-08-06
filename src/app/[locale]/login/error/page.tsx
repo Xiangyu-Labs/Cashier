@@ -56,6 +56,18 @@ const CREDENTIALS_ERROR_MESSAGES = {
     title: "rateLimited",
     desc: "rateLimitedDesc",
   },
+  [AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED]: {
+    title: "rateLimited",
+    desc: "rateLimitedDesc",
+  },
+  [AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE]: {
+    title: "error",
+    desc: "rateLimitUnavailableDesc",
+  },
+  [AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE]: {
+    title: "error",
+    desc: "rateLimitUnavailableDesc",
+  },
 } satisfies Record<string, ErrorMessage>;
 
 export default function LoginErrorPage() {

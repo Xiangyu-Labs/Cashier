@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import bcrypt from "bcryptjs";
 import type { UserAccountPort } from "@/application/contracts";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
@@ -6,6 +6,12 @@ import { hashPassword, verifyPassword } from "@/modules/auth/services/password";
 import { validatePassword } from "@/modules/auth/services/password-policy";
 
 describe("password authentication", () => {
+  const rateLimiter = {
+    increment: async () => ({ success: true, remaining: 9, resetTime: Date.now() + 900_000 }),
+    setCooldown: async () => {},
+    getCooldownRemaining: async () => 0,
+  };
+
   it("hashes and verifies passwords without storing plaintext", async () => {
     const hash = await hashPassword("correct-horse-9");
     expect(hash).not.toContain("correct-horse-9");
@@ -18,6 +24,8 @@ describe("password authentication", () => {
     expect(() => validatePassword("short1")).toThrow(/8 and 128/);
     expect(() => validatePassword("onlyletters")).toThrow(/letter and one number/);
     expect(() => validatePassword("valid-password-1")).not.toThrow();
+    expect(() => validatePassword(`${"a".repeat(70)}1x`)).not.toThrow();
+    expect(() => validatePassword(`${"a".repeat(71)}1x`)).toThrow(/72 UTF-8 bytes/);
   });
 
   it("returns the user for valid credentials and hides failure details", async () => {
@@ -36,18 +44,130 @@ describe("password authentication", () => {
 
     await expect(
       authenticateWithPassword(
-        { email: " OWNER@example.com ", password: "valid-password-1" },
-        users
+        {
+          email: " OWNER@example.com ",
+          password: "valid-password-1",
+          requestHeaders: new Headers(),
+        },
+        { users, rateLimiter }
       )
     ).resolves.toMatchObject({ id: "user-id", email: "owner@example.com" });
     await expect(
-      authenticateWithPassword({ email: "owner@example.com", password: "wrong-password-1" }, users)
+      authenticateWithPassword(
+        {
+          email: "owner@example.com",
+          password: "wrong-password-1",
+          requestHeaders: new Headers(),
+        },
+        { users, rateLimiter }
+      )
     ).rejects.toMatchObject({ code: "invalid_credentials" });
     await expect(
       authenticateWithPassword(
-        { email: "missing@example.com", password: "wrong-password-1" },
-        users
+        {
+          email: "missing@example.com",
+          password: "wrong-password-1",
+          requestHeaders: new Headers(),
+        },
+        { users, rateLimiter }
       )
     ).rejects.toMatchObject({ code: "invalid_credentials" });
+  });
+
+  it("runs a dummy bcrypt comparison for unknown users", async () => {
+    const compare = vi.spyOn(bcrypt, "compare");
+    const findByEmail = vi.fn().mockResolvedValue(null);
+
+    await expect(
+      authenticateWithPassword(
+        {
+          email: "missing@example.com",
+          password: "wrong-password-1",
+          requestHeaders: new Headers(),
+        },
+        {
+          users: { findByEmail } as unknown as UserAccountPort,
+          rateLimiter,
+        }
+      )
+    ).rejects.toMatchObject({ code: "invalid_credentials" });
+
+    expect(compare).toHaveBeenCalledWith("wrong-password-1", expect.stringMatching(/^\$2b\$12\$/));
+    compare.mockRestore();
+  });
+
+  it("blocks password verification when either rate-limit bucket is unavailable or exhausted", async () => {
+    const findByEmail = vi.fn();
+    const compare = vi.spyOn(bcrypt, "compare");
+    const unavailableRateLimiter = {
+      ...rateLimiter,
+      increment: vi.fn().mockRejectedValue(new Error("rate limiter down")),
+    };
+
+    await expect(
+      authenticateWithPassword(
+        {
+          email: "owner@example.com",
+          password: "valid-password-1",
+          requestHeaders: new Headers(),
+        },
+        {
+          users: { findByEmail } as unknown as UserAccountPort,
+          rateLimiter: unavailableRateLimiter,
+        }
+      )
+    ).rejects.toMatchObject({ code: "password_rate_limit_unavailable" });
+
+    expect(findByEmail).not.toHaveBeenCalled();
+    expect(compare).not.toHaveBeenCalled();
+    compare.mockRestore();
+
+    const limitedRateLimiter = {
+      ...rateLimiter,
+      increment: vi.fn().mockResolvedValue({
+        success: false,
+        remaining: 0,
+        resetTime: Date.now() + 900_000,
+      }),
+    };
+    await expect(
+      authenticateWithPassword(
+        {
+          email: "owner@example.com",
+          password: "valid-password-1",
+          requestHeaders: new Headers(),
+        },
+        {
+          users: { findByEmail } as unknown as UserAccountPort,
+          rateLimiter: limitedRateLimiter,
+        }
+      )
+    ).rejects.toMatchObject({ code: "password_rate_limited" });
+    expect(findByEmail).not.toHaveBeenCalled();
+  });
+
+  it("skips the shared IP bucket when the client address is unknown", async () => {
+    const increment = vi.fn().mockResolvedValue({
+      success: true,
+      remaining: 9,
+      resetTime: Date.now() + 900_000,
+    });
+    const users = {
+      findByEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UserAccountPort;
+
+    await expect(
+      authenticateWithPassword(
+        {
+          email: "owner@example.com",
+          password: "wrong-password-1",
+          requestHeaders: new Headers(),
+        },
+        { users, rateLimiter: { ...rateLimiter, increment } }
+      )
+    ).rejects.toMatchObject({ code: "invalid_credentials" });
+
+    expect(increment).toHaveBeenCalledTimes(1);
+    expect(increment.mock.calls[0]?.[0]).toBe("auth:password:email:owner@example.com");
   });
 });

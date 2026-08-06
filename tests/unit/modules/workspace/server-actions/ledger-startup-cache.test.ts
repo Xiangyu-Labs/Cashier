@@ -13,6 +13,9 @@ const listDocuments = vi.hoisted(() => vi.fn());
 const serverComposition = vi.hoisted(() => ({
   sourceDocumentReads: {},
   ledgerReads: {},
+  ledgerStartupCache: {
+    get: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({ db }));
@@ -34,17 +37,10 @@ import {
 } from "@/modules/workspace/server-actions/ledger-startup-cache";
 
 function mockVersionQuery(version: bigint, count = "0") {
-  db.select.mockReturnValue({
-    from: vi.fn(() => ({
-      where: vi.fn(() => ({
-        then: vi.fn(
-          async (callback: (rows: Array<{ count: string; updatedAt: string }>) => unknown) =>
-            callback([{ count, updatedAt: "epoch" }])
-        ),
-      })),
-    })),
+  serverComposition.ledgerStartupCache.get.mockResolvedValue({
+    version,
+    recordCount: Number(count),
   });
-  db.query.ledgerSyncState.findFirst.mockResolvedValue({ version });
 }
 
 describe("ledger startup cache server actions", () => {
@@ -55,7 +51,7 @@ describe("ledger startup cache server actions", () => {
       recordCount: 12,
       complete: true,
       truncated: false,
-      coverageLimit: 1000,
+      coverageLimit: 300,
     });
   });
 
@@ -64,7 +60,7 @@ describe("ledger startup cache server actions", () => {
     const result = await getLedgerStartupCacheVersion("ledger");
     expect(result.truncated).toBe(true);
     expect(result.complete).toBe(false);
-    expect(result.coverageLimit).toBe(1000);
+    expect(result.coverageLimit).toBe(300);
   });
 
   it("collects a bounded snapshot payload", async () => {

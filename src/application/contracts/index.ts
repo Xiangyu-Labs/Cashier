@@ -482,6 +482,7 @@ export interface OtpTokenPort {
   claim(input: { email: string; tokenHash: string; now: Date }): Promise<boolean>;
   release(input: { email: string; tokenHash: string }): Promise<boolean>;
   consume(input: { email: string; tokenHash: string }): Promise<boolean>;
+  discard(input: { email: string; tokenHash: string }): Promise<boolean>;
   delete(email: string): Promise<void>;
   cleanupExpired(now: Date): Promise<number>;
 }
@@ -506,6 +507,20 @@ export interface UserAccountPort {
   }>;
   findByEmail(email: string): Promise<UserAccountContract | null>;
   findById(id: string): Promise<UserAccountContract | null>;
+}
+
+export type UserInterfaceLanguage = "auto" | "zh" | "en";
+
+export interface UserPreferencesContract {
+  interfaceLanguage: UserInterfaceLanguage;
+}
+
+export interface UserPreferencesPort {
+  get(userId: string): Promise<UserPreferencesContract | null>;
+  update(input: {
+    userId: string;
+    preferences: UserPreferencesContract;
+  }): Promise<UserPreferencesContract | null>;
 }
 
 export interface CategoryMutationContract {

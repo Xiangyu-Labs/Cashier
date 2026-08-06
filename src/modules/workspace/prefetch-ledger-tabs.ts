@@ -6,8 +6,11 @@ import { queryKeys } from "@/lib/query-keys";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
-import { getDetailsInitialQueryState, getStatsInitialQueryState } from "./initial-query-state";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import {
+  buildDetailsQueryDescriptor,
+  buildStatsQueryDescriptor,
+} from "./ledger-tab-query-descriptors";
 
 type LedgerEntriesPage = Awaited<
   ReturnType<(typeof import("@/modules/ledger/actions"))["getLedgerEntriesAction"]>
@@ -22,38 +25,31 @@ export async function prefetchDetailsTabQuery(
   const { getLedgerEntriesAction, getLedgerStatsAction } = await import("@/modules/ledger/actions");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
-  const { startDateStr, endDateStr, filterKey } = getDetailsInitialQueryState(
+  const descriptor = buildDetailsQueryDescriptor({
+    ledgerId,
     periodParams,
     advancedFilters,
-    ledger?.settings.timeZone ?? undefined
-  );
+    ...(ledger?.settings.timeZone != null ? { timeZone: ledger.settings.timeZone } : {}),
+    mainCurrency,
+  });
 
   await Promise.all([
     queryClient.prefetchQuery({
-      queryKey: queryKeys.summary(ledgerId, startDateStr, endDateStr, mainCurrency, filterKey),
+      queryKey: descriptor.summaryQueryKey,
       queryFn: () =>
         getLedgerStatsAction(
           ledgerId,
-          startDateStr ?? undefined,
-          endDateStr ?? undefined,
-          mainCurrency,
-          advancedFilters
+          descriptor.summaryParams.startDate,
+          descriptor.summaryParams.endDate,
+          descriptor.summaryParams.mainCurrency,
+          descriptor.summaryParams.filters
         ),
       staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     }),
     queryClient.prefetchInfiniteQuery({
-      queryKey: queryKeys.ledgerEntries(ledgerId, "infinite", startDateStr, endDateStr, filterKey),
+      queryKey: descriptor.entriesQueryKey,
       queryFn: ({ pageParam }) =>
-        getLedgerEntriesAction(ledgerId, {
-          limit: 50,
-          ...(startDateStr != null ? { startDate: startDateStr } : {}),
-          ...(endDateStr != null ? { endDate: endDateStr } : {}),
-          ...(advancedFilters.categoryId != null ? { categoryId: advancedFilters.categoryId } : {}),
-          ...(advancedFilters.currency != null ? { currency: advancedFilters.currency } : {}),
-          ...(advancedFilters.minAmount != null ? { minAmount: advancedFilters.minAmount } : {}),
-          ...(advancedFilters.maxAmount != null ? { maxAmount: advancedFilters.maxAmount } : {}),
-          ...(pageParam != null ? { cursor: pageParam as string } : {}),
-        }),
+        getLedgerEntriesAction(ledgerId, descriptor.getEntriesInput(pageParam)),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (lastPage: LedgerEntriesPage) => lastPage.nextCursor,
       staleTime: QUERY.DEFAULT_STALE_TIME_MS,
@@ -67,27 +63,15 @@ export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: 
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const fixedTimeZone = ledger?.settings.timeZone ?? undefined;
   const zonedToday = getDateInTimezone(fixedTimeZone);
-  const state = getStatsInitialQueryState(
-    zonedToday != null ? parseDateString(zonedToday) : new Date()
-  );
+  const descriptor = buildStatsQueryDescriptor({
+    ledgerId,
+    currentDate: zonedToday != null ? parseDateString(zonedToday) : new Date(),
+    mainCurrency,
+  });
 
   await queryClient.prefetchQuery({
-    queryKey: queryKeys.enhancedStats(ledgerId, {
-      startDate: state.startDateStr,
-      endDate: state.endDateStr,
-      compareStartDate: state.prevDateStartStr,
-      compareEndDate: state.prevDateEndStr,
-      rangeType: state.rangeType,
-      comparisonMode: state.mode,
-      mainCurrency,
-    }),
-    queryFn: () =>
-      getEnhancedStats({
-        ledgerId,
-        queryRange: { from: state.startDateStr, to: state.endDateStr },
-        compareRange: { from: state.prevDateStartStr, to: state.prevDateEndStr },
-        comparisonMode: state.mode,
-      }),
+    queryKey: descriptor.queryKey,
+    queryFn: () => getEnhancedStats(descriptor.input),
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
   });
 }

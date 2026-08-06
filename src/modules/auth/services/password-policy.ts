@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { AppError } from "@/lib/errors";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 
@@ -10,6 +11,13 @@ export function validatePassword(password: string): void {
     throw new AppError(
       "Password must be between 8 and 128 characters",
       AUTH_ERROR_CODES.PASSWORD_TOO_SHORT,
+      400
+    );
+  }
+  if (bcrypt.truncates(password)) {
+    throw new AppError(
+      "Password must be at most 72 UTF-8 bytes",
+      AUTH_ERROR_CODES.PASSWORD_REQUIREMENTS_NOT_MET,
       400
     );
   }

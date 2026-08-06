@@ -80,6 +80,42 @@ export function removeActiveStartupCacheKey(): void {
   if (typeof localStorage !== "undefined") localStorage.removeItem(ACTIVE_STARTUP_CACHE_KEY);
 }
 
+function hashIdentifier(value: string): string {
+  let hash = 2_166_136_261;
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+export function reportClientCacheError(
+  error: unknown,
+  identifiers: { userId?: string; ledgerId?: string },
+  message: string
+): void {
+  const errorObject = error instanceof Error ? error : null;
+  const errorCode =
+    typeof error === "object" &&
+    error != null &&
+    "code" in error &&
+    (typeof error.code === "string" || typeof error.code === "number")
+      ? String(error.code)
+      : undefined;
+  console.error(message, {
+    error: {
+      ...(errorObject?.name == null ? {} : { name: errorObject.name }),
+      ...(errorCode == null ? {} : { code: errorCode }),
+    },
+    ...(identifiers.userId == null
+      ? {}
+      : { userSubject: `user:${hashIdentifier(identifiers.userId)}` }),
+    ...(identifiers.ledgerId == null
+      ? {}
+      : { ledgerSubject: `ledger:${hashIdentifier(identifiers.ledgerId)}` }),
+  });
+}
+
 /** Clears every user-level startup snapshot and document image from the cache. */
 export async function clearUserCacheData(userId?: string): Promise<void> {
   if (typeof indexedDB === "undefined") return;
@@ -102,4 +138,18 @@ export async function clearUserCacheData(userId?: string): Promise<void> {
   }
   await transactionDone(tx);
   removeActiveStartupCacheKey();
+}
+
+export async function clearUserCacheDataSafely(
+  userId: string | undefined,
+  identifiers: { userId?: string; ledgerId?: string },
+  message: string
+): Promise<boolean> {
+  try {
+    await clearUserCacheData(userId);
+    return true;
+  } catch (error) {
+    reportClientCacheError(error, identifiers, message);
+    return false;
+  }
 }

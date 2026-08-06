@@ -22,7 +22,6 @@ const authenticateWithOTP = (input: Parameters<typeof authenticateWithOTPUseCase
   authenticateWithOTPUseCase(input, {
     userAccounts: serverComposition.userAccounts,
     otpTokens: serverComposition.otpTokens,
-    ledgers: serverComposition.ledgers,
     rateLimiter: serverComposition.rateLimiter,
   });
 

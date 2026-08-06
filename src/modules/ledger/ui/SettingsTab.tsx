@@ -32,7 +32,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/actions";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { toast } from "sonner";
-import { clearUserCacheData } from "@/lib/client-cache";
+import { clearUserCacheDataSafely } from "@/lib/client-cache";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -345,7 +345,11 @@ export function SettingsTab({
           <Button
             variant="outline"
             onClick={async () => {
-              await clearUserCacheData(ledger.userId).catch(() => {});
+              await clearUserCacheDataSafely(
+                ledger.userId,
+                { userId: ledger.userId, ledgerId },
+                "Failed to clear startup cache before sign-out"
+              );
               await signOut({ callbackUrl: "/login" });
             }}
             disabled={isPending}

@@ -8,6 +8,7 @@ const baseEnv = {
   API_KEY_PEPPER: "test-pepper",
   OPENAI_API_KEY: "sk-test",
   AUTH_SECRET: "auth-secret",
+  AUTH_OTP_PEPPER: "otp-pepper",
   APP_URL: "http://localhost:3000",
   S3_ENDPOINT: "http://localhost:9000",
   S3_BUCKET: "cashier-images",
@@ -31,6 +32,10 @@ describe("runtimeEnv", () => {
       AI_TEMPERATURE: "0.7",
       AUTH_RATE_LIMIT_MAX: "12",
       AUTH_RATE_LIMIT_WINDOW: "600",
+      AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS: "11",
+      AUTH_PASSWORD_IP_MAX_ATTEMPTS: "51",
+      AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS: "601",
+      LEDGER_STARTUP_CACHE_DOCUMENT_LIMIT: "301",
       AUTH_EMAIL_FROM: "Cashier <security@example.com>",
       DISABLE_REGISTRATION: "true",
       LOG_LEVEL: "warn",
@@ -80,6 +85,10 @@ describe("runtimeEnv", () => {
     expect(runtimeEnv.otpResendCooldownSeconds).toBe(90);
     expect(runtimeEnv.authRateLimitMax).toBe(12);
     expect(runtimeEnv.authRateLimitWindow).toBe(600);
+    expect(runtimeEnv.authPasswordEmailMaxAttempts).toBe(11);
+    expect(runtimeEnv.authPasswordIpMaxAttempts).toBe(51);
+    expect(runtimeEnv.authPasswordRateLimitWindowSeconds).toBe(601);
+    expect(runtimeEnv.ledgerStartupCacheDocumentLimit).toBe(301);
     expect(runtimeEnv.otpIpMaxAttemptsPerHour).toBe(14);
     expect(runtimeEnv.otpVerifyMaxAttemptsPerMinute).toBe(6);
     expect(runtimeEnv.apiRateLimitPerMinute).toBe(75);

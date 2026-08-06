@@ -35,6 +35,11 @@ function getSignInErrorMessage(
       return t("otpLockedDesc");
     case AUTH_ERROR_CODES.OTP_RATE_LIMITED:
       return t("rateLimitedDesc");
+    case AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED:
+      return t("rateLimitedDesc");
+    case AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE:
+    case AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE:
+      return t("rateLimitUnavailableDesc");
     default:
       return result?.error != null ? t("errorDesc") : t("unexpectedError");
   }
@@ -51,6 +56,9 @@ function getSendOTPErrorMessage(
 ): string {
   if (result.code === "rate_limited") {
     return t("rateLimitedDesc");
+  }
+  if (result.code === "rate_limit_unavailable") {
+    return t("rateLimitUnavailableDesc");
   }
   if (result.code === "unexpected") {
     return t("unexpectedError");

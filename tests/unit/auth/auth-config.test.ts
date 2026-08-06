@@ -29,10 +29,6 @@ vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () =>
   authenticateWithPassword: vi.fn(),
 }));
 
-vi.mock("@/modules/auth/application/use-cases/handle-auth-user-created", () => ({
-  handleAuthUserCreated: vi.fn(),
-}));
-
 vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
   handleAuthUserSignedIn: vi.fn(),
 }));

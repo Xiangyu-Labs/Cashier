@@ -1,10 +1,9 @@
-import { CredentialsSignin } from "@auth/core/errors";
-import type { User } from "next-auth";
-import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
+import { RateLimitUnavailableError } from "@/lib/errors";
+import { AUTH_ERROR_CODES, AuthSignInError } from "@/modules/auth/errors";
+import type { AuthenticatedPrincipal } from "@/modules/auth/contracts";
 import { isValidOTPFormat } from "@/modules/auth/services/otp";
 import { checkVerifyRateLimit } from "@/modules/auth/services/otp-rate-limit";
 import {
-  consumeOTPClaim,
   findOTPRecord,
   releaseOTPClaim,
   verifyOTPWithPolicy,
@@ -13,42 +12,40 @@ import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
 import { normalizeEmail } from "@/lib/utils/email";
 import { getClientIPFromHeaders, type HeadersLike } from "@/lib/utils/ip";
-import { ensureUserLedger } from "@/modules/workspace/application/use-cases/ensure-user-ledger";
 import { assertRegistrationAllowed } from "./registration-policy";
-import type { LedgerPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
+import type { OtpTokenPort, UserAccountPort } from "@/application/contracts";
 import type { RateLimitPort } from "../ports";
 
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-class OTPCredentialsSigninError extends CredentialsSignin {
-  constructor(code: string) {
-    super();
-    this.code = code;
-  }
-}
-
-export class OTPInvalidSignInError extends OTPCredentialsSigninError {
+export class OTPInvalidSignInError extends AuthSignInError {
   constructor() {
     super(AUTH_ERROR_CODES.OTP_INVALID);
   }
 }
 
-export class OTPExpiredSignInError extends OTPCredentialsSigninError {
+export class OTPExpiredSignInError extends AuthSignInError {
   constructor() {
     super(AUTH_ERROR_CODES.OTP_EXPIRED);
   }
 }
 
-export class OTPLockedSignInError extends OTPCredentialsSigninError {
+export class OTPLockedSignInError extends AuthSignInError {
   constructor() {
     super(AUTH_ERROR_CODES.OTP_LOCKED);
   }
 }
 
-export class OTPRateLimitedSignInError extends OTPCredentialsSigninError {
+export class OTPRateLimitedSignInError extends AuthSignInError {
   constructor() {
     super(AUTH_ERROR_CODES.OTP_RATE_LIMITED);
+  }
+}
+
+export class OTPRateLimitUnavailableSignInError extends AuthSignInError {
+  constructor() {
+    super(AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE);
   }
 }
 
@@ -79,10 +76,9 @@ export async function authenticateWithOTP(
   dependencies: {
     userAccounts: UserAccountPort;
     otpTokens: OtpTokenPort;
-    ledgers: LedgerPort;
     rateLimiter: RateLimitPort;
   }
-): Promise<User> {
+): Promise<AuthenticatedPrincipal> {
   const normalizedEmail = validateCredentials(params.email, params.otp);
   const locale = params.locale ?? "zh";
 
@@ -104,7 +100,15 @@ export async function authenticateWithOTP(
   }
 
   const ip = getClientIPFromHeaders(params.requestHeaders);
-  const isAllowed = await checkVerifyRateLimit(ip, dependencies.rateLimiter);
+  let isAllowed: boolean;
+  try {
+    isAllowed = await checkVerifyRateLimit(ip, dependencies.rateLimiter);
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      throw new OTPRateLimitUnavailableSignInError();
+    }
+    throw error;
+  }
   if (!isAllowed) {
     logger.warn(
       {
@@ -149,23 +153,13 @@ export async function authenticateWithOTP(
     await assertRegistrationAllowed(normalizedEmail, dependencies.userAccounts);
     const { user } = await dependencies.userAccounts.findOrCreate(normalizedEmail);
 
-    await ensureUserLedger(
-      {
-        userId: user.id,
-        locale,
-      },
-      dependencies.ledgers
-    );
-    if (!(await consumeOTPClaim(claim, dependencies.otpTokens))) {
-      throw new OTPInvalidSignInError();
-    }
-
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       image: user.image,
       locale,
+      pendingOtpClaim: claim,
     };
   } catch (error) {
     await releaseOTPClaim(claim, dependencies.otpTokens).catch((releaseError) => {

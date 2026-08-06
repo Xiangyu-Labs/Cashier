@@ -9,6 +9,7 @@ import type {
   SettingsPort,
   OtpTokenPort,
   UserAccountPort,
+  UserPreferencesPort,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
@@ -874,6 +875,13 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
       .returning({ id: otpTokens.id });
     return rows.length === 1;
   },
+  async discard(input) {
+    const rows = await db
+      .delete(otpTokens)
+      .where(and(eq(otpTokens.email, input.email), eq(otpTokens.tokenHash, input.tokenHash)))
+      .returning({ id: otpTokens.id });
+    return rows.length === 1;
+  },
   async delete(email) {
     await db.delete(otpTokens).where(eq(otpTokens.email, email));
   },
@@ -977,5 +985,25 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           passwordUpdatedAt: row.passwordUpdatedAt,
           interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
         };
+  },
+};
+
+export const postgresUserPreferencesAdapter: UserPreferencesPort = {
+  async get(userId) {
+    const row = await db.query.users.findFirst({
+      where: and(eq(users.id, userId), isNull(users.deletedAt)),
+      columns: { preferences: true },
+    });
+    return row?.preferences ?? null;
+  },
+
+  async update(input) {
+    const updated = await db
+      .update(users)
+      .set({ preferences: input.preferences, updatedAt: new Date() })
+      .where(and(eq(users.id, input.userId), isNull(users.deletedAt)))
+      .returning({ preferences: users.preferences })
+      .then((rows) => rows[0]);
+    return updated?.preferences ?? null;
   },
 };

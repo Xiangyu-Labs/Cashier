@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
-import type { LedgerPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
+import type { OtpTokenPort, UserAccountPort } from "@/application/contracts";
 
 const {
   findOTPRecordMock,
@@ -8,7 +8,6 @@ const {
   consumeOTPClaimMock,
   releaseOTPClaimMock,
   checkVerifyRateLimitMock,
-  ensureUserLedgerMock,
   assertRegistrationAllowedMock,
   getClientIPFromHeadersMock,
   dbUserFindFirstMock,
@@ -21,7 +20,6 @@ const {
   consumeOTPClaimMock: vi.fn(),
   releaseOTPClaimMock: vi.fn(),
   checkVerifyRateLimitMock: vi.fn(),
-  ensureUserLedgerMock: vi.fn(),
   assertRegistrationAllowedMock: vi.fn(),
   getClientIPFromHeadersMock: vi.fn(),
   dbUserFindFirstMock: vi.fn(),
@@ -39,10 +37,6 @@ vi.mock("@/modules/auth/services/otp-verification", () => ({
 
 vi.mock("@/modules/auth/services/otp-rate-limit", () => ({
   checkVerifyRateLimit: checkVerifyRateLimitMock,
-}));
-
-vi.mock("@/modules/workspace/application/use-cases/ensure-user-ledger", () => ({
-  ensureUserLedger: ensureUserLedgerMock,
 }));
 
 vi.mock("@/modules/auth/application/use-cases/registration-policy", () => ({
@@ -85,13 +79,12 @@ import {
 } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 
 const otpTokens = {} as OtpTokenPort;
-const ledgers = {} as LedgerPort;
 const fallbackUsers = {} as UserAccountPort;
 const rateLimiter = {} as import("@/modules/auth/application/ports").RateLimitPort;
 const authenticateWithOTP = (
   input: Parameters<typeof authenticateWithOTPUseCase>[0],
   users: UserAccountPort = fallbackUsers
-) => authenticateWithOTPUseCase(input, { userAccounts: users, otpTokens, ledgers, rateLimiter });
+) => authenticateWithOTPUseCase(input, { userAccounts: users, otpTokens, rateLimiter });
 
 describe("authenticateWithOTP additional coverage", () => {
   beforeEach(() => {
@@ -126,14 +119,10 @@ describe("authenticateWithOTP additional coverage", () => {
     dbInsertValuesMock.mockReturnValue({
       returning: dbInsertReturningMock,
     });
-    ensureUserLedgerMock.mockResolvedValue({
-      ledgerId: "new-ledger-id",
-      created: true,
-    });
     getClientIPFromHeadersMock.mockReturnValue("127.0.0.1");
   });
 
-  it("creates user and ledger for first sign-in and defaults locale to zh", async () => {
+  it("creates a user for first sign-in and defaults locale to zh", async () => {
     const users = {
       findOrCreate: vi.fn().mockResolvedValue({
         user: {
@@ -155,24 +144,18 @@ describe("authenticateWithOTP additional coverage", () => {
     );
 
     expect(assertRegistrationAllowedMock).toHaveBeenCalledWith("new-user@example.com", users);
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith(
-      { userId: "new-user-id", locale: "zh" },
-      ledgers
-    );
     expect(result).toEqual({
       id: "new-user-id",
       email: "new-user@example.com",
       name: null,
       image: null,
       locale: "zh",
+      pendingOtpClaim: { email: "new-user@example.com", tokenHash: "hash" },
     });
-    expect(consumeOTPClaimMock).toHaveBeenCalledWith(
-      { email: "new-user@example.com", tokenHash: "hash" },
-      otpTokens
-    );
+    expect(consumeOTPClaimMock).not.toHaveBeenCalled();
   });
 
-  it("ensures a ledger for an existing user before consuming the OTP", async () => {
+  it("returns the existing user with a pending OTP claim", async () => {
     const users = {
       findOrCreate: vi.fn().mockResolvedValue({
         user: {
@@ -185,31 +168,22 @@ describe("authenticateWithOTP additional coverage", () => {
       }),
     } as unknown as UserAccountPort;
 
-    await authenticateWithOTP(
+    const result = await authenticateWithOTP(
       { email: "new-user@example.com", otp: "123456", requestHeaders: new Headers() },
       users
     );
 
-    expect(ensureUserLedgerMock).toHaveBeenCalledWith(
-      { userId: "existing-user-id", locale: "zh" },
-      ledgers
-    );
-    expect(consumeOTPClaimMock).toHaveBeenCalledOnce();
+    expect(result.pendingOtpClaim).toEqual({
+      email: "new-user@example.com",
+      tokenHash: "hash",
+    });
+    expect(consumeOTPClaimMock).not.toHaveBeenCalled();
   });
 
   it("releases the OTP claim when account setup fails", async () => {
-    const setupError = new Error("ledger unavailable");
-    ensureUserLedgerMock.mockRejectedValueOnce(setupError);
+    const setupError = new Error("user setup unavailable");
     const users = {
-      findOrCreate: vi.fn().mockResolvedValue({
-        user: {
-          id: "new-user-id",
-          email: "new-user@example.com",
-          name: null,
-          image: null,
-        },
-        isExistingUser: false,
-      }),
+      findOrCreate: vi.fn().mockRejectedValue(setupError),
     } as unknown as UserAccountPort;
 
     await expect(

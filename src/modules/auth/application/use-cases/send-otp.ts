@@ -7,7 +7,7 @@ import { normalizeEmail, DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 import type { SupportedLocale } from "@/i18n/locales";
 import { DEFAULT_LOCALE } from "@/i18n/locales";
 import type { SendOTPEmail } from "@/modules/auth/contract-schemas";
-import { createOTPToken } from "@/modules/auth/repositories/otp-repository";
+import { createOTPToken, discardOTPToken } from "@/modules/auth/repositories/otp-repository";
 import {
   checkResendCooldown,
   checkSendRateLimit,
@@ -15,8 +15,9 @@ import {
   getCanResendAt,
   setResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
-import { generateOTP } from "@/modules/auth/services/otp";
-import type { EmailDeliveryPort, OtpTokenPort } from "@/application/contracts";
+import { generateOTP, getResendCooldown } from "@/modules/auth/services/otp";
+import { isRegistrationAllowed } from "./registration-policy";
+import type { EmailDeliveryPort, OtpTokenPort, UserAccountPort } from "@/application/contracts";
 import type { RateLimitPort } from "../ports";
 
 type OTPAuthEmailMessages = {
@@ -64,6 +65,7 @@ export async function sendOTP(
   dependencies: {
     emailDelivery: EmailDeliveryPort;
     tokens: OtpTokenPort;
+    users: UserAccountPort;
     rateLimiter: RateLimitPort;
   }
 ): Promise<{
@@ -74,15 +76,16 @@ export async function sendOTP(
   try {
     const normalizedEmail = normalizeEmail(params.email);
 
-    const cooldownCheck = await checkResendCooldown(normalizedEmail, dependencies.rateLimiter);
-    if (!cooldownCheck.allowed) {
-      logger.warn(
-        { subject: logIdentifier("email", normalizedEmail), retryAfter: cooldownCheck.retryAfter },
-        "OTP resend cooldown active"
-      );
+    if (runtimeEnv.authResendKey == null) {
+      throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
+    }
+
+    const ipRateLimit = await checkSendRateLimitByIP(params.ip, dependencies.rateLimiter);
+    if (!ipRateLimit.allowed) {
+      logger.warn({ subject: logIdentifier("ip", params.ip) }, "OTP send IP rate limit exceeded");
       throw new RateLimitError(
-        "Please wait before requesting another code",
-        cooldownCheck.retryAfter
+        "Too many requests from this IP. Please try again later.",
+        ipRateLimit.retryAfter
       );
     }
 
@@ -98,21 +101,30 @@ export async function sendOTP(
       );
     }
 
-    const ipRateLimit = await checkSendRateLimitByIP(params.ip, dependencies.rateLimiter);
-    if (!ipRateLimit.allowed) {
-      logger.warn({ subject: logIdentifier("ip", params.ip) }, "OTP send IP rate limit exceeded");
+    const cooldownCheck = await checkResendCooldown(normalizedEmail, dependencies.rateLimiter);
+    if (!cooldownCheck.allowed) {
+      logger.warn(
+        { subject: logIdentifier("email", normalizedEmail), retryAfter: cooldownCheck.retryAfter },
+        "OTP resend cooldown active"
+      );
       throw new RateLimitError(
-        "Too many requests from this IP. Please try again later.",
-        ipRateLimit.retryAfter
+        "Please wait before requesting another code",
+        cooldownCheck.retryAfter
       );
     }
 
-    if (runtimeEnv.authResendKey == null) {
-      throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
+    if (!(await isRegistrationAllowed(normalizedEmail, dependencies.users))) {
+      const now = Date.now();
+      const expiresAt = new Date(now + runtimeEnv.otpExpiresSeconds * 1000);
+      return {
+        expiresIn: runtimeEnv.otpExpiresSeconds,
+        expiresAt: Math.floor(expiresAt.getTime() / 1000),
+        canResendAt: Math.floor(now / 1000) + getResendCooldown(),
+      };
     }
 
     const otp = generateOTP();
-    const { expiresAt } = await createOTPToken(
+    const { expiresAt, tokenHash } = await createOTPToken(
       normalizedEmail,
       otp,
       dependencies.tokens,
@@ -138,10 +150,24 @@ export async function sendOTP(
         );
       }
     } catch (error) {
+      await discardOTPToken(normalizedEmail, tokenHash, dependencies.tokens).catch(
+        (discardError) => {
+          logger.error(
+            {
+              error: discardError,
+              subject: logIdentifier("email", normalizedEmail),
+            },
+            "Failed to discard OTP token after email failure"
+          );
+        }
+      );
       logger.error(
         { error, subject: logIdentifier("email", normalizedEmail) },
         "Failed to send OTP email"
       );
+      if (error instanceof AppError && error.code === "EMAIL_NOT_CONFIGURED") {
+        throw error;
+      }
       throw new AppError(
         "Failed to send verification code. Please try again.",
         "EMAIL_SEND_FAILED"

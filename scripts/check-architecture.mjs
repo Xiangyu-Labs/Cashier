@@ -78,6 +78,46 @@ for (const file of files) {
   const source = readFileSync(file, "utf8");
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relative);
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relative);
+  const isAuthOrWorkspaceServerAction = /^src\/modules\/(?:auth|workspace)\/server-actions\//.test(
+    relative
+  );
+  const moduleName = relative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
+
+  for (const importPattern of importPatterns) {
+    for (const match of source.matchAll(importPattern)) {
+      const specifier = match[1];
+      if (
+        isModuleApplication &&
+        /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/.test(specifier)
+      ) {
+        violations.push(`${relative}: application code must not import transport frameworks`);
+      }
+
+      if (
+        isAuthOrWorkspaceServerAction &&
+        /^(?:@\/lib\/db|@\/persistence)(?:\/|$)/.test(specifier)
+      ) {
+        violations.push(`${relative}: auth/workspace server actions must use ports`);
+      }
+
+      const target = resolveImport(file, specifier);
+      if (isModuleApplication && target != null) {
+        const targetRelative = path.relative(root, target).split(path.sep).join("/");
+        const targetModule = targetRelative.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
+        if (
+          moduleName != null &&
+          targetModule != null &&
+          targetModule !== moduleName &&
+          /^src\/modules\/[^/]+\/application\/use-cases\//.test(targetRelative)
+        ) {
+          violations.push(
+            `${relative}: application use cases must not call another domain's use case (${targetRelative})`
+          );
+        }
+      }
+    }
+  }
+
   if (
     (isModuleApplication || isAuthInternal) &&
     source.includes("@/application/server-composition-root")
