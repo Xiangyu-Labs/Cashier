@@ -1,13 +1,11 @@
 "use client";
 import {
+  batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
-  deleteLedgerEntryAction,
-  updateLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { round } from "@/lib/money/decimal";
 import { useTranslations } from "next-intl";
-import type { EntryEditData } from "@/modules/source-document/types";
+import type { BatchActionResult } from "@/lib/batch-ids";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
 
 type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
@@ -27,32 +25,6 @@ export function useSourceDocumentEntryMutations({
 }: UseSourceDocumentEntryMutationsOptions) {
   const tCommon = useTranslations("Common");
 
-  const updateEntryMutation = useLedgerMutation<
-    void,
-    { entryId: string; data: Partial<EntryEditData> }
-  >(ledgerId, {
-    mutationFn: async ({ entryId, data }) => {
-      if (ledgerId == null || ledgerId === "") return;
-      const mutationData = {
-        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
-        ...(data.currency !== undefined ? { currency: data.currency } : {}),
-        ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
-        ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.amount !== undefined ? { amount: round(data.amount, 2) } : {}),
-      };
-      // Note: round() ensures canonical decimal precision. The string is sent directly
-      // across the server action boundary to avoid lossy JavaScript number conversion.
-      await updateLedgerEntryAction(ledgerId, entryId, mutationData);
-    },
-    errorMessage: null,
-    ...(sourceDocumentAndEntriesPredicates !== null
-      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
-      : {}),
-    ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
-      : {}),
-  });
-
   const batchUpdateMutation = useLedgerMutation<
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
@@ -62,6 +34,7 @@ export function useSourceDocumentEntryMutations({
       return batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),
@@ -75,24 +48,29 @@ export function useSourceDocumentEntryMutations({
       : {}),
   });
 
-  const deleteEntryMutation = useLedgerMutation<void, string>(ledgerId, {
-    mutationFn: async (entryId) => {
-      if (ledgerId == null || ledgerId === "") return;
-      await deleteLedgerEntryAction(ledgerId, entryId);
+  const batchDeleteMutation = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
+    mutationFn: async (entryIds) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      return batchDeleteLedgerEntriesAction(ledgerId, entryIds);
     },
-    successMessage: tCommon("deleteSuccess"),
-    errorMessage: tCommon("deleteFailed"),
+    successMessage: null,
+    errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),
     ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? { invalidatePredicates: sourceDocumentEntriesSummaryPredicates }
+      ? {
+          invalidatePredicates: [
+            ...(sourceDocumentAndEntriesPredicates ?? []),
+            ...sourceDocumentEntriesSummaryPredicates,
+          ],
+        }
       : {}),
   });
 
   return {
-    updateEntryMutation,
     batchUpdateMutation,
-    deleteEntryMutation,
+    batchDeleteMutation,
   };
 }

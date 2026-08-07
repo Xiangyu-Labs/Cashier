@@ -27,6 +27,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 
 export function useCategoryMutations(ledgerId: string, categories: EntryCategory[]) {
   const t = useTranslations("Settings");
+  const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
   const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
@@ -60,13 +61,16 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     skipInvalidation: true,
-    onSuccessExtra: (category) => {
+    onSuccessReconcile: (_client, category) => {
       queryClient.setQueryData<EntryCategory[]>(queryKeys.entryCategories(ledgerId), (current) => [
         ...(current ?? []).filter((item) => item.id !== category.id),
         category,
       ]);
+    },
+    onSuccessExtra: (category) => {
       generateMetadata.mutate(category.id);
     },
     onMutationSettled: (client, _variables, _data, error) => {
@@ -88,6 +92,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       }),
     successMessage: t("categoryUpdated"),
     errorMessage: t("updateCategoryFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -95,6 +100,11 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
+    onSuccessReconcile: (client, category) => {
+      client.setQueryData<EntryCategory[]>(queryKeys.entryCategories(ledgerId), (current) =>
+        current?.map((item) => (item.id === category.id ? { ...item, ...category } : item))
+      );
+    },
     onMutationSettled: (client, _ids, _data, error) => {
       if (error != null)
         void client.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
@@ -105,6 +115,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (id) => deleteEntryCategoryAction(ledgerId, id),
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -114,12 +125,19 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
+    onSuccessReconcile: (client, result) => {
+      if (!result.deleted) return;
+      client.setQueryData<EntryCategory[]>(queryKeys.entryCategories(ledgerId), (current) =>
+        current?.filter((category) => category.id !== result.categoryId)
+      );
+    },
   });
 
   const reorderCategories = useLedgerMutation<ReorderEntryCategoriesResultDto, string[]>(ledgerId, {
     mutationFn: (categoryIds) => reorderEntryCategoriesAction(ledgerId, categoryIds),
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -127,8 +145,8 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
     ],
-    onSuccessExtra: (_result, categoryIds) => {
-      const positions = new Map(categoryIds.map((id, index) => [id, index]));
+    onSuccessReconcile: (_client, result) => {
+      const positions = new Map(result.categoryIds.map((id, index) => [id, index]));
       queryClient.setQueryData<EntryCategory[]>(
         queryKeys.entryCategories(ledgerId),
         [...categories]

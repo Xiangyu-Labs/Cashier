@@ -195,6 +195,12 @@ export function LedgerEntriesTab({
     const duplicateIds = new Set(selectedDuplicateIds);
     return selectedIds.filter((id) => !duplicateIds.has(id));
   }, [selectedDuplicateIds, selectedIds]);
+  const isBatchPending =
+    batchUpdateDates.isPending ||
+    batchDelete.isPending ||
+    batchRetry.isPending ||
+    batchKeepDuplicates.isPending ||
+    batchDiscardDuplicates.isPending;
   useEffect(() => {
     document.documentElement.dataset.batchSelection = String(isSelectionMode);
     return () => {
@@ -213,8 +219,16 @@ export function LedgerEntriesTab({
   }, [notifyRefresh, refresh]);
 
   const handleToggleSelectionMode = useCallback(() => {
+    if (isBatchPending) return;
     toggleSelectionMode();
-  }, [toggleSelectionMode]);
+  }, [isBatchPending, toggleSelectionMode]);
+
+  const handleToggleSelection = useCallback(
+    (id: string) => {
+      if (!isBatchPending) toggleSelection(id);
+    },
+    [isBatchPending, toggleSelection]
+  );
 
   const handleViewSourceDetail = useCallback(
     (group: { sourceDocument: SourceDocument; ledgerEntries: LedgerEntry[] }) => {
@@ -280,8 +294,8 @@ export function LedgerEntriesTab({
         selectedCount={selectedIds.length}
         selectedDuplicateCount={selectedDuplicateCount}
         onToggleSelectionMode={handleToggleSelectionMode}
-        onSelectAll={selectAll}
-        onClearSelection={clearSelection}
+        onSelectAll={() => !isBatchPending && selectAll()}
+        onClearSelection={() => !isBatchPending && clearSelection()}
         onUpdateDates={handleBatchUpdateDates}
         isUpdatingDates={batchUpdateDates.isPending}
         onRetry={async () => {
@@ -306,6 +320,7 @@ export function LedgerEntriesTab({
         }}
         isKeepingDuplicates={batchKeepDuplicates.isPending}
         isDiscardingDuplicates={batchDiscardDuplicates.isPending}
+        isProcessing={isBatchPending}
         filters={filters}
         onFiltersChange={onFiltersChange}
         periodParams={periodParams}
@@ -339,7 +354,7 @@ export function LedgerEntriesTab({
                 onDeleteSourceConfirm={handleDeleteSourceConfirm}
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
-                onToggleSelection={toggleSelection}
+                onToggleSelection={handleToggleSelection}
                 noRecordsText={tCommon("noRecords")}
                 getItemProps={() => ({})}
                 {...(timeZone != null ? { timeZone } : {})}

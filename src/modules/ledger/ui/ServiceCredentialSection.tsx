@@ -16,11 +16,12 @@ import {
 import { useTranslations } from "next-intl";
 import { copyToClipboard } from "@/lib/utils";
 import { UI } from "@/lib/constants";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ServiceCredentialSectionProps {
   credentials: ServiceCredential[];
   onCreateCredential: (name: string) => Promise<CreatedServiceCredentialDto>;
-  onDeleteCredential: (id: string) => void;
+  onDeleteCredential: (id: string) => Promise<void>;
   onCredentialDialogClose?: () => void;
 }
 
@@ -39,6 +40,8 @@ export function ServiceCredentialSection({
     null
   );
   const [hasCopied, setHasCopied] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!hasCopied) return;
@@ -48,8 +51,9 @@ export function ServiceCredentialSection({
   }, [hasCopied]);
 
   const handleCreate = async () => {
-    if (newCredName.trim() === "") return;
+    if (newCredName.trim() === "" || isCreating) return;
 
+    setIsCreating(true);
     try {
       const newCredential = await onCreateCredential(newCredName.trim());
       setCreatedCredential(newCredential);
@@ -57,6 +61,8 @@ export function ServiceCredentialSection({
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error("Failed to create credential", error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -85,7 +91,11 @@ export function ServiceCredentialSection({
           <h3 className="text-sm font-medium text-text">{t("title")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          size="sm"
+          disabled={isCreating || isDeleting}
+        >
           {t("newCredential")}
         </Button>
       </div>
@@ -117,7 +127,9 @@ export function ServiceCredentialSection({
               <Button
                 variant="ghost"
                 size="icon"
+                disabled={isCreating || isDeleting}
                 onClick={() => setCredentialToDelete(credential.id)}
+                aria-label={t("deleteTitle")}
                 className="shrink-0 text-muted hover:text-danger"
               >
                 <Trash2 size={16} />
@@ -127,8 +139,16 @@ export function ServiceCredentialSection({
         )}
       </div>
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent variant="modal">
+      <Dialog
+        open={isCreateDialogOpen}
+        onOpenChange={(open) => !isCreating && setIsCreateDialogOpen(open)}
+      >
+        <DialogContent
+          variant="modal"
+          hideCloseButton={isCreating}
+          onEscapeKeyDown={(event) => isCreating && event.preventDefault()}
+          onPointerDownOutside={(event) => isCreating && event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
             <DialogDescription>{t("createDesc")}</DialogDescription>
@@ -137,15 +157,20 @@ export function ServiceCredentialSection({
             <Input
               placeholder={t("namePlaceholder")}
               value={newCredName}
+              disabled={isCreating}
               onChange={(event) => setNewCredName(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && handleCreate()}
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => setIsCreateDialogOpen(false)}
+              disabled={isCreating}
+            >
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleCreate} disabled={newCredName.trim() === ""}>
+            <Button onClick={handleCreate} disabled={newCredName.trim() === "" || isCreating}>
               {tCommon("confirm")}
             </Button>
           </DialogFooter>
@@ -193,32 +218,24 @@ export function ServiceCredentialSection({
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <ConfirmDialog
         open={credentialToDelete != null}
         onOpenChange={(open) => !open && setCredentialToDelete(null)}
-      >
-        <DialogContent variant="modal">
-          <DialogHeader>
-            <DialogTitle>{t("deleteTitle")}</DialogTitle>
-            <DialogDescription>{t("deleteDesc")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCredentialToDelete(null)}>
-              {tCommon("cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (credentialToDelete == null) return;
-                onDeleteCredential(credentialToDelete);
-                setCredentialToDelete(null);
-              }}
-            >
-              {tCommon("delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={t("deleteTitle")}
+        description={t("deleteDesc")}
+        confirmLabel={tCommon("delete")}
+        variant="destructive"
+        onConfirm={async () => {
+          if (credentialToDelete == null || isDeleting) return;
+          setIsDeleting(true);
+          try {
+            await onDeleteCredential(credentialToDelete);
+            setCredentialToDelete(null);
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }

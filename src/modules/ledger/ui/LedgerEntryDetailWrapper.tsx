@@ -64,6 +64,7 @@ export function LedgerEntryDetailWrapper({
       await updateLedgerEntryAction(ledgerId, id, data);
     },
     errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),
@@ -79,6 +80,7 @@ export function LedgerEntryDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),

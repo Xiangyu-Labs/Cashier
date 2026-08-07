@@ -8,6 +8,7 @@ import { ServiceCredentialSection } from "../ServiceCredentialSection";
 import { SettingsField } from "./SettingsField";
 import { SettingsSection } from "./SettingsSection";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 interface AccountSettingsProps {
   displayEmail: string;
@@ -17,7 +18,7 @@ interface AccountSettingsProps {
   isPending: boolean;
   onEmailChanged: (email: string) => void;
   onCreateCredential: (name: string) => Promise<CreatedServiceCredentialDto>;
-  onDeleteCredential: (id: string) => void;
+  onDeleteCredential: (id: string) => Promise<void>;
   onCredentialDialogClose: () => void;
   onSignOut: () => void | Promise<void>;
 }
@@ -36,6 +37,7 @@ export function AccountSettings({
 }: AccountSettingsProps) {
   const t = useTranslations("Settings");
   const ta = useTranslations("Settings.Account");
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   return (
     <SettingsSection title={t("account")}>
@@ -52,7 +54,19 @@ export function AccountSettings({
         onCredentialDialogClose={onCredentialDialogClose}
       />
       <SettingsField title={t("signOut")}>
-        <Button variant="outline" onClick={onSignOut} disabled={isPending}>
+        <Button
+          variant="outline"
+          disabled={isPending || isSigningOut}
+          onClick={async () => {
+            if (isSigningOut) return;
+            setIsSigningOut(true);
+            try {
+              await onSignOut();
+            } finally {
+              setIsSigningOut(false);
+            }
+          }}
+        >
           {t("signOut")}
         </Button>
       </SettingsField>

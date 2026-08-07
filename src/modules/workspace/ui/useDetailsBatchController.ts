@@ -39,27 +39,45 @@ export function useDetailsBatchController(ledgerId: string, entryIds: readonly s
   }, [selection.isSelectionMode]);
 
   const invalidate = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
-    ]);
-  }, [ledgerId, queryClient]);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerEntries(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerStats(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateSourceDocuments(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateCalendar(ledgerId) },
+          { throwOnError: true }
+        ),
+      ]);
+    } catch (error) {
+      console.error("Failed to refresh details batch results", error);
+      toast.warning(tCommon("savedRefreshFailed"));
+    }
+  }, [ledgerId, queryClient, tCommon]);
 
   const update = useMutation({
     mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
       batchUpdateLedgerEntriesAction(ledgerId, selection.selectedIds, data),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(t("batchUpdated", { count: result.affectedCount }));
+      await invalidate();
       selection.clearSelection();
     },
     onError: () => toast.error(tCommon("error")),
-    onSettled: invalidate,
   });
   const remove = useMutation({
     mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selection.selectedIds),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      await invalidate();
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
       if (unresolved.length > 0) selection.retainSelection(unresolved);
       else selection.clearSelection();
@@ -68,7 +86,6 @@ export function useDetailsBatchController(ledgerId: string, entryIds: readonly s
       setDeleteDialogOpen(false);
     },
     onError: () => toast.error(tCommon("deleteFailed")),
-    onSettled: invalidate,
   });
   const previewDate = useMutation({
     mutationFn: () => previewBatchLedgerEntryDateAction(ledgerId, selection.selectedIds),
@@ -81,13 +98,13 @@ export function useDetailsBatchController(ledgerId: string, entryIds: readonly s
   const updateDates = useMutation({
     mutationFn: () =>
       batchUpdateLedgerEntryDatesAction(ledgerId, selection.selectedIds, selectedDate),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(t("dateUpdated"));
+      await invalidate();
       selection.clearSelection();
       setDateDialogOpen(false);
     },
     onError: () => toast.error(tCommon("error")),
-    onSettled: invalidate,
   });
 
   return {

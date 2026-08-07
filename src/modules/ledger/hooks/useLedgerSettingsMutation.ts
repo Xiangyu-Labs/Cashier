@@ -36,6 +36,7 @@ export function useLedgerSettingsMutation({
   errorMessage,
 }: UseLedgerSettingsMutationParams) {
   const t = useTranslations("Settings");
+  const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const ledgerQueryKey = queryKeys.ledger(ledgerId);
 
@@ -75,13 +76,14 @@ export function useLedgerSettingsMutation({
     },
     successMessage,
     errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),
       invalidateSourceDocuments(ledgerId),
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: (data) => {
+    onSuccessReconcile: (_client, data) => {
       queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
     },
     onErrorExtra: (error) => toast.error(error.message || errorMessage),

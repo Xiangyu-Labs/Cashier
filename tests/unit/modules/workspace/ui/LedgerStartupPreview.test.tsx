@@ -1,9 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerStartupCacheSnapshot } from "@/modules/workspace/ledger-startup-cache-store";
 
 const readSnapshot = vi.hoisted(() => vi.fn());
 const retry = vi.hoisted(() => vi.fn());
+const { toastError, toastDismiss } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  toastDismiss: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { error: toastError, dismiss: toastDismiss },
+}));
 
 vi.mock("@/modules/workspace/ledger-startup-cache-store", () => ({
   readLedgerStartupSnapshot: readSnapshot,
@@ -22,6 +30,29 @@ vi.mock("@/modules/workspace/ui/LedgerStartupStatsPreview", () => ({
 }));
 
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
+import {
+  PullToRefreshProvider,
+  useExternalLoadingActivity,
+} from "@/modules/workspace/pull-to-refresh-context";
+
+function ActivityState() {
+  const active = useExternalLoadingActivity();
+  return <span data-testid="external-loading">{String(active)}</span>;
+}
+
+function renderPreview(queryState: "loading" | "success" | "error", activeTab = "stream") {
+  return render(
+    <PullToRefreshProvider>
+      <ActivityState />
+      <LedgerStartupPreview
+        snapshotKey="user:ledger"
+        activeTab={activeTab as "stream" | "details" | "stats" | "settings"}
+        queryState={queryState}
+        onRetry={retry}
+      />
+    </PullToRefreshProvider>
+  );
+}
 
 function snapshot(): LedgerStartupCacheSnapshot {
   return {
@@ -65,121 +96,44 @@ describe("LedgerStartupPreview", () => {
   beforeEach(() => {
     readSnapshot.mockReset();
     retry.mockReset();
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation(() => ({
-        matches: false,
-        media: "(prefers-reduced-motion: reduce)",
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    });
   });
 
-  it("shows the latest-data banner and the stream preview on a cache hit", async () => {
+  it("registers external loading and shows the read-only stream preview without a banner", async () => {
     readSnapshot.mockResolvedValue(snapshot());
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="stream"
-        queryState="loading"
-        onRetry={retry}
-      />
-    );
-    expect(await screen.findByText("正在加载最新数据")).toBeInTheDocument();
+    renderPreview("loading");
     expect(await screen.findByText("stream-preview")).toBeInTheDocument();
-
-    const indicator = screen.getByTestId("startup-preview-latest-banner").querySelector("span");
-    expect(indicator).toHaveClass("animate-spin");
-  });
-
-  it("shows a solid dot instead of a spinning ring under reduced motion", async () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation(() => ({
-        matches: true,
-        media: "(prefers-reduced-motion: reduce)",
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    });
-    readSnapshot.mockResolvedValue(snapshot());
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="stream"
-        queryState="loading"
-        onRetry={retry}
-      />
-    );
-    expect(await screen.findByText("正在加载最新数据")).toBeInTheDocument();
-
-    const indicator = screen.getByTestId("startup-preview-latest-banner").querySelector("span");
-    expect(indicator).not.toHaveClass("animate-spin");
-    expect(indicator).not.toHaveClass("border-t-info");
-    expect(indicator).toHaveClass("bg-info");
+    expect(screen.queryByTestId("startup-preview-latest-banner")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("external-loading")).toHaveTextContent("true"));
   });
 
   it("renders the skeleton on a cache miss", async () => {
     readSnapshot.mockResolvedValue(null);
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="stream"
-        queryState="loading"
-        onRetry={retry}
-      />
-    );
+    renderPreview("loading");
     expect(await screen.findByTestId("entries-tab-skeleton")).toBeInTheDocument();
   });
 
   it("renders the settings skeleton without reading the cache", async () => {
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="settings"
-        queryState="loading"
-        onRetry={retry}
-      />
-    );
+    renderPreview("loading", "settings");
     expect(await screen.findByTestId("settings-tab-skeleton")).toBeInTheDocument();
     expect(readSnapshot).not.toHaveBeenCalled();
   });
 
   it("lazily loads the details preview for the details tab", async () => {
     readSnapshot.mockResolvedValue(snapshot());
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="details"
-        queryState="loading"
-        onRetry={retry}
-      />
-    );
+    renderPreview("loading", "details");
     expect(await screen.findByText("details-preview")).toBeInTheDocument();
   });
 
   it("shows an actionable error state when the real query fails", async () => {
     readSnapshot.mockResolvedValue(null);
-    render(
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab="stream"
-        queryState="error"
-        onRetry={retry}
-      />
-    );
+    renderPreview("error");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("最新数据加载失败。");
-    screen.getByRole("button", { name: "重试" }).click();
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    const [message, options] = toastError.mock.calls[0] ?? [];
+    expect(message).toBe("最新数据加载失败。");
+    expect(options).toMatchObject({ id: "ledger-startup:user:ledger", duration: Infinity });
+    options.action.onClick();
     expect(retry).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("external-loading")).toHaveTextContent("false");
   });
 });

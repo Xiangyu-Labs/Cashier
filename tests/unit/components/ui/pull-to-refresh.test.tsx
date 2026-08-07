@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PullToRefreshSurface } from "@/components/ui/pull-to-refresh";
 import {
   PullToRefreshProvider,
+  useRegisterExternalLoadingActivity,
   useRegisterPullToRefresh,
 } from "@/modules/workspace/pull-to-refresh-context";
 
@@ -21,6 +22,11 @@ function RefreshTarget({
 }) {
   useRegisterPullToRefresh(onRefresh, enabled);
   return <div data-testid="target">{children}</div>;
+}
+
+function ExternalLoading({ active = true }: { active?: boolean }) {
+  useRegisterExternalLoadingActivity(active);
+  return null;
 }
 
 function renderShell(children: React.ReactNode) {
@@ -50,6 +56,60 @@ describe("PullToRefreshSurface", () => {
     expect(
       indicator.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it("automatically shows external loading and blocks a duplicate pull", async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    renderShell(
+      <>
+        <ExternalLoading />
+        <RefreshTarget onRefresh={onRefresh}>Content</RefreshTarget>
+      </>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("pull-to-refresh-indicator")).toHaveStyle({ height: "44px" })
+    );
+    const surface = document.querySelector("main");
+    expect(surface).not.toBeNull();
+    if (surface == null) return;
+    act(() => {
+      dispatchTouch(surface, "touchstart", [{ clientX: 0, clientY: 0 }]);
+      dispatchTouch(surface, "touchmove", [{ clientX: 0, clientY: 140 }]);
+      dispatchTouch(surface, "touchend", [], [{ clientX: 0, clientY: 140 }]);
+    });
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps external loading active while registered sources hand off", async () => {
+    const { rerender } = renderShell(
+      <>
+        <ExternalLoading />
+        <ExternalLoading />
+      </>
+    );
+    const indicator = screen.getByTestId("pull-to-refresh-indicator");
+    await waitFor(() => expect(indicator).toHaveStyle({ height: "44px" }));
+
+    rerender(
+      <PullToRefreshProvider>
+        <main data-pull-to-refresh-surface="">
+          <PullToRefreshSurface>
+            <ExternalLoading />
+          </PullToRefreshSurface>
+        </main>
+      </PullToRefreshProvider>
+    );
+    expect(indicator).toHaveStyle({ height: "44px" });
+
+    rerender(
+      <PullToRefreshProvider>
+        <main data-pull-to-refresh-surface="">
+          <PullToRefreshSurface>{null}</PullToRefreshSurface>
+        </main>
+      </PullToRefreshProvider>
+    );
+    await waitFor(() => expect(indicator).toHaveStyle({ height: "0px" }));
   });
 
   it("starts from the whole marked main surface and triggers the registered callback", async () => {

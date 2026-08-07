@@ -54,7 +54,7 @@ export function SourceDocumentDetailWrapper({
     ...(initialLedgerEntries !== undefined ? { initialLedgerEntries } : {}),
   });
 
-  const { updateSourceDoc, updateEntry, batchUpdate, deleteEntry, deleteDocument } =
+  const { saveChanges, batchUpdate, batchDeleteEntries, deleteDocument } =
     useSourceDocumentDetailMutations({
       id,
       ledgerId,
@@ -128,10 +128,9 @@ export function SourceDocumentDetailWrapper({
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-      onUpdateSourceDoc={updateSourceDoc}
-      onUpdateEntry={updateEntry}
+      onSaveChanges={saveChanges}
       onBatchUpdate={batchUpdate}
-      onDeleteEntry={deleteEntry}
+      onBatchDeleteEntries={batchDeleteEntries}
       onDelete={deleteDocument}
       onAcceptCandidate={handleAcceptCandidate}
       onAbandonCandidate={handleAbandonCandidate}

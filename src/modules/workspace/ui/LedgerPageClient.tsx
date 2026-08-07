@@ -437,6 +437,7 @@ function LedgerPageClientContent({
               <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
                 <button
                   onClick={() => setInputMode("ai")}
+                  disabled={isInputSubmitting}
                   className={cn(
                     "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
                     inputMode === "ai"
@@ -448,6 +449,7 @@ function LedgerPageClientContent({
                 </button>
                 <button
                   onClick={() => setInputMode("quick")}
+                  disabled={isInputSubmitting}
                   className={cn(
                     "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
                     inputMode === "quick"
@@ -478,6 +480,7 @@ function LedgerPageClientContent({
                       categories={categories}
                       mainCurrency={mainCurrency}
                       preferredCurrencies={preferredCurrencies}
+                      onPendingChange={setIsInputSubmitting}
                       {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
                       onSuccess={() => setIsInputOpen(false)}
                     />

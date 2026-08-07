@@ -33,6 +33,7 @@ interface LedgerEntriesToolbarProps {
   onDiscardDuplicates?: () => Promise<void> | void;
   isKeepingDuplicates?: boolean;
   isDiscardingDuplicates?: boolean;
+  isProcessing?: boolean;
   filters: EntryFilters;
   onFiltersChange: (filters: EntryFilters) => void;
   periodParams: PeriodParams;
@@ -63,6 +64,7 @@ export function LedgerEntriesToolbar({
   onDiscardDuplicates,
   isKeepingDuplicates = false,
   isDiscardingDuplicates = false,
+  isProcessing: externallyProcessing = false,
   filters,
   onFiltersChange,
   periodParams,
@@ -82,7 +84,12 @@ export function LedgerEntriesToolbar({
   const [selectedDate, setSelectedDate] = useState(new Date());
   const showBatchActions = isSelectionMode && selectedCount > 0;
   const isProcessing =
-    isUpdatingDates || isRetrying || isDeleting || isKeepingDuplicates || isDiscardingDuplicates;
+    externallyProcessing ||
+    isUpdatingDates ||
+    isRetrying ||
+    isDeleting ||
+    isKeepingDuplicates ||
+    isDiscardingDuplicates;
   const masterChecked: boolean | "indeterminate" = isAllSelected
     ? true
     : selectedCount > 0
@@ -108,7 +115,7 @@ export function LedgerEntriesToolbar({
         variant="ghost"
         size="icon"
         onClick={onToggleSelectionMode}
-        disabled={readOnly}
+        disabled={readOnly || isProcessing}
         className="shrink-0 h-8 w-8"
         title={
           readOnly ? tCommon("readOnlyPreview") : isSelectionMode ? t("cancelSelect") : t("select")
@@ -122,6 +129,7 @@ export function LedgerEntriesToolbar({
           <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5">
             <Checkbox
               checked={masterChecked}
+              disabled={isProcessing}
               onCheckedChange={(checked) => {
                 if (checked === true) onSelectAll();
                 else onClearSelection();

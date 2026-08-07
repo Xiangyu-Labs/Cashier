@@ -2,7 +2,13 @@
 
 import { useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
+import {
+  invalidateCalendar,
+  invalidateLedgerEntries,
+  invalidateLedgerStats,
+  invalidateSourceDocumentCounts,
+  invalidateSourceDocuments,
+} from "@/lib/query-keys";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
@@ -43,6 +49,38 @@ export function useSourceDocumentRecoveryMutations({
   const notifyRefresh = useNotifyRevisionRefresh();
   const actionLockRef = useRef(false);
   const tActions = useTranslations("CandidateAction");
+  const tCommon = useTranslations("Common");
+
+  const refreshCandidateResult = useCallback(async () => {
+    notifyRefresh();
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries(
+          { predicate: invalidateSourceDocuments(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerEntries(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerStats(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateCalendar(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateSourceDocumentCounts(ledgerId) },
+          { throwOnError: true }
+        ),
+      ]);
+    } catch (error) {
+      console.error("Failed to refresh candidate result after successful write", error);
+      toast.warning(tCommon("savedRefreshFailed"));
+    }
+  }, [ledgerId, notifyRefresh, queryClient, tCommon]);
 
   // -----------------------------------------------------------------------
   // Accept candidate
@@ -57,17 +95,12 @@ export function useSourceDocumentRecoveryMutations({
       // The accept reconciliation entity is intentionally minimal and would
       // blank the card's entries; the delta refresh overlays authoritative
       // data, so accept relies on the incremental refresh path.
-      notifyRefresh();
+      await refreshCandidateResult();
       toast.success(tActions("acceptSuccess"));
       onSuccess?.();
     },
     onError: () => {
       toast.error(tActions("acceptError"));
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
-      });
     },
   });
 
@@ -90,17 +123,12 @@ export function useSourceDocumentRecoveryMutations({
       // the minimal placeholder entity. Wake the refresh coordinator so the
       // delta refresh overlays the authoritative state even when polling has
       // reached a terminal state.
-      notifyRefresh();
+      await refreshCandidateResult();
       toast.success(tActions("abandonSuccess"));
       onSuccess?.();
     },
     onError: () => {
       toast.error(tActions("abandonError"));
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
-      });
     },
   });
 

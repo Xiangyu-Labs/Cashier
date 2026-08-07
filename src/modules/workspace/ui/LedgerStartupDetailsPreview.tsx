@@ -116,10 +116,9 @@ export function LedgerStartupDetailsPreview({
         mainCurrency={mainCurrency}
         open={selected != null}
         onClose={() => setSelected(null)}
-        onUpdateSourceDoc={async () => {}}
-        onUpdateEntry={async () => {}}
+        onSaveChanges={async () => {}}
         onBatchUpdate={async () => undefined}
-        onDeleteEntry={async () => {}}
+        onBatchDeleteEntries={async () => []}
         readOnly
         cachedImageUrls={cachedImageUrls}
       />

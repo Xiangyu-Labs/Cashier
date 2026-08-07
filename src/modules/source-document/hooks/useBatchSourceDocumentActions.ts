@@ -6,6 +6,7 @@ import {
   invalidateCalendar,
   invalidateLedgerEntries,
   invalidateLedgerStats,
+  invalidateSourceDocuments,
   invalidateSourceDocumentStreamTotal,
 } from "@/lib/query-keys";
 import {
@@ -47,33 +48,45 @@ export function useBatchSourceDocumentActions(
     },
     onSuccess: async () => {
       notifyRefresh();
+      await settleDerivedQueries();
       toast.success(tCommon("deleteSuccess"));
       clearSelection();
     },
     onError: () => {
       toast.error(tCommon("deleteFailed"));
     },
-    onSettled: () => {
-      // Targeted invalidation for derived data
-      queryClient.invalidateQueries({
-        predicate: invalidateLedgerStats(ledgerId),
-      });
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-      });
-      queryClient.invalidateQueries({
-        predicate: invalidateCalendar(ledgerId),
-      });
-    },
   });
 
-  const settleDerivedQueries = () => {
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) });
-    void queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) });
-    void queryClient.invalidateQueries({
-      predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-    });
-    void queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) });
+  const settleDerivedQueries = async () => {
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries(
+          { predicate: invalidateSourceDocuments(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerEntries(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateLedgerStats(ledgerId) },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          {
+            predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+          },
+          { throwOnError: true }
+        ),
+        queryClient.invalidateQueries(
+          { predicate: invalidateCalendar(ledgerId) },
+          { throwOnError: true }
+        ),
+      ]);
+    } catch (error) {
+      console.error("Failed to refresh batch source-document results", error);
+      toast.warning(tCommon("savedRefreshFailed"));
+    }
   };
 
   const batchUpdateDates = useMutation<
@@ -83,15 +96,15 @@ export function useBatchSourceDocumentActions(
   >({
     mutationFn: ({ ids, entryDate }) =>
       batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       notifyRefresh();
+      await settleDerivedQueries();
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
     },
     onError: () => {
       toast.error(tCommon("error"));
     },
-    onSettled: settleDerivedQueries,
   });
 
   const settleBatchResult = async (
@@ -100,6 +113,7 @@ export function useBatchSourceDocumentActions(
     preserveIds: string[] = []
   ) => {
     notifyRefresh();
+    await settleDerivedQueries();
     const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
     const retained = [...new Set([...preserveIds, ...unresolved])];
     if (retained.length === 0) clearSelection();
@@ -121,7 +135,6 @@ export function useBatchSourceDocumentActions(
     onSuccess: (result) =>
       settleBatchResult(result, tBatch("deleted", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("deleteFailed")),
-    onSettled: settleDerivedQueries,
   });
 
   const batchRetry = useMutation<BatchActionResult, Error, string[]>({
@@ -129,7 +142,6 @@ export function useBatchSourceDocumentActions(
     onSuccess: (result) =>
       settleBatchResult(result, tBatch("retried", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("error")),
-    onSettled: settleDerivedQueries,
   });
 
   const batchKeepDuplicates = useMutation<BatchActionResult, Error, DuplicateBatchVariables>({
@@ -146,7 +158,6 @@ export function useBatchSourceDocumentActions(
         getDuplicateBatchVariables(variables).preserveIds
       ),
     onError: () => toast.error(tCommon("error")),
-    onSettled: settleDerivedQueries,
   });
 
   const batchDiscardDuplicates = useMutation<BatchActionResult, Error, DuplicateBatchVariables>({
@@ -163,7 +174,6 @@ export function useBatchSourceDocumentActions(
         getDuplicateBatchVariables(variables).preserveIds
       ),
     onError: () => toast.error(tCommon("error")),
-    onSettled: settleDerivedQueries,
   });
 
   return {

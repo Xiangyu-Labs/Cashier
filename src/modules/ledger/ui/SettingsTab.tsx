@@ -84,7 +84,7 @@ export function SettingsTab({
     ]);
   };
 
-  // Use extracted hooks - ledger is reactive and will update with optimistic updates
+  // Use extracted hooks; the ledger updates from authoritative mutation responses.
   const {
     ledger: reactiveLedger,
     categories,
@@ -113,7 +113,7 @@ export function SettingsTab({
     settingsQueryStatus,
   ]);
 
-  // Use reactive ledger for settings that need optimistic updates
+  // Use the reactive ledger for settings reconciled from authoritative responses.
   const settingsLedger = reactiveLedger || ledger;
 
   // AI Prompt input is managed directly without local state to avoid dual-source-of-truth issues
@@ -223,6 +223,12 @@ export function SettingsTab({
         onRetryMetadata={retryCategoryMetadata}
         isReordering={reorderCategories.isPending}
         isCreating={createCategory.isPending}
+        isCategoryBusy={
+          createCategory.isPending ||
+          updateCategory.isPending ||
+          deleteCategory.isPending ||
+          reorderCategories.isPending
+        }
       />
 
       <AiSettings
@@ -239,7 +245,7 @@ export function SettingsTab({
         isPending={isPending}
         onEmailChanged={setDisplayEmail}
         onCreateCredential={(name) => createCredential.mutateAsync(name)}
-        onDeleteCredential={(id) => deleteCredential.mutate(id)}
+        onDeleteCredential={(id) => deleteCredential.mutateAsync(id)}
         onCredentialDialogClose={createCredential.reset}
         onSignOut={handleSignOut}
       />

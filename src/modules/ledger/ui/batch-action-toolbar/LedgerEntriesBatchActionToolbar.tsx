@@ -128,6 +128,7 @@ export function LedgerEntriesBatchActionToolbar({
                   variant="ghost"
                   size="sm"
                   onClick={isAllSelected ? onClearSelection : onSelectAll}
+                  disabled={isProcessing}
                   className="h-9 px-3 text-sm"
                 >
                   {isAllSelected ? t("deselectAll") : t("selectAll")}

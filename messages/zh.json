@@ -81,12 +81,10 @@
     "singleBook": "你的个人账本",
     "processingCountLabel": "处理中的单据",
     "attentionCountLabel": "待确认或修正的单据",
-    "loadingLatest": "正在加载最新数据",
     "startupCacheError": "最新数据加载失败。",
     "retry": "重试",
     "cachedNoRecords": "没有符合条件的缓存单据",
-    "total": "合计",
-    "readOnlyPreview": "只读预览"
+    "total": "合计"
   },
   "DetailsTab": {
     "expenseSummary": "支出统计",
@@ -304,6 +302,7 @@
     "save": "保存",
     "saveSuccess": "保存成功",
     "saveFailed": "保存失败",
+    "savedRefreshFailed": "更改已保存，但未能加载最新数据。",
     "deleteSuccess": "删除成功",
     "deleteFailed": "删除失败",
     "loading": "加载中…",

@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 
@@ -14,6 +15,8 @@ export type PullToRefreshCallback = () => Promise<void> | void;
 interface PullToRefreshContextValue {
   setRefresh: (callback: PullToRefreshCallback | null) => void;
   getRefresh: () => PullToRefreshCallback | null;
+  registerExternalLoading: () => () => void;
+  isExternalLoading: boolean;
 }
 
 const PullToRefreshContext = createContext<PullToRefreshContextValue | null>(null);
@@ -28,6 +31,9 @@ const PullToRefreshContext = createContext<PullToRefreshContextValue | null>(nul
  */
 export function PullToRefreshProvider({ children }: { children: ReactNode }) {
   const refreshRef = useRef<PullToRefreshCallback | null>(null);
+  const externalLoadingTokensRef = useRef(new Set<symbol>());
+  const externalLoadingSyncScheduledRef = useRef(false);
+  const [externalLoadingCount, setExternalLoadingCount] = useState(0);
 
   const setRefresh = useCallback((callback: PullToRefreshCallback | null) => {
     refreshRef.current = callback;
@@ -35,9 +41,46 @@ export function PullToRefreshProvider({ children }: { children: ReactNode }) {
 
   const getRefresh = useCallback(() => refreshRef.current, []);
 
-  const value = useMemo(() => ({ setRefresh, getRefresh }), [getRefresh, setRefresh]);
+  const registerExternalLoading = useCallback(() => {
+    const token = Symbol("external-loading");
+    externalLoadingTokensRef.current.add(token);
+    setExternalLoadingCount(externalLoadingTokensRef.current.size);
+
+    return () => {
+      externalLoadingTokensRef.current.delete(token);
+      if (externalLoadingSyncScheduledRef.current) return;
+      externalLoadingSyncScheduledRef.current = true;
+      queueMicrotask(() => {
+        externalLoadingSyncScheduledRef.current = false;
+        setExternalLoadingCount(externalLoadingTokensRef.current.size);
+      });
+    };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      setRefresh,
+      getRefresh,
+      registerExternalLoading,
+      isExternalLoading: externalLoadingCount > 0,
+    }),
+    [externalLoadingCount, getRefresh, registerExternalLoading, setRefresh]
+  );
 
   return <PullToRefreshContext.Provider value={value}>{children}</PullToRefreshContext.Provider>;
+}
+
+export function useExternalLoadingActivity(): boolean {
+  return usePullToRefreshContext().isExternalLoading;
+}
+
+export function useRegisterExternalLoadingActivity(active = true): void {
+  const { registerExternalLoading } = usePullToRefreshContext();
+
+  useEffect(() => {
+    if (!active) return;
+    return registerExternalLoading();
+  }, [active, registerExternalLoading]);
 }
 
 export function usePullToRefreshContext(): PullToRefreshContextValue {

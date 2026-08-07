@@ -43,6 +43,7 @@ function PasswordField(props: {
         />
         <button
           type="button"
+          disabled={props.disabled}
           onClick={() => setVisible((value) => !value)}
           className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           aria-label={visible ? t("hidePassword") : t("showPassword")}
@@ -110,6 +111,7 @@ export function PasswordForm({
       <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
+          if (!nextOpen && isLoading) return;
           setOpen(nextOpen);
           if (!nextOpen) reset();
         }}
@@ -121,6 +123,9 @@ export function PasswordForm({
         </DialogTrigger>
         <DialogContent
           variant="detail"
+          hideCloseButton={isLoading}
+          onEscapeKeyDown={(event) => isLoading && event.preventDefault()}
+          onPointerDownOutside={(event) => isLoading && event.preventDefault()}
           className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-md sm:rounded-lg"
         >
           <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">

@@ -18,6 +18,17 @@ function collectSourceFiles(directory: string): string[] {
 }
 
 describe("PWA policy", () => {
+  it("uses the operating-system font stack without next/font", () => {
+    const layout = read("src/app/[locale]/layout.tsx");
+    const globals = read("src/app/globals.css");
+    expect(layout).not.toContain("next/font/google");
+    expect(globals).toContain(
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"'
+    );
+    expect(globals).toContain('"Hiragino Sans GB"');
+    expect(globals).toContain('"Microsoft YaHei", sans-serif');
+  });
+
   it("precaches only immutable static assets and keeps the update prompt", () => {
     const config = read("next.config.ts");
     const worker = read("worker/index.ts");
@@ -67,7 +78,7 @@ describe("PWA policy", () => {
     const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(preview).toContain("readLedgerStartupSnapshot");
     expect(preview).toContain('useTranslations("LedgerPage")');
-    expect(preview).toContain('t("loadingLatest")');
+    expect(preview).not.toContain("startup-preview-latest-banner");
     expect(preview).not.toContain("正在加载最新数据");
     expect(preview).toContain("SettingsTabSkeleton");
     for (const source of [preview, stream, details]) {

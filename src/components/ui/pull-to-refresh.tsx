@@ -40,7 +40,7 @@ interface PullToRefreshSurfaceProps {
  */
 export function PullToRefreshSurface({ children, className }: PullToRefreshSurfaceProps) {
   const t = useTranslations("PullToRefresh");
-  const { getRefresh } = usePullToRefreshContext();
+  const { getRefresh, isExternalLoading } = usePullToRefreshContext();
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -54,8 +54,8 @@ export function PullToRefreshSurface({ children, className }: PullToRefreshSurfa
   const mountedRef = useRef(true);
 
   useLayoutEffect(() => {
-    isRefreshingRef.current = isRefreshing;
-  }, [isRefreshing]);
+    isRefreshingRef.current = isRefreshing || isExternalLoading;
+  }, [isExternalLoading, isRefreshing]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -178,10 +178,11 @@ export function PullToRefreshSurface({ children, className }: PullToRefreshSurfa
     });
   }, [getRefresh]);
 
-  const indicatorScale = isRefreshing || pullDistance > 30 ? 1 : pullDistance / 30;
-  const showText = isRefreshing || pullDistance > 20;
+  const isActive = isRefreshing || isExternalLoading;
+  const indicatorScale = isActive || pullDistance > 30 ? 1 : pullDistance / 30;
+  const showText = isActive || pullDistance > 20;
   const releaseToRefresh = pullDistance > 60;
-  const isVisible = pullDistance > 0 || isRefreshing;
+  const isVisible = pullDistance > 0 || isActive;
 
   return (
     <div
@@ -191,10 +192,10 @@ export function PullToRefreshSurface({ children, className }: PullToRefreshSurfa
     >
       <div
         data-testid="pull-to-refresh-indicator"
-        className="overflow-hidden transition-opacity duration-[var(--motion-state)] ease-[var(--motion-enter)]"
+        className="overflow-hidden transition-opacity duration-[var(--motion-state)] ease-[var(--motion-enter)] md:hidden"
         style={{
           opacity: isVisible ? 1 : 0,
-          height: isVisible ? (isRefreshing ? 44 : pullDistance) : 0,
+          height: isVisible ? (isActive ? 44 : pullDistance) : 0,
         }}
       >
         <div className="flex flex-col items-center justify-end overflow-hidden" role="status">
@@ -207,14 +208,14 @@ export function PullToRefreshSurface({ children, className }: PullToRefreshSurfa
             >
               <div
                 className={`h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary ${
-                  isRefreshing ? "animate-spin" : ""
+                  isActive ? "animate-spin motion-reduce:animate-none" : ""
                 }`}
               />
             </div>
 
             {showText && (
               <span className="transition-opacity duration-200 text-xs text-muted-foreground">
-                {isRefreshing
+                {isActive
                   ? t("refreshing")
                   : releaseToRefresh
                     ? t("releaseToRefresh")

@@ -12,6 +12,7 @@
     "save": "Save",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Save failed",
+    "savedRefreshFailed": "Changes were saved, but the latest data could not be loaded.",
     "deleteSuccess": "Deleted successfully",
     "deleteFailed": "Delete failed",
     "loading": "Loading…",

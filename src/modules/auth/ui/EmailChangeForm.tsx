@@ -84,6 +84,7 @@ export function EmailChangeForm({
       <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
+          if (!nextOpen && pending) return;
           setOpen(nextOpen);
           if (!nextOpen) reset();
         }}
@@ -93,6 +94,9 @@ export function EmailChangeForm({
         </DialogTrigger>
         <DialogContent
           variant="detail"
+          hideCloseButton={pending}
+          onEscapeKeyDown={(event) => pending && event.preventDefault()}
+          onPointerDownOutside={(event) => pending && event.preventDefault()}
           className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:rounded-lg"
         >
           <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">

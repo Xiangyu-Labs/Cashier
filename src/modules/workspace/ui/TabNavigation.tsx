@@ -3,6 +3,7 @@ import { BarChart3, ListChecks, Plus, ReceiptText, Settings } from "lucide-react
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { LedgerTab } from "@/modules/workspace/tabs";
+import { useExternalLoadingActivity } from "@/modules/workspace/pull-to-refresh-context";
 
 interface TabNavigationProps {
   activeTab: LedgerTab;
@@ -32,6 +33,7 @@ export function TabNavigation({
   onTabIntent,
 }: TabNavigationProps) {
   const t = useTranslations("LedgerPage");
+  const isExternalLoading = useExternalLoadingActivity();
 
   return (
     <nav
@@ -54,10 +56,11 @@ export function TabNavigation({
       <button
         type="button"
         onClick={onOpenInput}
+        disabled={isExternalLoading}
         onPointerEnter={onInputIntent}
         onPointerDown={onInputIntent}
         onFocus={onInputIntent}
-        className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]"
+        className="m-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary"
         aria-label={t("newRecord")}
       >
         <Plus className="h-5 w-5" aria-hidden="true" />

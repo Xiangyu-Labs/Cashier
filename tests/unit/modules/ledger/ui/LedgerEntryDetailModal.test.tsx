@@ -19,7 +19,18 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Dialog: ({
+    children,
+    onOpenChange,
+  }: {
+    children?: ReactNode;
+    onOpenChange?: (open: boolean) => void;
+  }) => (
+    <div>
+      <button onClick={() => onOpenChange?.(false)}>attempt-close</button>
+      {children}
+    </div>
+  ),
   DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
@@ -39,15 +50,23 @@ vi.mock("@/modules/ledger/ui/LedgerEntryViewDetails", () => ({
     onFieldChange,
     onSave,
     onDelete,
+    disabled,
   }: {
     onFieldChange: (changes: { itemName: string }) => void;
     onSave: () => void | Promise<void>;
     onDelete: () => void;
+    disabled?: boolean;
   }) => (
     <div>
-      <button onClick={() => onFieldChange({ itemName: "Updated" })}>change-name</button>
-      <button onClick={() => void onSave()}>save-entry</button>
-      <button onClick={onDelete}>delete-entry</button>
+      <button disabled={disabled} onClick={() => onFieldChange({ itemName: "Updated" })}>
+        change-name
+      </button>
+      <button disabled={disabled} onClick={() => void onSave()}>
+        save-entry
+      </button>
+      <button disabled={disabled} onClick={onDelete}>
+        delete-entry
+      </button>
     </div>
   ),
 }));
@@ -114,6 +133,31 @@ describe("LedgerEntryDetailModal feedback", () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("saveAllSuccess:1"));
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
+  });
+
+  it("freezes editing and ignores close requests until save settles", async () => {
+    let resolveSave!: () => void;
+    const onClose = vi.fn();
+    const onUpdate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        })
+    );
+    renderModal({ onUpdate, onClose });
+
+    fireEvent.click(screen.getByText("change-name"));
+    fireEvent.click(screen.getByText("save-entry"));
+    await waitFor(() => expect(screen.getByText("save-entry")).toBeDisabled());
+    expect(screen.getByText("change-name")).toBeDisabled();
+    expect(screen.getByText("delete-entry")).toBeDisabled();
+    fireEvent.click(screen.getByText("attempt-close"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    resolveSave();
+    await waitFor(() => expect(screen.getByText("save-entry")).not.toBeDisabled());
+    fireEvent.click(screen.getByText("attempt-close"));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("reports one save error and keeps the pending change available for retry", async () => {

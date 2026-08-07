@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface QuickEntryFormProps {
   preferredCurrencies?: string[];
   timeZone?: string;
   onSuccess?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
 export function QuickEntryForm({
@@ -34,6 +36,7 @@ export function QuickEntryForm({
   preferredCurrencies = [],
   timeZone,
   onSuccess,
+  onPendingChange,
 }: QuickEntryFormProps) {
   const tCommon = useTranslations("Common");
   const t = useTranslations("QuickEntryForm");
@@ -71,6 +74,12 @@ export function QuickEntryForm({
   ];
   const parsedAmount = Number(amount);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const isPending = mutation.isPending;
+
+  useEffect(() => {
+    onPendingChange?.(isPending);
+    return () => onPendingChange?.(false);
+  }, [isPending, onPendingChange]);
 
   return (
     <div className="space-y-4">
@@ -78,6 +87,7 @@ export function QuickEntryForm({
       <Input
         aria-label={t("itemName")}
         value={itemName}
+        disabled={isPending}
         onChange={(e) => setItemName(e.target.value)}
         placeholder={
           selectedCategory != null
@@ -98,6 +108,7 @@ export function QuickEntryForm({
           placeholder={t("selectDate")}
           size="sm"
           className="w-full"
+          disabled={isPending}
         />
       </div>
 
@@ -113,6 +124,7 @@ export function QuickEntryForm({
             <button
               key={cat.id}
               type="button"
+              disabled={isPending}
               onClick={() => setSelectedCategoryId(cat.id)}
               className={cn(
                 "flex min-h-11 flex-col items-center gap-1 rounded-lg border p-2 transition-colors",
@@ -130,7 +142,7 @@ export function QuickEntryForm({
 
       <div>
         <p className="text-sm text-muted-foreground mb-2">{t("currency")}</p>
-        <Select value={currency} onValueChange={setCurrency}>
+        <Select value={currency} onValueChange={setCurrency} disabled={isPending}>
           <SelectTrigger className="w-full" aria-label={t("currency")}>
             <SelectValue placeholder={t("selectCurrency")} />
           </SelectTrigger>
@@ -154,6 +166,7 @@ export function QuickEntryForm({
             autoComplete="off"
             pattern="[0-9]*[.,]?[0-9]{0,2}"
             value={amount}
+            disabled={isPending}
             onChange={(event) => {
               const next = event.target.value.replace(",", ".");
               if (/^\d*(?:\.\d{0,2})?$/.test(next)) setAmount(next);
@@ -171,10 +184,10 @@ export function QuickEntryForm({
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={selectedCategoryId === null || !hasValidAmount || mutation.isPending}
+        disabled={selectedCategoryId === null || !hasValidAmount || isPending}
         className="w-full"
       >
-        {mutation.isPending ? (
+        {isPending ? (
           tCommon("sending_status")
         ) : (
           <>

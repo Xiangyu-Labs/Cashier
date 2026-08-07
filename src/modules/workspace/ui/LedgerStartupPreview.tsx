@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   DetailsTabSkeleton,
   EntriesTabSkeleton,
@@ -12,8 +12,8 @@ import {
 } from "@/components/skeletons/TabSkeletons";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerTab } from "@/modules/workspace/tabs";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
+import { useRegisterExternalLoadingActivity } from "@/modules/workspace/pull-to-refresh-context";
 import {
   readLedgerStartupSnapshot,
   type LedgerStartupCacheSnapshot,
@@ -68,9 +68,25 @@ export function LedgerStartupPreview({
 }: LedgerStartupPreviewProps) {
   const t = useTranslations("LedgerPage");
   const locale = useLocale();
-  const reducedMotion = useReducedMotion();
   const [snapshot, setSnapshot] = useState<LedgerStartupCacheSnapshot | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  useRegisterExternalLoadingActivity(queryState === "loading");
+
+  useEffect(() => {
+    const toastId = `ledger-startup:${snapshotKey}`;
+    if (queryState === "error") {
+      toast.error(t("startupCacheError"), {
+        id: toastId,
+        duration: Infinity,
+        action: { label: t("retry"), onClick: onRetry },
+      });
+    } else {
+      toast.dismiss(toastId);
+    }
+    return () => {
+      toast.dismiss(toastId);
+    };
+  }, [onRetry, queryState, snapshotKey, t]);
 
   useEffect(() => {
     if (activeTab === "settings") return;
@@ -112,54 +128,16 @@ export function LedgerStartupPreview({
       <LedgerStartupStatsPreview snapshot={snapshot} />
     );
 
-  return (
-    <>
-      <div
-        role={queryState === "error" ? "alert" : "status"}
-        data-testid="startup-preview-latest-banner"
-        aria-live="polite"
-        className={`mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
-          queryState === "error"
-            ? "border-danger/30 bg-danger/10 text-text"
-            : "border-info/25 bg-info/10 text-text"
-        }`}
-      >
-        <span
-          aria-hidden
-          className={
-            queryState === "error"
-              ? "size-3 rounded-full bg-danger"
-              : reducedMotion
-                ? "size-3 rounded-full bg-info"
-                : "size-3 animate-spin rounded-full border-2 border-info/25 border-t-info"
-          }
-        />
-        <span>{queryState === "error" ? t("startupCacheError") : t("loadingLatest")}</span>
-        {snapshot != null && <span className="text-muted">{t("readOnlyPreview")}</span>}
-        {queryState === "error" && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="ml-auto h-7 px-2 text-xs"
-            onClick={onRetry}
-          >
-            {t("retry")}
-          </Button>
-        )}
-      </div>
-      {previewFeature == null ? (
-        previewContent
-      ) : (
-        <DeferredFeatureMessages
-          feature={previewFeature}
-          locale={locale}
-          fallback={<SkeletonForTab activeTab={activeTab} />}
-        >
-          {previewContent}
-        </DeferredFeatureMessages>
-      )}
-    </>
+  return previewFeature == null ? (
+    previewContent
+  ) : (
+    <DeferredFeatureMessages
+      feature={previewFeature}
+      locale={locale}
+      fallback={<SkeletonForTab activeTab={activeTab} />}
+    >
+      {previewContent}
+    </DeferredFeatureMessages>
   );
 }
 

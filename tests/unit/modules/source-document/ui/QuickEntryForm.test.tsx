@@ -17,14 +17,18 @@ vi.mock("@/components/CategoryIcon", () => ({
 }));
 
 vi.mock("@/components/ui/date-filter", () => ({
-  DateFilter: ({ placeholder }: { placeholder?: string }) => (
-    <div data-testid="date-filter">{placeholder ?? "date-filter"}</div>
+  DateFilter: ({ placeholder, disabled }: { placeholder?: string; disabled?: boolean }) => (
+    <button data-testid="date-filter" disabled={disabled}>
+      {placeholder ?? "date-filter"}
+    </button>
   ),
 }));
 
 vi.mock("@/components/ui/select", () => ({
-  Select: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="currency-select">{children}</div>
+  Select: ({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) => (
+    <div data-testid="currency-select" aria-disabled={disabled}>
+      {children}
+    </div>
   ),
   SelectTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <button type="button" className={className}>
@@ -142,5 +146,34 @@ describe("QuickEntryForm", () => {
 
     expect(setAmount).toHaveBeenCalledTimes(1);
     expect(setAmount).toHaveBeenCalledWith("12.34");
+  });
+
+  it("reports pending and disables every form control", () => {
+    const onPendingChange = vi.fn();
+    useQuickEntryFormControllerMock.mockReturnValue({
+      ...useQuickEntryFormControllerMock(),
+      selectedCategoryId: "cat-1",
+      amount: "12.34",
+      mutation: { isPending: true },
+    });
+
+    const { unmount } = render(
+      <QuickEntryForm
+        ledgerId="ledger-1"
+        categories={[createCategory()]}
+        onPendingChange={onPendingChange}
+      />
+    );
+
+    expect(onPendingChange).toHaveBeenCalledWith(true);
+    expect(screen.getByRole("textbox", { name: "名称（可选）" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "金额" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Meals/ })).toBeDisabled();
+    expect(screen.getByTestId("date-filter")).toBeDisabled();
+    expect(screen.getByTestId("currency-select")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "发送中…" })).toBeDisabled();
+
+    unmount();
+    expect(onPendingChange).toHaveBeenLastCalledWith(false);
   });
 });

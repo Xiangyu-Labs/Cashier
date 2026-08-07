@@ -69,4 +69,31 @@ describe("EmailChangeForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /sendCode|send code|发送验证码/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
+
+  it("prevents closing and duplicate submission while a request is pending", async () => {
+    let resolveSend!: () => void;
+    sendCode.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveSend = resolve;
+      })
+    );
+    render(<EmailChangeForm currentEmail="old@example.com" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
+    );
+    fireEvent.change(screen.getByLabelText(/newEmail|new email|新邮箱/i), {
+      target: { value: "next@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sendCode|send code|发送验证码/i }));
+
+    const cancel = screen.getByRole("button", { name: /cancel|取消/i });
+    await waitFor(() => expect(cancel).toBeDisabled());
+    expect(screen.getByLabelText(/newEmail|new email|新邮箱/i)).toBeDisabled();
+    fireEvent.click(cancel);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(sendCode).toHaveBeenCalledTimes(1);
+
+    resolveSend();
+    await waitFor(() => expect(cancel).not.toBeDisabled());
+  });
 });

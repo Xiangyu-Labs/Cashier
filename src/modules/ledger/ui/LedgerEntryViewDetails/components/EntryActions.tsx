@@ -8,6 +8,7 @@ interface EntryActionsProps {
   onDelete: () => void;
   onSave: () => void;
   onDiscard: () => void;
+  disabled?: boolean;
 }
 
 export function EntryActions({
@@ -16,6 +17,7 @@ export function EntryActions({
   onDelete,
   onSave,
   onDiscard,
+  disabled = false,
 }: EntryActionsProps) {
   const t = useTranslations("LedgerEntryDetail");
   const tCommon = useTranslations("Common");
@@ -26,6 +28,7 @@ export function EntryActions({
         {onViewSourceDocument && (
           <Button
             variant="outline"
+            disabled={disabled}
             onClick={onViewSourceDocument}
             size="sm"
             className="h-9 px-3 gap-1.5 text-primary border-primary/20 hover:bg-primary/5"
@@ -37,6 +40,7 @@ export function EntryActions({
 
         <Button
           variant="outline"
+          disabled={disabled}
           onClick={onDelete}
           size="sm"
           className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5"
@@ -48,11 +52,16 @@ export function EntryActions({
 
       {hasPendingChanges ? (
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onDiscard} className="h-9">
+          <Button variant="ghost" size="sm" onClick={onDiscard} className="h-9" disabled={disabled}>
             <X className="h-3.5 w-3.5 mr-1.5" />
             {t("discardChanges")}
           </Button>
-          <Button size="sm" onClick={onSave} className="h-9 gap-1.5 shadow-lg shadow-primary/20">
+          <Button
+            size="sm"
+            onClick={onSave}
+            disabled={disabled}
+            className="h-9 gap-1.5 shadow-lg shadow-primary/20"
+          >
             <Save className="h-3.5 w-3.5" />
             {tCommon("save")}
           </Button>

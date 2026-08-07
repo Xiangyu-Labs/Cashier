@@ -34,8 +34,10 @@ interface SourceDocumentDetailModalProps {
   onClose: () => void;
   onBack?: () => void;
   onExitComplete?: () => void;
-  onUpdateSourceDoc: (data: { title?: string; entryDate?: string }) => Promise<void>;
-  onUpdateEntry: (id: string, data: Partial<EntryEditData>) => Promise<void>;
+  onSaveChanges: (
+    sourceDocument: { title?: string; entryDate?: string },
+    entries: Array<{ id: string; data: Partial<EntryEditData> }>
+  ) => Promise<unknown>;
   onBatchUpdate: (
     ids: string[],
     data: {
@@ -45,7 +47,7 @@ interface SourceDocumentDetailModalProps {
       description?: string;
     }
   ) => Promise<{ affectedCount: number } | undefined>;
-  onDeleteEntry: (id: string) => Promise<void>;
+  onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
   onDelete?: () => void | Promise<void>;
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
@@ -71,10 +73,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onClose,
   onBack,
   onExitComplete,
-  onUpdateSourceDoc,
-  onUpdateEntry,
+  onSaveChanges,
   onBatchUpdate,
-  onDeleteEntry,
+  onBatchDeleteEntries,
   onDelete,
   onAcceptCandidate,
   onAbandonCandidate,
@@ -92,6 +93,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const busy = isSaving || isDeleting || isRetrying || isAccepting || isAbandoning || isCancelling;
 
   const {
     pendingChanges,
@@ -125,25 +129,22 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   }, [open, sourceDocument, resetChanges]);
 
   const handleClose = useCallback(() => {
+    if (busy) return;
     if (hasPendingChanges) {
       setShowUnsavedConfirm(true);
     } else {
       onClose();
     }
-  }, [hasPendingChanges, onClose]);
+  }, [busy, hasPendingChanges, onClose]);
 
   const handleSaveAll = useCallback(async (): Promise<boolean> => {
+    if (busy) return false;
     setIsSaving(true);
     try {
-      if (Object.keys(pendingChanges.sourceDoc).length > 0) {
-        await onUpdateSourceDoc(pendingChanges.sourceDoc);
-      }
-
-      for (const [entryId, changes] of Object.entries(pendingChanges.entries)) {
-        if (Object.keys(changes).length > 0) {
-          await onUpdateEntry(entryId, changes);
-        }
-      }
+      const entryChanges = Object.entries(pendingChanges.entries)
+        .filter(([, changes]) => Object.keys(changes).length > 0)
+        .map(([id, data]) => ({ id, data }));
+      await onSaveChanges(pendingChanges.sourceDoc, entryChanges);
 
       discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pendingChangesCount }));
@@ -155,7 +156,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     } finally {
       setIsSaving(false);
     }
-  }, [pendingChanges, onUpdateSourceDoc, onUpdateEntry, pendingChangesCount, t, discardAllChanges]);
+  }, [busy, pendingChanges, onSaveChanges, pendingChangesCount, t, discardAllChanges]);
 
   const handleSaveAllAndClose = useCallback(async () => {
     const saved = await handleSaveAll();
@@ -172,7 +173,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   }, [onClose, discardAllChanges]);
 
   const handleBatchCategory = async (categoryId: string | null) => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || busy) return;
     setIsSaving(true);
     try {
       const result = await onBatchUpdate(selectedIds, { categoryId });
@@ -186,7 +187,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   };
 
   const handleBatchCurrency = async (currency: string) => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || busy) return;
     setIsSaving(true);
     try {
       const result = await onBatchUpdate(selectedIds, { currency });
@@ -200,16 +201,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   };
 
   const handleBatchDelete = async () => {
-    const failed: string[] = [];
+    if (busy) return;
     setIsSaving(true);
     try {
-      for (const id of selectedIds) {
-        try {
-          await onDeleteEntry(id);
-        } catch {
-          failed.push(id);
-        }
-      }
+      const failed = await onBatchDeleteEntries(selectedIds);
       if (failed.length === 0) clearSelection();
       else retainSelection(failed);
       toast.success(t("batchDeleteSuccess", { count: selectedIds.length - failed.length }));
@@ -221,13 +216,19 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   };
 
   const handleDeleteDocument = async () => {
-    await onDelete?.();
+    if (busy) return;
+    setIsDeleting(true);
+    try {
+      await onDelete?.();
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument?.title ?? "";
 
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
+    <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
       <DialogContent
         variant="detail"
         {...(onExitComplete !== undefined ? { onExitComplete } : {})}
@@ -240,6 +241,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           restoreFocusRef.current?.focus();
         }}
         aria-describedby={undefined}
+        hideCloseButton={busy}
+        onEscapeKeyDown={(event) => busy && event.preventDefault()}
+        onPointerDownOutside={(event) => busy && event.preventDefault()}
       >
         <DialogHeader className="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-3">
           <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
@@ -249,6 +253,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               variant="ghost"
               size="icon-sm"
               onClick={onBack}
+              disabled={busy}
               aria-label={tCommon("back")}
               title={tCommon("back")}
             >
@@ -262,7 +267,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               placeholder={t("untitled")}
               displayClassName="font-semibold text-text text-base truncate"
               inputClassName="font-semibold text-base"
-              disabled={readOnly}
+              disabled={readOnly || busy}
             />
           </div>
         </DialogHeader>
@@ -357,7 +362,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 onSelectEntry={handleSelectEntry}
                 onSelectAllEntries={handleSelectAllEntries}
                 onToggleSelectionMode={handleToggleSelectionMode}
-                readOnly={readOnly}
+                readOnly={readOnly || busy}
                 {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
               />
             </>
@@ -378,6 +383,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             preferredCurrencies={preferredCurrencies}
             isChangingCategory={isSaving}
             isChangingCurrency={isSaving}
+            isProcessing={busy}
             variant="inline"
           />
         )}
@@ -404,7 +410,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       size="sm"
                       className="h-9 px-3 gap-1.5"
                       onClick={onAcceptCandidate}
-                      disabled={isAccepting}
+                      disabled={busy}
                     >
                       <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
                       <span className="hidden sm:inline">{tActions("accept")}</span>
@@ -416,7 +422,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                           size="sm"
                           className="h-9 px-3 gap-1.5 text-muted-foreground"
                           onClick={onAbandonCandidate}
-                          disabled={isAbandoning}
+                          disabled={busy}
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">{tActions("abandon")}</span>
@@ -433,7 +439,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     size="sm"
                     className="h-9 gap-1.5 px-3 text-muted-foreground"
                     onClick={onAbandonCandidate}
-                    disabled={isAbandoning}
+                    disabled={busy}
                   >
                     <XCircle className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{tActions("abandon")}</span>
@@ -447,7 +453,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     size="sm"
                     className="h-9 gap-1.5 px-3 text-muted-foreground"
                     onClick={onCancelProcessing}
-                    disabled={isCancelling}
+                    disabled={busy}
                   >
                     <XCircle className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
@@ -461,6 +467,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   size="sm"
                   className="h-9 px-3 gap-1.5 text-muted-foreground"
                   onClick={() => setShowRetryDialog(true)}
+                  disabled={busy}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{t("editRetry")}</span>
@@ -472,6 +479,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 size="sm"
                 className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
                 onClick={() => setShowDeleteConfirm(true)}
+                disabled={busy}
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{tCommon("delete")}</span>
@@ -481,7 +489,13 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             <div className="flex items-center gap-2">
               {hasPendingChanges ? (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-9" onClick={discardAllChanges}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={discardAllChanges}
+                    disabled={busy}
+                  >
                     <X className="h-3.5 w-3.5 mr-1.5" />
                     {t("discardChanges")}
                   </Button>
@@ -489,7 +503,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     size="sm"
                     className="h-9 gap-1.5 shadow-lg shadow-primary/20"
                     onClick={handleSaveAll}
-                    disabled={isSaving}
+                    disabled={busy}
                   >
                     <Save className="h-3.5 w-3.5" />
                     {t("saveChanges", { count: pendingChangesCount })}
@@ -530,6 +544,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           sourceDocument={sourceDocument}
           open={showRetryDialog}
           onOpenChange={setShowRetryDialog}
+          onPendingChange={setIsRetrying}
           onSuccess={() => {
             setShowRetryDialog(false);
             onClose();

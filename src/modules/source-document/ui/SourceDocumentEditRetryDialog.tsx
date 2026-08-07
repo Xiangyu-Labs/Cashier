@@ -17,6 +17,7 @@ interface SourceDocumentEditRetryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
 export function SourceDocumentEditRetryDialog({
@@ -25,6 +26,7 @@ export function SourceDocumentEditRetryDialog({
   open,
   onOpenChange,
   onSuccess,
+  onPendingChange,
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +84,10 @@ export function SourceDocumentEditRetryDialog({
               mode="retry"
               sourceDocumentId={sourceDocument.id}
               initialData={initialData}
-              onPendingChange={setIsSubmitting}
+              onPendingChange={(pending) => {
+                setIsSubmitting(pending);
+                onPendingChange?.(pending);
+              }}
               onSuccess={() => {
                 onOpenChange(false);
                 onSuccess?.();

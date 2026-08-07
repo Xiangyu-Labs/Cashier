@@ -93,6 +93,7 @@
     "save": "Save",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Save failed",
+    "savedRefreshFailed": "Changes were saved, but the latest data could not be loaded.",
     "deleteSuccess": "Deleted successfully",
     "deleteFailed": "Delete failed",
     "loading": "Loading…",
@@ -140,12 +141,10 @@
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
     "attentionCountLabel": "Documents requiring confirmation or correction",
-    "loadingLatest": "Loading latest data",
     "startupCacheError": "Latest data could not be loaded.",
     "retry": "Retry",
     "cachedNoRecords": "No cached records match",
-    "total": "Total",
-    "readOnlyPreview": "Read-only preview"
+    "total": "Total"
   },
   "Metadata": {
     "title": "Cashier - AI Bookkeeping Assistant",

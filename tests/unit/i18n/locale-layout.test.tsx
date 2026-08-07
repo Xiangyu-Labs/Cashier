@@ -9,11 +9,6 @@ const { getMessages, getTranslations, notFound } = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("next/font/google", () => ({
-  Inter: () => ({ variable: "font-sans" }),
-  // JetBrains_Mono is no longer preloaded globally
-}));
-
 vi.mock("next/navigation", () => ({ notFound }));
 
 vi.mock("next-intl/server", () => ({
@@ -102,14 +97,16 @@ describe("locale layout", () => {
     }
   );
 
-  it("does not include JetBrains Mono global font preload", async () => {
-    // The test should NOT mock JetBrains_Mono — it's been removed from the global layout.
-    // Verify the layout renders without errors even though JetBrains_Mono is not mocked.
+  it("renders without a downloaded font class", async () => {
     const layout = await LocaleLayout({
       children: <div>Content</div>,
       params: Promise.resolve({ locale: "en" }),
     });
-    expect(layout).toBeDefined();
+    const html = layout as React.ReactElement<{
+      children: React.ReactElement<{ className: string }>;
+    }>;
+    const body = html.props.children;
+    expect(body.props.className).toBe("antialiased");
   });
 
   it.each(["sw.js", "en-US", "typo"])(

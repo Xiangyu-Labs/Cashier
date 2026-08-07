@@ -53,6 +53,9 @@ function LedgerEntryDetailEditor({
   const [pendingChanges, setPendingChanges] = useState<EntryPendingChanges>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const busy = isSaving || isDeleting;
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -104,7 +107,7 @@ function LedgerEntryDetailEditor({
   );
 
   const handleSave = useCallback(async (): Promise<boolean> => {
-    if (!ledgerEntry) return false;
+    if (!ledgerEntry || busy) return false;
     if (Object.keys(pendingChanges).length === 0) return true;
 
     const updateData: Parameters<typeof onUpdate>[0] = {};
@@ -127,6 +130,7 @@ function LedgerEntryDetailEditor({
     }
 
     const changeCount = Object.keys(updateData).length;
+    setIsSaving(true);
     try {
       await onUpdate(updateData);
       toast.success(tCommon("saveAllSuccess", { count: changeCount }));
@@ -135,20 +139,24 @@ function LedgerEntryDetailEditor({
     } catch {
       toast.error(tCommon("saveFailed"));
       return false;
+    } finally {
+      setIsSaving(false);
     }
-  }, [ledgerEntry, pendingChanges, onUpdate, tCommon]);
+  }, [busy, ledgerEntry, pendingChanges, onUpdate, tCommon]);
 
   const handleDiscard = useCallback(() => {
+    if (busy) return;
     setPendingChanges({});
-  }, []);
+  }, [busy]);
 
   const handleClose = useCallback(() => {
+    if (busy) return;
     if (hasPendingChanges) {
       setShowUnsavedConfirm(true);
     } else {
       onClose();
     }
-  }, [hasPendingChanges, onClose]);
+  }, [busy, hasPendingChanges, onClose]);
 
   const handleSaveAndClose = useCallback(async () => {
     const saved = await handleSave();
@@ -165,23 +173,30 @@ function LedgerEntryDetailEditor({
   }, [onClose]);
 
   const handleDelete = useCallback(async () => {
+    if (busy) return;
+    setIsDeleting(true);
     try {
       await onDelete();
       setShowDeleteConfirm(false);
       onClose();
     } catch {
       // The mutation owns delete failure feedback.
+    } finally {
+      setIsDeleting(false);
     }
-  }, [onDelete, onClose]);
+  }, [busy, onDelete, onClose]);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
+      <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
         <DialogContent
           variant="detail"
           {...(onExitComplete !== undefined ? { onExitComplete } : {})}
           className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
           aria-describedby={undefined}
+          hideCloseButton={busy}
+          onEscapeKeyDown={(event) => busy && event.preventDefault()}
+          onPointerDownOutside={(event) => busy && event.preventDefault()}
         >
           <VisuallyHidden.Root>
             <DialogTitle>{t("unsavedChanges")}</DialogTitle>
@@ -194,6 +209,7 @@ function LedgerEntryDetailEditor({
                 variant="ghost"
                 size="icon-sm"
                 onClick={onBack}
+                disabled={busy}
                 aria-label={tCommon("back")}
                 title={tCommon("back")}
               >
@@ -233,6 +249,7 @@ function LedgerEntryDetailEditor({
               onSave={handleSave}
               onDiscard={handleDiscard}
               onDelete={() => setShowDeleteConfirm(true)}
+              disabled={busy}
               {...(preferredCurrencies !== undefined ? { preferredCurrencies } : {})}
               {...(onViewSourceDocument != null &&
               ledgerEntry.sourceDocumentId != null &&

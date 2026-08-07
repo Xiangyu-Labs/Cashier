@@ -114,8 +114,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
               totalCount={entries.length}
               isAllSelected={batch.isAllSelected}
               hasMoreData={hasNextPage}
-              onSelectAll={batch.selectAll}
-              onClearSelection={batch.clearSelection}
+              onSelectAll={() => !batch.isPending && batch.selectAll()}
+              onClearSelection={() => !batch.isPending && batch.clearSelection()}
               categories={categories}
               preferredCurrencies={ledger?.settings.currencies ?? []}
               onChangeCategory={async (categoryId) => {
@@ -135,6 +135,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           variant="ghost"
           size="icon"
           onClick={batch.toggleSelectionMode}
+          disabled={batch.isPending}
           className="h-8 w-8"
           aria-label={batch.isSelectionMode ? t("cancelSelect") : t("select")}
         >
@@ -174,7 +175,9 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             onView={onViewEntry}
             selectionMode={batch.isSelectionMode}
             selectedIds={batch.selectedIds}
-            onToggleSelection={batch.toggleSelection}
+            onToggleSelection={(id) => {
+              if (!batch.isPending) batch.toggleSelection(id);
+            }}
           />
           {isLoading ? (
             <div className="space-y-4 px-2 animate-pulse">

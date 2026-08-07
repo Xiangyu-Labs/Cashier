@@ -33,6 +33,7 @@ interface LedgerEntryViewDetailsProps {
   onDiscard: () => void;
   onDelete: () => void;
   onViewSourceDocument?: () => void;
+  disabled?: boolean;
 }
 
 export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
@@ -46,6 +47,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   onDiscard,
   onDelete,
   onViewSourceDocument,
+  disabled = false,
 }: LedgerEntryViewDetailsProps): ReactNode {
   const t = useTranslations("LedgerEntryDetail");
   const locale = useLocale();
@@ -121,6 +123,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           convertedAmount={status === "success" && converted != null ? converted : null}
           isDifferentCurrency={isDifferentCurrency}
           onFieldChange={handleFieldChange}
+          disabled={disabled}
           {...(category !== undefined ? { category } : {})}
         />
 
@@ -147,6 +150,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 categories={categories}
                 onChange={(categoryId) => handleFieldChange("categoryId", categoryId)}
                 placeholder={t("selectCategory")}
+                disabled={disabled}
               />
             </div>
           </div>
@@ -159,6 +163,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               placeholder={t("addDescription")}
               displayClassName="text-sm text-text"
               inputClassName="text-sm"
+              disabled={disabled}
               renderDisplay={(value: string) => {
                 const hasValue = value.length > 0;
                 return hasValue ? (
@@ -213,6 +218,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
         onSave={onSave}
         onDiscard={onDiscard}
         {...(onViewSourceDocument !== undefined ? { onViewSourceDocument } : {})}
+        disabled={disabled}
       />
     </div>
   );

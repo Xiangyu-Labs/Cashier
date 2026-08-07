@@ -30,6 +30,7 @@ interface CategorySectionProps {
   onRetryMetadata?: (id: string) => void;
   isReordering?: boolean;
   isCreating?: boolean;
+  isBusy?: boolean;
 }
 
 interface EditDraft {
@@ -51,6 +52,7 @@ export function CategorySection({
   onRetryMetadata,
   isReordering = false,
   isCreating = false,
+  isBusy = false,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const common = useTranslations("Common");
@@ -59,6 +61,8 @@ export function CategorySection({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EntryCategory | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const busy = isBusy || isSubmitting || isReordering || isCreating;
 
   const displayedCategories = managing ? draftOrder : categories;
   const orderChanged = useMemo(
@@ -87,18 +91,29 @@ export function CategorySection({
   };
 
   const saveOrder = async () => {
-    await onReorderCategories(draftOrder.map((category) => category.id));
-    setManaging(false);
+    if (busy) return;
+    setIsSubmitting(true);
+    try {
+      await onReorderCategories(draftOrder.map((category) => category.id));
+      setManaging(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const createCategory = async () => {
     const name = newCategoryName.trim();
-    if (name === "" || isCreating) return;
-    const category = await onCreateCategory(name);
-    setDraftOrder((current) =>
-      current.some((item) => item.id === category.id) ? current : [...current, category]
-    );
-    setNewCategoryName("");
+    if (name === "" || busy) return;
+    setIsSubmitting(true);
+    try {
+      const category = await onCreateCategory(name);
+      setDraftOrder((current) =>
+        current.some((item) => item.id === category.id) ? current : [...current, category]
+      );
+      setNewCategoryName("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -109,7 +124,13 @@ export function CategorySection({
           <p className="mt-1 text-sm text-muted-foreground">{t("categoriesDesc")}</p>
         </div>
         {!managing ? (
-          <Button type="button" variant="outline" size="sm" onClick={enterManagement}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={enterManagement}
+            disabled={busy}
+          >
             {t("manageCategories")}
           </Button>
         ) : null}
@@ -171,7 +192,7 @@ export function CategorySection({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  disabled={index === 0 || isReordering}
+                  disabled={index === 0 || busy}
                   onClick={() => move(index, -1)}
                   aria-label={t("moveCategoryUp", { name: category.name })}
                 >
@@ -182,7 +203,7 @@ export function CategorySection({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  disabled={index === displayedCategories.length - 1 || isReordering}
+                  disabled={index === displayedCategories.length - 1 || busy}
                   onClick={() => move(index, 1)}
                   aria-label={t("moveCategoryDown", { name: category.name })}
                 >
@@ -193,6 +214,7 @@ export function CategorySection({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
+                  disabled={busy}
                   onClick={() =>
                     setEditDraft({
                       id: category.id,
@@ -210,6 +232,7 @@ export function CategorySection({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-danger"
+                  disabled={busy}
                   onClick={() => setDeleteTarget(category)}
                   aria-label={t("deleteCategory", { name: category.name })}
                 >
@@ -226,6 +249,7 @@ export function CategorySection({
           <div className="flex gap-2">
             <Input
               value={newCategoryName}
+              disabled={busy}
               onChange={(event) => setNewCategoryName(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") void createCategory();
@@ -236,7 +260,7 @@ export function CategorySection({
             <Button
               type="button"
               onClick={() => void createCategory()}
-              disabled={newCategoryName.trim() === "" || isCreating}
+              disabled={newCategoryName.trim() === "" || busy}
             >
               {t("addCategory")}
             </Button>
@@ -245,14 +269,14 @@ export function CategorySection({
             <Button
               type="button"
               variant="outline"
-              disabled={isReordering}
+              disabled={busy}
               onClick={() => setManaging(false)}
             >
               {common("cancel")}
             </Button>
             <Button
               type="button"
-              disabled={!orderChanged || isReordering}
+              disabled={!orderChanged || busy}
               onClick={async () => {
                 try {
                   await saveOrder();
@@ -267,8 +291,16 @@ export function CategorySection({
         </>
       ) : null}
 
-      <Dialog open={editDraft != null} onOpenChange={(open) => !open && setEditDraft(null)}>
-        <DialogContent variant="modal">
+      <Dialog
+        open={editDraft != null}
+        onOpenChange={(open) => !open && !busy && setEditDraft(null)}
+      >
+        <DialogContent
+          variant="modal"
+          hideCloseButton={busy}
+          onEscapeKeyDown={(event) => busy && event.preventDefault()}
+          onPointerDownOutside={(event) => busy && event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
           </DialogHeader>
@@ -277,10 +309,12 @@ export function CategorySection({
               <div className="flex items-center gap-3">
                 <IconPicker
                   value={editDraft.icon}
+                  disabled={busy}
                   onChange={(icon) => setEditDraft((draft) => (draft ? { ...draft, icon } : draft))}
                 />
                 <Input
                   value={editDraft.name}
+                  disabled={busy}
                   onChange={(event) =>
                     setEditDraft((draft) =>
                       draft ? { ...draft, name: event.target.value } : draft
@@ -291,6 +325,7 @@ export function CategorySection({
               </div>
               <Textarea
                 value={editDraft.description}
+                disabled={busy}
                 onChange={(event) =>
                   setEditDraft((draft) =>
                     draft ? { ...draft, description: event.target.value } : draft
@@ -302,20 +337,30 @@ export function CategorySection({
             </div>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditDraft(null)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditDraft(null)}
+              disabled={busy}
+            >
               {common("cancel")}
             </Button>
             <Button
               type="button"
-              disabled={editDraft?.name.trim() === ""}
+              disabled={editDraft?.name.trim() === "" || busy}
               onClick={async () => {
                 if (editDraft == null) return;
-                await onUpdateCategory(editDraft.id, {
-                  name: editDraft.name.trim(),
-                  description: editDraft.description.trim() || null,
-                  icon: editDraft.icon,
-                });
-                setEditDraft(null);
+                setIsSubmitting(true);
+                try {
+                  await onUpdateCategory(editDraft.id, {
+                    name: editDraft.name.trim(),
+                    description: editDraft.description.trim() || null,
+                    icon: editDraft.icon,
+                  });
+                  setEditDraft(null);
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}
             >
               {common("save")}
@@ -332,8 +377,13 @@ export function CategorySection({
         variant="destructive"
         onConfirm={async () => {
           if (deleteTarget == null) return;
-          await onDeleteCategory(deleteTarget.id);
-          setDraftOrder((current) => current.filter((item) => item.id !== deleteTarget.id));
+          setIsSubmitting(true);
+          try {
+            await onDeleteCategory(deleteTarget.id);
+            setDraftOrder((current) => current.filter((item) => item.id !== deleteTarget.id));
+          } finally {
+            setIsSubmitting(false);
+          }
         }}
       />
     </div>

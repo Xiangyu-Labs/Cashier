@@ -10,6 +10,7 @@
     "save": "保存",
     "saveSuccess": "保存成功",
     "saveFailed": "保存失败",
+    "savedRefreshFailed": "更改已保存，但未能加载最新数据。",
     "deleteSuccess": "删除成功",
     "deleteFailed": "删除失败",
     "loading": "加载中…",

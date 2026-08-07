@@ -38,7 +38,9 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
 
-  --font-sans: Inter, system-ui, sans-serif;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
 }
 
@@ -192,6 +194,22 @@ body {
   touch-action: pan-y;
 }
 
+@keyframes startup-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(40%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.startup-progress-bar {
+  animation: startup-progress 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -204,6 +222,11 @@ body {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .startup-progress-bar {
+    animation: none !important;
+    transform: none;
   }
 }
 

@@ -23,6 +23,7 @@ interface EntryHeaderProps {
     field: "itemName" | "amount" | "currency",
     value: string | number | undefined
   ) => void;
+  disabled?: boolean;
 }
 
 export function EntryHeader({
@@ -35,6 +36,7 @@ export function EntryHeader({
   convertedAmount,
   isDifferentCurrency,
   onFieldChange,
+  disabled = false,
 }: EntryHeaderProps) {
   const locale = useLocale();
   const sortedCurrencies = [
@@ -57,13 +59,17 @@ export function EntryHeader({
           onChange={(v) => onFieldChange("itemName", v)}
           displayClassName="text-lg sm:text-xl font-semibold text-text break-words"
           inputClassName="font-semibold text-base sm:text-lg"
+          disabled={disabled}
         />
 
         <div className="mt-1">
           <div className="flex items-baseline gap-1.5 sm:gap-2">
             <Popover modal={true}>
               <PopoverTrigger asChild>
-                <button className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1">
+                <button
+                  disabled={disabled}
+                  className="text-base sm:text-lg font-normal text-muted-foreground hover:text-text transition-colors flex items-center gap-1 disabled:pointer-events-none disabled:opacity-50"
+                >
                   {getCurrencySymbol(currency, locale)}
                   <ChevronDown className="h-3 w-3 opacity-50" />
                 </button>
@@ -90,6 +96,7 @@ export function EntryHeader({
               value={amount}
               onChange={(v) => onFieldChange("amount", v)}
               displayClassName={amountTextClassName("item")}
+              disabled={disabled}
             />
           </div>
 

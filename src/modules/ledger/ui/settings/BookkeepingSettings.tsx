@@ -31,6 +31,7 @@ interface BookkeepingSettingsProps {
   onRetryMetadata: (id: string) => void;
   isReordering: boolean;
   isCreating: boolean;
+  isCategoryBusy: boolean;
 }
 
 export function BookkeepingSettings({
@@ -49,6 +50,7 @@ export function BookkeepingSettings({
   onRetryMetadata,
   isReordering,
   isCreating,
+  isCategoryBusy,
 }: BookkeepingSettingsProps) {
   const t = useTranslations("Settings");
 
@@ -115,6 +117,7 @@ export function BookkeepingSettings({
           onRetryMetadata={onRetryMetadata}
           isReordering={isReordering}
           isCreating={isCreating}
+          isBusy={isCategoryBusy}
         />
       ) : null}
     </SettingsSection>

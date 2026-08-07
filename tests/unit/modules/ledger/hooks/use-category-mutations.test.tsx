@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import { queryKeys } from "@/lib/query-keys";
 
 const {
   createEntryCategoryActionMock,
@@ -126,6 +127,32 @@ describe("useCategoryMutations failure recovery and invalidation", () => {
         queryKey: ["entryCategories", "ledger-1"],
       } as unknown as Parameters<NonNullable<typeof predicate>>[0])
     ).toBe(true);
+  });
+
+  it("preserves the cached entry count when reconciling an authoritative category update", async () => {
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(queryKeys.entryCategories("ledger-1"), [
+      { ...categories[0]!, entryCount: 7 },
+    ]);
+    updateEntryCategoryActionMock.mockResolvedValue({
+      ...categories[0]!,
+      name: "Dining",
+      updatedAt: "2026-08-07T00:00:00.000Z",
+    });
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.updateCategory.mutateAsync({
+        id: "category-1",
+        data: { name: "Dining" },
+      });
+    });
+
+    expect(queryClient.getQueryData(queryKeys.entryCategories("ledger-1"))).toEqual([
+      expect.objectContaining({ id: "category-1", name: "Dining", entryCount: 7 }),
+    ]);
   });
 
   it("declares full invalidation for reorder instead of manual refresh", async () => {
