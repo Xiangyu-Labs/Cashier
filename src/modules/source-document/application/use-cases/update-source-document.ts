@@ -10,7 +10,7 @@ export function updateSourceDocument(
     sourceDocumentId: string;
     data: UpdateSourceDocumentInput;
   },
-  updates: SourceDocumentUpdatePort
+  updates: Pick<SourceDocumentUpdatePort, "update">
 ) {
   return updates.update(input);
 }

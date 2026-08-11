@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntriesToolbarShell } from "./EntriesToolbarShell";
 import type { ReactNode } from "react";
 import { BatchActionButton } from "@/components/batch-action-button";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
@@ -44,6 +45,7 @@ interface LedgerEntriesToolbarProps {
   onResetFilters?: () => void;
   readOnly?: boolean;
   syncStatus?: ReactNode;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export function LedgerEntriesToolbar({
@@ -75,6 +77,7 @@ export function LedgerEntriesToolbar({
   onResetFilters,
   readOnly = false,
   syncStatus,
+  onRefresh,
 }: LedgerEntriesToolbarProps) {
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
@@ -103,6 +106,9 @@ export function LedgerEntriesToolbar({
   return (
     <EntriesToolbarShell
       syncStatus={syncStatus}
+      actions={
+        !isSelectionMode && onRefresh != null ? <RefreshButton onRefresh={onRefresh} /> : undefined
+      }
       totalLabel={
         !isSelectionMode
           ? [totalPrefix, formatCurrencyAmount(filteredTotal, mainCurrency, locale)]

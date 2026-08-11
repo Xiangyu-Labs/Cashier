@@ -432,6 +432,10 @@ export interface CategoryPort {
   ): Promise<{ wroteIcon: boolean; wroteDescription: boolean }>;
   delete(ledgerId: LedgerId, categoryId: string): Promise<boolean>;
   reorder(ledgerId: LedgerId, categoryIds: readonly string[]): Promise<number>;
+  saveAll(
+    ledgerId: LedgerId,
+    categories: readonly CategoryTargetContract[]
+  ): Promise<readonly CategoryContract[]>;
   countUncategorized(ledgerId: LedgerId): Promise<number>;
 }
 export interface CurrencyPort {
@@ -558,6 +562,15 @@ export interface CategoryMutationContract {
   description?: string | null;
   icon?: string | null;
   sortOrder?: number;
+}
+
+export interface CategoryTargetContract {
+  id?: string;
+  clientId?: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  sortOrder: number;
 }
 
 export interface CategoryContract {

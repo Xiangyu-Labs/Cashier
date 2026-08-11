@@ -19,7 +19,8 @@ import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
-import type { EntryEditData } from "@/modules/source-document/types";
+import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;
@@ -34,10 +35,11 @@ interface SourceDocumentDetailModalProps {
   onClose: () => void;
   onBack?: () => void;
   onExitComplete?: () => void;
-  onSaveChanges: (
-    sourceDocument: { title?: string; entryDate?: string },
-    entries: Array<{ id: string; data: Partial<EntryEditData> }>
-  ) => Promise<unknown>;
+  onSaveAll?: (input: {
+    expectedRevisionId: string;
+    operationId: string;
+    changes: PendingChanges;
+  }) => Promise<unknown>;
   onBatchUpdate: (
     ids: string[],
     data: {
@@ -73,7 +75,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onClose,
   onBack,
   onExitComplete,
-  onSaveChanges,
+  onSaveAll,
   onBatchUpdate,
   onBatchDeleteEntries,
   onDelete,
@@ -91,6 +93,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const tActions = useTranslations("CandidateAction");
   const tDiag = useTranslations("DiagnosticCode");
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const saveOperationIdRef = useRef<string | null>(null);
+  const draftRevisionIdRef = useRef<string | null>(null);
+  const continueNavigationRef = useRef<(() => void) | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -123,14 +128,46 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [showRetryDialog, setShowRetryDialog] = useState(false);
 
   useEffect(() => {
-    if (open && sourceDocument) {
+    if (open && sourceDocument && !hasPendingChanges) {
       resetChanges();
     }
-  }, [open, sourceDocument, resetChanges]);
+  }, [open, sourceDocument, hasPendingChanges, resetChanges]);
+
+  useEffect(() => {
+    if (hasPendingChanges) {
+      draftRevisionIdRef.current ??= sourceDocument?.activeRevisionId ?? null;
+    } else {
+      draftRevisionIdRef.current = null;
+      saveOperationIdRef.current = null;
+    }
+  }, [hasPendingChanges, sourceDocument?.activeRevisionId]);
+
+  useEffect(() => {
+    if (sourceDocument?.id == null) return;
+    const key = `source-document-detail:${ledgerId}:${sourceDocument.id}`;
+    if (!hasPendingChanges) {
+      useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
+      return;
+    }
+    useUnsavedChangesStore.getState().registerLeaveGuard(key, {
+      requestLeave: (continueNavigation) => {
+        continueNavigationRef.current = continueNavigation;
+        setShowUnsavedConfirm(true);
+      },
+    });
+    return () => useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
+  }, [hasPendingChanges, ledgerId, sourceDocument?.id]);
+
+  const hasRevisionConflict =
+    hasPendingChanges &&
+    draftRevisionIdRef.current != null &&
+    sourceDocument?.activeRevisionId != null &&
+    draftRevisionIdRef.current !== sourceDocument.activeRevisionId;
 
   const handleClose = useCallback(() => {
     if (busy) return;
     if (hasPendingChanges) {
+      continueNavigationRef.current = null;
       setShowUnsavedConfirm(true);
     } else {
       onClose();
@@ -139,37 +176,65 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
   const handleSaveAll = useCallback(async (): Promise<boolean> => {
     if (busy) return false;
+    const expectedRevisionId = draftRevisionIdRef.current ?? sourceDocument?.activeRevisionId;
+    if (
+      expectedRevisionId == null ||
+      expectedRevisionId === "" ||
+      onSaveAll == null ||
+      hasRevisionConflict
+    ) {
+      toast.error(t("saveAllFailed"));
+      return false;
+    }
     setIsSaving(true);
     try {
-      const entryChanges = Object.entries(pendingChanges.entries)
-        .filter(([, changes]) => Object.keys(changes).length > 0)
-        .map(([id, data]) => ({ id, data }));
-      await onSaveChanges(pendingChanges.sourceDoc, entryChanges);
-
+      saveOperationIdRef.current ??= crypto.randomUUID();
+      await onSaveAll({
+        expectedRevisionId,
+        operationId: saveOperationIdRef.current,
+        changes: pendingChanges,
+      });
+      saveOperationIdRef.current = null;
       discardAllChanges();
       toast.success(t("saveAllSuccess", { count: pendingChangesCount }));
       return true;
     } catch (error) {
       console.error("Failed to save changes:", error);
-      toast.error(t("saveAllError"));
+      toast.error(t("saveAllFailed"));
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [busy, pendingChanges, onSaveChanges, pendingChangesCount, t, discardAllChanges]);
+  }, [
+    busy,
+    sourceDocument?.activeRevisionId,
+    hasRevisionConflict,
+    pendingChanges,
+    onSaveAll,
+    pendingChangesCount,
+    t,
+    discardAllChanges,
+  ]);
 
   const handleSaveAllAndClose = useCallback(async () => {
     const saved = await handleSaveAll();
-    if (!saved) return;
+    if (!saved) return false;
 
     setShowUnsavedConfirm(false);
-    onClose();
+    const continueNavigation = continueNavigationRef.current;
+    continueNavigationRef.current = null;
+    if (continueNavigation != null) continueNavigation();
+    else onClose();
+    return true;
   }, [handleSaveAll, onClose]);
 
   const handleDiscardAndClose = useCallback(() => {
     discardAllChanges();
     setShowUnsavedConfirm(false);
-    onClose();
+    const continueNavigation = continueNavigationRef.current;
+    continueNavigationRef.current = null;
+    if (continueNavigation != null) continueNavigation();
+    else onClose();
   }, [onClose, discardAllChanges]);
 
   const handleBatchCategory = async (categoryId: string | null) => {
@@ -490,6 +555,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               {hasPendingChanges ? (
                 <div className="flex items-center gap-2">
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     className="h-9"
@@ -500,10 +566,11 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     {t("discardChanges")}
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
                     className="h-9 gap-1.5 shadow-lg shadow-primary/20"
                     onClick={handleSaveAll}
-                    disabled={busy}
+                    disabled={busy || hasRevisionConflict}
                   >
                     <Save className="h-3.5 w-3.5" />
                     {t("saveChanges", { count: pendingChangesCount })}
@@ -527,7 +594,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
       <ConfirmDialog
         open={showUnsavedConfirm}
-        onOpenChange={setShowUnsavedConfirm}
+        onOpenChange={(nextOpen) => {
+          setShowUnsavedConfirm(nextOpen);
+          if (!nextOpen) continueNavigationRef.current = null;
+        }}
         title={t("unsavedChanges")}
         description={t("unsavedChangesDesc")}
         onConfirm={() => setShowUnsavedConfirm(false)}

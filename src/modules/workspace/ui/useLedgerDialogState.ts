@@ -7,9 +7,6 @@ export function useLedgerDialogState() {
 
   function handleInputDialogChange(open: boolean) {
     setIsInputOpen(open);
-    if (!open) {
-      setInputMode("ai");
-    }
   }
 
   return {

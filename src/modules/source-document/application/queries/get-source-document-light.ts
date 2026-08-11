@@ -24,6 +24,7 @@ function toLightDto(
     supportedActions: document.supportedActions,
     errorCode: document.errorCode,
     pendingRevisionId: document.pendingRevisionId,
+    activeRevisionId: document.activeRevisionId ?? null,
     ...(document.activeResultSummary !== undefined
       ? { activeResultSummary: document.activeResultSummary }
       : {}),

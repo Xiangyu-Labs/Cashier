@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useMemo } from "react";
 import { updateLedgerSearchParams } from "../ledger-url-params";
-import { replaceLedgerUrl } from "../ledger-url-navigation";
+import { pushLedgerUrl } from "../ledger-url-navigation";
 import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
 
 interface UseLedgerTabsOptions {
@@ -27,11 +27,10 @@ export function useLedgerTabs({
 
   const handleTabChange = useCallback(
     (value: string) => {
-      const scope = activeTab === "stream" || activeTab === "details" ? activeTab : undefined;
-      const params = updateLedgerSearchParams(searchParams, { tab: value }, scope);
-      replaceLedgerUrl(pathname, params);
+      const params = updateLedgerSearchParams(searchParams, { tab: value });
+      pushLedgerUrl(pathname, params, "tab");
     },
-    [activeTab, searchParams, pathname]
+    [searchParams, pathname]
   );
 
   return {

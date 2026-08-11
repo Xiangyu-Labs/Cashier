@@ -26,6 +26,8 @@ export interface SourceDocumentInputViewMessages {
   uploading: string;
   finalizing: string;
   submitting: string;
+  cancelling: string;
+  cancelUpload: string;
 }
 
 export interface SourceDocumentInputViewProps {
@@ -38,6 +40,7 @@ export interface SourceDocumentInputViewProps {
   isPending: boolean;
   progress: SourceDocumentSubmissionProgress | null;
   canSubmit: boolean;
+  canCancelUpload: boolean;
   messages: SourceDocumentInputViewMessages;
   onEntryDateChange: (date: Date) => void;
   onTextChange: (value: string) => void;
@@ -45,6 +48,7 @@ export interface SourceDocumentInputViewProps {
   onFileInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onSelectImages: () => void;
   onSubmit: () => void;
+  onCancelUpload: () => void;
   onRemoveImage: (index: number) => void;
   onImageOpen: (index: number) => void;
   onImageClose: () => void;
@@ -60,6 +64,7 @@ export function SourceDocumentInputView({
   isPending,
   progress,
   canSubmit,
+  canCancelUpload,
   messages,
   onEntryDateChange,
   onTextChange,
@@ -67,6 +72,7 @@ export function SourceDocumentInputView({
   onFileInputChange,
   onSelectImages,
   onSubmit,
+  onCancelUpload,
   onRemoveImage,
   onImageOpen,
   onImageClose,
@@ -127,7 +133,14 @@ export function SourceDocumentInputView({
         disabled={isPending}
       />
 
-      {progress != null ? <SubmissionProgress progress={progress} messages={messages} /> : null}
+      {progress != null ? (
+        <SubmissionProgress
+          progress={progress}
+          messages={messages}
+          canCancel={canCancelUpload}
+          onCancel={onCancelUpload}
+        />
+      ) : null}
 
       <div className="flex items-center gap-2">
         <input
@@ -189,17 +202,38 @@ export function SourceDocumentInputView({
 function SubmissionProgress({
   progress,
   messages,
+  canCancel,
+  onCancel,
 }: {
   progress: SourceDocumentSubmissionProgress;
   messages: SourceDocumentInputViewMessages;
+  canCancel: boolean;
+  onCancel: () => void;
 }) {
   const percent = progress.percent;
+  const phaseLabel =
+    progress.phase === "preparing" || progress.phase === "planning"
+      ? messages.preparing
+      : progress.phase === "uploading"
+        ? messages.uploading
+        : progress.phase === "finalizing"
+          ? messages.finalizing
+          : progress.phase === "cancelling"
+            ? messages.cancelling
+            : messages.submitting;
 
   return (
     <div className="space-y-2" role="status" aria-live="polite">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{messages.submitting}</span>
-        <span className="tabular-nums">{percent}%</span>
+        <span>{phaseLabel}</span>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums">{percent}%</span>
+          {canCancel ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              {messages.cancelUpload}
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div
         className="h-1.5 overflow-hidden rounded-full bg-surface2"
@@ -207,7 +241,7 @@ function SubmissionProgress({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
-        aria-label={messages.submitting}
+        aria-label={phaseLabel}
       >
         <div
           className="h-full bg-primary transition-[width] duration-200"

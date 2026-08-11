@@ -1,4 +1,5 @@
 "use client";
+
 import { useTranslations } from "next-intl";
 import {
   invalidateCalendar,
@@ -6,20 +7,14 @@ import {
   invalidateLedgerStats,
   invalidateSourceDocumentCounts,
   invalidateSourceDocuments,
+  queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { round } from "@/lib/money/decimal";
-import { updateLedgerEntryAction } from "@/modules/ledger/server-actions/entries";
-import { updateSourceDocumentAction } from "@/modules/source-document/actions";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
-import type { EntryEditData } from "@/modules/source-document/types";
+import { saveSourceDocumentChangesAction } from "@/modules/source-document/actions";
+import type { PendingChanges } from "./usePendingChanges";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
 import type { BatchEntryUpdateData } from "./source-document-detail-cache";
-import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 
 interface UseSourceDocumentDetailMutationsOptions {
@@ -39,12 +34,9 @@ interface SourceDocumentMutationPredicates {
 }
 
 interface SaveDetailChanges {
-  sourceDocument: { title?: string; entryDate?: string };
-  entries: Array<{ id: string; data: Partial<EntryEditData> }>;
-}
-
-interface SaveDetailResult {
-  reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
+  expectedRevisionId: string;
+  operationId: string;
+  changes: PendingChanges;
 }
 
 function buildPredicates(ledgerId: string | undefined): SourceDocumentMutationPredicates {
@@ -63,7 +55,11 @@ function buildPredicates(ledgerId: string | undefined): SourceDocumentMutationPr
       ? [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)]
       : null,
     sourceDocumentEntriesSummaryPredicates: hasLedgerId
-      ? [invalidateLedgerStats(ledgerId), invalidateCalendar(ledgerId)]
+      ? [
+          invalidateLedgerEntries(ledgerId),
+          invalidateLedgerStats(ledgerId),
+          invalidateCalendar(ledgerId),
+        ]
       : null,
     detailWritePredicates: hasLedgerId
       ? [
@@ -102,68 +98,41 @@ export function useSourceDocumentDetailMutations({
     sourceDocumentEntriesSummaryPredicates: predicates.sourceDocumentEntriesSummaryPredicates,
   });
 
-  const saveChangesMutation = useLedgerMutation<SaveDetailResult, SaveDetailChanges>(ledgerId, {
-    mutationFn: async ({ sourceDocument, entries }) => {
+  const saveChangesMutation = useLedgerMutation(ledgerId, {
+    mutationFn: async ({ expectedRevisionId, operationId, changes }: SaveDetailChanges) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
-
-      let result: SaveDetailResult = {};
-      if (Object.keys(sourceDocument).length > 0) {
-        result = await updateSourceDocumentAction(
-          ledgerId,
-          id,
-          sourceDocument,
-          crypto.randomUUID()
-        );
-      }
-
-      for (const { id: entryId, data } of entries) {
-        await updateLedgerEntryAction(ledgerId, entryId, {
-          ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
-          ...(data.currency !== undefined ? { currency: data.currency } : {}),
-          ...(data.itemName !== undefined ? { itemName: data.itemName } : {}),
-          ...(data.description !== undefined ? { description: data.description } : {}),
-          ...(data.amount !== undefined ? { amount: round(data.amount, 2) } : {}),
-        });
-      }
-
-      return result;
+      return saveSourceDocumentChangesAction(ledgerId, {
+        sourceDocumentId: id,
+        expectedRevisionId,
+        operationId,
+        ...(Object.keys(changes.sourceDoc).length === 0
+          ? {}
+          : { sourceDocument: changes.sourceDoc }),
+        entries: Object.entries(changes.entries).map(([ledgerEntryId, data]) => ({
+          ledgerEntryId,
+          data,
+        })),
+      });
     },
     successMessage: null,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
-    ...(predicates.sourceDocumentAndEntriesPredicates !== null
-      ? { cancelPredicates: predicates.sourceDocumentAndEntriesPredicates }
-      : {}),
-    ...(predicates.detailWritePredicates !== null
-      ? { invalidatePredicates: predicates.detailWritePredicates }
-      : {}),
-    onSuccessReconcile: (client, result) => {
-      if (ledgerId == null) return;
-      applySourceDocumentReconciliation(client, ledgerId, id, result.reconciliation);
+    ...(predicates.sourceDocumentAndEntriesPredicates == null
+      ? {}
+      : { cancelPredicates: predicates.sourceDocumentAndEntriesPredicates }),
+    ...(predicates.detailWritePredicates == null
+      ? {}
+      : { invalidatePredicates: predicates.detailWritePredicates }),
+    onSuccessReconcile: (queryClient, result) => {
+      if (ledgerId == null || ledgerId === "") return;
+      queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
+      queryClient.setQueryData(queryKeys.sourceDocumentLight(ledgerId, id), result.sourceDocument);
     },
     onSuccessExtra: notifyRefresh,
-    onMutationSettled: async (client, _variables, _data, error) => {
-      if (error == null || predicates.detailWritePredicates == null) return;
-      try {
-        await Promise.all(
-          predicates.detailWritePredicates.map((predicate) =>
-            client.invalidateQueries({ predicate }, { throwOnError: true })
-          )
-        );
-      } catch (refreshError) {
-        console.error(
-          "Failed to refresh source-document detail after a partial save",
-          refreshError
-        );
-      }
-    },
   });
 
   return {
-    saveChanges: async (
-      sourceDocument: SaveDetailChanges["sourceDocument"],
-      entries: SaveDetailChanges["entries"]
-    ) => saveChangesMutation.mutateAsync({ sourceDocument, entries }),
+    saveChanges: (input: SaveDetailChanges) => saveChangesMutation.mutateAsync(input),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     batchDeleteEntries: async (entryIds: string[]) => {
@@ -174,6 +143,7 @@ export function useSourceDocumentDetailMutations({
       const operationId = crypto.randomUUID();
       await deleteDocumentMutation.mutateAsync({ operationId });
     },
+    isSavingChanges: saveChangesMutation.isPending,
   };
 }
 

@@ -22,12 +22,9 @@ const CATALOGS = [
  *   batch actions, and quick-entry forms.
  * Details: lazy feature loaded on tab mount. Includes the calculator,
  *   candidate/source-document dialogs and cards, ledger-entry/filter panels,
- *   pull-to-refresh, and Settings for the EntryFilterPanel rendered inside
- *   this tab.
+ *   and Settings for the EntryFilterPanel rendered inside this tab.
  * Stats: lazy feature. Includes Calendar for the heatmap sections.
- * Settings: lazy feature and standalone page provider. Includes PullToRefresh
- *   because the SettingsTab renders it and the standalone page does not
- *   inherit the Stream provider.
+ * Settings: lazy feature and standalone page provider.
  *
  * Additional audited boundary contracts (not in FEATURE_MESSAGES):
  * - standaloneSettings: effective provider for the standalone settings
@@ -60,7 +57,6 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "LedgerEntriesTab",
     "LedgerEntryDetail",
     "LedgerPage",
-    "PullToRefresh",
     "QuickEntryForm",
     "Settings",
     "SourceDocumentCard",
@@ -81,7 +77,6 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "EntryFilterPanel",
     "LedgerEntriesTab",
     "LedgerEntryDetail",
-    "PullToRefresh",
     "Settings",
     "SourceDocumentCard",
     "SourceDocumentDetail",
@@ -89,14 +84,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "SourceDocumentImageModal",
   ],
   stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
-  settings: [
-    "CategoriesPage",
-    "Devices",
-    "LedgerError",
-    "PullToRefresh",
-    "ServiceCredentials",
-    "Settings",
-  ],
+  settings: ["CategoriesPage", "Devices", "LedgerError", "ServiceCredentials", "Settings"],
 } as const;
 
 /**
@@ -104,9 +92,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
  * that are not directly represented as a single FEATURE_MESSAGES key.
  *
  * These arrays are defined independently from FEATURE_MESSAGES values so that
- * manifest regressions are detected: if PullToRefresh is removed from the
- * Settings manifest, STANDALONE_SETTINGS_REQUIRED still requires it and
- * the test will fail.
+ * manifest regressions are detected.
  */
 const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
   // From Shell manifest
@@ -121,7 +107,6 @@ const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
   // From Settings manifest
   "CategoriesPage",
   "Devices",
-  "PullToRefresh",
   "ServiceCredentials",
   "Settings",
 ];

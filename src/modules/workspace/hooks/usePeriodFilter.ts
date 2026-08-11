@@ -14,7 +14,7 @@ import {
   readLedgerFilterParams,
   updateLedgerSearchParams,
 } from "../ledger-url-params";
-import { replaceLedgerUrl } from "../ledger-url-navigation";
+import { pushLedgerUrl } from "../ledger-url-navigation";
 import {
   buildLedgerEntryFilters,
   splitLedgerFilterChange,
@@ -113,7 +113,7 @@ export function usePeriodFilter({
       if (options?.skipUrlUpdate) return;
 
       const params = updateLedgerSearchParams(searchParams, buildPeriodUrlUpdate(newPeriod), scope);
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "filter");
     },
     [pathname, scope, searchParams]
   );
@@ -121,7 +121,7 @@ export function usePeriodFilter({
   const handleAdvancedFiltersChange = useCallback(
     (newFilters: LedgerAdvancedFilters) => {
       const params = updateLedgerSearchParams(searchParams, newFilters, scope);
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "filter");
     },
     [pathname, scope, searchParams]
   );
@@ -142,7 +142,7 @@ export function usePeriodFilter({
         scope
       );
 
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "filter");
     },
     [filters, pathname, periodParams, scope, searchParams]
   );
@@ -161,7 +161,7 @@ export function usePeriodFilter({
         },
         "stream"
       );
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "filter");
     },
     [pathname, searchParams]
   );
@@ -180,7 +180,7 @@ export function usePeriodFilter({
       },
       scope
     );
-    replaceLedgerUrl(pathname, params);
+    pushLedgerUrl(pathname, params, "filter");
   }, [pathname, scope, searchParams]);
 
   return {

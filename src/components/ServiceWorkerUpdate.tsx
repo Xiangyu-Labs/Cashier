@@ -1,43 +1,72 @@
 "use client";
 
 import { useEffect } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-
-function hasActiveInteraction() {
-  const active = document.activeElement;
-  return (
-    document.querySelector('[role="dialog"]') != null ||
-    active instanceof HTMLInputElement ||
-    active instanceof HTMLTextAreaElement ||
-    active instanceof HTMLSelectElement
-  );
-}
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 export function ServiceWorkerUpdate() {
-  const locale = useLocale();
+  const t = useTranslations("ServiceWorkerUpdate");
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || navigator.serviceWorker.controller == null) return;
-    const handleControllerChange = () => {
-      if (!hasActiveInteraction()) {
-        location.reload();
-        return;
-      }
-      toast(locale === "en" ? "A new version is ready" : "新版本已准备好", {
+    if (!("serviceWorker" in navigator)) return;
+    let disposed = false;
+    let reloadRequested = false;
+
+    const showUpdate = (worker: ServiceWorker) => {
+      toast(t("title"), {
+        id: "service-worker-update",
+        description: t("description"),
         duration: Infinity,
         action: {
-          label: locale === "en" ? "Reload" : "刷新",
-          onClick: () => location.reload(),
+          label: t("updateNow"),
+          onClick: () => {
+            if (useUnsavedChangesStore.getState().hasDirtyChanges()) {
+              toast.error(t("dirtyBlocked"));
+              showUpdate(worker);
+              return;
+            }
+            reloadRequested = true;
+            worker.postMessage({ type: "SKIP_WAITING" });
+          },
+        },
+        cancel: {
+          label: t("later"),
+          onClick: () => showUpdate(worker),
         },
       });
     };
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange, {
-      once: true,
+
+    const observeRegistration = (registration: ServiceWorkerRegistration) => {
+      if (registration.waiting != null) showUpdate(registration.waiting);
+      registration.addEventListener("updatefound", () => {
+        const installing = registration.installing;
+        if (installing == null) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && navigator.serviceWorker.controller != null) {
+            showUpdate(installing);
+          }
+        });
+      });
+    };
+
+    void navigator.serviceWorker.ready.then((registration) => {
+      if (!disposed) observeRegistration(registration);
     });
-    return () =>
+
+    const handleControllerChange = () => {
+      if (reloadRequested) {
+        location.reload();
+      }
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange, {
+      once: false,
+    });
+    return () => {
+      disposed = true;
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
-  }, [locale]);
+    };
+  }, [t]);
 
   return null;
 }

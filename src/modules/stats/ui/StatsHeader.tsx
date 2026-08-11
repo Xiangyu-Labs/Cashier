@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -22,6 +23,8 @@ interface StatsHeaderProps {
     percent: number;
     amount: number;
   };
+  onRefresh?: () => Promise<void> | void;
+  readOnly?: boolean;
 }
 
 export function StatsHeader({
@@ -36,6 +39,8 @@ export function StatsHeader({
   comparison,
   periodLabel,
   trend,
+  onRefresh,
+  readOnly = false,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
@@ -72,31 +77,38 @@ export function StatsHeader({
   return (
     <div className="flex flex-col gap-6 bg-surface">
       {/* 1. Date Range Switcher (Segmented Control) */}
-      <div className="flex p-1 bg-surface2 rounded-lg self-center w-full max-w-xs">
-        {(["week", "month", "year"] as DateRangeType[]).map((type) => (
-          <button
-            key={type}
-            onClick={() => {
-              setRangeType(type);
-            }}
-            aria-pressed={rangeType === type}
-            className={cn(
-              "flex-1 rounded-md py-1.5 text-sm font-medium transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
-              rangeType === type
-                ? "bg-surface text-primary shadow-sm"
-                : "text-muted-foreground hover:text-text"
-            )}
-          >
-            {t(type)}
-          </button>
-        ))}
+      <div className="flex w-full items-center justify-center gap-2">
+        <div className="flex p-1 bg-surface2 rounded-lg w-full max-w-xs">
+          {(["week", "month", "year"] as DateRangeType[]).map((type) => (
+            <button
+              type="button"
+              key={type}
+              onClick={() => {
+                setRangeType(type);
+              }}
+              aria-pressed={rangeType === type}
+              disabled={readOnly}
+              className={cn(
+                "flex-1 rounded-md py-1.5 text-sm font-medium transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
+                rangeType === type
+                  ? "bg-surface text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-text"
+              )}
+            >
+              {t(type)}
+            </button>
+          ))}
+        </div>
+        {onRefresh != null ? <RefreshButton onRefresh={onRefresh} /> : null}
       </div>
 
       {/* 2. Date Navigator */}
       <div className="flex flex-col items-center gap-2">
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={handlePrev}
+            disabled={readOnly}
             aria-label={t("previousPeriod")}
             className="p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors"
           >
@@ -104,8 +116,9 @@ export function StatsHeader({
           </button>
           <div className="text-lg font-semibold min-w-[8rem] text-center tabular-nums">{label}</div>
           <button
+            type="button"
             onClick={handleNext}
-            disabled={!canGoNext}
+            disabled={readOnly || !canGoNext}
             aria-label={t("nextPeriod")}
             className={cn(
               "p-1.5 text-muted-foreground hover:text-text hover:bg-surface2 rounded-full transition-colors",

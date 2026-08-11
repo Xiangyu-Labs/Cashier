@@ -1,7 +1,10 @@
+import type { CreatedRecordResult } from "@/modules/source-document/contracts";
+
 export interface SourceDocumentInputProps {
   ledgerId: string;
-  onSuccess?: () => void;
+  onSuccess?: (result: CreatedRecordResult) => void;
   onPendingChange?: (pending: boolean) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   timeZone?: string;
   mode?: "create" | "retry";
   sourceDocumentId?: string;

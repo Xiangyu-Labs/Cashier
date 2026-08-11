@@ -2,7 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsTab } from "@/modules/ledger/ui/SettingsTab";
 import type { Ledger } from "@/modules/ledger/contracts";
-import { PullToRefreshProvider } from "@/modules/workspace/pull-to-refresh-context";
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { email: "me@example.com" } } }),
@@ -27,10 +26,6 @@ vi.mock("@/i18n/routing", () => ({
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
-}));
-
-vi.mock("@/components/ui/pull-to-refresh", () => ({
-  PullToRefresh: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@/modules/ledger/ui/CurrencySection", () => ({
@@ -73,6 +68,7 @@ vi.mock("@/modules/ledger/hooks/useLedgerSettings", () => ({
 
 vi.mock("@/modules/ledger/hooks/useCategoryMutations", () => ({
   useCategoryMutations: () => ({
+    saveCategories: { mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false },
     createCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
     updateCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
     deleteCategory: { mutate: vi.fn(), mutateAsync: vi.fn() },
@@ -104,11 +100,7 @@ const ledger: Ledger = {
 
 describe("SettingsTab layout", () => {
   const renderSettings = () =>
-    render(
-      <PullToRefreshProvider>
-        <SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />
-      </PullToRefreshProvider>
-    );
+    render(<SettingsTab ledger={ledger} ledgerId="ledger-1" initialCategories={[]} />);
 
   it("renders workflow sections in the agreed order", () => {
     renderSettings();

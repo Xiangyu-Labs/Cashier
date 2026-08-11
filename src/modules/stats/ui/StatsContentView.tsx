@@ -29,6 +29,8 @@ interface StatsContentViewProps {
   fallbackCurrency?: string;
   onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
   onDateDrilldown?: (date: string) => void;
+  onRefresh?: () => Promise<void> | void;
+  readOnly?: boolean;
 }
 
 export function StatsContentView({
@@ -50,6 +52,8 @@ export function StatsContentView({
   fallbackCurrency = "CNY",
   onCategoryDrilldown,
   onDateDrilldown,
+  onRefresh,
+  readOnly = false,
 }: StatsContentViewProps) {
   const t = useTranslations("StatsTab");
   const tCommon = useTranslations("Common");
@@ -110,6 +114,8 @@ export function StatsContentView({
         periodLabel={periodLabel}
         {...(comparison !== undefined ? { comparison } : {})}
         {...(trend !== undefined ? { trend } : {})}
+        {...(onRefresh !== undefined ? { onRefresh } : {})}
+        readOnly={readOnly}
       />
       {stats?.unconvertedCount != null && stats.unconvertedCount > 0 ? (
         <div
@@ -130,6 +136,7 @@ export function StatsContentView({
               variant={chartView === "heatmap" ? "default" : "ghost"}
               size="sm"
               onClick={() => onChartViewChange("heatmap")}
+              disabled={readOnly}
               aria-pressed={chartView === "heatmap"}
               className="h-7 px-2"
             >
@@ -140,6 +147,7 @@ export function StatsContentView({
               variant={chartView === "trend" ? "default" : "ghost"}
               size="sm"
               onClick={() => onChartViewChange("trend")}
+              disabled={readOnly}
               aria-pressed={chartView === "trend"}
               className="h-7 px-2"
             >

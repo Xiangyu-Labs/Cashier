@@ -18,12 +18,16 @@ import {
   previewBatchLedgerEntryDateAction,
 } from "@/modules/ledger/server-actions/entries";
 
-export function useDetailsBatchController(ledgerId: string, entryIds: readonly string[]) {
+export function useDetailsBatchController(
+  ledgerId: string,
+  entryIds: readonly string[],
+  queryFingerprint: string
+) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const allIds = useMemo(() => [...entryIds], [entryIds]);
-  const selection = useSelection({ allIds });
+  const selection = useSelection({ allIds, queryFingerprint });
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));

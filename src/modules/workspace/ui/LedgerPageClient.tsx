@@ -22,7 +22,12 @@ import { FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { useFeatureMessages } from "@/i18n/use-feature-messages";
 import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
-import { useDrilldownNavigation, useLedgerTabs, usePeriodFilter } from "../hooks";
+import {
+  useDrilldownNavigation,
+  useLedgerHistorySync,
+  useLedgerTabs,
+  usePeriodFilter,
+} from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
@@ -32,7 +37,15 @@ import { LedgerStartupCacheSync } from "@/modules/workspace/ledger-startup-cache
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
 import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
+import type { EntryFilters } from "@/modules/ledger/filters";
+import type { CreatedRecordResult } from "@/modules/source-document/contracts";
 import type { TabQueryStateReport } from "./tab-query-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import {
+  showNewRecordSuccessFeedback,
+  type NewRecordInputMode,
+} from "./new-record-success-feedback";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -81,6 +94,114 @@ function InputFormLoadingFallback() {
       <Skeleton className="h-12 w-full" />
       <Skeleton className="h-9 w-full" />
     </div>
+  );
+}
+
+interface NewRecordFormsProps {
+  ledgerId: string;
+  activeTab: LedgerTab;
+  committedFilters: EntryFilters;
+  inputMode: NewRecordInputMode;
+  categories: EntryCategoryWithCount[];
+  mainCurrency: string;
+  preferredCurrencies: string[];
+  timeZone?: string;
+  aiDirty: boolean;
+  quickDirty: boolean;
+  setInputMode: (mode: NewRecordInputMode) => void;
+  setInputOpen: (open: boolean) => void;
+  setAiPending: (pending: boolean) => void;
+  setQuickPending: (pending: boolean) => void;
+  setAiDirty: (dirty: boolean) => void;
+  setQuickDirty: (dirty: boolean) => void;
+}
+
+function NewRecordForms({
+  ledgerId,
+  activeTab,
+  committedFilters,
+  inputMode,
+  categories,
+  mainCurrency,
+  preferredCurrencies,
+  timeZone,
+  aiDirty,
+  quickDirty,
+  setInputMode,
+  setInputOpen,
+  setAiPending,
+  setQuickPending,
+  setAiDirty,
+  setQuickDirty,
+}: NewRecordFormsProps) {
+  const tSourceDocument = useTranslations("SourceDocumentInput");
+  const tQuickEntry = useTranslations("QuickEntryForm");
+
+  const handleSuccess = useCallback(
+    (mode: NewRecordInputMode, result: CreatedRecordResult) => {
+      showNewRecordSuccessFeedback({
+        mode,
+        ledgerId,
+        result,
+        activeTab,
+        committedFilters,
+        messages: {
+          aiSuccess: tSourceDocument("uploadSuccess"),
+          quickSuccess: tQuickEntry("quickEntrySuccess"),
+          savedMayBeHidden: tSourceDocument("savedMayBeHidden"),
+          viewRecord: tSourceDocument("viewRecord"),
+        },
+      });
+
+      if (mode === "ai") {
+        if (quickDirty) setInputMode("quick");
+        else setInputOpen(false);
+        return;
+      }
+
+      if (aiDirty) setInputMode("ai");
+      else setInputOpen(false);
+    },
+    [
+      activeTab,
+      aiDirty,
+      committedFilters,
+      ledgerId,
+      quickDirty,
+      setInputMode,
+      setInputOpen,
+      tQuickEntry,
+      tSourceDocument,
+    ]
+  );
+
+  return (
+    <>
+      <div className={inputMode === "ai" ? undefined : "hidden"} aria-hidden={inputMode !== "ai"}>
+        <SourceDocumentInput
+          ledgerId={ledgerId}
+          onPendingChange={setAiPending}
+          onDirtyChange={setAiDirty}
+          {...(timeZone != null ? { timeZone } : {})}
+          onSuccess={(result) => handleSuccess("ai", result)}
+        />
+      </div>
+      <div
+        className={inputMode === "quick" ? undefined : "hidden"}
+        aria-hidden={inputMode !== "quick"}
+      >
+        <QuickEntryForm
+          ledgerId={ledgerId}
+          categories={categories}
+          mainCurrency={mainCurrency}
+          preferredCurrencies={preferredCurrencies}
+          onPendingChange={setQuickPending}
+          onDirtyChange={setQuickDirty}
+          {...(timeZone != null ? { timeZone } : {})}
+          onSuccess={(result) => handleSuccess("quick", result)}
+        />
+      </div>
+    </>
   );
 }
 
@@ -197,6 +318,7 @@ function LedgerPageClientContent({
   interfaceLanguage,
 }: LedgerPageClientProps) {
   const t = useTranslations("LedgerPage");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -220,6 +342,12 @@ function LedgerPageClientContent({
     initialTab,
     searchParams,
     pathname,
+  });
+  useLedgerHistorySync({
+    pathname,
+    searchParams,
+    ledgerId,
+    legacyScope: activeTab === "details" ? "details" : "stream",
   });
 
   const parentMessages = useMessages();
@@ -283,7 +411,30 @@ function LedgerPageClientContent({
 
   const { isInputOpen, setIsInputOpen, inputMode, setInputMode, handleInputDialogChange } =
     useLedgerDialogState();
-  const [isInputSubmitting, setIsInputSubmitting] = useState(false);
+  const [aiPending, setAiPending] = useState(false);
+  const [quickPending, setQuickPending] = useState(false);
+  const [aiDirty, setAiDirty] = useState(false);
+  const [quickDirty, setQuickDirty] = useState(false);
+  const [discardInputOpen, setDiscardInputOpen] = useState(false);
+  const isInputSubmitting = aiPending || quickPending;
+  const hasInputDraft = aiDirty || quickDirty;
+  const setGlobalDirty = useUnsavedChangesStore((state) => state.setDirty);
+  const dirtyChangeCount = useUnsavedChangesStore((state) => state.dirtyKeys.size);
+
+  useEffect(() => {
+    setGlobalDirty(`new-record:${ledgerId}`, hasInputDraft);
+    return () => setGlobalDirty(`new-record:${ledgerId}`, false);
+  }, [hasInputDraft, ledgerId, setGlobalDirty]);
+
+  useEffect(() => {
+    if (dirtyChangeCount === 0) return;
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventUnload);
+    return () => window.removeEventListener("beforeunload", preventUnload);
+  }, [dirtyChangeCount]);
 
   // Wire the real new-record handler into the shell once this component mounts.
   const { setInputIntent, setOpenInput } = useShellController();
@@ -415,6 +566,10 @@ function LedgerPageClientContent({
           open={isInputOpen}
           onOpenChange={(open) => {
             if (!open && isInputSubmitting) return;
+            if (!open && hasInputDraft) {
+              setDiscardInputOpen(true);
+              return;
+            }
             handleInputDialogChange(open);
           }}
         >
@@ -436,6 +591,7 @@ function LedgerPageClientContent({
             <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-none sm:p-6">
               <div className="flex gap-1 rounded-md border border-border bg-surface2 p-1">
                 <button
+                  type="button"
                   onClick={() => setInputMode("ai")}
                   disabled={isInputSubmitting}
                   className={cn(
@@ -448,6 +604,7 @@ function LedgerPageClientContent({
                   {t("aiParse")}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setInputMode("quick")}
                   disabled={isInputSubmitting}
                   className={cn(
@@ -467,29 +624,43 @@ function LedgerPageClientContent({
                   locale={locale}
                   fallback={<InputFormLoadingFallback />}
                 >
-                  {inputMode === "ai" ? (
-                    <SourceDocumentInput
-                      ledgerId={ledgerId}
-                      onPendingChange={setIsInputSubmitting}
-                      {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                      onSuccess={() => setIsInputOpen(false)}
-                    />
-                  ) : (
-                    <QuickEntryForm
-                      ledgerId={ledgerId}
-                      categories={categories}
-                      mainCurrency={mainCurrency}
-                      preferredCurrencies={preferredCurrencies}
-                      onPendingChange={setIsInputSubmitting}
-                      {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-                      onSuccess={() => setIsInputOpen(false)}
-                    />
-                  )}
+                  <NewRecordForms
+                    ledgerId={ledgerId}
+                    activeTab={activeTab}
+                    committedFilters={filters}
+                    inputMode={inputMode}
+                    categories={categories}
+                    mainCurrency={mainCurrency}
+                    preferredCurrencies={preferredCurrencies}
+                    aiDirty={aiDirty}
+                    quickDirty={quickDirty}
+                    setInputMode={setInputMode}
+                    setInputOpen={setIsInputOpen}
+                    setAiPending={setAiPending}
+                    setQuickPending={setQuickPending}
+                    setAiDirty={setAiDirty}
+                    setQuickDirty={setQuickDirty}
+                    {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                  />
                 </DeferredFeatureMessages>
               </div>
             </div>
           </DialogContent>
         </Dialog>
+
+        <ConfirmDialog
+          open={discardInputOpen}
+          onOpenChange={setDiscardInputOpen}
+          title={tCommon("unsavedChangesTitle")}
+          description={tCommon("unsavedChangesDescription")}
+          confirmLabel={tCommon("discard")}
+          variant="destructive"
+          onConfirm={() => {
+            setIsInputOpen(false);
+            setAiDirty(false);
+            setQuickDirty(false);
+          }}
+        />
 
         <ModalStackRenderer categories={categories} />
       </div>

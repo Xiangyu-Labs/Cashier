@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { COMMON_LUCIDE_ICONS } from "@/config/icons";
@@ -14,6 +14,7 @@ interface IconPickerProps {
 
 export function IconPicker({ value, onChange, disabled = false, className }: IconPickerProps) {
   const [open, setOpen] = useState(false);
+  const listboxId = useId();
 
   const handleSelect = (iconName: string) => {
     onChange(iconName);
@@ -33,8 +34,13 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
       <PopoverTrigger asChild>
         <button
           type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-haspopup="listbox"
+          aria-label={value == null ? "Select icon" : `Selected icon: ${value}`}
           className={cn(
-            "w-8 h-8 flex items-center justify-center rounded",
+            "flex h-11 w-11 items-center justify-center rounded",
             "hover:bg-surface transition-colors",
             "border border-transparent hover:border-border/50",
             "focus:outline-none focus:ring-2 focus:ring-ring",
@@ -45,16 +51,19 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="start" sideOffset={4}>
-        <div className="grid grid-cols-6 gap-1">
+        <div id={listboxId} role="listbox" aria-label="Icons" className="grid grid-cols-6 gap-1">
           {COMMON_LUCIDE_ICONS.map((iconName) => {
             const isSelected = value === iconName;
             return (
               <button
                 key={iconName}
                 type="button"
+                role="option"
+                aria-selected={isSelected}
+                aria-label={iconName}
                 onClick={() => handleSelect(iconName)}
                 className={cn(
-                  "w-10 h-10 flex items-center justify-center rounded",
+                  "flex h-11 w-11 items-center justify-center rounded",
                   "hover:bg-surface2 transition-colors",
                   isSelected && "ring-2 ring-primary bg-primary/10"
                 )}

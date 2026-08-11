@@ -128,7 +128,7 @@ export function SourceDocumentDetailWrapper({
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-      onSaveChanges={saveChanges}
+      onSaveAll={saveChanges}
       onBatchUpdate={batchUpdate}
       onBatchDeleteEntries={batchDeleteEntries}
       onDelete={deleteDocument}

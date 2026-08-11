@@ -33,6 +33,12 @@ export function useSourceDocumentInputDraft({
   const [isInitializing, startTransition] = useTransition();
   const hasInitializedRef = useRef(false);
   const previousSourceDocumentIdRef = useRef<string | undefined>(sourceDocumentId);
+  const resetDraft = () => {
+    setText("");
+    setImages([]);
+    setEntryDate(resolveInitialEntryDate(undefined, timeZone));
+    setSelectedImageIndex(null);
+  };
 
   useEffect(() => {
     if (previousSourceDocumentIdRef.current !== sourceDocumentId) {
@@ -67,5 +73,6 @@ export function useSourceDocumentInputDraft({
       setImages((previousImages) => previousImages.filter((_, imageIndex) => imageIndex !== index)),
     canSubmit: text !== "" || images.length > 0,
     isInitializing,
+    resetDraft,
   };
 }

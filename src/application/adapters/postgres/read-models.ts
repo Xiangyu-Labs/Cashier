@@ -1154,6 +1154,7 @@ export async function getTargetSourceDocument(
     ],
     errorCode: sanitizedErrorCode(selectedRevision?.outcome, selectedRevision?.failureCode),
     pendingRevisionId: row.pendingRevisionId,
+    activeRevisionId: row.activeRevisionId,
     ...(duplicateReview !== undefined ? { duplicateReview } : {}),
     ...(activeResultSummary !== undefined ? { activeResultSummary } : {}),
   };

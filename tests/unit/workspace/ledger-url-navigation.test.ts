@@ -9,6 +9,6 @@ describe("ledger-url-navigation", () => {
     const url = replaceLedgerUrl("/ledgers/ledger-1", params);
 
     expect(url).toBe("/ledgers/ledger-1?tab=details&period=thisMonth");
-    expect(historySpy).toHaveBeenCalledWith(null, "", url);
+    expect(historySpy).toHaveBeenCalledWith({}, "", url);
   });
 });

@@ -2,23 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Header } from "@/modules/workspace/ui/Header";
-import {
-  PullToRefreshProvider,
-  useRegisterExternalLoadingActivity,
-} from "@/modules/workspace/pull-to-refresh-context";
 
-function ExternalLoading() {
-  useRegisterExternalLoadingActivity();
-  return null;
-}
-
-function renderHeader(navigation: React.ReactNode, loading = false) {
-  return render(
-    <PullToRefreshProvider>
-      {loading && <ExternalLoading />}
-      <Header navigation={navigation} />
-    </PullToRefreshProvider>
-  );
+function renderHeader(navigation: React.ReactNode) {
+  return render(<Header navigation={navigation} />);
 }
 
 describe("Header", () => {
@@ -41,11 +27,5 @@ describe("Header", () => {
 
     await user.click(screen.getByRole("button", { name: "记一笔" }));
     expect(onOpenInput).toHaveBeenCalledOnce();
-  });
-
-  it("shows an overlay progress bar for external loading", async () => {
-    renderHeader(<nav>navigation</nav>, true);
-    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveClass("absolute");
   });
 });

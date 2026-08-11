@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { useModalStackStore } from "@/lib/store/modal-stack";
+import { openLedgerDetail } from "../ledger-detail-navigation";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
@@ -27,7 +27,6 @@ import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
-import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "./tab-query-state";
 
 interface LedgerEntriesTabProps {
@@ -62,7 +61,6 @@ export function LedgerEntriesTab({
   const tFilter = useTranslations("EntryFilterPanel");
   const notifyRefresh = useNotifyRevisionRefresh();
   const queryClient = useQueryClient();
-  const pushModal = useModalStackStore((state) => state.push);
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
     advancedFilters,
@@ -161,6 +159,15 @@ export function LedgerEntriesTab({
     () => streamGroups.flatMap((g) => g.items.map((i) => i.sourceDocument.id)),
     [streamGroups]
   );
+  const queryFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        tab: "stream",
+        period: periodParams,
+        filters: advancedFilters,
+      }),
+    [advancedFilters, periodParams]
+  );
 
   const {
     isSelectionMode,
@@ -171,7 +178,7 @@ export function LedgerEntriesTab({
     clearSelection,
     retainSelection,
     isAllSelected,
-  } = useSelection({ allIds: allSourceDocumentIds });
+  } = useSelection({ allIds: allSourceDocumentIds, queryFingerprint });
 
   const {
     deleteSourceDocument,
@@ -241,21 +248,18 @@ export function LedgerEntriesTab({
         return;
       }
       patchExistingSourceDocumentDetail(queryClient, group.sourceDocument);
-      pushModal({
+      openLedgerDetail({
         type: "source-document",
         id: group.sourceDocument.id,
         ledgerId: group.sourceDocument.ledgerId,
       });
     },
-    [pushModal, queryClient]
+    [queryClient]
   );
 
-  const handleViewLedgerEntry = useCallback(
-    (entry: LedgerEntry) => {
-      pushModal({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
-    },
-    [pushModal]
-  );
+  const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
+    openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId });
+  }, []);
 
   const handleDeleteSourceConfirm = useCallback(
     (doc: SourceDocument) =>
@@ -283,8 +287,6 @@ export function LedgerEntriesTab({
     fetchNextPage,
     rootMargin: "400px",
   });
-
-  useRegisterPullToRefresh(handleRefresh, !isSelectionMode);
 
   return (
     <>
@@ -328,6 +330,7 @@ export function LedgerEntriesTab({
         mainCurrency={mainCurrency}
         filteredTotal={filteredTotal}
         onResetFilters={onResetFilters}
+        onRefresh={handleRefresh}
         {...(onApplyPreset != null ? { onApplyPreset } : {})}
       />
       {streamTotalData?.unconvertedCount != null && streamTotalData.unconvertedCount > 0 ? (

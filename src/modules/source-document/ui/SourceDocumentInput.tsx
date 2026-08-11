@@ -9,6 +9,7 @@ export function SourceDocumentInput({
   ledgerId,
   onSuccess,
   onPendingChange,
+  onDirtyChange,
   mode = "create",
   sourceDocumentId,
   initialData,
@@ -24,7 +25,6 @@ export function SourceDocumentInput({
     ...(initialData !== undefined ? { initialData } : {}),
     ...(timeZone !== undefined ? { timeZone } : {}),
     messages: {
-      uploadSuccess: t("uploadSuccess"),
       uploadError: t("uploadError"),
       retrySuccess: t("retrySuccess"),
       retryError: t("retryError"),
@@ -32,6 +32,7 @@ export function SourceDocumentInput({
       imageUnsupported: (fileName: string) => t("imageUnsupported", { fileName }),
       imageReadError: t("imageReadError"),
       imageUploadError: t("imageUploadError"),
+      tooManyImages: t("tooManyImages"),
     },
   });
 
@@ -39,6 +40,11 @@ export function SourceDocumentInput({
     onPendingChange?.(controller.isPending);
     return () => onPendingChange?.(false);
   }, [controller.isPending, onPendingChange]);
+
+  useEffect(() => {
+    onDirtyChange?.(controller.canSubmit);
+    return () => onDirtyChange?.(false);
+  }, [controller.canSubmit, onDirtyChange]);
 
   return (
     <SourceDocumentInputView
@@ -63,6 +69,8 @@ export function SourceDocumentInput({
         uploading: t("uploading"),
         finalizing: t("finalizing"),
         submitting: t("submitting"),
+        cancelling: t("cancelling"),
+        cancelUpload: t("cancelUpload"),
       }}
       onEntryDateChange={controller.setEntryDate}
       onTextChange={controller.setText}
@@ -70,6 +78,8 @@ export function SourceDocumentInput({
       onFileInputChange={controller.handleFileInputChange}
       onSelectImages={controller.triggerFileDialog}
       onSubmit={controller.handleSubmit}
+      canCancelUpload={controller.canCancelUpload}
+      onCancelUpload={controller.cancelUpload}
       onRemoveImage={controller.removeImage}
       onImageOpen={controller.openImage}
       onImageClose={controller.closeImage}

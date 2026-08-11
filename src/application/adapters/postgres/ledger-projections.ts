@@ -1066,6 +1066,7 @@ async function createCompletedRevision(
     ledgerId: string;
     sourceDocumentId: string;
     submittedText?: string | null;
+    revisionId?: string;
   }
 ) {
   const now = new Date();
@@ -1073,6 +1074,7 @@ async function createCompletedRevision(
   const revision = await tx
     .insert(sourceDocumentRevisions)
     .values({
+      ...(input.revisionId === undefined ? {} : { id: input.revisionId }),
       ledgerId: input.ledgerId,
       sourceDocumentId: input.sourceDocumentId,
       revisionNumber,
@@ -1085,6 +1087,117 @@ async function createCompletedRevision(
     .then((rows) => rows[0]);
   if (revision == null) throw new ConflictError("Failed to create completed revision");
   return revision;
+}
+
+export async function replaceActiveProjectionInTransaction(
+  tx: PostgresTransaction,
+  input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    expectedActiveRevisionId: string;
+    revisionId: string;
+    entries: readonly LedgerProjectionEntryContract[];
+    title?: string;
+    entryDate?: string;
+  }
+): Promise<string> {
+  const pendingDuplicateReview = await tx
+    .select({ id: duplicateReviews.id })
+    .from(duplicateReviews)
+    .where(
+      and(
+        eq(duplicateReviews.ledgerId, input.ledgerId),
+        eq(duplicateReviews.sourceDocumentId, input.sourceDocumentId),
+        eq(duplicateReviews.status, "pending")
+      )
+    )
+    .then((rows) => rows[0]);
+  if (pendingDuplicateReview != null) {
+    throw new ConflictError("Source document has a pending duplicate review");
+  }
+
+  const document = await tx
+    .select({
+      activeRevisionId: sourceDocuments.activeRevisionId,
+      pendingRevisionId: sourceDocuments.pendingRevisionId,
+    })
+    .from(sourceDocuments)
+    .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId))
+    .then((rows) => rows[0]);
+  if (
+    document?.activeRevisionId == null ||
+    document.activeRevisionId !== input.expectedActiveRevisionId
+  ) {
+    throw new ConflictError("Source document active revision changed");
+  }
+  if (document.pendingRevisionId != null) {
+    const pending = await tx
+      .select({ outcome: sourceDocumentRevisions.outcome })
+      .from(sourceDocumentRevisions)
+      .where(
+        and(
+          eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+          eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
+          eq(sourceDocumentRevisions.id, document.pendingRevisionId)
+        )
+      )
+      .then((rows) => rows[0]);
+    if (pending?.outcome === "processing" || pending?.outcome === "completed") {
+      throw new ConflictError("Source document has processing work");
+    }
+  }
+
+  const activeRevision = await tx
+    .select({ submittedText: sourceDocumentRevisions.submittedText })
+    .from(sourceDocumentRevisions)
+    .where(
+      and(
+        eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+        eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
+        eq(sourceDocumentRevisions.id, input.expectedActiveRevisionId),
+        eq(sourceDocumentRevisions.outcome, "completed")
+      )
+    )
+    .then((rows) => rows[0]);
+  if (activeRevision == null) throw new ConflictError("Active revision is not completed");
+
+  const revision = await createCompletedRevision(tx, {
+    ledgerId: input.ledgerId,
+    sourceDocumentId: input.sourceDocumentId,
+    submittedText: activeRevision.submittedText,
+    revisionId: input.revisionId,
+  });
+  await copyRevisionFiles(tx, {
+    ledgerId: input.ledgerId,
+    fromRevisionId: input.expectedActiveRevisionId,
+    toRevisionId: revision.id,
+  });
+  await replaceManualProjection(tx, {
+    ledgerId: input.ledgerId,
+    sourceDocumentId: input.sourceDocumentId,
+    previousRevisionId: input.expectedActiveRevisionId,
+    revisionId: revision.id,
+    entries: input.entries,
+  });
+  const updated = await tx
+    .update(sourceDocuments)
+    .set({
+      activeRevisionId: revision.id,
+      pendingRevisionId: null,
+      ...(input.title === undefined ? {} : { title: input.title }),
+      ...(input.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        activeDocumentWhere(input.ledgerId, input.sourceDocumentId),
+        eq(sourceDocuments.activeRevisionId, input.expectedActiveRevisionId)
+      )
+    )
+    .returning({ id: sourceDocuments.id })
+    .then((rows) => rows[0]);
+  if (updated == null) throw new ConflictError("Source document changed during the edit");
+  return revision.id;
 }
 
 export async function ensureTargetLedgerProjection(

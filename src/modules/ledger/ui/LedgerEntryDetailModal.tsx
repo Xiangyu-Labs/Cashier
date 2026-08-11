@@ -1,6 +1,6 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { useState, useCallback, memo, type ReactNode } from "react";
+import { useState, useCallback, memo, type ReactNode, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
@@ -56,8 +57,27 @@ function LedgerEntryDetailEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const busy = isSaving || isDeleting;
+  const continueNavigationRef = useRef<(() => void) | null>(null);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+  const detailId = ledgerEntry?.id;
+  const detailLedgerId = ledgerEntry?.ledgerId;
+
+  useEffect(() => {
+    if (detailId == null || detailLedgerId == null) return;
+    const key = `ledger-entry-detail:${detailLedgerId}:${detailId}`;
+    if (!hasPendingChanges) {
+      useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
+      return;
+    }
+    useUnsavedChangesStore.getState().registerLeaveGuard(key, {
+      requestLeave: (continueNavigation) => {
+        continueNavigationRef.current = continueNavigation;
+        setShowUnsavedConfirm(true);
+      },
+    });
+    return () => useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
+  }, [detailId, detailLedgerId, hasPendingChanges]);
 
   const getOriginalValue = useCallback(
     (field: keyof EntryPendingChanges) => {
@@ -152,6 +172,7 @@ function LedgerEntryDetailEditor({
   const handleClose = useCallback(() => {
     if (busy) return;
     if (hasPendingChanges) {
+      continueNavigationRef.current = null;
       setShowUnsavedConfirm(true);
     } else {
       onClose();
@@ -160,16 +181,23 @@ function LedgerEntryDetailEditor({
 
   const handleSaveAndClose = useCallback(async () => {
     const saved = await handleSave();
-    if (!saved) return;
+    if (!saved) return false;
 
     setShowUnsavedConfirm(false);
-    onClose();
+    const continueNavigation = continueNavigationRef.current;
+    continueNavigationRef.current = null;
+    if (continueNavigation != null) continueNavigation();
+    else onClose();
+    return true;
   }, [handleSave, onClose]);
 
   const handleDiscardAndClose = useCallback(() => {
     setPendingChanges({});
     setShowUnsavedConfirm(false);
-    onClose();
+    const continueNavigation = continueNavigationRef.current;
+    continueNavigationRef.current = null;
+    if (continueNavigation != null) continueNavigation();
+    else onClose();
   }, [onClose]);
 
   const handleDelete = useCallback(async () => {
@@ -272,7 +300,10 @@ function LedgerEntryDetailEditor({
 
         <ConfirmDialog
           open={showUnsavedConfirm}
-          onOpenChange={setShowUnsavedConfirm}
+          onOpenChange={(nextOpen) => {
+            setShowUnsavedConfirm(nextOpen);
+            if (!nextOpen) continueNavigationRef.current = null;
+          }}
           title={t("unsavedChanges")}
           description={t("unsavedChangesDesc")}
           onConfirm={() => setShowUnsavedConfirm(false)}
@@ -290,6 +321,6 @@ function LedgerEntryDetailEditor({
 export const LedgerEntryDetailModal = memo(function LedgerEntryDetailModal(
   props: LedgerEntryDetailModalProps
 ) {
-  const editorKey = `${props.open}:${props.ledgerEntry?.id ?? "empty"}`;
+  const editorKey = props.ledgerEntry?.id ?? "empty";
   return <LedgerEntryDetailEditor key={editorKey} {...props} />;
 });

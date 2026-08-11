@@ -40,13 +40,15 @@ describe("PWA policy", () => {
     expect(config).not.toContain("/offline");
     expect(worker).toContain("new Serwist");
     expect(worker).toContain("precacheEntries: self.__SW_MANIFEST");
-    expect(worker).toContain("skipWaiting: true");
+    expect(worker).toContain("skipWaiting: false");
+    expect(worker).toContain('type === "SKIP_WAITING"');
     expect(worker).toContain("clientsClaim: true");
     expect(worker).not.toContain("navigate");
     expect(worker).not.toContain("offline");
     expect(worker).not.toContain("fetchNavigation");
     expect(worker).not.toContain("caches.match");
     expect(read("src/components/ServiceWorkerUpdate.tsx")).toContain("controllerchange");
+    expect(read("src/components/ServiceWorkerUpdate.tsx")).not.toContain("document.activeElement");
   });
 
   it("removes the offline mode, offline route, health probe, and connection UI", () => {
@@ -78,8 +80,8 @@ describe("PWA policy", () => {
     const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
     expect(preview).toContain("readLedgerStartupSnapshot");
     expect(preview).toContain('useTranslations("LedgerPage")');
-    expect(preview).not.toContain("startup-preview-latest-banner");
-    expect(preview).not.toContain("正在加载最新数据");
+    expect(preview).toContain("startup-preview-latest-banner");
+    expect(preview).toContain('tPreview("cachedAt"');
     expect(preview).toContain("SettingsTabSkeleton");
     for (const source of [preview, stream, details]) {
       expect(source).not.toContain("useMutation");

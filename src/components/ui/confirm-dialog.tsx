@@ -16,16 +16,16 @@ import {
 interface ConfirmDialogProps {
   title: string;
   description: string;
-  onConfirm: () => void | Promise<void>;
+  onConfirm: () => void | boolean | Promise<void | boolean>;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
-  onSave?: () => void | Promise<void>;
+  onSave?: () => void | boolean | Promise<void | boolean>;
   saveLabel?: string;
-  onDiscard?: () => void | Promise<void>;
+  onDiscard?: () => void | boolean | Promise<void | boolean>;
   discardLabel?: string;
 }
 
@@ -80,14 +80,15 @@ export const ConfirmDialog = memo(function ConfirmDialog({
         <DialogFooter {...footerProps}>
           {hasThreeButtonLayout && onDiscard && (
             <Button
+              type="button"
               variant="destructive"
               disabled={isPending}
               onClick={async (e) => {
                 e.stopPropagation();
                 setIsPending(true);
                 try {
-                  await onDiscard();
-                  onOpenChange?.(false);
+                  const shouldClose = await onDiscard();
+                  if (shouldClose !== false) onOpenChange?.(false);
                 } catch {
                   // The owning mutation reports the error; keep this dialog open.
                 } finally {
@@ -100,20 +101,21 @@ export const ConfirmDialog = memo(function ConfirmDialog({
           )}
           <div className="flex gap-2 justify-end">
             <DialogClose asChild>
-              <Button variant="outline" disabled={isPending}>
+              <Button type="button" variant="outline" disabled={isPending}>
                 {displayCancelLabel}
               </Button>
             </DialogClose>
             {hasThreeButtonLayout && onSave ? (
               <Button
+                type="button"
                 className="bg-success text-white hover:bg-success/90"
                 disabled={isPending}
                 onClick={async (e) => {
                   e.stopPropagation();
                   setIsPending(true);
                   try {
-                    await onSave();
-                    onOpenChange?.(false);
+                    const shouldClose = await onSave();
+                    if (shouldClose !== false) onOpenChange?.(false);
                   } catch {
                     // The owning mutation reports the error; keep this dialog open.
                   } finally {
@@ -126,14 +128,15 @@ export const ConfirmDialog = memo(function ConfirmDialog({
               </Button>
             ) : (
               <Button
+                type="button"
                 variant={variant}
                 disabled={isPending}
                 onClick={async (e) => {
                   e.stopPropagation();
                   setIsPending(true);
                   try {
-                    await onConfirm();
-                    onOpenChange?.(false);
+                    const shouldClose = await onConfirm();
+                    if (shouldClose !== false) onOpenChange?.(false);
                   } catch {
                     // The owning mutation reports the error; keep this dialog open.
                   } finally {

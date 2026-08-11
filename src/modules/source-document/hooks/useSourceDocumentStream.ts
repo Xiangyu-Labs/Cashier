@@ -331,7 +331,7 @@ export function useSourceDocumentStream(
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    /** Call the bounded refresh path (pull-to-refresh, etc.) */
+    /** Call the bounded explicit refresh path. */
     refresh,
   };
 }

@@ -1,11 +1,14 @@
 "use server";
 import type {
   BatchUpdateSourceDocumentsResultDto,
+  SaveSourceDocumentChangesInput,
+  SaveSourceDocumentChangesResultDto,
   UpdateSourceDocumentReconciliationDto,
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import {
   batchUpdateSourceDocumentsInputSchema,
+  saveSourceDocumentChangesInputSchema,
   parseMutationIdentity,
   sourceDocumentIdsSchema,
   updateSourceDocumentInputSchema,
@@ -16,6 +19,7 @@ import {
   batchUpdateSourceDocuments,
   updateSourceDocument,
 } from "../application/use-cases/update-source-document";
+import { saveSourceDocumentChanges } from "../application/use-cases/save-source-document-changes";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
@@ -84,6 +88,28 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
         ledgerId,
         sourceDocumentIds: validatedIds,
         data: validated,
+      },
+      serverComposition.sourceDocumentUpdates
+    );
+  }
+);
+
+export const saveSourceDocumentChangesAction = withSourceDocumentLedgerAccess(
+  async (
+    { ledgerId },
+    input: SaveSourceDocumentChangesInput
+  ): Promise<SaveSourceDocumentChangesResultDto> => {
+    const validated = saveSourceDocumentChangesInputSchema.parse(input);
+    return saveSourceDocumentChanges(
+      ledgerId,
+      {
+        sourceDocumentId: validated.sourceDocumentId,
+        expectedRevisionId: validated.expectedRevisionId,
+        operationId: validated.operationId,
+        ...(validated.sourceDocument === undefined
+          ? {}
+          : { sourceDocument: validated.sourceDocument }),
+        entries: validated.entries,
       },
       serverComposition.sourceDocumentUpdates
     );

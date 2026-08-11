@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CurrencySection } from "@/modules/ledger/ui/CurrencySection";
 import { SettingsSection } from "@/modules/ledger/ui/settings/SettingsSection";
@@ -34,7 +34,7 @@ describe("settings primitives", () => {
     expect(items).toHaveClass("[&>*+*]:border-t", "[&>*+*]:border-border", "[&>*+*]:pt-4");
   });
 
-  it("searches and toggles preferred currencies with immediate saves", async () => {
+  it("searches and toggles preferred currencies in the section draft", () => {
     const onUpdateSettings = vi.fn();
     render(
       <CurrencySection
@@ -52,15 +52,6 @@ describe("settings primitives", () => {
     expect(screen.getByText("JPY")).toBeInTheDocument();
     expect(screen.queryByText("USD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("JPY"));
-    await waitFor(() =>
-      expect(onUpdateSettings).toHaveBeenCalledWith({ currencies: ["CNY", "USD", "JPY"] })
-    );
-    fireEvent.change(screen.getByLabelText(/search currencies|搜索币种/i), {
-      target: { value: "usd" },
-    });
-    fireEvent.click(screen.getByText("USD"));
-    await waitFor(() =>
-      expect(onUpdateSettings).toHaveBeenLastCalledWith({ currencies: ["CNY", "JPY"] })
-    );
+    expect(onUpdateSettings).toHaveBeenCalledWith({ currencies: ["CNY", "USD", "JPY"] });
   });
 });

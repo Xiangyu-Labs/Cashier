@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { EntryCategory } from "@/modules/ledger/contracts";
+import type { EntryCategory, SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -17,65 +17,90 @@ import {
 import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
   uncategorizedCount?: number;
-  onCreateCategory: (name: string) => Promise<EntryCategory>;
-  onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void | Promise<unknown>;
-  onDeleteCategory: (id: string) => void | Promise<unknown>;
-  onReorderCategories: (ids: string[]) => void | Promise<unknown>;
+  onSaveCategories: (input: SaveEntryCategoriesInput) => Promise<EntryCategory[]>;
   generatingCategoryIds?: Set<string>;
   failedCategoryIds?: Set<string>;
   onRetryMetadata?: (id: string) => void;
-  isReordering?: boolean;
-  isCreating?: boolean;
-  isBusy?: boolean;
+  isSaving?: boolean;
+}
+
+interface CategoryDraft {
+  key: string;
+  id?: string;
+  clientId?: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  isEditable: boolean;
+  entryCount?: number;
 }
 
 interface EditDraft {
-  id: string;
+  key: string;
   name: string;
   description: string;
   icon: string | null;
 }
 
+interface EditSession {
+  original: EditDraft;
+  draft: EditDraft;
+}
+
 export function CategorySection({
   categories,
   uncategorizedCount = 0,
-  onCreateCategory,
-  onUpdateCategory,
-  onDeleteCategory,
-  onReorderCategories,
+  onSaveCategories,
   generatingCategoryIds = new Set(),
   failedCategoryIds = new Set(),
   onRetryMetadata,
-  isReordering = false,
-  isCreating = false,
-  isBusy = false,
+  isSaving = false,
 }: CategorySectionProps) {
   const t = useTranslations("Settings");
   const common = useTranslations("Common");
   const [managing, setManaging] = useState(false);
-  const [draftOrder, setDraftOrder] = useState<EntryCategory[]>([]);
+  const [serverDraft, setServerDraft] = useState<CategoryDraft[]>([]);
+  const [draftOrder, setDraftOrder] = useState<CategoryDraft[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EntryCategory | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const busy = isBusy || isSubmitting || isReordering || isCreating;
+  const [editSession, setEditSession] = useState<EditSession | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryDraft | null>(null);
+  const [discardManagementOpen, setDiscardManagementOpen] = useState(false);
+  const [discardEditOpen, setDiscardEditOpen] = useState(false);
+  const [serverChanged, setServerChanged] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const incomingDraft = useMemo(() => categories.map(toCategoryDraft), [categories]);
+  const dirty = managing && !categoryDraftsEqual(serverDraft, draftOrder);
 
-  const displayedCategories = managing ? draftOrder : categories;
-  const orderChanged = useMemo(
-    () =>
-      managing &&
-      draftOrder.map((category) => category.id).join("|") !==
-        categories.map((category) => category.id).join("|"),
-    [categories, draftOrder, managing]
-  );
+  useEffect(() => {
+    if (!managing || categoryDraftsEqual(serverDraft, incomingDraft)) return;
+    setServerDraft(incomingDraft);
+    if (dirty) {
+      setServerChanged(true);
+    } else {
+      setDraftOrder(incomingDraft);
+      setServerChanged(false);
+    }
+  }, [dirty, incomingDraft, managing, serverDraft]);
+
+  useEffect(() => {
+    const key = "settings:categories";
+    useUnsavedChangesStore.getState().setDirty(key, dirty);
+    return () => useUnsavedChangesStore.getState().setDirty(key, false);
+  }, [dirty]);
+
+  const displayedCategories = managing ? draftOrder : incomingDraft;
 
   const enterManagement = () => {
-    setDraftOrder([...categories]);
+    setServerDraft(incomingDraft);
+    setDraftOrder(incomingDraft);
     setManaging(true);
+    setServerChanged(false);
+    setSaveError(null);
   };
 
   const move = (index: number, direction: -1 | 1) => {
@@ -88,31 +113,54 @@ export function CategorySection({
       next.splice(target, 0, item);
       return next;
     });
+    setSaveError(null);
   };
 
-  const saveOrder = async () => {
-    if (busy) return;
-    setIsSubmitting(true);
-    try {
-      await onReorderCategories(draftOrder.map((category) => category.id));
-      setManaging(false);
-    } finally {
-      setIsSubmitting(false);
+  const createCategory = () => {
+    const name = newCategoryName.trim();
+    if (name === "" || isSaving) return;
+    const clientId = crypto.randomUUID();
+    setDraftOrder((current) => [
+      ...current,
+      {
+        key: clientId,
+        clientId,
+        name,
+        description: "",
+        icon: null,
+        isEditable: true,
+      },
+    ]);
+    setNewCategoryName("");
+    setSaveError(null);
+  };
+
+  const requestEditClose = () => {
+    if (editSession == null) return;
+    if (editDraftEqual(editSession.original, editSession.draft)) {
+      setEditSession(null);
+    } else {
+      setDiscardEditOpen(true);
     }
   };
 
-  const createCategory = async () => {
-    const name = newCategoryName.trim();
-    if (name === "" || busy) return;
-    setIsSubmitting(true);
+  const handleSave = async () => {
+    if (!dirty || isSaving) return;
+    setSaveError(null);
     try {
-      const category = await onCreateCategory(name);
-      setDraftOrder((current) =>
-        current.some((item) => item.id === category.id) ? current : [...current, category]
-      );
-      setNewCategoryName("");
-    } finally {
-      setIsSubmitting(false);
+      await onSaveCategories({
+        categories: draftOrder.map((category) => ({
+          ...(category.id === undefined ? {} : { id: category.id }),
+          ...(category.clientId === undefined ? {} : { clientId: category.clientId }),
+          name: category.name.trim(),
+          description: category.description.trim() || null,
+          icon: category.icon,
+        })),
+      });
+      setManaging(false);
+      setServerChanged(false);
+    } catch {
+      setSaveError(t("saveCategoriesFailed"));
     }
   };
 
@@ -124,13 +172,7 @@ export function CategorySection({
           <p className="mt-1 text-sm text-muted-foreground">{t("categoriesDesc")}</p>
         </div>
         {!managing ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={enterManagement}
-            disabled={busy}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={enterManagement}>
             {t("manageCategories")}
           </Button>
         ) : null}
@@ -151,7 +193,7 @@ export function CategorySection({
       <div className="space-y-2">
         {displayedCategories.map((category, index) => (
           <div
-            key={category.id}
+            key={category.key}
             className="flex min-h-14 items-center gap-3 rounded-md bg-surface2 p-3"
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center">
@@ -160,28 +202,30 @@ export function CategorySection({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="truncate text-sm font-medium">{category.name}</span>
-                {"entryCount" in category && typeof category.entryCount === "number" ? (
+                {category.entryCount == null ? null : (
                   <span className="text-[10px] text-muted">
                     {t("categoryItemCount", { count: category.entryCount })}
                   </span>
-                ) : null}
-                {generatingCategoryIds.has(category.id) ? (
+                )}
+                {category.id != null && generatingCategoryIds.has(category.id) ? (
                   <span className="text-[10px] text-muted">{t("generatingMetadata")}</span>
                 ) : null}
-                {failedCategoryIds.has(category.id) && onRetryMetadata != null ? (
+                {category.id != null &&
+                failedCategoryIds.has(category.id) &&
+                onRetryMetadata != null ? (
                   <Button
                     type="button"
-                    onClick={() => onRetryMetadata(category.id)}
+                    onClick={() => onRetryMetadata(category.id!)}
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-[10px] text-danger"
+                    className="min-h-11 px-2 text-[10px] text-danger"
                   >
                     <RefreshCw className="h-3 w-3" />
                     {t("retryMetadata")}
                   </Button>
                 ) : null}
               </div>
-              {category.description ? (
+              {category.description !== "" ? (
                 <p className="truncate text-xs text-muted">{category.description}</p>
               ) : null}
             </div>
@@ -191,8 +235,8 @@ export function CategorySection({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
-                  disabled={index === 0 || busy}
+                  className="size-11"
+                  disabled={index === 0 || isSaving}
                   onClick={() => move(index, -1)}
                   aria-label={t("moveCategoryUp", { name: category.name })}
                 >
@@ -202,42 +246,47 @@ export function CategorySection({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
-                  disabled={index === displayedCategories.length - 1 || busy}
+                  className="size-11"
+                  disabled={index === displayedCategories.length - 1 || isSaving}
                   onClick={() => move(index, 1)}
                   aria-label={t("moveCategoryDown", { name: category.name })}
                 >
                   <ArrowDown className="h-4 w-4" />
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={busy}
-                  onClick={() =>
-                    setEditDraft({
-                      id: category.id,
-                      name: category.name,
-                      description: category.description ?? "",
-                      icon: category.icon,
-                    })
-                  }
-                  aria-label={t("editCategory", { name: category.name })}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-danger"
-                  disabled={busy}
-                  onClick={() => setDeleteTarget(category)}
-                  aria-label={t("deleteCategory", { name: category.name })}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {category.isEditable ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11"
+                      disabled={isSaving}
+                      onClick={() => {
+                        const draft = {
+                          key: category.key,
+                          name: category.name,
+                          description: category.description,
+                          icon: category.icon,
+                        };
+                        setEditSession({ original: draft, draft });
+                      }}
+                      aria-label={t("editCategory", { name: category.name })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 text-danger"
+                      disabled={isSaving}
+                      onClick={() => setDeleteTarget(category)}
+                      aria-label={t("deleteCategory", { name: category.name })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -249,118 +298,122 @@ export function CategorySection({
           <div className="flex gap-2">
             <Input
               value={newCategoryName}
-              disabled={busy}
               onChange={(event) => setNewCategoryName(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") void createCategory();
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  createCategory();
+                }
               }}
+              disabled={isSaving}
               aria-label={t("newCategoryPlaceholder")}
               placeholder={t("newCategoryPlaceholder")}
             />
             <Button
               type="button"
-              onClick={() => void createCategory()}
-              disabled={newCategoryName.trim() === "" || busy}
+              onClick={createCategory}
+              disabled={newCategoryName.trim() === "" || isSaving}
             >
               {t("addCategory")}
             </Button>
+          </div>
+          <div aria-live="polite" className="text-sm">
+            {saveError == null ? null : <p className="text-destructive">{saveError}</p>}
+            {saveError == null && serverChanged ? (
+              <p className="text-warning">{t("serverChangedWhileEditing")}</p>
+            ) : null}
           </div>
           <div className="flex justify-end gap-2">
             <Button
               type="button"
               variant="outline"
-              disabled={busy}
-              onClick={() => setManaging(false)}
+              disabled={isSaving}
+              onClick={() => {
+                if (dirty) setDiscardManagementOpen(true);
+                else setManaging(false);
+              }}
             >
               {common("cancel")}
             </Button>
-            <Button
-              type="button"
-              disabled={!orderChanged || busy}
-              onClick={async () => {
-                try {
-                  await saveOrder();
-                } catch {
-                  // The mutation reports the error and the draft remains available to retry.
-                }
-              }}
-            >
-              {isReordering ? t("savingOrder") : t("saveOrder")}
+            <Button type="button" disabled={!dirty || isSaving} onClick={() => void handleSave()}>
+              {isSaving ? t("saving") : common("save")}
             </Button>
           </div>
         </>
       ) : null}
 
-      <Dialog
-        open={editDraft != null}
-        onOpenChange={(open) => !open && !busy && setEditDraft(null)}
-      >
-        <DialogContent
-          variant="modal"
-          hideCloseButton={busy}
-          onEscapeKeyDown={(event) => busy && event.preventDefault()}
-          onPointerDownOutside={(event) => busy && event.preventDefault()}
-        >
+      <Dialog open={editSession != null} onOpenChange={(open) => !open && requestEditClose()}>
+        <DialogContent variant="modal">
           <DialogHeader>
             <DialogTitle>{t("editCategoryDialog")}</DialogTitle>
           </DialogHeader>
-          {editDraft != null ? (
+          {editSession == null ? null : (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <IconPicker
-                  value={editDraft.icon}
-                  disabled={busy}
-                  onChange={(icon) => setEditDraft((draft) => (draft ? { ...draft, icon } : draft))}
+                  value={editSession.draft.icon}
+                  onChange={(icon) =>
+                    setEditSession((session) =>
+                      session == null ? null : { ...session, draft: { ...session.draft, icon } }
+                    )
+                  }
                 />
                 <Input
-                  value={editDraft.name}
-                  disabled={busy}
+                  value={editSession.draft.name}
                   onChange={(event) =>
-                    setEditDraft((draft) =>
-                      draft ? { ...draft, name: event.target.value } : draft
+                    setEditSession((session) =>
+                      session == null
+                        ? null
+                        : {
+                            ...session,
+                            draft: { ...session.draft, name: event.target.value },
+                          }
                     )
                   }
                   aria-label={t("categoryName")}
                 />
               </div>
               <Textarea
-                value={editDraft.description}
-                disabled={busy}
+                value={editSession.draft.description}
                 onChange={(event) =>
-                  setEditDraft((draft) =>
-                    draft ? { ...draft, description: event.target.value } : draft
+                  setEditSession((session) =>
+                    session == null
+                      ? null
+                      : {
+                          ...session,
+                          draft: { ...session.draft, description: event.target.value },
+                        }
                   )
                 }
                 aria-label={t("categoryDescription")}
                 className="min-h-24 w-full"
               />
             </div>
-          ) : null}
+          )}
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditDraft(null)}
-              disabled={busy}
-            >
+            <Button type="button" variant="outline" onClick={requestEditClose}>
               {common("cancel")}
             </Button>
             <Button
               type="button"
-              disabled={editDraft?.name.trim() === "" || busy}
-              onClick={async () => {
-                if (editDraft == null) return;
-                setIsSubmitting(true);
-                try {
-                  await onUpdateCategory(editDraft.id, {
-                    name: editDraft.name.trim(),
-                    description: editDraft.description.trim() || null,
-                    icon: editDraft.icon,
-                  });
-                  setEditDraft(null);
-                } finally {
-                  setIsSubmitting(false);
-                }
+              disabled={editSession?.draft.name.trim() === ""}
+              onClick={() => {
+                if (editSession == null) return;
+                const updated = editSession.draft;
+                setDraftOrder((current) =>
+                  current.map((category) =>
+                    category.key === updated.key
+                      ? {
+                          ...category,
+                          name: updated.name.trim(),
+                          description: updated.description,
+                          icon: updated.icon,
+                        }
+                      : category
+                  )
+                );
+                setEditSession(null);
+                setSaveError(null);
               }}
             >
               {common("save")}
@@ -375,17 +428,73 @@ export function CategorySection({
         title={t("deleteCategoryDialog")}
         description={t("deleteCategoryDescription", { name: deleteTarget?.name ?? "" })}
         variant="destructive"
-        onConfirm={async () => {
+        onConfirm={() => {
           if (deleteTarget == null) return;
-          setIsSubmitting(true);
-          try {
-            await onDeleteCategory(deleteTarget.id);
-            setDraftOrder((current) => current.filter((item) => item.id !== deleteTarget.id));
-          } finally {
-            setIsSubmitting(false);
-          }
+          setDraftOrder((current) =>
+            current.filter((category) => category.key !== deleteTarget.key)
+          );
+          setSaveError(null);
         }}
       />
+
+      <ConfirmDialog
+        open={discardManagementOpen}
+        onOpenChange={setDiscardManagementOpen}
+        title={t("discardCategoryChangesTitle")}
+        description={t("discardCategoryChangesDescription")}
+        variant="destructive"
+        confirmLabel={common("discard")}
+        onConfirm={() => {
+          setDraftOrder(serverDraft);
+          setManaging(false);
+          setServerChanged(false);
+          setSaveError(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={discardEditOpen}
+        onOpenChange={setDiscardEditOpen}
+        title={t("discardCategoryEditTitle")}
+        description={t("discardCategoryEditDescription")}
+        variant="destructive"
+        confirmLabel={common("discard")}
+        onConfirm={() => setEditSession(null)}
+      />
     </div>
+  );
+}
+
+function toCategoryDraft(category: EntryCategory): CategoryDraft {
+  return {
+    key: category.id,
+    id: category.id,
+    name: category.name,
+    description: category.description ?? "",
+    icon: category.icon,
+    isEditable: category.isEditable,
+    ...("entryCount" in category && typeof category.entryCount === "number"
+      ? { entryCount: category.entryCount }
+      : {}),
+  };
+}
+
+function categoryDraftsEqual(left: CategoryDraft[], right: CategoryDraft[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((category, index) => {
+    const other = right[index];
+    return (
+      other != null &&
+      category.key === other.key &&
+      category.name === other.name &&
+      category.description === other.description &&
+      category.icon === other.icon
+    );
+  });
+}
+
+function editDraftEqual(left: EditDraft, right: EditDraft): boolean {
+  return (
+    left.name === right.name && left.description === right.description && left.icon === right.icon
   );
 }

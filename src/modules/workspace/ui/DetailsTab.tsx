@@ -9,13 +9,11 @@ import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
 import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
-import { useEntryMutations } from "@/modules/ledger/hooks/useEntryMutations";
-import { useModalStackStore } from "@/lib/store/modal-stack";
-import { useDetailsTabState } from "./useDetailsTabState";
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import { useDetailsBatchController } from "./useDetailsBatchController";
 import { DetailsTabView } from "./DetailsTabView";
 import type { TabQueryStateReport } from "./tab-query-state";
+import { openLedgerDetail } from "../ledger-detail-navigation";
 
 interface DetailsTabProps {
   ledgerId: string;
@@ -47,8 +45,6 @@ export function DetailsTab({
   onQueryStateChange,
 }: DetailsTabProps) {
   const queryClient = useQueryClient();
-  const push = useModalStackStore((state) => state.push);
-  const details = useDetailsTabState();
   const data = useDetailsTabData({
     ledgerId,
     periodParams,
@@ -67,17 +63,20 @@ export function DetailsTab({
   }, [data.queryIsFetching, data.queryKey, data.queryStatus, ledgerId, onQueryStateChange]);
   const { groupedItems } = useDetailsTabGrouping(data.entries, timeZone);
   const entryIds = useMemo(() => data.entries.map((entry) => entry.id), [data.entries]);
-  const batch = useDetailsBatchController(ledgerId, entryIds);
+  const queryFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        tab: "details",
+        period: periodParams,
+        filters: advancedFilters,
+      }),
+    [advancedFilters, periodParams]
+  );
+  const batch = useDetailsBatchController(ledgerId, entryIds, queryFingerprint);
   const { filters } = useDetailsTabFilters({
     periodParams,
     advancedFilters,
     ...(timeZone != null ? { timeZone } : {}),
-  });
-  const { updateEntry, deleteEntry } = useEntryMutations({
-    ledgerId,
-    categories,
-    selectedLedgerEntry: details.selectedLedgerEntry,
-    setSelectedLedgerEntry: details.setSelectedLedgerEntry,
   });
   const sentinelRef = useInfiniteScroll({
     hasNextPage: data.hasNextPage,
@@ -90,8 +89,6 @@ export function DetailsTab({
       queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
     ]);
   }, [ledgerId, queryClient]);
-  const selectedSourceDocumentId = details.selectedLedgerEntry?.sourceDocumentId;
-
   return (
     <DetailsTabView
       categories={categories}
@@ -109,32 +106,9 @@ export function DetailsTab({
       monthStats={data.monthStats}
       sentinelRef={sentinelRef}
       batch={batch}
-      selectedLedgerEntry={details.selectedLedgerEntry}
-      isDetailModalOpen={details.isDetailModalOpen}
-      onViewEntry={details.handleViewEntry}
-      onCloseDetail={details.handleCloseDetail}
-      onUpdateEntry={async (update) => {
-        if (details.selectedLedgerEntry == null) return;
-        await updateEntry.mutateAsync({
-          ledgerEntryId: details.selectedLedgerEntry.id,
-          data: update,
-        });
-      }}
-      onDeleteEntry={async () => {
-        if (details.selectedLedgerEntry != null) {
-          await deleteEntry.mutateAsync(details.selectedLedgerEntry.id);
-        }
-      }}
-      {...(selectedSourceDocumentId == null || selectedSourceDocumentId === ""
-        ? {}
-        : {
-            onViewSourceDocument: () =>
-              push({
-                type: "source-document",
-                id: selectedSourceDocumentId,
-                ledgerId,
-              }),
-          })}
+      onViewEntry={(entry) =>
+        openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId })
+      }
       onRefresh={handleRefresh}
     />
   );

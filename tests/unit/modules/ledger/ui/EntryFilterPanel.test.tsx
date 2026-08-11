@@ -179,14 +179,15 @@ describe("EntryFilterPanel", () => {
     expect(screen.getByRole("button", { name: "进行中" })).toBeDefined();
   });
 
-  it("calls onApplyPreset with needs_attention when preset button is clicked", async () => {
+  it("keeps needs_attention preset in the draft until Apply", async () => {
     const user = userEvent.setup();
     const onApplyPreset = vi.fn();
+    const onFiltersChange = vi.fn();
 
     render(
       <EntryFilterPanel
         filters={{}}
-        onFiltersChange={vi.fn()}
+        onFiltersChange={onFiltersChange}
         onApplyPreset={onApplyPreset}
         showCategory={false}
         showCurrency={false}
@@ -197,17 +198,27 @@ describe("EntryFilterPanel", () => {
     // It's unique — no checkbox shares this text
     const needsAttentionBtn = screen.getByRole("button", { name: "待处理" });
     await user.click(needsAttentionBtn);
-    expect(onApplyPreset).toHaveBeenCalledWith("needs_attention");
+    expect(onApplyPreset).not.toHaveBeenCalled();
+    expect(onFiltersChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+    expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual([
+      "candidate_pending",
+      "duplicate_pending",
+      "anomaly",
+      "failed",
+    ]);
   });
 
-  it("calls onApplyPreset with in_progress when preset button is clicked", async () => {
+  it("keeps in_progress preset in the draft until Apply", async () => {
     const user = userEvent.setup();
     const onApplyPreset = vi.fn();
+    const onFiltersChange = vi.fn();
 
     render(
       <EntryFilterPanel
         filters={{}}
-        onFiltersChange={vi.fn()}
+        onFiltersChange={onFiltersChange}
         onApplyPreset={onApplyPreset}
         showCategory={false}
         showCurrency={false}
@@ -217,7 +228,11 @@ describe("EntryFilterPanel", () => {
     // "进行中" is uniquely the in_progress preset button (distinct from "处理中" checkbox label)
     const presetButton = screen.getByRole("button", { name: "进行中" });
     await user.click(presetButton);
-    expect(onApplyPreset).toHaveBeenCalledWith("in_progress");
+    expect(onApplyPreset).not.toHaveBeenCalled();
+    expect(onFiltersChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+    expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    expect(onFiltersChange.mock.calls[0]?.[0].statuses).toEqual(["processing"]);
   });
 
   it("submits filters only once after selecting a date preset", async () => {

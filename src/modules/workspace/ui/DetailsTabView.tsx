@@ -6,7 +6,6 @@ import { ArrowLeft, CheckSquare } from "lucide-react";
 import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
-import { LedgerEntryDetailModal } from "@/modules/ledger/ui/LedgerEntryDetailModal";
 import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { GroupedEntry } from "@/modules/ledger/hooks/useDetailsTabGrouping";
@@ -24,11 +23,9 @@ import {
 import { DetailsToolbar } from "./DetailsToolbar";
 import { EmptyState } from "./EmptyState";
 import type { useDetailsBatchController } from "./useDetailsBatchController";
-import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 type BatchController = ReturnType<typeof useDetailsBatchController>;
-type LedgerEntryUpdate = Partial<Omit<LedgerEntry, "amount">> & { amount?: number };
-
 interface DetailsTabViewProps {
   categories: EntryCategory[];
   ledger?: Ledger;
@@ -51,13 +48,7 @@ interface DetailsTabViewProps {
   monthStats: { mainTotal: string; mainCurrency: string; unconvertedCount: number };
   sentinelRef: RefCallback<HTMLDivElement>;
   batch: BatchController;
-  selectedLedgerEntry: LedgerEntry | null;
-  isDetailModalOpen: boolean;
   onViewEntry: (entry: LedgerEntry) => void;
-  onCloseDetail: () => void;
-  onUpdateEntry: (data: LedgerEntryUpdate) => Promise<void>;
-  onDeleteEntry: () => Promise<void>;
-  onViewSourceDocument?: () => void;
   onRefresh: () => Promise<void>;
 }
 
@@ -78,21 +69,13 @@ export function DetailsTabView(props: DetailsTabViewProps) {
     monthStats,
     sentinelRef,
     batch,
-    selectedLedgerEntry,
-    isDetailModalOpen,
     onViewEntry,
-    onCloseDetail,
-    onUpdateEntry,
-    onDeleteEntry,
-    onViewSourceDocument,
     onRefresh,
   } = props;
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
-
-  useRegisterPullToRefresh(onRefresh, !batch.isSelectionMode);
 
   return (
     <>
@@ -130,6 +113,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             />
           ) : undefined
         }
+        actions={!batch.isSelectionMode ? <RefreshButton onRefresh={onRefresh} /> : undefined}
       >
         <Button
           variant="ghost"
@@ -211,18 +195,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             </div>
           ) : null}
         </div>
-
-        {selectedLedgerEntry != null ? (
-          <LedgerEntryDetailModal
-            ledgerEntry={selectedLedgerEntry}
-            categories={categories}
-            open={isDetailModalOpen}
-            onClose={onCloseDetail}
-            onUpdate={onUpdateEntry}
-            onDelete={onDeleteEntry}
-            {...(onViewSourceDocument == null ? {} : { onViewSourceDocument })}
-          />
-        ) : null}
 
         <ConfirmDialog
           open={batch.deleteDialogOpen}

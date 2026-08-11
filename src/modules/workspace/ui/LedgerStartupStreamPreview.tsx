@@ -131,7 +131,7 @@ export function LedgerStartupStreamPreview({
         mainCurrency={mainCurrency}
         open={selected != null}
         onClose={() => setSelected(null)}
-        onSaveChanges={async () => {}}
+        onSaveAll={async () => {}}
         onBatchUpdate={async () => undefined}
         onBatchDeleteEntries={async () => []}
         readOnly

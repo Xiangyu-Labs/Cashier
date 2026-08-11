@@ -68,7 +68,8 @@
   "Calculator": {
     "title": "计算器",
     "amountAriaLabel": "金额",
-    "openCalculator": "打开计算器"
+    "openCalculator": "打开计算器",
+    "invalidValue": "请输入有效金额。"
   },
   "CandidateAction": {
     "accept": "确认候选",
@@ -139,6 +140,7 @@
     "processing_timeout_desc": "处理时间过长，任务已停止。请重试。"
   },
   "DetailsTab": {
+    "selectAllLoaded": "选择当前已加载的 {count} 条记录",
     "expenseSummary": "支出统计",
     "today": "今天",
     "yesterday": "昨天",
@@ -204,6 +206,7 @@
     "noMatchingResults": "没有符合条件的结果"
   },
   "LedgerEntriesTab": {
+    "selectAllLoaded": "选择当前已加载的 {count} 条记录",
     "processing": "处理中",
     "abnormal": "异常记录",
     "select": "选择",
@@ -265,7 +268,14 @@
     "discard": "放弃",
     "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
-    "statusDuplicatePending": "待确认重复"
+    "statusDuplicatePending": "待确认重复",
+    "refresh": "刷新",
+    "refreshSuccess": "已刷新",
+    "refreshFailed": "刷新失败，请重试",
+    "unsavedChangesTitle": "有未保存的更改",
+    "unsavedChangesDescription": "离开前请保存或放弃这些更改",
+    "saveAndContinue": "保存并继续",
+    "discardAndContinue": "放弃并继续"
   },
   "LedgerEntryDetail": {
     "category": "交易类别",
@@ -292,11 +302,6 @@
     "unsavedChanges": "有未保存的修改",
     "unsavedChangesDesc": "您有未保存的修改，确定要放弃这些修改吗？",
     "discardAndClose": "放弃并关闭"
-  },
-  "PullToRefresh": {
-    "pullToRefresh": "下拉刷新",
-    "releaseToRefresh": "释放刷新",
-    "refreshing": "刷新中..."
   },
   "Settings": {
     "title": "设置",
@@ -386,6 +391,10 @@
     "unsupportedCurrency": "所选币种暂不受汇率数据支持",
     "validationFailed": "设置内容无效，请检查后重试",
     "updateConflict": "设置已发生变化，请刷新后重试",
+    "save": "保存",
+    "saving": "(保存中...)",
+    "serverChangedWhileEditing": "服务端设置已变化，保存将把当前草稿应用到最新版本。",
+    "mainCurrencyMustBeEnabled": "主货币必须包含在偏好货币中。",
     "categoryCreated": "分类已创建",
     "categoryUpdated": "分类已更新",
     "categoryDeleted": "分类已删除",
@@ -394,12 +403,17 @@
     "deleteCategoryFailed": "删除分类失败",
     "categoriesReordered": "分类顺序已更新",
     "reorderCategoriesFailed": "更新分类顺序失败",
+    "categoriesSaved": "分类已保存",
+    "saveCategoriesFailed": "未保存任何分类更改，请修正后重试。",
+    "discardCategoryChangesTitle": "放弃分类更改？",
+    "discardCategoryChangesDescription": "尚未保存的分类新增、编辑、删除和排序都会丢失。",
+    "discardCategoryEditTitle": "放弃分类编辑？",
+    "discardCategoryEditDescription": "此分类编辑器中的更改将丢失。",
     "credentialCreated": "密钥已创建",
     "credentialDeleted": "密钥已删除",
     "createFailed": "创建失败",
     "deleteFailed": "删除失败",
     "categoryDescription": "分类描述",
-    "saving": "(保存中...)",
     "generatingMetadata": "正在生成描述和图标...",
     "retryMetadata": "重试生成",
     "categoryItemCount": "{count} 条明细",
@@ -524,6 +538,7 @@
     "batchDeletePartial": "{count} 项删除失败，已保留选中状态",
     "saveAllSuccess": "已保存 {count} 处修改",
     "saveAllError": "保存失败",
+    "saveAllFailed": "未保存任何更改，请修正问题后重试",
     "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。",
     "activeResultTitle": "保留的当前结果",
     "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。"

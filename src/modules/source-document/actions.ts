@@ -11,6 +11,7 @@ export { getSourceDocumentByIdAction } from "./server-actions/get-document";
 export { getSourceDocumentLightAction } from "./server-actions/get-document-light";
 export {
   batchUpdateSourceDocumentsAction,
+  saveSourceDocumentChangesAction,
   updateSourceDocumentAction,
 } from "./server-actions/update";
 export { deleteSourceDocumentAction } from "./server-actions/delete";

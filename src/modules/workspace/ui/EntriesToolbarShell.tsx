@@ -6,6 +6,7 @@ interface EntriesToolbarShellProps {
   totalLabel?: string | undefined;
   batchActions?: ReactNode | undefined;
   syncStatus?: ReactNode | undefined;
+  actions?: ReactNode | undefined;
   className?: string;
 }
 
@@ -14,6 +15,7 @@ export function EntriesToolbarShell({
   totalLabel,
   batchActions,
   syncStatus,
+  actions,
   className = "",
 }: EntriesToolbarShellProps) {
   return (
@@ -34,6 +36,9 @@ export function EntriesToolbarShell({
         <AmountText variant="summary" className="ml-auto whitespace-nowrap">
           {totalLabel}
         </AmountText>
+      ) : null}
+      {actions != null ? (
+        <div className={totalLabel == null ? "ml-auto" : undefined}>{actions}</div>
       ) : null}
       {batchActions != null ? <div className="min-w-0 basis-full">{batchActions}</div> : null}
     </div>

@@ -1,9 +1,9 @@
 "use client";
-import { useState, useCallback, useMemo } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UseSelectionOptions {
   allIds: string[];
+  queryFingerprint?: string | null;
 }
 
 interface UseSelectionReturn {
@@ -22,64 +22,148 @@ interface UseSelectionReturn {
   retainSelection: (ids: string[]) => void;
 }
 
-export function useSelection({ allIds }: UseSelectionOptions): UseSelectionReturn {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+interface SelectionState {
+  queryFingerprint: string | null | undefined;
+  selectedIds: string[];
+  isSelectionMode: boolean;
+}
+
+export function useSelection({
+  allIds,
+  queryFingerprint,
+}: UseSelectionOptions): UseSelectionReturn {
+  const [selection, setSelection] = useState<SelectionState>(() => ({
+    queryFingerprint,
+    selectedIds: [],
+    isSelectionMode: false,
+  }));
   const uniqueAllIds = useMemo(() => [...new Set(allIds)], [allIds]);
 
+  if (selection.queryFingerprint !== queryFingerprint) {
+    setSelection({
+      queryFingerprint,
+      selectedIds: [],
+      isSelectionMode: false,
+    });
+  }
+
+  const selectedIds = selection.queryFingerprint === queryFingerprint ? selection.selectedIds : [];
+  const isSelectionMode =
+    selection.queryFingerprint === queryFingerprint ? selection.isSelectionMode : false;
   const isAllSelected = selectedIds.length === uniqueAllIds.length && uniqueAllIds.length > 0;
   const selectedCount = selectedIds.length;
 
-  const handleSelect = useCallback((id: string, selected: boolean) => {
-    setSelectedIds((prev) => {
-      if (selected) return prev.includes(id) ? prev : [...prev, id];
-      return prev.includes(id) ? prev.filter((itemId) => itemId !== id) : prev;
-    });
-  }, []);
+  const handleSelect = useCallback(
+    (id: string, selected: boolean) => {
+      setSelection((current) => {
+        const selectedIds =
+          current.queryFingerprint === queryFingerprint ? current.selectedIds : [];
+        const nextIds = selected
+          ? selectedIds.includes(id)
+            ? selectedIds
+            : [...selectedIds, id]
+          : selectedIds.includes(id)
+            ? selectedIds.filter((itemId) => itemId !== id)
+            : selectedIds;
+        return {
+          queryFingerprint,
+          selectedIds: nextIds,
+          isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+        };
+      });
+    },
+    [queryFingerprint]
+  );
 
   const handleSelectAll = useCallback(
     (selected: boolean) => {
-      setSelectedIds(selected ? uniqueAllIds : []);
+      setSelection((current) => ({
+        queryFingerprint,
+        selectedIds: selected ? uniqueAllIds : [],
+        isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+      }));
     },
-    [uniqueAllIds]
+    [queryFingerprint, uniqueAllIds]
   );
 
   const toggleSelectionMode = useCallback(() => {
-    setIsSelectionMode((prev) => {
-      if (prev) {
-        setSelectedIds([]);
-      }
-      return !prev;
+    setSelection((current) => {
+      const wasSelectionMode =
+        current.queryFingerprint === queryFingerprint && current.isSelectionMode;
+      return {
+        queryFingerprint,
+        selectedIds:
+          wasSelectionMode || current.queryFingerprint !== queryFingerprint
+            ? []
+            : current.selectedIds,
+        isSelectionMode: !wasSelectionMode,
+      };
     });
-  }, []);
+  }, [queryFingerprint]);
 
   const clearSelection = useCallback(() => {
-    setSelectedIds([]);
-  }, []);
+    setSelection((current) => ({
+      queryFingerprint,
+      selectedIds: [],
+      isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+    }));
+  }, [queryFingerprint]);
 
   const exitSelectionMode = useCallback(() => {
-    setIsSelectionMode(false);
-    setSelectedIds([]);
-  }, []);
+    setSelection({
+      queryFingerprint,
+      selectedIds: [],
+      isSelectionMode: false,
+    });
+  }, [queryFingerprint]);
 
-  const setSelectionMode = useCallback((value: boolean) => {
-    setIsSelectionMode(value);
-    if (!value) {
-      setSelectedIds([]);
-    }
-  }, []);
+  const setSelectionMode = useCallback(
+    (value: boolean) => {
+      setSelection((current) => ({
+        queryFingerprint,
+        selectedIds:
+          value && current.queryFingerprint === queryFingerprint ? current.selectedIds : [],
+        isSelectionMode: value,
+      }));
+    },
+    [queryFingerprint]
+  );
 
-  const toggleSelection = useCallback((id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
-  }, []);
+  const toggleSelection = useCallback(
+    (id: string) => {
+      setSelection((current) => {
+        const selectedIds =
+          current.queryFingerprint === queryFingerprint ? current.selectedIds : [];
+        return {
+          queryFingerprint,
+          selectedIds: selectedIds.includes(id)
+            ? selectedIds.filter((selectedId) => selectedId !== id)
+            : [...selectedIds, id],
+          isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+        };
+      });
+    },
+    [queryFingerprint]
+  );
 
   const selectAll = useCallback(() => {
-    setSelectedIds(uniqueAllIds);
-  }, [uniqueAllIds]);
+    setSelection((current) => ({
+      queryFingerprint,
+      selectedIds: uniqueAllIds,
+      isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+    }));
+  }, [queryFingerprint, uniqueAllIds]);
 
-  const retainSelection = useCallback((ids: string[]) => {
-    setSelectedIds([...new Set(ids)]);
-  }, []);
+  const retainSelection = useCallback(
+    (ids: string[]) => {
+      setSelection((current) => ({
+        queryFingerprint,
+        selectedIds: [...new Set(ids)],
+        isSelectionMode: current.queryFingerprint === queryFingerprint && current.isSelectionMode,
+      }));
+    },
+    [queryFingerprint]
+  );
 
   useEffect(() => {
     if (!isSelectionMode) return;

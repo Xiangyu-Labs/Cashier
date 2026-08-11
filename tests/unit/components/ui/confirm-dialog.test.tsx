@@ -81,4 +81,24 @@ describe("ConfirmDialog", () => {
     resolveConfirmation();
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
+
+  it("stays open when saving unsaved changes fails", async () => {
+    const onOpenChange = vi.fn();
+    const onSave = vi.fn(async () => false);
+
+    render(
+      <ConfirmDialog
+        title="Unsaved changes"
+        description="Choose what to do"
+        onConfirm={() => {}}
+        onOpenChange={onOpenChange}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
 });

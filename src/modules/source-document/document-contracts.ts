@@ -61,6 +61,7 @@ export interface SourceDocumentDto {
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
+  activeRevisionId?: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
   duplicateReview?: SourceDocumentDuplicateReviewDto;
 }
@@ -176,6 +177,7 @@ export interface SourceDocumentLightDto {
   supportedActions: SupportedSourceDocumentAction[];
   errorCode: ApplicationErrorCode | ProcessingFailureCode | null;
   pendingRevisionId: string | null;
+  activeRevisionId?: string | null;
   activeResultSummary?: SourceDocumentCandidateProjectionSummary;
   duplicateReview?: SourceDocumentDuplicateReviewDto;
 }

@@ -1,5 +1,8 @@
-import type { SourceDocumentGroupDto } from "./document-contracts";
-import type { SourceDocumentListItemDto } from "./document-contracts";
+import type {
+  SourceDocumentDto,
+  SourceDocumentGroupDto,
+  SourceDocumentListItemDto,
+} from "./document-contracts";
 
 export { SourceDocumentStatus, SourceDocumentType } from "./types";
 export type {
@@ -65,6 +68,11 @@ export interface QuickEntryResponseDto {
   status: "completed";
 }
 
+export interface CreatedRecordResult {
+  sourceDocumentId: string;
+  entryDate: string;
+}
+
 export interface PendingSourceDocumentsResponseDto {
   groups: {
     processing: SourceDocumentGroupDto[];
@@ -86,6 +94,22 @@ export interface PendingSourceDocumentsResponseDto {
 export interface UpdateSourceDocumentResultDto {
   sourceDocumentId: string;
   updated: boolean;
+}
+
+export interface SaveSourceDocumentChangesInput {
+  sourceDocumentId: string;
+  expectedRevisionId: string;
+  operationId: string;
+  sourceDocument?: import("./contract-schemas").UpdateSourceDocumentInput;
+  entries: Array<{
+    ledgerEntryId: string;
+    data: import("@/modules/ledger/contract-schemas").UpdateLedgerEntryInput;
+  }>;
+}
+
+export interface SaveSourceDocumentChangesResultDto {
+  activeRevisionId: string;
+  sourceDocument: SourceDocumentDto;
 }
 
 export interface BatchUpdateSourceDocumentsResultDto {

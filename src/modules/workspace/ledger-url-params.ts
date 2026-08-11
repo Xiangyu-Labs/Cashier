@@ -2,6 +2,20 @@ import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 
 export const STATUSES_URL_PARAM = "statuses";
 export type LedgerFilterScope = "stream" | "details";
+export type LedgerDetailType = "source-document" | "ledger-entry";
+export type StatsRange = "week" | "month" | "year";
+export type StatsView = "heatmap" | "trend";
+
+export interface LedgerDetailUrlState {
+  detailType: LedgerDetailType;
+  detailId: string;
+}
+
+export interface StatsUrlState {
+  range: StatsRange;
+  offset: number;
+  view: StatsView;
+}
 const STATUSES_URL_DELIMITER = ",";
 
 /**
@@ -95,7 +109,27 @@ function readScopedValue(
   scope?: LedgerFilterScope
 ): string | null {
   if (scope == null) return searchParams.get(key);
-  return searchParams.get(scopedKey(scope, key)) ?? searchParams.get(key);
+  return searchParams.get(scopedKey(scope, key));
+}
+
+export function migrateLegacyLedgerSearchParams(
+  searchParams: SearchParamsLike,
+  scope: LedgerFilterScope
+): URLSearchParams | null {
+  const params = createMutableSearchParams(searchParams);
+  let changed = false;
+
+  for (const key of FILTER_KEYS) {
+    const legacyValue = params.get(key);
+    if (legacyValue == null) continue;
+
+    const namespacedKey = scopedKey(scope, key);
+    if (!params.has(namespacedKey)) params.set(namespacedKey, legacyValue);
+    params.delete(key);
+    changed = true;
+  }
+
+  return changed ? params : null;
 }
 
 /** Returns a legacy-shaped view so existing period parsing can share scoped URL state. */
@@ -123,6 +157,116 @@ export interface LedgerUrlUpdate {
   maxAmount?: number | null;
   statuses?: SourceDocumentStatusType[] | null;
   search?: string | null;
+}
+
+const DETAIL_TYPES = new Set<LedgerDetailType>(["source-document", "ledger-entry"]);
+const STATS_RANGES = new Set<StatsRange>(["week", "month", "year"]);
+const STATS_VIEWS = new Set<StatsView>(["heatmap", "trend"]);
+
+export function readLedgerDetailSearchParams(
+  searchParams: Pick<URLSearchParams, "get">
+): LedgerDetailUrlState | null {
+  const detailType = searchParams.get("detailType");
+  const detailId = searchParams.get("detailId");
+  if (
+    detailId == null ||
+    detailId === "" ||
+    detailType == null ||
+    !DETAIL_TYPES.has(detailType as LedgerDetailType)
+  ) {
+    return null;
+  }
+  return { detailType: detailType as LedgerDetailType, detailId };
+}
+
+export function setLedgerDetailSearchParams(
+  current: SearchParamsLike,
+  detail: LedgerDetailUrlState | null
+): URLSearchParams {
+  const params = createMutableSearchParams(current);
+  if (detail == null) {
+    params.delete("detailType");
+    params.delete("detailId");
+  } else {
+    params.set("detailType", detail.detailType);
+    params.set("detailId", detail.detailId);
+  }
+  return params;
+}
+
+export function readStatsSearchParams(searchParams: Pick<URLSearchParams, "get">): StatsUrlState {
+  const rawRange = searchParams.get("statsRange");
+  const rawView = searchParams.get("statsView");
+  const rawOffset = searchParams.get("statsOffset");
+  const parsedOffset = rawOffset == null ? 0 : Number(rawOffset);
+
+  return {
+    range:
+      rawRange != null && STATS_RANGES.has(rawRange as StatsRange)
+        ? (rawRange as StatsRange)
+        : "month",
+    offset: Number.isInteger(parsedOffset) && parsedOffset <= 0 ? parsedOffset : 0,
+    view:
+      rawView != null && STATS_VIEWS.has(rawView as StatsView) ? (rawView as StatsView) : "heatmap",
+  };
+}
+
+export function setStatsSearchParams(
+  current: SearchParamsLike,
+  state: StatsUrlState
+): URLSearchParams {
+  const params = createMutableSearchParams(current);
+  if (state.range === "month") params.delete("statsRange");
+  else params.set("statsRange", state.range);
+  if (state.offset === 0) params.delete("statsOffset");
+  else params.set("statsOffset", String(Math.min(0, Math.trunc(state.offset))));
+  if (state.view === "heatmap") params.delete("statsView");
+  else params.set("statsView", state.view);
+  return params;
+}
+
+export function normalizeLedgerUrlSearchParams(current: SearchParamsLike): URLSearchParams | null {
+  const params = createMutableSearchParams(current);
+  const detail = readLedgerDetailSearchParams(params);
+  const stats = readStatsSearchParams(params);
+  let changed = false;
+
+  if (detail == null && (params.has("detailType") || params.has("detailId"))) {
+    params.delete("detailType");
+    params.delete("detailId");
+    changed = true;
+  }
+
+  const normalizedStats = setStatsSearchParams(params, stats);
+  if (normalizedStats.toString() !== params.toString()) {
+    changed = true;
+  }
+  return changed ? normalizedStats : null;
+}
+
+export function buildDetailsDrilldownSearchParams(
+  current: SearchParamsLike,
+  input: {
+    startDate: string;
+    endDate: string;
+    categoryId?: string | null;
+    currency?: string | null;
+  }
+): URLSearchParams {
+  const params = createMutableSearchParams(current);
+  for (const key of FILTER_KEYS) params.delete(scopedKey("details", key));
+
+  params.set("tab", "details");
+  params.set("detailsPeriod", "custom");
+  params.set("detailsStartDate", input.startDate);
+  params.set("detailsEndDate", input.endDate);
+  if (input.categoryId != null && input.categoryId !== "") {
+    params.set("detailsCategoryId", input.categoryId);
+  }
+  if (input.currency != null && input.currency !== "") {
+    params.set("detailsCurrency", input.currency);
+  }
+  return params;
 }
 
 function createMutableSearchParams(searchParams: SearchParamsLike): URLSearchParams {
@@ -185,15 +329,6 @@ export function updateLedgerSearchParams(
   scope?: LedgerFilterScope
 ): URLSearchParams {
   const params = createMutableSearchParams(searchParams);
-
-  if (scope != null) {
-    for (const key of FILTER_KEYS) {
-      const legacyValue = params.get(key);
-      const namespacedKey = scopedKey(scope, key);
-      if (legacyValue != null && !params.has(namespacedKey)) params.set(namespacedKey, legacyValue);
-      params.delete(key);
-    }
-  }
 
   const keyFor = (key: FilterKey) => (scope == null ? key : scopedKey(scope, key));
 

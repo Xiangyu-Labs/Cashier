@@ -1,6 +1,6 @@
 "use client";
 
-import type { EntryCategory, Settings } from "@/modules/ledger/contracts";
+import type { EntryCategory, SaveEntryCategoriesInput, Settings } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
 import { CurrencySection } from "../CurrencySection";
 import { CategorySection } from "../CategorySection";
@@ -14,24 +14,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { SettingsSectionActions } from "./SettingsSectionActions";
+import { useEffect, useMemo, useState } from "react";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface BookkeepingSettingsProps {
   settings: Settings;
   categories: EntryCategory[];
   uncategorizedCount: number;
   deviceTimeZone: string | null;
-  isPending: boolean;
   onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
-  onCreateCategory: (name: string) => Promise<EntryCategory>;
-  onUpdateCategory: (id: string, data: Partial<EntryCategory>) => void | Promise<unknown>;
-  onDeleteCategory: (id: string) => void | Promise<unknown>;
-  onReorderCategories: (ids: string[]) => void | Promise<unknown>;
+  onSaveCategories: (input: SaveEntryCategoriesInput) => Promise<EntryCategory[]>;
   generatingCategoryIds: Set<string>;
   failedCategoryIds: Set<string>;
   onRetryMetadata: (id: string) => void;
-  isReordering: boolean;
-  isCreating: boolean;
-  isCategoryBusy: boolean;
+  isSavingCategories: boolean;
 }
 
 export function BookkeepingSettings({
@@ -39,40 +36,87 @@ export function BookkeepingSettings({
   categories,
   uncategorizedCount,
   deviceTimeZone,
-  isPending,
   onUpdateSettings,
-  onCreateCategory,
-  onUpdateCategory,
-  onDeleteCategory,
-  onReorderCategories,
+  onSaveCategories,
   generatingCategoryIds,
   failedCategoryIds,
   onRetryMetadata,
-  isReordering,
-  isCreating,
-  isCategoryBusy,
+  isSavingCategories,
 }: BookkeepingSettingsProps) {
   const t = useTranslations("Settings");
+  const incoming = useMemo(() => normalizeBookkeepingSettings(settings), [settings]);
+  const [server, setServer] = useState(incoming);
+  const [draft, setDraft] = useState(incoming);
+  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [serverChanged, setServerChanged] = useState(false);
+  const dirty = !bookkeepingSettingsEqual(server, draft);
+
+  if (!bookkeepingSettingsEqual(server, incoming)) {
+    setServer(incoming);
+    if (dirty) {
+      setServerChanged(true);
+    } else {
+      setDraft(incoming);
+      setServerChanged(false);
+    }
+  }
+
+  useEffect(() => {
+    const key = "settings:bookkeeping";
+    useUnsavedChangesStore.getState().setDirty(key, dirty);
+    return () => useUnsavedChangesStore.getState().setDirty(key, false);
+  }, [dirty]);
+
+  const updateDraft = (patch: Partial<Settings>) => {
+    setDraft((current) => normalizeBookkeepingSettings({ ...current, ...patch }));
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    if (!draft.currencies.includes(draft.mainCurrency)) {
+      setStatus("error");
+      setError(t("mainCurrencyMustBeEnabled"));
+      return;
+    }
+
+    const patch = buildBookkeepingPatch(server, draft);
+    if (Object.keys(patch).length === 0) return;
+    setStatus("saving");
+    setError(null);
+    try {
+      await onUpdateSettings(patch);
+      setServer(draft);
+      setStatus("idle");
+      setServerChanged(false);
+    } catch {
+      setStatus("error");
+      setError(t("updateFailed"));
+    }
+  };
+
+  const handleCancel = () => {
+    setDraft(server);
+    setStatus("idle");
+    setError(null);
+    setServerChanged(false);
+  };
 
   return (
     <SettingsSection title={t("bookkeepingRules")}>
       <SettingsField title={t("collapseEntries")} description={t("collapseEntriesDesc")}>
         <Switch
           aria-label={t("collapseEntries")}
-          checked={settings.collapseEntriesDefault ?? false}
-          onCheckedChange={(checked) => {
-            onUpdateSettings({ collapseEntriesDefault: checked });
-          }}
-          disabled={isPending}
+          checked={draft.collapseEntriesDefault}
+          onCheckedChange={(checked) => updateDraft({ collapseEntriesDefault: checked })}
+          disabled={status === "saving"}
         />
       </SettingsField>
       <SettingsField title={t("timeZone")} description={t("timeZoneDesc")}>
         <Select
-          value={settings.timeZone ?? "auto"}
-          onValueChange={(value) => {
-            onUpdateSettings({ timeZone: value === "auto" ? null : value });
-          }}
-          disabled={isPending}
+          value={draft.timeZone ?? "auto"}
+          onValueChange={(value) => updateDraft({ timeZone: value === "auto" ? null : value })}
+          disabled={status === "saving"}
         >
           <SelectTrigger aria-label={t("timeZone")} className="w-full sm:w-64">
             <SelectValue />
@@ -103,21 +147,28 @@ export function BookkeepingSettings({
           </SelectContent>
         </Select>
       </SettingsField>
-      <CurrencySection settings={settings} onUpdateSettings={onUpdateSettings} />
+      <CurrencySection
+        settings={draft}
+        onUpdateSettings={updateDraft}
+        disabled={status === "saving"}
+      />
+      <SettingsSectionActions
+        dirty={dirty}
+        pending={status === "saving"}
+        error={error}
+        serverChanged={serverChanged}
+        onSave={() => void handleSave()}
+        onCancel={handleCancel}
+      />
       {categories.length > 0 ? (
         <CategorySection
           categories={categories}
           uncategorizedCount={uncategorizedCount}
-          onCreateCategory={onCreateCategory}
-          onUpdateCategory={onUpdateCategory}
-          onDeleteCategory={onDeleteCategory}
-          onReorderCategories={onReorderCategories}
+          onSaveCategories={onSaveCategories}
           generatingCategoryIds={generatingCategoryIds}
           failedCategoryIds={failedCategoryIds}
           onRetryMetadata={onRetryMetadata}
-          isReordering={isReordering}
-          isCreating={isCreating}
-          isBusy={isCategoryBusy}
+          isSaving={isSavingCategories}
         />
       ) : null}
     </SettingsSection>
@@ -125,3 +176,48 @@ export function BookkeepingSettings({
 }
 
 export type { BookkeepingSettingsProps };
+
+interface BookkeepingDraft {
+  mainCurrency: string;
+  currencies: string[];
+  collapseEntriesDefault: boolean;
+  timeZone: string | null;
+}
+
+function normalizeBookkeepingSettings(settings: Partial<Settings>): BookkeepingDraft {
+  return {
+    mainCurrency: settings.mainCurrency ?? "CNY",
+    currencies: [...(settings.currencies ?? [])],
+    collapseEntriesDefault: settings.collapseEntriesDefault ?? false,
+    timeZone: settings.timeZone ?? null,
+  };
+}
+
+function bookkeepingSettingsEqual(left: BookkeepingDraft, right: BookkeepingDraft): boolean {
+  return (
+    left.mainCurrency === right.mainCurrency &&
+    left.collapseEntriesDefault === right.collapseEntriesDefault &&
+    left.timeZone === right.timeZone &&
+    left.currencies.length === right.currencies.length &&
+    left.currencies.every((currency, index) => currency === right.currencies[index])
+  );
+}
+
+function buildBookkeepingPatch(
+  server: BookkeepingDraft,
+  draft: BookkeepingDraft
+): Partial<Settings> {
+  const patch: Partial<Settings> = {};
+  if (server.mainCurrency !== draft.mainCurrency) patch.mainCurrency = draft.mainCurrency;
+  if (server.collapseEntriesDefault !== draft.collapseEntriesDefault) {
+    patch.collapseEntriesDefault = draft.collapseEntriesDefault;
+  }
+  if (server.timeZone !== draft.timeZone) patch.timeZone = draft.timeZone;
+  if (
+    server.currencies.length !== draft.currencies.length ||
+    server.currencies.some((currency, index) => currency !== draft.currencies[index])
+  ) {
+    patch.currencies = draft.currencies;
+  }
+  return patch;
+}

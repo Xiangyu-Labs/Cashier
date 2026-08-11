@@ -71,6 +71,61 @@ describe("CalculatorInput", () => {
     expect(input.className).not.toContain("!text-base");
   });
 
+  it("commits a valid inline value on Enter and outside click", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "18.25" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(onChange).toHaveBeenLastCalledWith(18.25);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "21.50" } });
+    fireEvent.mouseDown(document.body);
+    expect(onChange).toHaveBeenLastCalledWith(21.5);
+  });
+
+  it("keeps invalid inline input open and announces an error on outside click", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } });
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("请输入有效金额。");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("restores the controlled value when inline editing is cancelled with Escape", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "99.00" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByText("12.00")).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("submits a complete calculator expression with Enter", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开计算器" }));
+    fireEvent.click(screen.getByRole("button", { name: "+" }));
+    fireEvent.click(screen.getByRole("button", { name: "3" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith(15);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
     beforeEach(() => {
       currentLocale.value = locale;

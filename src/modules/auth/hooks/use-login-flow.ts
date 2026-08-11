@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { signIn, type SignInResponse } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
+import { usePathname } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import type { SendOTPActionResult } from "@/modules/auth/server-actions/send-otp";
 import { OTP_LENGTH } from "@/modules/auth/constants";
+import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 
 type LoginStep = "email" | "otp";
 export type LoginMode = "password" | "otp";
@@ -71,29 +73,66 @@ export function useLoginFlow(
   { initialMode = "password", isDevAuthAvailable = false }: LoginFlowOptions = {}
 ) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = useLocale();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
-  const [mode, setModeState] = useState<LoginMode>(initialMode);
-  const [step, setStep] = useState<LoginStep>("email");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
+  const rawMode = searchParams.get("authMode");
+  const mode: LoginMode = rawMode === "password" || rawMode === "otp" ? rawMode : initialMode;
+  const rawStep = searchParams.get("authStep");
+  const step: LoginStep = mode === "otp" && rawStep === "otp" ? "otp" : "email";
+  const email = useLoginDraftStore((state) => state.email);
+  const password = useLoginDraftStore((state) => state.password);
+  const otp = useLoginDraftStore((state) => state.otp);
+  const resendPending = useLoginDraftStore((state) => state.resendPending);
+  const otpExpired = useLoginDraftStore((state) => state.otpExpired);
+  const expiresAt = useLoginDraftStore((state) => state.expiresAt);
+  const canResendAt = useLoginDraftStore((state) => state.canResendAt);
+  const setEmail = useLoginDraftStore((state) => state.setEmail);
+  const setPassword = useLoginDraftStore((state) => state.setPassword);
+  const setOtp = useLoginDraftStore((state) => state.setOtp);
+  const setResendPending = useLoginDraftStore((state) => state.setResendPending);
+  const setOtpExpiry = useLoginDraftStore((state) => state.setOtpExpiry);
+  const setOtpExpired = useLoginDraftStore((state) => state.setOtpExpired);
+  const resetDraft = useLoginDraftStore((state) => state.reset);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [canResendAt, setCanResendAt] = useState<number | null>(null);
+
+  const writeFlowUrl = useCallback(
+    (nextMode: LoginMode, nextStep: LoginStep, replace = false) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextMode === initialMode) params.delete("authMode");
+      else params.set("authMode", nextMode);
+      if (nextStep === "email") params.delete("authStep");
+      else params.set("authStep", nextStep);
+      const query = params.toString();
+      const url = query === "" ? pathname : `${pathname}?${query}`;
+      const state = window.history.state ?? {};
+      if (replace) window.history.replaceState(state, "", url);
+      else window.history.pushState(state, "", url);
+    },
+    [initialMode, pathname, searchParams]
+  );
+
+  useEffect(() => {
+    const invalidMode = rawMode != null && rawMode !== "password" && rawMode !== "otp";
+    const invalidStep =
+      rawStep != null &&
+      ((rawStep !== "email" && rawStep !== "otp") || (mode === "password" && rawStep === "otp"));
+    if (invalidMode || invalidStep || (mode === "password" && rawStep != null)) {
+      writeFlowUrl(mode, "email", true);
+    }
+  }, [mode, rawMode, rawStep, writeFlowUrl]);
 
   const setMode = (nextMode: LoginMode) => {
-    setModeState(nextMode);
-    setStep("email");
-    setOtp("");
-    setPassword("");
+    if (resendPending) return;
     setError(null);
+    writeFlowUrl(nextMode, "email");
   };
 
   const finishSignIn = (result: SignInResponse | undefined) => {
     if (result?.ok) {
+      resetDraft();
       router.push(callbackUrl);
       router.refresh();
       return true;
@@ -141,9 +180,8 @@ export function useLoginFlow(
         setError(getSendOTPErrorMessage(result, t, "sendCodeFailed"));
         return;
       }
-      setExpiresAt(result.expiresAt ?? null);
-      setCanResendAt(result.canResendAt ?? null);
-      setStep("otp");
+      setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
+      writeFlowUrl("otp", "otp");
     } catch {
       setError(t("unexpectedError"));
     } finally {
@@ -152,6 +190,10 @@ export function useLoginFlow(
   };
 
   const handleVerifyOTP = async () => {
+    if (otpExpired) {
+      setError(t("verifyExpired"));
+      return;
+    }
     if (otp.length !== OTP_LENGTH) {
       setError(t("invalidCode"));
       return;
@@ -167,27 +209,27 @@ export function useLoginFlow(
   };
 
   const handleResendOTP = async () => {
+    if (resendPending) return;
     setError(null);
-    setOtp("");
+    setResendPending(true);
     try {
       const result = await sendOTPAction(email, locale);
       if (!result.ok) {
         setError(getSendOTPErrorMessage(result, t, "resendFailed"));
         return;
       }
-      setExpiresAt(result.expiresAt ?? null);
-      setCanResendAt(result.canResendAt ?? null);
+      setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
     } catch {
       setError(t("resendFailed"));
+    } finally {
+      setResendPending(false);
     }
   };
 
   const handleChangeEmail = () => {
-    setStep("email");
-    setOtp("");
+    if (resendPending) return;
     setError(null);
-    setExpiresAt(null);
-    setCanResendAt(null);
+    writeFlowUrl("otp", "email");
   };
 
   const handleDevSignIn = async () => {
@@ -213,6 +255,8 @@ export function useLoginFlow(
     error,
     expiresAt,
     canResendAt,
+    resendPending,
+    otpExpired,
     isDevAuthAvailable,
     setMode,
     setEmail,
@@ -223,7 +267,10 @@ export function useLoginFlow(
     handleVerifyOTP,
     handleResendOTP,
     handleChangeEmail,
-    handleOTPExpired: () => setError(t("codeExpiredMessage")),
+    handleOTPExpired: () => {
+      setOtpExpired(true);
+      setError(t("verifyExpired"));
+    },
     handleDevSignIn,
   };
 }

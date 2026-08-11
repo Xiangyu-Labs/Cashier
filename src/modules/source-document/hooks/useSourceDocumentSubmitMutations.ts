@@ -9,6 +9,7 @@ import {
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import type {
+  CreatedRecordResult,
   CreateSourceDocumentResponseDto,
   SourceDocumentListItemDto,
   MutationReconciliation,
@@ -48,7 +49,7 @@ interface UseSourceDocumentSubmitMutationsOptions {
   mode: "create" | "retry";
   sourceDocumentId?: string;
   messages: SourceDocumentInputControllerMessages;
-  onSuccess?: () => void;
+  onSuccess?: (result: CreatedRecordResult) => void;
 }
 
 function waitForPaint(): Promise<void> {
@@ -78,14 +79,16 @@ export function useSourceDocumentSubmitMutations({
   const uploadControllerRef = useRef<AbortController | null>(null);
   useEffect(() => () => uploadControllerRef.current?.abort(), []);
   const setMonotonicProgress = (next: SourceDocumentSubmissionProgress) => {
-    setProgress((current) =>
-      current != null && current.percent > next.percent
+    setProgress((current) => {
+      if (current?.phase === "cancelling") return current;
+      return current != null && current.percent > next.percent
         ? { ...next, percent: current.percent }
-        : next
-    );
+        : next;
+    });
   };
 
   const handleSubmitError = (error: Error, fallbackMessage: string) => {
+    if (error instanceof DOMException && error.name === "AbortError") return;
     console.error("Source document submission failed:", error);
     if (error instanceof SourceDocumentSubmissionUploadError) {
       toast.error(error.stage === "prepare" ? messages.imageReadError : messages.imageUploadError);
@@ -117,7 +120,7 @@ export function useSourceDocumentSubmitMutations({
       setMonotonicProgress({ phase: "submitting", percent: 99 });
       return result;
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       setMonotonicProgress({ phase: "complete", percent: 100 });
       if (data != null) {
         const response = data as CreateSourceDocumentResponseDto &
@@ -130,15 +133,20 @@ export function useSourceDocumentSubmitMutations({
         }
       }
 
-      toast.success(messages.uploadSuccess);
       notifyRefresh();
       await waitForPaint();
-      onSuccess?.();
+      onSuccess?.({
+        sourceDocumentId: data.sourceDocumentId,
+        entryDate: variables.payload.entryDate,
+      });
     },
     onError: (error) => {
       handleSubmitError(error, messages.uploadError);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
+      if (uploadControllerRef.current?.signal === variables.signal) {
+        uploadControllerRef.current = null;
+      }
       setProgress(null);
       // Minimal invalidation for counts only (stream cache is patched)
       queryClient.invalidateQueries({
@@ -171,7 +179,7 @@ export function useSourceDocumentSubmitMutations({
       setMonotonicProgress({ phase: "submitting", percent: 99 });
       return result;
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       setMonotonicProgress({ phase: "complete", percent: 100 });
       if (data != null) {
         const response = data as Partial<{
@@ -186,12 +194,18 @@ export function useSourceDocumentSubmitMutations({
       toast.success(messages.retrySuccess);
       notifyRefresh();
       await waitForPaint();
-      onSuccess?.();
+      onSuccess?.({
+        sourceDocumentId: data.sourceDocumentId,
+        entryDate: variables.payload.entryDate,
+      });
     },
     onError: (error) => {
       handleSubmitError(error, messages.retryError);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
+      if (uploadControllerRef.current?.signal === variables.signal) {
+        uploadControllerRef.current = null;
+      }
       setProgress(null);
       queryClient.invalidateQueries({
         predicate: invalidateSourceDocumentCounts(ledgerId),
@@ -204,14 +218,26 @@ export function useSourceDocumentSubmitMutations({
   // -----------------------------------------------------------------------
 
   const activeMutation = mode === "retry" ? retryMutation : createMutation;
+  const canCancel =
+    progress?.phase === "preparing" ||
+    progress?.phase === "planning" ||
+    progress?.phase === "uploading";
 
   const submit = (payload: SourceDocumentSubmitPayload) => {
     if (mode === "retry" && sourceDocumentId == null) return false;
+    if (activeMutation.isPending || progress != null) return false;
+    uploadControllerRef.current?.abort();
+    const controller = new AbortController();
+    uploadControllerRef.current = controller;
     setProgress({ phase: "preparing", percent: 0 });
     const startMutation = () => {
-      uploadControllerRef.current?.abort();
-      const controller = new AbortController();
-      uploadControllerRef.current = controller;
+      if (controller.signal.aborted) {
+        if (uploadControllerRef.current === controller) {
+          uploadControllerRef.current = null;
+          setProgress(null);
+        }
+        return;
+      }
       if (mode === "retry") {
         if (sourceDocumentId == null) return;
         const operationId = crypto.randomUUID();
@@ -241,6 +267,13 @@ export function useSourceDocumentSubmitMutations({
     isPending: activeMutation.isPending || progress != null,
     progress,
     submit,
-    cancel: () => uploadControllerRef.current?.abort(),
+    canCancel,
+    cancel: () => {
+      if (!canCancel) return;
+      uploadControllerRef.current?.abort();
+      setProgress((current) =>
+        current == null ? null : { ...current, phase: "cancelling" as const }
+      );
+    },
   };
 }

@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { EntryFilterPanel } from "@/modules/ledger/ui/EntryFilterPanel";
 import { LedgerEntryGroupsView } from "@/modules/ledger/ui/LedgerEntryGroupsView";
 import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
 import { SourceDocumentDetailModal } from "@/modules/source-document/ui/SourceDocumentDetailModal";
@@ -29,19 +28,15 @@ interface LedgerStartupDetailsPreviewProps {
 
 export function LedgerStartupDetailsPreview({
   snapshot,
-  initialFilters,
+  initialFilters: _initialFilters,
 }: LedgerStartupDetailsPreviewProps) {
   const locale = useLocale();
   const t = useTranslations("LedgerPage");
   const tCommon = useTranslations("Common");
-  const [filters, setFilters] = useState<EntryFilters>(initialFilters);
   const [selected, setSelected] = useState<SourceDocument | null>(null);
   const mainCurrency = snapshot.mainCurrency ?? "CNY";
 
-  const matches = useMemo(
-    () => selectCachedDocuments(snapshot.items, filters),
-    [filters, snapshot.items]
-  );
+  const matches = useMemo(() => selectCachedDocuments(snapshot.items, {}), [snapshot.items]);
   const entries = useMemo(() => {
     const flattened = matches.flatMap((match) =>
       match.displayEntries.map((entry) => ({ ...entry, sourceDocument: match.document }))
@@ -71,14 +66,7 @@ export function LedgerStartupDetailsPreview({
       <EntriesToolbarShell
         totalLabel={formatCurrencyAmount(totalCachedMatches(matches), mainCurrency, locale)}
       >
-        <EntryFilterPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          categories={snapshot.categories ?? []}
-          preferredCurrencies={snapshot.preferredCurrencies ?? []}
-          showStatus={false}
-          onResetFilters={() => setFilters({})}
-        />
+        {null}
       </EntriesToolbarShell>
       {totalCachedUnconvertedMatches(matches) > 0 ? (
         <div
@@ -116,7 +104,7 @@ export function LedgerStartupDetailsPreview({
         mainCurrency={mainCurrency}
         open={selected != null}
         onClose={() => setSelected(null)}
-        onSaveChanges={async () => {}}
+        onSaveAll={async () => {}}
         onBatchUpdate={async () => undefined}
         onBatchDeleteEntries={async () => []}
         readOnly

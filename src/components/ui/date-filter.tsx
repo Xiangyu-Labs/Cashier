@@ -28,6 +28,8 @@ interface DateFilterProps {
   /** Whether to truncate overflow text with ellipsis */
   truncate?: boolean;
   disabled?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 export function DateFilter({
@@ -39,6 +41,8 @@ export function DateFilter({
   showClear = true,
   truncate = true,
   disabled = false,
+  minDate,
+  maxDate,
 }: DateFilterProps) {
   const t = useTranslations("DateFilter");
   const locale = useLocale();
@@ -64,54 +68,68 @@ export function DateFilter({
     }
   };
 
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClear = () => {
     onChange(null);
+    setOpen(false);
   };
 
   const isSmall = size === "sm";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          disabled={disabled}
-          variant="outline"
-          size={isSmall ? "sm" : "default"}
-          className={cn(
-            "justify-start text-left font-normal",
-            isSmall ? "h-8 px-2" : "h-10 px-3",
-            !dateValue && "text-muted-foreground",
-            className
-          )}
-        >
-          <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
-          <span className={cn(truncate ? "truncate" : "whitespace-nowrap", "flex-1")}>
-            {civilDateString != null
-              ? formatCivilDate(civilDateString, locale, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })
-              : (placeholder ?? t("selectDate"))}
-          </span>
-          {showClear && dateValue ? (
-            <X
-              className={cn(
-                "ml-2 opacity-50 hover:opacity-100 shrink-0 cursor-pointer",
-                isSmall ? "h-3 w-3" : "h-4 w-4"
-              )}
-              onClick={handleClear}
-            />
-          ) : (
+      <div className={cn("relative inline-flex", className)}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            disabled={disabled}
+            variant="outline"
+            size={isSmall ? "sm" : "default"}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              isSmall ? "h-8 px-2" : "h-10 px-3",
+              showClear && dateValue && (isSmall ? "pr-8" : "pr-10"),
+              !dateValue && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className={cn("mr-2 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")} />
+            <span className={cn(truncate ? "truncate" : "whitespace-nowrap", "flex-1")}>
+              {civilDateString != null
+                ? formatCivilDate(civilDateString, locale, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : (placeholder ?? t("selectDate"))}
+            </span>
             <ChevronDown
               className={cn("ml-auto opacity-50 shrink-0", isSmall ? "h-3.5 w-3.5" : "h-4 w-4")}
             />
-          )}
-        </Button>
-      </PopoverTrigger>
+          </Button>
+        </PopoverTrigger>
+        {showClear && dateValue ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={disabled}
+            aria-label={t("clear")}
+            className={cn(
+              "absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-sm opacity-60 hover:bg-accent hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              isSmall ? "size-7" : "size-8"
+            )}
+          >
+            <X className={isSmall ? "size-3" : "size-4"} />
+          </button>
+        ) : null}
+      </div>
       <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
-        <Calendar value={dateValue} onChange={handleDateChange} showShortcuts={true} />
+        <Calendar
+          value={dateValue}
+          onChange={handleDateChange}
+          onEscape={() => setOpen(false)}
+          showShortcuts
+          {...(minDate === undefined ? {} : { minDate })}
+          {...(maxDate === undefined ? {} : { maxDate })}
+        />
       </PopoverContent>
     </Popover>
   );

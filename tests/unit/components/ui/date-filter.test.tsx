@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { DateFilter } from "@/components/ui/date-filter";
 
 vi.mock("next-intl", () => ({
@@ -34,5 +34,17 @@ describe("DateFilter", () => {
     render(<DateFilter value="2026-07-28" onChange={() => {}} />);
 
     expect(screen.getByText("2026年7月28日")).toBeInTheDocument();
+  });
+
+  it("uses a real button to clear without opening the calendar", () => {
+    const onChange = vi.fn();
+    render(<DateFilter value="2026-07-28" onChange={onChange} />);
+
+    const clear = screen.getByRole("button", { name: "clear" });
+    expect(clear).toHaveAttribute("type", "button");
+    fireEvent.click(clear);
+
+    expect(onChange).toHaveBeenCalledWith(null);
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 });

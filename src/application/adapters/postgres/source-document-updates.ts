@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ConflictError } from "@/lib/errors";
+import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import type {
@@ -9,6 +9,7 @@ import type {
 } from "@/application/contracts";
 import type {
   BatchUpdateSourceDocumentsResultDto,
+  SaveSourceDocumentChangesResultDto,
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import type {
@@ -17,7 +18,11 @@ import type {
 } from "@/modules/source-document/contract-schemas";
 import { postgresFxRateBook } from "./exchange-rate";
 import { postgresLedgerProjectionAdapter } from "./ledger-projections";
+import { replaceActiveProjectionInTransaction } from "./ledger-projections";
 import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
+import type { UpdateLedgerEntryInput } from "@/modules/ledger/contract-schemas";
+import { getTargetSourceDocument } from "./read-models";
+import { listLedgerEntryViewsBySourceDocumentIds } from "./ledger-reads/list-ledger-entry-views-by-source-document-ids";
 
 function whereSourceDocumentNotDeleted(ledgerId: string) {
   return and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt))!;
@@ -37,6 +42,15 @@ interface BatchUpdateSourceDocumentsInput {
   ledgerId: string;
   sourceDocumentIds: string[];
   data: BatchUpdateSourceDocumentsPayload;
+}
+
+interface SaveSourceDocumentChangesAdapterInput {
+  ledgerId: string;
+  sourceDocumentId: string;
+  expectedRevisionId: string;
+  operationId: string;
+  sourceDocument?: UpdateSourceDocumentPayload;
+  entries: Array<{ ledgerEntryId: string; data: UpdateLedgerEntryInput }>;
 }
 
 type ProjectionEntrySnapshot = {
@@ -188,6 +202,140 @@ function toManualProjectionEntry(
     exchangeRate: round(conversion.exchangeRate, 6),
     createdAt: entry.createdAt.toISOString(),
   };
+}
+
+async function loadAuthoritativeSourceDocument(
+  ledgerId: string,
+  sourceDocumentId: string,
+  activeRevisionId: string
+): Promise<SaveSourceDocumentChangesResultDto> {
+  const [sourceDocument, entriesByDocument] = await Promise.all([
+    getTargetSourceDocument(ledgerId, sourceDocumentId),
+    listLedgerEntryViewsBySourceDocumentIds({
+      ledgerId,
+      sourceDocumentIds: [sourceDocumentId],
+      includeDuplicatePending: true,
+    }),
+  ]);
+  if (sourceDocument == null) throw new NotFoundError("Source document");
+  return {
+    activeRevisionId,
+    sourceDocument: {
+      ...sourceDocument,
+      activeRevisionId,
+      ledgerEntries: entriesByDocument.get(sourceDocumentId) ?? [],
+    },
+  };
+}
+
+export async function saveSourceDocumentChangesAtomically(
+  input: SaveSourceDocumentChangesAdapterInput
+): Promise<SaveSourceDocumentChangesResultDto> {
+  const [ledger, document, initialEntries] = await Promise.all([
+    db.query.ledgers.findFirst({
+      where: and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)),
+      columns: { mainCurrency: true },
+    }),
+    db.query.sourceDocuments.findFirst({
+      where: whereSourceDocumentNotDeletedId(input.ledgerId, input.sourceDocumentId),
+      columns: {
+        activeRevisionId: true,
+        entryDate: true,
+      },
+    }),
+    db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.ledgerId, input.ledgerId),
+        eq(ledgerEntries.sourceDocumentId, input.sourceDocumentId),
+        eq(ledgerEntries.sourceDocumentRevisionId, input.expectedRevisionId),
+        isNull(ledgerEntries.deletedAt)
+      ),
+      orderBy: (entries, { asc: orderAscending }) => [
+        orderAscending(entries.position),
+        orderAscending(entries.createdAt),
+        orderAscending(entries.id),
+      ],
+    }),
+  ]);
+  if (ledger == null || document == null) throw new NotFoundError("Source document");
+  if (document.activeRevisionId === input.operationId) {
+    return loadAuthoritativeSourceDocument(
+      input.ledgerId,
+      input.sourceDocumentId,
+      input.operationId
+    );
+  }
+  if (document.activeRevisionId !== input.expectedRevisionId) {
+    throw new ConflictError("Source document active revision changed");
+  }
+
+  const patches = new Map(input.entries.map((entry) => [entry.ledgerEntryId, entry.data]));
+  if (patches.size !== input.entries.length) {
+    throw new ConflictError("A ledger entry may only be updated once");
+  }
+  for (const entryId of patches.keys()) {
+    if (!initialEntries.some((entry) => entry.id === entryId)) {
+      throw new NotFoundError("Active ledger entry projection");
+    }
+  }
+
+  const nextEntryDate = input.sourceDocument?.entryDate ?? document.entryDate ?? undefined;
+  const nextEntries = initialEntries.map((entry) => {
+    const patch = patches.get(entry.id);
+    return {
+      id: entry.id,
+      categoryId: patch?.categoryId !== undefined ? patch.categoryId : entry.categoryId,
+      amount: patch?.amount !== undefined ? round(String(patch.amount), 2) : round(entry.amount, 2),
+      currency: patch?.currency !== undefined ? patch.currency : entry.currency,
+      itemName: patch?.itemName !== undefined ? patch.itemName : entry.itemName,
+      description: patch?.description !== undefined ? patch.description : entry.description,
+      createdAt: entry.createdAt.toISOString(),
+    };
+  });
+  const conversions = await postgresFxRateBook.convertBatch(
+    nextEntries.map((entry) => ({
+      amount: entry.amount,
+      from: normalizeCurrency(entry.currency),
+      to: ledger.mainCurrency,
+      ...(nextEntryDate == null || nextEntryDate === "" ? {} : { date: nextEntryDate }),
+    })),
+    ledger.mainCurrency
+  );
+  const projection = nextEntries.map((entry, index) => ({
+    ...entry,
+    convertedAmount: round(conversions[index]!.convertedAmount, 2),
+    exchangeRate: round(conversions[index]!.exchangeRate, 6),
+  }));
+
+  const activeRevisionId = await db.transaction(async (tx) => {
+    const lockedLedger = await lockLedgerForUpdate(tx, input.ledgerId);
+    if (lockedLedger.mainCurrency !== ledger.mainCurrency) {
+      throw new ConflictError("Ledger currency changed before the edit");
+    }
+    const lockedDocument = await lockSourceDocumentForUpdate(
+      tx,
+      input.ledgerId,
+      input.sourceDocumentId
+    );
+    if (lockedDocument.activeRevisionId === input.operationId) return input.operationId;
+    if (lockedDocument.activeRevisionId !== input.expectedRevisionId) {
+      throw new ConflictError("Source document active revision changed");
+    }
+
+    return replaceActiveProjectionInTransaction(tx, {
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.sourceDocumentId,
+      expectedActiveRevisionId: input.expectedRevisionId,
+      revisionId: input.operationId,
+      entries: projection,
+      ...(input.sourceDocument?.title === undefined ? {} : { title: input.sourceDocument.title }),
+      ...(input.sourceDocument?.entryDate === undefined
+        ? {}
+        : { entryDate: input.sourceDocument.entryDate }),
+    });
+  });
+
+  return loadAuthoritativeSourceDocument(input.ledgerId, input.sourceDocumentId, activeRevisionId);
 }
 
 async function updateNonManualDocumentWithDate(input: {

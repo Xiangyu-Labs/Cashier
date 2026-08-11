@@ -1,5 +1,5 @@
 {
-  "shared": ["Common", "Error", "LedgerError", "Metadata", "NotFound", "PullToRefresh"],
+  "shared": ["Common", "Error", "LedgerError", "Metadata", "NotFound", "ServiceWorkerUpdate"],
   "shell": [
     "Auth",
     "AuthEmail",
@@ -24,7 +24,6 @@
     "LedgerEntriesTab",
     "LedgerEntryDetail",
     "LedgerPage",
-    "PullToRefresh",
     "QuickEntryForm",
     "Settings",
     "SourceDocumentCard",
@@ -47,7 +46,6 @@
     "LedgerEntriesTab",
     "Common",
     "LedgerEntryDetail",
-    "PullToRefresh",
     "Settings",
     "SourceDocumentCard",
     "SourceDocumentDetail",
@@ -56,12 +54,5 @@
     "DuplicateReview"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
-  "settings": [
-    "CategoriesPage",
-    "Devices",
-    "LedgerError",
-    "PullToRefresh",
-    "ServiceCredentials",
-    "Settings"
-  ]
+  "settings": ["CategoriesPage", "Devices", "LedgerError", "ServiceCredentials", "Settings"]
 }

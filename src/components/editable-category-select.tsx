@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export function EditableCategorySelect({
   disabled = false,
 }: EditableCategorySelectProps) {
   const [open, setOpen] = useState(false);
+  const listboxId = useId();
   const selectedCategory = categories.find((category) => category.id === value);
 
   const handleSelect = (categoryId: string) => {
@@ -60,8 +61,13 @@ export function EditableCategorySelect({
     <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-haspopup="listbox"
           className={cn(
-            "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm",
+            "inline-flex min-h-11 items-center gap-1 rounded px-3 py-1 text-sm",
             "cursor-pointer hover:bg-surface2 transition-colors",
             "border border-transparent hover:border-border/50",
             selectedCategory ? "bg-primary/10 text-primary" : "text-muted-foreground",
@@ -80,13 +86,21 @@ export function EditableCategorySelect({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-1" align="start" sideOffset={4}>
-        <div className="max-h-[250px] overflow-y-auto subtle-scrollbar">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={placeholder}
+          className="max-h-[250px] overflow-y-auto subtle-scrollbar"
+        >
           {categories.map((category) => (
             <button
               key={category.id}
+              type="button"
+              role="option"
+              aria-selected={value === category.id}
               onClick={() => handleSelect(category.id)}
               className={cn(
-                "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                "flex min-h-11 w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
                 value === category.id ? "bg-accent text-accent-foreground" : "text-text"
               )}
             >

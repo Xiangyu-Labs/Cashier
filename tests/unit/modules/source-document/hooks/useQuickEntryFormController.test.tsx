@@ -3,14 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 
-const mutate = vi.hoisted(() => vi.fn());
+const { mutate, useLedgerMutationMock } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  useLedgerMutationMock: vi.fn(),
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
 vi.mock("@/lib/mutations/use-ledger-mutation", () => ({
-  useLedgerMutation: () => ({ mutate, isPending: false }),
+  useLedgerMutation: (...args: unknown[]) => {
+    useLedgerMutationMock(...args);
+    return { mutate, isPending: false };
+  },
 }));
 
 const categories = [
@@ -25,6 +31,7 @@ describe("useQuickEntryFormController", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-27T16:30:00.000Z"));
     mutate.mockReset();
+    useLedgerMutationMock.mockReset();
   });
 
   afterEach(() => {
@@ -104,6 +111,33 @@ describe("useQuickEntryFormController", () => {
       amount: 12.34,
       currency: "CNY",
       entryDate: "2026-07-20",
+    });
+  });
+
+  it("returns the created record ID and submitted date through onSuccess", () => {
+    const onSuccess = vi.fn();
+    renderHook(() =>
+      useQuickEntryFormController({
+        ledgerId: "ledger-1",
+        categories,
+        mainCurrency: "CNY",
+        onSuccess,
+      })
+    );
+
+    const options = useLedgerMutationMock.mock.calls[0]?.[1] as {
+      successMessage: string | null;
+      onSuccessExtra: (
+        data: { sourceDocumentId: string },
+        variables: { entryDate: string }
+      ) => void;
+    };
+    options.onSuccessExtra({ sourceDocumentId: "source-quick" }, { entryDate: "2026-07-28" });
+
+    expect(options.successMessage).toBeNull();
+    expect(onSuccess).toHaveBeenCalledWith({
+      sourceDocumentId: "source-quick",
+      entryDate: "2026-07-28",
     });
   });
 });

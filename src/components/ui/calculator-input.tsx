@@ -56,8 +56,10 @@ export function CalculatorInput({
   const ariaLabel = externalAriaLabel ?? t("amountAriaLabel");
   const [mode, setMode] = React.useState<EditMode>("display");
   const [inputValue, setInputValue] = React.useState<string>("");
+  const [inputError, setInputError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const originalInputValueRef = React.useRef("");
 
   const [calcState, setCalcState] = React.useState<CalculatorState>({
     displayValue: value === 0 ? "0" : value.toFixed(2),
@@ -74,44 +76,54 @@ export function CalculatorInput({
     }
   }, [mode]);
 
-  // Handle click outside to cancel input mode
-  React.useEffect(() => {
-    if (mode !== "input") return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setMode("display");
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [mode]);
-
-  const confirmInputValue = () => {
+  const confirmInputValue = React.useCallback((): boolean => {
     if (inlineInputMode === "minor-unit") {
       onChange(digitsToAmount(inputValue));
+      setInputError(null);
       setMode("display");
-      return;
+      return true;
     }
 
     const numValue = parseFloat(inputValue);
     if (!isNaN(numValue) && inputValue.trim() !== "") {
       onChange(parseFloat(numValue.toFixed(2)));
+      setInputError(null);
+      setMode("display");
+      return true;
     }
-    setMode("display");
-  };
+
+    setInputError(t("invalidValue"));
+    return false;
+  }, [inlineInputMode, inputValue, onChange, t]);
+
+  React.useEffect(() => {
+    if (mode !== "input") return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current?.contains(event.target as Node) === false) {
+        const didCommit = confirmInputValue();
+        if (!didCommit) {
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [confirmInputValue, mode]);
 
   const handleStartInput = () => {
-    setInputValue(
+    const nextInputValue =
       inlineInputMode === "minor-unit"
         ? value === 0
           ? ""
           : amountToMinorUnitDigits(value)
         : value === 0
           ? ""
-          : value.toFixed(2)
-    );
+          : value.toFixed(2);
+    originalInputValueRef.current = nextInputValue;
+    setInputValue(nextInputValue);
+    setInputError(null);
     setMode("input");
   };
 
@@ -127,8 +139,12 @@ export function CalculatorInput({
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
+      e.preventDefault();
       confirmInputValue();
     } else if (e.key === "Escape") {
+      e.preventDefault();
+      setInputValue(originalInputValueRef.current);
+      setInputError(null);
       setMode("display");
     }
   };
@@ -140,12 +156,14 @@ export function CalculatorInput({
         return;
       }
       setInputValue(nextDigits);
+      setInputError(null);
       return;
     }
 
     const newValue = e.target.value;
     if (newValue === "" || /^\d*\.?\d{0,2}$/.test(newValue)) {
       setInputValue(newValue);
+      setInputError(null);
     }
   };
 
@@ -277,8 +295,73 @@ export function CalculatorInput({
     const resultValue = parseFloat(calcState.displayValue);
     if (!isNaN(resultValue) && calcState.displayValue !== "Error") {
       onChange(parseFloat(resultValue.toFixed(2)));
+      setInputError(null);
+      setMode("display");
+      return;
     }
-    setMode("display");
+    setInputError(t("invalidValue"));
+  };
+
+  const handleSubmitCalculator = () => {
+    if (calcState.operator !== null) {
+      if (calcState.operand === "") {
+        setInputError(t("invalidValue"));
+        return;
+      }
+
+      const result = calculate(
+        parseFloat(calcState.displayValue),
+        calcState.operator,
+        parseFloat(calcState.operand)
+      );
+      if (result === null || !Number.isFinite(result)) {
+        setCalcState({
+          displayValue: "Error",
+          operator: null,
+          operand: "",
+          hasResult: true,
+        });
+        setInputError(t("invalidValue"));
+        return;
+      }
+
+      onChange(parseFloat(result.toFixed(2)));
+      setInputError(null);
+      setMode("display");
+      return;
+    }
+
+    handleConfirmCalculator();
+  };
+
+  const handleCalculatorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLButtonElement) return;
+
+    if (/^\d$/.test(event.key)) {
+      event.preventDefault();
+      handleNumber(event.key);
+    } else if (event.key === ".") {
+      event.preventDefault();
+      handleDecimal();
+    } else if (["+", "-", "*", "/"].includes(event.key)) {
+      event.preventDefault();
+      const operators: Record<string, Exclude<Operator, null>> = {
+        "+": "+",
+        "-": "-",
+        "*": "×",
+        "/": "÷",
+      };
+      handleOperator(operators[event.key]!);
+    } else if (event.key === "Backspace") {
+      event.preventDefault();
+      handleDelete();
+    } else if (event.key === "Delete") {
+      event.preventDefault();
+      handleClear();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      handleSubmitCalculator();
+    }
   };
 
   const getExpression = (): string => {
@@ -308,6 +391,7 @@ export function CalculatorInput({
   if (mode === "display") {
     return (
       <button
+        type="button"
         className={cn(
           "cursor-pointer hover:opacity-80 transition-opacity",
           displayClassName,
@@ -325,30 +409,40 @@ export function CalculatorInput({
   // Input mode: inline input with calculator button
   if (mode === "input") {
     return (
-      <div ref={containerRef} className="flex items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode={inlineInputMode === "minor-unit" ? "numeric" : "decimal"}
-          value={
-            inlineInputMode === "minor-unit" ? digitsToMinorUnitDisplay(inputValue) : inputValue
-          }
-          onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}
-          aria-label={ariaLabel}
-          className={cn(
-            "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none outline-none focus-visible:ring-0",
-            displayClassName
-          )}
-        />
-        <button
-          onClick={handleOpenCalculator}
-          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
-          title={t("openCalculator")}
-          aria-label={t("openCalculator")}
-        >
-          <Calculator className="h-4 w-4" />
-        </button>
+      <div ref={containerRef}>
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode={inlineInputMode === "minor-unit" ? "numeric" : "decimal"}
+            value={
+              inlineInputMode === "minor-unit" ? digitsToMinorUnitDisplay(inputValue) : inputValue
+            }
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            aria-label={ariaLabel}
+            aria-invalid={inputError !== null}
+            aria-describedby={inputError === null ? undefined : "calculator-input-error"}
+            className={cn(
+              "w-32 border-0 bg-transparent p-0 text-center font-mono shadow-none outline-none focus-visible:ring-0",
+              displayClassName
+            )}
+          />
+          <button
+            type="button"
+            onClick={handleOpenCalculator}
+            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
+            title={t("openCalculator")}
+            aria-label={t("openCalculator")}
+          >
+            <Calculator className="h-4 w-4" />
+          </button>
+        </div>
+        {inputError === null ? null : (
+          <p id="calculator-input-error" role="alert" className="mt-1 text-xs text-destructive">
+            {inputError}
+          </p>
+        )}
       </div>
     );
   }
@@ -360,6 +454,7 @@ export function CalculatorInput({
         variant="modal"
         className="w-72 max-w-[calc(100vw-2rem)] p-4 gap-0 [&>button:last-child]:hidden"
         aria-describedby={undefined}
+        onKeyDown={handleCalculatorKeyDown}
       >
         <VisuallyHidden.Root>
           <DialogTitle>{t("title")}</DialogTitle>
@@ -384,71 +479,80 @@ export function CalculatorInput({
           >
             {calcState.displayValue}
           </span>
+          {inputError === null ? null : (
+            <p role="alert" className="mt-1 text-xs text-destructive">
+              {inputError}
+            </p>
+          )}
         </div>
 
         {/* Keypad */}
         <div className="grid grid-cols-4 gap-2">
-          <button onClick={handleClear} className={functionBtn}>
+          <button type="button" onClick={handleClear} className={functionBtn}>
             AC
           </button>
-          <button onClick={handleDelete} className={cn(functionBtn, "col-span-2")}>
+          <button type="button" onClick={handleDelete} className={cn(functionBtn, "col-span-2")}>
             <Delete className="h-5 w-5 mx-auto" />
           </button>
-          <button onClick={() => handleOperator("÷")} className={operatorBtn}>
+          <button type="button" onClick={() => handleOperator("÷")} className={operatorBtn}>
             ÷
           </button>
 
-          <button onClick={() => handleNumber("7")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("7")} className={numberBtn}>
             7
           </button>
-          <button onClick={() => handleNumber("8")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("8")} className={numberBtn}>
             8
           </button>
-          <button onClick={() => handleNumber("9")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("9")} className={numberBtn}>
             9
           </button>
-          <button onClick={() => handleOperator("×")} className={operatorBtn}>
+          <button type="button" onClick={() => handleOperator("×")} className={operatorBtn}>
             ×
           </button>
 
-          <button onClick={() => handleNumber("4")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("4")} className={numberBtn}>
             4
           </button>
-          <button onClick={() => handleNumber("5")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("5")} className={numberBtn}>
             5
           </button>
-          <button onClick={() => handleNumber("6")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("6")} className={numberBtn}>
             6
           </button>
-          <button onClick={() => handleOperator("-")} className={operatorBtn}>
+          <button type="button" onClick={() => handleOperator("-")} className={operatorBtn}>
             −
           </button>
 
-          <button onClick={() => handleNumber("1")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("1")} className={numberBtn}>
             1
           </button>
-          <button onClick={() => handleNumber("2")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("2")} className={numberBtn}>
             2
           </button>
-          <button onClick={() => handleNumber("3")} className={numberBtn}>
+          <button type="button" onClick={() => handleNumber("3")} className={numberBtn}>
             3
           </button>
-          <button onClick={() => handleOperator("+")} className={operatorBtn}>
+          <button type="button" onClick={() => handleOperator("+")} className={operatorBtn}>
             +
           </button>
 
-          <button onClick={() => handleNumber("0")} className={cn(numberBtn, "col-span-2")}>
+          <button
+            type="button"
+            onClick={() => handleNumber("0")}
+            className={cn(numberBtn, "col-span-2")}
+          >
             0
           </button>
-          <button onClick={handleDecimal} className={numberBtn}>
+          <button type="button" onClick={handleDecimal} className={numberBtn}>
             .
           </button>
           {showEqualsButton ? (
-            <button onClick={handleEquals} className={confirmBtn}>
+            <button type="button" onClick={handleEquals} className={confirmBtn}>
               <Equal className="h-5 w-5 mx-auto" />
             </button>
           ) : (
-            <button onClick={handleConfirmCalculator} className={confirmBtn}>
+            <button type="button" onClick={handleConfirmCalculator} className={confirmBtn}>
               <Check className="h-5 w-5 mx-auto" />
             </button>
           )}

@@ -24,6 +24,7 @@ export function LanguageSwitcher() {
       <Globe className="h-4 w-4 text-muted-foreground" />
       <div className="flex space-x-1">
         <Button
+          type="button"
           variant={locale === "zh" ? "default" : "ghost"}
           size="sm"
           onClick={() => switchLocale("zh")}
@@ -31,6 +32,7 @@ export function LanguageSwitcher() {
           中文
         </Button>
         <Button
+          type="button"
           variant={locale === "en" ? "default" : "ghost"}
           size="sm"
           onClick={() => switchLocale("en")}

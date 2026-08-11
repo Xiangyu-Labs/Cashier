@@ -9,6 +9,7 @@ import { loadSourceDocumentInputFiles } from "./source-document-input-images";
 import type { SourceDocumentInputControllerMessages } from "./source-document-input-controller.types";
 import { useSourceDocumentInputDraft } from "./useSourceDocumentInputDraft";
 import { useSourceDocumentSubmitMutations } from "./useSourceDocumentSubmitMutations";
+import { MAX_FILES } from "@/modules/source-document/upload-policy";
 
 interface UseSourceDocumentInputControllerOptions extends SourceDocumentInputProps {
   messages: SourceDocumentInputControllerMessages;
@@ -33,12 +34,20 @@ export function useSourceDocumentInputController({
     ledgerId,
     mode,
     messages,
-    ...(onSuccess != null ? { onSuccess } : {}),
+    onSuccess: (result) => {
+      draft.resetDraft();
+      onSuccess?.(result);
+    },
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
   });
 
   const appendFiles = async (files: File[]) => {
-    const results = await loadSourceDocumentInputFiles(files);
+    const remainingCapacity = Math.max(0, MAX_FILES - draft.images.length);
+    if (files.length > remainingCapacity) {
+      toast.error(messages.tooManyImages);
+    }
+    if (remainingCapacity === 0) return;
+    const results = await loadSourceDocumentInputFiles(files.slice(0, remainingCapacity));
 
     results.forEach((result) => {
       if (result.kind === "too-large") {
@@ -56,6 +65,7 @@ export function useSourceDocumentInputController({
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
+    event.target.value = "";
     if (files == null) return;
 
     fireAndForget(appendFiles(Array.from(files)), {
@@ -97,6 +107,7 @@ export function useSourceDocumentInputController({
     fileInputRef,
     isPending: draft.isInitializing || submitMutations.isPending,
     progress: submitMutations.progress,
+    canCancelUpload: submitMutations.canCancel,
     canSubmit: draft.canSubmit,
     setText: draft.setText,
     setEntryDate: draft.setEntryDate,
@@ -107,5 +118,6 @@ export function useSourceDocumentInputController({
     handleFileInputChange,
     handleTextareaPaste,
     handleSubmit,
+    cancelUpload: submitMutations.cancel,
   };
 }

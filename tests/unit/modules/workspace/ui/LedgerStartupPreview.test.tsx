@@ -1,17 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerStartupCacheSnapshot } from "@/modules/workspace/ledger-startup-cache-store";
 
 const readSnapshot = vi.hoisted(() => vi.fn());
 const retry = vi.hoisted(() => vi.fn());
-const { toastError, toastDismiss } = vi.hoisted(() => ({
-  toastError: vi.fn(),
-  toastDismiss: vi.fn(),
-}));
-
-vi.mock("sonner", () => ({
-  toast: { error: toastError, dismiss: toastDismiss },
-}));
 
 vi.mock("@/modules/workspace/ledger-startup-cache-store", () => ({
   readLedgerStartupSnapshot: readSnapshot,
@@ -30,27 +22,15 @@ vi.mock("@/modules/workspace/ui/LedgerStartupStatsPreview", () => ({
 }));
 
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
-import {
-  PullToRefreshProvider,
-  useExternalLoadingActivity,
-} from "@/modules/workspace/pull-to-refresh-context";
-
-function ActivityState() {
-  const active = useExternalLoadingActivity();
-  return <span data-testid="external-loading">{String(active)}</span>;
-}
 
 function renderPreview(queryState: "loading" | "success" | "error", activeTab = "stream") {
   return render(
-    <PullToRefreshProvider>
-      <ActivityState />
-      <LedgerStartupPreview
-        snapshotKey="user:ledger"
-        activeTab={activeTab as "stream" | "details" | "stats" | "settings"}
-        queryState={queryState}
-        onRetry={retry}
-      />
-    </PullToRefreshProvider>
+    <LedgerStartupPreview
+      snapshotKey="user:ledger"
+      activeTab={activeTab as "stream" | "details" | "stats" | "settings"}
+      queryState={queryState}
+      onRetry={retry}
+    />
   );
 }
 
@@ -98,12 +78,13 @@ describe("LedgerStartupPreview", () => {
     retry.mockReset();
   });
 
-  it("registers external loading and shows the read-only stream preview without a banner", async () => {
+  it("shows the read-only stream preview with persistent cache status", async () => {
     readSnapshot.mockResolvedValue(snapshot());
     renderPreview("loading");
     expect(await screen.findByText("stream-preview")).toBeInTheDocument();
-    expect(screen.queryByTestId("startup-preview-latest-banner")).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("external-loading")).toHaveTextContent("true"));
+    expect(screen.getByTestId("startup-preview-latest-banner")).toBeInTheDocument();
+    expect(screen.getByText("正在加载最新数据…")).toBeInTheDocument();
+    expect(screen.getByText("只读预览")).toBeInTheDocument();
   });
 
   it("renders the skeleton on a cache miss", async () => {
@@ -128,12 +109,8 @@ describe("LedgerStartupPreview", () => {
     readSnapshot.mockResolvedValue(null);
     renderPreview("error");
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
-    const [message, options] = toastError.mock.calls[0] ?? [];
-    expect(message).toBe("最新数据加载失败。");
-    expect(options).toMatchObject({ id: "ledger-startup:user:ledger", duration: Infinity });
-    options.action.onClick();
+    expect(await screen.findByRole("alert")).toHaveTextContent("最新数据加载失败。");
+    screen.getByRole("button", { name: "重试" }).click();
     expect(retry).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("external-loading")).toHaveTextContent("false");
   });
 });

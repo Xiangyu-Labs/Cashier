@@ -53,6 +53,8 @@
     "invalidCode": "Please enter a valid 6-digit code",
     "verifyFailed": "Invalid verification code",
     "resendFailed": "Failed to resend verification code",
+    "resendInProgress": "Sending a new code…",
+    "verifyExpired": "This code has expired. Request a new one.",
     "codeExpiredMessage": "Verification code has expired. Please request a new one.",
     "errorAccessDenied": "Access Denied",
     "errorAccessDeniedDesc": "You don't have permission to sign in. Registration may be disabled.",
@@ -113,7 +115,14 @@
     "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "statusDuplicatePending": "Duplicate pending"
+    "statusDuplicatePending": "Duplicate pending",
+    "refresh": "Refresh",
+    "refreshSuccess": "Refreshed",
+    "refreshFailed": "Refresh failed. Try again.",
+    "unsavedChangesTitle": "Unsaved changes",
+    "unsavedChangesDescription": "Save or discard your changes before leaving.",
+    "saveAndContinue": "Save and continue",
+    "discardAndContinue": "Discard and continue"
   },
   "Error": {
     "title": "Application Error",
@@ -141,6 +150,8 @@
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
     "attentionCountLabel": "Documents requiring confirmation or correction",
+    "loadingLatest": "Loading latest data…",
+    "readOnlyPreview": "Read-only preview",
     "startupCacheError": "Latest data could not be loaded.",
     "retry": "Retry",
     "cachedNoRecords": "No cached records match",

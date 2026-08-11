@@ -23,13 +23,14 @@ import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import { UI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import { toast } from "sonner";
 import { clearUserCacheDataSafely } from "@/lib/client-cache";
-import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
+import { SettingsSectionActions } from "./settings/SettingsSectionActions";
+import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -60,9 +61,33 @@ export function SettingsTab({
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
   const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
-  const [languagePreference, setLanguagePreference] = useState(interfaceLanguage);
   const [deviceTimeZone, setDeviceTimeZone] = useState<string | null>(null);
-  const [languagePending, startLanguageTransition] = useTransition();
+  const [appearanceServer, setAppearanceServer] = useState({
+    theme: theme ?? "system",
+    language: interfaceLanguage,
+  });
+  const [appearanceDraft, setAppearanceDraft] = useState(appearanceServer);
+  const [appearanceStatus, setAppearanceStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [appearanceError, setAppearanceError] = useState<string | null>(null);
+  const appearanceDirty =
+    appearanceServer.theme !== appearanceDraft.theme ||
+    appearanceServer.language !== appearanceDraft.language;
+
+  const nextAppearanceServer = { theme: theme ?? "system", language: interfaceLanguage };
+  if (
+    nextAppearanceServer.theme !== appearanceServer.theme ||
+    nextAppearanceServer.language !== appearanceServer.language
+  ) {
+    const nextServer = nextAppearanceServer;
+    setAppearanceServer(nextServer);
+    if (!appearanceDirty) setAppearanceDraft(nextServer);
+  }
+
+  useEffect(() => {
+    const key = "settings:appearance";
+    useUnsavedChangesStore.getState().setDirty(key, appearanceDirty);
+    return () => useUnsavedChangesStore.getState().setDirty(key, false);
+  }, [appearanceDirty]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -84,7 +109,7 @@ export function SettingsTab({
     ]);
   };
 
-  // Use extracted hooks; the ledger updates from authoritative mutation responses.
+  // Use extracted hooks - ledger is reactive and will update with optimistic updates
   const {
     ledger: reactiveLedger,
     categories,
@@ -113,25 +138,13 @@ export function SettingsTab({
     settingsQueryStatus,
   ]);
 
-  // Use the reactive ledger for settings reconciled from authoritative responses.
+  // Use reactive ledger for settings that need optimistic updates
   const settingsLedger = reactiveLedger || ledger;
 
-  // AI Prompt input is managed directly without local state to avoid dual-source-of-truth issues
-  // The input uses the reactive ledger value directly and submits on blur
-
-  const {
-    createCategory,
-    updateCategory,
-    deleteCategory,
-    reorderCategories,
-    generatingCategoryIds,
-    failedCategoryIds,
-    retryCategoryMetadata,
-  } = useCategoryMutations(ledgerId, categories);
+  const { saveCategories, generatingCategoryIds, failedCategoryIds, retryCategoryMetadata } =
+    useCategoryMutations(ledgerId, categories);
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
-
-  useRegisterPullToRefresh(handleRefresh);
 
   // Theme key mapping for translations
   const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
@@ -144,11 +157,71 @@ export function SettingsTab({
     await signOut({ callbackUrl: "/login" });
   };
 
+  const handleSaveAppearance = async () => {
+    if (!appearanceDirty || appearanceStatus === "saving") return;
+    setAppearanceStatus("saving");
+    setAppearanceError(null);
+    try {
+      let savedLanguage = appearanceDraft.language;
+      if (appearanceDraft.language !== appearanceServer.language) {
+        const saved = await updateUserPreferencesAction({
+          interfaceLanguage: appearanceDraft.language,
+        });
+        savedLanguage = saved.interfaceLanguage;
+      }
+
+      if (appearanceDraft.theme !== appearanceServer.theme) {
+        setTheme(appearanceDraft.theme);
+      }
+
+      const savedAppearance = {
+        theme: appearanceDraft.theme,
+        language: savedLanguage,
+      };
+      setAppearanceServer(savedAppearance);
+      setAppearanceDraft(savedAppearance);
+      setAppearanceStatus("idle");
+
+      if (savedLanguage !== appearanceServer.language) {
+        const queryString = searchParams.toString();
+        const query = queryString !== "" ? `?${queryString}` : "";
+        if (savedLanguage === "auto") {
+          document.cookie =
+            "NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+          router.refresh();
+        } else {
+          document.cookie = `NEXT_LOCALE=${savedLanguage}; path=/; max-age=31536000; samesite=lax`;
+          if (savedLanguage === locale) router.refresh();
+          else router.push(`${pathname}${query}`, { locale: savedLanguage });
+        }
+      }
+    } catch {
+      setAppearanceStatus("error");
+      setAppearanceError(t("uiLanguageSaveFailed"));
+    }
+  };
+
+  const handleCancelAppearance = () => {
+    setAppearanceDraft(appearanceServer);
+    setAppearanceStatus("idle");
+    setAppearanceError(null);
+  };
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
+      <div className="flex justify-end">
+        <RefreshButton onRefresh={handleRefresh} />
+      </div>
       <SettingsSection title={t("appearanceAndLanguage")}>
         <SettingsField title={t("theme")}>
-          <Select value={theme ?? "system"} onValueChange={setTheme} disabled={isPending}>
+          <Select
+            value={appearanceDraft.theme}
+            onValueChange={(nextTheme) => {
+              setAppearanceDraft((current) => ({ ...current, theme: nextTheme }));
+              setAppearanceError(null);
+            }}
+            disabled={appearanceStatus === "saving"}
+          >
             <SelectTrigger aria-label={t("theme")} className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
@@ -163,35 +236,15 @@ export function SettingsTab({
         </SettingsField>
         <SettingsField title={t("uiLanguage")}>
           <Select
-            value={languagePreference}
+            value={appearanceDraft.language}
             onValueChange={(value) => {
-              const preference = value as InterfaceLanguage;
-              startLanguageTransition(async () => {
-                try {
-                  const saved = await updateUserPreferencesAction({
-                    interfaceLanguage: preference,
-                  });
-                  setLanguagePreference(saved.interfaceLanguage);
-                  const queryString = searchParams.toString();
-                  const query = queryString !== "" ? `?${queryString}` : "";
-                  if (saved.interfaceLanguage === "auto") {
-                    document.cookie =
-                      "NEXT_LOCALE=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
-                    window.location.assign(`${pathname}${query}`);
-                    return;
-                  }
-                  document.cookie = `NEXT_LOCALE=${saved.interfaceLanguage}; path=/; max-age=31536000; samesite=lax`;
-                  if (saved.interfaceLanguage === locale) router.refresh();
-                  else
-                    router.push(`${pathname}${query}`, {
-                      locale: saved.interfaceLanguage,
-                    });
-                } catch {
-                  toast.error(t("uiLanguageSaveFailed"));
-                }
-              });
+              setAppearanceDraft((current) => ({
+                ...current,
+                language: value as InterfaceLanguage,
+              }));
+              setAppearanceError(null);
             }}
-            disabled={isPending || languagePending}
+            disabled={appearanceStatus === "saving"}
           >
             <SelectTrigger aria-label={t("uiLanguage")} className="w-full sm:w-44">
               <SelectValue />
@@ -205,6 +258,13 @@ export function SettingsTab({
             </SelectContent>
           </Select>
         </SettingsField>
+        <SettingsSectionActions
+          dirty={appearanceDirty}
+          pending={appearanceStatus === "saving"}
+          error={appearanceError}
+          onSave={() => void handleSaveAppearance()}
+          onCancel={handleCancelAppearance}
+        />
       </SettingsSection>
 
       <BookkeepingSettings
@@ -212,28 +272,16 @@ export function SettingsTab({
         categories={categories}
         uncategorizedCount={uncategorizedCount}
         deviceTimeZone={deviceTimeZone}
-        isPending={isPending}
         onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
-        onCreateCategory={(name) => createCategory.mutateAsync({ name })}
-        onUpdateCategory={(id, data) => updateCategory.mutateAsync({ id, data })}
-        onDeleteCategory={(id) => deleteCategory.mutateAsync(id)}
-        onReorderCategories={(ids) => reorderCategories.mutateAsync(ids)}
+        onSaveCategories={(input) => saveCategories.mutateAsync(input)}
         generatingCategoryIds={generatingCategoryIds}
         failedCategoryIds={failedCategoryIds}
         onRetryMetadata={retryCategoryMetadata}
-        isReordering={reorderCategories.isPending}
-        isCreating={createCategory.isPending}
-        isCategoryBusy={
-          createCategory.isPending ||
-          updateCategory.isPending ||
-          deleteCategory.isPending ||
-          reorderCategories.isPending
-        }
+        isSavingCategories={saveCategories.isPending}
       />
 
       <AiSettings
         settings={settingsLedger.settings}
-        isPending={isPending}
         onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
       />
 

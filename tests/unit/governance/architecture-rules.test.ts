@@ -189,7 +189,10 @@ describe("findBoundaryViolations", () => {
       "src/application/contracts/index.ts: application contracts must not import persistence, database, provider SDKs, or application adapters",
     ]);
     expect(
-      findBoundaryViolations("src/application/contracts/index.ts", 'export * as utils from "./utils";')
+      findBoundaryViolations(
+        "src/application/contracts/index.ts",
+        'export * as utils from "./utils";'
+      )
     ).toEqual([]);
   });
 

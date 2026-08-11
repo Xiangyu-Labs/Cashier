@@ -3,6 +3,7 @@ import { useModalStackStore } from "@/lib/store/modal-stack";
 import { LedgerEntryDetailWrapper } from "@/modules/ledger/ui/LedgerEntryDetailWrapper";
 import { SourceDocumentDetailWrapper } from "@/modules/source-document/ui";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import { closeLedgerDetail } from "../ledger-detail-navigation";
 
 interface ModalStackRendererProps {
   categories: EntryCategory[];
@@ -10,12 +11,9 @@ interface ModalStackRendererProps {
 
 export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
   const stack = useModalStackStore((state) => state.stack);
-  const pop = useModalStackStore((state) => state.pop);
-  const closeAll = useModalStackStore((state) => state.closeAll);
   const item = stack.at(-1);
   const itemKey = item == null ? null : `${item.type}:${item.ledgerId}:${item.id}`;
   const [closingKey, setClosingKey] = useState<string | null>(null);
-  const closingActionRef = useRef<"back" | "close-all">("close-all");
   const initialTriggerRef = useRef<HTMLElement | null>(null);
   const previousLengthRef = useRef(0);
 
@@ -28,8 +26,7 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
 
   if (item == null) return null;
   const open = closingKey !== itemKey;
-  const startExit = (action: "back" | "close-all") => {
-    closingActionRef.current = action;
+  const startExit = () => {
     setClosingKey(itemKey);
   };
   const onExitComplete = () => {
@@ -38,10 +35,8 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
       setClosingKey(null);
       return;
     }
-    if (closingActionRef.current === "back") {
-      pop();
-    } else {
-      closeAll();
+    closeLedgerDetail();
+    if (stack.length === 1) {
       const trigger = initialTriggerRef.current;
       window.requestAnimationFrame(() => trigger?.focus());
       initialTriggerRef.current = null;
@@ -49,22 +44,23 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
     setClosingKey(null);
   };
 
-  // Only the top of the stack is mounted. Lower stack items are kept as plain
-  // ModalItem history and are re-mounted (and refetched through the
-  // ledger-scoped React Query cache) when the top closes with "back".
-  const sharedProps = {
-    id: item.id,
-    ledgerId: item.ledgerId,
-    open,
-    onClose: () => startExit("close-all"),
-    onExitComplete,
-    ...(stack.length > 1 ? { onBack: () => startExit("back") } : {}),
-    categories,
-  };
+  return stack.map((stackItem, index) => {
+    const key = `${stackItem.type}:${stackItem.ledgerId}:${stackItem.id}`;
+    const isTop = index === stack.length - 1;
+    const sharedProps = {
+      id: stackItem.id,
+      ledgerId: stackItem.ledgerId,
+      open: isTop && open,
+      onClose: isTop ? startExit : () => {},
+      ...(isTop && closingKey === key ? { onExitComplete } : {}),
+      ...(isTop && stack.length > 1 ? { onBack: startExit } : {}),
+      categories,
+    };
 
-  return item.type === "source-document" ? (
-    <SourceDocumentDetailWrapper key={itemKey} {...sharedProps} />
-  ) : (
-    <LedgerEntryDetailWrapper key={itemKey} {...sharedProps} />
-  );
+    return stackItem.type === "source-document" ? (
+      <SourceDocumentDetailWrapper key={key} {...sharedProps} />
+    ) : (
+      <LedgerEntryDetailWrapper key={key} {...sharedProps} />
+    );
+  });
 }

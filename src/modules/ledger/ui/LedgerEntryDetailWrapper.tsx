@@ -13,7 +13,7 @@ import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
-import { useModalStackStore } from "@/lib/store/modal-stack";
+import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
@@ -41,7 +41,6 @@ export function LedgerEntryDetailWrapper({
   categories,
 }: LedgerEntryDetailWrapperProps) {
   const tCommon = useTranslations("Common");
-  const push = useModalStackStore((state) => state.push);
 
   const {
     data: ledgerEntry,
@@ -120,7 +119,7 @@ export function LedgerEntryDetailWrapper({
       {...(sourceDocumentId != null && sourceDocumentId !== ""
         ? {
             onViewSourceDocument: () =>
-              push({
+              openLedgerDetail({
                 type: "source-document",
                 id: sourceDocumentId,
                 ledgerId,

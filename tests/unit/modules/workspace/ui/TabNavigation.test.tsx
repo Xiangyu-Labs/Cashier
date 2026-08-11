@@ -2,23 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
-import {
-  PullToRefreshProvider,
-  useRegisterExternalLoadingActivity,
-} from "@/modules/workspace/pull-to-refresh-context";
 
-function ExternalLoading() {
-  useRegisterExternalLoadingActivity();
-  return null;
-}
-
-function renderNavigation(element: React.ReactNode, loading = false) {
-  return render(
-    <PullToRefreshProvider>
-      {loading && <ExternalLoading />}
-      {element}
-    </PullToRefreshProvider>
-  );
+function renderNavigation(element: React.ReactNode) {
+  return render(element);
 }
 
 describe("TabNavigation", () => {
@@ -95,18 +81,5 @@ describe("TabNavigation", () => {
 
     addButton.focus();
     expect(onInputIntent.mock.calls.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("disables only the new-record action during external loading", async () => {
-    const user = userEvent.setup();
-    const onTabChange = vi.fn();
-    renderNavigation(
-      <TabNavigation activeTab="stream" onTabChange={onTabChange} onOpenInput={vi.fn()} />,
-      true
-    );
-
-    expect(await screen.findByRole("button", { name: /记一笔|new record/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "统计" }));
-    expect(onTabChange).toHaveBeenCalledWith("stats");
   });
 });

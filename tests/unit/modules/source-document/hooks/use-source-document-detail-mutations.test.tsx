@@ -4,15 +4,12 @@ import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 
-const {
-  batchDeleteLedgerEntriesActionMock,
-  updateLedgerEntryActionMock,
-  updateSourceDocumentActionMock,
-} = vi.hoisted(() => ({
-  batchDeleteLedgerEntriesActionMock: vi.fn(),
-  updateLedgerEntryActionMock: vi.fn(),
-  updateSourceDocumentActionMock: vi.fn(),
-}));
+const { batchDeleteLedgerEntriesActionMock, saveSourceDocumentChangesActionMock } = vi.hoisted(
+  () => ({
+    batchDeleteLedgerEntriesActionMock: vi.fn(),
+    saveSourceDocumentChangesActionMock: vi.fn(),
+  })
+);
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -23,13 +20,12 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/modules/ledger/server-actions/entries", () => ({
-  updateLedgerEntryAction: updateLedgerEntryActionMock,
   batchUpdateLedgerEntriesAction: vi.fn(),
   batchDeleteLedgerEntriesAction: batchDeleteLedgerEntriesActionMock,
 }));
 
 vi.mock("@/modules/source-document/actions", () => ({
-  updateSourceDocumentAction: updateSourceDocumentActionMock,
+  saveSourceDocumentChangesAction: saveSourceDocumentChangesActionMock,
 }));
 
 vi.mock("@/modules/source-document/hooks/useSourceDocumentRecordMutations", () => ({
@@ -65,14 +61,14 @@ describe("useSourceDocumentDetailMutations", () => {
     vi.clearAllMocks();
   });
 
-  it("writes multiple entries sequentially and runs one final refresh round", async () => {
+  it("saves document and entry changes atomically and runs one final refresh round", async () => {
     const { queryClient, wrapper } = setup();
-    const firstWrite = deferred();
-    const secondWrite = deferred();
+    const write = deferred<{
+      sourceDocument: { id: string };
+      ledgerEntries: Array<{ id: string }>;
+    }>();
     const refresh = deferred();
-    updateLedgerEntryActionMock
-      .mockImplementationOnce(() => firstWrite.promise)
-      .mockImplementationOnce(() => secondWrite.promise);
+    saveSourceDocumentChangesActionMock.mockImplementation(() => write.promise);
     const invalidate = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockImplementation(() => refresh.promise);
@@ -90,29 +86,41 @@ describe("useSourceDocumentDetailMutations", () => {
     let savePromise!: Promise<unknown>;
     act(() => {
       savePromise = result.current
-        .saveChanges({}, [
-          { id: "entry-1", data: { itemName: "First" } },
-          { id: "entry-2", data: { itemName: "Second" } },
-        ])
+        .saveChanges({
+          expectedRevisionId: "revision-1",
+          operationId: "operation-1",
+          changes: {
+            sourceDoc: { title: "Updated" },
+            entries: {
+              "entry-1": { itemName: "First" },
+              "entry-2": { itemName: "Second" },
+            },
+          },
+        })
         .finally(() => {
           settled = true;
         });
     });
 
-    await waitFor(() => expect(updateLedgerEntryActionMock).toHaveBeenCalledTimes(1));
-    expect(updateLedgerEntryActionMock).toHaveBeenNthCalledWith(1, "ledger-1", "entry-1", {
-      itemName: "First",
+    await waitFor(() => expect(saveSourceDocumentChangesActionMock).toHaveBeenCalledOnce());
+    expect(saveSourceDocumentChangesActionMock).toHaveBeenCalledWith("ledger-1", {
+      sourceDocumentId: "source-1",
+      expectedRevisionId: "revision-1",
+      operationId: "operation-1",
+      sourceDocument: { title: "Updated" },
+      entries: [
+        { ledgerEntryId: "entry-1", data: { itemName: "First" } },
+        { ledgerEntryId: "entry-2", data: { itemName: "Second" } },
+      ],
     });
     expect(invalidate).not.toHaveBeenCalled();
 
-    await act(async () => firstWrite.resolve());
-    await waitFor(() => expect(updateLedgerEntryActionMock).toHaveBeenCalledTimes(2));
-    expect(updateLedgerEntryActionMock).toHaveBeenNthCalledWith(2, "ledger-1", "entry-2", {
-      itemName: "Second",
+    await act(async () => {
+      write.resolve({
+        sourceDocument: { id: "source-1" },
+        ledgerEntries: [{ id: "entry-1" }, { id: "entry-2" }],
+      });
     });
-    expect(invalidate).not.toHaveBeenCalled();
-
-    await act(async () => secondWrite.resolve());
     await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5));
     expect(settled).toBe(false);
     for (const call of invalidate.mock.calls) {
@@ -124,7 +132,6 @@ describe("useSourceDocumentDetailMutations", () => {
       await savePromise;
     });
     expect(settled).toBe(true);
-    expect(updateSourceDocumentActionMock).not.toHaveBeenCalled();
   });
 
   it("deletes selected entries in one batch and refreshes each affected resource once", async () => {
@@ -154,7 +161,7 @@ describe("useSourceDocumentDetailMutations", () => {
       "entry-1",
       "entry-2",
     ]);
-    expect(invalidate).toHaveBeenCalledTimes(4);
+    expect(invalidate).toHaveBeenCalledTimes(5);
     for (const call of invalidate.mock.calls) {
       expect(call[1]).toEqual({ throwOnError: true });
     }

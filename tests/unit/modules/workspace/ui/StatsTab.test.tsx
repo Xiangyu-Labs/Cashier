@@ -3,9 +3,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { StatsTab } from "@/modules/workspace/ui/StatsTab";
-import { PullToRefreshProvider } from "@/modules/workspace/pull-to-refresh-context";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import type { Ledger } from "@/modules/ledger/contracts";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/i18n/routing", () => ({
+  usePathname: () => "/ledgers/ledger-1",
+}));
 
 vi.mock("@/modules/stats/actions", () => ({
   getEnhancedStats: vi.fn(),
@@ -49,9 +56,7 @@ function renderStatsTab() {
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <PullToRefreshProvider>
-        <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} />
-      </PullToRefreshProvider>
+      <StatsTab ledgerId="ledger-1" ledger={ledgerFixture} />
     </QueryClientProvider>
   );
   return queryClient;

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback } from "react";
-import { updateLedgerSearchParams } from "../ledger-url-params";
-import { replaceLedgerUrl } from "../ledger-url-navigation";
+import { buildDetailsDrilldownSearchParams } from "../ledger-url-params";
+import { pushLedgerUrl } from "../ledger-url-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchDetailsTabQuery } from "../prefetch-ledger-tabs";
 
@@ -27,48 +27,39 @@ export function useDrilldownNavigation({
   const queryClient = useQueryClient();
   const handleCategoryDrilldown = useCallback(
     (categoryId: string, startDate: string, endDate: string) => {
-      const params = updateLedgerSearchParams(
-        searchParams,
-        { tab: "details", period: "custom", startDate, endDate, categoryId },
-        "details"
-      );
+      const params = buildDetailsDrilldownSearchParams(searchParams, {
+        startDate,
+        endDate,
+        categoryId,
+      });
       void prefetchDetailsTabQuery(
         queryClient,
         ledgerId,
         { period: "custom", startDate, endDate },
         { categoryId }
       );
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "drilldown");
     },
     [ledgerId, pathname, queryClient, searchParams]
   );
 
   const handleDateDrilldown = useCallback(
     (date: string, filters?: { currency?: string | null; categoryId?: string | null }) => {
-      const existingCategoryId =
-        searchParams.get("detailsCategoryId") ?? searchParams.get("categoryId");
-      const nextCategoryId =
-        filters?.categoryId !== undefined ? filters.categoryId : (existingCategoryId ?? null);
+      const nextCategoryId = filters?.categoryId ?? null;
 
-      const params = updateLedgerSearchParams(
-        searchParams,
-        {
-          tab: "details",
-          period: "custom",
-          startDate: date,
-          endDate: date,
-          categoryId: nextCategoryId,
-          currency: filters?.currency ?? null,
-        },
-        "details"
-      );
+      const params = buildDetailsDrilldownSearchParams(searchParams, {
+        startDate: date,
+        endDate: date,
+        categoryId: nextCategoryId,
+        currency: filters?.currency ?? null,
+      });
       void prefetchDetailsTabQuery(
         queryClient,
         ledgerId,
         { period: "custom", startDate: date, endDate: date },
         { categoryId: nextCategoryId, currency: filters?.currency ?? null }
       );
-      replaceLedgerUrl(pathname, params);
+      pushLedgerUrl(pathname, params, "drilldown");
     },
     [ledgerId, pathname, queryClient, searchParams]
   );

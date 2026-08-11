@@ -19,18 +19,20 @@ import {
 
 interface CurrencySectionProps {
   settings: Settings;
-  onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
+  onUpdateSettings: (data: Partial<Settings>) => void;
+  disabled?: boolean;
 }
 
 function PreferredCurrenciesMenu({
   initialCurrencies,
   onUpdateSettings,
+  disabled = false,
 }: {
   initialCurrencies: string[];
   onUpdateSettings: CurrencySectionProps["onUpdateSettings"];
+  disabled?: boolean;
 }) {
   const t = useTranslations("Settings");
-  const [selectedCurrencies, setSelectedCurrencies] = useState(initialCurrencies);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const filteredCurrencies = SUPPORTED_CURRENCIES.filter((currency) =>
@@ -38,11 +40,10 @@ function PreferredCurrenciesMenu({
   );
 
   const toggleCurrency = (currency: string) => {
-    const newCurrencies = selectedCurrencies.includes(currency)
-      ? selectedCurrencies.filter((current) => current !== currency)
-      : [...selectedCurrencies, currency];
-    setSelectedCurrencies(newCurrencies);
-    void onUpdateSettings({ currencies: newCurrencies });
+    const newCurrencies = initialCurrencies.includes(currency)
+      ? initialCurrencies.filter((current) => current !== currency)
+      : [...initialCurrencies, currency];
+    onUpdateSettings({ currencies: newCurrencies });
   };
 
   return (
@@ -55,16 +56,18 @@ function PreferredCurrenciesMenu({
     >
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           className="w-full justify-between font-normal sm:w-64"
           aria-label={t("preferredCurrencies")}
+          disabled={disabled}
         >
           <span className="truncate">
-            {selectedCurrencies.length === 0
+            {initialCurrencies.length === 0
               ? t("preferredCurrenciesNone")
               : t("preferredCurrenciesSummary", {
-                  currencies: selectedCurrencies.slice(0, 3).join(", "),
-                  count: selectedCurrencies.length,
+                  currencies: initialCurrencies.slice(0, 3).join(", "),
+                  count: initialCurrencies.length,
                 })}
           </span>
           <ChevronDown className="text-muted-foreground" />
@@ -83,13 +86,17 @@ function PreferredCurrenciesMenu({
         </div>
         <div className="max-h-64 overflow-y-auto">
           {filteredCurrencies.map((currency) => {
-            const isSelected = selectedCurrencies.includes(currency);
+            const isSelected = initialCurrencies.includes(currency);
             return (
               <label
                 key={currency}
                 className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-surface2"
               >
-                <Checkbox checked={isSelected} onCheckedChange={() => toggleCurrency(currency)} />
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggleCurrency(currency)}
+                  disabled={disabled}
+                />
                 <span>{currency}</span>
               </label>
             );
@@ -105,7 +112,11 @@ function PreferredCurrenciesMenu({
   );
 }
 
-export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionProps) {
+export function CurrencySection({
+  settings,
+  onUpdateSettings,
+  disabled = false,
+}: CurrencySectionProps) {
   const t = useTranslations("Settings");
   const settingsCurrencies = settings.currencies ?? [];
   const mainCurrency = settings.mainCurrency ?? "CNY";
@@ -118,7 +129,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
           <h3 className="text-sm font-medium text-text">{t("mainCurrency")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("mainCurrencyDesc")}</p>
         </div>
-        <Select value={mainCurrency} onValueChange={setPendingMainCurrency}>
+        <Select value={mainCurrency} onValueChange={setPendingMainCurrency} disabled={disabled}>
           <SelectTrigger aria-label={t("mainCurrency")} className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
@@ -142,7 +153,7 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
         confirmLabel={t("mainCurrencyChangeConfirm")}
         onConfirm={async () => {
           if (pendingMainCurrency == null || pendingMainCurrency === mainCurrency) return;
-          await onUpdateSettings({ mainCurrency: pendingMainCurrency });
+          onUpdateSettings({ mainCurrency: pendingMainCurrency });
         }}
       />
 
@@ -154,9 +165,9 @@ export function CurrencySection({ settings, onUpdateSettings }: CurrencySectionP
           <p className="mt-1 text-sm text-muted-foreground">{t("preferredCurrenciesDesc")}</p>
         </div>
         <PreferredCurrenciesMenu
-          key={settingsCurrencies.join(",")}
           initialCurrencies={settingsCurrencies}
           onUpdateSettings={onUpdateSettings}
+          disabled={disabled}
         />
       </div>
     </div>

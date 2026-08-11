@@ -68,7 +68,8 @@
   "Calculator": {
     "title": "Calculator",
     "amountAriaLabel": "Amount",
-    "openCalculator": "Open calculator"
+    "openCalculator": "Open calculator",
+    "invalidValue": "Enter a valid amount."
   },
   "CandidateAction": {
     "accept": "Accept",
@@ -139,6 +140,7 @@
     "processing_timeout_desc": "Processing took too long and was stopped. Please retry."
   },
   "DetailsTab": {
+    "selectAllLoaded": "Select all {count} currently loaded records",
     "noMore": "No more items",
     "expenseSummary": "Expense Summary",
     "today": "Today",
@@ -204,6 +206,7 @@
     "noMatchingResults": "No results match these filters"
   },
   "LedgerEntriesTab": {
+    "selectAllLoaded": "Select all {count} currently loaded records",
     "retry": "Edit & Retry",
     "processing": "Processing",
     "abnormal": "Abnormal Records",
@@ -265,7 +268,14 @@
     "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "statusDuplicatePending": "Duplicate pending"
+    "statusDuplicatePending": "Duplicate pending",
+    "refresh": "Refresh",
+    "refreshSuccess": "Refreshed",
+    "refreshFailed": "Refresh failed. Try again.",
+    "unsavedChangesTitle": "Unsaved changes",
+    "unsavedChangesDescription": "Save or discard your changes before leaving.",
+    "saveAndContinue": "Save and continue",
+    "discardAndContinue": "Discard and continue"
   },
   "LedgerEntryDetail": {
     "category": "Transaction Category",
@@ -292,11 +302,6 @@
     "unsavedChanges": "Unsaved Changes",
     "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
     "discardAndClose": "Discard & Close"
-  },
-  "PullToRefresh": {
-    "pullToRefresh": "Pull to refresh",
-    "releaseToRefresh": "Release to refresh",
-    "refreshing": "Refreshing..."
   },
   "Settings": {
     "title": "Settings",
@@ -386,6 +391,10 @@
     "unsupportedCurrency": "The selected currency is not supported by the exchange-rate data.",
     "validationFailed": "The settings are invalid. Check them and try again.",
     "updateConflict": "The settings changed elsewhere. Refresh and try again.",
+    "save": "Save",
+    "saving": "(Saving...)",
+    "serverChangedWhileEditing": "Server settings changed. Saving will apply this draft to the latest version.",
+    "mainCurrencyMustBeEnabled": "The main currency must be included in preferred currencies.",
     "categoryCreated": "Category created successfully",
     "categoryUpdated": "Category updated successfully",
     "categoryDeleted": "Category deleted successfully",
@@ -394,12 +403,17 @@
     "deleteCategoryFailed": "Failed to delete category",
     "categoriesReordered": "Categories reordered successfully",
     "reorderCategoriesFailed": "Failed to reorder categories",
+    "categoriesSaved": "Categories saved",
+    "saveCategoriesFailed": "Nothing was saved. Fix the category changes and try again.",
+    "discardCategoryChangesTitle": "Discard category changes?",
+    "discardCategoryChangesDescription": "All unsaved category additions, edits, deletions, and ordering changes will be lost.",
+    "discardCategoryEditTitle": "Discard category edit?",
+    "discardCategoryEditDescription": "The changes in this category editor will be lost.",
     "credentialCreated": "Credential created",
     "credentialDeleted": "Credential deleted",
     "createFailed": "Create failed",
     "deleteFailed": "Delete failed",
     "categoryDescription": "Category Description",
-    "saving": "(Saving...)",
     "generatingMetadata": "Generating description and icon...",
     "retryMetadata": "Retry metadata",
     "categoryItemCount": "{count} {count, plural, one {item} other {items}}",
@@ -524,6 +538,7 @@
     "batchDeletePartial": "{count} entries could not be deleted and remain selected",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "saveAllError": "Failed to save changes",
+    "saveAllFailed": "Nothing was saved. Fix the issue and try again.",
     "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
     "activeResultTitle": "Active entries retained",
     "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved."

@@ -12,6 +12,8 @@ import {
   isSameMonth,
   isSameDay,
   addMonths,
+  addDays,
+  addYears,
   subMonths,
   format,
   isToday,
@@ -28,6 +30,7 @@ interface CalendarProps {
   /** 最大可选日期 */
   maxDate?: Date;
   className?: string;
+  onEscape?: () => void;
 }
 
 export function Calendar({
@@ -37,6 +40,7 @@ export function Calendar({
   minDate,
   maxDate,
   className,
+  onEscape,
 }: CalendarProps) {
   return (
     <CalendarView
@@ -47,6 +51,7 @@ export function Calendar({
       minDate={minDate}
       maxDate={maxDate}
       className={className}
+      onEscape={onEscape}
     />
   );
 }
@@ -58,6 +63,7 @@ function CalendarView({
   minDate,
   maxDate,
   className,
+  onEscape,
 }: {
   value: Date | null | undefined;
   onChange: (date: Date | null) => void;
@@ -65,9 +71,12 @@ function CalendarView({
   minDate: Date | undefined;
   maxDate: Date | undefined;
   className: string | undefined;
+  onEscape: (() => void) | undefined;
 }) {
   const t = useTranslations("Calendar");
   const [viewDate, setViewDate] = React.useState(value || new Date());
+  const [focusedDate, setFocusedDate] = React.useState(value || new Date());
+  const gridRef = React.useRef<HTMLDivElement>(null);
 
   // Generate calendar grid
   const calendarDays = React.useMemo(() => {
@@ -97,13 +106,13 @@ function CalendarView({
 
   const handleToday = () => {
     const today = new Date();
-    onChange(today);
+    if (!isDateDisabled(today)) onChange(today);
   };
 
   const handleYesterday = () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    onChange(yesterday);
+    if (!isDateDisabled(yesterday)) onChange(yesterday);
   };
 
   const handleClear = () => {
@@ -118,22 +127,94 @@ function CalendarView({
     if (maxDate && date > endOfDay(maxDate)) return true;
     return false;
   };
+  const today = new Date();
+  const yesterday = addDays(today, -1);
+
+  const moveFocus = (nextDate: Date) => {
+    setFocusedDate(nextDate);
+    if (!isSameMonth(nextDate, viewDate)) setViewDate(startOfMonth(nextDate));
+    window.requestAnimationFrame(() => {
+      gridRef.current
+        ?.querySelector<HTMLButtonElement>(
+          `[data-calendar-date="${format(nextDate, "yyyy-MM-dd")}"]`
+        )
+        ?.focus();
+    });
+  };
+
+  const handleGridKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, date: Date) => {
+    let nextDate: Date | null = null;
+    switch (event.key) {
+      case "ArrowLeft":
+        nextDate = addDays(date, -1);
+        break;
+      case "ArrowRight":
+        nextDate = addDays(date, 1);
+        break;
+      case "ArrowUp":
+        nextDate = addDays(date, -7);
+        break;
+      case "ArrowDown":
+        nextDate = addDays(date, 7);
+        break;
+      case "Home":
+        nextDate = addDays(date, -date.getDay());
+        break;
+      case "End":
+        nextDate = addDays(date, 6 - date.getDay());
+        break;
+      case "PageUp":
+        nextDate = event.shiftKey ? addYears(date, -1) : addMonths(date, -1);
+        break;
+      case "PageDown":
+        nextDate = event.shiftKey ? addYears(date, 1) : addMonths(date, 1);
+        break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        handleDateSelect(date);
+        return;
+      case "Escape":
+        event.preventDefault();
+        onEscape?.();
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    moveFocus(nextDate);
+  };
 
   return (
     <div className={cn("w-[280px] p-3", className)}>
       {/* Shortcuts */}
       {showShortcuts && (
         <div className="grid grid-cols-3 gap-1 mb-3">
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleToday}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-11 text-xs"
+            onClick={handleToday}
+            disabled={isDateDisabled(today)}
+          >
             {t("today")}
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleYesterday}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-11 text-xs"
+            onClick={handleYesterday}
+            disabled={isDateDisabled(yesterday)}
+          >
             {t("yesterday")}
           </Button>
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            className="text-xs h-7 text-muted-foreground"
+            className="min-h-11 text-xs text-muted-foreground"
             onClick={handleClear}
           >
             {t("clear")}
@@ -143,7 +224,13 @@ function CalendarView({
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-3">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrevMonth}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-11"
+          onClick={handlePrevMonth}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="font-semibold text-sm">
@@ -152,7 +239,13 @@ function CalendarView({
             month: format(viewDate, "M"),
           })}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNextMonth}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-11"
+          onClick={handleNextMonth}
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -170,7 +263,7 @@ function CalendarView({
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div ref={gridRef} role="grid" className="grid grid-cols-7 gap-0.5">
         {calendarDays.map((date) => {
           const isCurrentMonth = isSameMonth(date, viewDate);
           const isSelected = value && isSameDay(date, value);
@@ -178,25 +271,36 @@ function CalendarView({
           const disabled = isDateDisabled(date);
 
           return (
-            <button
+            <div
               key={date.toISOString()}
-              onClick={() => handleDateSelect(date)}
-              disabled={disabled}
-              className={cn(
-                "h-8 w-8 rounded-md text-sm flex items-center justify-center",
-                "transition-colors relative",
-                "hover:bg-accent",
-                !isCurrentMonth && "text-muted-foreground/40",
-                isCurrentMonth && "text-foreground",
-                isSelected && "bg-primary text-primary-foreground hover:bg-primary/90",
-                isTodayDate &&
-                  !isSelected &&
-                  "ring-1 ring-primary ring-inset text-primary font-medium",
-                disabled && "opacity-30 cursor-not-allowed hover:bg-transparent"
-              )}
+              role="gridcell"
+              aria-selected={Boolean(isSelected)}
+              aria-disabled={disabled}
             >
-              {format(date, "d")}
-            </button>
+              <button
+                type="button"
+                data-calendar-date={format(date, "yyyy-MM-dd")}
+                onClick={() => handleDateSelect(date)}
+                onKeyDown={(event) => handleGridKeyDown(event, date)}
+                disabled={disabled}
+                tabIndex={isSameDay(date, focusedDate) ? 0 : -1}
+                aria-current={isTodayDate ? "date" : undefined}
+                className={cn(
+                  "size-11 rounded-md text-sm flex items-center justify-center",
+                  "transition-colors relative",
+                  "hover:bg-accent",
+                  !isCurrentMonth && "text-muted-foreground/40",
+                  isCurrentMonth && "text-foreground",
+                  isSelected && "bg-primary text-primary-foreground hover:bg-primary/90",
+                  isTodayDate &&
+                    !isSelected &&
+                    "ring-1 ring-primary ring-inset text-primary font-medium",
+                  disabled && "opacity-30 cursor-not-allowed hover:bg-transparent"
+                )}
+              >
+                {format(date, "d")}
+              </button>
+            </div>
           );
         })}
       </div>

@@ -21,23 +21,14 @@ const category: EntryCategory = {
 };
 
 describe("CategorySection", () => {
-  it("makes create, edit, delete, and reorder controls mutually exclusive", async () => {
-    let resolveCreate!: (value: EntryCategory) => void;
-    const onCreateCategory = vi.fn(
-      () =>
-        new Promise<EntryCategory>((resolve) => {
-          resolveCreate = resolve;
-        })
-    );
-    render(
-      <CategorySection
-        categories={[category]}
-        onCreateCategory={onCreateCategory}
-        onUpdateCategory={vi.fn()}
-        onDeleteCategory={vi.fn()}
-        onReorderCategories={vi.fn()}
-      />
-    );
+  it("keeps category changes in a draft and submits them atomically", async () => {
+    const onSaveCategories = vi
+      .fn()
+      .mockResolvedValue([
+        category,
+        { ...category, id: "category-2", name: "Travel", sortOrder: 1 },
+      ]);
+    render(<CategorySection categories={[category]} onSaveCategories={onSaveCategories} />);
 
     fireEvent.click(screen.getByRole("button", { name: "manageCategories" }));
     fireEvent.change(screen.getByLabelText("newCategoryPlaceholder"), {
@@ -45,14 +36,24 @@ describe("CategorySection", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "addCategory" }));
 
-    await waitFor(() => expect(screen.getByLabelText("newCategoryPlaceholder")).toBeDisabled());
-    expect(screen.getByRole("button", { name: "editCategory" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "deleteCategory" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "cancel" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "addCategory" }));
-    expect(onCreateCategory).toHaveBeenCalledTimes(1);
-
-    resolveCreate({ ...category, id: "category-2", name: "Travel", sortOrder: 1 });
-    await waitFor(() => expect(screen.getByLabelText("newCategoryPlaceholder")).not.toBeDisabled());
+    expect(onSaveCategories).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(onSaveCategories).toHaveBeenCalledOnce());
+    expect(onSaveCategories).toHaveBeenCalledWith({
+      categories: [
+        {
+          id: "category-1",
+          name: "Meals",
+          description: null,
+          icon: null,
+        },
+        {
+          clientId: expect.any(String),
+          name: "Travel",
+          description: null,
+          icon: null,
+        },
+      ],
+    });
   });
 });

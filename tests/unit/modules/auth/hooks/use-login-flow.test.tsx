@@ -22,6 +22,7 @@ vi.mock("next-intl", () => ({
 
 vi.mock("@/i18n/routing", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
+  usePathname: () => "/login",
 }));
 
 vi.mock("@/modules/auth/actions", () => ({
@@ -29,6 +30,7 @@ vi.mock("@/modules/auth/actions", () => ({
 }));
 
 import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
+import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 
 const t = (key: string) => key;
 const submitEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
@@ -54,6 +56,8 @@ function createPasswordSubmitEvent(
 describe("useLoginFlow OTP sending", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useLoginDraftStore.getState().reset();
+    window.history.replaceState({}, "", "/login");
   });
 
   it("shows the rate-limit message and stays on the email step", async () => {
@@ -84,7 +88,7 @@ describe("useLoginFlow OTP sending", () => {
     act(() => result.current.setEmail("user@example.com"));
     await act(() => result.current.handleSendOTP(submitEvent));
 
-    expect(result.current.step).toBe("otp");
+    expect(window.location.search).toBe("?authMode=otp&authStep=otp");
     expect(result.current.expiresAt).toBe(1_800_000_000);
     expect(result.current.canResendAt).toBe(1_799_999_760);
     expect(result.current.error).toBeNull();

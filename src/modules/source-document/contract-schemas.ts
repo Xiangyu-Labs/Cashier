@@ -18,6 +18,7 @@ import {
   type PreparedInlineImage,
 } from "@/modules/source-document/api-v1-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
+import { updateLedgerEntryInputSchema } from "@/modules/ledger/contract-schemas";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -347,6 +348,36 @@ export const updateSourceDocumentInputSchema = strictObjectSchema({
   entryDate: optionalDateStringSchema,
 });
 
+export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  expectedRevisionId: uuidSchema,
+  operationId: uuidSchema,
+  sourceDocument: updateSourceDocumentInputSchema.optional(),
+  entries: z
+    .array(
+      strictObjectSchema({
+        ledgerEntryId: uuidSchema,
+        data: updateLedgerEntryInputSchema,
+      })
+    )
+    .superRefine((entries, ctx) => {
+      const ids = entries.map((entry) => entry.ledgerEntryId);
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: "custom",
+          message: "A ledger entry may only be updated once",
+        });
+      }
+    }),
+}).superRefine((input, ctx) => {
+  if (input.sourceDocument == null && input.entries.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: "At least one source document or ledger entry patch is required",
+    });
+  }
+});
+
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
   title: z.string().max(200).optional(),
@@ -410,5 +441,8 @@ export type FinalizeSourceDocumentUploadInput = z.infer<
 export type ListSourceDocumentsInput = z.input<typeof listSourceDocumentsInputSchema>;
 export type ListSourceDocumentsValidatedInput = z.infer<typeof listSourceDocumentsInputSchema>;
 export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInputSchema>;
+export type SaveSourceDocumentChangesInputContract = z.infer<
+  typeof saveSourceDocumentChangesInputSchema
+>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

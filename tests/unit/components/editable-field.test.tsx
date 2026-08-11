@@ -21,4 +21,34 @@ describe("EditableField", () => {
     expect(screen.getByText("Updated")).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("starts editing with Enter and commits a single-line field with Enter", () => {
+    const onChange = vi.fn();
+    render(<EditableField value="Initial" onChange={onChange} saveOnBlur={false} />);
+
+    fireEvent.keyDown(screen.getByRole("button"), { key: "Enter" });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Updated" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith("Updated");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("keeps textarea Enter as a newline and commits with Ctrl+Enter", () => {
+    const onChange = vi.fn();
+    render(
+      <EditableField value="Initial" onChange={onChange} type="textarea" saveOnBlur={false} />
+    );
+
+    fireEvent.keyDown(screen.getByRole("button"), { key: "F2" });
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Initial\nSecond line" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    expect(onChange).toHaveBeenCalledWith("Initial\nSecond line");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
 });

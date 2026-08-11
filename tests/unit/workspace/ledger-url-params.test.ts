@@ -3,6 +3,7 @@ import {
   buildLedgerUrl,
   parseStatusesParam,
   formatStatusesParam,
+  migrateLegacyLedgerSearchParams,
   readLedgerFilterParams,
   updateLedgerSearchParams,
 } from "@/modules/workspace/ledger-url-params";
@@ -161,13 +162,19 @@ describe("ledger-url-params", () => {
     expect(readLedgerFilterParams(details, "details").search).toBe("morning");
   });
 
-  it("reads legacy filters for the current scope and migrates them on update", () => {
+  it("does not read legacy filters until they are explicitly migrated", () => {
     const legacy = new URLSearchParams(
       "period=custom&startDate=2026-07-01&endDate=2026-07-31&categoryId=cat-1&statuses=failed"
     );
 
-    expect(readLedgerFilterParams(legacy, "stream").categoryId).toBe("cat-1");
-    const migrated = updateLedgerSearchParams(legacy, { currency: "CNY" }, "stream");
+    expect(readLedgerFilterParams(legacy, "stream").categoryId).toBeNull();
+    const migratedLegacy = migrateLegacyLedgerSearchParams(legacy, "stream");
+    expect(migratedLegacy).not.toBeNull();
+    const migrated = updateLedgerSearchParams(
+      migratedLegacy ?? legacy,
+      { currency: "CNY" },
+      "stream"
+    );
 
     expect(migrated.get("period")).toBeNull();
     expect(migrated.get("categoryId")).toBeNull();

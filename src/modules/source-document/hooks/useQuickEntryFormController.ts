@@ -12,13 +12,14 @@ import {
 } from "@/lib/query-keys";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import type { CreatedRecordResult } from "@/modules/source-document/contracts";
 
 interface UseQuickEntryFormControllerParams {
   ledgerId: string;
   categories: EntryCategory[];
   mainCurrency: string;
   timeZone?: string;
-  onSuccess?: () => void;
+  onSuccess?: (result: CreatedRecordResult) => void;
 }
 
 interface CreateQuickEntryPayload {
@@ -63,7 +64,7 @@ export function useQuickEntryFormController({
 
   const mutation = useLedgerMutation(ledgerId, {
     mutationFn: (data: CreateQuickEntryPayload) => createQuickEntryAction(ledgerId, data),
-    successMessage: t("quickEntrySuccess"),
+    successMessage: null,
     errorMessage: t("quickEntryError"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
     cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
@@ -73,7 +74,17 @@ export function useQuickEntryFormController({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: () => onSuccess?.(),
+    onSuccessExtra: (data, variables) => {
+      setSelectedCategoryId(null);
+      setAmount("");
+      setCurrencyDraft({ mainCurrency, value: mainCurrency });
+      setItemName("");
+      setEditedEntryDate(null);
+      onSuccess?.({
+        sourceDocumentId: data.sourceDocumentId,
+        entryDate: variables.entryDate,
+      });
+    },
   });
 
   const handleSubmit = () => {
@@ -89,6 +100,13 @@ export function useQuickEntryFormController({
     });
   };
 
+  const isDirty =
+    selectedCategoryId != null ||
+    amount !== "" ||
+    itemName !== "" ||
+    currency !== mainCurrency ||
+    editedEntryDate != null;
+
   return {
     selectedCategoryId,
     setSelectedCategoryId,
@@ -103,5 +121,6 @@ export function useQuickEntryFormController({
     setEntryDate,
     mutation,
     handleSubmit,
+    isDirty,
   };
 }

@@ -60,6 +60,18 @@ export type EntryCategory = EntryCategoryDto;
 export type EntryCategoryWithCountDto = EntryCategoryDto & { entryCount: number };
 export type EntryCategoryWithCount = EntryCategoryWithCountDto;
 
+export interface SaveEntryCategoryTargetDto {
+  id?: string;
+  clientId?: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+}
+
+export interface SaveEntryCategoriesInput {
+  categories: SaveEntryCategoryTargetDto[];
+}
+
 export type SourceDocumentReferenceDto = {
   id: string;
   ledgerId: string;

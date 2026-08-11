@@ -19,7 +19,6 @@ export interface SourceDocumentSubmitPayload {
 }
 
 export interface SourceDocumentInputControllerMessages {
-  uploadSuccess: string;
   uploadError: string;
   retrySuccess: string;
   retryError: string;
@@ -27,6 +26,7 @@ export interface SourceDocumentInputControllerMessages {
   imageUnsupported: (fileName: string) => string;
   imageReadError: string;
   imageUploadError: string;
+  tooManyImages: string;
 }
 
 export type SourceDocumentInputImageLoadResult =

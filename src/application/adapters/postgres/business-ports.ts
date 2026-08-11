@@ -520,6 +520,138 @@ export const postgresCategoryAdapter: CategoryPort = {
     });
   },
 
+  async saveAll(ledgerId, targets) {
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      const current = await tx
+        .select()
+        .from(entryCategories)
+        .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
+        .orderBy(entryCategories.sortOrder, entryCategories.createdAt)
+        .for("update");
+      const currentById = new Map(current.map((category) => [category.id, category]));
+      const targetIds = new Set(targets.map((target) => target.id ?? target.clientId!));
+
+      for (const target of targets) {
+        const resolvedId = target.id ?? target.clientId!;
+        const existing = currentById.get(resolvedId);
+        if (target.id != null && existing == null) {
+          throw new ValidationError("Category target contains an inaccessible category");
+        }
+        if (
+          existing != null &&
+          !existing.isEditable &&
+          (existing.name !== target.name ||
+            existing.description !== target.description ||
+            existing.icon !== target.icon ||
+            existing.sortOrder !== target.sortOrder)
+        ) {
+          throw new ValidationError("A non-editable category cannot be changed");
+        }
+      }
+
+      const removed = current.filter((category) => !targetIds.has(category.id));
+      if (removed.some((category) => !category.isEditable)) {
+        throw new ValidationError("A non-editable category cannot be deleted");
+      }
+
+      const now = new Date();
+      const removedIds = removed.map((category) => category.id);
+      if (removedIds.length > 0) {
+        await tx
+          .update(ledgerEntries)
+          .set({ categoryId: null, updatedAt: now })
+          .where(
+            and(
+              eq(ledgerEntries.ledgerId, ledgerId),
+              inArray(ledgerEntries.categoryId, removedIds),
+              isNull(ledgerEntries.deletedAt)
+            )
+          );
+        await tx
+          .update(entryCategories)
+          .set({ deletedAt: now, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.ledgerId, ledgerId),
+              inArray(entryCategories.id, removedIds),
+              isNull(entryCategories.deletedAt)
+            )
+          );
+      }
+
+      const renamedExisting = targets.filter((target) => {
+        const existing = currentById.get(target.id ?? target.clientId!);
+        return existing?.isEditable === true && existing.name !== target.name;
+      });
+      for (const target of renamedExisting) {
+        const resolvedId = target.id ?? target.clientId!;
+        await tx
+          .update(entryCategories)
+          .set({ name: `__cashier_category_${resolvedId}`, updatedAt: now })
+          .where(
+            and(
+              eq(entryCategories.ledgerId, ledgerId),
+              eq(entryCategories.id, resolvedId),
+              isNull(entryCategories.deletedAt)
+            )
+          );
+      }
+
+      for (const target of targets) {
+        const resolvedId = target.id ?? target.clientId!;
+        const existing = currentById.get(resolvedId);
+        if (existing == null) {
+          await tx.insert(entryCategories).values({
+            id: resolvedId,
+            ledgerId,
+            name: target.name,
+            description: target.description,
+            icon: target.icon,
+            sortOrder: target.sortOrder,
+            isEditable: true,
+            updatedAt: now,
+          });
+        } else if (existing.isEditable) {
+          await tx
+            .update(entryCategories)
+            .set({
+              name: target.name,
+              description: target.description,
+              icon: target.icon,
+              sortOrder: target.sortOrder,
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(entryCategories.ledgerId, ledgerId),
+                eq(entryCategories.id, resolvedId),
+                isNull(entryCategories.deletedAt)
+              )
+            );
+        }
+      }
+
+      const savedIds = targets.map((target) => target.id ?? target.clientId!);
+      if (savedIds.length === 0) return [];
+      const saved = await tx
+        .select()
+        .from(entryCategories)
+        .where(
+          and(
+            eq(entryCategories.ledgerId, ledgerId),
+            inArray(entryCategories.id, savedIds),
+            isNull(entryCategories.deletedAt)
+          )
+        );
+      const savedById = new Map(saved.map((category) => [category.id, category]));
+      if (savedById.size !== savedIds.length) {
+        throw new ConflictError("Category save changed during update");
+      }
+      return savedIds.map((id) => mapCategory(savedById.get(id)!));
+    });
+  },
+
   async countUncategorized(ledgerId) {
     const row = await db
       .select({ count: sql<number>`count(*)` })

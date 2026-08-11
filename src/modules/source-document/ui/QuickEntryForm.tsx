@@ -18,6 +18,7 @@ import type { EntryCategory } from "@/modules/ledger/contracts";
 import { DateFilter } from "@/components/ui/date-filter";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
 import { formatDateTimeForApi } from "@/lib/date-utils";
+import type { CreatedRecordResult } from "@/modules/source-document/contracts";
 
 interface QuickEntryFormProps {
   ledgerId: string;
@@ -25,8 +26,9 @@ interface QuickEntryFormProps {
   mainCurrency?: string;
   preferredCurrencies?: string[];
   timeZone?: string;
-  onSuccess?: () => void;
+  onSuccess?: (result: CreatedRecordResult) => void;
   onPendingChange?: (pending: boolean) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function QuickEntryForm({
@@ -37,6 +39,7 @@ export function QuickEntryForm({
   timeZone,
   onSuccess,
   onPendingChange,
+  onDirtyChange,
 }: QuickEntryFormProps) {
   const tCommon = useTranslations("Common");
   const t = useTranslations("QuickEntryForm");
@@ -54,6 +57,7 @@ export function QuickEntryForm({
     setEntryDate,
     mutation,
     handleSubmit,
+    isDirty,
   } = useQuickEntryFormController({
     ledgerId,
     categories,
@@ -80,6 +84,11 @@ export function QuickEntryForm({
     onPendingChange?.(isPending);
     return () => onPendingChange?.(false);
   }, [isPending, onPendingChange]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   return (
     <div className="space-y-4">
@@ -183,6 +192,7 @@ export function QuickEntryForm({
 
       {/* Submit */}
       <Button
+        type="button"
         onClick={handleSubmit}
         disabled={selectedCategoryId === null || !hasValidAmount || isPending}
         className="w-full"

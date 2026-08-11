@@ -1,6 +1,11 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { exchangeRateRecalculationJobs, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
+import {
+  exchangeRateRecalculationJobs,
+  ledgerEntries,
+  ledgers,
+  sourceDocuments,
+} from "@/persistence";
 
 export interface ClaimedExchangeRateRecalculation {
   rateDate: string;

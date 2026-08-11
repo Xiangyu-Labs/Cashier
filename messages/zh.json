@@ -81,12 +81,15 @@
     "singleBook": "你的个人账本",
     "processingCountLabel": "处理中的单据",
     "attentionCountLabel": "待确认或修正的单据",
+    "loadingLatest": "正在加载最新数据…",
+    "readOnlyPreview": "只读预览",
     "startupCacheError": "最新数据加载失败。",
     "retry": "重试",
     "cachedNoRecords": "没有符合条件的缓存单据",
     "total": "合计"
   },
   "DetailsTab": {
+    "selectAllLoaded": "选择当前已加载的 {count} 条记录",
     "expenseSummary": "支出统计",
     "today": "今天",
     "yesterday": "昨天",
@@ -211,6 +214,7 @@
     "nextPeriod": "下一周期"
   },
   "LedgerEntriesTab": {
+    "selectAllLoaded": "选择当前已加载的 {count} 条记录",
     "processing": "处理中",
     "abnormal": "异常记录",
     "select": "选择",
@@ -324,7 +328,14 @@
     "discard": "放弃",
     "readOnlyPreview": "只读预览",
     "saveAllSuccess": "已保存 {count} 处修改",
-    "statusDuplicatePending": "待确认重复"
+    "statusDuplicatePending": "待确认重复",
+    "refresh": "刷新",
+    "refreshSuccess": "已刷新",
+    "refreshFailed": "刷新失败，请重试",
+    "unsavedChangesTitle": "有未保存的更改",
+    "unsavedChangesDescription": "离开前请保存或放弃这些更改",
+    "saveAndContinue": "保存并继续",
+    "discardAndContinue": "放弃并继续"
   },
   "SourceDocumentInput": {
     "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
@@ -340,10 +351,15 @@
     "uploading": "正在上传图片",
     "finalizing": "正在确认上传",
     "submitting": "正在提交",
+    "cancelling": "正在取消上传…",
     "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。",
     "imageUnsupported": "不支持的图片格式：{fileName}。请使用 JPEG、PNG、GIF 或 WebP。",
     "imageReadError": "无法读取所选图片，请重新选择。",
-    "imageUploadError": "图片上传失败，输入内容已保留，请重试。"
+    "imageUploadError": "图片上传失败，输入内容已保留，请重试。",
+    "tooManyImages": "最多只能上传 3 张图片。",
+    "cancelUpload": "取消上传",
+    "savedMayBeHidden": "已保存，但当前筛选可能隐藏这条记录。",
+    "viewRecord": "查看新记录"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"
@@ -415,6 +431,7 @@
     "batchDeletePartial": "{count} 项删除失败，已保留选中状态",
     "saveAllSuccess": "已保存 {count} 处修改",
     "saveAllError": "保存失败",
+    "saveAllFailed": "未保存任何更改，请修正问题后重试",
     "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。",
     "activeResultTitle": "保留的当前结果",
     "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。"
@@ -530,6 +547,10 @@
     "unsupportedCurrency": "所选币种暂不受汇率数据支持",
     "validationFailed": "设置内容无效，请检查后重试",
     "updateConflict": "设置已发生变化，请刷新后重试",
+    "save": "保存",
+    "saving": "正在保存…",
+    "serverChangedWhileEditing": "服务端设置已变化，保存将把当前草稿应用到最新版本。",
+    "mainCurrencyMustBeEnabled": "主货币必须包含在偏好货币中。",
     "categoryCreated": "分类已创建",
     "categoryUpdated": "分类已更新",
     "categoryDeleted": "分类已删除",
@@ -538,6 +559,12 @@
     "deleteCategoryFailed": "删除分类失败",
     "categoriesReordered": "分类顺序已更新",
     "reorderCategoriesFailed": "更新分类顺序失败",
+    "categoriesSaved": "分类已保存",
+    "saveCategoriesFailed": "未保存任何分类更改，请修正后重试。",
+    "discardCategoryChangesTitle": "放弃分类更改？",
+    "discardCategoryChangesDescription": "尚未保存的分类新增、编辑、删除和排序都会丢失。",
+    "discardCategoryEditTitle": "放弃分类编辑？",
+    "discardCategoryEditDescription": "此分类编辑器中的更改将丢失。",
     "credentialCreated": "密钥已创建",
     "credentialDeleted": "密钥已删除",
     "createFailed": "创建失败",
@@ -634,7 +661,8 @@
   "Calculator": {
     "title": "计算器",
     "amountAriaLabel": "金额",
-    "openCalculator": "打开计算器"
+    "openCalculator": "打开计算器",
+    "invalidValue": "请输入有效金额。"
   },
   "Calendar": {
     "today": "今天",
@@ -741,6 +769,8 @@
     "invalidCode": "请输入有效的 6 位验证码",
     "verifyFailed": "验证码无效",
     "resendFailed": "重新发送验证码失败",
+    "resendInProgress": "正在发送新的验证码…",
+    "verifyExpired": "验证码已过期，请重新获取。",
     "codeExpiredMessage": "验证码已过期，请重新获取。",
     "errorAccessDenied": "访问被拒绝",
     "errorAccessDeniedDesc": "您没有权限登录，可能是注册功能已关闭。",
@@ -780,10 +810,15 @@
     "description": "加载账本数据时发生错误。这可能是由于网络问题或账本不存在导致。",
     "backToHome": "返回主页"
   },
-  "PullToRefresh": {
-    "pullToRefresh": "下拉刷新",
-    "releaseToRefresh": "释放刷新",
-    "refreshing": "刷新中..."
+  "ServiceWorkerUpdate": {
+    "title": "有新版本可用",
+    "description": "请先保存当前更改，再在合适时更新",
+    "updateNow": "立即更新",
+    "later": "稍后",
+    "dirtyBlocked": "请先保存或放弃当前更改再更新"
+  },
+  "LedgerStartupPreview": {
+    "cachedAt": "缓存于 {time}"
   },
   "CategoriesPage": {
     "title": "分类管理",

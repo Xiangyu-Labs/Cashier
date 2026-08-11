@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats } from "@/lib/query-keys";
 import {
@@ -17,8 +18,15 @@ import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
 import { DEFAULT_STATS_RANGE_TYPE } from "@/modules/workspace/initial-query-state";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
-import { useRegisterPullToRefresh } from "@/modules/workspace/pull-to-refresh-context";
 import type { TabQueryStateReport } from "./tab-query-state";
+import { usePathname } from "@/i18n/routing";
+import {
+  readStatsSearchParams,
+  setStatsSearchParams,
+  type StatsRange,
+  type StatsView,
+} from "@/modules/workspace/ledger-url-params";
+import { pushLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
 
 interface StatsTabProps {
   ledgerId?: string;
@@ -40,9 +48,12 @@ export function StatsTab({
   onQueryStateChange,
 }: StatsTabProps) {
   const locale = useLocale();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [rangeType, setRangeType] = useState<DateRangeType>(DEFAULT_STATS_RANGE_TYPE);
-  const [periodOffset, setPeriodOffset] = useState(0);
+  const statsUrlState = useMemo(() => readStatsSearchParams(searchParams), [searchParams]);
+  const rangeType: DateRangeType = statsUrlState.range ?? DEFAULT_STATS_RANGE_TYPE;
+  const periodOffset = statsUrlState.offset;
   const [todayKey, setTodayKey] = useState(
     () => getDateInTimezone(timeZone) ?? formatDateTimeForApi(initialDate ?? new Date())
   );
@@ -68,7 +79,18 @@ export function StatsTab({
     () => addPeriod(today, rangeType, periodOffset),
     [periodOffset, rangeType, today]
   );
-  const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
+  const chartView = statsUrlState.view;
+  const updateStatsUrl = useCallback(
+    (update: Partial<{ range: StatsRange; offset: number; view: StatsView }>) => {
+      const params = setStatsSearchParams(searchParams, {
+        range: update.range ?? statsUrlState.range,
+        offset: update.offset ?? statsUrlState.offset,
+        view: update.view ?? statsUrlState.view,
+      });
+      pushLedgerUrl(pathname, params, "stats");
+    },
+    [pathname, searchParams, statsUrlState]
+  );
 
   const statsDescriptor = useMemo(
     () =>
@@ -128,17 +150,14 @@ export function StatsTab({
     ]);
   }, [queryClient, ledgerId]);
 
-  useRegisterPullToRefresh(handleRefresh);
-
   return (
     <StatsContentView
       rangeType={rangeType}
       onRangeTypeChange={(type) => {
-        setRangeType(type);
-        setPeriodOffset(0);
+        updateStatsUrl({ range: type, offset: 0 });
       }}
       periodOffset={periodOffset}
-      onPeriodOffsetChange={setPeriodOffset}
+      onPeriodOffsetChange={(offset) => updateStatsUrl({ offset })}
       label={label}
       startDate={startDate}
       endDate={endDate}
@@ -148,8 +167,9 @@ export function StatsTab({
       isLoading={isLoading}
       isError={isError}
       onRetry={() => void refetch()}
+      onRefresh={handleRefresh}
       chartView={chartView}
-      onChartViewChange={setChartView}
+      onChartViewChange={(view) => updateStatsUrl({ view })}
       fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}
       {...(onCategoryDrilldown !== undefined ? { onCategoryDrilldown } : {})}
       {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}

@@ -81,12 +81,15 @@
     "singleBook": "Your personal book",
     "processingCountLabel": "Documents being processed",
     "attentionCountLabel": "Documents requiring confirmation or correction",
+    "loadingLatest": "Loading latest data…",
+    "readOnlyPreview": "Read-only preview",
     "startupCacheError": "Latest data could not be loaded.",
     "retry": "Retry",
     "cachedNoRecords": "No cached records match",
     "total": "Total"
   },
   "DetailsTab": {
+    "selectAllLoaded": "Select all {count} currently loaded records",
     "noMore": "No more items",
     "expenseSummary": "Expense Summary",
     "today": "Today",
@@ -211,6 +214,7 @@
     "nextPeriod": "Next period"
   },
   "LedgerEntriesTab": {
+    "selectAllLoaded": "Select all {count} currently loaded records",
     "retry": "Edit & Retry",
     "processing": "Processing",
     "abnormal": "Abnormal Records",
@@ -324,7 +328,14 @@
     "readOnlyPreview": "Read-only preview",
     "confirm": "Confirm",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
-    "statusDuplicatePending": "Duplicate pending"
+    "statusDuplicatePending": "Duplicate pending",
+    "refresh": "Refresh",
+    "refreshSuccess": "Refreshed",
+    "refreshFailed": "Refresh failed. Try again.",
+    "unsavedChangesTitle": "Unsaved changes",
+    "unsavedChangesDescription": "Save or discard your changes before leaving.",
+    "saveAndContinue": "Save and continue",
+    "discardAndContinue": "Discard and continue"
   },
   "SourceDocumentInput": {
     "placeholder": "Enter consumption record, e.g.: lunch 35 dollars… (supports pasting images)",
@@ -340,10 +351,15 @@
     "uploading": "Uploading images",
     "finalizing": "Finalizing upload",
     "submitting": "Submitting",
+    "cancelling": "Cancelling upload…",
     "imageTooLarge": "Image too large: {fileName}. Please use a smaller image.",
     "imageUnsupported": "Unsupported image format: {fileName}. Please use JPEG, PNG, GIF, or WebP.",
     "imageReadError": "Could not read the selected image. Please select it again.",
-    "imageUploadError": "Image upload failed. Your input has been kept; please retry."
+    "imageUploadError": "Image upload failed. Your input has been kept; please retry.",
+    "tooManyImages": "You can upload up to 3 images.",
+    "cancelUpload": "Cancel upload",
+    "savedMayBeHidden": "Saved. Current filters may hide this record.",
+    "viewRecord": "View record"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"
@@ -415,6 +431,7 @@
     "batchDeletePartial": "{count} entries could not be deleted and remain selected",
     "saveAllSuccess": "Saved {count} {count, plural, one {change} other {changes}}",
     "saveAllError": "Failed to save changes",
+    "saveAllFailed": "Nothing was saved. Fix the issue and try again.",
     "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
     "activeResultTitle": "Active entries retained",
     "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved."
@@ -530,6 +547,10 @@
     "unsupportedCurrency": "The selected currency is not supported by the exchange-rate data.",
     "validationFailed": "The settings are invalid. Check them and try again.",
     "updateConflict": "The settings changed elsewhere. Refresh and try again.",
+    "save": "Save",
+    "saving": "Saving…",
+    "serverChangedWhileEditing": "Server settings changed. Saving will apply this draft to the latest version.",
+    "mainCurrencyMustBeEnabled": "The main currency must be included in preferred currencies.",
     "categoryCreated": "Category created successfully",
     "categoryUpdated": "Category updated successfully",
     "categoryDeleted": "Category deleted successfully",
@@ -538,6 +559,12 @@
     "deleteCategoryFailed": "Failed to delete category",
     "categoriesReordered": "Categories reordered successfully",
     "reorderCategoriesFailed": "Failed to reorder categories",
+    "categoriesSaved": "Categories saved",
+    "saveCategoriesFailed": "Nothing was saved. Fix the category changes and try again.",
+    "discardCategoryChangesTitle": "Discard category changes?",
+    "discardCategoryChangesDescription": "All unsaved category additions, edits, deletions, and ordering changes will be lost.",
+    "discardCategoryEditTitle": "Discard category edit?",
+    "discardCategoryEditDescription": "The changes in this category editor will be lost.",
     "credentialCreated": "Credential created",
     "credentialDeleted": "Credential deleted",
     "createFailed": "Create failed",
@@ -634,7 +661,8 @@
   "Calculator": {
     "title": "Calculator",
     "amountAriaLabel": "Amount",
-    "openCalculator": "Open calculator"
+    "openCalculator": "Open calculator",
+    "invalidValue": "Enter a valid amount."
   },
   "Calendar": {
     "today": "Today",
@@ -741,6 +769,8 @@
     "invalidCode": "Please enter a valid 6-digit code",
     "verifyFailed": "Invalid verification code",
     "resendFailed": "Failed to resend verification code",
+    "resendInProgress": "Sending a new code…",
+    "verifyExpired": "This code has expired. Request a new one.",
     "codeExpiredMessage": "Verification code has expired. Please request a new one.",
     "errorAccessDenied": "Access Denied",
     "errorAccessDeniedDesc": "You don't have permission to sign in. Registration may be disabled.",
@@ -780,10 +810,15 @@
     "description": "An error occurred while loading the ledger data. This might be due to a network issue or the ledger no longer exists.",
     "backToHome": "Back to Home"
   },
-  "PullToRefresh": {
-    "pullToRefresh": "Pull to refresh",
-    "releaseToRefresh": "Release to refresh",
-    "refreshing": "Refreshing..."
+  "ServiceWorkerUpdate": {
+    "title": "A new version is available",
+    "description": "Save your work, then update when ready.",
+    "updateNow": "Update now",
+    "later": "Later",
+    "dirtyBlocked": "Save or discard your changes before updating."
+  },
+  "LedgerStartupPreview": {
+    "cachedAt": "Cached at {time}"
   },
   "CategoriesPage": {
     "title": "Category Management",

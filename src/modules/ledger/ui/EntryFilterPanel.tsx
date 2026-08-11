@@ -95,8 +95,6 @@ export function EntryFilterPanel({
   showCurrency = true,
   showStatus = true,
   className,
-  onApplyPreset,
-  onResetFilters,
 }: EntryFilterPanelProps) {
   const t = useTranslations("EntryFilterPanel");
   const tDateRange = useTranslations("DateRangeFilter");
@@ -227,11 +225,6 @@ export function EntryFilterPanel({
   };
 
   const handleReset = () => {
-    if (onResetFilters != null) {
-      onResetFilters();
-      setOpen(false);
-      return;
-    }
     const now = new Date();
     const defaultFilters: EntryFilters = {
       startDate: formatDateTimeForApi(new Date(now.getFullYear(), now.getMonth(), 1)),
@@ -264,13 +257,7 @@ export function EntryFilterPanel({
 
   const handlePreset = (preset: StreamStatusPreset) => {
     const presetStatuses = STREAM_STATUS_PRESET_VALUES[preset];
-    if (onApplyPreset) {
-      setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
-      setOpen(false);
-      onApplyPreset(preset);
-    } else {
-      setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
-    }
+    setTempFilters((prev) => ({ ...prev, statuses: presetStatuses }));
   };
 
   const trigger = (

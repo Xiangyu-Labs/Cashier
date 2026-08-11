@@ -17,6 +17,7 @@ import {
   updateEntryCategoryAction,
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
+  saveEntryCategoriesAction,
 } from "@/modules/ledger/server-actions/categories";
 import { generateEntryCategoryMetadataAction } from "@/modules/ledger/server-actions/category-metadata";
 import type {
@@ -24,6 +25,7 @@ import type {
   ReorderEntryCategoriesResultDto,
 } from "@/modules/ledger/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import type { SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
 
 export function useCategoryMutations(ledgerId: string, categories: EntryCategory[]) {
   const t = useTranslations("Settings");
@@ -156,11 +158,30 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     },
   });
 
+  const saveCategories = useLedgerMutation<EntryCategory[], SaveEntryCategoriesInput>(ledgerId, {
+    mutationFn: (input) => saveEntryCategoriesAction(ledgerId, input),
+    successMessage: t("categoriesSaved"),
+    errorMessage: t("saveCategoriesFailed"),
+    cancelPredicates: [invalidateEntryCategories(ledgerId)],
+    invalidatePredicates: [
+      invalidateEntryCategories(ledgerId),
+      invalidateLedgerSettingsView(ledgerId),
+      invalidateLedgerEntries(ledgerId),
+      invalidateSourceDocuments(ledgerId),
+      invalidateLedgerStats(ledgerId),
+      invalidateCalendar(ledgerId),
+    ],
+    onSuccessExtra: (saved) => {
+      queryClient.setQueryData<EntryCategory[]>(queryKeys.entryCategories(ledgerId), saved);
+    },
+  });
+
   return {
     createCategory,
     updateCategory,
     deleteCategory,
     reorderCategories,
+    saveCategories,
     generatingCategoryIds,
     failedCategoryIds,
     retryCategoryMetadata: (id: string) => generateMetadata.mutate(id),

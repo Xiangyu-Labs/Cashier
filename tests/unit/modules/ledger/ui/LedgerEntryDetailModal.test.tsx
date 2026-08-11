@@ -199,7 +199,7 @@ describe("LedgerEntryDetailModal feedback", () => {
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
-  it("clears pending changes when the entry key changes or the modal reopens", () => {
+  it("preserves pending changes while a lower detail is temporarily hidden", async () => {
     const onUpdate = vi.fn(async () => undefined);
     const { rerender } = render(
       <LedgerEntryDetailModal
@@ -236,6 +236,6 @@ describe("LedgerEntryDetailModal feedback", () => {
 
     fireEvent.click(screen.getByText("save-entry"));
 
-    expect(onUpdate).not.toHaveBeenCalled();
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith({ itemName: "Updated" }));
   });
 });

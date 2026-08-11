@@ -18,6 +18,8 @@ interface OtpStepProps {
   onResend: () => Promise<void>;
   onChangeEmail: () => void;
   onExpired: () => void;
+  resendPending: boolean;
+  otpExpired: boolean;
 }
 
 export function OtpStep({
@@ -31,6 +33,8 @@ export function OtpStep({
   onResend,
   onChangeEmail,
   onExpired,
+  resendPending,
+  otpExpired,
 }: OtpStepProps) {
   const t = useTranslations("Auth");
 
@@ -39,7 +43,7 @@ export function OtpStep({
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-text">{t("enterCode")}</label>
-          <OTPInput value={otp} onChange={onOtpChange} disabled={isLoading} />
+          <OTPInput value={otp} onChange={onOtpChange} disabled={isLoading || resendPending} />
         </div>
         <ExpiryTimer expiresAt={expiresAt} onExpired={onExpired} className="text-center" />
       </div>
@@ -49,7 +53,7 @@ export function OtpStep({
       <Button
         type="button"
         className="w-full h-11"
-        disabled={isLoading || otp.length !== OTP_LENGTH}
+        disabled={isLoading || resendPending || otpExpired || otp.length !== OTP_LENGTH}
         onClick={onVerify}
       >
         {isLoading ? (
@@ -66,14 +70,23 @@ export function OtpStep({
           type="button"
           variant="ghost"
           onClick={onChangeEmail}
-          disabled={isLoading}
+          disabled={isLoading || resendPending}
           className="text-sm"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t("changeEmail")}
         </Button>
-        <ResendCountdown canResendAt={canResendAt} onResend={onResend} disabled={isLoading} />
+        <ResendCountdown
+          canResendAt={canResendAt}
+          onResend={onResend}
+          disabled={isLoading || resendPending}
+        />
       </div>
+      {resendPending ? (
+        <p className="text-center text-sm text-muted-foreground" aria-live="polite">
+          {t("resendInProgress")}
+        </p>
+      ) : null}
       <p className="text-center text-xs text-muted-foreground">
         {t("codeExpires", { minutes: 5 })}
       </p>

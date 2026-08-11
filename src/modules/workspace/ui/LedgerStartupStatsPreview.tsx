@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   addPeriod,
   formatCivilDate,
-  formatDateTimeForApi,
+  getDateInTimezone,
   parseDateString,
   type DateRangeType,
 } from "@/lib/date-utils";
@@ -28,7 +28,10 @@ export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPrevie
   const [periodOffset, setPeriodOffset] = useState(0);
   const [chartView, setChartView] = useState<"trend" | "heatmap">("heatmap");
   const currency = snapshot.mainCurrency ?? "CNY";
-  const todayKey = formatDateTimeForApi(new Date());
+  const todayKey =
+    getDateInTimezone(snapshot.ledgerSettings?.timeZone ?? undefined) ??
+    getDateInTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone) ??
+    "1970-01-01";
   const currentDate = useMemo(
     () => addPeriod(parseDateString(todayKey), rangeType, periodOffset),
     [periodOffset, rangeType, todayKey]
@@ -81,6 +84,7 @@ export function LedgerStartupStatsPreview({ snapshot }: LedgerStartupStatsPrevie
       chartView={chartView}
       onChartViewChange={setChartView}
       fallbackCurrency={currency}
+      readOnly
     />
   );
 }

@@ -108,11 +108,9 @@ export function EditableField({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      if (e.shiftKey && type === "textarea") {
-        // Shift+Enter in textarea: allow default (new line)
+      if (type === "textarea" && !(e.metaKey || e.ctrlKey)) {
         return;
       }
-      // Enter (or Shift+Enter in non-textarea): save
       e.preventDefault();
       handleConfirm();
     } else if (e.key === "Escape") {
@@ -232,6 +230,14 @@ export function EditableField({
   return (
     <div
       onClick={handleStartEditing}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === "F2") {
+          event.preventDefault();
+          handleStartEditing();
+        }
+      }}
+      role="button"
+      tabIndex={0}
       className={cn(containerStyles, interactiveStyles, displayClassName)}
     >
       {renderDisplay ? (

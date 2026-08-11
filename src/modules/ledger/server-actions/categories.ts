@@ -9,9 +9,11 @@ import {
   parseCreateEntryCategoryInput,
   parseEntryCategoryId,
   parseReorderEntryCategoriesInput,
+  parseSaveEntryCategoriesInput,
   parseUpdateEntryCategoryInput,
   type CreateEntryCategoryInput,
   type UpdateEntryCategoryInput,
+  type SaveEntryCategoriesInput,
 } from "@/modules/ledger/contract-schemas";
 import { getUncategorizedEntryCount } from "@/modules/ledger/application/queries/get-uncategorized-entry-count";
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
@@ -20,6 +22,7 @@ import { deleteEntryCategory } from "@/modules/ledger/application/use-cases/dele
 import { reorderEntryCategories } from "@/modules/ledger/application/use-cases/reorder-entry-categories";
 import { updateEntryCategory } from "@/modules/ledger/application/use-cases/update-entry-category";
 import { serverComposition } from "@/application/server-composition-root";
+import { saveEntryCategories } from "@/modules/ledger/application/use-cases/save-entry-categories";
 
 export const createEntryCategoryAction = withLedgerAccess(
   async (ledgerId: string, data: CreateEntryCategoryInput): Promise<EntryCategoryDto> => {
@@ -71,6 +74,25 @@ export const reorderEntryCategoriesAction = withLedgerAccess(
       categoryIds: validatedIds,
       reorderedCount: validatedIds.length,
     };
+  }
+);
+
+export const saveEntryCategoriesAction = withLedgerAccess(
+  async (ledgerId: string, input: SaveEntryCategoriesInput): Promise<EntryCategoryDto[]> => {
+    const validated = parseSaveEntryCategoriesInput(input);
+    return saveEntryCategories(
+      ledgerId,
+      {
+        categories: validated.categories.map((category) => ({
+          ...(category.id === undefined ? {} : { id: category.id }),
+          ...(category.clientId === undefined ? {} : { clientId: category.clientId }),
+          name: category.name,
+          description: category.description,
+          icon: category.icon,
+        })),
+      },
+      serverComposition.categories
+    );
   }
 );
 

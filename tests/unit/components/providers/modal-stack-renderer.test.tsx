@@ -81,7 +81,7 @@ describe("ModalStackRenderer", () => {
     expect(screen.getByTestId("ledger-modal")).toHaveAttribute("data-open", "true");
   });
 
-  it("mounts only the top wrapper when the stack is deeper than one", async () => {
+  it("keeps lower wrappers mounted while only opening the top wrapper", async () => {
     render(<ModalStackRenderer categories={[]} />);
     act(() => {
       useModalStackStore
@@ -93,8 +93,9 @@ describe("ModalStackRenderer", () => {
     });
 
     const modals = screen.getAllByTestId("ledger-modal");
-    expect(modals).toHaveLength(1);
-    expect(modals[0]).toHaveAttribute("data-open", "true");
+    expect(modals).toHaveLength(2);
+    expect(modals[0]).toHaveAttribute("data-open", "false");
+    expect(modals[1]).toHaveAttribute("data-open", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "back" }));
     fireEvent.click(screen.getByRole("button", { name: "exit complete" }));

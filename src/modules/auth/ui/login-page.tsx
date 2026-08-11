@@ -38,6 +38,7 @@ export function AuthLoginPage({
                 type="button"
                 role="tab"
                 aria-selected={passwordMode}
+                disabled={flow.resendPending}
                 onClick={() => flow.setMode("password")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}
               >
@@ -47,6 +48,7 @@ export function AuthLoginPage({
                 type="button"
                 role="tab"
                 aria-selected={!passwordMode}
+                disabled={flow.resendPending}
                 onClick={() => flow.setMode("otp")}
                 className={`flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${!passwordMode ? "bg-surface text-text shadow-sm" : "text-muted-foreground hover:text-text"}`}
               >
@@ -98,6 +100,8 @@ export function AuthLoginPage({
               error={flow.error}
               expiresAt={flow.expiresAt}
               canResendAt={flow.canResendAt}
+              resendPending={flow.resendPending}
+              otpExpired={flow.otpExpired}
               onOtpChange={flow.setOtp}
               onVerify={flow.handleVerifyOTP}
               onResend={flow.handleResendOTP}

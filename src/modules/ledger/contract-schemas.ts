@@ -84,6 +84,32 @@ export const updateEntryCategoryInputSchema = nonEmptyStrictObjectSchema({
 });
 
 export const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
+export const saveEntryCategoriesInputSchema = strictObjectSchema({
+  categories: z
+    .array(
+      strictObjectSchema({
+        id: uuidSchema.optional(),
+        clientId: uuidSchema.optional(),
+        name: z.string().trim().min(1).max(100),
+        description: z.string().max(500).nullable(),
+        icon: z.string().max(100).nullable(),
+      }).superRefine((category, context) => {
+        if ((category.id == null) === (category.clientId == null)) {
+          context.addIssue({
+            code: "custom",
+            message: "Exactly one of id or clientId is required",
+          });
+        }
+      })
+    )
+    .max(MAX_BATCH_SIZE)
+    .superRefine((categories, context) => {
+      const ids = categories.map((category) => category.id ?? category.clientId!);
+      if (new Set(ids).size !== ids.length) {
+        context.addIssue({ code: "custom", message: "Category IDs must be unique" });
+      }
+    }),
+});
 export const ledgerEntryIdSchema = uuidSchema;
 export const ledgerEntryIdsSchema = z.preprocess(
   (value) => (Array.isArray(value) ? [...new Set(value)] : value),
@@ -163,6 +189,8 @@ export const parseUpdateEntryCategoryInput = (input: unknown) =>
   parseLedgerContract(updateEntryCategoryInputSchema, input);
 export const parseReorderEntryCategoriesInput = (input: unknown) =>
   parseLedgerContract(reorderEntryCategoriesInputSchema, input);
+export const parseSaveEntryCategoriesInput = (input: unknown) =>
+  parseLedgerContract(saveEntryCategoriesInputSchema, input);
 export const parseEntryCategoryId = (input: unknown) =>
   parseLedgerContract(entryCategoryIdSchema, input);
 export const parseCreateLedgerEntryInput = (input: unknown) =>
@@ -188,6 +216,7 @@ export type CreateLedgerInput = z.infer<typeof createLedgerInputSchema>;
 export type UpdateLedgerInput = z.infer<typeof updateLedgerInputSchema>;
 export type CreateEntryCategoryInput = z.infer<typeof createEntryCategoryInputSchema>;
 export type UpdateEntryCategoryInput = z.infer<typeof updateEntryCategoryInputSchema>;
+export type SaveEntryCategoriesInput = z.infer<typeof saveEntryCategoriesInputSchema>;
 export type CreateLedgerEntryInput = z.infer<typeof createLedgerEntryInputSchema>;
 export type UpdateLedgerEntryInput = z.infer<typeof updateLedgerEntryInputSchema>;
 export type BatchUpdateLedgerEntriesInput = z.infer<typeof batchUpdateLedgerEntriesInputSchema>;

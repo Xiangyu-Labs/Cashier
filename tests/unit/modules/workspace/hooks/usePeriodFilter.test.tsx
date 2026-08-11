@@ -12,7 +12,7 @@ describe("usePeriodFilter", () => {
   }
 
   it("reads statuses from search params", () => {
-    const searchParams = createSearchParams("statuses=processing,failed");
+    const searchParams = createSearchParams("streamStatuses=processing,failed");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -25,7 +25,7 @@ describe("usePeriodFilter", () => {
   });
 
   it("returns empty statuses when no statuses param is present", () => {
-    const searchParams = createSearchParams("period=thisMonth");
+    const searchParams = createSearchParams("streamPeriod=thisMonth");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -38,7 +38,7 @@ describe("usePeriodFilter", () => {
   });
 
   it("includes statuses in filters built from URL state", () => {
-    const searchParams = createSearchParams("statuses=anomaly,failed");
+    const searchParams = createSearchParams("streamStatuses=anomaly,failed");
     const { result } = renderHook(() =>
       usePeriodFilter({
         pathname: "/ledger/test",
@@ -52,8 +52,8 @@ describe("usePeriodFilter", () => {
 
   describe("applyStreamStatusPreset", () => {
     it("applies needs_attention preset: clears period/date/amount, sets statuses, switches to stream", () => {
-      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
-      const searchParams = createSearchParams("period=thisMonth&minAmount=10");
+      const pushState = vi.spyOn(window.history, "pushState").mockImplementation(() => {});
+      const searchParams = createSearchParams("streamPeriod=thisMonth&streamMinAmount=10");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: "/ledger/test",
@@ -66,8 +66,8 @@ describe("usePeriodFilter", () => {
         result.current.applyStreamStatusPreset("needs_attention");
       });
 
-      expect(replaceState).toHaveBeenCalledTimes(1);
-      const urlStr = replaceState.mock.calls[0]![2] as string;
+      expect(pushState).toHaveBeenCalledTimes(1);
+      const urlStr = pushState.mock.calls[0]![2] as string;
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
@@ -84,9 +84,9 @@ describe("usePeriodFilter", () => {
     });
 
     it("applies in_progress preset: clears period/date/amount, sets statuses, switches to stream", () => {
-      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+      const pushState = vi.spyOn(window.history, "pushState").mockImplementation(() => {});
       const searchParams = createSearchParams(
-        "period=custom&startDate=2024-01-01&endDate=2024-01-31&maxAmount=500"
+        "streamPeriod=custom&streamStartDate=2024-01-01&streamEndDate=2024-01-31&streamMaxAmount=500"
       );
       const { result } = renderHook(() =>
         usePeriodFilter({
@@ -100,7 +100,7 @@ describe("usePeriodFilter", () => {
         result.current.applyStreamStatusPreset("in_progress");
       });
 
-      const urlStr = replaceState.mock.calls[0]![2] as string;
+      const urlStr = pushState.mock.calls[0]![2] as string;
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
@@ -114,8 +114,8 @@ describe("usePeriodFilter", () => {
     });
 
     it("replaces existing statuses with preset statuses", () => {
-      const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
-      const searchParams = createSearchParams("statuses=completed");
+      const pushState = vi.spyOn(window.history, "pushState").mockImplementation(() => {});
+      const searchParams = createSearchParams("streamStatuses=completed");
       const { result } = renderHook(() =>
         usePeriodFilter({
           pathname: "/ledger/test",
@@ -128,7 +128,7 @@ describe("usePeriodFilter", () => {
         result.current.applyStreamStatusPreset("in_progress");
       });
 
-      const urlStr = replaceState.mock.calls[0]![2] as string;
+      const urlStr = pushState.mock.calls[0]![2] as string;
       const url = new URL(urlStr, "http://localhost");
       const params = url.searchParams;
 
