@@ -1,5 +1,4 @@
 {
-  "shared": ["Common", "Error", "LedgerError", "Metadata", "NotFound", "ServiceWorkerUpdate"],
   "shell": [
     "Auth",
     "AuthEmail",
@@ -8,7 +7,8 @@
     "LedgerError",
     "LedgerPage",
     "Metadata",
-    "NotFound"
+    "NotFound",
+    "ServiceWorkerUpdate"
   ],
   "stream": [
     "AnomalyCode",

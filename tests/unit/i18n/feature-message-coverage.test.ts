@@ -42,6 +42,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "LedgerPage",
     "Metadata",
     "NotFound",
+    "ServiceWorkerUpdate",
   ],
   stream: [
     "AnomalyCode",
@@ -104,6 +105,7 @@ const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
   "LedgerPage",
   "Metadata",
   "NotFound",
+  "ServiceWorkerUpdate",
   // From Settings manifest
   "CategoriesPage",
   "Devices",
@@ -120,6 +122,7 @@ const LEDGER_ERROR_REQUIRED: readonly string[] = [
   "LedgerPage",
   "Metadata",
   "NotFound",
+  "ServiceWorkerUpdate",
 ];
 
 describe("feature message coverage", () => {
