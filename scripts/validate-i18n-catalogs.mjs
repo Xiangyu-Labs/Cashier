@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse, TYPE } from "@formatjs/icu-messageformat-parser";
 import ts from "typescript";
 
 const currentFilePath = fileURLToPath(import.meta.url);
@@ -59,6 +60,119 @@ function flattenKeys(value, prefix = "") {
     const nextPrefix = prefix === "" ? key : `${prefix}.${key}`;
     return [nextPrefix, ...flattenKeys(nestedValue, nextPrefix)];
   });
+}
+
+function collectIcuArgumentNames(elements, names = new Set()) {
+  for (const element of elements) {
+    if (
+      [TYPE.argument, TYPE.number, TYPE.date, TYPE.time, TYPE.select, TYPE.plural].includes(
+        element.type
+      )
+    ) {
+      names.add(element.value);
+    }
+    if (element.options != null) {
+      for (const option of Object.values(element.options)) {
+        collectIcuArgumentNames(option.value, names);
+      }
+    }
+    if (element.children != null) {
+      collectIcuArgumentNames(element.children, names);
+    }
+  }
+  return names;
+}
+
+function parseIcuMessage(message, location) {
+  try {
+    const ast = parse(message);
+    return collectIcuArgumentNames(ast);
+  } catch (error) {
+    errors.push(
+      `${location}: invalid ICU message: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
+}
+
+function validateCatalogShape(reference, candidate, location, candidateFile) {
+  const referenceType = Array.isArray(reference)
+    ? "array"
+    : reference === null
+      ? "null"
+      : typeof reference;
+  const candidateType = Array.isArray(candidate)
+    ? "array"
+    : candidate === null
+      ? "null"
+      : typeof candidate;
+
+  if (referenceType !== candidateType) {
+    errors.push(
+      `${candidateFile}: ${location || "<root>"} has type ${candidateType}; expected ${referenceType}`
+    );
+    return;
+  }
+
+  if (typeof reference === "string" && typeof candidate === "string") {
+    const referenceArguments = parseIcuMessage(reference, `${referenceCatalogFile}:${location}`);
+    const candidateArguments = parseIcuMessage(candidate, `${candidateFile}:${location}`);
+    if (
+      referenceArguments != null &&
+      candidateArguments != null &&
+      (referenceArguments.size !== candidateArguments.size ||
+        [...referenceArguments].some((argument) => !candidateArguments.has(argument)))
+    ) {
+      errors.push(
+        `${candidateFile}: ${location} ICU arguments differ; expected ${[...referenceArguments]
+          .sort()
+          .join(", ")}, found ${[...candidateArguments].sort().join(", ")}`
+      );
+    }
+    return;
+  }
+
+  if (Array.isArray(reference) && Array.isArray(candidate)) {
+    if (reference.length !== candidate.length) {
+      errors.push(
+        `${candidateFile}: ${location} array length is ${candidate.length}; expected ${reference.length}`
+      );
+      return;
+    }
+    reference.forEach((value, index) => {
+      validateCatalogShape(value, candidate[index], `${location}[${index}]`, candidateFile);
+    });
+    return;
+  }
+
+  if (
+    reference != null &&
+    candidate != null &&
+    typeof reference === "object" &&
+    typeof candidate === "object"
+  ) {
+    const referenceKeysForObject = Object.keys(reference);
+    const candidateKeysForObject = Object.keys(candidate);
+    for (const key of referenceKeysForObject) {
+      if (!(key in candidate)) {
+        errors.push(
+          `${candidateFile}: missing key ${location === "" ? key : `${location}.${key}`}`
+        );
+        continue;
+      }
+      validateCatalogShape(
+        reference[key],
+        candidate[key],
+        location === "" ? key : `${location}.${key}`,
+        candidateFile
+      );
+    }
+    for (const key of candidateKeysForObject) {
+      if (!(key in reference)) {
+        errors.push(`${candidateFile}: extra key ${location === "" ? key : `${location}.${key}`}`);
+      }
+    }
+  }
 }
 
 const parsedCatalogs = new Map();
@@ -166,6 +280,7 @@ if (referenceCatalog == null) {
   errors.push(`Reference catalog ${referenceCatalogFile} could not be parsed.`);
 } else {
   for (const key of flattenKeys(referenceCatalog)) referenceKeys.add(key);
+  validateCatalogShape(referenceCatalog, referenceCatalog, "", referenceCatalogFile);
 
   for (const catalogFile of catalogFiles) {
     if (catalogFile === referenceCatalogFile) {
@@ -177,17 +292,7 @@ if (referenceCatalog == null) {
       continue;
     }
 
-    const currentKeys = new Set(flattenKeys(catalog));
-    const missingKeys = [...referenceKeys].filter((key) => !currentKeys.has(key));
-    const extraKeys = [...currentKeys].filter((key) => !referenceKeys.has(key));
-
-    if (missingKeys.length > 0) {
-      errors.push(`${catalogFile}: missing keys: ${missingKeys.join(", ")}`);
-    }
-
-    if (extraKeys.length > 0) {
-      errors.push(`${catalogFile}: extra keys: ${extraKeys.join(", ")}`);
-    }
+    validateCatalogShape(referenceCatalog, catalog, "", catalogFile);
   }
 }
 
@@ -381,6 +486,72 @@ function collectTranslationUsages(sourceFile) {
   return { usages, rawKeyLiterals, dynamicUsages };
 }
 
+const VISIBLE_ATTRIBUTE_NAMES = new Set([
+  "title",
+  "aria-label",
+  "aria-description",
+  "placeholder",
+  "alt",
+]);
+const VISIBLE_TEXT_ALLOWLIST = new Map([
+  ["src/components/LanguageSwitcher.tsx", new Set(["中文", "English"])],
+  ["src/components/ui/calculator-input.tsx", new Set(["AC"])],
+  ["src/modules/auth/ui/login-page.tsx", new Set(["C", "Cashier"])],
+]);
+
+function collectVisibleStringLiterals(sourceFile, relativeFileName) {
+  const findings = [];
+
+  function record(node, text) {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (normalized === "" || !/\p{L}/u.test(normalized)) return;
+    if (VISIBLE_TEXT_ALLOWLIST.get(relativeFileName)?.has(normalized)) return;
+    findings.push({
+      line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+      text: normalized,
+    });
+  }
+
+  function collectExpressionStrings(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      record(node, node.text);
+      return;
+    }
+    if (ts.isTemplateExpression(node)) {
+      record(node.head, node.head.text);
+      for (const span of node.templateSpans) record(span.literal, span.literal.text);
+      return;
+    }
+    if (ts.isConditionalExpression(node)) {
+      collectExpressionStrings(node.whenTrue);
+      collectExpressionStrings(node.whenFalse);
+      return;
+    }
+    if (ts.isParenthesizedExpression(node)) {
+      collectExpressionStrings(node.expression);
+    }
+  }
+
+  function visit(node) {
+    if (ts.isJsxText(node)) {
+      record(node, node.text);
+    } else if (ts.isJsxAttribute(node)) {
+      const attributeName = node.name.getText(sourceFile);
+      if (VISIBLE_ATTRIBUTE_NAMES.has(attributeName) && node.initializer != null) {
+        if (ts.isStringLiteral(node.initializer)) {
+          record(node.initializer, node.initializer.text);
+        } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression != null) {
+          collectExpressionStrings(node.initializer.expression);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return findings;
+}
+
 if (referenceCatalog != null) {
   const sourceRoot = path.resolve(currentDirPath, "..", "src");
   const locales = catalogFiles.map((fileName) => path.basename(fileName, ".json"));
@@ -414,6 +585,7 @@ if (referenceCatalog != null) {
     );
     const { usages, rawKeyLiterals, dynamicUsages } = collectTranslationUsages(sourceFile);
     const relativeFileName = path.relative(path.resolve(currentDirPath, ".."), fileName);
+    const visibleStringLiterals = collectVisibleStringLiterals(sourceFile, relativeFileName);
 
     for (const usage of usages) {
       const location = `${relativeFileName}:${usage.line}`;
@@ -466,11 +638,16 @@ if (referenceCatalog != null) {
         dynamicUsage.namespace == null || dynamicUsage.namespace === ""
           ? "<root>"
           : dynamicUsage.namespace;
-      console.warn(
-        `i18n dynamic ${dynamicUsage.kind} checked at ${namespace}: ${path.relative(
-          path.resolve(currentDirPath, ".."),
-          dynamicUsage.fileName
-        )}:${dynamicUsage.line}`
+      errors.push(
+        `${relativeFileName}:${dynamicUsage.line}: i18n ${dynamicUsage.kind} is not allowed in namespace ${namespace}`
+      );
+    }
+
+    for (const visibleString of visibleStringLiterals) {
+      errors.push(
+        `${relativeFileName}:${visibleString.line}: hard-coded visible text: ${JSON.stringify(
+          visibleString.text
+        )}`
       );
     }
   }

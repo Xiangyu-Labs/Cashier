@@ -1,5 +1,10 @@
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enMessages from "../../../../../messages/en.json";
+import zhMessages from "../../../../../messages/zh.json";
+import { FEATURE_MESSAGES, pickMessages } from "@/i18n/client-feature-messages";
 import type { LedgerStartupCacheSnapshot } from "@/modules/workspace/ledger-startup-cache-store";
 
 const readSnapshot = vi.hoisted(() => vi.fn());
@@ -7,6 +12,10 @@ const retry = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/workspace/ledger-startup-cache-store", () => ({
   readLedgerStartupSnapshot: readSnapshot,
+}));
+
+vi.mock("@/i18n/DeferredFeatureMessages", () => ({
+  DeferredFeatureMessages: ({ children }: { children: ReactNode }) => children,
 }));
 
 vi.mock("@/modules/workspace/ui/LedgerStartupStreamPreview", () => ({
@@ -23,14 +32,24 @@ vi.mock("@/modules/workspace/ui/LedgerStartupStatsPreview", () => ({
 
 import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
 
-function renderPreview(queryState: "loading" | "success" | "error", activeTab = "stream") {
+function renderPreview(
+  queryState: "loading" | "success" | "error",
+  activeTab = "stream",
+  locale: "en" | "zh" = "zh"
+) {
+  const catalog = locale === "en" ? enMessages : zhMessages;
   return render(
-    <LedgerStartupPreview
-      snapshotKey="user:ledger"
-      activeTab={activeTab as "stream" | "details" | "stats" | "settings"}
-      queryState={queryState}
-      onRetry={retry}
-    />
+    <NextIntlClientProvider
+      locale={locale}
+      messages={pickMessages(catalog, FEATURE_MESSAGES.shell)}
+    >
+      <LedgerStartupPreview
+        snapshotKey="user:ledger"
+        activeTab={activeTab as "stream" | "details" | "stats" | "settings"}
+        queryState={queryState}
+        onRetry={retry}
+      />
+    </NextIntlClientProvider>
   );
 }
 
@@ -85,6 +104,17 @@ describe("LedgerStartupPreview", () => {
     expect(screen.getByTestId("startup-preview-latest-banner")).toBeInTheDocument();
     expect(screen.getByText("正在加载最新数据…")).toBeInTheDocument();
     expect(screen.getByText("只读预览")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["zh", "缓存于"],
+    ["en", "Cached at"],
+  ] as const)("loads the cached-at message from the %s shell catalog", async (locale, prefix) => {
+    readSnapshot.mockResolvedValue(snapshot());
+    renderPreview("loading", "stream", locale);
+
+    expect(await screen.findByText(new RegExp(`^${prefix}`))).toBeInTheDocument();
+    expect(screen.queryByText("LedgerStartupPreview.cachedAt")).toBeNull();
   });
 
   it("renders the skeleton on a cache miss", async () => {

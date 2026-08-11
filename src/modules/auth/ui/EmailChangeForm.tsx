@@ -122,7 +122,7 @@ export function EmailChangeForm({
                 />
                 <Button variant="outline" disabled={pending || email.trim() === ""} onClick={send}>
                   {pending && !sent ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {t(sent ? "resendCode" : "sendCode")}
+                  {sent ? t("resendCode") : t("sendCode")}
                 </Button>
               </div>
             </div>

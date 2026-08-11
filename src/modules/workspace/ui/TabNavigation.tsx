@@ -16,12 +16,11 @@ interface TabNavigationProps {
 const TAB_CONFIG: Array<{
   value: LedgerTab;
   icon: typeof ReceiptText;
-  labelKey: LedgerTab;
 }> = [
-  { value: "stream", icon: ReceiptText, labelKey: "stream" },
-  { value: "details", icon: ListChecks, labelKey: "details" },
-  { value: "stats", icon: BarChart3, labelKey: "stats" },
-  { value: "settings", icon: Settings, labelKey: "settings" },
+  { value: "stream", icon: ReceiptText },
+  { value: "details", icon: ListChecks },
+  { value: "stats", icon: BarChart3 },
+  { value: "settings", icon: Settings },
 ];
 
 export function TabNavigation({
@@ -32,18 +31,31 @@ export function TabNavigation({
   onTabIntent,
 }: TabNavigationProps) {
   const t = useTranslations("LedgerPage");
+  const labelFor = (tab: LedgerTab) => {
+    switch (tab) {
+      case "stream":
+        return t("stream");
+      case "details":
+        return t("details");
+      case "stats":
+        return t("stats");
+      case "settings":
+        return t("settings");
+    }
+  };
 
   return (
     <nav
       aria-label={t("navigation")}
       className="grid h-full w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem_minmax(0,1fr)_minmax(0,1fr)] items-stretch"
     >
-      {TAB_CONFIG.slice(0, 2).map(({ value, icon: Icon, labelKey }) => (
+      {TAB_CONFIG.slice(0, 2).map(({ value, icon: Icon }) => (
         <NavButton
           key={value}
           active={activeTab === value}
           icon={Icon}
-          label={t(labelKey)}
+          label={labelFor(value)}
+          disabledTitle={t("requiresNetwork")}
           onClick={() => onTabChange(value)}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
@@ -63,12 +75,13 @@ export function TabNavigation({
         <Plus className="h-5 w-5" aria-hidden="true" />
       </button>
 
-      {TAB_CONFIG.slice(2).map(({ value, icon: Icon, labelKey }) => (
+      {TAB_CONFIG.slice(2).map(({ value, icon: Icon }) => (
         <NavButton
           key={value}
           active={activeTab === value}
           icon={Icon}
-          label={t(labelKey)}
+          label={labelFor(value)}
+          disabledTitle={t("requiresNetwork")}
           onClick={() => onTabChange(value)}
           onIntent={
             onTabIntent != null && value !== activeTab ? () => onTabIntent(value) : undefined
@@ -86,15 +99,24 @@ interface NavButtonProps {
   onClick: () => void;
   onIntent?: (() => void) | undefined;
   disabled?: boolean;
+  disabledTitle: string;
 }
 
-function NavButton({ active, icon: Icon, label, onClick, onIntent, disabled }: NavButtonProps) {
+function NavButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+  onIntent,
+  disabled,
+  disabledTitle,
+}: NavButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? "需要联网" : undefined}
+      title={disabled ? disabledTitle : undefined}
       onPointerEnter={onIntent}
       onPointerDown={onIntent}
       onFocus={onIntent}

@@ -40,12 +40,12 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "Error",
     "LedgerError",
     "LedgerPage",
+    "LedgerStartupPreview",
     "Metadata",
     "NotFound",
     "ServiceWorkerUpdate",
   ],
   stream: [
-    "AnomalyCode",
     "BatchActions",
     "Calculator",
     "Calendar",
@@ -54,6 +54,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
+    "DuplicateReview",
     "EntryFilterPanel",
     "LedgerEntriesTab",
     "LedgerEntryDetail",
@@ -74,6 +75,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "DateFilter",
     "DateRangeFilter",
     "DiagnosticCode",
+    "DuplicateReview",
     "DetailsTab",
     "EntryFilterPanel",
     "LedgerEntriesTab",
@@ -85,7 +87,7 @@ const REQUIRED_NAMESPACES: Record<string, readonly string[]> = {
     "SourceDocumentImageModal",
   ],
   stats: ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
-  settings: ["CategoriesPage", "Devices", "LedgerError", "ServiceCredentials", "Settings"],
+  settings: ["LedgerError", "ServiceCredentials", "Settings"],
 } as const;
 
 /**
@@ -103,12 +105,11 @@ const STANDALONE_SETTINGS_REQUIRED: readonly string[] = [
   "Error",
   "LedgerError",
   "LedgerPage",
+  "LedgerStartupPreview",
   "Metadata",
   "NotFound",
   "ServiceWorkerUpdate",
   // From Settings manifest
-  "CategoriesPage",
-  "Devices",
   "ServiceCredentials",
   "Settings",
 ];
@@ -120,6 +121,7 @@ const LEDGER_ERROR_REQUIRED: readonly string[] = [
   "Error",
   "LedgerError",
   "LedgerPage",
+  "LedgerStartupPreview",
   "Metadata",
   "NotFound",
   "ServiceWorkerUpdate",

@@ -17,15 +17,6 @@ import { AdaptiveHeatmap } from "./AdaptiveHeatmap";
 import { getHeatmapLegend } from "../lib/heatmap-colors";
 import type { CalendarDayData, CalendarHeatmapStats } from "../types";
 
-const HEATMAP_LABEL_KEYS = [
-  "heatmapLevel0",
-  "heatmapLevel1",
-  "heatmapLevel2",
-  "heatmapLevel3",
-  "heatmapLevel4",
-  "heatmapLevel5",
-] as const;
-
 interface CalendarHeatmapSectionProps {
   days: CalendarDayData[];
   stats: CalendarHeatmapStats;
@@ -53,6 +44,24 @@ export function CalendarHeatmapSection({
   locale = "zh-CN",
 }: CalendarHeatmapSectionProps) {
   const t = useTranslations("Calendar");
+  const heatmapLevelLabel = (level: number) => {
+    switch (level) {
+      case 0:
+        return t("heatmapLevel0");
+      case 1:
+        return t("heatmapLevel1");
+      case 2:
+        return t("heatmapLevel2");
+      case 3:
+        return t("heatmapLevel3");
+      case 4:
+        return t("heatmapLevel4");
+      case 5:
+        return t("heatmapLevel5");
+      default:
+        return t("heatmapLevel0");
+    }
+  };
 
   // Handle day click
   const handleDayClick = useCallback(
@@ -102,8 +111,8 @@ export function CalendarHeatmapSection({
               key={item.level}
               className="w-4 h-4 rounded-sm"
               style={{ backgroundColor: item.color }}
-              aria-label={t(HEATMAP_LABEL_KEYS[item.level])}
-              title={t(HEATMAP_LABEL_KEYS[item.level])}
+              aria-label={heatmapLevelLabel(item.level)}
+              title={heatmapLevelLabel(item.level)}
             />
           ))}
         </div>

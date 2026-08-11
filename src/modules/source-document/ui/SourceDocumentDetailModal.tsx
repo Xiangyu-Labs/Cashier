@@ -21,6 +21,7 @@ import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;
@@ -91,7 +92,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
   const tActions = useTranslations("CandidateAction");
-  const tDiag = useTranslations("DiagnosticCode");
+  const diagnosticMessages = useDiagnosticMessages();
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const saveOperationIdRef = useRef<string | null>(null);
   const draftRevisionIdRef = useRef<string | null>(null);
@@ -381,10 +382,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                         <span className="mt-1 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium text-danger">
-                            {tDiag(stableCode as string)}
+                            {diagnosticMessages.label(stableCode)}
                           </span>
                           <span className="text-[11px] text-muted-foreground/70">
-                            {tDiag(`${stableCode}_desc`)}
+                            {diagnosticMessages.description(stableCode)}
                           </span>
                         </div>
                       </div>

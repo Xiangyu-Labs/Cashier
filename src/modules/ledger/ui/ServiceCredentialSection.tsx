@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { copyToClipboard } from "@/lib/utils";
 import { UI } from "@/lib/constants";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -33,6 +33,7 @@ export function ServiceCredentialSection({
 }: ServiceCredentialSectionProps) {
   const t = useTranslations("ServiceCredentials");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const [newCredName, setNewCredName] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
@@ -120,7 +121,9 @@ export function ServiceCredentialSection({
                       : "******"}
                   </div>
                   <div className="mt-1 text-[10px] text-muted">
-                    {t("createdAt", { date: new Date(credential.createdAt).toLocaleDateString() })}
+                    {t("createdAt", {
+                      date: new Date(credential.createdAt).toLocaleDateString(locale),
+                    })}
                   </div>
                 </div>
               </div>

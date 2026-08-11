@@ -6,12 +6,12 @@
     "Error",
     "LedgerError",
     "LedgerPage",
+    "LedgerStartupPreview",
     "Metadata",
     "NotFound",
     "ServiceWorkerUpdate"
   ],
   "stream": [
-    "AnomalyCode",
     "BatchActions",
     "Calculator",
     "Calendar",
@@ -54,5 +54,5 @@
     "DuplicateReview"
   ],
   "stats": ["Calendar", "DateRangeFilter", "StatsChart", "StatsTab"],
-  "settings": ["CategoriesPage", "Devices", "LedgerError", "ServiceCredentials", "Settings"]
+  "settings": ["LedgerError", "ServiceCredentials", "Settings"]
 }

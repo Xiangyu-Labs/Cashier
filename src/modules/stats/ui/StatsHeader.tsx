@@ -57,22 +57,33 @@ export function StatsHeader({
   const absPercent = Math.abs(percentValue).toFixed(1);
   const amountLabel = formatCurrencyAmount(Math.abs(delta), currencySymbol, locale);
   const comparisonMode = comparison?.mode ?? "same_period";
+  const comparisonValues = {
+    period: periodLabel ?? "",
+    amount: amountLabel,
+    percent: absPercent,
+  };
   const comparisonText =
-    delta === 0
-      ? t(comparisonMode === "same_period" ? "samePeriodEqual" : "fullPeriodEqual", {
-          period: periodLabel ?? "",
-        })
-      : isIncrease
-        ? t(comparisonMode === "same_period" ? "samePeriodMore" : "fullPeriodMore", {
-            period: periodLabel ?? "",
-            amount: amountLabel,
-            percent: absPercent,
-          })
-        : t(comparisonMode === "same_period" ? "samePeriodLess" : "fullPeriodLess", {
-            period: periodLabel ?? "",
-            amount: amountLabel,
-            percent: absPercent,
-          });
+    comparisonMode === "same_period"
+      ? delta === 0
+        ? t("samePeriodEqual", comparisonValues)
+        : isIncrease
+          ? t("samePeriodMore", comparisonValues)
+          : t("samePeriodLess", comparisonValues)
+      : delta === 0
+        ? t("fullPeriodEqual", comparisonValues)
+        : isIncrease
+          ? t("fullPeriodMore", comparisonValues)
+          : t("fullPeriodLess", comparisonValues);
+  const rangeLabel = (type: DateRangeType) => {
+    switch (type) {
+      case "week":
+        return t("week");
+      case "month":
+        return t("month");
+      case "year":
+        return t("year");
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 bg-surface">
@@ -95,7 +106,7 @@ export function StatsHeader({
                   : "text-muted-foreground hover:text-text"
               )}
             >
-              {t(type)}
+              {rangeLabel(type)}
             </button>
           ))}
         </div>

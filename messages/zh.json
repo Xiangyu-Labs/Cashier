@@ -1,11 +1,4 @@
 {
-  "AnomalyCode": {
-    "internal_error": "系统内部错误",
-    "invalid_content": "非有效账单内容",
-    "rate_limit_exceeded": "请求过于频繁",
-    "evidence_anomaly": "原始凭证异常",
-    "unknown_currency": "货币未知"
-  },
   "DiagnosticCode": {
     "insufficient_evidence": "证据不足",
     "insufficient_evidence_desc": "收据中缺少足够的信息以提取条目。请尝试上传更清晰的图片或添加更多文字。",
@@ -63,11 +56,6 @@
     "keepOriginal": "保留原结果",
     "acceptCandidate": "接受新结果"
   },
-  "HomePage": {
-    "loading": "加载中…",
-    "creating": "正在创建默认账本…",
-    "createFailed": "创建失败，请刷新重试"
-  },
   "LedgerPage": {
     "notFound": "账本不存在",
     "settings": "设置",
@@ -86,7 +74,8 @@
     "startupCacheError": "最新数据加载失败。",
     "retry": "重试",
     "cachedNoRecords": "没有符合条件的缓存单据",
-    "total": "合计"
+    "total": "合计",
+    "requiresNetwork": "需要联网"
   },
   "DetailsTab": {
     "selectAllLoaded": "选择当前已加载的 {count} 条记录",
@@ -359,7 +348,8 @@
     "tooManyImages": "最多只能上传 3 张图片。",
     "cancelUpload": "取消上传",
     "savedMayBeHidden": "已保存，但当前筛选可能隐藏这条记录。",
-    "viewRecord": "查看新记录"
+    "viewRecord": "查看新记录",
+    "uploadedImage": "已上传图片 {index}"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"
@@ -449,15 +439,6 @@
     "pendingChangesCloseDescription": "关闭前，请先保存或放弃当前这次编辑。",
     "pendingChangesLeaveDescription": "返回查看前，请先保存或放弃当前这次编辑。",
     "continueEditing": "继续编辑"
-  },
-  "ImageViewer": {
-    "clickToZoom": "点击放大",
-    "imageAlt": "图片 {index}",
-    "zoomIn": "放大",
-    "zoomOut": "缩小",
-    "rotate": "旋转",
-    "reset": "重置",
-    "close": "关闭"
   },
   "Settings": {
     "title": "设置",
@@ -582,6 +563,64 @@
     "ledgerManagement": "账本",
     "noLedgerAvailable": "暂无账本",
     "ledgerSettings": "账本设置",
+    "selectIcon": "选择图标",
+    "selectedIcon": "已选择图标：{name}",
+    "icons": "图标",
+    "iconNames": {
+      "Utensils": "餐饮",
+      "Coffee": "咖啡",
+      "Wine": "酒水",
+      "ShoppingBag": "购物袋",
+      "ShoppingCart": "购物车",
+      "Shirt": "服装",
+      "Gamepad2": "游戏",
+      "Music": "音乐",
+      "Ticket": "门票",
+      "Film": "电影",
+      "Bus": "公交",
+      "Car": "汽车",
+      "TrainFront": "火车",
+      "Plane": "飞机",
+      "Bike": "自行车",
+      "Stethoscope": "医疗",
+      "Heart": "健康",
+      "House": "住房",
+      "Building": "建筑",
+      "Key": "钥匙",
+      "Book": "书籍",
+      "GraduationCap": "教育",
+      "Laptop": "电脑",
+      "Phone": "手机",
+      "Camera": "相机",
+      "Headphones": "耳机",
+      "Wifi": "网络",
+      "Wallet": "钱包",
+      "CreditCard": "信用卡",
+      "Banknote": "现金",
+      "Receipt": "小票",
+      "PiggyBank": "储蓄",
+      "Briefcase": "工作",
+      "Hammer": "维修",
+      "Dumbbell": "健身",
+      "Baby": "婴幼儿",
+      "Dog": "宠物",
+      "Gift": "礼物",
+      "Glasses": "眼镜",
+      "Umbrella": "雨具",
+      "Watch": "手表",
+      "Hotel": "酒店",
+      "MapPin": "地点",
+      "Luggage": "行李",
+      "Crown": "皇冠",
+      "Star": "星标",
+      "Lightbulb": "创意",
+      "Palette": "艺术",
+      "Scissors": "理发",
+      "Tag": "标签",
+      "Truck": "配送",
+      "Zap": "水电",
+      "Package": "其他"
+    },
     "Account": {
       "emailSection": "邮箱",
       "emailSectionDesc": "查看或修改当前用于登录的邮箱地址",
@@ -593,7 +632,11 @@
       "changePasswordButton": "修改密码",
       "setPasswordTitle": "设置密码",
       "changePasswordTitle": "修改密码",
-      "passwordRequirements": "密码长度为 8–128 个字符，并至少包含一个字母和一个数字。",
+      "passwordRequirements": "密码长度为 8–128 个字符，至少包含一个字母和一个数字，且 UTF-8 编码不得超过 72 字节。",
+      "passwordTooShort": "密码长度必须为 8–128 个字符。",
+      "passwordRequirementsNotMet": "密码必须至少包含一个字母和一个数字，且 UTF-8 编码不得超过 72 字节。",
+      "currentPasswordWrong": "当前密码不正确。",
+      "passwordConflict": "密码已在其他位置被修改，请重新打开此窗口后再试。",
       "currentPassword": "当前密码",
       "newPassword": "新密码",
       "confirmPassword": "确认新密码",
@@ -778,24 +821,8 @@
     "errorConfigurationDesc": "服务器配置存在问题，请联系管理员。",
     "devSignIn": "以开发身份进入",
     "devSignInDesc": "仅本地开发使用。无需邮件验证码，直接打开单账本工作台。",
-    "devSignInFailed": "开发会话启动失败"
-  },
-  "Devices": {
-    "title": "设备管理",
-    "description": "管理已登录此账户的设备",
-    "currentDevice": "当前设备",
-    "otherDevices": "其他设备",
-    "noOtherDevices": "没有其他设备登录",
-    "lastActive": "最后活跃: {time}",
-    "signOutDevice": "退出此设备",
-    "signOutAll": "退出所有其他设备",
-    "signOutSuccess": "已成功退出设备",
-    "signOutAllSuccess": "已成功退出所有其他设备",
-    "confirmLogoutTitle": "退出设备",
-    "confirmLogoutDesc": "确定要退出此设备吗？该设备将需要重新登录才能访问账户。",
-    "activeNow": "当前在线",
-    "unknownIp": "未知 IP",
-    "unknownDevice": "未知设备"
+    "devSignInFailed": "开发会话启动失败",
+    "otpDigitLabel": "第 {index} 位，共 {length} 位"
   },
   "Error": {
     "title": "应用错误",
@@ -819,25 +846,6 @@
   },
   "LedgerStartupPreview": {
     "cachedAt": "缓存于 {time}"
-  },
-  "CategoriesPage": {
-    "title": "分类管理",
-    "newCategory": "新建分类",
-    "editCategory": "编辑分类",
-    "save": "保存",
-    "cancel": "取消",
-    "delete": "删除",
-    "name": "分类名称",
-    "icon": "图标",
-    "description": "描述（帮助 AI 识别）",
-    "namePlaceholder": "例如：餐饮",
-    "iconPlaceholder": "例如：🍽️",
-    "descriptionPlaceholder": "例如：外卖、堂食、食材采购",
-    "confirmDelete": "确认删除",
-    "confirmDeleteDesc": "确定要删除分类「{name}」吗？相关记录将变为未分类。",
-    "noCategories": "暂无分类，点击右上角新建",
-    "tipTitle": "提示：",
-    "tipDesc": "分类描述用于帮助 AI 更准确地识别和归类消费。例如，「餐饮」分类的描述可以是「外卖、堂食、食材采购」。"
   },
   "AuthEmail": {
     "otpSubject": "您的验证码是 {otp}",

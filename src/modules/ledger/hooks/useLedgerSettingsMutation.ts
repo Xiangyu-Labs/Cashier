@@ -39,6 +39,20 @@ export function useLedgerSettingsMutation({
   const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const ledgerQueryKey = queryKeys.ledger(ledgerId);
+  const translateError = (code: UpdateLedgerActionErrorCode) => {
+    switch (code) {
+      case "rates_unavailable":
+        return t("ratesUnavailable");
+      case "unsupported_currency":
+        return t("unsupportedCurrency");
+      case "validation_failed":
+        return t("validationFailed");
+      case "conflict":
+        return t("updateConflict");
+      case "unexpected":
+        return t("updateFailed");
+    }
+  };
 
   return useLedgerMutation<Ledger, UpdateLedgerData>(ledgerId, {
     mutationFn: async (data) => {
@@ -71,7 +85,7 @@ export function useLedgerSettingsMutation({
       }
 
       const result = await updateLedgerAction(ledgerId, payload);
-      if (!result.ok) throw new Error(t(updateLedgerErrorMessageKeys[result.code]));
+      if (!result.ok) throw new Error(translateError(result.code));
       return result.ledger;
     },
     successMessage,
@@ -89,11 +103,3 @@ export function useLedgerSettingsMutation({
     onErrorExtra: (error) => toast.error(error.message || errorMessage),
   });
 }
-
-export const updateLedgerErrorMessageKeys = {
-  rates_unavailable: "ratesUnavailable",
-  unsupported_currency: "unsupportedCurrency",
-  validation_failed: "validationFailed",
-  conflict: "updateConflict",
-  unexpected: "updateFailed",
-} as const satisfies Record<UpdateLedgerActionErrorCode, string>;

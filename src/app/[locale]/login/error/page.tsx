@@ -6,81 +6,43 @@ import { AlertCircle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 
-interface ErrorMessage {
-  title: string;
-  desc: string;
-}
-
-function getOwnMessage<T extends Record<string, ErrorMessage>>(
-  messages: T,
-  key: string | null,
-  fallback: ErrorMessage
-): ErrorMessage {
-  if (key == null) {
-    return fallback;
-  }
-
-  if (!Object.prototype.hasOwnProperty.call(messages, key)) {
-    return fallback;
-  }
-
-  const message = messages[key as keyof T];
-  return message ?? fallback;
-}
-
-// Auth.js error type mapping to translation keys
-const ERROR_MESSAGES = {
-  AccessDenied: { title: "errorAccessDenied", desc: "errorAccessDeniedDesc" },
-  Configuration: { title: "errorConfiguration", desc: "errorConfigurationDesc" },
-  Default: { title: "error", desc: "errorDesc" },
-} satisfies Record<string, ErrorMessage>;
-
-const CREDENTIALS_ERROR_MESSAGES = {
-  [AUTH_ERROR_CODES.REGISTRATION_DISABLED]: {
-    title: "registrationDisabled",
-    desc: "registrationDisabledDesc",
-  },
-  [AUTH_ERROR_CODES.OTP_INVALID]: {
-    title: "error",
-    desc: "verifyFailed",
-  },
-  [AUTH_ERROR_CODES.OTP_EXPIRED]: {
-    title: "error",
-    desc: "codeExpiredMessage",
-  },
-  [AUTH_ERROR_CODES.OTP_LOCKED]: {
-    title: "rateLimited",
-    desc: "otpLockedDesc",
-  },
-  [AUTH_ERROR_CODES.OTP_RATE_LIMITED]: {
-    title: "rateLimited",
-    desc: "rateLimitedDesc",
-  },
-  [AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED]: {
-    title: "rateLimited",
-    desc: "rateLimitedDesc",
-  },
-  [AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE]: {
-    title: "error",
-    desc: "rateLimitUnavailableDesc",
-  },
-  [AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE]: {
-    title: "error",
-    desc: "rateLimitUnavailableDesc",
-  },
-} satisfies Record<string, ErrorMessage>;
-
 export default function LoginErrorPage() {
   const t = useTranslations("Auth");
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const code = searchParams.get("code");
-  const defaultErrorMessage = ERROR_MESSAGES.Default;
-
-  const errorConfig =
-    error === "CredentialsSignin"
-      ? getOwnMessage(CREDENTIALS_ERROR_MESSAGES, code, defaultErrorMessage)
-      : getOwnMessage(ERROR_MESSAGES, error, defaultErrorMessage);
+  const defaultMessage = { title: t("error"), desc: t("errorDesc") };
+  const credentialsMessage = (() => {
+    switch (code) {
+      case AUTH_ERROR_CODES.REGISTRATION_DISABLED:
+        return { title: t("registrationDisabled"), desc: t("registrationDisabledDesc") };
+      case AUTH_ERROR_CODES.OTP_INVALID:
+        return { title: t("error"), desc: t("verifyFailed") };
+      case AUTH_ERROR_CODES.OTP_EXPIRED:
+        return { title: t("error"), desc: t("codeExpiredMessage") };
+      case AUTH_ERROR_CODES.OTP_LOCKED:
+        return { title: t("rateLimited"), desc: t("otpLockedDesc") };
+      case AUTH_ERROR_CODES.OTP_RATE_LIMITED:
+      case AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED:
+        return { title: t("rateLimited"), desc: t("rateLimitedDesc") };
+      case AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE:
+      case AUTH_ERROR_CODES.AUTH_RATE_LIMIT_UNAVAILABLE:
+        return { title: t("error"), desc: t("rateLimitUnavailableDesc") };
+      default:
+        return defaultMessage;
+    }
+  })();
+  const errorMessage = (() => {
+    if (error === "CredentialsSignin") return credentialsMessage;
+    switch (error) {
+      case "AccessDenied":
+        return { title: t("errorAccessDenied"), desc: t("errorAccessDeniedDesc") };
+      case "Configuration":
+        return { title: t("errorConfiguration"), desc: t("errorConfigurationDesc") };
+      default:
+        return defaultMessage;
+    }
+  })();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
@@ -93,10 +55,10 @@ export default function LoginErrorPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-text mb-2">{t(errorConfig.title)}</h1>
+        <h1 className="text-2xl font-bold text-text mb-2">{errorMessage.title}</h1>
 
         {/* Description */}
-        <p className="text-muted mb-8">{t(errorConfig.desc)}</p>
+        <p className="text-muted mb-8">{errorMessage.desc}</p>
 
         {/* Try Again Button */}
         <Link href="/login">

@@ -3,12 +3,13 @@ import { useRef, useState, type KeyboardEvent, type ClipboardEvent } from "react
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-interface OTPInputProps {
+export interface OTPInputProps {
   value: string;
   onChange: (value: string) => void;
   length?: number;
   disabled?: boolean;
   className?: string;
+  getDigitLabel: (position: number, length: number) => string;
 }
 
 export function OTPInput({
@@ -17,6 +18,7 @@ export function OTPInput({
   length = 6,
   disabled = false,
   className,
+  getDigitLabel,
 }: OTPInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -121,7 +123,7 @@ export function OTPInput({
             focusedIndex === index && "ring-2 ring-ring ring-offset-2",
             digit !== " " && "border-primary"
           )}
-          aria-label={`Digit ${index + 1} of ${length}`}
+          aria-label={getDigitLabel(index + 1, length)}
         />
       ))}
     </div>

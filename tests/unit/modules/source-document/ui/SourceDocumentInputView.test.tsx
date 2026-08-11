@@ -28,6 +28,7 @@ const messages: SourceDocumentInputViewProps["messages"] = {
   submitting: "Submitting",
   cancelling: "Cancelling",
   cancelUpload: "Cancel upload",
+  uploadedImage: (index) => `Uploaded image ${index}`,
 };
 
 function renderView(
@@ -105,5 +106,47 @@ describe("SourceDocumentInputView upload cancellation", () => {
 
     expect(screen.getByText("Cancelling")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel upload" })).toBeNull();
+  });
+});
+
+describe("SourceDocumentInputView image labels", () => {
+  it.each([
+    ["Uploaded image", (index: number) => `Uploaded image ${index}`],
+    ["已上传图片", (index: number) => `已上传图片 ${index}`],
+  ])("uses localized 1-based labels beginning with %s", (_, uploadedImage) => {
+    const localizedMessages = { ...messages, uploadedImage };
+    render(
+      <SourceDocumentInputView
+        mode="create"
+        text=""
+        entryDate={new Date("2026-07-17T00:00:00.000Z")}
+        images={[
+          { data: "data:image/png;base64,first", mimeType: "image/png" },
+          { data: "data:image/png;base64,second", mimeType: "image/png" },
+        ]}
+        selectedImageIndex={null}
+        fileInputRef={createRef<HTMLInputElement>()}
+        isPending={false}
+        progress={null}
+        canSubmit
+        canCancelUpload={false}
+        messages={localizedMessages}
+        onEntryDateChange={vi.fn()}
+        onTextChange={vi.fn()}
+        onTextareaPaste={vi.fn()}
+        onFileInputChange={vi.fn()}
+        onSelectImages={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancelUpload={vi.fn()}
+        onRemoveImage={vi.fn()}
+        onImageOpen={vi.fn()}
+        onImageClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: uploadedImage(1) })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: uploadedImage(2) })).toBeInTheDocument();
+    expect(screen.getByAltText(uploadedImage(1))).toBeInTheDocument();
+    expect(screen.getByAltText(uploadedImage(2))).toBeInTheDocument();
   });
 });

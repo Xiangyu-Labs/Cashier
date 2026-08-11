@@ -70,4 +70,6 @@ export const COMMON_LUCIDE_ICONS = [
   "Truck",
   "Zap",
   "Package",
-];
+] as const;
+
+export type CommonLucideIcon = (typeof COMMON_LUCIDE_ICONS)[number];

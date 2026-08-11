@@ -73,41 +73,53 @@ vi.mock("@/auth", () => ({
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("react");
   const React = actual as typeof ReactModule;
-  const messages = await import("../messages/zh.json").then((m) => m.default ?? m);
+  const defaultMessages = await import("../messages/zh.json").then((m) => m.default ?? m);
 
-  const messagesRecord = messages as Record<string, unknown>;
+  const defaultMessagesRecord = defaultMessages as Record<string, unknown>;
+  interface IntlContextValue {
+    messages: Record<string, unknown>;
+    locale: string;
+  }
+  const IntlContext = React.createContext<IntlContextValue | null>(null);
+
+  const valueAtPath = (value: unknown, path: string): unknown =>
+    path.split(".").reduce<unknown>((current, segment) => {
+      if (current == null || typeof current !== "object" || !(segment in current)) return undefined;
+      return (current as Record<string, unknown>)[segment];
+    }, value);
 
   return {
     useTranslations: (namespace?: string) => {
-      const nsMessages =
-        namespace != null ? (messagesRecord[namespace] as Record<string, unknown>) : messagesRecord;
-      return (key: string, values?: Record<string, unknown>) => {
-        let msg = nsMessages?.[key];
-        if (msg == null) {
-          for (const ns in messagesRecord) {
-            const nsMsg = messagesRecord[ns] as Record<string, unknown>;
-            if (nsMsg != null && typeof nsMsg === "object" && nsMsg[key] != null) {
-              msg = nsMsg[key];
-              break;
-            }
-          }
-        }
-        if (msg == null) return key;
+      const context = React.useContext(IntlContext);
+      const messages = context?.messages ?? defaultMessagesRecord;
+      const fullKey = (key: string) => (namespace == null ? key : `${namespace}.${key}`);
+      const translate = (key: string, values?: Record<string, unknown>) => {
+        const msg = valueAtPath(messages, fullKey(key));
+        if (msg == null) return fullKey(key);
         let translated = msg as string;
         if (values != null && typeof translated === "string") {
           Object.keys(values).forEach((k) => {
-            translated = translated.replace(`{${k}}`, String(values[k]));
+            translated = translated.replaceAll(`{${k}}`, String(values[k]));
           });
         }
         return translated;
       };
+      translate.raw = (key: string) => valueAtPath(messages, fullKey(key));
+      return translate;
     },
-    useLocale: () => "zh",
-    useMessages: () => messages,
+    useLocale: () => React.useContext(IntlContext)?.locale ?? "zh",
+    useMessages: () => React.useContext(IntlContext)?.messages ?? defaultMessagesRecord,
     useTimeZone: () => "UTC",
     useNow: () => new Date(),
-    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
+    NextIntlClientProvider: ({
+      children,
+      messages,
+      locale,
+    }: {
+      children: React.ReactNode;
+      messages: Record<string, unknown>;
+      locale: string;
+    }) => React.createElement(IntlContext.Provider, { value: { messages, locale } }, children),
   };
 });
 

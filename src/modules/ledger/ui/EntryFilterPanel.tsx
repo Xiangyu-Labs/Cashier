@@ -45,14 +45,14 @@ interface EntryFilterPanelProps {
 
 const VISIBLE_PRESETS: PeriodPreset[] = ["thisMonth", "all", "week", "month", "custom"];
 
-const STATUS_OPTIONS: { status: SourceDocumentStatusType; labelKey: string }[] = [
-  { status: "processing", labelKey: "statusProcessing" },
-  { status: "completed", labelKey: "statusCompleted" },
-  { status: "anomaly", labelKey: "statusAnomaly" },
-  { status: "failed", labelKey: "statusFailed" },
-  { status: "cancelled", labelKey: "statusCancelled" },
-  { status: "candidate_pending", labelKey: "statusCandidatePending" },
-  { status: "duplicate_pending", labelKey: "statusDuplicatePending" },
+const STATUS_OPTIONS: SourceDocumentStatusType[] = [
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+  "cancelled",
+  "candidate_pending",
+  "duplicate_pending",
 ];
 
 const MOBILE_FILTER_QUERY = "(max-width: 639px)";
@@ -99,6 +99,24 @@ export function EntryFilterPanel({
   const t = useTranslations("EntryFilterPanel");
   const tDateRange = useTranslations("DateRangeFilter");
   const tSettings = useTranslations("Settings");
+  const statusLabel = (status: SourceDocumentStatusType) => {
+    switch (status) {
+      case "processing":
+        return t("statusProcessing");
+      case "completed":
+        return t("statusCompleted");
+      case "anomaly":
+        return t("statusAnomaly");
+      case "failed":
+        return t("statusFailed");
+      case "cancelled":
+        return t("statusCancelled");
+      case "candidate_pending":
+        return t("statusCandidatePending");
+      case "duplicate_pending":
+        return t("statusDuplicatePending");
+    }
+  };
   const [open, setOpen] = React.useState(false);
   const isMobile = React.useSyncExternalStore(
     subscribeToMobileFilter,
@@ -447,13 +465,13 @@ export function EntryFilterPanel({
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">{t("status")}</div>
           <div className="space-y-1">
-            {STATUS_OPTIONS.map(({ status, labelKey }) => (
+            {STATUS_OPTIONS.map((status) => (
               <label key={status} className="flex items-center gap-2 text-sm cursor-pointer py-0.5">
                 <Checkbox
                   checked={tempFilters.statuses?.includes(status) ?? false}
                   onCheckedChange={() => toggleStatus(status)}
                 />
-                {t(labelKey)}
+                {statusLabel(status)}
               </label>
             ))}
           </div>

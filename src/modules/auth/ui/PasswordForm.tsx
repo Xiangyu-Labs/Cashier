@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changePasswordAction, setPasswordAction } from "@/modules/auth/actions";
+import type { PasswordMutationActionErrorCode } from "@/modules/auth/contracts";
 
 function PasswordField(props: {
   id: string;
@@ -63,12 +64,34 @@ export function PasswordForm({
   passwordUpdatedAt: string | null;
 }) {
   const t = useTranslations("Settings.Account");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedPasswordUpdatedAt, setSavedPasswordUpdatedAt] = useState<string | null>(
+    passwordUpdatedAt
+  );
+
+  const messageForErrorCode = (code: PasswordMutationActionErrorCode) => {
+    switch (code) {
+      case "password_too_short":
+        return t("passwordTooShort");
+      case "password_requirements_not_met":
+        return t("passwordRequirementsNotMet");
+      case "password_mismatch":
+        return t("passwordsDoNotMatch");
+      case "current_password_wrong":
+        return t("currentPasswordWrong");
+      case "conflict":
+        return t("passwordConflict");
+      case "validation_failed":
+      case "unexpected":
+        return t("passwordError");
+    }
+  };
 
   const reset = () => {
     setCurrentPassword("");
@@ -82,13 +105,19 @@ export function PasswordForm({
     setError(null);
     try {
       const input = { currentPassword, newPassword, confirmPassword };
-      if (hasPassword) await changePasswordAction(input);
-      else await setPasswordAction(input);
+      const result = hasPassword
+        ? await changePasswordAction(input)
+        : await setPasswordAction(input);
+      if (!result.ok) {
+        setError(messageForErrorCode(result.code));
+        return;
+      }
+      setSavedPasswordUpdatedAt(result.passwordUpdatedAt);
       toast.success(t("passwordSaved"));
       setOpen(false);
       reset();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t("passwordError"));
+    } catch {
+      setError(t("passwordError"));
     } finally {
       setIsLoading(false);
     }
@@ -100,11 +129,11 @@ export function PasswordForm({
   return (
     <div className="flex w-full flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-muted-foreground">
-        {passwordUpdatedAt == null
+        {savedPasswordUpdatedAt == null
           ? t("passwordNotSet")
           : t("passwordLastChanged", {
-              date: new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-                new Date(passwordUpdatedAt)
+              date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                new Date(savedPasswordUpdatedAt)
               ),
             })}
       </span>

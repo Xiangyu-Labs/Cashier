@@ -28,6 +28,7 @@ export interface SourceDocumentInputViewMessages {
   submitting: string;
   cancelling: string;
   cancelUpload: string;
+  uploadedImage: (index: number) => string;
 }
 
 export interface SourceDocumentInputViewProps {
@@ -81,34 +82,32 @@ export function SourceDocumentInputView({
     <div className="space-y-4">
       {images.length > 0 && (
         <div className="grid grid-cols-4 gap-2">
-          {images.map((image, index) => (
-            <div key={`${image.data}-${index}`} className="group relative">
-              <button
-                type="button"
-                className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                onClick={() => onImageOpen(index)}
-                aria-label={`Uploaded ${index + 1}`}
-              >
-                <Image
-                  src={image.data}
-                  alt={`Uploaded ${index + 1}`}
-                  fill
-                  className="object-cover"
-                />
-              </button>
+          {images.map((image, index) => {
+            const imageLabel = messages.uploadedImage(index + 1);
+            return (
+              <div key={`${image.data}-${index}`} className="group relative">
+                <button
+                  type="button"
+                  className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md border border-border transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={() => onImageOpen(index)}
+                  aria-label={imageLabel}
+                >
+                  <Image src={image.data} alt={imageLabel} fill className="object-cover" />
+                </button>
 
-              <button
-                onClick={() => onRemoveImage(index)}
-                type="button"
-                aria-label={messages.delete}
-                title={messages.delete}
-                className={`${imageActionButtonClassName} bg-danger text-xs`}
-                disabled={isPending}
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          ))}
+                <button
+                  onClick={() => onRemoveImage(index)}
+                  type="button"
+                  aria-label={messages.delete}
+                  title={messages.delete}
+                  className={`${imageActionButtonClassName} bg-danger text-xs`}
+                  disabled={isPending}
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

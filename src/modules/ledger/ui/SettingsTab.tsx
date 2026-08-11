@@ -147,7 +147,16 @@ export function SettingsTab({
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
 
   // Theme key mapping for translations
-  const themeKeyMap = { system: "themeAuto", light: "themeLight", dark: "themeDark" } as const;
+  const themeLabel = (themeName: "system" | "light" | "dark") => {
+    switch (themeName) {
+      case "system":
+        return t("themeAuto");
+      case "light":
+        return t("themeLight");
+      case "dark":
+        return t("themeDark");
+    }
+  };
   const handleSignOut = async () => {
     await clearUserCacheDataSafely(
       ledger.userId,
@@ -228,7 +237,7 @@ export function SettingsTab({
             <SelectContent>
               {(["system", "light", "dark"] as const).map((themeName) => (
                 <SelectItem key={themeName} value={themeName}>
-                  {t(themeKeyMap[themeName])}
+                  {themeLabel(themeName)}
                 </SelectItem>
               ))}
             </SelectContent>

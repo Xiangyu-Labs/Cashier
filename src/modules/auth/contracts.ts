@@ -27,3 +27,15 @@ export type InterfaceLanguage = "auto" | "zh" | "en";
 export interface UserPreferences {
   interfaceLanguage: InterfaceLanguage;
 }
+
+export type PasswordMutationActionErrorCode =
+  | "password_too_short"
+  | "password_requirements_not_met"
+  | "password_mismatch"
+  | "current_password_wrong"
+  | "validation_failed"
+  | "conflict"
+  | "unexpected";
+
+export type PasswordMutationActionResult =
+  { ok: true; passwordUpdatedAt: string } | { ok: false; code: PasswordMutationActionErrorCode };

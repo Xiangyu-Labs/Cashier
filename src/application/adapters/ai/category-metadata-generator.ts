@@ -7,7 +7,7 @@ import { extractJson } from "@/lib/tasks/json-utils";
 import type { CategoryMetadataGeneratorPort } from "@/modules/ledger/application/ports";
 
 const metadataSchema = z.object({
-  icon: z.enum(COMMON_LUCIDE_ICONS as [string, ...string[]]),
+  icon: z.enum(COMMON_LUCIDE_ICONS),
   description: z.string().trim().min(1).max(120),
 });
 

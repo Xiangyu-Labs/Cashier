@@ -1,13 +1,21 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceCredentialSection } from "@/modules/ledger/ui/ServiceCredentialSection";
 import type { CreatedServiceCredentialDto } from "@/modules/ledger/contracts";
 
+const intl = vi.hoisted(() => ({ locale: "en" }));
+
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
+    values?.date == null ? key : `${key}:${String(values.date)}`,
+  useLocale: () => intl.locale,
 }));
 
 describe("ServiceCredentialSection", () => {
+  beforeEach(() => {
+    intl.locale = "en";
+  });
+
   it("keeps the create dialog locked until the credential is authoritative", async () => {
     let resolveCreate!: (value: CreatedServiceCredentialDto) => void;
     const onCreateCredential = vi.fn(
@@ -84,5 +92,32 @@ describe("ServiceCredentialSection", () => {
 
     resolveDelete();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it.each(["en", "zh"] as const)("formats credential dates with the %s locale", (locale) => {
+    intl.locale = locale;
+    const createdAt = "2026-08-07T00:00:00.000Z";
+    render(
+      <ServiceCredentialSection
+        credentials={[
+          {
+            id: "credential-1",
+            ledgerId: "ledger-1",
+            name: "Automation",
+            tokenPrefix: "sec",
+            tokenSuffix: "ret",
+            createdAt,
+            lastUsedAt: null,
+            deletedAt: null,
+          },
+        ]}
+        onCreateCredential={vi.fn()}
+        onDeleteCredential={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText(`createdAt:${new Date(createdAt).toLocaleDateString(locale)}`)
+    ).toBeInTheDocument();
   });
 });

@@ -59,9 +59,8 @@ export function StatsContentView({
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const currencySymbol = stats?.summary.currency ?? fallbackCurrency;
-  const periodLabel = t(
-    rangeType === "week" ? "lastWeek" : rangeType === "month" ? "lastMonth" : "lastYear"
-  );
+  const periodLabel =
+    rangeType === "week" ? t("lastWeek") : rangeType === "month" ? t("lastMonth") : t("lastYear");
   const statsTrend = stats?.summary.trend;
   const trend =
     statsTrend == null

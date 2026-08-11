@@ -1,11 +1,4 @@
 {
-  "AnomalyCode": {
-    "internal_error": "Internal error",
-    "invalid_content": "Invalid content",
-    "rate_limit_exceeded": "Rate limit exceeded",
-    "evidence_anomaly": "Evidence anomaly",
-    "unknown_currency": "Unknown currency"
-  },
   "DiagnosticCode": {
     "insufficient_evidence": "Insufficient Evidence",
     "insufficient_evidence_desc": "The receipt does not contain enough information to extract entries. Try uploading a clearer image or adding more text.",
@@ -63,11 +56,6 @@
     "keepOriginal": "Keep original result",
     "acceptCandidate": "Accept new result"
   },
-  "HomePage": {
-    "loading": "Loading…",
-    "creating": "Creating default ledger…",
-    "createFailed": "Creation failed, please refresh to retry"
-  },
   "LedgerPage": {
     "notFound": "Ledger not found",
     "settings": "Settings",
@@ -86,7 +74,8 @@
     "startupCacheError": "Latest data could not be loaded.",
     "retry": "Retry",
     "cachedNoRecords": "No cached records match",
-    "total": "Total"
+    "total": "Total",
+    "requiresNetwork": "Requires an internet connection"
   },
   "DetailsTab": {
     "selectAllLoaded": "Select all {count} currently loaded records",
@@ -359,7 +348,8 @@
     "tooManyImages": "You can upload up to 3 images.",
     "cancelUpload": "Cancel upload",
     "savedMayBeHidden": "Saved. Current filters may hide this record.",
-    "viewRecord": "View record"
+    "viewRecord": "View record",
+    "uploadedImage": "Uploaded image {index}"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"
@@ -449,15 +439,6 @@
     "pendingChangesCloseDescription": "Save or discard the current edit before closing.",
     "pendingChangesLeaveDescription": "Save or discard the current edit before returning to preview.",
     "continueEditing": "Continue editing"
-  },
-  "ImageViewer": {
-    "clickToZoom": "Click to Zoom",
-    "imageAlt": "Image {index}",
-    "zoomIn": "Zoom In",
-    "zoomOut": "Zoom Out",
-    "rotate": "Rotate",
-    "reset": "Reset",
-    "close": "Close"
   },
   "Settings": {
     "title": "Settings",
@@ -582,6 +563,64 @@
     "ledgerManagement": "Ledger",
     "noLedgerAvailable": "No ledger available",
     "ledgerSettings": "Ledger Settings",
+    "selectIcon": "Select icon",
+    "selectedIcon": "Selected icon: {name}",
+    "icons": "Icons",
+    "iconNames": {
+      "Utensils": "Dining",
+      "Coffee": "Coffee",
+      "Wine": "Drinks",
+      "ShoppingBag": "Shopping bag",
+      "ShoppingCart": "Shopping cart",
+      "Shirt": "Clothing",
+      "Gamepad2": "Games",
+      "Music": "Music",
+      "Ticket": "Tickets",
+      "Film": "Movies",
+      "Bus": "Bus",
+      "Car": "Car",
+      "TrainFront": "Train",
+      "Plane": "Flight",
+      "Bike": "Bicycle",
+      "Stethoscope": "Medical care",
+      "Heart": "Health",
+      "House": "Housing",
+      "Building": "Building",
+      "Key": "Key",
+      "Book": "Books",
+      "GraduationCap": "Education",
+      "Laptop": "Computer",
+      "Phone": "Phone",
+      "Camera": "Camera",
+      "Headphones": "Headphones",
+      "Wifi": "Internet",
+      "Wallet": "Wallet",
+      "CreditCard": "Credit card",
+      "Banknote": "Cash",
+      "Receipt": "Receipt",
+      "PiggyBank": "Savings",
+      "Briefcase": "Work",
+      "Hammer": "Repairs",
+      "Dumbbell": "Fitness",
+      "Baby": "Baby",
+      "Dog": "Pets",
+      "Gift": "Gifts",
+      "Glasses": "Glasses",
+      "Umbrella": "Umbrella",
+      "Watch": "Watch",
+      "Hotel": "Hotel",
+      "MapPin": "Location",
+      "Luggage": "Luggage",
+      "Crown": "Crown",
+      "Star": "Star",
+      "Lightbulb": "Ideas",
+      "Palette": "Art",
+      "Scissors": "Personal care",
+      "Tag": "Tag",
+      "Truck": "Delivery",
+      "Zap": "Utilities",
+      "Package": "Other"
+    },
     "Account": {
       "emailSection": "Email",
       "emailSectionDesc": "View or change the email address used for sign-in",
@@ -593,7 +632,11 @@
       "changePasswordButton": "Change password",
       "setPasswordTitle": "Set password",
       "changePasswordTitle": "Change password",
-      "passwordRequirements": "Use 8–128 characters with at least one letter and one number.",
+      "passwordRequirements": "Use 8–128 characters with at least one letter and one number, and no more than 72 UTF-8 bytes.",
+      "passwordTooShort": "Password must be 8–128 characters.",
+      "passwordRequirementsNotMet": "Password must contain at least one letter and one number and be no more than 72 UTF-8 bytes.",
+      "currentPasswordWrong": "Current password is incorrect.",
+      "passwordConflict": "The password changed elsewhere. Reopen this dialog and try again.",
       "currentPassword": "Current password",
       "newPassword": "New password",
       "confirmPassword": "Confirm new password",
@@ -778,24 +821,8 @@
     "errorConfigurationDesc": "There is a problem with the server configuration. Please contact support.",
     "devSignIn": "Continue as dev",
     "devSignInDesc": "Local development only. Opens the single ledger without email delivery.",
-    "devSignInFailed": "Failed to start the development session"
-  },
-  "Devices": {
-    "title": "Device Management",
-    "description": "Manage devices that are signed in to your account",
-    "currentDevice": "Current Device",
-    "otherDevices": "Other Devices",
-    "noOtherDevices": "No other devices signed in",
-    "lastActive": "Last active: {time}",
-    "signOutDevice": "Sign Out Device",
-    "signOutAll": "Sign Out All Other Devices",
-    "signOutSuccess": "Device signed out successfully",
-    "signOutAllSuccess": "All other devices signed out successfully",
-    "confirmLogoutTitle": "Sign Out Device",
-    "confirmLogoutDesc": "Are you sure you want to sign out this device? It will need to log in again to access the account.",
-    "activeNow": "Active now",
-    "unknownIp": "Unknown IP",
-    "unknownDevice": "Unknown Device"
+    "devSignInFailed": "Failed to start the development session",
+    "otpDigitLabel": "Digit {index} of {length}"
   },
   "Error": {
     "title": "Application Error",
@@ -819,25 +846,6 @@
   },
   "LedgerStartupPreview": {
     "cachedAt": "Cached at {time}"
-  },
-  "CategoriesPage": {
-    "title": "Category Management",
-    "newCategory": "New Category",
-    "editCategory": "Edit Category",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "name": "Category Name",
-    "icon": "Icon",
-    "description": "Description (Helping AI)",
-    "namePlaceholder": "e.g., Dining",
-    "iconPlaceholder": "e.g., 🍽️",
-    "descriptionPlaceholder": "e.g., Delivery, Dine-in, Groceries",
-    "confirmDelete": "Confirm Delete",
-    "confirmDeleteDesc": "Are you sure you want to delete the category \"{name}\"? Related records will become uncategorized.",
-    "noCategories": "No categories yet, click New Category to create",
-    "tipTitle": "Tip: ",
-    "tipDesc": "Category descriptions help AI more accurately identify and classify spending. For example, the description for \"Dining\" could be \"Delivery, Dine-in, Groceries\"."
   },
   "AuthEmail": {
     "otpSubject": "Your verification code is {otp}",

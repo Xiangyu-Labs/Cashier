@@ -2,17 +2,29 @@
 import { useId, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { COMMON_LUCIDE_ICONS } from "@/config/icons";
+import { COMMON_LUCIDE_ICONS, type CommonLucideIcon } from "@/config/icons";
 import { cn } from "@/lib/utils";
 
-interface IconPickerProps {
+export interface IconPickerProps {
   value: string | null | undefined;
   onChange: (iconName: string) => void;
+  messages: {
+    select: string;
+    selected: (name: string) => string;
+    list: string;
+    iconNames: Record<CommonLucideIcon, string>;
+  };
   disabled?: boolean;
   className?: string;
 }
 
-export function IconPicker({ value, onChange, disabled = false, className }: IconPickerProps) {
+export function IconPicker({
+  value,
+  onChange,
+  messages,
+  disabled = false,
+  className,
+}: IconPickerProps) {
   const [open, setOpen] = useState(false);
   const listboxId = useId();
 
@@ -20,6 +32,10 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
     onChange(iconName);
     setOpen(false);
   };
+  const selectedName =
+    value != null && value in messages.iconNames
+      ? messages.iconNames[value as CommonLucideIcon]
+      : value;
 
   if (disabled) {
     return (
@@ -38,7 +54,7 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
           aria-expanded={open}
           aria-controls={listboxId}
           aria-haspopup="listbox"
-          aria-label={value == null ? "Select icon" : `Selected icon: ${value}`}
+          aria-label={value == null ? messages.select : messages.selected(selectedName ?? value)}
           className={cn(
             "flex h-11 w-11 items-center justify-center rounded",
             "hover:bg-surface transition-colors",
@@ -51,23 +67,29 @@ export function IconPicker({ value, onChange, disabled = false, className }: Ico
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="start" sideOffset={4}>
-        <div id={listboxId} role="listbox" aria-label="Icons" className="grid grid-cols-6 gap-1">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={messages.list}
+          className="grid grid-cols-6 gap-1"
+        >
           {COMMON_LUCIDE_ICONS.map((iconName) => {
             const isSelected = value === iconName;
+            const localizedName = messages.iconNames[iconName];
             return (
               <button
                 key={iconName}
                 type="button"
                 role="option"
                 aria-selected={isSelected}
-                aria-label={iconName}
+                aria-label={localizedName}
                 onClick={() => handleSelect(iconName)}
                 className={cn(
                   "flex h-11 w-11 items-center justify-center rounded",
                   "hover:bg-surface2 transition-colors",
                   isSelected && "ring-2 ring-primary bg-primary/10"
                 )}
-                title={iconName}
+                title={localizedName}
               >
                 <CategoryIcon iconName={iconName} className="w-5 h-5" />
               </button>

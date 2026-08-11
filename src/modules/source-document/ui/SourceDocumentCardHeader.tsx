@@ -30,6 +30,7 @@ import { ProcessingStatus } from "./processing-status";
 import { SourceDocumentCardTotal } from "./SourceDocumentCardTotal";
 import type { ApplicationErrorCode, ProcessingFailureCode } from "@/application/contracts";
 import { toStableFailureCode, toStableAnomalyCode } from "@/application/contracts";
+import { useDiagnosticMessages } from "./use-diagnostic-messages";
 
 interface SourceDocumentCardHeaderProps {
   sourceDocument: SourceDocument | SourceDocumentLight;
@@ -101,7 +102,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
   const t = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
   const tActions = useTranslations("CandidateAction");
-  const tDiag = useTranslations("DiagnosticCode");
+  const diagnosticMessages = useDiagnosticMessages();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   const processingStatus = getProcessingStatus(status);
@@ -172,7 +173,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
           <ProcessingStatus
             status={processingStatus}
             {...(stableErrorCode != null
-              ? { label: tDiag(stableErrorCode as string) }
+              ? { label: diagnosticMessages.label(stableErrorCode) }
               : status === "anomaly" && anomalyReason != null && anomalyReason !== ""
                 ? { label: anomalyReason }
                 : {})}

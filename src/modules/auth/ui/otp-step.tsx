@@ -43,7 +43,12 @@ export function OtpStep({
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-text">{t("enterCode")}</label>
-          <OTPInput value={otp} onChange={onOtpChange} disabled={isLoading || resendPending} />
+          <OTPInput
+            value={otp}
+            onChange={onOtpChange}
+            disabled={isLoading || resendPending}
+            getDigitLabel={(position, length) => t("otpDigitLabel", { index: position, length })}
+          />
         </div>
         <ExpiryTimer expiresAt={expiresAt} onExpired={onExpired} className="text-center" />
       </div>

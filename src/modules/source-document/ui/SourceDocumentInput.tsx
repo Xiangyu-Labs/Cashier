@@ -71,6 +71,7 @@ export function SourceDocumentInput({
         submitting: t("submitting"),
         cancelling: t("cancelling"),
         cancelUpload: t("cancelUpload"),
+        uploadedImage: (index: number) => t("uploadedImage", { index }),
       }}
       onEntryDateChange={controller.setEntryDate}
       onTextChange={controller.setText}
