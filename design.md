@@ -19,8 +19,9 @@ Locked design system. Future UI work reads this file first and amends it intenti
 
 ## Typography
 
-- Display and body: Inter, weights 400-700
-- Mono: JetBrains Mono, Fira Code, SF Mono fallback chain
+- Display and body: operating-system sans-serif stack, with platform-native Chinese fallbacks
+- Mono: locally available JetBrains Mono, Fira Code, SF Mono fallback chain
+- Do not bundle or remotely load web fonts
 - Letter spacing: `0`; compact panel headings stay at normal UI scale
 
 ## Spacing And Shape

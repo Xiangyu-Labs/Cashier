@@ -11,7 +11,9 @@
   --dur-short: 160ms;
   --dur-state: 200ms;
   --rule-hairline: 1px;
-  --font-body: Inter, system-ui, sans-serif;
+  --font-body:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
   --space-xs: 4px;
   --space-sm: 8px;
