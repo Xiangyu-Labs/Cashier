@@ -98,4 +98,5 @@ chant.sh
 
 # Local Codex/OpenSpec workflow
 /.codex/
+/.zcode/
 /openspec/
