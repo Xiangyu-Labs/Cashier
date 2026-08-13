@@ -32,7 +32,7 @@ const SIMPLE_ENTRY = {
   notes: null,
 };
 
-const SIMPLE_STAGE0_RESULT = {
+const SIMPLE_FIRST_PARSE_RESULT = {
   outcome: "success",
   title: "Test Receipt",
   receipt_count: 1,
@@ -77,8 +77,8 @@ const COMPLEX_ENTRIES = [
   },
 ];
 
-const COMPLEX_STAGE0_RESULT = {
-  ...SIMPLE_STAGE0_RESULT,
+const COMPLEX_FIRST_PARSE_RESULT = {
+  ...SIMPLE_FIRST_PARSE_RESULT,
   receipt_totals: [{ receipt_index: 0, amount: "100", currency: "USD" }],
   ledger_entries: COMPLEX_ENTRIES,
 };
@@ -100,20 +100,20 @@ function isParserPrompt(prompt: string | undefined): boolean {
  */
 function createMockAI(
   options: {
-    stage0Result?: object;
-    stage0SecondResult?: object; // if set, 2nd call returns this (for disagreement)
+    firstParseResult?: object;
+    secondParseResult?: object; // if set, 2nd call returns this (for disagreement)
     arbitrationChoice?: number;
-    stage0Outcome?: "success" | "invalid" | "anomaly";
+    firstParseOutcome?: "success" | "invalid" | "anomaly";
   } = {}
 ): { ai: AIContext; generate: ReturnType<typeof vi.fn> } {
   const {
-    stage0Result = SIMPLE_STAGE0_RESULT,
-    stage0SecondResult,
+    firstParseResult = SIMPLE_FIRST_PARSE_RESULT,
+    secondParseResult,
     arbitrationChoice = 1,
-    stage0Outcome,
+    firstParseOutcome,
   } = options;
 
-  let stage0CallCount = 0;
+  let firstParseCallCount = 0;
 
   const generate = vi.fn(async (opts: AIGenerateOptions): Promise<AIResponse> => {
     const prompt = opts.prompt ?? "";
@@ -127,11 +127,11 @@ function createMockAI(
 
     // Single-pass parser
     if (isParserPrompt(prompt)) {
-      stage0CallCount++;
+      firstParseCallCount++;
       const base =
-        stage0Outcome != null ? { ...stage0Result, outcome: stage0Outcome } : stage0Result;
-      if (stage0SecondResult && stage0CallCount >= 2) {
-        return { content: JSON.stringify(stage0SecondResult) };
+        firstParseOutcome != null ? { ...firstParseResult, outcome: firstParseOutcome } : firstParseResult;
+      if (secondParseResult && firstParseCallCount >= 2) {
+        return { content: JSON.stringify(secondParseResult) };
       }
       return { content: JSON.stringify(base) };
     }
@@ -184,29 +184,29 @@ function buildCtx(ai: AIContext) {
 
 describe("runParsePipeline — new single-pass flow", () => {
   it("returns success for simple document with one AI call", async () => {
-    const { ai, generate } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
+    const { ai, generate } = createMockAI({ firstParseResult: SIMPLE_FIRST_PARSE_RESULT });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const stage0Calls = generate.mock.calls.filter((c) =>
+    const firstParseCalls = generate.mock.calls.filter((c) =>
       isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
-    expect(stage0Calls).toHaveLength(1);
+    expect(firstParseCalls).toHaveLength(1);
   });
 
   it("runs two parse calls for complex documents (>3 entries)", async () => {
-    const { ai, generate } = createMockAI({ stage0Result: COMPLEX_STAGE0_RESULT });
+    const { ai, generate } = createMockAI({ firstParseResult: COMPLEX_FIRST_PARSE_RESULT });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
-    const stage0Calls = generate.mock.calls.filter((c) =>
+    const firstParseCalls = generate.mock.calls.filter((c) =>
       isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
-    expect(stage0Calls).toHaveLength(2);
+    expect(firstParseCalls).toHaveLength(2);
   });
 
   it("accepts agreeing complex results without arbitration", async () => {
-    const { ai, generate } = createMockAI({ stage0Result: COMPLEX_STAGE0_RESULT });
+    const { ai, generate } = createMockAI({ firstParseResult: COMPLEX_FIRST_PARSE_RESULT });
     await runParsePipeline(createInput(), buildCtx(ai));
 
     const arbitrationCalls = generate.mock.calls.filter((c) =>
@@ -217,15 +217,15 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("triggers arbitration when complex results disagree", async () => {
     const differentResult = {
-      ...COMPLEX_STAGE0_RESULT,
+      ...COMPLEX_FIRST_PARSE_RESULT,
       ledger_entries: COMPLEX_ENTRIES.map((e) => ({
         ...e,
         amount: String(Number.parseFloat(e.amount) + 5),
       })),
     };
     const { ai, generate } = createMockAI({
-      stage0Result: COMPLEX_STAGE0_RESULT,
-      stage0SecondResult: differentResult,
+      firstParseResult: COMPLEX_FIRST_PARSE_RESULT,
+      secondParseResult: differentResult,
     });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
@@ -237,20 +237,20 @@ describe("runParsePipeline — new single-pass flow", () => {
   });
 
   it("invalid outcome short-circuits without dual-run", async () => {
-    const { ai, generate } = createMockAI({ stage0Outcome: "invalid" });
+    const { ai, generate } = createMockAI({ firstParseOutcome: "invalid" });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("invalid");
-    const stage0Calls = generate.mock.calls.filter((c) =>
+    const firstParseCalls = generate.mock.calls.filter((c) =>
       isParserPrompt((c[0] as AIGenerateOptions).prompt)
     );
-    expect(stage0Calls).toHaveLength(1);
+    expect(firstParseCalls).toHaveLength(1);
   });
 
   it("returns invalid with a fallback title when AI sends title null", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         outcome: "invalid",
         title: null,
         ledger_entries: [],
@@ -274,7 +274,7 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("returns invalid with a fallback title when AI omits title", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
+      firstParseResult: {
         outcome: "invalid",
         receipt_count: 1,
         receipt_totals: [],
@@ -297,8 +297,8 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("anomaly outcome returns anomaly result", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         outcome: "anomaly",
         anomaly_reason: "Image too blurry",
         ledger_entries: [],
@@ -315,8 +315,8 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("returns anomaly with a fallback title when AI sends blank title", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         outcome: "anomaly",
         title: "   ",
         anomaly_reason: "Image too blurry",
@@ -335,7 +335,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   });
 
   it("text-only input uses text model (no vision call)", async () => {
-    const { ai, generate } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
+    const { ai, generate } = createMockAI({ firstParseResult: SIMPLE_FIRST_PARSE_RESULT });
     await runParsePipeline(
       createInput({ evidence: undefined, text: "Lunch 10 USD" }),
       buildCtx(ai)
@@ -352,7 +352,7 @@ describe("runParsePipeline — new single-pass flow", () => {
   });
 
   it("success result includes ledgerEntries from parse output", async () => {
-    const { ai } = createMockAI({ stage0Result: SIMPLE_STAGE0_RESULT });
+    const { ai } = createMockAI({ firstParseResult: SIMPLE_FIRST_PARSE_RESULT });
     const result = await runParsePipeline(createInput(), buildCtx(ai));
 
     expect(result.kind).toBe("success");
@@ -364,8 +364,8 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("supports successful reconciliation when aiLanguage is omitted", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         receipt_totals: [{ receipt_index: 0, amount: "12", currency: "USD" }],
         ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
@@ -386,8 +386,8 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("returns a reconciled synthetic ledger entry when parser output is below the receipt total", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         receipt_totals: [{ receipt_index: 0, amount: "15", currency: "USD" }],
         ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
@@ -412,8 +412,8 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("reconciles an over-stated parse by adding a synthetic bill adjustment before mapping to parsed entries", async () => {
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
         ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
         order_adjustments: [],
@@ -433,8 +433,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     // SIMPLE_ENTRY: { receipt_index: 0, amount: "10", currency: "USD", item_name: "Lunch" }
     // receipt total is 8 after a -2 bill-level discount, so reconciliation should not add residuals.
     const { ai } = createMockAI({
-      stage0Result: {
-        ...SIMPLE_STAGE0_RESULT,
+      firstParseResult: {
+        ...SIMPLE_FIRST_PARSE_RESULT,
         receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
         order_adjustments: [
           { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
@@ -460,7 +460,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     const abortingAi: AIContext = {
       generate: async () => {
         controller.abort();
-        return { content: JSON.stringify(SIMPLE_STAGE0_RESULT) };
+        return { content: JSON.stringify(SIMPLE_FIRST_PARSE_RESULT) };
       },
     };
     const ctx = buildStageContext({
@@ -486,15 +486,15 @@ describe("buildParserInput", () => {
       categories: [{ id: "cat-1", name: "Food", description: null }],
     });
 
-    const stage0Input = buildParserInput(input);
+    const firstParseInput = buildParserInput(input);
 
-    expect(stage0Input.text).toBe("user text");
-    expect(stage0Input.evidence).toEqual({
+    expect(firstParseInput.text).toBe("user text");
+    expect(firstParseInput.evidence).toEqual({
       images: [{ dataUrl: "data:image/jpeg;base64,FAKE" }],
     });
-    expect(stage0Input.aiLanguage).toBe("en-US");
-    expect(stage0Input.preferredCurrencies).toEqual(["USD"]);
-    expect(stage0Input.aiCustomPrompt).toBe("Prefer food-related detail");
-    expect(stage0Input.originalCategories).toEqual([{ name: "Food", description: null }]);
+    expect(firstParseInput.aiLanguage).toBe("en-US");
+    expect(firstParseInput.preferredCurrencies).toEqual(["USD"]);
+    expect(firstParseInput.aiCustomPrompt).toBe("Prefer food-related detail");
+    expect(firstParseInput.originalCategories).toEqual([{ name: "Food", description: null }]);
   });
 });
