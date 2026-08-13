@@ -177,7 +177,6 @@ function buildCtx(ai: AIContext) {
   return buildStageContext({
     signal: new AbortController().signal,
     ai,
-    setProgress: vi.fn(async () => {}),
     docId: "source-doc-1",
     ledgerId: "ledger-1",
   });
@@ -455,13 +454,18 @@ describe("runParsePipeline — new single-pass flow", () => {
 
   it("cancellation returns cancelled result", async () => {
     const controller = new AbortController();
-    const { ai } = createMockAI({});
+    // Abort during the first AI call but still return a valid result, so the
+    // pipeline reaches the post-parse cancellation check and reports cancelled
+    // instead of treating the aborted request as a parse failure.
+    const abortingAi: AIContext = {
+      generate: async () => {
+        controller.abort();
+        return { content: JSON.stringify(SIMPLE_STAGE0_RESULT) };
+      },
+    };
     const ctx = buildStageContext({
       signal: controller.signal,
-      ai,
-      setProgress: vi.fn(async () => {
-        controller.abort();
-      }),
+      ai: abortingAi,
       docId: "source-doc-1",
       ledgerId: "ledger-1",
     });

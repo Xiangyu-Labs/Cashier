@@ -141,7 +141,6 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       buildStageContext({
         signal,
         ai,
-        setProgress: async () => {},
         docId: request.revisionId,
         ledgerId: request.ledgerId,
       })

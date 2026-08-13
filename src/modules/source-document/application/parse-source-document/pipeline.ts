@@ -20,7 +20,6 @@ import type { NormalizedParseOutput } from "./parser-schema";
 export interface StageContext {
   signal: AbortSignal;
   ai: AiContextContract;
-  setProgress: (message: string) => Promise<void>;
   docId: string;
   ledgerId: string;
 }
@@ -28,7 +27,6 @@ export interface StageContext {
 export function buildStageContext(params: {
   signal: AbortSignal;
   ai: AiContextContract;
-  setProgress: (message: string) => Promise<void>;
   docId: string;
   ledgerId: string;
 }): StageContext {
@@ -78,12 +76,10 @@ async function persistAndResolveSuccess({
   aiLanguage,
   result,
   wasArbitrated,
-  ctx: _ctx,
 }: {
   aiLanguage: string | undefined;
   result: NormalizedParseOutput;
   wasArbitrated: boolean;
-  ctx: StageContext;
 }): Promise<ParsePipelineResult> {
   const reconciled =
     aiLanguage === undefined
@@ -122,7 +118,6 @@ export async function runParsePipeline(
 ): Promise<ParsePipelineResult> {
   try {
     throwIfProcessingCancelled(ctx.signal);
-    await ctx.setProgress("正在解析单据...");
 
     const parserInput = buildParserInput(input);
     const first = await executeParser(parserInput, ctx.ai);
@@ -139,12 +134,10 @@ export async function runParsePipeline(
         aiLanguage: input.aiLanguage,
         result: first,
         wasArbitrated: false,
-        ctx,
       });
     }
 
     // Complex document: run a second pass
-    await ctx.setProgress("正在进行二次解析...");
     throwIfProcessingCancelled(ctx.signal);
 
     const second = await executeParser(parserInput, ctx.ai);
@@ -160,13 +153,11 @@ export async function runParsePipeline(
         aiLanguage: input.aiLanguage,
         result: first,
         wasArbitrated: false,
-        ctx,
       });
     }
 
     // Results disagree: arbitrate
     throwIfProcessingCancelled(ctx.signal);
-    await ctx.setProgress("正在仲裁单据解析结果...");
 
     logger.info({ docId: ctx.docId }, "parser: dual-run disagrees, arbitrating");
     const arbitration = await arbitrateResults(
@@ -188,7 +179,6 @@ export async function runParsePipeline(
       aiLanguage: input.aiLanguage,
       result: arbitration.result,
       wasArbitrated: true,
-      ctx,
     });
   } catch (error) {
     if (error instanceof ProcessingCancelledError) {
