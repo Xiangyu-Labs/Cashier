@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { batchUpdateLedgerEntriesAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../../setup";
 import { ledgerEntries, entryCategories, ledgers } from "@/persistence";
@@ -9,6 +9,16 @@ import {
   activateTestSourceDocumentProjection,
   TEST_USER_ID,
 } from "../../helpers/schema-setup";
+
+vi.mock("@/application/adapters/postgres/exchange-rate", () => {
+  const rateBook = {
+    convert: vi.fn(),
+    convertBatch: vi.fn(async (items: Array<{ amount: string }>) =>
+      items.map((item) => ({ convertedAmount: item.amount, exchangeRate: "1" }))
+    ),
+  };
+  return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
+});
 
 describe("Batch Update Ledger Entries Action", () => {
   let testLedgerId: string;
