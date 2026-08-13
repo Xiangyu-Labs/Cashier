@@ -46,7 +46,7 @@ npm run docker:down      # Stop production Compose service
 - `src/app/[locale]/(protected)/` - Auth-protected routes (ledger, admin, settings)
 - `src/modules/` - Domain modules: `auth`, `currency`, `ledger`, `source-document`, `stats`, `workspace`. Each module owns its contracts, application logic, public entrypoints, and module-specific UI/hooks
 - `src/persistence/` - Drizzle schema, relations, and migrations source of truth
-- `src/lib/` - Core infrastructure: `db/` (runtime DB access and scoped query helpers), `tasks/` (task runtime), `store/` (Zustand), `logger.ts` (Pino)
+- `src/lib/` - Core infrastructure: `db/` (runtime DB access and scoped query helpers), `tasks/` (AI context contract and helpers), `store/` (Zustand), `logger.ts` (Pino)
 - `src/components/ui/` - Shared Shadcn/ui primitives
 - `src/hooks/` - Shared client hooks: `use-smart-polling.ts`, `use-infinite-scroll.ts`, `useReducedMotion.ts`
 - `src/lib/errors.ts` - Standardized error classes (AppError, ValidationError, etc.)
@@ -74,7 +74,7 @@ src/modules/{domain}/
 
 **Authentication**: OTP (One-Time Password) via email using Resend. Uses NextAuth.js with credentials provider and JWT sessions (30-day max age). Registration can be disabled via `DISABLE_REGISTRATION` env var.
 
-**Request-bound processing** (`src/lib/tasks/`): Source-document parsing intents are claimed from PostgreSQL and scheduled with Next.js `after()` at request boundaries. There is no Redis, external queue, cron, resident worker, or process-wide dispatcher. Claims use leases and renew while AI work is running; the accepted reliability limit is that work may remain pending until another request arrives.
+**Request-bound processing** (`src/application/adapters/postgres/processing-intents.ts`, scheduled via `src/modules/source-document/server-actions/schedule-processing.ts`): Source-document parsing intents are claimed from PostgreSQL and scheduled with Next.js `after()` at request boundaries. There is no Redis, external queue, cron, resident worker, or process-wide dispatcher. Claims use leases and renew while AI work is running; the accepted reliability limit is that work may remain pending until another request arrives.
 
 **Error Handling**: Use standardized error classes from `src/lib/errors.ts`:
 
@@ -90,7 +90,11 @@ src/modules/{domain}/
 - Place module-specific hooks in `src/modules/{domain}/hooks/`
 - Keep hooks under 200 lines; compose smaller hooks for complex logic
 
-**AI pipeline**: Source document parsing uses a "Dual GPT + Arbitration" strategy — two parallel LLM calls compared for consistency, with a third arbitrator call if they disagree. Multi-stage: Stage 1 (pre-analysis) → Stage 1.5 (validation) → Stage 2 (detailed parsing).
+**AI pipeline**: Source document parsing runs a single-pass parse for simple
+documents; complex documents get a second, sequential parse and, if the two
+results disagree, a third arbitrator call decides between them. JSON output is
+validated and repaired before the parsed entries are reconciled against
+receipt totals. Cancellation is checked between stages via `AbortSignal`.
 
 **Tenant isolation**: All data queries are scoped to `ledgerId` using `forLedger()` helper. Access is validated via `requireLedgerAccess()`. Soft deletes via `deletedAt` column on all main tables.
 
@@ -152,20 +156,15 @@ export async function POST(request: Request) {
 }
 ```
 
-## Task Handlers
+## Source Document Processing
 
-Task handlers are registered centrally in `src/lib/tasks/task-registry.ts`. Currently only `parse_source_document` is registered.
-
-```typescript
-// src/lib/tasks/task-registry.ts
-import { parseSourceDocumentTaskDefinition } from "@/modules/source-document/tasks";
-
-registerTaskIfNeeded(
-  engine,
-  parseSourceDocumentTaskDefinition.type,
-  parseSourceDocumentTaskDefinition.handler
-);
-```
+Source-document parsing is not a handler registry. Submissions insert a durable
+processing intent (`src/application/adapters/postgres/processing-intents.ts`),
+and request boundaries schedule work with Next.js `after()` via
+`src/modules/source-document/server-actions/schedule-processing.ts`. Claims use
+leases (`FOR UPDATE SKIP LOCKED`), renewal, and an attempts table; recovery
+reclaims expired intents on the next request. See
+`docs/architecture/runtime-model.md` for the full model.
 
 ## Custom Hooks
 
