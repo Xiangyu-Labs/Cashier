@@ -1,12 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
 import { arbitrateResults } from "@/modules/source-document/application/parse-source-document/arbitration";
-import type { NormalizedParseOutput as NormalizedStage0ParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
-import type { ParserInput as Stage0Input } from "@/modules/source-document/application/parse-source-document/parser";
+import type { NormalizedParseOutput } from "@/modules/source-document/application/parse-source-document/parser-schema";
+import type { ParserInput } from "@/modules/source-document/application/parse-source-document/parser";
 
-const makeResult = (
-  overrides: Partial<NormalizedStage0ParseOutput> = {}
-): NormalizedStage0ParseOutput => ({
+const makeResult = (overrides: Partial<NormalizedParseOutput> = {}): NormalizedParseOutput => ({
   outcome: "success",
   title: "Test",
   receipt_count: 1,
@@ -26,12 +24,12 @@ const makeResult = (
   ...overrides,
 });
 
-const INPUT: Stage0Input = {
+const INPUT: ParserInput = {
   originalCategories: [],
   text: "Lunch 10 USD",
 };
 
-function arbitrateStage0Results(
+function arbitrateResultsUnderTest(
   input: Parameters<typeof arbitrateResults>[0],
   ai: Parameters<typeof arbitrateResults>[1]
 ) {
@@ -64,13 +62,13 @@ function createArbitrationAI(choice: number, correctedResult?: object): AIContex
   };
 }
 
-describe("arbitrateStage0Results", () => {
+describe("arbitrateResults", () => {
   it("returns result1 when choice is 1", async () => {
     const result1 = makeResult({ title: "First" });
     const result2 = makeResult({ title: "Second" });
     const ai = createArbitrationAI(1);
 
-    const outcome = await arbitrateStage0Results({ input: INPUT, result1, result2 }, ai);
+    const outcome = await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
     expect(outcome.kind).toBe("chosen");
     if (outcome.kind === "chosen") {
@@ -84,7 +82,7 @@ describe("arbitrateStage0Results", () => {
     const result2 = makeResult({ title: "Second" });
     const ai = createArbitrationAI(2);
 
-    const outcome = await arbitrateStage0Results({ input: INPUT, result1, result2 }, ai);
+    const outcome = await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
     expect(outcome.kind).toBe("chosen");
     if (outcome.kind === "chosen") {
@@ -116,7 +114,7 @@ describe("arbitrateStage0Results", () => {
     };
     const ai = createArbitrationAI(0, corrected);
 
-    const outcome = await arbitrateStage0Results({ input: INPUT, result1, result2 }, ai);
+    const outcome = await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
     expect(outcome.kind).toBe("chosen");
     if (outcome.kind === "chosen") {
@@ -139,7 +137,7 @@ describe("arbitrateStage0Results", () => {
     };
     const ai = createArbitrationAI(0, anomalyCorrected);
 
-    const outcome = await arbitrateStage0Results({ input: INPUT, result1, result2 }, ai);
+    const outcome = await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
     expect(outcome.kind).toBe("anomaly");
     if (outcome.kind === "anomaly") {
@@ -153,7 +151,7 @@ describe("arbitrateStage0Results", () => {
     const generate = vi.fn(async () => ({ content: JSON.stringify({ choice: 1, reason: "ok" }) }));
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results(
+    await arbitrateResultsUnderTest(
       { input: { originalCategories: [], text: "text only" }, result1, result2 },
       ai
     );
@@ -167,7 +165,7 @@ describe("arbitrateStage0Results", () => {
     const generate = vi.fn(async () => ({ content: JSON.stringify({ choice: 1, reason: "ok" }) }));
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results(
+    await arbitrateResultsUnderTest(
       {
         input: {
           originalCategories: [],
@@ -192,7 +190,7 @@ describe("arbitrateStage0Results", () => {
     });
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results(
+    await arbitrateResultsUnderTest(
       {
         input: { originalCategories: [], text: "Receipt: Coffee 5 USD" },
         result1,
@@ -217,7 +215,7 @@ describe("arbitrateStage0Results", () => {
     });
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results(
+    await arbitrateResultsUnderTest(
       {
         input: {
           originalCategories: [],
@@ -259,7 +257,7 @@ describe("arbitrateStage0Results", () => {
     });
     const ai: AIContext = { generate };
 
-    await arbitrateStage0Results({ input: INPUT, result1, result2 }, ai);
+    await arbitrateResultsUnderTest({ input: INPUT, result1, result2 }, ai);
 
     expect(calls).toHaveLength(2);
     expect(calls[0]?.messages).toBeDefined();
@@ -280,7 +278,7 @@ describe("arbitrateStage0Results", () => {
       return { content: JSON.stringify({ ...makeResult(), title: "コーヒー" }) };
     });
 
-    const outcome = await arbitrateStage0Results(
+    const outcome = await arbitrateResultsUnderTest(
       {
         input: {
           originalCategories: [{ name: "Dining", description: "Meals" }],
@@ -320,7 +318,7 @@ describe("arbitrateStage0Results", () => {
       return { content: JSON.stringify({ ...makeResult(), title: "コーヒー" }) };
     });
 
-    await arbitrateStage0Results(
+    await arbitrateResultsUnderTest(
       {
         input: {
           originalCategories: [],

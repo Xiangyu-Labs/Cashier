@@ -91,7 +91,12 @@ describe("openai-client", () => {
     it("rethrows non-retryable 4xx errors unchanged", async () => {
       const { OpenAI } = await import("openai");
       const client = await loadClient();
-      const apiError = new OpenAI.APIError(401, { message: "invalid key" }, "Invalid key", undefined);
+      const apiError = new OpenAI.APIError(
+        401,
+        { message: "invalid key" },
+        "Invalid key",
+        undefined
+      );
       stubSdkCreate(client, apiError);
 
       await expect(

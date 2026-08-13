@@ -129,7 +129,9 @@ function createMockAI(
     if (isParserPrompt(prompt)) {
       firstParseCallCount++;
       const base =
-        firstParseOutcome != null ? { ...firstParseResult, outcome: firstParseOutcome } : firstParseResult;
+        firstParseOutcome != null
+          ? { ...firstParseResult, outcome: firstParseOutcome }
+          : firstParseResult;
       if (secondParseResult && firstParseCallCount >= 2) {
         return { content: JSON.stringify(secondParseResult) };
       }

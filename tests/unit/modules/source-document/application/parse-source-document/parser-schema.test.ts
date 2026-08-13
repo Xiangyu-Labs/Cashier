@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   compareResults,
   normalizeResult,
+  parserOutputSchema,
   shouldDualRun,
-  parserOutputSchema as stage0ParseOutputSchema,
 } from "@/modules/source-document/application/parse-source-document/parser-schema";
 
 const simpleSuccess = {
@@ -25,28 +25,28 @@ const simpleSuccess = {
   reasoning: "single item",
 };
 
-describe("stage0-schema", () => {
+describe("parser-schema", () => {
   it("normalizes optional strings and preserves receipt-adjustment structure", () => {
-    const parsed = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const parsed = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     expect(parsed.ledger_entries[0]?.receipt_index).toBe(0);
     expect(parsed.order_adjustments).toEqual([]);
   });
 
   it("normalizes null notes to null", () => {
-    const parsed = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const parsed = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     expect(parsed.ledger_entries[0]?.notes).toBeNull();
   });
 
   it("normalizes missing title to a non-empty fallback string", () => {
     const noTitle = { ...simpleSuccess };
     const { title: _t, ...withoutTitle } = noTitle;
-    const parsed = normalizeResult(stage0ParseOutputSchema.parse(withoutTitle));
+    const parsed = normalizeResult(parserOutputSchema.parse(withoutTitle));
     expect(parsed.title).toBe("Untitled document");
   });
 
   it("uses invalid-content fallback title for invalid results missing title", () => {
     const parsed = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         outcome: "invalid",
         title: null,
@@ -59,7 +59,7 @@ describe("stage0-schema", () => {
 
   it("uses anomaly fallback title for anomaly results with blank title", () => {
     const parsed = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         outcome: "anomaly",
         title: "   ",
@@ -73,7 +73,7 @@ describe("stage0-schema", () => {
 
   it("uses a localized fallback title for the target AI language", () => {
     const parsed = normalizeResult(
-      stage0ParseOutputSchema.parse({ ...simpleSuccess, title: null }),
+      parserOutputSchema.parse({ ...simpleSuccess, title: null }),
       "ja-JP"
     );
 
@@ -81,13 +81,13 @@ describe("stage0-schema", () => {
   });
 
   it("treats <=3 entries with one currency and no adjustments as simple", () => {
-    const parsed = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const parsed = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     expect(shouldDualRun(parsed)).toBe(false);
   });
 
   it("requires dual-run when multiple currencies are present", () => {
     const multiCurrency = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [
           simpleSuccess.ledger_entries[0]!,
@@ -100,7 +100,7 @@ describe("stage0-schema", () => {
 
   it("requires dual-run when >3 entries are present", () => {
     const complex = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [
           ...simpleSuccess.ledger_entries,
@@ -115,7 +115,7 @@ describe("stage0-schema", () => {
 
   it("does not require dual-run for invalid or anomaly outcomes", () => {
     const invalid = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         outcome: "invalid",
         ledger_entries: [
@@ -130,9 +130,9 @@ describe("stage0-schema", () => {
   });
 
   it("compares receipt totals, entries, and adjustments instead of only grouped sums", () => {
-    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         order_adjustments: [
           { receipt_index: 0, item_name: "Discount", amount: "-2", currency: "USD" },
@@ -143,9 +143,9 @@ describe("stage0-schema", () => {
   });
 
   it("treats different receipt totals as non-matching even when item and adjustment groupings match", () => {
-    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         receipt_totals: [{ receipt_index: 0, amount: "99.99", currency: "USD" }],
       })
@@ -155,15 +155,15 @@ describe("stage0-schema", () => {
   });
 
   it("treats identical results as matching", () => {
-    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
-    const right = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
+    const right = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     expect(compareResults(left, right)).toBe(true);
   });
 
   it("detects different entry amounts as non-matching", () => {
-    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "15.00" }],
         receipt_totals: [{ receipt_index: 0, amount: "15.00", currency: "USD" }],
@@ -173,7 +173,7 @@ describe("stage0-schema", () => {
   });
 
   it("normalizeResult returns anomaly when a ledger_entry has a non-positive amount", () => {
-    const withZeroEntry = stage0ParseOutputSchema.parse({
+    const withZeroEntry = parserOutputSchema.parse({
       ...simpleSuccess,
       ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "0" }],
     });
@@ -182,7 +182,7 @@ describe("stage0-schema", () => {
   });
 
   it("normalizes a negative ledger entry and receipt total used as debit-display notation", () => {
-    const withNegativeEntry = stage0ParseOutputSchema.parse({
+    const withNegativeEntry = parserOutputSchema.parse({
       ...simpleSuccess,
       receipt_totals: [{ receipt_index: 0, amount: "-5", currency: "USD" }],
       ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "-5" }],
@@ -194,9 +194,9 @@ describe("stage0-schema", () => {
   });
 
   it("accepts results within 0.01 tolerance as matching", () => {
-    const left = normalizeResult(stage0ParseOutputSchema.parse(simpleSuccess));
+    const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         ledger_entries: [{ ...simpleSuccess.ledger_entries[0]!, amount: "12.505" }],
         receipt_totals: [{ receipt_index: 0, amount: "12.505", currency: "USD" }],
@@ -219,7 +219,7 @@ describe("stage0-schema", () => {
         },
       ],
     };
-    const result = stage0ParseOutputSchema.safeParse(unquoted);
+    const result = parserOutputSchema.safeParse(unquoted);
     expect(result.success).toBe(false);
   });
 
@@ -233,7 +233,7 @@ describe("stage0-schema", () => {
         },
       ],
     };
-    const result = stage0ParseOutputSchema.safeParse(exponentEntry);
+    const result = parserOutputSchema.safeParse(exponentEntry);
     expect(result.success).toBe(false);
   });
 
@@ -241,7 +241,7 @@ describe("stage0-schema", () => {
     // 0.1 + 0.2 = 0.30000000000000004 in JavaScript
     // Using decimal strings avoids this error
     const parsed = normalizeResult(
-      stage0ParseOutputSchema.parse({
+      parserOutputSchema.parse({
         ...simpleSuccess,
         receipt_totals: [{ receipt_index: 0, amount: "0.30", currency: "USD" }],
         ledger_entries: [

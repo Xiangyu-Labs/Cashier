@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  executeParser,
-  type ParserInput,
-} from "@/modules/source-document/application/parse-source-document/parser";
+import { executeParser } from "@/modules/source-document/application/parse-source-document/parser";
 import type { AIContext, AIGenerateOptions } from "@/lib/tasks/types";
 
 const SIMPLE_SUCCESS_RESPONSE = {
@@ -40,11 +37,7 @@ function getFirstGenerateCall(generate: ReturnType<typeof vi.fn>): AIGenerateOpt
   return firstCall as AIGenerateOptions;
 }
 
-function executeStage0(input: ParserInput, ai: AIContext) {
-  return executeParser(input, ai);
-}
-
-describe("executeStage0 — single-pass receipt parser", () => {
+describe("executeParser — single-pass receipt parser", () => {
   let mockAI: AIContext;
 
   beforeEach(() => {
@@ -53,8 +46,8 @@ describe("executeStage0 — single-pass receipt parser", () => {
 
   // === Return shape ===
 
-  it("returns NormalizedStage0ParseOutput with outcome, title, entries, adjustments", async () => {
-    const result = await executeStage0(
+  it("returns NormalizedParseOutput with outcome, title, entries, adjustments", async () => {
+    const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
@@ -68,7 +61,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("does NOT return DocumentUnderstanding shape (no primaryEvidence field)", async () => {
-    const result = await executeStage0(
+    const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
@@ -78,7 +71,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("preserves receipt_index on ledger entries", async () => {
-    const result = await executeStage0(
+    const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
@@ -94,7 +87,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       ],
     });
 
-    const result = await executeStage0(
+    const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       aiWithAdjustment
     );
@@ -104,7 +97,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("instructs the model to accept transaction-linked prices and normalize debit display signs", async () => {
-    await executeStage0({ originalCategories: [] }, mockAI);
+    await executeParser({ originalCategories: [] }, mockAI);
 
     const prompt = getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt;
     expect(prompt).toContain("Valid evidence is not limited to completed receipts or invoices");
@@ -115,7 +108,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   // === Model selection ===
 
   it("uses vision model when image evidence is provided", async () => {
-    await executeStage0(
+    await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       mockAI
     );
@@ -124,7 +117,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("passes preloaded image evidence to the AI", async () => {
-    await executeStage0(
+    await executeParser(
       {
         evidence: { images: [{ dataUrl: "data:image/png;base64,STORED" }] },
         originalCategories: [],
@@ -162,7 +155,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       };
     });
 
-    await executeStage0(
+    await executeParser(
       {
         evidence: { images: [{ dataUrl: "data:image/png;base64,STORED" }] },
         originalCategories: [],
@@ -174,13 +167,13 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("uses text model when only text is provided", async () => {
-    await executeStage0({ text: "Taxi fare SGD 28.00", originalCategories: [] }, mockAI);
+    await executeParser({ text: "Taxi fare SGD 28.00", originalCategories: [] }, mockAI);
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).model).toBe("text");
   });
 
   it("uses vision model for mixed text+image input", async () => {
-    await executeStage0(
+    await executeParser(
       {
         text: "meal",
         evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] },
@@ -202,7 +195,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       receipt_totals: [],
     });
 
-    const result = await executeStage0({ text: "random text", originalCategories: [] }, aiInvalid);
+    const result = await executeParser({ text: "random text", originalCategories: [] }, aiInvalid);
 
     expect(result.outcome).toBe("invalid");
   });
@@ -216,7 +209,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
       receipt_totals: [],
     });
 
-    const result = await executeStage0(
+    const result = await executeParser(
       { evidence: { images: [{ dataUrl: "data:image/jpeg;base64,abc" }] }, originalCategories: [] },
       aiAnomaly
     );
@@ -228,7 +221,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   // === Prompt contains required sections ===
 
   it("injects category list into prompt when categories are provided", async () => {
-    await executeStage0(
+    await executeParser(
       {
         text: "coffee 10 USD",
         originalCategories: [{ name: "Food", description: "Meals and snacks" }],
@@ -242,7 +235,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("prompt contains expense evidence parser identifier", async () => {
-    await executeStage0({ text: "coffee 10 USD", originalCategories: [] }, mockAI);
+    await executeParser({ text: "coffee 10 USD", originalCategories: [] }, mockAI);
 
     expect(getFirstGenerateCall(mockAI.generate as ReturnType<typeof vi.fn>).prompt).toContain(
       "expense evidence parser"
@@ -250,7 +243,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("makes the Japanese native-user locale override a conflicting custom prompt", async () => {
-    await executeStage0(
+    await executeParser(
       {
         text: "Coffee 10 USD",
         originalCategories: [],
@@ -272,7 +265,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   });
 
   it("includes the shared title policy and keeps language above ledger prompts", async () => {
-    await executeStage0(
+    await executeParser(
       {
         text: "Coffee 10 USD",
         originalCategories: [],
@@ -300,7 +293,7 @@ describe("executeStage0 — single-pass receipt parser", () => {
   // === Multi-image ===
 
   it("handles multiple images without error", async () => {
-    const result = await executeStage0(
+    const result = await executeParser(
       {
         evidence: {
           images: [
