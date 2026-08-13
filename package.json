@@ -1,7 +1,13 @@
 {
   "name": "cashier",
   "version": "0.1.0",
+  "description": "A self-hosted AI bookkeeping app for turning receipts and notes into a verifiable personal ledger.",
+  "license": "AGPL-3.0-only",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xiangyu-Labs/Cashier.git"
+  },
   "engines": {
     "node": "24.x"
   },

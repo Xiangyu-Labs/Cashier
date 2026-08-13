@@ -1,192 +1,109 @@
-# Cashier - AI Intelligent Bookkeeping Assistant
+# Cashier
 
-Cashier is a modern, AI-powered bookkeeping application designed to streamline personal finance management. It uses advanced LLMs to parse receipts and invoices, automatically categorizing and recording expenses.
+> 把小票、发票和一句话，变成可核对的个人账本。
 
-## Features
+[English](./README.en.md)
 
-- **AI-Powered Entry**: Upload a receipt or type a natural language description, and Cashier extracts dates, amounts, merchants, and items.
-- **Self-hosted authentication**: Password login works without email; Resend-backed OTP is optional.
-- **Multi-Currency**: Automatic currency conversion and management.
-- **Service Credentials**: Create scoped API credentials for automation against the current ledger.
+[![CI/CD](https://github.com/Xiangyu-Labs/Cashier/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Xiangyu-Labs/Cashier/actions/workflows/ci-cd.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](./LICENSE)
 
-## Tech Stack
+![Cashier 流水页面](./public/readme/stream-desktop.webp)
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
-- **Database**: PostgreSQL via [Drizzle ORM](https://orm.drizzle.team/)
-- **Auth**: [Auth.js v5](https://authjs.dev/) (NextAuth)
-- **UI**: Tailwind CSS, Radix UI, Shadcn/ui
-- **AI**: OpenAI / LLM Integration
+Cashier 最初只是我给自己做的记账工具：拍下小票，或者随手写一句“午饭 35
+元”，剩下的整理工作交给 AI。现在它开始作为一个自托管项目开放，希望也能帮到那些
+不想每天填写复杂表单、但仍然希望账目可控、可查的人。
 
-## Docker
+Cashier 会从图片或文字中提取日期、商家、金额、币种、分类和消费明细。AI 的结果不会
+变成不可触碰的黑盒：你可以在入账前后检查、修改、重试，并在流水、明细和统计中继续
+管理这些记录。
 
-Docker and Docker Compose are the only prerequisites. Choose one explicit mode.
+## 它能做什么
 
-### Bundled local stack
+- 上传小票、发票图片，或直接输入自然语言记账
+- 提取账单标题、日期、金额、币种、分类和明细
+- 复核和编辑 AI 结果，处理异常与疑似重复账单
+- 管理多币种消费，并按账本主币种查看汇总
+- 从流水、筛选明细和统计图表回看支出
+- 创建账本级 API 密钥，供脚本、快捷指令和外部集成使用
+- 使用中文或英文界面
+
+<picture>
+  <source media="(max-width: 600px)" srcset="./public/readme/entry-mobile.webp">
+  <img alt="Cashier 智能记账界面" src="./public/readme/entry-mobile.webp" width="390">
+</picture>
+
+## 快速开始
+
+你只需要 Docker 和 Docker Compose。
 
 ```bash
+git clone https://github.com/Xiangyu-Labs/Cashier.git
+cd Cashier
 cp .env.local.example .env
-npm run docker:local
 ```
 
-This starts the app, PostgreSQL, MinIO, and the one-shot `storage-bootstrap` bucket creator. The
-PostgreSQL and MinIO credentials are fixed local-only values and must not be used for external
-services.
+编辑 `.env`，至少填写以下三项：
 
-### External Neon / R2
-
-```bash
-cp .env.example .env
-# Fill DATABASE_URL and every S3 credential; create the bucket first.
-npm run docker:external
+```dotenv
+INITIAL_USER_EMAIL=you@example.com
+INITIAL_USER_PASSWORD=choose-a-strong-password
+OPENAI_API_KEY=your-api-key
 ```
 
-External mode starts only `app`; it never creates PostgreSQL, MinIO, or initialization containers.
-Both modes apply migrations, generate stable Auth/API internal secrets in `cashier_config`, and
-create the initial user when the database is empty. External S3/R2 credentials are never generated.
-
-Open [http://localhost:3000](http://localhost:3000). The initial password is never synchronized
-again and may be removed from `.env` after the first successful start.
-
-Set `AUTH_RESEND_KEY` to enable email-code login and registration. Without it, the login page only
-shows password login.
-
-### Docker Commands
-
-| Command                   | Description                      |
-| ------------------------- | -------------------------------- |
-| `npm run docker:local`    | Start app + PostgreSQL + MinIO   |
-| `npm run docker:external` | Start app with external services |
-| `npm run docker:prod`     | Alias for `docker:external`      |
-| `npm run docker:build`    | Build production image only      |
-| `npm run docker:down`     | Stop and remove containers       |
-
-Application data lives in the `cashier_postgres`, `cashier_minio`, and `cashier_config` named
-volumes. `npm run docker:down` preserves them; adding `-v` to the underlying Compose command
-permanently removes them.
-
-## Local Development
-
-Local Node development requires Node.js 24, PostgreSQL, and S3-compatible storage. Start the bundled
-services, install dependencies, migrate, and run Next.js:
+然后启动：
 
 ```bash
-npm install
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d postgres minio storage-bootstrap
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+```
+
+首次启动会自动创建 PostgreSQL、MinIO 存储桶、数据库表和初始用户。打开
+[http://localhost:3000](http://localhost:3000)，使用刚才填写的邮箱和密码登录。
+
+`AI_MODEL` 默认为 `gpt-4o`。如果你使用其他 OpenAI 兼容服务，请同时修改
+`OPENAI_BASE_URL` 和 `AI_MODEL`。
+
+需要接入已有的 PostgreSQL、Cloudflare R2 或其他 S3 兼容存储时，请阅读
+[部署、升级与备份](./docs/deployment.md)。
+
+## 使用前请知道
+
+> **项目状态：早期公开版本**
+
+- 这个项目源于个人使用，目前开放给其他人试用和反馈，还没有正式稳定版或兼容性承诺。
+- AI 可能误读票据或错误分类，重要账目请在入账后人工复核。
+- 升级前请备份 PostgreSQL 数据库和对象存储；不要把客户端启动预览当作数据备份。
+- AI 解析需要联网，并依赖可用的 OpenAI 或 OpenAI 兼容接口。
+- Cashier 是记账工具，不提供会计、税务或财务建议。
+
+## 文档
+
+- [部署、升级与备份](./docs/deployment.md)
+- [配置参考](./docs/configuration.md)
+- [API v1](./docs/api.md)
+- [参与开发](./CONTRIBUTING.md)
+- [运行时架构](./docs/architecture/runtime-model.md)
+- [架构与编码约定](./docs/architecture/coding-patterns.md)
+
+## 本地开发
+
+本地开发需要 Node.js 24、PostgreSQL 和 S3 兼容存储：
+
+```bash
+npm ci
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d \
+  postgres minio storage-bootstrap
 npm run db:migrate
 npm run dev
 ```
 
-Ignored files such as `.env`, `.env.local`, and `.env.r2.local` are not changed by this migration.
-After confirming the new `.env` works, obsolete local copies can be archived manually.
-
-## Testing
-
-Integration tests use the PostgreSQL service from `docker-compose.test.yml`.
+提交改动前运行：
 
 ```bash
-npm run test        # Watch mode
-npm run test:run    # Single run
-npm run test:coverage  # With coverage
+npm run check
 ```
 
-PostgreSQL migrations under `src/persistence/postgres-migrations/` are the only schema history.
-There is no SQLite runtime or compatibility migration path.
-
-## Documentation
-
-- [CLAUDE.md](./CLAUDE.md) - Working conventions for agents in this repository
-
-## Processing
-
-Source document parsing (AI-powered receipt/expense extraction) uses the following architecture:
-
-- **Hosting**: Vercel and Docker are both supported first-class deployment targets. Production currently runs on Vercel.
-- **Scheduling**: Processing is scheduled via Next.js `after()` at request boundaries — runs after the HTTP response is sent, no blocking.
-- **No global drain loop**: Each submission creates a processing intent and executes it directly. No background worker or external queue drains pending rows.
-- **Idempotency**: Processing intents support idempotent dispatch, claim-based concurrency control, and lease expiry to handle restarts.
-- **Runtime boundary**: `after()` uses the same application path on Vercel and Docker. On Vercel it remains bounded by the Function `maxDuration`; Docker packaging does not impose that serverless lifecycle limit.
-
-### Request-bound reliability boundary
-
-API v1 returns `201` only after image processing, R2 upload, and database
-persistence complete — it does **not** wait for AI parsing. Parsing is scheduled
-with Next.js `after()` and a PostgreSQL durable outbox with claim leases and
-heartbeat renewal. If the AI call fails or the serverless lifecycle cuts the
-request short, the pending intent stays recoverable and is re-claimed by the
-next upload, app query, or Stream refresh for the same ledger. With no new
-request at all, recovery does not happen automatically — there is no cron,
-worker, or external queue by design.
-
-Cancelling the HTTP request after it was delivered does not undo the upload:
-the server may still report the document later. For at-most-once creation,
-send the same `Idempotency-Key` header on retries; a replayed key returns the
-already-created document instead of creating a second one.
-
-### Storage maintenance
-
-`npm run prune` removes provably unreferenced database/runtime data and R2
-objects. It is **dry-run by default** and deletes nothing unless `--apply` is
-passed. Soft-deleted source documents and their revisions are never touched.
-
-```bash
-npm run prune                       # scan + summary only
-npm run prune -- --apply            # delete what the scan found
-npm run prune -- --json --batch-size 500 --orphan-grace-days 14 --temporary-grace-hours 48
-```
-
-What it cleans:
-
-- Expired rate-limit buckets, OTP tokens, idempotency records, upload
-  sessions, change-log batches, and stale object-cleanup jobs.
-- `stored_files` older than `--orphan-grace-days` (default 7) with no
-  `revision_files` or valid upload-session reference: the database row is
-  claimed with a reference recheck, then the R2 object is removed. A failed
-  object delete leaves a durable orphan that the next prune removes.
-- Durable R2 objects older than the grace period with no `stored_files` row
-  at all.
-- `temporary/*` objects older than `--temporary-grace-hours` (default 24)
-  that no open/finalizing upload session references.
-
-Rows whose R2 object is already missing are reported (`missingObjects`) and
-kept, never auto-deleted. A PostgreSQL advisory lock serialises prune runs
-against each other and maintenance.
+更完整的开发约定见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ## License
 
-Private
-
-## Architecture Notes
-
-### Unified Stream Page
-
-The ledger home displays a single unified Stream of source documents across all statuses (queued, processing, anomaly, completed). This replaces the earlier split between an "attention" (limited) and "completed" (paginated) collection. A single server-side keyset cursor, ordered by `entryDate DESC, createdAt DESC, id DESC`, drives infinite scrolling with exactly 20 items per page. The browser preserves server order and does not re-sort.
-
-### Refresh Ownership
-
-Every ledger has a monotonic bigint sync version. Visible tabs request bounded deltas and apply changed canonical documents and tombstones to every loaded filter cache. BroadcastChannel distributes versioned results as an optimization, while polling pauses when hidden or offline and wakes after relevant mutations. The startup preview cache consumes the same protocol; only first use, a retained-log gap, `resetRequired`, or a 24-hour full validation downloads a full snapshot.
-
-### Startup Preview Cache
-
-IndexedDB (`cashier-cache`) stores a short-lived, read-only startup preview: the latest ledger snapshot (up to 1,000 documents) and viewed document image blobs (100 images / 10 MB with LRU eviction). The preview is only shown while the server bootstrap is still loading; the authoritative server data replaces it as soon as it arrives. Client caches are disposable and never migrated: a cache-format upgrade invalidates the whole database, and the next startup rebuilds it from the server. The application does not provide offline availability — the service worker precaches only immutable static assets and never serves navigation or cached API responses. TanStack Query and the refresh coordinator still use `navigator.onLine` to avoid request storms while disconnected.
-
-### Cache Transaction Model
-
-Optimistic mutations are represented as operation-scoped overlays over canonical Stream entities. Each operation has a unique ID, forward/inverse patches, a base version, and affected projections (`stream`, `counts`, `detail`). A `CacheTransactionManager` maintains the pending operation stack. On server acknowledgment (commit), the operation is removed and later operations replay over the new canonical base. On error (rollback), the failed operation's patches are inverted and surviving operations replay. Targeted invalidation (`invalidateLedgerStats`, `invalidateCalendar`) remains for expensive derived data that cannot be safely patched. The canonical Stream is never invalidated on success if reconciliation succeeded.
-
-### Internal-Breaking Compatibility
-
-Ledger-entry update/delete server actions accept an optional `operationId` parameter and return a parent source-document reconciliation DTO (`MutationReconciliation<SourceDocumentListItemDto>`). This is an internal change only; the public API v1 response contracts remain unchanged. Legacy client-side query keys (`sourceDocumentAttention`, `sourceDocumentCompletedPage`, `sourceDocumentCollection`) and their invalidation predicates have been removed.
-
-### Storage And API
-
-Web images are uploaded directly to private R2 with short-lived signed PUT URLs. The server verifies object MIME type, size, and SHA-256 metadata before copying to a durable key. Reads remain authenticated and stream through `/api/stored-files/:fileId`; API v1 inline images continue using the server-side upload path. `/api/v1` is the stable long-lived public contract and has no scheduled sunset. There is no `/api/v2` route surface. Mobile and automation clients should reuse the same `Idempotency-Key` when retrying a `POST /api/v1/source-documents` so a network retry cannot create duplicate documents or files; every API v1 response includes an `X-Request-Id` header that can be used for request correlation.
-
-### Public API v1 Contract
-
-`POST /api/v1/source-documents` and `GET /api/v1/source-documents/{id}` accept `Authorization: Bearer <token>` (scheme matching is case-insensitive). Successful credential-limited responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` (Unix seconds); `429` responses add `Retry-After` plus the same three headers. `401` responses include `WWW-Authenticate: Bearer`. A successful `POST` returns `201` with a relative `Location: /api/v1/source-documents/{sourceDocumentId}` header.
-
-The optional `Idempotency-Key` header must contain between 1 and 512 characters and may not be all whitespace. The value is validated before the request body is read and is never trimmed or normalized, so retries must send the exact original value. An invalid key returns `400` without reading or uploading the request content.
-
-Rate limits are fixed 60-second windows backed by PostgreSQL. `API_RATE_LIMIT_PER_MINUTE` (default `60`) is a per-credential quota shared by `POST` and `GET` across all client IPs. When `TRUSTED_PROXY` is configured, a pre-authentication per-IP ceiling of 120 requests/minute protects authentication work, and invalid bearer attempts are capped at 30/minute per IP and token shard.
-
-The completed status projection reports accounting totals in the ledger's main currency: `result.total` is the sum of the selected revision's `convertedAmount` values and `result.totalCurrency` is the ledger's three-letter ISO main currency (for example `"12.50"` with `"CNY"`). The entries array keeps the original `amount` and `currency` per line and does not expose `convertedAmount`. If a completed revision contains an entry without an accounting amount, the endpoint returns a sanitized `500` rather than mixing raw currencies.
+Cashier 使用 [GNU Affero General Public License v3.0](./LICENSE)。
