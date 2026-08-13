@@ -81,7 +81,6 @@ export async function executeSingleProcessingIntent(
     createAIContext: (signal) =>
       createAIContext({
         signal,
-        reportTokens: () => {},
         getClient: getOpenAIClient,
         modelConfig: {
           text: runtimeEnv.aiModel,

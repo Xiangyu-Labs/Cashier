@@ -5,7 +5,6 @@ import type {
   AIModelConfig,
   AIResponse,
   AIModelTier,
-  TokenUsage,
 } from "./types";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { isValidJson, extractJson, buildRepairPrompt } from "./json-utils";
@@ -14,20 +13,18 @@ import { logger } from "@/lib/logger";
 
 interface CreateAIContextOptions {
   signal: AbortSignal;
-  reportTokens: (usage: TokenUsage) => void;
   getClient: AIClientFactory;
   modelConfig: AIModelConfig;
 }
 
 /**
- * Create AI context for task execution
+ * Create AI context for processing execution
  *
- * Provides AI capabilities to tasks with automatic token reporting
- * and abort signal propagation.
+ * Provides AI capabilities with JSON validation/repair and
+ * abort signal propagation.
  */
 export function createAIContext({
   signal,
-  reportTokens,
   getClient,
   modelConfig,
 }: CreateAIContextOptions): AIContext {
@@ -165,15 +162,6 @@ export function createAIContext({
           // Use extracted content (stripped markdown etc.)
           result.content = extracted;
         }
-      }
-
-      // Auto-report tokens unless disabled
-      if (options.autoReportTokens !== false && result.usage != null) {
-        reportTokens({
-          model,
-          input: result.usage.promptTokens,
-          output: result.usage.completionTokens,
-        });
       }
 
       if (result.usage == null) {

@@ -11,7 +11,6 @@ export interface AiContextContract {
     maxTokens?: number;
     temperature?: number;
     requireJson?: boolean;
-    autoReportTokens?: boolean;
   }): Promise<{
     content: string;
     usage?: { promptTokens: number; completionTokens: number };

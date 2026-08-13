@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TokenUsage, AIClient } from "@/lib/tasks/types";
+import type { AIClient } from "@/lib/tasks/types";
 import { createAIContext } from "@/lib/tasks/ai-context";
 
 describe("createAIContext", () => {
   let mockSignal: AbortSignal;
-  let mockReportTokens: ReturnType<typeof vi.fn>;
   let mockGenerateContent: ReturnType<typeof vi.fn>;
   let mockClient: AIClient;
 
@@ -19,7 +18,6 @@ describe("createAIContext", () => {
 
   beforeEach(() => {
     mockSignal = new AbortController().signal;
-    mockReportTokens = vi.fn();
     mockGenerateContent = vi.fn().mockResolvedValue({
       content: '{"result": "test"}',
       usage: {
@@ -32,25 +30,22 @@ describe("createAIContext", () => {
     };
   });
 
-  it("should return an object with generate method", () => {
-    const context = createAIContext({
+  const createContext = () =>
+    createAIContext({
       signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
       getClient: () => mockClient,
       modelConfig: { text: "test-text-model", vision: "test-vision-model" },
     });
+
+  it("should return an object with generate method", () => {
+    const context = createContext();
 
     expect(context).toHaveProperty("generate");
     expect(typeof context.generate).toBe("function");
   });
 
   it("should generate content with basic options", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     const result = await context.generate({
       prompt: "Test prompt",
@@ -64,12 +59,7 @@ describe("createAIContext", () => {
   });
 
   it("should throw error when text model receives image content", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     await expect(
       context.generate({
@@ -90,7 +80,6 @@ describe("createAIContext", () => {
   it("should throw error when text model config is missing", async () => {
     const context = createAIContext({
       signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
       getClient: () => mockClient,
       modelConfig: { text: "", vision: "test-vision-model" },
     });
@@ -107,7 +96,6 @@ describe("createAIContext", () => {
   it("should throw error when vision model config is missing", async () => {
     const context = createAIContext({
       signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
       getClient: () => mockClient,
       modelConfig: { text: "test-text-model", vision: "" },
     });
@@ -122,12 +110,7 @@ describe("createAIContext", () => {
   });
 
   it("should use default maxTokens and temperature", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     await context.generate({
       prompt: "Test prompt",
@@ -141,12 +124,7 @@ describe("createAIContext", () => {
   });
 
   it("should accept custom maxTokens and temperature", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     await context.generate({
       prompt: "Test prompt",
@@ -161,52 +139,8 @@ describe("createAIContext", () => {
     expect(callArgs[4]).toBe(0.5);
   });
 
-  it("should auto-report tokens by default", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
-
-    await context.generate({
-      prompt: "Test prompt",
-      messages: [{ role: "user", content: "Hello" }],
-      model: "text" as const,
-    });
-
-    expect(mockReportTokens).toHaveBeenCalledWith({
-      model: expect.any(String),
-      input: 100,
-      output: 50,
-    });
-  });
-
-  it("should not report tokens when autoReportTokens is false", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
-
-    await context.generate({
-      prompt: "Test prompt",
-      messages: [{ role: "user", content: "Hello" }],
-      model: "text" as const,
-      autoReportTokens: false,
-    });
-
-    expect(mockReportTokens).not.toHaveBeenCalled();
-  });
-
   it("should convert string messages to OpenAI format", async () => {
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     await context.generate({
       prompt: "Test prompt",
@@ -230,12 +164,7 @@ describe("createAIContext", () => {
       content: '{"result": "test"}',
     });
 
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     const result = await context.generate({
       prompt: "Test prompt",
@@ -244,7 +173,6 @@ describe("createAIContext", () => {
     });
 
     expect(Object.hasOwn(result, "usage")).toBe(false);
-    expect(mockReportTokens).not.toHaveBeenCalled();
   });
 
   it("should handle requireJson option", async () => {
@@ -254,12 +182,7 @@ describe("createAIContext", () => {
       usage: { promptTokens: 100, completionTokens: 50 },
     });
 
-    const context = createAIContext({
-      signal: mockSignal,
-      reportTokens: mockReportTokens as (usage: TokenUsage) => void,
-      getClient: () => mockClient,
-      modelConfig: { text: "test-text-model", vision: "test-vision-model" },
-    });
+    const context = createContext();
 
     const result = await context.generate({
       prompt: "Test prompt",
