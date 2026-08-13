@@ -22,6 +22,8 @@ function toFailureCode(error: unknown): ProcessingFailureCode {
   if (error instanceof AppError) {
     switch (error.code) {
       case "RATE_LIMIT":
+      case "AI_PROVIDER_RATE_LIMITED":
+      case "AI_PROVIDER_UNAVAILABLE":
         return "ai_provider_unavailable";
       case "EXCHANGE_RATES_UNAVAILABLE":
       case "EXCHANGE_RATES_FETCH_FAILED":
@@ -36,30 +38,9 @@ function toFailureCode(error: unknown): ProcessingFailureCode {
         return "processing_unavailable";
     }
   }
-  // Check for network/HTTP errors from the AI client
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes("rate limit") || msg.includes("429") || msg.includes("too many requests")) {
-      return "ai_provider_unavailable";
-    }
-    if (msg.includes("exchange rate") || msg.includes("currency conversion")) {
-      return "exchange_rate_failure";
-    }
-    if (msg.includes("storage") || msg.includes("upload") || msg.includes("file")) {
-      return "storage_failure";
-    }
-    if (msg.includes("database") || msg.includes("db") || msg.includes("connection")) {
-      return "database_unavailable";
-    }
-    if (
-      msg.includes("ai") ||
-      msg.includes("openai") ||
-      msg.includes("provider") ||
-      msg.includes("model")
-    ) {
-      return "ai_provider_unavailable";
-    }
-  }
+  // Provider errors that did not surface as typed AppErrors (e.g. non-retryable
+  // 4xx responses) are reported as generic processing failures; message-text
+  // sniffing is not used because it is brittle and leaks provider details.
   return "processing_unavailable";
 }
 

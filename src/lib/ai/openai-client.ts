@@ -148,6 +148,28 @@ export class OpenAIClient {
       }
     }
 
+    // Classify exhausted retries into typed application errors so callers can
+    // branch on stable codes instead of provider-specific error shapes or
+    // message text. Non-retryable 4xx errors are rethrown unchanged.
+    if (lastError instanceof OpenAI.APIError) {
+      if (lastError.status === 429) {
+        throw new AppError(
+          "AI provider rate limited after retries",
+          "AI_PROVIDER_RATE_LIMITED",
+          503,
+          { cause: lastError.message }
+        );
+      }
+      if (lastError.status != null && lastError.status >= 500) {
+        throw new AppError(
+          "AI provider unavailable after retries",
+          "AI_PROVIDER_UNAVAILABLE",
+          503,
+          { cause: lastError.message }
+        );
+      }
+    }
+
     throw lastError;
   }
 }
