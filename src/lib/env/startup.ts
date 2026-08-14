@@ -221,6 +221,16 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
   const result = startupEnvSchema.safeParse(env);
 
   if (result.success) {
+    if (env.NODE_ENV === "production" && result.data.TRUSTED_PROXY == null) {
+      throw new AppError(
+        "Startup environment validation failed: TRUSTED_PROXY is required in production",
+        "STARTUP_ENV_INVALID",
+        500,
+        {
+          issues: [{ path: ["TRUSTED_PROXY"], message: "TRUSTED_PROXY is required in production" }],
+        }
+      );
+    }
     return result.data;
   }
 

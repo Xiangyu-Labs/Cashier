@@ -15,9 +15,11 @@ import {
 } from "@/application/adapters/postgres";
 import { createUploadPlanForSubmission, StoredFileAdapter } from "@/application/adapters/storage";
 import {
+  DIRECT_UPLOAD_FINALIZE_BUFFER_MS,
   MAX_FILES,
   MAX_NORMALIZED_BYTES_PER_REVISION,
   MAX_ORIGINAL_BYTES_PER_FILE,
+  UPLOAD_SESSION_EXPIRY_MS,
 } from "@/modules/source-document/upload-policy";
 import {
   currencyRates,
@@ -82,8 +84,10 @@ class DirectMemoryObjectStore extends MemoryObjectStore {
     string,
     { byteSize: number; contentType: string; metadata: Record<string, string> }
   >();
+  readonly presignTtlSeconds: number[] = [];
 
-  async presignUpload(key: string, contentType: string, sha256: string) {
+  async presignUpload(key: string, contentType: string, sha256: string, expiresInSeconds: number) {
+    this.presignTtlSeconds.push(expiresInSeconds);
     return {
       url: `https://r2.test/${key}`,
       requiredHeaders: { "Content-Type": contentType, "x-amz-meta-sha256": sha256 },
@@ -610,6 +614,9 @@ describe("current-runtime target adapters", () => {
       },
     ]);
     const target = plan.targets[0]!;
+    expect(storage.presignTtlSeconds).toEqual([
+      Math.floor((UPLOAD_SESSION_EXPIRY_MS - DIRECT_UPLOAD_FINALIZE_BUFFER_MS) / 1000),
+    ]);
     const temporaryKey = `temporary/${ledgerId}/${plan.id}/${target.id}`;
     storage.files.set(temporaryKey, bytes);
     storage.metadata.set(temporaryKey, {
@@ -695,5 +702,41 @@ describe("current-runtime target adapters", () => {
     expect(
       await db.query.uploadSessions.findFirst({ where: eq(uploadSessions.id, plan.id) })
     ).toMatchObject({ status: "cancelled" });
+  });
+
+  it("rejects direct upload bytes that disagree with trusted-looking checksum metadata", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db);
+    const storage = new DirectMemoryObjectStore();
+    const adapter = new StoredFileAdapter(storage);
+    const expectedBytes = Buffer.from("expected");
+    const actualBytes = Buffer.from("tampered");
+    const checksum = createHash("sha256").update(expectedBytes).digest("hex");
+    const plan = await adapter.createDirectUploadPlan(ledgerId, [
+      {
+        contentType: "image/jpeg",
+        byteSize: actualBytes.length,
+        originalFilename: null,
+        checksum,
+      },
+    ]);
+    const target = plan.targets[0]!;
+    const key = `temporary/${ledgerId}/${plan.id}/${target.id}`;
+    storage.files.set(key, actualBytes);
+    storage.metadata.set(key, {
+      byteSize: actualBytes.length,
+      contentType: "image/jpeg",
+      metadata: { sha256: checksum },
+    });
+
+    await expect(
+      adapter.finalizeDirectUpload({
+        ownerLedgerId: ledgerId,
+        uploadSessionId: plan.id,
+        finalizationToken: plan.finalizationToken,
+        targetIds: [target.id],
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(storage.files.has(`${ledgerId}/stored/${target.id}`)).toBe(false);
   });
 });

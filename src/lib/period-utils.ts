@@ -21,6 +21,28 @@ export interface DateRange {
   endDate: string | null; // ISO datetime string for API
 }
 
+function subtractCalendarMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() - months);
+  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(originalDay, lastDay));
+  return result;
+}
+
+function subtractCalendarYears(date: Date, years: number): Date {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+  const targetMonth = result.getMonth();
+  result.setDate(1);
+  result.setFullYear(result.getFullYear() - years);
+  result.setMonth(targetMonth);
+  const lastDay = new Date(result.getFullYear(), targetMonth + 1, 0).getDate();
+  result.setDate(Math.min(originalDay, lastDay));
+  return result;
+}
+
 /**
  * Convert period preset to actual date range.
  * Works on both server and client.
@@ -66,8 +88,7 @@ export function periodToDateRange(params: PeriodParams, timeZone?: string): Date
   }
 
   if (period === "month") {
-    const monthAgo = new Date(now);
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    const monthAgo = subtractCalendarMonths(now, 1);
     monthAgo.setHours(0, 0, 0, 0);
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
@@ -78,8 +99,7 @@ export function periodToDateRange(params: PeriodParams, timeZone?: string): Date
   }
 
   if (period === "3months") {
-    const threeMonthsAgo = new Date(now);
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgo = subtractCalendarMonths(now, 3);
     threeMonthsAgo.setHours(0, 0, 0, 0);
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
@@ -90,8 +110,7 @@ export function periodToDateRange(params: PeriodParams, timeZone?: string): Date
   }
 
   if (period === "6months") {
-    const sixMonthsAgo = new Date(now);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAgo = subtractCalendarMonths(now, 6);
     sixMonthsAgo.setHours(0, 0, 0, 0);
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
@@ -102,8 +121,7 @@ export function periodToDateRange(params: PeriodParams, timeZone?: string): Date
   }
 
   if (period === "year") {
-    const yearAgo = new Date(now);
-    yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+    const yearAgo = subtractCalendarYears(now, 1);
     yearAgo.setHours(0, 0, 0, 0);
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);

@@ -102,6 +102,7 @@ export async function buildAuthoritativeReconciliation(
   const base: MutationReconciliation<SourceDocumentListItemDto> = {
     operationId,
     entity,
+    entityCompleteness: "full",
     entityVersion,
     countPatch: null,
     streamMembershipChanged: true,
@@ -126,6 +127,7 @@ export async function buildDeleteReconciliation(
   return {
     operationId,
     entity: null,
+    entityCompleteness: "full",
     entityVersion: new Date().toISOString(),
     countPatch: { processingDelta: 0, attentionDelta: -1 },
     streamMembershipChanged: true,
@@ -148,6 +150,7 @@ export function buildEntityReconciliation<T extends SourceDocumentListItemDto | 
   return {
     operationId,
     entity: entity as SourceDocumentListItemDto | null,
+    entityCompleteness: "full",
     entityVersion,
     countPatch: { processingDelta: 0, attentionDelta: 0 },
     streamMembershipChanged,
@@ -174,6 +177,7 @@ export function buildCreateReconciliation(
       entryDate,
       updatedAt,
     }),
+    entityCompleteness: "sparse" as const,
     entityVersion: updatedAt,
     countPatch: { processingDelta: 1, attentionDelta: 1 } as const,
     streamMembershipChanged: true as const,

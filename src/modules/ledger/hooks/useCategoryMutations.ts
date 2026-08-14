@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
@@ -33,10 +33,19 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
   const queryClient = useQueryClient();
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
   const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
+  const metadataRequestIdRef = useRef(0);
+  const latestMetadataRequestRef = useRef(new Map<string, number>());
+  const pendingMetadataRequestsRef = useRef(new Map<string, number>());
 
   const generateMetadata = useMutation({
-    mutationFn: (categoryId: string) => generateEntryCategoryMetadataAction(ledgerId, categoryId),
-    onMutate: (categoryId) => {
+    mutationFn: ({ categoryId }: { categoryId: string; requestId: number }) =>
+      generateEntryCategoryMetadataAction(ledgerId, categoryId),
+    onMutate: ({ categoryId, requestId }) => {
+      latestMetadataRequestRef.current.set(categoryId, requestId);
+      pendingMetadataRequestsRef.current.set(
+        categoryId,
+        (pendingMetadataRequestsRef.current.get(categoryId) ?? 0) + 1
+      );
       setGeneratingCategoryIds((ids) => new Set(ids).add(categoryId));
       setFailedCategoryIds((ids) => {
         const next = new Set(ids);
@@ -47,14 +56,31 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     onSuccess: async () => {
       await queryClient.invalidateQueries({ predicate: invalidateEntryCategories(ledgerId) });
     },
-    onError: (_error, categoryId) => setFailedCategoryIds((ids) => new Set(ids).add(categoryId)),
-    onSettled: (_data, _error, categoryId) =>
+    onError: (_error, { categoryId, requestId }) => {
+      if (latestMetadataRequestRef.current.get(categoryId) !== requestId) return;
+      setFailedCategoryIds((ids) => new Set(ids).add(categoryId));
+    },
+    onSettled: (_data, _error, { categoryId }) => {
+      const remaining = Math.max(0, (pendingMetadataRequestsRef.current.get(categoryId) ?? 1) - 1);
+      if (remaining > 0) {
+        pendingMetadataRequestsRef.current.set(categoryId, remaining);
+        return;
+      }
+      pendingMetadataRequestsRef.current.delete(categoryId);
       setGeneratingCategoryIds((ids) => {
         const next = new Set(ids);
         next.delete(categoryId);
         return next;
-      }),
+      });
+    },
   });
+  const requestCategoryMetadata = useCallback(
+    (categoryId: string) => {
+      const requestId = ++metadataRequestIdRef.current;
+      generateMetadata.mutate({ categoryId, requestId });
+    },
+    [generateMetadata]
+  );
 
   const createCategory = useLedgerMutation<EntryCategory, { name: string }>(ledgerId, {
     mutationFn: async (data) => {
@@ -73,7 +99,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       ]);
     },
     onSuccessExtra: (category) => {
-      generateMetadata.mutate(category.id);
+      requestCategoryMetadata(category.id);
     },
     onMutationSettled: (client, _variables, _data, error) => {
       if (error != null) {
@@ -184,6 +210,6 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     saveCategories,
     generatingCategoryIds,
     failedCategoryIds,
-    retryCategoryMetadata: (id: string) => generateMetadata.mutate(id),
+    retryCategoryMetadata: requestCategoryMetadata,
   };
 }

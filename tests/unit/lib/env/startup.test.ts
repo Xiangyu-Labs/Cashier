@@ -73,6 +73,23 @@ describe("validateStartupEnv", () => {
     expect(result.AI_RETRY_DELAY_MS).toBe(1000);
   });
 
+  it("requires TRUSTED_PROXY in production while allowing it to be absent in tests", () => {
+    expect(() =>
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "production",
+      })
+    ).toThrow(/TRUSTED_PROXY/);
+
+    expect(
+      validateStartupEnv({
+        ...baseEnv,
+        NODE_ENV: "production",
+        TRUSTED_PROXY: "platform",
+      }).TRUSTED_PROXY
+    ).toBe("platform");
+  });
+
   it("accepts AUTH_EMAIL_FROM in named mailbox format", () => {
     const result = validateStartupEnv({
       ...baseEnv,

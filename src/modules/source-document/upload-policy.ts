@@ -43,6 +43,7 @@ export const MAX_TEXT_CHARACTERS = 20000;
 
 /** Upload session expiry in milliseconds. */
 export const UPLOAD_SESSION_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+export const DIRECT_UPLOAD_FINALIZE_BUFFER_MS = 2 * 60 * 1000; // 2 minutes
 
 /**
  * Explicitly supported MIME types for Web uploads.

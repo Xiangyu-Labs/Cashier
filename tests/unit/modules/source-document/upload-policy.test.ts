@@ -4,12 +4,14 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  DIRECT_UPLOAD_FINALIZE_BUFFER_MS,
   MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
   MAX_NORMALIZED_BYTES_PER_FILE,
   MAX_NORMALIZED_BYTES_PER_REVISION,
   MAX_MEGAPIXELS_PER_FILE,
   MAX_TEXT_CHARACTERS,
+  UPLOAD_SESSION_EXPIRY_MS,
   SUPPORTED_MIME_TYPES,
   SUPPORTED_MIME_SET,
   validateFileUpload,
@@ -28,6 +30,8 @@ describe("upload-policy constants", () => {
     expect(MAX_NORMALIZED_BYTES_PER_REVISION).toBe(3 * 1024 * 1024);
     expect(MAX_MEGAPIXELS_PER_FILE).toBe(16);
     expect(MAX_TEXT_CHARACTERS).toBe(20000);
+    expect(DIRECT_UPLOAD_FINALIZE_BUFFER_MS).toBe(2 * 60 * 1000);
+    expect(UPLOAD_SESSION_EXPIRY_MS - DIRECT_UPLOAD_FINALIZE_BUFFER_MS).toBe(13 * 60 * 1000);
   });
 
   it("lists supported MIME types with no duplicates", () => {

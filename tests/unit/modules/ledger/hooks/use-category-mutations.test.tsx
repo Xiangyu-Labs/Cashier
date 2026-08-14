@@ -76,6 +76,16 @@ function createQueryClient() {
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("useCategoryMutations failure recovery and invalidation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -190,5 +200,37 @@ describe("useCategoryMutations failure recovery and invalidation", () => {
       ["sourceDocuments", "ledger-1", "stream"],
       ["summary", "ledger-1"],
     ]);
+  });
+
+  it("keeps loading until all same-category requests settle and ignores an older failure", async () => {
+    const first = deferred<{ categoryId: string }>();
+    const second = deferred<{ categoryId: string }>();
+    generateEntryCategoryMetadataActionMock
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const queryClient = createQueryClient();
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.retryCategoryMetadata("category-1");
+      result.current.retryCategoryMetadata("category-1");
+    });
+    expect(result.current.generatingCategoryIds.has("category-1")).toBe(true);
+
+    await act(async () => {
+      first.reject(new Error("older request failed"));
+      await first.promise.catch(() => undefined);
+    });
+    expect(result.current.generatingCategoryIds.has("category-1")).toBe(true);
+    expect(result.current.failedCategoryIds.has("category-1")).toBe(false);
+
+    await act(async () => {
+      second.resolve({ categoryId: "category-1" });
+      await second.promise;
+    });
+    await waitFor(() => expect(result.current.generatingCategoryIds.has("category-1")).toBe(false));
+    expect(result.current.failedCategoryIds.has("category-1")).toBe(false);
   });
 });

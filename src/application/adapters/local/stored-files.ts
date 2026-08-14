@@ -20,6 +20,7 @@ import {
   MAX_FILES,
   MAX_ORIGINAL_BYTES_PER_FILE,
   MAX_NORMALIZED_BYTES_PER_REVISION,
+  DIRECT_UPLOAD_FINALIZE_BUFFER_MS,
   SUPPORTED_MIME_SET,
   UPLOAD_SESSION_EXPIRY_MS,
 } from "@/modules/source-document/upload-policy";
@@ -33,8 +34,7 @@ import {
   type UploadSessionRepository,
 } from "@/application/adapters/postgres/upload-sessions";
 
-type DirectObjectFileStore = Required<Pick<ObjectStore, "presignUpload" | "head" | "copy">> &
-  ObjectStore;
+type DirectObjectFileStore = Required<Pick<ObjectStore, "presignUpload" | "head">> & ObjectStore;
 
 function tokenHash(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -89,7 +89,7 @@ function validateRequests(files: readonly UploadFileRequestContract[]): void {
 }
 
 function requireDirectStorage(storage: ObjectStore): DirectObjectFileStore {
-  if (storage.presignUpload == null || storage.head == null || storage.copy == null) {
+  if (storage.presignUpload == null || storage.head == null) {
     throw new AppError("Direct upload storage is not configured", "STORAGE_UNAVAILABLE", 503);
   }
   return storage as DirectObjectFileStore;
@@ -200,7 +200,7 @@ export class StoredFileAdapter implements DirectStoredFilePort {
             temporaryKey(ledgerId, sessionId, targetId),
             file.contentType,
             file.checksum!,
-            Math.floor(UPLOAD_SESSION_EXPIRY_MS / 1000)
+            Math.floor((UPLOAD_SESSION_EXPIRY_MS - DIRECT_UPLOAD_FINALIZE_BUFFER_MS) / 1000)
           );
           return { id: targetId, method: "PUT" as const, ...signed };
         })
@@ -390,12 +390,21 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     }
 
     const now = this.now();
+    const activeSession = session;
     if (session.status === "open") {
       if (session.expiresAt.getTime() <= now.getTime()) {
         await db
           .update(uploadSessions)
           .set({ status: "expired" })
           .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.status, "open")));
+        await Promise.all(
+          targets.map((target) =>
+            enqueueObjectCleanup(
+              temporaryKey(activeSession.ledgerId, activeSession.id, target.targetId),
+              activeSession.id
+            )
+          )
+        );
         throw new ConflictError("Upload plan has expired");
       }
       await db
@@ -414,20 +423,28 @@ export class StoredFileAdapter implements DirectStoredFilePort {
       throw new ConflictError("Upload session cannot be finalized");
     }
 
+    let inspected: Array<{
+      metadata: Awaited<ReturnType<DirectObjectFileStore["head"]>>;
+      bytes: Buffer;
+      checksum: string;
+    }>;
     try {
-      const inspected = await Promise.all(
-        targets.map((target) =>
-          storage.head(temporaryKey(session.ledgerId, session.id, target.targetId))
-        )
+      inspected = await Promise.all(
+        targets.map(async (target) => {
+          const key = temporaryKey(session.ledgerId, session.id, target.targetId);
+          const [metadata, bytes] = await Promise.all([storage.head(key), storage.download(key)]);
+          return { metadata, bytes, checksum: checksum(bytes) };
+        })
       );
       for (const [position, target] of targets.entries()) {
         const actual = inspected[position]!;
         if (
-          actual.byteSize !== target.expectedByteSize ||
-          actual.contentType !== target.expectedContentType ||
-          actual.metadata.sha256 !== target.expectedChecksum
+          actual.metadata.byteSize !== target.expectedByteSize ||
+          actual.bytes.length !== target.expectedByteSize ||
+          actual.metadata.contentType !== target.expectedContentType ||
+          actual.checksum !== target.expectedChecksum
         ) {
-          throw new ConflictError("Uploaded object metadata does not match the upload plan");
+          throw new ConflictError("Uploaded object does not match the upload plan");
         }
       }
     } catch (error) {
@@ -456,49 +473,56 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         if (target.status === "uploaded" || target.status === "finalized") return;
         const storedFileId = target.targetId;
         const storageKey = durableKey(session.ledgerId, storedFileId);
-        await storage.copy(temporaryKey(session.ledgerId, session.id, target.targetId), storageKey);
-        await db.transaction(async (tx) => {
-          await tx
-            .insert(storedFiles)
-            .values({
-              id: storedFileId,
-              ledgerId: session.ledgerId,
-              storageProvider: "s3",
-              storageKey,
-              contentType: target.expectedContentType!,
-              byteSize: target.expectedByteSize!,
-              originalFilename: target.originalFilename,
-              checksum: target.expectedChecksum!,
-              createdAt: now,
-            })
-            .onConflictDoNothing();
-          const file = await tx.query.storedFiles.findFirst({
-            where: and(
-              eq(storedFiles.ledgerId, session.ledgerId),
-              eq(storedFiles.id, storedFileId)
-            ),
+        const bytes = inspected[target.position]!.bytes;
+        await storage.upload(storageKey, bytes, target.expectedContentType!);
+        try {
+          await db.transaction(async (tx) => {
+            await tx
+              .insert(storedFiles)
+              .values({
+                id: storedFileId,
+                ledgerId: session.ledgerId,
+                storageProvider: "s3",
+                storageKey,
+                contentType: target.expectedContentType!,
+                byteSize: bytes.length,
+                originalFilename: target.originalFilename,
+                checksum: target.expectedChecksum!,
+                createdAt: now,
+              })
+              .onConflictDoNothing();
+            const file = await tx.query.storedFiles.findFirst({
+              where: and(
+                eq(storedFiles.ledgerId, session.ledgerId),
+                eq(storedFiles.id, storedFileId)
+              ),
+            });
+            if (
+              file == null ||
+              file.storageKey !== storageKey ||
+              file.contentType !== target.expectedContentType ||
+              file.byteSize !== bytes.length ||
+              file.checksum !== target.expectedChecksum
+            ) {
+              throw new ConflictError("Stored file promotion conflicted with existing state");
+            }
+            await tx
+              .update(uploadSessionFiles)
+              .set({ storedFileId, status: "uploaded" })
+              .where(
+                and(
+                  eq(uploadSessionFiles.ledgerId, session.ledgerId),
+                  eq(uploadSessionFiles.uploadSessionId, session.id),
+                  eq(uploadSessionFiles.targetId, target.targetId),
+                  eq(uploadSessionFiles.status, "planned")
+                )
+              );
           });
-          if (
-            file == null ||
-            file.storageKey !== storageKey ||
-            file.contentType !== target.expectedContentType ||
-            file.byteSize !== target.expectedByteSize ||
-            file.checksum !== target.expectedChecksum
-          ) {
-            throw new ConflictError("Stored file promotion conflicted with existing state");
-          }
-          await tx
-            .update(uploadSessionFiles)
-            .set({ storedFileId, status: "uploaded" })
-            .where(
-              and(
-                eq(uploadSessionFiles.ledgerId, session.ledgerId),
-                eq(uploadSessionFiles.uploadSessionId, session.id),
-                eq(uploadSessionFiles.targetId, target.targetId),
-                eq(uploadSessionFiles.status, "planned")
-              )
-            );
-        });
+        } catch (error) {
+          const cleanup = await storage.delete(storageKey);
+          if (!cleanup.success) await enqueueObjectCleanup(storageKey, session.id);
+          throw error;
+        }
       })
     );
 

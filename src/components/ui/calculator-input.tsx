@@ -281,7 +281,8 @@ export function CalculatorInput({
         };
       }
       if (prev.operator === null) {
-        const newDisplay = prev.displayValue.slice(0, -1) ?? "0";
+        const sliced = prev.displayValue.slice(0, -1);
+        const newDisplay = sliced === "" || sliced === "." ? "0" : sliced;
         return { ...prev, displayValue: newDisplay };
       } else if (prev.operand !== "") {
         return { ...prev, operand: prev.operand.slice(0, -1) };

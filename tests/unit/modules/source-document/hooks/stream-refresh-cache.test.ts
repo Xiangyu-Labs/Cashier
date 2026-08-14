@@ -1,8 +1,12 @@
 import { QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryKeys } from "@/lib/query-keys";
 import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
-import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
+import {
+  applyStreamRefreshToCache,
+  readLedgerSyncVersion,
+  writeLedgerSyncVersion,
+} from "@/modules/source-document/hooks/stream-refresh-cache";
 
 function makeItem(id: string, entryDate: string): SourceDocumentListItemDto {
   return {
@@ -34,6 +38,24 @@ function streamData(items: SourceDocumentListItemDto[]): InfiniteData<StreamPage
 }
 
 describe("stream refresh cache", () => {
+  beforeEach(() => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => values.delete(key),
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+  });
+
+  it("never rolls the persisted checkpoint backward", () => {
+    localStorage.clear();
+    writeLedgerSyncVersion("ledger-1", "5");
+    writeLedgerSyncVersion("ledger-1", "3");
+
+    expect(readLedgerSyncVersion("ledger-1")).toBe("5");
+  });
+
   it("keeps the loaded list visible when resetRequired is signalled", () => {
     const client = new QueryClient();
     const key = queryKeys.sourceDocumentStream("ledger-1");

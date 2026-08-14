@@ -102,6 +102,7 @@ describe("sendOTP use case", () => {
   const originalResendKey = process.env.AUTH_RESEND_KEY;
   const originalEmailFrom = process.env.AUTH_EMAIL_FROM;
   const originalDisableRegistration = process.env.DISABLE_REGISTRATION;
+  const originalOtpExpiresSeconds = process.env.OTP_EXPIRES_SECONDS;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -148,6 +149,12 @@ describe("sendOTP use case", () => {
       delete process.env.DISABLE_REGISTRATION;
     } else {
       process.env.DISABLE_REGISTRATION = originalDisableRegistration;
+    }
+
+    if (originalOtpExpiresSeconds == null) {
+      delete process.env.OTP_EXPIRES_SECONDS;
+    } else {
+      process.env.OTP_EXPIRES_SECONDS = originalOtpExpiresSeconds;
     }
   });
 
@@ -205,6 +212,24 @@ describe("sendOTP use case", () => {
       expect.objectContaining({ increment: expect.any(Function) })
     );
     expect(result.canResendAt).toBe(1_234_567_890);
+  });
+
+  it("renders the configured OTP expiry rounded up to whole minutes", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    process.env.OTP_EXPIRES_SECONDS = "420";
+
+    await sendOTP({
+      email: validEmail("test@example.com"),
+      ip: "203.0.113.2",
+      host: "cashier.example",
+    });
+
+    expect(otpEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiresInMinutes: 7,
+        copy: expect.objectContaining({ expiry: expect.stringContaining("7") }),
+      })
+    );
   });
 
   it("throws user-facing error when resend send fails", async () => {

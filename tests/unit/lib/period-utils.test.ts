@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   periodToDateRange,
   parsePeriodFromSearchParams,
@@ -7,6 +7,10 @@ import {
 } from "@/lib/period-utils";
 
 describe("period-utils", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe("periodToDateRange", () => {
     it('should return null dates for "all" period', () => {
       const params: PeriodParams = { period: "all" };
@@ -104,6 +108,26 @@ describe("period-utils", () => {
       // Should behave like thisMonth when dates are missing
       expect(result.startDate).not.toBeNull();
       expect(result.endDate).not.toBeNull();
+    });
+
+    it("clamps a one-month lookback at the end of a shorter month", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 4, 31, 12));
+
+      expect(periodToDateRange({ period: "month" })).toEqual({
+        startDate: "2026-04-30",
+        endDate: "2026-05-31",
+      });
+    });
+
+    it("clamps a one-year lookback from leap day", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2024, 1, 29, 12));
+
+      expect(periodToDateRange({ period: "year" })).toEqual({
+        startDate: "2023-02-28",
+        endDate: "2024-02-29",
+      });
     });
   });
 

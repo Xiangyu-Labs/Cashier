@@ -102,6 +102,22 @@ describe("ledger-url-params", () => {
     expect(params.get("maxAmount")).toBe("250");
   });
 
+  it("rejects non-finite and blank numeric filter params", () => {
+    for (const raw of ["", " ", "Infinity", "-Infinity", "NaN"]) {
+      const filters = readLedgerFilterParams(
+        new URLSearchParams(`minAmount=${encodeURIComponent(raw)}`)
+      );
+      expect(filters.minAmount).toBeNull();
+    }
+
+    const params = updateLedgerSearchParams(new URLSearchParams("minAmount=1&maxAmount=2"), {
+      minAmount: Number.POSITIVE_INFINITY,
+      maxAmount: Number.NEGATIVE_INFINITY,
+    });
+    expect(params.get("minAmount")).toBeNull();
+    expect(params.get("maxAmount")).toBeNull();
+  });
+
   it("preserves legacy search params until a scoped update migrates them", () => {
     const params = updateLedgerSearchParams(
       new URLSearchParams("search=coffee&period=thisMonth&foo=bar"),

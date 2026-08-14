@@ -2,6 +2,7 @@
  * Web Worker for image compression
  * Uses OffscreenCanvas to avoid blocking the main thread
  */
+import { fitImageDimensions } from "../image-dimensions";
 
 self.onmessage = async (
   e: MessageEvent<{
@@ -13,25 +14,11 @@ self.onmessage = async (
 ) => {
   const { imageData, maxWidth, maxHeight, quality } = e.data;
 
+  let bitmap: ImageBitmap | null = null;
   try {
     const blob = new Blob([imageData]);
-    const bitmap = await createImageBitmap(blob);
-
-    let width = bitmap.width;
-    let height = bitmap.height;
-
-    // Calculate dimensions maintaining aspect ratio
-    if (width > height) {
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
-      }
-    } else {
-      if (height > maxHeight) {
-        width = Math.round((width * maxHeight) / height);
-        height = maxHeight;
-      }
-    }
+    bitmap = await createImageBitmap(blob);
+    const { width, height } = fitImageDimensions(bitmap.width, bitmap.height, maxWidth, maxHeight);
 
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("2d");
@@ -49,6 +36,8 @@ self.onmessage = async (
     self.postMessage({ success: true, data: arrayBuffer }, { transfer: [arrayBuffer] });
   } catch (error) {
     self.postMessage({ success: false, error: String(error) });
+  } finally {
+    bitmap?.close();
   }
 };
 

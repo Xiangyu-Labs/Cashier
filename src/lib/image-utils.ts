@@ -7,6 +7,7 @@
  * @param quality The quality of the JPEG compression (0.0 to 1.0)
  * @returns A promise that resolves to the compressed base64 string and mime type
  */
+import { fitImageDimensions } from "./image-dimensions";
 
 interface CompressionResult {
   data: string;
@@ -131,21 +132,7 @@ function compressImageSync(
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate aspect ratio
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
+        const { width, height } = fitImageDimensions(img.width, img.height, maxWidth, maxHeight);
 
         canvas.width = width;
         canvas.height = height;

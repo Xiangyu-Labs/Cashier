@@ -12,6 +12,8 @@ export function ServiceWorkerUpdate() {
     if (!("serviceWorker" in navigator)) return;
     let disposed = false;
     let reloadRequested = false;
+    let observedRegistration: ServiceWorkerRegistration | null = null;
+    let observedInstalling: ServiceWorker | null = null;
 
     const showUpdate = (worker: ServiceWorker) => {
       toast(t("title"), {
@@ -37,22 +39,36 @@ export function ServiceWorkerUpdate() {
       });
     };
 
-    const observeRegistration = (registration: ServiceWorkerRegistration) => {
-      if (registration.waiting != null) showUpdate(registration.waiting);
-      registration.addEventListener("updatefound", () => {
-        const installing = registration.installing;
-        if (installing == null) return;
-        installing.addEventListener("statechange", () => {
-          if (installing.state === "installed" && navigator.serviceWorker.controller != null) {
-            showUpdate(installing);
-          }
-        });
-      });
+    const handleInstallingStateChange = () => {
+      const installing = observedInstalling;
+      if (
+        installing?.state === "installed" &&
+        navigator.serviceWorker.controller != null &&
+        !disposed
+      ) {
+        showUpdate(installing);
+      }
     };
 
-    void navigator.serviceWorker.ready.then((registration) => {
-      if (!disposed) observeRegistration(registration);
-    });
+    const handleUpdateFound = () => {
+      observedInstalling?.removeEventListener("statechange", handleInstallingStateChange);
+      observedInstalling = observedRegistration?.installing ?? null;
+      observedInstalling?.addEventListener("statechange", handleInstallingStateChange);
+    };
+
+    const observeRegistration = (registration: ServiceWorkerRegistration) => {
+      observedRegistration = registration;
+      if (registration.waiting != null) showUpdate(registration.waiting);
+      registration.addEventListener("updatefound", handleUpdateFound);
+    };
+
+    void navigator.serviceWorker.ready
+      .then((registration) => {
+        if (!disposed) observeRegistration(registration);
+      })
+      .catch((error) => {
+        if (!disposed) console.error("[ServiceWorkerUpdate] registration readiness failed", error);
+      });
 
     const handleControllerChange = () => {
       if (reloadRequested) {
@@ -64,6 +80,8 @@ export function ServiceWorkerUpdate() {
     });
     return () => {
       disposed = true;
+      observedInstalling?.removeEventListener("statechange", handleInstallingStateChange);
+      observedRegistration?.removeEventListener("updatefound", handleUpdateFound);
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
     };
   }, [t]);

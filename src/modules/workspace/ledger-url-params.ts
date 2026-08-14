@@ -293,7 +293,7 @@ function setOrDeleteNumberParam(
   key: string,
   value: number | null | undefined
 ) {
-  if (typeof value !== "number" || Number.isNaN(value)) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
     params.delete(key);
     return;
   }
@@ -307,10 +307,10 @@ export function readLedgerFilterParams(
 ): LedgerFilterParams {
   const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
     const raw = readScopedValue(searchParams, key, scope);
-    if (raw == null) return null;
+    if (raw == null || raw.trim() === "") return null;
 
     const parsed = Number(raw);
-    return Number.isNaN(parsed) ? null : parsed;
+    return Number.isFinite(parsed) ? parsed : null;
   };
 
   return {

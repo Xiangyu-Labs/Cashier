@@ -97,6 +97,7 @@ describe("ServiceWorkerUpdate", () => {
         waiting: waitingWorker,
         installing: null,
         addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
       } as unknown as ServiceWorkerRegistration;
       const serviceWorker = {
         ready: Promise.resolve(registration),
@@ -127,7 +128,47 @@ describe("ServiceWorkerUpdate", () => {
         })
       );
       view.unmount();
+      expect(registration.removeEventListener).toHaveBeenCalledWith(
+        "updatefound",
+        expect.any(Function)
+      );
+      expect(serviceWorker.removeEventListener).toHaveBeenCalledWith(
+        "controllerchange",
+        expect.any(Function)
+      );
       vi.clearAllMocks();
     }
+  });
+
+  it("handles service worker readiness rejection without leaking an unhandled promise", async () => {
+    const error = new Error("registration failed");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const serviceWorker = {
+      ready: Promise.reject(error),
+      controller: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as ServiceWorkerContainer;
+    Object.defineProperty(window.navigator, "serviceWorker", {
+      configurable: true,
+      value: serviceWorker,
+    });
+
+    render(
+      <NextIntlClientProvider
+        locale="en"
+        messages={pickMessages(enMessages, FEATURE_MESSAGES.shell)}
+      >
+        <ServiceWorkerUpdate />
+      </NextIntlClientProvider>
+    );
+
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        "[ServiceWorkerUpdate] registration readiness failed",
+        error
+      )
+    );
+    consoleError.mockRestore();
   });
 });

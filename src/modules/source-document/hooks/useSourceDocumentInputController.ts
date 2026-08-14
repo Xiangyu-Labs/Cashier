@@ -25,6 +25,8 @@ export function useSourceDocumentInputController({
   timeZone,
 }: UseSourceDocumentInputControllerOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingFileReservationsRef = useRef(0);
+  const imageCountRef = useRef(0);
   const draft = useSourceDocumentInputDraft({
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
     ...(initialData != null ? { initialData } : {}),
@@ -40,27 +42,45 @@ export function useSourceDocumentInputController({
     },
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
   });
+  imageCountRef.current = draft.images.length;
 
   const appendFiles = async (files: File[]) => {
-    const remainingCapacity = Math.max(0, MAX_FILES - draft.images.length);
+    const remainingCapacity = Math.max(
+      0,
+      MAX_FILES - imageCountRef.current - pendingFileReservationsRef.current
+    );
     if (files.length > remainingCapacity) {
       toast.error(messages.tooManyImages);
     }
     if (remainingCapacity === 0) return;
-    const results = await loadSourceDocumentInputFiles(files.slice(0, remainingCapacity));
+    const reservedFiles = files.slice(0, remainingCapacity);
+    pendingFileReservationsRef.current += reservedFiles.length;
+    let results: Awaited<ReturnType<typeof loadSourceDocumentInputFiles>>;
+    try {
+      results = await loadSourceDocumentInputFiles(reservedFiles);
+    } finally {
+      pendingFileReservationsRef.current -= reservedFiles.length;
+    }
 
-    results.forEach((result) => {
+    const loadedImages = results.flatMap((result) => {
       if (result.kind === "too-large") {
         toast.error(messages.imageTooLarge(result.fileName));
-        return;
+        return [];
       }
       if (result.kind === "unsupported") {
         toast.error(messages.imageUnsupported(result.fileName));
-        return;
+        return [];
       }
-
-      draft.setImages((previousImages) => [...previousImages, result.image]);
+      return [result.image];
     });
+    const acceptedImages = loadedImages.slice(0, Math.max(0, MAX_FILES - imageCountRef.current));
+    if (acceptedImages.length < loadedImages.length) toast.error(messages.tooManyImages);
+    if (acceptedImages.length === 0) return;
+    imageCountRef.current += acceptedImages.length;
+    draft.setImages((previousImages) => [
+      ...previousImages,
+      ...acceptedImages.slice(0, Math.max(0, MAX_FILES - previousImages.length)),
+    ]);
   };
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {

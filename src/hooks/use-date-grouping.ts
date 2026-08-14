@@ -69,26 +69,26 @@ export function useDateGrouping<T>({
       const date = parseDateString(dateStr);
       const sortTimestamp = date.getTime();
 
-      let dateKey = "";
+      let title = "";
       if (dateStr === todayStr) {
-        dateKey = t("today");
+        title = t("today");
       } else if (dateStr === yesterdayStr) {
-        dateKey = t("yesterday");
+        title = t("yesterday");
       } else {
-        dateKey = date.toLocaleDateString(locale, {
+        title = date.toLocaleDateString(locale, {
           month: "long",
           day: "numeric",
           weekday: "long",
         });
       }
 
-      const group = groups[dateKey] ?? {
-        title: dateKey,
+      const group = groups[dateStr] ?? {
+        title,
         timestamp: sortTimestamp,
         items: [],
         total: 0,
       };
-      groups[dateKey] = group;
+      groups[dateStr] = group;
 
       group.items.push(item);
       group.total += getAmount(item);

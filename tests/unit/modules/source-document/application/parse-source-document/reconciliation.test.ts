@@ -205,4 +205,38 @@ describe("reconcileParseOutput", () => {
       expect(result.result.ledger_entries[1]).toMatchObject({ amount: "2.00", category_index: 4 });
     }
   });
+
+  it("returns anomaly instead of summing ledger entries across currencies", () => {
+    const result = reconcileParseOutput({
+      aiLanguage: "en-US",
+      result: successResult({
+        receipt_totals: [receiptTotal({ amount: "100", currency: "USD" })],
+        ledger_entries: [
+          entry({ item_name: "Meal", amount: "80", currency: "USD" }),
+          entry({ item_name: "Taxi", amount: "20", currency: "CNY" }),
+        ],
+      }),
+    });
+
+    expect(result).toEqual({
+      kind: "anomaly",
+      reason: expect.stringContaining("mixed currencies"),
+    });
+  });
+
+  it("returns anomaly instead of summing adjustments across currencies", () => {
+    const result = reconcileParseOutput({
+      aiLanguage: "en-US",
+      result: successResult({
+        receipt_totals: [receiptTotal({ amount: "95", currency: "USD" })],
+        ledger_entries: [entry({ amount: "100", currency: "USD" })],
+        order_adjustments: [adjustment({ amount: "-5", currency: "EUR" })],
+      }),
+    });
+
+    expect(result).toEqual({
+      kind: "anomaly",
+      reason: expect.stringContaining("mixed currencies"),
+    });
+  });
 });

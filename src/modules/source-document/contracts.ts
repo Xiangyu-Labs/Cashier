@@ -157,6 +157,8 @@ export interface MutationReconciliation<T> {
   clientSubmissionId?: string;
   /** The canonical entity, or null for tombstones (deletes). */
   entity: T | null;
+  /** Whether entity collections and derived flags are authoritative or placeholders. */
+  entityCompleteness: "full" | "sparse";
   /** Entity version string (updatedAt timestamp) for stale-response detection. */
   entityVersion: string;
   /** Optional count delta for processing/attention transitions. */

@@ -381,28 +381,36 @@ export function applySourceDocumentReconciliation(
   const existing = queryClient.getQueryData<SourceDocumentEntityStore>(
     queryKeys.sourceDocumentEntities(ledgerId)
   )?.[entity.id];
-  applyOptimisticUpsert(queryClient, ledgerId, mergeReconciliationItem(existing, entity));
+  if (reconciliation.entityCompleteness === "full") {
+    applyServerRefreshUpsert(queryClient, ledgerId, entity);
+    return true;
+  }
+  applyOptimisticUpsert(
+    queryClient,
+    ledgerId,
+    mergeReconciliationItem(existing, entity, reconciliation.entityCompleteness)
+  );
   return true;
 }
 
 /**
- * Merge a minimal reconciliation entity over the cached entity. Fields the
- * reconciliation intentionally leaves empty (files, entries, hasImages) and
- * Files and entries are sparse in the reconciliation payload, while title and
- * entryDate are authoritative values and may legitimately be empty.
+ * Merge a sparse reconciliation entity over the cached entity. Files and
+ * entries may be intentionally omitted, while title and entryDate are
+ * authoritative values and may legitimately be empty.
  */
 function mergeReconciliationItem(
   existing: SourceDocumentListItemDto | undefined,
-  incoming: SourceDocumentListItemDto
+  incoming: SourceDocumentListItemDto,
+  completeness: MutationReconciliation<SourceDocumentListItemDto>["entityCompleteness"]
 ): SourceDocumentListItemDto {
-  if (existing == null) return incoming;
+  if (existing == null || completeness === "full") return incoming;
   return {
     ...existing,
     ...incoming,
     title: incoming.title,
     entryDate: incoming.entryDate,
     files: incoming.files.length > 0 ? incoming.files : existing.files,
-    hasImages: incoming.hasImages || existing.hasImages,
+    hasImages: existing.hasImages,
     ledgerEntries:
       incoming.ledgerEntries != null && incoming.ledgerEntries.length > 0
         ? incoming.ledgerEntries

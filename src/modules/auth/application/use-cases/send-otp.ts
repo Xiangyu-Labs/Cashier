@@ -133,7 +133,7 @@ export async function sendOTP(
 
     try {
       const locale = params.locale ?? DEFAULT_LOCALE;
-      const expiresInMinutes = 5;
+      const expiresInMinutes = Math.ceil(runtimeEnv.otpExpiresSeconds / 60);
       const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
       const delivery = await dependencies.emailDelivery.send({
         from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,

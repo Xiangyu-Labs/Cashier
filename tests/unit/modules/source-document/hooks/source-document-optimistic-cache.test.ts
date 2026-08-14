@@ -512,6 +512,7 @@ describe("source document optimistic cache", () => {
     applySourceDocumentReconciliation(client, "ledger-1", "doc-1", {
       operationId: "op-1",
       entity: minimal,
+      entityCompleteness: "sparse",
       entityVersion: minimal.updatedAt,
       countPatch: null,
       streamMembershipChanged: true,
@@ -527,8 +528,23 @@ describe("source document optimistic cache", () => {
 
     applySourceDocumentReconciliation(client, "ledger-1", "doc-1", {
       operationId: "op-2",
-      entity: null,
+      entity: minimal,
+      entityCompleteness: "full",
       entityVersion: "2026-06-10T12:00:00.000Z",
+      countPatch: null,
+      streamMembershipChanged: false,
+      orderingChanged: false,
+    });
+    const authoritative = client.getQueryData<InfiniteData<StreamPage>>(key)?.pages[0]?.items[0];
+    expect(authoritative?.files).toEqual([]);
+    expect(authoritative?.ledgerEntries).toEqual([]);
+    expect(authoritative?.hasImages).toBe(false);
+
+    applySourceDocumentReconciliation(client, "ledger-1", "doc-1", {
+      operationId: "op-3",
+      entity: null,
+      entityCompleteness: "full",
+      entityVersion: "2026-06-10T13:00:00.000Z",
       countPatch: null,
       streamMembershipChanged: true,
       orderingChanged: false,

@@ -126,6 +126,21 @@ describe("CalculatorInput", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("normalizes backspacing the final calculator digit to zero", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={0} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开计算器" }));
+    fireEvent.click(screen.getByRole("button", { name: "7" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Backspace" });
+    fireEvent.keyDown(dialog, { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith(0);
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+  });
+
   describe.each(["en", "zh"] as const)("localization (%s)", (locale) => {
     beforeEach(() => {
       currentLocale.value = locale;

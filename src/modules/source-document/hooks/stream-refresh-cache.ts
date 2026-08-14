@@ -20,8 +20,13 @@ export function readLedgerSyncVersion(ledgerId: string): string {
 }
 
 export function writeLedgerSyncVersion(ledgerId: string, version: string): void {
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem(`${VERSION_PREFIX}${ledgerId}`, version);
+  if (typeof localStorage === "undefined") return;
+  try {
+    const next = BigInt(version);
+    const current = BigInt(readLedgerSyncVersion(ledgerId));
+    if (next >= current) localStorage.setItem(`${VERSION_PREFIX}${ledgerId}`, version);
+  } catch {
+    console.error("[stream-refresh-cache] invalid ledger sync version", { ledgerId, version });
   }
 }
 

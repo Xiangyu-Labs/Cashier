@@ -71,16 +71,16 @@ Docker 容器会把自动生成的内部密钥保存在 `cashier_config` 卷。�
 
 ## 恢复、限流与代理
 
-| 变量                                      | 默认值 | 说明                                             |
-| ----------------------------------------- | ------ | ------------------------------------------------ |
-| `PROCESSING_RECOVERY_MAX_BATCH`           | `5`    | 单次请求最多恢复的待处理任务数。                 |
-| `PROCESSING_RECOVERY_MAX_ATTEMPTS`        | `5`    | 待处理任务最多恢复尝试次数。                     |
-| `PROCESSING_RECOVERY_COOLDOWN_SECONDS`    | `60`   | 恢复尝试之间的冷却时间。                         |
-| `API_RATE_LIMIT_PER_MINUTE`               | `60`   | 每个服务凭证共享的 API v1 每分钟额度。           |
-| `AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS`        | `10`   | 密码登录邮箱维度窗口上限。                       |
-| `AUTH_PASSWORD_IP_MAX_ATTEMPTS`           | `50`   | 密码登录可信 IP 维度窗口上限。                   |
-| `AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS` | `900`  | 密码登录限流窗口秒数。                           |
-| `TRUSTED_PROXY`                           | 未设置 | 只有所有流量都经过覆盖转发头的可信代理时才设置。 |
+| 变量                                      | 默认值       | 说明                                                                                          |
+| ----------------------------------------- | ------------ | --------------------------------------------------------------------------------------------- |
+| `PROCESSING_RECOVERY_MAX_BATCH`           | `5`          | 单次请求最多恢复的待处理任务数。                                                              |
+| `PROCESSING_RECOVERY_MAX_ATTEMPTS`        | `5`          | 待处理任务最多恢复尝试次数。                                                                  |
+| `PROCESSING_RECOVERY_COOLDOWN_SECONDS`    | `60`         | 恢复尝试之间的冷却时间。                                                                      |
+| `API_RATE_LIMIT_PER_MINUTE`               | `60`         | 每个服务凭证共享的 API v1 每分钟额度。                                                        |
+| `AUTH_PASSWORD_EMAIL_MAX_ATTEMPTS`        | `10`         | 密码登录邮箱维度窗口上限。                                                                    |
+| `AUTH_PASSWORD_IP_MAX_ATTEMPTS`           | `50`         | 密码登录可信 IP 维度窗口上限。                                                                |
+| `AUTH_PASSWORD_RATE_LIMIT_WINDOW_SECONDS` | `900`        | 密码登录限流窗口秒数。                                                                        |
+| `TRUSTED_PROXY`                           | 生产环境必填 | 仅当所有流量都经过会覆盖外部 `X-Real-IP`/`X-Forwarded-For` 的可信代理时设置；生产启动会校验。 |
 
 `src/lib/env/startup.ts` 还定义了更细的 OTP 限流变量。普通部署通常不需要修改它们。
 

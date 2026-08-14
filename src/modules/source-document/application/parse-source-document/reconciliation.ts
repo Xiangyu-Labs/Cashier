@@ -98,6 +98,15 @@ export function reconcileParseOutput({
     const adjustmentsForReceipt = reconciledAdjustments.filter(
       (adjustment) => adjustment.receipt_index === receiptIndex
     );
+    const containsForeignCurrency = [...entriesForReceipt, ...adjustmentsForReceipt].some(
+      (item) => item.currency !== target.total.currency
+    );
+    if (containsForeignCurrency) {
+      return {
+        kind: "anomaly",
+        reason: `Unable to reconcile receipt ${receiptIndex}: mixed currencies`,
+      };
+    }
 
     const entriesTotal = entriesForReceipt.reduce((sum, entry) => add(sum, entry.amount), "0");
     const adjustmentsTotal = adjustmentsForReceipt.reduce(

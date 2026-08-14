@@ -1,12 +1,11 @@
 "use client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   deleteSourceDocumentAction,
   updateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 import type {
@@ -29,11 +28,10 @@ export function useSourceDocumentRecordMutations({
   id,
   ledgerId,
   onClose,
-  sourceDocumentPredicates: _sourceDocumentPredicates,
-  sourceDocumentSummaryPredicates: _sourceDocumentSummaryPredicates,
-  sourceDocumentEntriesSummaryPredicates: _sourceDocumentEntriesSummaryPredicates,
+  sourceDocumentPredicates,
+  sourceDocumentSummaryPredicates,
+  sourceDocumentEntriesSummaryPredicates,
 }: UseSourceDocumentRecordMutationsOptions) {
-  const queryClient = useQueryClient();
   const tCommon = useTranslations("Common");
   const notifyRefresh = useNotifyRevisionRefresh();
 
@@ -41,7 +39,15 @@ export function useSourceDocumentRecordMutations({
   // Update source document (title, entryDate)
   // -----------------------------------------------------------------------
 
-  const updateSourceDocMutation = useMutation({
+  const cancelPredicates = sourceDocumentPredicates ?? [];
+  const invalidatePredicates = [
+    ...(sourceDocumentPredicates ?? []),
+    ...(sourceDocumentSummaryPredicates ?? []),
+    ...(sourceDocumentEntriesSummaryPredicates ?? []),
+    ...(ledgerId == null || ledgerId === "" ? [] : [invalidateSourceDocumentCounts(ledgerId)]),
+  ];
+
+  const updateSourceDocMutation = useLedgerMutation(ledgerId, {
     mutationFn: async ({
       data,
       operationId,
@@ -52,10 +58,15 @@ export function useSourceDocumentRecordMutations({
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return updateSourceDocumentAction(ledgerId, id, data, operationId);
     },
-    onSuccess: async (result) => {
+    successMessage: null,
+    errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
+    cancelPredicates,
+    invalidatePredicates,
+    onSuccessReconcile: (client, result) => {
       if (ledgerId == null) return;
       applySourceDocumentReconciliation(
-        queryClient,
+        client,
         ledgerId,
         id,
         (
@@ -65,30 +76,28 @@ export function useSourceDocumentRecordMutations({
             | undefined
         )?.reconciliation
       );
-      notifyRefresh();
     },
-    onSettled: () => {
-      if (ledgerId != null && ledgerId !== "") {
-        queryClient.invalidateQueries({
-          predicate: invalidateSourceDocumentCounts(ledgerId),
-        });
-      }
-    },
+    onSuccessExtra: notifyRefresh,
   });
 
   // -----------------------------------------------------------------------
   // Delete source document
   // -----------------------------------------------------------------------
 
-  const deleteDocumentMutation = useMutation({
+  const deleteDocumentMutation = useLedgerMutation(ledgerId, {
     mutationFn: async ({ operationId }: { operationId: string }) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       return deleteSourceDocumentAction(ledgerId, id, operationId);
     },
-    onSuccess: async (result) => {
+    successMessage: tCommon("deleteSuccess"),
+    errorMessage: tCommon("deleteFailed"),
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
+    cancelPredicates,
+    invalidatePredicates,
+    onSuccessReconcile: (client, result) => {
       if (ledgerId != null) {
         applySourceDocumentReconciliation(
-          queryClient,
+          client,
           ledgerId,
           id,
           (
@@ -99,18 +108,9 @@ export function useSourceDocumentRecordMutations({
           )?.reconciliation
         );
       }
-      toast.success(tCommon("deleteSuccess"));
+    },
+    onSuccessExtra: () => {
       onClose();
-    },
-    onError: () => {
-      toast.error(tCommon("deleteFailed"));
-    },
-    onSettled: () => {
-      if (ledgerId != null && ledgerId !== "") {
-        queryClient.invalidateQueries({
-          predicate: invalidateSourceDocumentCounts(ledgerId),
-        });
-      }
     },
   });
 

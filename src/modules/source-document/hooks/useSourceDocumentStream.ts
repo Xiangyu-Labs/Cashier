@@ -156,6 +156,7 @@ export function useSourceDocumentStream(
   // Guards the background restart so a generation mismatch only triggers one
   // fresh first-page fetch while the old list stays visible.
   const restartingRef = useRef(false);
+  const restartEpochRef = useRef(0);
   // C3: Persist first page fingerprint from server for refresh comparison
 
   const streamQuery = useInfiniteQuery({
@@ -199,9 +200,10 @@ export function useSourceDocumentStream(
   // A new filter window starts fresh: generation/restart state from the
   // previous window must not trigger a background restart for the new key.
   useEffect(() => {
+    restartEpochRef.current += 1;
     generationRef.current = null;
     restartingRef.current = false;
-  }, [filterSignature]);
+  }, [filterSignature, ledgerId]);
 
   // Check generation consistency across pages (Fix 3).
   // If a subsequent page has a different generation than the first page,
@@ -229,6 +231,7 @@ export function useSourceDocumentStream(
     if (restartingRef.current) return;
 
     restartingRef.current = true;
+    const requestEpoch = ++restartEpochRef.current;
     void (async () => {
       try {
         const fresh = await listStreamPageAction(
@@ -245,6 +248,7 @@ export function useSourceDocumentStream(
             limit: STREAM_PAGE_LIMIT,
           }
         );
+        if (restartEpochRef.current !== requestEpoch) return;
         generationRef.current = fresh.generation;
         queryClient.setQueryData<InfiniteData<StreamPage>>(streamPageKey, {
           pages: [fresh],
@@ -253,7 +257,7 @@ export function useSourceDocumentStream(
       } catch {
         // Keep the old list — a failed restart must not clear the window.
       } finally {
-        restartingRef.current = false;
+        if (restartEpochRef.current === requestEpoch) restartingRef.current = false;
       }
     })();
   }, [
