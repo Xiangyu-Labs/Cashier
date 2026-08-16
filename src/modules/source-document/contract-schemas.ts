@@ -2,7 +2,12 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { ACTIVE_SOURCE_DOCUMENT_STATUSES } from "@/modules/source-document/types";
 import { ValidationError } from "@/lib/errors";
-import { omitUndefinedObjectFields, optionalDateStringSchema, UUID_REGEX } from "@/lib/validation";
+import {
+  dateStringSchema,
+  omitUndefinedObjectFields,
+  optionalDateStringSchema,
+  UUID_REGEX,
+} from "@/lib/validation";
 import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 import {
@@ -378,6 +383,23 @@ export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
   }
 });
 
+export const splitSourceDocumentInputSchema = strictObjectSchema({
+  sourceDocumentId: uuidSchema,
+  expectedRevisionId: uuidSchema,
+  operationId: uuidSchema,
+  newSourceDocumentId: uuidSchema,
+  ledgerEntryIds: z
+    .array(uuidSchema)
+    .min(1)
+    .max(MAX_BATCH_SIZE)
+    .superRefine((ids, ctx) => {
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({ code: "custom", message: "A ledger entry may only be split once" });
+      }
+    }),
+  entryDate: dateStringSchema,
+});
+
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
   title: z.string().max(200).optional(),
@@ -444,5 +466,6 @@ export type UpdateSourceDocumentInput = z.infer<typeof updateSourceDocumentInput
 export type SaveSourceDocumentChangesInputContract = z.infer<
   typeof saveSourceDocumentChangesInputSchema
 >;
+export type SplitSourceDocumentInputContract = z.infer<typeof splitSourceDocumentInputSchema>;
 export type BatchUpdateSourceDocumentsInput = z.infer<typeof batchUpdateSourceDocumentsInputSchema>;
 export type CreateQuickEntryInput = z.infer<typeof createQuickEntryInputSchema>;

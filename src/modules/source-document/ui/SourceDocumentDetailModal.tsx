@@ -1,6 +1,10 @@
 "use client";
 import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
-import type { SourceDocumentLight } from "@/modules/source-document/contracts";
+import type {
+  SourceDocumentLight,
+  SplitSourceDocumentInput,
+  SplitSourceDocumentResultDto,
+} from "@/modules/source-document/contracts";
 import { useState, useEffect, memo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,6 +26,8 @@ import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-actio
 import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
+import { SourceDocumentSplitDialog } from "./SourceDocumentSplitDialog";
+import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;
@@ -41,6 +47,9 @@ interface SourceDocumentDetailModalProps {
     operationId: string;
     changes: PendingChanges;
   }) => Promise<unknown>;
+  onSplit?: (
+    input: Omit<SplitSourceDocumentInput, "sourceDocumentId">
+  ) => Promise<SplitSourceDocumentResultDto>;
   onBatchUpdate: (
     ids: string[],
     data: {
@@ -77,6 +86,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onBack,
   onExitComplete,
   onSaveAll,
+  onSplit,
   onBatchUpdate,
   onBatchDeleteEntries,
   onDelete,
@@ -97,11 +107,24 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const saveOperationIdRef = useRef<string | null>(null);
   const draftRevisionIdRef = useRef<string | null>(null);
   const continueNavigationRef = useRef<(() => void) | null>(null);
+  const splitIdentityRef = useRef<{
+    operationId: string;
+    newSourceDocumentId: string;
+    payloadKey: string;
+  } | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const busy = isSaving || isDeleting || isRetrying || isAccepting || isAbandoning || isCancelling;
+  const [isSplitting, setIsSplitting] = useState(false);
+  const busy =
+    isSaving ||
+    isDeleting ||
+    isRetrying ||
+    isSplitting ||
+    isAccepting ||
+    isAbandoning ||
+    isCancelling;
 
   const {
     pendingChanges,
@@ -127,6 +150,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
 
   useEffect(() => {
     if (open && sourceDocument && !hasPendingChanges) {
@@ -281,6 +305,67 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     }
   };
 
+  const handleOpenSplit = () => {
+    if (busy || selectedIds.length === 0) return;
+    if (selectedIds.length >= ledgerEntries.length) {
+      toast.error(t("splitKeepOne"));
+      return;
+    }
+    if (hasPendingChanges) {
+      toast.error(t("splitSaveFirst"));
+      return;
+    }
+    setShowSplitDialog(true);
+  };
+
+  const handleSplit = async (entryDate: string) => {
+    const expectedRevisionId = sourceDocument?.activeRevisionId;
+    if (expectedRevisionId == null || expectedRevisionId === "" || onSplit == null) {
+      toast.error(t("splitFailed"));
+      return;
+    }
+    const payloadKey = JSON.stringify({
+      expectedRevisionId,
+      ledgerEntryIds: [...selectedIds].sort(),
+      entryDate,
+    });
+    if (splitIdentityRef.current?.payloadKey !== payloadKey) {
+      splitIdentityRef.current = {
+        operationId: crypto.randomUUID(),
+        newSourceDocumentId: crypto.randomUUID(),
+        payloadKey,
+      };
+    }
+    setIsSplitting(true);
+    try {
+      const result = await onSplit({
+        expectedRevisionId,
+        operationId: splitIdentityRef.current.operationId,
+        newSourceDocumentId: splitIdentityRef.current.newSourceDocumentId,
+        ledgerEntryIds: selectedIds,
+        entryDate,
+      });
+      splitIdentityRef.current = null;
+      setShowSplitDialog(false);
+      clearSelection();
+      toast.success(t("splitSuccess", { count: result.movedEntryCount }), {
+        action: {
+          label: t("viewSplitBill"),
+          onClick: () =>
+            openLedgerDetail({
+              type: "source-document",
+              id: result.splitSourceDocumentId,
+              ledgerId,
+            }),
+        },
+      });
+    } catch {
+      toast.error(t("splitFailed"));
+    } finally {
+      setIsSplitting(false);
+    }
+  };
+
   const handleDeleteDocument = async () => {
     if (busy) return;
     setIsDeleting(true);
@@ -293,335 +378,356 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
   const displayTitle = pendingChanges.sourceDoc.title ?? sourceDocument?.title ?? "";
 
+  const splitInitialDate =
+    sourceDocument?.entryDate ?? sourceDocument?.createdAt.slice(0, 10) ?? "";
+
   return (
-    <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
-      <DialogContent
-        variant="detail"
-        {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-        className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
-        onOpenAutoFocus={() => {
-          restoreFocusRef.current = document.activeElement as HTMLElement | null;
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          restoreFocusRef.current?.focus();
-        }}
-        aria-describedby={undefined}
-        hideCloseButton={busy}
-        onEscapeKeyDown={(event) => busy && event.preventDefault()}
-        onPointerDownOutside={(event) => busy && event.preventDefault()}
-      >
-        <DialogHeader className="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-3">
-          <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
-          {onBack != null && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={onBack}
-              disabled={busy}
-              aria-label={tCommon("back")}
-              title={tCommon("back")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <div className="flex-1 min-w-0 pr-8">
-            <EditableField
-              value={displayTitle}
-              onChange={(v) => handleSourceDocChange({ title: v })}
-              placeholder={t("untitled")}
-              displayClassName="font-semibold text-text text-base truncate"
-              inputClassName="font-semibold text-base"
-              disabled={readOnly || busy}
-            />
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-          {isLoading && !sourceDocument && (
-            <div className="space-y-3 animate-pulse">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded bg-border" />
-                <div className="h-3 w-24 bg-border rounded" />
-              </div>
-              <div className="rounded-xl border border-border p-3 space-y-2">
-                <div className="h-3 w-16 bg-border rounded" />
-                <div className="h-6 w-28 bg-border rounded" />
-              </div>
-              <div className="space-y-2">
-                {[1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-border"
-                  >
-                    <div className="h-8 w-8 rounded-full bg-border" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3.5 w-28 bg-border rounded" />
-                      <div className="h-2.5 w-16 bg-border rounded" />
-                    </div>
-                    <div className="h-3.5 w-14 bg-border rounded" />
-                  </div>
-                ))}
-              </div>
+    <>
+      <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
+        <DialogContent
+          variant="detail"
+          {...(onExitComplete !== undefined ? { onExitComplete } : {})}
+          className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+          onOpenAutoFocus={() => {
+            restoreFocusRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreFocusRef.current?.focus();
+          }}
+          aria-describedby={undefined}
+          hideCloseButton={busy}
+          onEscapeKeyDown={(event) => busy && event.preventDefault()}
+          onPointerDownOutside={(event) => busy && event.preventDefault()}
+        >
+          <DialogHeader className="shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-3">
+            <DialogTitle className="sr-only">{displayTitle}</DialogTitle>
+            {onBack != null && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={onBack}
+                disabled={busy}
+                aria-label={tCommon("back")}
+                title={tCommon("back")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div className="flex-1 min-w-0 pr-8">
+              <EditableField
+                value={displayTitle}
+                onChange={(v) => handleSourceDocChange({ title: v })}
+                placeholder={t("untitled")}
+                displayClassName="font-semibold text-text text-base truncate"
+                inputClassName="font-semibold text-base"
+                disabled={readOnly || busy}
+              />
             </div>
-          )}
+          </DialogHeader>
 
-          {sourceDocument && (
-            <>
-              {/* Diagnostic code display for anomaly/failed states */}
-              {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && (
-                <div className="mb-3 px-1">
-                  {(() => {
-                    const stableCode: AnomalyCode | ProcessingFailureCode =
-                      sourceDocument.status === "anomaly"
-                        ? toStableAnomalyCode(sourceDocument.anomalyReason)
-                        : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
-                    return (
-                      <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
-                        <span className="mt-1 size-2 shrink-0 rounded-full bg-danger" aria-hidden />
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+            {isLoading && !sourceDocument && (
+              <div className="space-y-3 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded bg-border" />
+                  <div className="h-3 w-24 bg-border rounded" />
+                </div>
+                <div className="rounded-xl border border-border p-3 space-y-2">
+                  <div className="h-3 w-16 bg-border rounded" />
+                  <div className="h-6 w-28 bg-border rounded" />
+                </div>
+                <div className="space-y-2">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 p-2.5 rounded-lg border border-border"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-border" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3.5 w-28 bg-border rounded" />
+                        <div className="h-2.5 w-16 bg-border rounded" />
+                      </div>
+                      <div className="h-3.5 w-14 bg-border rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sourceDocument && (
+              <>
+                {/* Diagnostic code display for anomaly/failed states */}
+                {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && (
+                  <div className="mb-3 px-1">
+                    {(() => {
+                      const stableCode: AnomalyCode | ProcessingFailureCode =
+                        sourceDocument.status === "anomaly"
+                          ? toStableAnomalyCode(sourceDocument.anomalyReason)
+                          : toStableFailureCode((sourceDocument as SourceDocument).errorCode);
+                      return (
+                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-danger/5 border border-danger/10">
+                          <span
+                            className="mt-1 size-2 shrink-0 rounded-full bg-danger"
+                            aria-hidden
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-medium text-danger">
+                              {diagnosticMessages.label(stableCode)}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/70">
+                              {diagnosticMessages.description(stableCode)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                {/* Retained active result notice */}
+                {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") &&
+                  sourceDocument.activeResultSummary != null && (
+                    <div className="mb-3 px-1">
+                      <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-medium text-danger">
-                            {diagnosticMessages.label(stableCode)}
+                          <span className="text-xs font-medium text-primary">
+                            {t("activeResultTitle")}
                           </span>
                           <span className="text-[11px] text-muted-foreground/70">
-                            {diagnosticMessages.description(stableCode)}
+                            {t("activeResultDescription")}
                           </span>
+                          <AmountText variant="group">
+                            {sourceDocument.activeResultSummary.entryCount} ·{" "}
+                            {sourceDocument.activeResultSummary.total}
+                          </AmountText>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
-              {/* Retained active result notice */}
-              {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") &&
-                sourceDocument.activeResultSummary != null && (
-                  <div className="mb-3 px-1">
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-medium text-primary">
-                          {t("activeResultTitle")}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground/70">
-                          {t("activeResultDescription")}
-                        </span>
-                        <AmountText variant="group">
-                          {sourceDocument.activeResultSummary.entryCount} ·{" "}
-                          {sourceDocument.activeResultSummary.total}
-                        </AmountText>
-                      </div>
                     </div>
-                  </div>
-                )}
-              <SourceDocumentViewDetails
-                sourceDocument={sourceDocument}
-                ledgerEntries={ledgerEntries}
-                categories={categories}
-                preferredCurrencies={preferredCurrencies}
-                mainCurrency={_mainCurrency}
-                pendingChanges={pendingChanges}
-                selectedEntryIds={selectedIds}
-                isSelectionMode={isSelectionMode}
-                isLoadingImages={isLoadingImages}
-                onSourceDocChange={handleSourceDocChange}
-                onEntryChange={handleEntryChange}
-                onSelectEntry={handleSelectEntry}
-                onSelectAllEntries={handleSelectAllEntries}
-                onToggleSelectionMode={handleToggleSelectionMode}
-                readOnly={readOnly || busy}
-                {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
-              />
-            </>
+                  )}
+                <SourceDocumentViewDetails
+                  sourceDocument={sourceDocument}
+                  ledgerEntries={ledgerEntries}
+                  categories={categories}
+                  preferredCurrencies={preferredCurrencies}
+                  mainCurrency={_mainCurrency}
+                  pendingChanges={pendingChanges}
+                  selectedEntryIds={selectedIds}
+                  isSelectionMode={isSelectionMode}
+                  isLoadingImages={isLoadingImages}
+                  onSourceDocChange={handleSourceDocChange}
+                  onEntryChange={handleEntryChange}
+                  onSelectEntry={handleSelectEntry}
+                  onSelectAllEntries={handleSelectAllEntries}
+                  onToggleSelectionMode={handleToggleSelectionMode}
+                  readOnly={readOnly || busy}
+                  {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
+                />
+              </>
+            )}
+          </div>
+
+          {!readOnly && (
+            <LedgerEntriesBatchActionToolbar
+              selectedCount={selectedIds.length}
+              totalCount={ledgerEntries.length}
+              isAllSelected={isAllSelected}
+              onSelectAll={() => handleSelectAllEntries(true)}
+              onClearSelection={() => handleSelectAllEntries(false)}
+              onChangeCategory={handleBatchCategory}
+              onChangeCurrency={handleBatchCurrency}
+              {...(sourceDocument?.supportedActions.includes("split_entries") && onSplit != null
+                ? { onSplit: handleOpenSplit }
+                : {})}
+              onDelete={() => setShowBatchDeleteConfirm(true)}
+              categories={categories}
+              preferredCurrencies={preferredCurrencies}
+              isChangingCategory={isSaving}
+              isChangingCurrency={isSaving}
+              isProcessing={busy}
+              variant="inline"
+            />
           )}
-        </div>
 
-        {!readOnly && (
-          <LedgerEntriesBatchActionToolbar
-            selectedCount={selectedIds.length}
-            totalCount={ledgerEntries.length}
-            isAllSelected={isAllSelected}
-            onSelectAll={() => handleSelectAllEntries(true)}
-            onClearSelection={() => handleSelectAllEntries(false)}
-            onChangeCategory={handleBatchCategory}
-            onChangeCurrency={handleBatchCurrency}
-            onDelete={() => setShowBatchDeleteConfirm(true)}
-            categories={categories}
-            preferredCurrencies={preferredCurrencies}
-            isChangingCategory={isSaving}
-            isChangingCurrency={isSaving}
-            isProcessing={busy}
-            variant="inline"
+          <ConfirmDialog
+            open={showBatchDeleteConfirm}
+            onOpenChange={setShowBatchDeleteConfirm}
+            title={t("batchDeleteTitle")}
+            description={t("batchDeleteDescription", { count: selectedIds.length })}
+            variant="destructive"
+            confirmLabel={tCommon("delete")}
+            onConfirm={handleBatchDelete}
           />
-        )}
 
-        <ConfirmDialog
-          open={showBatchDeleteConfirm}
-          onOpenChange={setShowBatchDeleteConfirm}
-          title={t("batchDeleteTitle")}
-          description={t("batchDeleteDescription", { count: selectedIds.length })}
-          variant="destructive"
-          confirmLabel={tCommon("delete")}
-          onConfirm={handleBatchDelete}
-        />
+          {!readOnly && (
+            <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:bg-surface2/30 sm:py-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {/* Candidate actions: Accept / Abandon */}
+                {sourceDocument?.supportedActions.includes("accept_candidate") &&
+                  onAcceptCandidate != null && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-9 px-3 gap-1.5"
+                        onClick={onAcceptCandidate}
+                        disabled={busy}
+                      >
+                        <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
+                        <span className="hidden sm:inline">{tActions("accept")}</span>
+                      </Button>
+                      {sourceDocument.supportedActions.includes("abandon_candidate") &&
+                        onAbandonCandidate != null && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-3 gap-1.5 text-muted-foreground"
+                            onClick={onAbandonCandidate}
+                            disabled={busy}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{tActions("abandon")}</span>
+                          </Button>
+                        )}
+                    </>
+                  )}
 
-        {!readOnly && (
-          <div className="z-modal-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-surface/80 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:bg-surface2/30 sm:py-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              {/* Candidate actions: Accept / Abandon */}
-              {sourceDocument?.supportedActions.includes("accept_candidate") &&
-                onAcceptCandidate != null && (
-                  <>
+                {sourceDocument?.supportedActions.includes("abandon_candidate") &&
+                  !sourceDocument.supportedActions.includes("accept_candidate") &&
+                  onAbandonCandidate != null && (
                     <Button
-                      variant="default"
+                      variant="outline"
                       size="sm"
-                      className="h-9 px-3 gap-1.5"
-                      onClick={onAcceptCandidate}
+                      className="h-9 gap-1.5 px-3 text-muted-foreground"
+                      onClick={onAbandonCandidate}
                       disabled={busy}
                     >
-                      <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
-                      <span className="hidden sm:inline">{tActions("accept")}</span>
+                      <XCircle className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{tActions("abandon")}</span>
                     </Button>
-                    {sourceDocument.supportedActions.includes("abandon_candidate") &&
-                      onAbandonCandidate != null && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 px-3 gap-1.5 text-muted-foreground"
-                          onClick={onAbandonCandidate}
-                          disabled={busy}
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">{tActions("abandon")}</span>
-                        </Button>
-                      )}
-                  </>
-                )}
+                  )}
 
-              {sourceDocument?.supportedActions.includes("abandon_candidate") &&
-                !sourceDocument.supportedActions.includes("accept_candidate") &&
-                onAbandonCandidate != null && (
+                {sourceDocument?.supportedActions.includes("cancel_processing") &&
+                  onCancelProcessing != null && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 gap-1.5 px-3 text-muted-foreground"
+                      onClick={onCancelProcessing}
+                      disabled={busy}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
+                    </Button>
+                  )}
+
+                {/* Edit & Retry */}
+                {sourceDocument?.supportedActions.includes("edit_retry") && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 gap-1.5 px-3 text-muted-foreground"
-                    onClick={onAbandonCandidate}
+                    className="h-9 px-3 gap-1.5 text-muted-foreground"
+                    onClick={() => setShowRetryDialog(true)}
                     disabled={busy}
                   >
-                    <XCircle className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{tActions("abandon")}</span>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t("editRetry")}</span>
                   </Button>
                 )}
 
-              {sourceDocument?.supportedActions.includes("cancel_processing") &&
-                onCancelProcessing != null && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1.5 px-3 text-muted-foreground"
-                    onClick={onCancelProcessing}
-                    disabled={busy}
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
-                  </Button>
-                )}
-
-              {/* Edit & Retry */}
-              {sourceDocument?.supportedActions.includes("edit_retry") && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 px-3 gap-1.5 text-muted-foreground"
-                  onClick={() => setShowRetryDialog(true)}
+                  className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
                   disabled={busy}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("editRetry")}</span>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{tCommon("delete")}</span>
                 </Button>
-              )}
+              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={busy}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{tCommon("delete")}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                {hasPendingChanges ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9"
+                      onClick={discardAllChanges}
+                      disabled={busy}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1.5" />
+                      {t("discardChanges")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-9 gap-1.5 shadow-lg shadow-primary/20"
+                      onClick={handleSaveAll}
+                      disabled={busy || hasRevisionConflict}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      {t("saveChanges", { count: pendingChangesCount })}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             </div>
+          )}
+        </DialogContent>
 
-            <div className="flex items-center gap-2">
-              {hasPendingChanges ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9"
-                    onClick={discardAllChanges}
-                    disabled={busy}
-                  >
-                    <X className="h-3.5 w-3.5 mr-1.5" />
-                    {t("discardChanges")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-9 gap-1.5 shadow-lg shadow-primary/20"
-                    onClick={handleSaveAll}
-                    disabled={busy || hasRevisionConflict}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    {t("saveChanges", { count: pendingChangesCount })}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </DialogContent>
-
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        title={tCommon("delete")}
-        description={t("deleteConfirmDesc")}
-        onConfirm={handleDeleteDocument}
-        variant="destructive"
-        confirmLabel={tCommon("delete")}
-      />
-
-      <ConfirmDialog
-        open={showUnsavedConfirm}
-        onOpenChange={(nextOpen) => {
-          setShowUnsavedConfirm(nextOpen);
-          if (!nextOpen) continueNavigationRef.current = null;
-        }}
-        title={t("unsavedChanges")}
-        description={t("unsavedChangesDesc")}
-        onConfirm={() => setShowUnsavedConfirm(false)}
-        cancelLabel={tCommon("cancel")}
-        onSave={handleSaveAllAndClose}
-        saveLabel={tCommon("save")}
-        onDiscard={handleDiscardAndClose}
-        discardLabel={t("discardChanges")}
-      />
-
-      {sourceDocument && !readOnly && (
-        <SourceDocumentEditRetryDialog
-          ledgerId={ledgerId}
-          sourceDocument={sourceDocument}
-          open={showRetryDialog}
-          onOpenChange={setShowRetryDialog}
-          onPendingChange={setIsRetrying}
-          onSuccess={() => {
-            setShowRetryDialog(false);
-            onClose();
-          }}
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title={tCommon("delete")}
+          description={t("deleteConfirmDesc")}
+          onConfirm={handleDeleteDocument}
+          variant="destructive"
+          confirmLabel={tCommon("delete")}
         />
-      )}
-    </Dialog>
+
+        <ConfirmDialog
+          open={showUnsavedConfirm}
+          onOpenChange={(nextOpen) => {
+            setShowUnsavedConfirm(nextOpen);
+            if (!nextOpen) continueNavigationRef.current = null;
+          }}
+          title={t("unsavedChanges")}
+          description={t("unsavedChangesDesc")}
+          onConfirm={() => setShowUnsavedConfirm(false)}
+          cancelLabel={tCommon("cancel")}
+          onSave={handleSaveAllAndClose}
+          saveLabel={tCommon("save")}
+          onDiscard={handleDiscardAndClose}
+          discardLabel={t("discardChanges")}
+        />
+
+        {sourceDocument && !readOnly && (
+          <SourceDocumentEditRetryDialog
+            ledgerId={ledgerId}
+            sourceDocument={sourceDocument}
+            open={showRetryDialog}
+            onOpenChange={setShowRetryDialog}
+            onPendingChange={setIsRetrying}
+            onSuccess={() => {
+              setShowRetryDialog(false);
+              onClose();
+            }}
+          />
+        )}
+      </Dialog>
+      {showSplitDialog ? (
+        <SourceDocumentSplitDialog
+          open
+          selectedCount={selectedIds.length}
+          initialDate={splitInitialDate}
+          isSubmitting={isSplitting}
+          onOpenChange={setShowSplitDialog}
+          onSubmit={handleSplit}
+        />
+      ) : null}
+    </>
   );
 });

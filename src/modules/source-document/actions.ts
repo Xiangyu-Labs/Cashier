@@ -39,3 +39,4 @@ export {
   batchResolveDuplicateReviewsAction,
 } from "./server-actions/duplicate-reviews";
 export { getStreamRefreshAction } from "./server-actions/refresh";
+export { splitSourceDocumentAction } from "./server-actions/split";

@@ -66,6 +66,7 @@ function mapDocument(
     pendingRevisionId: row.pendingRevisionId,
     supportedActions: supportedSourceDocumentActions({
       activeRevisionId: row.activeRevisionId,
+      pendingRevisionId: row.pendingRevisionId,
       pendingOutcome,
       duplicateReviewPending: row.currentStatus === "duplicate_pending",
       deleted: row.deletedAt != null,

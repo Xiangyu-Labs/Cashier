@@ -21,6 +21,7 @@ export interface LedgerEntriesBatchActionToolbarProps {
   isChangingCategory?: boolean;
   isChangingCurrency?: boolean;
   onChangeDate?: () => void;
+  onSplit?: () => void;
   onDelete?: () => void;
   isProcessing?: boolean;
   variant?: "fixed" | "inline";
@@ -40,6 +41,7 @@ export function LedgerEntriesBatchActionToolbar({
   isChangingCategory: isChangingCategoryProp,
   isChangingCurrency: isChangingCurrencyProp,
   onChangeDate,
+  onSplit,
   onDelete,
   isProcessing: externallyProcessing = false,
   variant = "fixed",
@@ -148,6 +150,7 @@ export function LedgerEntriesBatchActionToolbar({
                   onChangeCategory={handleChangeCategory}
                   onChangeCurrency={handleChangeCurrency}
                   {...(onChangeDate != null ? { onChangeDate } : {})}
+                  {...(onSplit != null ? { onSplit } : {})}
                   {...(onDelete != null ? { onDelete } : {})}
                 />
               </div>

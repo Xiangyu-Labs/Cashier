@@ -6,11 +6,17 @@ import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocumentCounts,
+  invalidateSourceDocumentStream,
+  invalidateSourceDocumentStreamTotal,
   invalidateSourceDocuments,
   queryKeys,
 } from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { saveSourceDocumentChangesAction } from "@/modules/source-document/actions";
+import {
+  saveSourceDocumentChangesAction,
+  splitSourceDocumentAction,
+} from "@/modules/source-document/actions";
+import type { SplitSourceDocumentInput } from "@/modules/source-document/contracts";
 import type { PendingChanges } from "./usePendingChanges";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
@@ -131,8 +137,48 @@ export function useSourceDocumentDetailMutations({
     onSuccessExtra: notifyRefresh,
   });
 
+  const splitMutation = useLedgerMutation(ledgerId, {
+    mutationFn: async (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      return splitSourceDocumentAction(ledgerId, { sourceDocumentId: id, ...input });
+    },
+    successMessage: null,
+    errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
+    ...(predicates.detailWritePredicates == null
+      ? {}
+      : {
+          cancelPredicates: predicates.detailWritePredicates,
+          invalidatePredicates: [
+            ...predicates.detailWritePredicates,
+            ...(ledgerId == null || ledgerId === ""
+              ? []
+              : [
+                  invalidateSourceDocumentStream(ledgerId),
+                  invalidateSourceDocumentStreamTotal(ledgerId),
+                ]),
+          ],
+        }),
+    onSuccessReconcile: (queryClient, result) => {
+      if (ledgerId == null || ledgerId === "") return;
+      queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
+      queryClient.setQueryData(queryKeys.sourceDocumentLight(ledgerId, id), result.sourceDocument);
+      queryClient.setQueryData(
+        queryKeys.sourceDocument(ledgerId, result.splitSourceDocumentId),
+        result.splitSourceDocument
+      );
+      queryClient.setQueryData(
+        queryKeys.sourceDocumentLight(ledgerId, result.splitSourceDocumentId),
+        result.splitSourceDocument
+      );
+    },
+    onSuccessExtra: notifyRefresh,
+  });
+
   return {
     saveChanges: (input: SaveDetailChanges) => saveChangesMutation.mutateAsync(input),
+    splitEntries: (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) =>
+      splitMutation.mutateAsync(input),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     batchDeleteEntries: async (entryIds: string[]) => {
@@ -144,6 +190,7 @@ export function useSourceDocumentDetailMutations({
       await deleteDocumentMutation.mutateAsync({ operationId });
     },
     isSavingChanges: saveChangesMutation.isPending,
+    isSplitting: splitMutation.isPending,
   };
 }
 

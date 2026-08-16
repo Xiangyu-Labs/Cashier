@@ -24,6 +24,7 @@ import {
   updateSourceDocument,
   batchUpdateSourceDocuments,
   saveSourceDocumentChangesAtomically,
+  splitSourceDocumentAtomically,
   acceptCandidateRevision,
   abandonCandidateRevision,
   activateDuplicatePendingRevision,
@@ -96,6 +97,7 @@ export const serverComposition = {
     update: updateSourceDocument,
     batchUpdate: batchUpdateSourceDocuments,
     saveChangesAtomically: saveSourceDocumentChangesAtomically,
+    split: splitSourceDocumentAtomically,
   },
   sourceDocumentLifecycle: {
     acceptCandidate: acceptCandidateRevision,

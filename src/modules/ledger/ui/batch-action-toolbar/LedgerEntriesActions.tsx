@@ -1,4 +1,4 @@
-import { Calendar, ChevronDown, DollarSign, Loader2, Tag, Trash2 } from "lucide-react";
+import { Calendar, ChevronDown, DollarSign, Loader2, Scissors, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { BatchActionButton } from "@/components/batch-action-button";
@@ -23,6 +23,7 @@ interface LedgerEntriesActionsProps {
   onChangeCategory: (categoryId: string | null) => void;
   onChangeCurrency: (currency: string) => void;
   onChangeDate?: () => void;
+  onSplit?: () => void;
   onDelete?: () => void;
 }
 
@@ -35,6 +36,7 @@ export function LedgerEntriesActions({
   onChangeCategory,
   onChangeCurrency,
   onChangeDate,
+  onSplit,
   onDelete,
 }: LedgerEntriesActionsProps) {
   const t = useTranslations("BatchActions");
@@ -87,6 +89,16 @@ export function LedgerEntriesActions({
           onClick={onChangeDate}
         >
           {t("setDate")}
+        </BatchActionButton>
+      )}
+      {onSplit != null && (
+        <BatchActionButton
+          variant="outline"
+          icon={Scissors}
+          disabled={isProcessing}
+          onClick={onSplit}
+        >
+          {t("split")}
         </BatchActionButton>
       )}
       {onDelete != null && (

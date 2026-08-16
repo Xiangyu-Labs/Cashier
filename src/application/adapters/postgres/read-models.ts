@@ -778,6 +778,7 @@ function mapListItem(
     supportedActions: [
       ...supportedSourceDocumentActions({
         activeRevisionId: row.activeRevisionId,
+        pendingRevisionId: row.pendingRevisionId,
         pendingOutcome:
           row.pendingRevisionId == null ? null : ((revision?.outcome as RevisionOutcome) ?? null),
         duplicateReviewPending: row.currentStatus === "duplicate_pending",
@@ -1145,6 +1146,7 @@ export async function getTargetSourceDocument(
     supportedActions: [
       ...supportedSourceDocumentActions({
         activeRevisionId: row.activeRevisionId,
+        pendingRevisionId: row.pendingRevisionId,
         pendingOutcome:
           row.pendingRevisionId == null
             ? null

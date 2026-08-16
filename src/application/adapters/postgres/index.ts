@@ -6,6 +6,7 @@ export * from "./revisions";
 export * from "./submissions";
 export * from "./exchange-rate-recalculation-jobs";
 export * from "./source-document-updates";
+export * from "./source-document-splits";
 export * from "./transaction-locks";
 export * from "./mutate-ledger-entries";
 export * from "./delete-ledger-entry";

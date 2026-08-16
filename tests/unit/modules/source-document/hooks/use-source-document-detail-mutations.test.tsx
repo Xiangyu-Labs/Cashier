@@ -4,12 +4,15 @@ import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSourceDocumentDetailMutations } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 
-const { batchDeleteLedgerEntriesActionMock, saveSourceDocumentChangesActionMock } = vi.hoisted(
-  () => ({
-    batchDeleteLedgerEntriesActionMock: vi.fn(),
-    saveSourceDocumentChangesActionMock: vi.fn(),
-  })
-);
+const {
+  batchDeleteLedgerEntriesActionMock,
+  saveSourceDocumentChangesActionMock,
+  splitSourceDocumentActionMock,
+} = vi.hoisted(() => ({
+  batchDeleteLedgerEntriesActionMock: vi.fn(),
+  saveSourceDocumentChangesActionMock: vi.fn(),
+  splitSourceDocumentActionMock: vi.fn(),
+}));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -26,6 +29,7 @@ vi.mock("@/modules/ledger/server-actions/entries", () => ({
 
 vi.mock("@/modules/source-document/actions", () => ({
   saveSourceDocumentChangesAction: saveSourceDocumentChangesActionMock,
+  splitSourceDocumentAction: splitSourceDocumentActionMock,
 }));
 
 vi.mock("@/modules/source-document/hooks/useSourceDocumentRecordMutations", () => ({
@@ -165,5 +169,47 @@ describe("useSourceDocumentDetailMutations", () => {
     for (const call of invalidate.mock.calls) {
       expect(call[1]).toEqual({ throwOnError: true });
     }
+  });
+
+  it("writes both authoritative split details before refreshing affected views", async () => {
+    const { queryClient, wrapper } = setup();
+    splitSourceDocumentActionMock.mockResolvedValue({
+      sourceDocumentId: "source-1",
+      splitSourceDocumentId: "source-2",
+      sourceDocument: { id: "source-1", title: "Original" },
+      splitSourceDocument: { id: "source-2", title: "Split" },
+    });
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentDetailMutations({
+          id: "source-1",
+          ledgerId: "ledger-1",
+          onClose: vi.fn(),
+        }),
+      { wrapper }
+    );
+    const input = {
+      expectedRevisionId: "revision-1",
+      operationId: "operation-1",
+      newSourceDocumentId: "source-2",
+      ledgerEntryIds: ["entry-1"],
+      entryDate: "2026-08-16",
+    };
+
+    await act(async () => {
+      await result.current.splitEntries(input);
+    });
+
+    expect(splitSourceDocumentActionMock).toHaveBeenCalledWith("ledger-1", {
+      sourceDocumentId: "source-1",
+      ...input,
+    });
+    expect(
+      queryClient.getQueryData(["ledger", "ledger-1", "source-document", "source-1", "detail"])
+    ).toEqual({ id: "source-1", title: "Original" });
+    expect(
+      queryClient.getQueryData(["ledger", "ledger-1", "source-document", "source-2", "detail"])
+    ).toEqual({ id: "source-2", title: "Split" });
   });
 });

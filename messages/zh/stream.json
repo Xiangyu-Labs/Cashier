@@ -13,6 +13,7 @@
     "loadedOnly": "仅选中已加载的条目",
     "setDate": "修改日期",
     "setDateShort": "日期",
+    "split": "拆分",
     "datesUpdated": "已更新 {count} 项的日期",
     "confirm": "确认",
     "retry": "重试",
@@ -586,7 +587,15 @@
     "saveAllFailed": "未保存任何更改，请修正问题后重试",
     "imageEditHint": "点击图片可查看或编辑。图片更新后会替换当前展示图，但不会自动重解析。",
     "activeResultTitle": "保留的当前结果",
-    "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。"
+    "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。",
+    "splitTitle": "拆分账单",
+    "splitDescription": "将选中的 {count} 项明细移动到一张新账单。",
+    "splitDate": "新账单日期",
+    "splitSuccess": "已将 {count} 项明细拆分为新账单",
+    "splitFailed": "拆分失败，未保存任何更改",
+    "splitKeepOne": "原账单至少需要保留一项",
+    "splitSaveFirst": "请先保存或放弃当前修改后再拆分",
+    "viewSplitBill": "查看新账单"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"

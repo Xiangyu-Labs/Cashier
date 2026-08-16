@@ -32,6 +32,37 @@ function renderActions() {
 }
 
 describe("LedgerEntriesActions dropdown triggers", () => {
+  it("renders the optional split command only when provided", async () => {
+    const onSplit = vi.fn();
+    const { rerender } = render(
+      <LedgerEntriesActions
+        categories={[category]}
+        preferredCurrencies={["USD"]}
+        isProcessing={false}
+        isChangingCategory={false}
+        isChangingCurrency={false}
+        onChangeCategory={vi.fn()}
+        onChangeCurrency={vi.fn()}
+        onSplit={onSplit}
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: /拆分|split/i }));
+    expect(onSplit).toHaveBeenCalledOnce();
+
+    rerender(
+      <LedgerEntriesActions
+        categories={[category]}
+        preferredCurrencies={["USD"]}
+        isProcessing={false}
+        isChangingCategory={false}
+        isChangingCurrency={false}
+        onChangeCategory={vi.fn()}
+        onChangeCurrency={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole("button", { name: /拆分|split/i })).not.toBeInTheDocument();
+  });
+
   it("does not open the category menu during a press or drag outside", () => {
     renderActions();
     const trigger = screen.getByRole("button", { name: /指定分类|set category/i });

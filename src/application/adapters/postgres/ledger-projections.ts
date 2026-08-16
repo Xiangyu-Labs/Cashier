@@ -1234,6 +1234,60 @@ async function copyRevisionFiles(
   `);
 }
 
+export async function createManualProjectionInTransaction(
+  tx: PostgresTransaction,
+  input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    revisionId?: string;
+    title?: string | null;
+    entryDate?: string | null;
+    submittedText?: string | null;
+    copyFilesFromRevisionId?: string;
+    entries: readonly LedgerProjectionEntryContract[];
+  }
+): Promise<string> {
+  const existing = await tx
+    .select({ id: sourceDocuments.id })
+    .from(sourceDocuments)
+    .where(eq(sourceDocuments.id, input.sourceDocumentId))
+    .then((rows) => rows[0]);
+  if (existing != null) throw new ConflictError("Source document already exists");
+
+  await tx.insert(sourceDocuments).values({
+    id: input.sourceDocumentId,
+    ledgerId: input.ledgerId,
+    title: input.title ?? null,
+    type: "manual",
+    currentStatus: "completed",
+    entryDate: input.entryDate ?? null,
+  });
+  const revision = await createCompletedRevision(tx, {
+    ledgerId: input.ledgerId,
+    sourceDocumentId: input.sourceDocumentId,
+    ...(input.revisionId === undefined ? {} : { revisionId: input.revisionId }),
+    ...(input.submittedText !== undefined ? { submittedText: input.submittedText } : {}),
+  });
+  if (input.copyFilesFromRevisionId !== undefined) {
+    await copyRevisionFiles(tx, {
+      ledgerId: input.ledgerId,
+      fromRevisionId: input.copyFilesFromRevisionId,
+      toRevisionId: revision.id,
+    });
+  }
+  await replaceProjection(tx, {
+    ledgerId: input.ledgerId,
+    sourceDocumentId: input.sourceDocumentId,
+    revisionId: revision.id,
+    entries: input.entries,
+  });
+  await tx
+    .update(sourceDocuments)
+    .set({ activeRevisionId: revision.id, pendingRevisionId: null })
+    .where(activeDocumentWhere(input.ledgerId, input.sourceDocumentId));
+  return revision.id;
+}
+
 export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   async activateRevision(input) {
     return db.transaction(async (tx) => {
@@ -1301,35 +1355,15 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       await lockLedgerForUpdate(tx, input.ledgerId);
 
       const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
-      const existing = await tx
-        .select({ id: sourceDocuments.id })
-        .from(sourceDocuments)
-        .where(eq(sourceDocuments.id, sourceDocumentId))
-        .then((rows) => rows[0]);
-      if (existing != null) throw new ConflictError("Source document already exists");
-      await tx.insert(sourceDocuments).values({
-        id: sourceDocumentId,
-        ledgerId: input.ledgerId,
-        title: input.title ?? null,
-        type: "manual",
-        entryDate: input.entryDate ?? null,
-      });
-      const revision = await createCompletedRevision(tx, {
+      const revisionId = await createManualProjectionInTransaction(tx, {
         ledgerId: input.ledgerId,
         sourceDocumentId,
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.entryDate !== undefined ? { entryDate: input.entryDate } : {}),
         ...(input.submittedText !== undefined ? { submittedText: input.submittedText } : {}),
-      });
-      await replaceProjection(tx, {
-        ledgerId: input.ledgerId,
-        sourceDocumentId,
-        revisionId: revision.id,
         entries: input.entries,
       });
-      await tx
-        .update(sourceDocuments)
-        .set({ activeRevisionId: revision.id, pendingRevisionId: null })
-        .where(activeDocumentWhere(input.ledgerId, sourceDocumentId));
-      return { sourceDocumentId, revisionId: revision.id };
+      return { sourceDocumentId, revisionId };
     });
   },
 

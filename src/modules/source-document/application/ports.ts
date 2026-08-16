@@ -18,6 +18,7 @@ import type {
 import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesResultDto,
+  SplitSourceDocumentResultDto,
   SourceDocumentCountsDto,
   SourceDocumentDto,
   SourceDocumentListItemDto,
@@ -89,6 +90,15 @@ export interface SourceDocumentUpdatePort {
       data: import("@/modules/ledger/contract-schemas").UpdateLedgerEntryInput;
     }>;
   }): Promise<SaveSourceDocumentChangesResultDto>;
+  split(input: {
+    ledgerId: string;
+    sourceDocumentId: string;
+    expectedRevisionId: string;
+    operationId: string;
+    newSourceDocumentId: string;
+    ledgerEntryIds: string[];
+    entryDate: string;
+  }): Promise<SplitSourceDocumentResultDto>;
 }
 
 export interface SourceDocumentQueryPorts {

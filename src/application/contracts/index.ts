@@ -29,6 +29,7 @@ export type SupportedSourceDocumentAction =
   | "accept_candidate"
   | "abandon_candidate"
   | "cancel_processing"
+  | "split_entries"
   | "keep_duplicate"
   | "discard_duplicate";
 
@@ -50,6 +51,7 @@ export interface SourceDocumentRevisionContract {
 
 export function supportedSourceDocumentActions(input: {
   activeRevisionId: RevisionId | null;
+  pendingRevisionId?: RevisionId | null;
   pendingOutcome: RevisionOutcome | null;
   duplicateReviewPending?: boolean;
   deleted?: boolean;
@@ -83,6 +85,13 @@ export function supportedSourceDocumentActions(input: {
   // use duplicateReviewPending above while the revision is already active.
   if (input.pendingOutcome === "completed") {
     return ["keep_duplicate", "discard_duplicate", "delete"];
+  }
+  const hasPendingRevision =
+    input.pendingRevisionId === undefined
+      ? input.pendingOutcome != null
+      : input.pendingRevisionId != null;
+  if (input.activeRevisionId != null && !hasPendingRevision && input.pendingOutcome == null) {
+    return ["split_entries", "retry", "edit_retry", "delete"];
   }
   return ["retry", "edit_retry", "delete"];
 }

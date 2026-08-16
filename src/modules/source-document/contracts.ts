@@ -112,6 +112,25 @@ export interface SaveSourceDocumentChangesResultDto {
   sourceDocument: SourceDocumentDto;
 }
 
+export interface SplitSourceDocumentInput {
+  sourceDocumentId: string;
+  expectedRevisionId: string;
+  operationId: string;
+  newSourceDocumentId: string;
+  ledgerEntryIds: string[];
+  entryDate: string;
+}
+
+export interface SplitSourceDocumentResultDto {
+  sourceDocumentId: string;
+  sourceDocumentActiveRevisionId: string;
+  splitSourceDocumentId: string;
+  splitSourceDocumentActiveRevisionId: string;
+  movedEntryCount: number;
+  sourceDocument: SourceDocumentDto;
+  splitSourceDocument: SourceDocumentDto;
+}
+
 export interface BatchUpdateSourceDocumentsResultDto {
   sourceDocumentIds: string[];
   updatedCount: number;

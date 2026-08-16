@@ -13,6 +13,7 @@
     "loadedOnly": "Only loaded items are selected",
     "setDate": "Set Date",
     "setDateShort": "Date",
+    "split": "Split",
     "datesUpdated": "Updated dates for {count} items",
     "confirm": "Confirm",
     "retry": "Retry",
@@ -586,7 +587,15 @@
     "saveAllFailed": "Nothing was saved. Fix the issue and try again.",
     "imageEditHint": "Click an image to view or edit it. Updating the image replaces the current display only and does not re-run parsing.",
     "activeResultTitle": "Active entries retained",
-    "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved."
+    "activeResultDescription": "The entries below are the active result and remain in use while the pending retry is resolved.",
+    "splitTitle": "Split bill",
+    "splitDescription": "Move the selected {count} entries to a new bill.",
+    "splitDate": "New bill date",
+    "splitSuccess": "Split {count} entries into a new bill",
+    "splitFailed": "Split failed. No changes were saved.",
+    "splitKeepOne": "The original bill must retain at least one entry.",
+    "splitSaveFirst": "Save or discard your current changes before splitting.",
+    "viewSplitBill": "View new bill"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"

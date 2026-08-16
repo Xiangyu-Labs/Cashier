@@ -60,6 +60,28 @@ describe("target application contracts", () => {
     ).toEqual([]);
   });
 
+  it("only supports splitting a completed active document without a pending revision", () => {
+    expect(
+      supportedSourceDocumentActions({ activeRevisionId: "revision-1", pendingOutcome: null })
+    ).toContain("split_entries");
+    expect(
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        pendingOutcome: "cancelled",
+      })
+    ).not.toContain("split_entries");
+    expect(
+      supportedSourceDocumentActions({
+        activeRevisionId: "revision-1",
+        pendingRevisionId: "missing-revision",
+        pendingOutcome: null,
+      })
+    ).not.toContain("split_entries");
+    expect(
+      supportedSourceDocumentActions({ activeRevisionId: null, pendingOutcome: null })
+    ).not.toContain("split_entries");
+  });
+
   it("maps infrastructure failures to stable, non-sensitive application errors", () => {
     const error = toApplicationError(
       new AppError(
