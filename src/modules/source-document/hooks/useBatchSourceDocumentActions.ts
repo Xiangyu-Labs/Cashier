@@ -17,6 +17,7 @@ import {
   batchRetrySourceDocumentsAction,
 } from "@/modules/source-document/actions";
 import type { BatchActionResult } from "@/lib/batch-ids";
+import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
 import type { BatchUpdateSourceDocumentsResultDto } from "@/modules/source-document/contracts";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 
@@ -46,11 +47,11 @@ export function useBatchSourceDocumentActions(
       const operationId = crypto.randomUUID();
       await deleteSourceDocumentAction(ledgerId, id, operationId);
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       notifyRefresh();
-      await settleDerivedQueries();
       toast.success(tCommon("deleteSuccess"));
       clearSelection();
+      refreshDerivedQueries("batch source-document delete refresh");
     },
     onError: () => {
       toast.error(tCommon("deleteFailed"));
@@ -58,35 +59,39 @@ export function useBatchSourceDocumentActions(
   });
 
   const settleDerivedQueries = async () => {
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries(
-          { predicate: invalidateSourceDocuments(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerEntries(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerStats(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          {
-            predicate: invalidateSourceDocumentStreamTotal(ledgerId),
-          },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateCalendar(ledgerId) },
-          { throwOnError: true }
-        ),
-      ]);
-    } catch (error) {
-      console.error("Failed to refresh batch source-document results", error);
-      toast.warning(tCommon("savedRefreshFailed"));
-    }
+    await Promise.all([
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocuments(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerEntries(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerStats(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        {
+          predicate: invalidateSourceDocumentStreamTotal(ledgerId),
+        },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateCalendar(ledgerId) },
+        { throwOnError: true }
+      ),
+    ]);
+  };
+
+  const refreshDerivedQueries = (label: string) => {
+    runBackgroundQueryRefresh({
+      ledgerId,
+      label,
+      failureMessage: tCommon("savedRefreshFailed"),
+      refresh: settleDerivedQueries,
+    });
   };
 
   const batchUpdateDates = useMutation<
@@ -96,24 +101,23 @@ export function useBatchSourceDocumentActions(
   >({
     mutationFn: ({ ids, entryDate }) =>
       batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       notifyRefresh();
-      await settleDerivedQueries();
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
+      refreshDerivedQueries("batch source-document date refresh");
     },
     onError: () => {
       toast.error(tCommon("error"));
     },
   });
 
-  const settleBatchResult = async (
+  const settleBatchResult = (
     result: BatchActionResult,
     successLabel: string,
     preserveIds: string[] = []
   ) => {
     notifyRefresh();
-    await settleDerivedQueries();
     const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
     const retained = [...new Set([...preserveIds, ...unresolved])];
     if (retained.length === 0) clearSelection();
@@ -128,6 +132,7 @@ export function useBatchSourceDocumentActions(
         })
       );
     }
+    refreshDerivedQueries("batch source-document action refresh");
   };
 
   const batchDelete = useMutation<BatchActionResult, Error, string[]>({

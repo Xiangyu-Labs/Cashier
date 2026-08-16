@@ -26,11 +26,12 @@ describe("splitSourceDocumentAction", () => {
     });
   });
 
-  async function seedDocument() {
+  async function seedDocument(type: "ai_parsed" | "manual" = "ai_parsed") {
     const db = getTestDb();
     const ledger = createLedgerData({ userId, mainCurrency: "USD" });
     const document = createSourceDocumentData(ledger.id, {
       status: "completed",
+      type,
       title: "Shared receipt",
       entryDate: "2026-08-01",
     });
@@ -81,7 +82,7 @@ describe("splitSourceDocumentAction", () => {
       splitSourceDocument: {
         title: "Shared receipt",
         entryDate: "2026-08-16",
-        type: "manual",
+        type: "ai_parsed",
         status: "completed",
         text: "Full original evidence",
       },
@@ -133,6 +134,26 @@ describe("splitSourceDocumentAction", () => {
         entryDate: "2026-08-16",
       })
     ).rejects.toThrow(/identifiers do not match/i);
+  });
+
+  it("preserves a manual source type across the split and idempotent replay", async () => {
+    const fixture = await seedDocument("manual");
+    const operationId = crypto.randomUUID();
+    const newSourceDocumentId = crypto.randomUUID();
+    const input = {
+      sourceDocumentId: fixture.document.id,
+      expectedRevisionId: fixture.revisionId,
+      operationId,
+      newSourceDocumentId,
+      ledgerEntryIds: [fixture.entryIds[0]!],
+      entryDate: "2026-08-16",
+    };
+
+    const result = await splitSourceDocumentAction(fixture.ledger.id, input);
+
+    expect(result.sourceDocument.type).toBe("manual");
+    expect(result.splitSourceDocument.type).toBe("manual");
+    await expect(splitSourceDocumentAction(fixture.ledger.id, input)).resolves.toEqual(result);
   });
 
   it("rejects moving every entry without changing the active projection", async () => {

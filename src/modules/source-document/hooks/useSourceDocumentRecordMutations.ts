@@ -61,6 +61,7 @@ export function useSourceDocumentRecordMutations({
     successMessage: null,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
     cancelPredicates,
     invalidatePredicates,
     onSuccessReconcile: (client, result) => {
@@ -77,7 +78,7 @@ export function useSourceDocumentRecordMutations({
         )?.reconciliation
       );
     },
-    onSuccessExtra: notifyRefresh,
+    onWriteSuccess: notifyRefresh,
   });
 
   // -----------------------------------------------------------------------
@@ -92,6 +93,7 @@ export function useSourceDocumentRecordMutations({
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
     cancelPredicates,
     invalidatePredicates,
     onSuccessReconcile: (client, result) => {
@@ -109,7 +111,7 @@ export function useSourceDocumentRecordMutations({
         );
       }
     },
-    onSuccessExtra: () => {
+    onWriteSuccess: () => {
       onClose();
     },
   });

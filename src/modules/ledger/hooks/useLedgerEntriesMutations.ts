@@ -16,6 +16,7 @@ import {
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
+import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
 
 type UpdateEntryResult = LedgerEntryDto;
 type DeleteEntryResult = DeleteLedgerEntryResultDto;
@@ -27,6 +28,31 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
   const queryClient = useQueryClient();
   const tCommon = useTranslations("Common");
 
+  const refreshDerivedQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerEntries(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocuments(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerStats(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocumentStreamTotal(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateCalendar(ledgerId) },
+        { throwOnError: true }
+      ),
+    ]);
+  };
+
   const updateEntry = useMutation<UpdateEntryResult, Error, UpdateVariables>({
     mutationFn: async ({ ledgerEntryId, data }) => {
       const operationId = crypto.randomUUID();
@@ -37,14 +63,13 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<UpdateEntryResult>;
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
-      ]);
+    onSuccess: () => {
+      runBackgroundQueryRefresh({
+        ledgerId,
+        label: "ledger entry update refresh",
+        failureMessage: tCommon("savedRefreshFailed"),
+        refresh: refreshDerivedQueries,
+      });
     },
     onError: () => {
       toast.error(tCommon("saveFailed"));
@@ -60,15 +85,14 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<DeleteEntryResult>;
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
-        queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
-      ]);
+    onSuccess: () => {
       toast.success(tCommon("deleteSuccess"));
+      runBackgroundQueryRefresh({
+        ledgerId,
+        label: "ledger entry delete refresh",
+        failureMessage: tCommon("savedRefreshFailed"),
+        refresh: refreshDerivedQueries,
+      });
     },
     onError: () => {
       toast.error(tCommon("deleteFailed"));

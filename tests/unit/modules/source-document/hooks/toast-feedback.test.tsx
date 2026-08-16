@@ -7,14 +7,20 @@ import { useSourceDocumentRecoveryMutations } from "@/modules/source-document/ho
 
 const {
   deleteSourceDocumentActionMock,
+  acceptSourceDocumentCandidateActionMock,
+  abandonSourceDocumentCandidateActionMock,
   retrySourceDocumentActionMock,
   toastSuccessMock,
   toastErrorMock,
+  toastWarningMock,
 } = vi.hoisted(() => ({
   deleteSourceDocumentActionMock: vi.fn(),
+  acceptSourceDocumentCandidateActionMock: vi.fn(),
+  abandonSourceDocumentCandidateActionMock: vi.fn(),
   retrySourceDocumentActionMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
+  toastWarningMock: vi.fn(),
 }));
 
 vi.mock("next-intl", () => ({
@@ -22,15 +28,19 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: toastSuccessMock, error: toastErrorMock },
+  toast: { success: toastSuccessMock, error: toastErrorMock, warning: toastWarningMock },
 }));
 
 vi.mock("@/modules/source-document/actions", () => ({
-  acceptSourceDocumentCandidateAction: vi.fn(),
-  abandonSourceDocumentCandidateAction: vi.fn(),
+  acceptSourceDocumentCandidateAction: acceptSourceDocumentCandidateActionMock,
+  abandonSourceDocumentCandidateAction: abandonSourceDocumentCandidateActionMock,
   batchUpdateSourceDocumentsAction: vi.fn(),
+  batchDeleteSourceDocumentsAction: vi.fn(),
+  batchResolveDuplicateReviewsAction: vi.fn(),
+  batchRetrySourceDocumentsAction: vi.fn(),
   deleteSourceDocumentAction: deleteSourceDocumentActionMock,
   retrySourceDocumentAction: retrySourceDocumentActionMock,
+  cancelSourceDocumentProcessingAction: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/hooks/source-document-optimistic-cache", () => ({
@@ -45,13 +55,22 @@ vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
   useNotifyRevisionRefresh: () => vi.fn(),
 }));
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createWrapper(
+  queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
-  });
+  })
+) {
   return function ToastFeedbackTestWrapper({ children }: PropsWithChildren) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
 }
 
 describe("source document mutation toast ownership", () => {
@@ -83,6 +102,83 @@ describe("source document mutation toast ownership", () => {
 
     expect(toastErrorMock).toHaveBeenCalledWith("deleteFailed");
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("finishes list deletion before the derived-query refresh settles", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    });
+    const refreshGate = deferred();
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
+    deleteSourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    const clearSelection = vi.fn();
+    const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", clearSelection), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.deleteSourceDocument.mutateAsync("document-1")
+      ).resolves.toBeUndefined();
+    });
+
+    expect(result.current.deleteSourceDocument.isPending).toBe(false);
+    expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess");
+    expect(clearSelection).toHaveBeenCalledTimes(1);
+    expect(toastWarningMock).not.toHaveBeenCalled();
+
+    await act(async () => refreshGate.resolve());
+  });
+
+  it("warns once when a detached list refresh fails", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("offline"));
+    deleteSourceDocumentActionMock.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useBatchSourceDocumentActions("ledger-1", vi.fn()), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.deleteSourceDocument.mutateAsync("document-1");
+    });
+
+    await waitFor(() => expect(toastWarningMock).toHaveBeenCalledTimes(1));
+    expect(toastWarningMock).toHaveBeenCalledWith("savedRefreshFailed");
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    expect(toastErrorMock).not.toHaveBeenCalled();
+  });
+
+  it("finishes candidate acceptance before its refresh settles", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    });
+    const refreshGate = deferred();
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
+    acceptSourceDocumentCandidateActionMock.mockResolvedValueOnce(undefined);
+    const onSuccess = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentRecoveryMutations({
+          ledgerId: "ledger-1",
+          sourceDocumentId: "document-1",
+          revisionId: "revision-1",
+          onSuccess,
+        }),
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await act(async () => {
+      await expect(result.current.acceptCandidate()).resolves.toBeUndefined();
+    });
+
+    expect(result.current.isAccepting).toBe(false);
+    expect(toastSuccessMock).toHaveBeenCalledWith("acceptSuccess");
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+
+    await act(async () => refreshGate.resolve());
   });
 
   it("reports direct retry success and failure exactly once", async () => {

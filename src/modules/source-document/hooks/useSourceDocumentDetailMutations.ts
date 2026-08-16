@@ -123,6 +123,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
     ...(predicates.sourceDocumentAndEntriesPredicates == null
       ? {}
       : { cancelPredicates: predicates.sourceDocumentAndEntriesPredicates }),
@@ -134,7 +135,7 @@ export function useSourceDocumentDetailMutations({
       queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
       queryClient.setQueryData(queryKeys.sourceDocumentLight(ledgerId, id), result.sourceDocument);
     },
-    onSuccessExtra: notifyRefresh,
+    onWriteSuccess: notifyRefresh,
   });
 
   const splitMutation = useLedgerMutation(ledgerId, {
@@ -145,6 +146,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
     ...(predicates.detailWritePredicates == null
       ? {}
       : {
@@ -172,7 +174,7 @@ export function useSourceDocumentDetailMutations({
         result.splitSourceDocument
       );
     },
-    onSuccessExtra: notifyRefresh,
+    onWriteSuccess: notifyRefresh,
   });
 
   return {

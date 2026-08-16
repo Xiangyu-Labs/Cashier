@@ -127,12 +127,14 @@ describe("useQuickEntryFormController", () => {
 
     const options = useLedgerMutationMock.mock.calls[0]?.[1] as {
       successMessage: string | null;
-      onSuccessExtra: (
+      onWriteSuccess: (
         data: { sourceDocumentId: string },
         variables: { entryDate: string }
       ) => void;
     };
-    options.onSuccessExtra({ sourceDocumentId: "source-quick" }, { entryDate: "2026-07-28" });
+    act(() => {
+      options.onWriteSuccess({ sourceDocumentId: "source-quick" }, { entryDate: "2026-07-28" });
+    });
 
     expect(options.successMessage).toBeNull();
     expect(onSuccess).toHaveBeenCalledWith({

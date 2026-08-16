@@ -17,6 +17,7 @@ import {
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
 import type {
@@ -53,34 +54,38 @@ export function useSourceDocumentRecoveryMutations({
 
   const refreshCandidateResult = useCallback(async () => {
     notifyRefresh();
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries(
-          { predicate: invalidateSourceDocuments(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerEntries(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerStats(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateCalendar(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateSourceDocumentCounts(ledgerId) },
-          { throwOnError: true }
-        ),
-      ]);
-    } catch (error) {
-      console.error("Failed to refresh candidate result after successful write", error);
-      toast.warning(tCommon("savedRefreshFailed"));
-    }
-  }, [ledgerId, notifyRefresh, queryClient, tCommon]);
+    await Promise.all([
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocuments(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerEntries(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerStats(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateCalendar(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocumentCounts(ledgerId) },
+        { throwOnError: true }
+      ),
+    ]);
+  }, [ledgerId, notifyRefresh, queryClient]);
+
+  const refreshCandidateResultInBackground = useCallback(() => {
+    runBackgroundQueryRefresh({
+      ledgerId,
+      label: "source-document candidate refresh",
+      failureMessage: tCommon("savedRefreshFailed"),
+      refresh: refreshCandidateResult,
+    });
+  }, [ledgerId, refreshCandidateResult, tCommon]);
 
   // -----------------------------------------------------------------------
   // Accept candidate
@@ -91,13 +96,13 @@ export function useSourceDocumentRecoveryMutations({
       if (revisionId == null) throw new Error("No revision ID provided for accept");
       return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       // The accept reconciliation entity is intentionally minimal and would
       // blank the card's entries; the delta refresh overlays authoritative
       // data, so accept relies on the incremental refresh path.
-      await refreshCandidateResult();
       toast.success(tActions("acceptSuccess"));
       onSuccess?.();
+      refreshCandidateResultInBackground();
     },
     onError: () => {
       toast.error(tActions("acceptError"));
@@ -118,14 +123,14 @@ export function useSourceDocumentRecoveryMutations({
         undefined
       );
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       // Same as accept: rely on the incremental refresh instead of applying
       // the minimal placeholder entity. Wake the refresh coordinator so the
       // delta refresh overlays the authoritative state even when polling has
       // reached a terminal state.
-      await refreshCandidateResult();
       toast.success(tActions("abandonSuccess"));
       onSuccess?.();
+      refreshCandidateResultInBackground();
     },
     onError: () => {
       toast.error(tActions("abandonError"));

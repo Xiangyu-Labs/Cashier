@@ -74,7 +74,7 @@ export function useQuickEntryFormController({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: (data, variables) => {
+    onWriteSuccess: (data, variables) => {
       setSelectedCategoryId(null);
       setAmount("");
       setCurrencyDraft({ mainCurrency, value: mainCurrency });

@@ -27,6 +27,7 @@ describe("SelectableCardSurface", () => {
 
     expect(overlay).toHaveAttribute("aria-checked", "false");
     expect(content).toHaveAttribute("inert");
+    expect(overlay.querySelector("span")).toHaveClass("top-1/2", "-translate-y-1/2");
 
     await user.click(overlay);
     expect(onToggleSelection).toHaveBeenCalledTimes(1);
@@ -36,6 +37,24 @@ describe("SelectableCardSurface", () => {
     await user.keyboard("{Enter}");
     await user.keyboard(" ");
     expect(onToggleSelection).toHaveBeenCalledTimes(3);
+  });
+
+  it("places the indicator at the top without a vertical transform", () => {
+    render(
+      <SelectableCardSurface
+        selectionMode
+        selected={false}
+        selectionLabel="Select lunch"
+        onToggleSelection={vi.fn()}
+        indicatorPlacement="top"
+      >
+        <div>Lunch</div>
+      </SelectableCardSurface>
+    );
+
+    const indicator = screen.getByRole("checkbox", { name: "Select lunch" }).querySelector("span");
+    expect(indicator).toHaveClass("top-3");
+    expect(indicator).not.toHaveClass("-translate-y-1/2");
   });
 
   it("restores the original content interaction after selection mode exits", async () => {

@@ -10,11 +10,13 @@ const {
   createEntryCategoryActionMock,
   updateEntryCategoryActionMock,
   reorderEntryCategoriesActionMock,
+  saveEntryCategoriesActionMock,
   generateEntryCategoryMetadataActionMock,
 } = vi.hoisted(() => ({
   createEntryCategoryActionMock: vi.fn(),
   updateEntryCategoryActionMock: vi.fn(),
   reorderEntryCategoriesActionMock: vi.fn(),
+  saveEntryCategoriesActionMock: vi.fn(),
   generateEntryCategoryMetadataActionMock: vi.fn(),
 }));
 
@@ -23,7 +25,7 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
 vi.mock("@/modules/ledger/server-actions/categories", () => ({
@@ -31,6 +33,7 @@ vi.mock("@/modules/ledger/server-actions/categories", () => ({
   updateEntryCategoryAction: updateEntryCategoryActionMock,
   deleteEntryCategoryAction: vi.fn(),
   reorderEntryCategoriesAction: reorderEntryCategoriesActionMock,
+  saveEntryCategoriesAction: saveEntryCategoriesActionMock,
 }));
 
 vi.mock("@/modules/ledger/server-actions/category-metadata", () => ({
@@ -200,6 +203,28 @@ describe("useCategoryMutations failure recovery and invalidation", () => {
       ["sourceDocuments", "ledger-1", "stream"],
       ["summary", "ledger-1"],
     ]);
+  });
+
+  it("reconciles saved categories before the background refresh settles", async () => {
+    const queryClient = createQueryClient();
+    const refresh = deferred<void>();
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refresh.promise);
+    const saved = [{ ...categories[0]!, name: "Dining" }];
+    saveEntryCategoriesActionMock.mockResolvedValue(saved);
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.saveCategories.mutateAsync({
+        categories: [{ id: "category-1", name: "Dining", description: null, icon: null }],
+      });
+    });
+
+    expect(result.current.saveCategories.isPending).toBe(false);
+    expect(queryClient.getQueryData(queryKeys.entryCategories("ledger-1"))).toEqual(saved);
+
+    await act(async () => refresh.resolve());
   });
 
   it("keeps loading until all same-category requests settle and ignores an older failure", async () => {

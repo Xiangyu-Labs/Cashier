@@ -8,7 +8,7 @@ import { ledgerEntries, ledgers, sourceDocumentRevisions, sourceDocuments } from
 import type { SplitSourceDocumentResultDto } from "@/modules/source-document/contracts";
 import { postgresFxRateBook } from "./exchange-rate";
 import {
-  createManualProjectionInTransaction,
+  createCompletedProjectionInTransaction,
   replaceActiveProjectionInTransaction,
 } from "./ledger-projections";
 import { listLedgerEntryViewsBySourceDocumentIds } from "./ledger-reads/list-ledger-entry-views-by-source-document-ids";
@@ -323,10 +323,11 @@ export async function splitSourceDocumentAtomically(
         exchangeRate: round(conversions[index]!.exchangeRate, 6),
       })
     );
-    const splitRevisionId = await createManualProjectionInTransaction(tx, {
+    const splitRevisionId = await createCompletedProjectionInTransaction(tx, {
       ledgerId: input.ledgerId,
       sourceDocumentId: input.newSourceDocumentId,
       revisionId: expectedSplitRevisionId,
+      type: lockedDocument.type,
       title: effectiveTitle(lockedDocument.title, lockedRevision.title),
       entryDate: input.entryDate,
       submittedText: lockedRevision.submittedText,

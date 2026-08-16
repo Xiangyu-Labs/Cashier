@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useSelection } from "@/hooks/use-selection";
+import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
 import {
   invalidateCalendar,
   invalidateLedgerEntries,
@@ -43,51 +44,58 @@ export function useDetailsBatchController(
   }, [selection.isSelectionMode]);
 
   const invalidate = useCallback(async () => {
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerEntries(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateLedgerStats(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateSourceDocuments(ledgerId) },
-          { throwOnError: true }
-        ),
-        queryClient.invalidateQueries(
-          { predicate: invalidateCalendar(ledgerId) },
-          { throwOnError: true }
-        ),
-      ]);
-    } catch (error) {
-      console.error("Failed to refresh details batch results", error);
-      toast.warning(tCommon("savedRefreshFailed"));
-    }
-  }, [ledgerId, queryClient, tCommon]);
+    await Promise.all([
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerEntries(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateLedgerStats(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateSourceDocuments(ledgerId) },
+        { throwOnError: true }
+      ),
+      queryClient.invalidateQueries(
+        { predicate: invalidateCalendar(ledgerId) },
+        { throwOnError: true }
+      ),
+    ]);
+  }, [ledgerId, queryClient]);
+
+  const refreshDerivedQueries = useCallback(
+    (label: string) => {
+      runBackgroundQueryRefresh({
+        ledgerId,
+        label,
+        failureMessage: tCommon("savedRefreshFailed"),
+        refresh: invalidate,
+      });
+    },
+    [invalidate, ledgerId, tCommon]
+  );
 
   const update = useMutation({
     mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
       batchUpdateLedgerEntriesAction(ledgerId, selection.selectedIds, data),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       toast.success(t("batchUpdated", { count: result.affectedCount }));
-      await invalidate();
       selection.clearSelection();
+      refreshDerivedQueries("details batch update refresh");
     },
     onError: () => toast.error(tCommon("error")),
   });
   const remove = useMutation({
     mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selection.selectedIds),
-    onSuccess: async (result) => {
-      await invalidate();
+    onSuccess: (result) => {
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
       if (unresolved.length > 0) selection.retainSelection(unresolved);
       else selection.clearSelection();
       toast.success(t("batchDeleted", { count: result.succeededIds.length }));
       if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
       setDeleteDialogOpen(false);
+      refreshDerivedQueries("details batch delete refresh");
     },
     onError: () => toast.error(tCommon("deleteFailed")),
   });
@@ -102,11 +110,11 @@ export function useDetailsBatchController(
   const updateDates = useMutation({
     mutationFn: () =>
       batchUpdateLedgerEntryDatesAction(ledgerId, selection.selectedIds, selectedDate),
-    onSuccess: async () => {
+    onSuccess: () => {
       toast.success(t("dateUpdated"));
-      await invalidate();
       selection.clearSelection();
       setDateDialogOpen(false);
+      refreshDerivedQueries("details batch date refresh");
     },
     onError: () => toast.error(tCommon("error")),
   });

@@ -8,6 +8,7 @@ import type {
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidDecimal } from "@/lib/money/decimal";
+import type { SourceDocumentTypeValue } from "@/modules/source-document/types";
 import {
   duplicateReviews,
   entryCategories,
@@ -1234,7 +1235,7 @@ async function copyRevisionFiles(
   `);
 }
 
-export async function createManualProjectionInTransaction(
+export async function createCompletedProjectionInTransaction(
   tx: PostgresTransaction,
   input: {
     ledgerId: string;
@@ -1244,6 +1245,7 @@ export async function createManualProjectionInTransaction(
     entryDate?: string | null;
     submittedText?: string | null;
     copyFilesFromRevisionId?: string;
+    type: SourceDocumentTypeValue;
     entries: readonly LedgerProjectionEntryContract[];
   }
 ): Promise<string> {
@@ -1258,7 +1260,7 @@ export async function createManualProjectionInTransaction(
     id: input.sourceDocumentId,
     ledgerId: input.ledgerId,
     title: input.title ?? null,
-    type: "manual",
+    type: input.type,
     currentStatus: "completed",
     entryDate: input.entryDate ?? null,
   });
@@ -1355,9 +1357,10 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       await lockLedgerForUpdate(tx, input.ledgerId);
 
       const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
-      const revisionId = await createManualProjectionInTransaction(tx, {
+      const revisionId = await createCompletedProjectionInTransaction(tx, {
         ledgerId: input.ledgerId,
         sourceDocumentId,
+        type: "manual",
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.entryDate !== undefined ? { entryDate: input.entryDate } : {}),
         ...(input.submittedText !== undefined ? { submittedText: input.submittedText } : {}),

@@ -198,7 +198,7 @@ describe("useLedgerMutation cache targeting", () => {
     const { queryClient, wrapper } = setup();
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("refresh failed"));
-    const onSuccessExtra = vi.fn();
+    const onWriteSuccess = vi.fn();
     const onErrorExtra = vi.fn();
     const onMutationSettled = vi.fn();
     const onRefreshSettled = vi.fn();
@@ -210,7 +210,7 @@ describe("useLedgerMutation cache targeting", () => {
           successMessage: "Saved",
           errorMessage: "Failed",
           invalidatePredicates: [affected],
-          onSuccessExtra,
+          onWriteSuccess,
           onErrorExtra,
           onMutationSettled,
           onRefreshSettled,
@@ -222,7 +222,7 @@ describe("useLedgerMutation cache targeting", () => {
       await result.current.mutateAsync(undefined);
     });
 
-    expect(onSuccessExtra).toHaveBeenCalledTimes(1);
+    expect(onWriteSuccess).toHaveBeenCalledTimes(1);
     expect(onErrorExtra).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe("useLedgerMutation cache targeting", () => {
 
     // Let the failed background refresh settle; callbacks must not re-run.
     await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
-    expect(onSuccessExtra).toHaveBeenCalledTimes(1);
+    expect(onWriteSuccess).toHaveBeenCalledTimes(1);
     expect(onErrorExtra).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
@@ -242,7 +242,7 @@ describe("useLedgerMutation cache targeting", () => {
     );
   });
 
-  it("keeps pending through refresh and runs reconciliation before invalidation", async () => {
+  it("releases pending before refresh settles and preserves completion order", async () => {
     const { queryClient, wrapper } = setup();
     let releaseRefresh!: () => void;
     const refreshGate = new Promise<void>((resolve) => {
@@ -250,7 +250,9 @@ describe("useLedgerMutation cache targeting", () => {
     });
     const onMutationSettled = vi.fn();
     const onRefreshSettled = vi.fn();
-    const onSuccessExtra = vi.fn();
+    const onWriteSuccess = vi.fn(() => {
+      order.push("write-success");
+    });
     const order: string[] = [];
     const onSuccessReconcile = vi.fn(() => {
       order.push("reconcile");
@@ -268,7 +270,7 @@ describe("useLedgerMutation cache targeting", () => {
           errorMessage: null,
           invalidatePredicates: [affected],
           onSuccessReconcile,
-          onSuccessExtra,
+          onWriteSuccess,
           onMutationSettled,
           onRefreshSettled,
         }),
@@ -280,25 +282,59 @@ describe("useLedgerMutation cache targeting", () => {
       mutationPromise = result.current.mutateAsync(undefined);
     });
 
-    await waitFor(() => expect(result.current.isPending).toBe(true));
-    await waitFor(() => expect(onSuccessReconcile).toHaveBeenCalledTimes(1));
-    expect(order).toEqual(["reconcile", "invalidate"]);
-    expect(onSuccessExtra).not.toHaveBeenCalled();
-    expect(onMutationSettled).not.toHaveBeenCalled();
+    await act(async () => {
+      await expect(mutationPromise).resolves.toBe("saved");
+    });
+
+    expect(result.current.isPending).toBe(false);
+    expect(order).toEqual(["reconcile", "write-success", "invalidate"]);
+    expect(onWriteSuccess).toHaveBeenCalledTimes(1);
+    expect(onMutationSettled).toHaveBeenCalledWith(queryClient, undefined, "saved", null);
     expect(onRefreshSettled).not.toHaveBeenCalled();
 
     await act(async () => {
       releaseRefresh();
-      await mutationPromise;
     });
-    await waitFor(() => expect(result.current.isPending).toBe(false));
+    await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
     expect(onRefreshSettled).toHaveBeenCalledWith(queryClient, undefined, null);
-    expect(onSuccessExtra).toHaveBeenCalledTimes(1);
-    expect(onMutationSettled).toHaveBeenCalledWith(queryClient, undefined, "saved", null);
+  });
+
+  it("logs refresh failures without warning in log-only mode", async () => {
+    const { queryClient, wrapper } = setup();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onRefreshSettled = vi.fn();
+    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("refresh failed"));
+    const affected = (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "affected";
+    const { result } = renderHook(
+      () =>
+        useLedgerMutation("ledger-1", {
+          mutationFn: async () => "saved",
+          successMessage: "Saved",
+          errorMessage: null,
+          refreshFailureMessage: "Saved, refresh failed",
+          refreshFailureMode: "log-only",
+          invalidatePredicates: [affected],
+          onRefreshSettled,
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await expect(result.current.mutateAsync(undefined)).resolves.toBe("saved");
+    });
+
+    await waitFor(() => expect(onRefreshSettled).toHaveBeenCalledTimes(1));
+    expect(toastSuccessMock).toHaveBeenCalledWith("Saved");
+    expect(toastWarningMock).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("cache refresh failed"),
+      expect.objectContaining({ ledgerId: "ledger-1" })
+    );
   });
 
   it("invokes onMutationSettled on error and never runs the refresh callback", async () => {
     const { queryClient, wrapper } = setup();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     const onMutationSettled = vi.fn();
     const onRefreshSettled = vi.fn();
     const { result } = renderHook(
@@ -328,5 +364,6 @@ describe("useLedgerMutation cache targeting", () => {
       expect.objectContaining({ message: "server action failed" })
     );
     expect(onRefreshSettled).not.toHaveBeenCalled();
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });

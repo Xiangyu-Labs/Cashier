@@ -242,7 +242,7 @@ describe("SourceDocumentCard interactions", () => {
   });
 
   it("hides the expansion toggle when the card has no expandable entries", () => {
-    render(
+    const { container } = render(
       <SourceDocumentCard
         sourceDocument={{ ...sourceDocument, status: "cancelled" }}
         ledgerEntries={[]}
@@ -253,6 +253,8 @@ describe("SourceDocumentCard interactions", () => {
     expect(
       screen.queryByRole("button", { name: /展开|expand|折叠|collapse/i })
     ).not.toBeInTheDocument();
+    const spacer = container.querySelector('span[aria-hidden="true"].h-11.w-11');
+    expect(spacer).toHaveClass("shrink-0", "sm:h-9", "sm:w-9");
     expect(screen.queryByTestId("source-document-card-body")).not.toBeInTheDocument();
   });
 

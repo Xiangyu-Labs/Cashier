@@ -65,7 +65,7 @@ describe("useSourceDocumentDetailMutations", () => {
     vi.clearAllMocks();
   });
 
-  it("saves document and entry changes atomically and runs one final refresh round", async () => {
+  it("saves atomically and resolves before the final refresh round settles", async () => {
     const { queryClient, wrapper } = setup();
     const write = deferred<{
       sourceDocument: { id: string };
@@ -126,16 +126,16 @@ describe("useSourceDocumentDetailMutations", () => {
       });
     });
     await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5));
-    expect(settled).toBe(false);
+    expect(settled).toBe(true);
+    expect(result.current.isSavingChanges).toBe(false);
     for (const call of invalidate.mock.calls) {
       expect(call[1]).toEqual({ throwOnError: true });
     }
 
     await act(async () => {
       refresh.resolve();
-      await savePromise;
     });
-    expect(settled).toBe(true);
+    await expect(savePromise).resolves.toBeDefined();
   });
 
   it("deletes selected entries in one batch and refreshes each affected resource once", async () => {

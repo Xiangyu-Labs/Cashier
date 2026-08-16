@@ -134,7 +134,7 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
         selectionMode ? "pl-11" : "pl-2 sm:pl-3"
       )}
     >
-      {hasExpandableContent && (
+      {hasExpandableContent ? (
         <button
           type="button"
           onClick={onToggleExpanded}
@@ -150,6 +150,11 @@ export const SourceDocumentCardHeader = memo(function SourceDocumentCardHeader({
             )}
           />
         </button>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="flex h-11 w-11 shrink-0 items-center justify-center sm:h-9 sm:w-9"
+        />
       )}
 
       <button

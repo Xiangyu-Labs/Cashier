@@ -5,6 +5,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { runBackgroundQueryRefresh, type RefreshFailureMode } from "./background-query-refresh";
 
 // Kept for compatibility with cache helper tests and non-persistent draft helpers.
 export type MutationSnapshot = [QueryKey, unknown][];
@@ -48,8 +49,15 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
   refreshFailureMessage?: string | null;
 
   /**
+   * How a failed background cache refresh is surfaced after a successful write.
+   * "warning" shows a toast; "log-only" records the error without showing a
+   * conflicting warning right after the success toast.
+   */
+  refreshFailureMode?: RefreshFailureMode;
+
+  /**
    * Applies the authoritative server response before affected queries refresh.
-   * This must not synthesize client-side data that the server did not return.
+   * This must not synthesize client-side data the server did not return.
    */
   onSuccessReconcile?: (
     queryClient: QueryClient,
@@ -59,9 +67,10 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
   ) => void | Promise<void>;
 
   /**
-   * UI completion callback run after declared refresh work settles.
+   * UI completion callback run immediately after authoritative reconciliation,
+   * before the background cache refresh starts.
    */
-  onSuccessExtra?: (
+  onWriteSuccess?: (
     data: TData,
     variables: TVariables,
     context: TContext | undefined
@@ -74,9 +83,10 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
 
   /**
    * Callback invoked by React Query's onSettled once the mutation settles,
-   * for both success and error. On success, declared cache refresh and UI
-   * completion callbacks have already settled. On failure, it can be used for
-   * recovery work such as re-fetching affected queries.
+   * for both success and error. On success this runs once the server write,
+   * authoritative reconciliation and the immediate UI completion callback have
+   * finished; it does NOT wait for the background cache refresh to settle. On
+   * failure, it can be used for recovery work such as re-fetching affected queries.
    */
   onMutationSettled?: (
     queryClient: QueryClient,
@@ -89,7 +99,8 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
    * Callback invoked after the cache refresh triggered by a successful
    * mutation finishes (including custom invalidation). Receives
    * the refresh error, or null when the refresh succeeded. The mutation stays
-   * successful even when the refresh fails.
+   * successful even when the refresh fails. Always called from the detached
+   * background refresh task, never from the synchronous completion path.
    */
   onRefreshSettled?: (
     queryClient: QueryClient,
@@ -123,9 +134,11 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
  * Generic mutation hook for ledger-related operations.
  * Handles the common pattern of:
  * 1. Preserve cached server data while the request is pending.
- * 2. Apply authoritative reconciliation, then await explicitly affected queries.
- * 3. Keep a successful write successful when refresh work fails, warn the user,
- *    and release UI locks after completion callbacks run.
+ * 2. Apply authoritative reconciliation, then run the immediate UI completion
+ *    callback. Release pending state as soon as these finish.
+ * 3. Start the declared cache invalidation in the background. Keep a successful
+ *    write successful when refresh work fails, warn the user (or just log), and
+ *    release UI locks after the immediate completion callbacks run.
  *
  * @param ledgerId - The ledger ID for scoped cache invalidation
  * @param options - Mutation configuration
@@ -141,12 +154,13 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     successMessage,
     errorMessage,
     refreshFailureMessage,
+    refreshFailureMode,
     skipInvalidation = false,
     cancelPredicates,
     invalidatePredicates,
     customInvalidation,
     onSuccessReconcile,
-    onSuccessExtra,
+    onWriteSuccess,
     onErrorExtra,
     onMutationSettled,
     onRefreshSettled,
@@ -166,16 +180,12 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     },
 
     onSuccess: async (data, variables, context) => {
-      if (successMessage !== null && successMessage !== undefined) {
-        toast.success(successMessage);
-      }
-
-      let refreshError: unknown = null;
+      // Apply authoritative reconciliation from the server response. This
+      // must not synthesize client-side data the server did not return.
       if (onSuccessReconcile != null) {
         try {
           await onSuccessReconcile(queryClient, data, variables, context);
         } catch (error) {
-          refreshError = error;
           console.error("[useLedgerMutation] authoritative reconciliation failed", {
             ledgerId,
             error,
@@ -183,27 +193,36 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         }
       }
 
-      const invalidationError = await refreshCache(queryClient, {
-        ledgerId,
-        skipInvalidation,
-        invalidatePredicates,
-        customInvalidation,
-      });
-      refreshError ??= invalidationError;
+      // Run the immediate UI completion callback. Neither this nor a failed
+      // background refresh can turn a successful write back into an error.
+      await runPostWriteCallback("write completion callback", ledgerId, () =>
+        onWriteSuccess?.(data, variables, context)
+      );
 
-      if (refreshError != null && refreshFailureMessage != null) {
-        toast.warning(refreshFailureMessage);
+      if (successMessage !== null && successMessage !== undefined) {
+        toast.success(successMessage);
       }
-      await runPostWriteCallback("refresh completion callback", ledgerId, () =>
-        onRefreshSettled?.(queryClient, variables, refreshError)
-      );
-      await runPostWriteCallback("post-success callback", ledgerId, () =>
-        onSuccessExtra?.(data, variables, context)
-      );
-
       if (ledgerId != null && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cashier:ledger-mutated", { detail: ledgerId }));
       }
+
+      // Start the background invalidation / custom refresh and return
+      // immediately so mutateAsync, isPending and onMutationSettled do not wait
+      // for the query refetch to finish.
+      runBackgroundQueryRefresh({
+        ledgerId,
+        label: "cache refresh",
+        ...(refreshFailureMessage !== undefined ? { failureMessage: refreshFailureMessage } : {}),
+        ...(refreshFailureMode !== undefined ? { failureMode: refreshFailureMode } : {}),
+        refresh: () =>
+          refreshCache(queryClient, {
+            ledgerId,
+            skipInvalidation,
+            invalidatePredicates,
+            customInvalidation,
+          }),
+        onSettled: (refreshError) => onRefreshSettled?.(queryClient, variables, refreshError),
+      });
     },
 
     onError: (error, variables) => {
@@ -240,27 +259,18 @@ async function refreshCache(
     invalidatePredicates: QueryPredicate[] | undefined;
     customInvalidation: ((queryClient: QueryClient) => void | Promise<void>) | undefined;
   }
-): Promise<unknown | null> {
-  try {
-    if (!options.skipInvalidation) {
-      if (
-        options.ledgerId != null &&
-        options.invalidatePredicates != null &&
-        options.invalidatePredicates.length > 0
-      ) {
-        await runPredicates(queryClient, "invalidateQueries", options.invalidatePredicates);
-      }
-      if (options.customInvalidation != null) {
-        await options.customInvalidation(queryClient);
-      }
+): Promise<void> {
+  if (!options.skipInvalidation) {
+    if (
+      options.ledgerId != null &&
+      options.invalidatePredicates != null &&
+      options.invalidatePredicates.length > 0
+    ) {
+      await runPredicates(queryClient, "invalidateQueries", options.invalidatePredicates);
     }
-    return null;
-  } catch (error) {
-    console.error("[useLedgerMutation] cache refresh failed after a successful mutation", {
-      ledgerId: options.ledgerId,
-      error,
-    });
-    return error;
+    if (options.customInvalidation != null) {
+      await options.customInvalidation(queryClient);
+    }
   }
 }
 

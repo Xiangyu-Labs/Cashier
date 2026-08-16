@@ -98,7 +98,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
         category,
       ]);
     },
-    onSuccessExtra: (category) => {
+    onWriteSuccess: (category) => {
       requestCategoryMetadata(category.id);
     },
     onMutationSettled: (client, _variables, _data, error) => {
@@ -197,7 +197,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
-    onSuccessExtra: (saved) => {
+    onSuccessReconcile: (_client, saved) => {
       queryClient.setQueryData<EntryCategory[]>(queryKeys.entryCategories(ledgerId), saved);
     },
   });
