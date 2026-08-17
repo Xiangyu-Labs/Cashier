@@ -66,7 +66,7 @@ describe("useCredentialMutations", () => {
     const cached = queryClient.getQueryData<{
       credentials: Array<Record<string, unknown>>;
     }>(queryKeys.ledgerSettings("ledger-1"));
-    expect(cached?.credentials[0]).not.toHaveProperty("token");
+    expect(cached?.credentials).toEqual([]);
     expect(JSON.stringify(cached)).not.toContain(createdCredential.token);
   });
 

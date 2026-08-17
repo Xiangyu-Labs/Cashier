@@ -1,110 +1,71 @@
-import { QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { queryKeys } from "@/lib/query-keys";
-import type { SourceDocumentListItemDto, StreamPage } from "@/modules/source-document/contracts";
-import {
-  applyStreamRefreshToCache,
-  readLedgerSyncVersion,
-  writeLedgerSyncVersion,
-} from "@/modules/source-document/hooks/stream-refresh-cache";
+import { QueryClient } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
+import type { LedgerDeltaResult } from "@/modules/source-document/contract-refresh";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 
-function makeItem(id: string, entryDate: string): SourceDocumentListItemDto {
+function makeResult(overrides: Partial<LedgerDeltaResult> = {}): LedgerDeltaResult {
   return {
-    id,
-    ledgerId: "ledger-1",
-    title: `Doc ${id}`,
-    text: null,
-    files: [],
-    status: "processing",
-    type: "ai_parsed",
-    anomalyReason: null,
-    entryDate,
-    metadata: {},
-    createdAt: "2026-07-27T10:00:00.000Z",
-    updatedAt: "2026-07-27T10:00:00.000Z",
-    deletedAt: null,
-    hasImages: false,
-    supportedActions: [],
-    errorCode: null,
-    pendingRevisionId: null,
+    protocolVersion: 3,
+    fromVersion: "0",
+    toVersion: "1",
+    hasMore: false,
+    resetRequired: false,
+    changed: false,
+    hasTransitionalWork: false,
+    invalidations: { categories: false, settings: false, stats: false },
+    ...overrides,
   };
 }
 
-function streamData(items: SourceDocumentListItemDto[]): InfiniteData<StreamPage> {
-  return {
-    pages: [{ items, nextCursor: null, generation: 1 }],
-    pageParams: [undefined],
-  };
-}
-
-describe("stream refresh cache", () => {
-  beforeEach(() => {
-    const values = new Map<string, string>();
-    vi.stubGlobal("localStorage", {
-      clear: () => values.clear(),
-      getItem: (key: string) => values.get(key) ?? null,
-      removeItem: (key: string) => values.delete(key),
-      setItem: (key: string, value: string) => values.set(key, value),
-    });
-  });
-
-  it("never rolls the persisted checkpoint backward", () => {
-    localStorage.clear();
-    writeLedgerSyncVersion("ledger-1", "5");
-    writeLedgerSyncVersion("ledger-1", "3");
-
-    expect(readLedgerSyncVersion("ledger-1")).toBe("5");
-  });
-
-  it("keeps the loaded list visible when resetRequired is signalled", () => {
+describe("applyStreamRefreshToCache", () => {
+  it("does not invalidate anything for an unchanged signal", () => {
     const client = new QueryClient();
-    const key = queryKeys.sourceDocumentStream("ledger-1");
-    const items = [makeItem("doc-1", "2026-07-15")];
-    client.setQueryData(key, streamData(items));
+    const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    applyStreamRefreshToCache(client, "ledger-1", {
-      protocolVersion: 2,
-      fromVersion: "1",
-      toVersion: "5",
-      hasMore: false,
-      resetRequired: true,
-      changed: true,
-      hasTransitionalWork: false,
-      documents: [],
-      tombstones: [],
-      counts: { processingCount: 0, attentionCount: 0 },
-      invalidations: { categories: true, settings: true, stats: true },
-    });
+    applyStreamRefreshToCache(client, "ledger-1", makeResult());
 
-    // The old list survives a reset — only a background refetch is scheduled.
-    const data = client.getQueryData<InfiniteData<StreamPage>>(key);
-    expect(data?.pages[0]?.items.map((item) => item.id)).toEqual(["doc-1"]);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it("merges delta documents and tombstones without clearing the window", () => {
+  it.each([
+    ["changed", { changed: true }],
+    ["reset", { resetRequired: true }],
+  ])("invalidates stream, total, counts, and document queries after %s", (_name, change) => {
     const client = new QueryClient();
-    const key = queryKeys.sourceDocumentStream("ledger-1");
-    client.setQueryData(key, streamData([makeItem("doc-1", "2026-07-15")]));
+    const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    applyStreamRefreshToCache(client, "ledger-1", {
-      protocolVersion: 2,
-      fromVersion: "1",
-      toVersion: "2",
-      hasMore: false,
-      resetRequired: false,
-      changed: true,
-      hasTransitionalWork: false,
-      documents: [makeItem("doc-2", "2026-07-14")],
-      tombstones: ["doc-1"],
-      counts: { processingCount: 1, attentionCount: 1 },
-      invalidations: { categories: false, settings: false, stats: false },
-    });
+    applyStreamRefreshToCache(client, "ledger-1", makeResult(change));
 
-    const data = client.getQueryData<InfiniteData<StreamPage>>(key);
-    expect(data?.pages[0]?.items.map((item) => item.id)).toEqual(["doc-2"]);
-    expect(client.getQueryData(queryKeys.sourceDocumentCounts("ledger-1"))).toEqual({
-      processingCount: 1,
-      attentionCount: 1,
-    });
+    expect(invalidate).toHaveBeenCalledTimes(4);
+    for (const call of invalidate.mock.calls) {
+      expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
+    }
+  });
+
+  it.each([
+    ["categories", { categories: true, settings: false, stats: false }],
+    ["settings", { categories: false, settings: true, stats: false }],
+  ])("invalidates ledger settings for %s changes", (_name, invalidations) => {
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+
+    applyStreamRefreshToCache(client, "ledger-1", makeResult({ invalidations }));
+
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates stats for a stats signal", () => {
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+
+    applyStreamRefreshToCache(
+      client,
+      "ledger-1",
+      makeResult({
+        invalidations: { categories: false, settings: false, stats: true },
+      })
+    );
+
+    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 });

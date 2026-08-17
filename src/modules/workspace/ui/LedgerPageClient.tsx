@@ -30,15 +30,9 @@ import {
 } from "../hooks";
 import type { LedgerTab } from "../tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
-import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import {
-  LedgerStartupCacheSync,
-  requestLedgerStartupCacheSync,
-} from "@/modules/workspace/ledger-startup-cache-sync";
-import { LedgerDataFreshnessBanner } from "@/modules/workspace/ui/LedgerStartupPreview";
-import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
+import { LedgerQueryErrorBanner } from "@/modules/workspace/ui/LedgerQueryErrorBanner";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/filters";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
@@ -304,15 +298,7 @@ const subscribeToDeviceTimeZone = () => () => {};
 const getDeviceTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const getServerTimeZone = () => undefined;
 
-export function LedgerPageClient({ ...props }: LedgerPageClientProps) {
-  return (
-    <RevisionStateRefreshProvider ledgerId={props.ledgerId}>
-      <LedgerPageClientContent {...props} />
-    </RevisionStateRefreshProvider>
-  );
-}
-
-function LedgerPageClientContent({
+export function LedgerPageClient({
   ledgerId,
   initialLedger,
   initialTab,
@@ -401,7 +387,6 @@ function LedgerPageClientContent({
     [activeFeatureStatus, activeTab, ledgerId, tabQueryReport]
   );
   const retryActiveTab = useCallback(() => {
-    requestLedgerStartupCacheSync(ledgerId);
     retryFeatureMessages();
     if (
       tabQueryReport?.ledgerId === ledgerId &&
@@ -465,25 +450,11 @@ function LedgerPageClientContent({
 
   return (
     <>
-      <LedgerStartupCacheSync
-        userId={ledger.userId}
-        ledgerId={ledgerId}
-        locale={locale}
-        mainCurrency={mainCurrency}
-        timeZone={fixedTimeZone ?? null}
-        collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
-        preferredCurrencies={preferredCurrencies}
-        categories={categories}
-      />
       <div>
         {/* Only mount the active tab — inactive tabs load lazily */}
-        {(activeTabQueryState === "error-with-data" || activeTabQueryState === "error-empty") && (
-          <LedgerDataFreshnessBanner
-            snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
-            state="error-with-data"
-            onRetry={retryActiveTab}
-          />
-        )}
+        {activeTabQueryState === "error-with-data" ? (
+          <LedgerQueryErrorBanner onRetry={retryActiveTab} />
+        ) : null}
 
         <div>
           {activeTab === "stream" && (

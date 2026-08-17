@@ -3,7 +3,6 @@ import type {
   BatchUpdateSourceDocumentsResultDto,
   SaveSourceDocumentChangesInput,
   SaveSourceDocumentChangesResultDto,
-  UpdateSourceDocumentReconciliationDto,
   UpdateSourceDocumentResultDto,
 } from "@/modules/source-document/contracts";
 import {
@@ -21,14 +20,10 @@ import {
 } from "../application/use-cases/update-source-document";
 import { saveSourceDocumentChanges } from "../application/use-cases/save-source-document-changes";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 
 /**
  * Update source document metadata (e.g. title, entryDate).
- *
- * Returns the existing DTO with additional reconciliation data for the
- * optimistic transaction system.
  */
 export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
@@ -36,16 +31,13 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
     sourceId: string,
     data: UpdateSourceDocumentInput,
     operationId?: string
-  ): Promise<
-    UpdateSourceDocumentResultDto &
-      Partial<{ reconciliation: UpdateSourceDocumentReconciliationDto["reconciliation"] }>
-  > => {
+  ): Promise<UpdateSourceDocumentResultDto> => {
     const identity = parseMutationIdentity({
       sourceDocumentId: sourceId,
       ...(operationId === undefined ? {} : { operationId }),
     });
     const validated = updateSourceDocumentInputSchema.parse(data);
-    const result = await updateSourceDocument(
+    return updateSourceDocument(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -53,27 +45,11 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
       },
       serverComposition.sourceDocumentUpdates
     );
-
-    if (identity.operationId != null && result.updated) {
-      return {
-        ...result,
-        reconciliation: await buildAuthoritativeReconciliation(
-          identity.operationId,
-          ledgerId,
-          identity.sourceDocumentId
-        ),
-      };
-    }
-
-    return result;
   }
 );
 
 /**
  * Batch update multiple source documents.
- *
- * Returns the existing DTO without reconciliation (transaction model not used
- * for batch operations in this task).
  */
 export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
   async (

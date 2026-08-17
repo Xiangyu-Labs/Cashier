@@ -1,12 +1,6 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-} from "@/lib/query-keys";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   updateLedgerEntryAction,
@@ -40,29 +34,14 @@ export function useEntryMutations({
       return result;
     },
     errorMessage: null,
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "delete",
-    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
+    resourceGroups: ["entries"],
   });
 
   const deleteEntry = useLedgerMutation<DeleteLedgerEntryResultDto, string>(ledgerId, {
     mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
     successMessage: tLedger("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
+    resourceGroups: ["entries"],
   });
 
   return {

@@ -907,9 +907,9 @@
     "updating": "正在更新…",
     "dirtyBlocked": "请先保存或放弃当前更改再更新"
   },
-  "LedgerStartupPreview": {
-    "cachedAt": "缓存于 {time}",
-    "currentCachedAt": "当前缓存于 {time}"
+  "LedgerQueryError": {
+    "description": "数据刷新失败，当前显示的内容可能不是最新的。",
+    "retry": "重试"
   },
   "AuthEmail": {
     "otpSubject": "您的验证码是 {otp}",

@@ -1,7 +1,7 @@
 import type { Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
@@ -15,7 +15,6 @@ import {
   useSourceDocumentStream,
 } from "@/modules/source-document/hooks";
 import { getStreamTotalAction } from "@/modules/source-document/actions";
-import { useNotifyRevisionRefresh } from "@/modules/source-document/hooks/revision-state-refresh";
 import { type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { StreamStatusPreset } from "@/modules/workspace/ledger-filter-state";
@@ -26,7 +25,6 @@ import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
-import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import type { TabQueryStateReport } from "./tab-query-state";
 import { previewSourceDocumentDateImpact } from "../source-document-date-impact";
 
@@ -60,8 +58,6 @@ export function LedgerEntriesTab({
   const t = useTranslations("LedgerEntriesTab");
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
-  const notifyRefresh = useNotifyRevisionRefresh();
-  const queryClient = useQueryClient();
   const { filters, startDateStr, endDateStr } = useLedgerEntriesFilters(
     periodParams,
     advancedFilters,
@@ -127,7 +123,6 @@ export function LedgerEntriesTab({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    refresh,
     queryKey,
     queryStatus,
     queryIsFetching,
@@ -230,16 +225,6 @@ export function LedgerEntriesTab({
     };
   }, [isSelectionMode]);
 
-  // C1: Targeted refresh — uses the bounded refresh path via coordinator
-  const handleRefresh = useCallback(async () => {
-    // Notify the coordinator of a change — triggers immediate refresh cycle
-    notifyRefresh();
-    // Also refresh the live ledger stats via the actual stream refresh
-    if (refresh) {
-      await refresh();
-    }
-  }, [notifyRefresh, refresh]);
-
   const handleToggleSelectionMode = useCallback(() => {
     if (isBatchPending) return;
     toggleSelectionMode();
@@ -262,14 +247,13 @@ export function LedgerEntriesTab({
         setDuplicateReviewDocument(group.sourceDocument);
         return;
       }
-      patchExistingSourceDocumentDetail(queryClient, group.sourceDocument);
       openLedgerDetail({
         type: "source-document",
         id: group.sourceDocument.id,
         ledgerId: group.sourceDocument.ledgerId,
       });
     },
-    [queryClient]
+    []
   );
 
   const handleViewLedgerEntry = useCallback((entry: LedgerEntry) => {
@@ -349,7 +333,6 @@ export function LedgerEntriesTab({
         mainCurrency={mainCurrency}
         filteredTotal={filteredTotal}
         onResetFilters={onResetFilters}
-        onRefresh={handleRefresh}
         {...(onApplyPreset != null ? { onApplyPreset } : {})}
       />
       {streamTotalData?.unconvertedCount != null && streamTotalData.unconvertedCount > 0 ? (

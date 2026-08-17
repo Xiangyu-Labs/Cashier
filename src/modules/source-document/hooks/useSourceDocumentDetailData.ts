@@ -1,19 +1,15 @@
 "use client";
-import { useEffect } from "react";
+import { useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
   getSourceDocumentLightAction,
   getStreamRefreshAction,
 } from "@/modules/source-document/actions";
-import {
-  applyStreamRefreshToCache,
-  readLedgerSyncVersion,
-} from "@/modules/source-document/hooks/stream-refresh-cache";
+import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
-import { applyDetailToStreamCaches } from "./source-document-optimistic-cache";
 import { QUERY } from "@/lib/constants";
 import { withQueryTimeout } from "@/lib/query-timeout";
 
@@ -31,6 +27,7 @@ export function useSourceDocumentDetailData({
   initialLedgerEntries,
 }: UseSourceDocumentDetailDataOptions) {
   const queryClient = useQueryClient();
+  const afterVersionRef = useRef("0");
 
   const query = useQuery({
     queryKey: queryKeys.sourceDocument(ledgerId, id),
@@ -45,24 +42,24 @@ export function useSourceDocumentDetailData({
 
   const pending = sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
 
-  useEffect(() => {
-    if (sourceDocument != null) {
-      applyDetailToStreamCaches(queryClient, ledgerId, sourceDocument);
-    }
-  }, [ledgerId, queryClient, sourceDocument]);
-
   const refreshWatched = async (): Promise<{ changed: boolean; result?: StreamRefreshResult }> => {
     const result = await getStreamRefreshAction(ledgerId, {
       ledgerId,
-      afterVersion: readLedgerSyncVersion(ledgerId),
+      afterVersion: afterVersionRef.current,
     });
 
+    afterVersionRef.current = result.toVersion;
     applyStreamRefreshToCache(queryClient, ledgerId, result);
+    if (result.changed || result.resetRequired) {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sourceDocument(ledgerId, id),
+        exact: true,
+      });
+    }
     return { changed: result.changed, result };
   };
 
   useRevisionStateRefresh({
-    scope: `source-document-detail:${id}`,
     enabled: open && id !== "",
     pending,
     refresh: refreshWatched,

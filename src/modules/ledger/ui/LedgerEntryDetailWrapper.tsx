@@ -5,13 +5,7 @@ import type {
   DeleteLedgerEntryResultDto,
 } from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  queryKeys,
-} from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/modules/ledger/server-actions/get-entry";
 import {
   updateLedgerEntryAction,
@@ -22,11 +16,6 @@ import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 import { withQueryTimeout } from "@/lib/query-timeout";
 
@@ -63,7 +52,7 @@ export function LedgerEntryDetailWrapper({
   const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
   const updateMutation = useLedgerMutation<
-    LedgerEntryDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>,
+    LedgerEntryDto,
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
     mutationFn: async (data) => {
@@ -71,18 +60,7 @@ export function LedgerEntryDetailWrapper({
       return updateLedgerEntryAction(ledgerId, id, data, operationId);
     },
     errorMessage: null,
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onSuccessReconcile: (client, result) => {
-      if (sourceDocumentId == null || sourceDocumentId === "") return;
-      applySourceDocumentReconciliation(client, ledgerId, sourceDocumentId, result?.reconciliation);
-    },
+    resourceGroups: ["entries"],
   });
 
   const deleteMutation = useLedgerMutation<DeleteLedgerEntryResultDto, void>(ledgerId, {
@@ -92,19 +70,7 @@ export function LedgerEntryDetailWrapper({
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "delete",
-    cancelPredicates: [invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onSuccessReconcile: (client, result) => {
-      if (sourceDocumentId == null || sourceDocumentId === "") return;
-      applySourceDocumentReconciliation(client, ledgerId, sourceDocumentId, result.reconciliation);
-    },
+    resourceGroups: ["entries"],
   });
 
   const handleReload = useCallback(async () => {

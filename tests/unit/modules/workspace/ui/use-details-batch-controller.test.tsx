@@ -52,7 +52,7 @@ describe("useDetailsBatchController", () => {
     vi.clearAllMocks();
   });
 
-  it("closes delete confirmation and updates selection before refresh settles", async () => {
+  it("closes delete confirmation before refresh settles and stays pending", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -70,18 +70,23 @@ describe("useDetailsBatchController", () => {
       result.current.handleSelect("entry-1", true);
       result.current.setDeleteDialogOpen(true);
     });
-    await act(async () => {
-      await result.current.remove.mutateAsync();
+    let mutation!: Promise<unknown>;
+    act(() => {
+      mutation = result.current.remove.mutateAsync();
     });
 
-    expect(result.current.remove.isPending).toBe(false);
+    await act(async () => Promise.resolve());
+    expect(result.current.remove.isPending).toBe(true);
     expect(result.current.deleteDialogOpen).toBe(false);
     expect(result.current.selectedIds).toEqual([]);
 
-    await act(async () => refreshGate.resolve());
+    await act(async () => {
+      refreshGate.resolve();
+      await mutation;
+    });
   });
 
-  it("closes the date dialog and clears selection before refresh settles", async () => {
+  it("closes the date dialog before refresh settles and stays pending", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -95,18 +100,23 @@ describe("useDetailsBatchController", () => {
       result.current.handleSelect("entry-1", true);
       result.current.setDateDialogOpen(true);
     });
-    await act(async () => {
-      await result.current.updateDates.mutateAsync();
+    let mutation!: Promise<unknown>;
+    act(() => {
+      mutation = result.current.updateDates.mutateAsync();
     });
 
-    expect(result.current.updateDates.isPending).toBe(false);
+    await act(async () => Promise.resolve());
+    expect(result.current.updateDates.isPending).toBe(true);
     expect(result.current.dateDialogOpen).toBe(false);
     expect(result.current.selectedIds).toEqual([]);
 
-    await act(async () => refreshGate.resolve());
+    await act(async () => {
+      refreshGate.resolve();
+      await mutation;
+    });
   });
 
-  it("clears selection after a batch update without waiting for refresh", async () => {
+  it("clears selection before refresh and keeps the batch update pending", async () => {
     const { queryClient, wrapper } = setup();
     const refreshGate = deferred();
     vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refreshGate.promise);
@@ -117,13 +127,18 @@ describe("useDetailsBatchController", () => {
     );
 
     act(() => result.current.handleSelect("entry-1", true));
-    await act(async () => {
-      await result.current.update.mutateAsync({ categoryId: "category-1" });
+    let mutation!: Promise<unknown>;
+    act(() => {
+      mutation = result.current.update.mutateAsync({ categoryId: "category-1" });
     });
 
-    expect(result.current.update.isPending).toBe(false);
+    await act(async () => Promise.resolve());
+    expect(result.current.update.isPending).toBe(true);
     expect(result.current.selectedIds).toEqual([]);
 
-    await act(async () => refreshGate.resolve());
+    await act(async () => {
+      refreshGate.resolve();
+      await mutation;
+    });
   });
 });

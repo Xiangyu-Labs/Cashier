@@ -1,5 +1,5 @@
 "use client";
-import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
+import type { LedgerEntry, EntryCategory, LedgerDto } from "@/modules/ledger/contracts";
 import type { SourceDocument, SourceDocumentLight } from "@/modules/source-document/contracts";
 import Image from "next/image";
 import { type ReactNode, useMemo, useState, memo } from "react";
@@ -23,7 +23,8 @@ import {
   type SourceDocumentDetailDisplayEntry,
 } from "./source-document-detail-view-model";
 import { storedFileReadUrl } from "../stored-file-read";
-import { getActiveStartupCacheKey } from "@/lib/client-cache";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { useCachedSourceImages } from "@/modules/source-document/hooks";
 
 interface CurrencyBreakdownItemProps {
@@ -122,6 +123,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const tCard = useTranslations("SourceDocumentCard");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
+  const queryClient = useQueryClient();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
@@ -163,16 +165,17 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const hasRawText = sourceDocument.text != null && sourceDocument.text.trim().length > 0;
   const selectedImageIndex = Math.min(activeImageIndex, Math.max(files.length - 1, 0));
 
-  const activeSnapshotKey = getActiveStartupCacheKey();
+  const ledger = queryClient.getQueryData<LedgerDto>(queryKeys.ledger(sourceDocument.ledgerId));
+  const imageCacheScope = ledger == null ? null : `${ledger.userId}:${sourceDocument.ledgerId}`;
   const { imageUrls: fetchedImageUrls, isLoading: fetchedImagesLoading } = useCachedSourceImages({
-    snapshotKey: activeSnapshotKey,
+    snapshotKey: imageCacheScope,
     files,
     documentId: sourceDocument.id,
     documentTimestamp: sourceDocument.entryDate ?? sourceDocument.createdAt,
-    enabled: !readOnly && files.length > 0 && activeSnapshotKey != null,
+    enabled: !readOnly && files.length > 0 && imageCacheScope != null,
   });
   const cachedUrls = readOnly && cachedImageUrls != null ? cachedImageUrls : fetchedImageUrls;
-  const useDirectImageUrls = !readOnly && activeSnapshotKey == null;
+  const useDirectImageUrls = !readOnly && imageCacheScope == null;
   const showImageLoading = isLoadingImages || (!readOnly && fetchedImagesLoading);
 
   return (

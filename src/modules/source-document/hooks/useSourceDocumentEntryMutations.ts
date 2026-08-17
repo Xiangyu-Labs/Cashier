@@ -4,27 +4,18 @@ import {
   batchUpdateLedgerEntriesAction,
 } from "@/modules/ledger/server-actions/entries";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { useTranslations } from "next-intl";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";
-
-type QueryPredicate = (query: { queryKey: readonly unknown[] }) => boolean;
 
 interface UseSourceDocumentEntryMutationsOptions {
   id: string;
   ledgerId: string | undefined;
-  sourceDocumentAndEntriesPredicates: QueryPredicate[] | null;
-  sourceDocumentEntriesSummaryPredicates: QueryPredicate[] | null;
 }
 
 export function useSourceDocumentEntryMutations({
   id: _id,
   ledgerId,
-  sourceDocumentAndEntriesPredicates,
-  sourceDocumentEntriesSummaryPredicates,
 }: UseSourceDocumentEntryMutationsOptions) {
-  const tCommon = useTranslations("Common");
-
   const batchUpdateMutation = useLedgerMutation<
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
@@ -34,19 +25,7 @@ export function useSourceDocumentEntryMutations({
       return batchUpdateLedgerEntriesAction(ledgerId, ids, data);
     },
     errorMessage: null,
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "batch",
-    ...(sourceDocumentAndEntriesPredicates !== null
-      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
-      : {}),
-    ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? {
-          invalidatePredicates: [
-            ...(sourceDocumentAndEntriesPredicates ?? []),
-            ...sourceDocumentEntriesSummaryPredicates,
-          ],
-        }
-      : {}),
+    resourceGroups: ["entries"],
   });
 
   const batchDeleteMutation = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
@@ -56,19 +35,7 @@ export function useSourceDocumentEntryMutations({
     },
     successMessage: null,
     errorMessage: null,
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "batch",
-    ...(sourceDocumentAndEntriesPredicates !== null
-      ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
-      : {}),
-    ...(sourceDocumentEntriesSummaryPredicates !== null
-      ? {
-          invalidatePredicates: [
-            ...(sourceDocumentAndEntriesPredicates ?? []),
-            ...sourceDocumentEntriesSummaryPredicates,
-          ],
-        }
-      : {}),
+    resourceGroups: ["entries"],
   });
 
   return {

@@ -23,7 +23,6 @@ import {
 import { DetailsToolbar } from "./DetailsToolbar";
 import { EmptyState } from "./EmptyState";
 import type { useDetailsBatchController } from "./useDetailsBatchController";
-import { RefreshButton } from "@/components/ui/refresh-button";
 
 type BatchController = ReturnType<typeof useDetailsBatchController>;
 interface DetailsTabViewProps {
@@ -49,7 +48,6 @@ interface DetailsTabViewProps {
   sentinelRef: RefCallback<HTMLDivElement>;
   batch: BatchController;
   onViewEntry: (entry: LedgerEntry) => void;
-  onRefresh: () => Promise<void>;
 }
 
 export function DetailsTabView(props: DetailsTabViewProps) {
@@ -70,7 +68,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
     sentinelRef,
     batch,
     onViewEntry,
-    onRefresh,
   } = props;
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
@@ -113,7 +110,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             />
           ) : undefined
         }
-        actions={!batch.isSelectionMode ? <RefreshButton onRefresh={onRefresh} /> : undefined}
       >
         <Button
           variant="ghost"

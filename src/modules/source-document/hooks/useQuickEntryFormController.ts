@@ -4,12 +4,6 @@ import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-} from "@/lib/query-keys";
 import { createQuickEntryAction } from "@/modules/source-document/actions";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
@@ -38,7 +32,6 @@ export function useQuickEntryFormController({
   onSuccess,
 }: UseQuickEntryFormControllerParams) {
   const t = useTranslations("QuickEntryForm");
-  const tCommon = useTranslations("Common");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [currencyDraft, setCurrencyDraft] = useState(() => ({
@@ -62,20 +55,15 @@ export function useQuickEntryFormController({
 
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
-  const mutation = useLedgerMutation(ledgerId, {
+  const mutation = useLedgerMutation<
+    Awaited<ReturnType<typeof createQuickEntryAction>>,
+    CreateQuickEntryPayload
+  >(ledgerId, {
     mutationFn: (data: CreateQuickEntryPayload) => createQuickEntryAction(ledgerId, data),
+    resourceGroups: ["documents", "entries"],
     successMessage: null,
     errorMessage: t("quickEntryError"),
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "create",
-    cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
-    invalidatePredicates: [
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerEntries(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onWriteSuccess: (data, variables) => {
+    onSuccess: (data, variables) => {
       setSelectedCategoryId(null);
       setAmount("");
       setCurrencyDraft({ mainCurrency, value: mainCurrency });

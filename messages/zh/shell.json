@@ -159,9 +159,9 @@
     "total": "合计",
     "requiresNetwork": "需要联网"
   },
-  "LedgerStartupPreview": {
-    "cachedAt": "缓存于 {time}",
-    "currentCachedAt": "当前缓存于 {time}"
+  "LedgerQueryError": {
+    "description": "数据刷新失败，当前显示的内容可能不是最新的。",
+    "retry": "重试"
   },
   "Metadata": {
     "title": "Cashier - AI 记账助手",

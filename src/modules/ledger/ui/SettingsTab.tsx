@@ -2,13 +2,11 @@
 import type { EntryCategoryWithCount, Ledger } from "@/modules/ledger/contracts";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { BookkeepingSettings } from "./settings/BookkeepingSettings";
 import { AiSettings } from "./settings/AiSettings";
 import { AccountSettings } from "./settings/AccountSettings";
 import { SettingsSection } from "./settings/SettingsSection";
 import { SettingsField } from "./settings/SettingsField";
-import { invalidateLedger, invalidateLedgerSettings } from "@/lib/query-keys";
 import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
 import { useCredentialMutations } from "@/modules/ledger/hooks/useCredentialMutations";
 import { useLedgerSettings } from "@/modules/ledger/hooks/useLedgerSettings";
@@ -26,8 +24,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
-import { clearUserCacheDataSafely } from "@/lib/client-cache";
-import { RefreshButton } from "@/components/ui/refresh-button";
+import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
@@ -100,15 +97,6 @@ export function SettingsTab({
     return () => window.clearTimeout(timer);
   }, []);
 
-  const queryClient = useQueryClient();
-
-  const handleRefresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedger(ledgerId) }),
-    ]);
-  };
-
   // Use extracted hooks - ledger is reactive and will update with optimistic updates
   const {
     ledger: reactiveLedger,
@@ -161,10 +149,10 @@ export function SettingsTab({
     }
   };
   const handleSignOut = async () => {
-    await clearUserCacheDataSafely(
+    await clearUserImageCacheDataSafely(
       ledger.userId,
       { userId: ledger.userId, ledgerId },
-      "Failed to clear startup cache before sign-out"
+      "Failed to clear image cache before sign-out"
     );
     await signOut({ callbackUrl: "/login" });
   };
@@ -221,9 +209,6 @@ export function SettingsTab({
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip">
-      <div className="flex justify-end">
-        <RefreshButton onRefresh={handleRefresh} />
-      </div>
       <SettingsSection title={t("appearanceAndLanguage")}>
         <SettingsField title={t("theme")}>
           <Select

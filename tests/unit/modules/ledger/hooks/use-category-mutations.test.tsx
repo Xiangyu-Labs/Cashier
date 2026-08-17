@@ -2,106 +2,67 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
-import type { EntryCategory } from "@/modules/ledger/contracts";
 import { queryKeys } from "@/lib/query-keys";
+import type { EntryCategory } from "@/modules/ledger/contracts";
+import { useCategoryMutations } from "@/modules/ledger/hooks/useCategoryMutations";
 
-const {
-  createEntryCategoryActionMock,
-  updateEntryCategoryActionMock,
-  reorderEntryCategoriesActionMock,
-  saveEntryCategoriesActionMock,
-  generateEntryCategoryMetadataActionMock,
-} = vi.hoisted(() => ({
-  createEntryCategoryActionMock: vi.fn(),
-  updateEntryCategoryActionMock: vi.fn(),
-  reorderEntryCategoriesActionMock: vi.fn(),
-  saveEntryCategoriesActionMock: vi.fn(),
-  generateEntryCategoryMetadataActionMock: vi.fn(),
-}));
+const { createAction, updateAction, reorderAction, saveAction, metadataAction } = vi.hoisted(
+  () => ({
+    createAction: vi.fn(),
+    updateAction: vi.fn(),
+    reorderAction: vi.fn(),
+    saveAction: vi.fn(),
+    metadataAction: vi.fn(),
+  })
+);
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-}));
-
-vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-}));
-
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/modules/ledger/server-actions/categories", () => ({
-  createEntryCategoryAction: createEntryCategoryActionMock,
-  updateEntryCategoryAction: updateEntryCategoryActionMock,
+  createEntryCategoryAction: createAction,
+  updateEntryCategoryAction: updateAction,
   deleteEntryCategoryAction: vi.fn(),
-  reorderEntryCategoriesAction: reorderEntryCategoriesActionMock,
-  saveEntryCategoriesAction: saveEntryCategoriesActionMock,
+  reorderEntryCategoriesAction: reorderAction,
+  saveEntryCategoriesAction: saveAction,
 }));
-
 vi.mock("@/modules/ledger/server-actions/category-metadata", () => ({
-  generateEntryCategoryMetadataAction: generateEntryCategoryMetadataActionMock,
+  generateEntryCategoryMetadataAction: metadataAction,
 }));
 
-const categories: EntryCategory[] = [
-  {
-    id: "category-1",
-    ledgerId: "ledger-1",
-    name: "Food",
-    sortOrder: 0,
-    icon: null,
-    description: null,
-    isEditable: true,
-    createdAt: "2026-07-01T00:00:00.000Z",
-    updatedAt: "2026-07-01T00:00:00.000Z",
-    deletedAt: null,
-  },
-  {
-    id: "category-2",
-    ledgerId: "ledger-1",
-    name: "Travel",
-    sortOrder: 1,
-    icon: null,
-    description: null,
-    isEditable: true,
-    createdAt: "2026-07-01T00:00:00.000Z",
-    updatedAt: "2026-07-01T00:00:00.000Z",
-    deletedAt: null,
-  },
-];
+const category: EntryCategory = {
+  id: "category-1",
+  ledgerId: "ledger-1",
+  name: "Food",
+  sortOrder: 0,
+  icon: null,
+  description: null,
+  isEditable: true,
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-07-01T00:00:00.000Z",
+  deletedAt: null,
+};
 
-function createWrapper(queryClient: QueryClient) {
-  return function CategoryMutationsTestWrapper({ children }: PropsWithChildren) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  };
-}
-
-function createQueryClient() {
-  return new QueryClient({
+function setup() {
+  const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   });
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return { queryClient, wrapper };
 }
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve;
-    reject = promiseReject;
-  });
-  return { promise, resolve, reject };
-}
-
-describe("useCategoryMutations failure recovery and invalidation", () => {
+describe("useCategoryMutations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    generateEntryCategoryMetadataActionMock.mockResolvedValue({ categoryId: "category-1" });
+    metadataAction.mockResolvedValue({ categoryId: category.id });
   });
 
-  it("refetches categories after a failed create", async () => {
-    const queryClient = createQueryClient();
+  it("does not invalidate server state after a failed write", async () => {
+    const { queryClient, wrapper } = setup();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    createEntryCategoryActionMock.mockRejectedValue(new Error("create failed"));
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
+    createAction.mockRejectedValue(new Error("create failed"));
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
 
     await act(async () => {
       await expect(result.current.createCategory.mutateAsync({ name: "New" })).rejects.toThrow(
@@ -109,153 +70,70 @@ describe("useCategoryMutations failure recovery and invalidation", () => {
       );
     });
 
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    const predicate = invalidate.mock.calls[0]![0]!.predicate;
-    const match = (key: readonly unknown[]) =>
-      predicate?.({
-        queryKey: key,
-      } as unknown as Parameters<NonNullable<typeof predicate>>[0]);
-    expect(match(["entryCategories", "ledger-1"])).toBe(true);
-    expect(match(["entryCategories", "ledger-2"])).toBe(false);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
-  it("refetches categories after a failed update", async () => {
-    const queryClient = createQueryClient();
-    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    updateEntryCategoryActionMock.mockRejectedValue(new Error("update failed"));
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await act(async () => {
-      await expect(
-        result.current.updateCategory.mutateAsync({ id: "category-1", data: { name: "Renamed" } })
-      ).rejects.toThrow("update failed");
-    });
-
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    const predicate = invalidate.mock.calls[0]![0]!.predicate;
-    expect(
-      predicate?.({
-        queryKey: ["entryCategories", "ledger-1"],
-      } as unknown as Parameters<NonNullable<typeof predicate>>[0])
-    ).toBe(true);
-  });
-
-  it("preserves the cached entry count when reconciling an authoritative category update", async () => {
-    const queryClient = createQueryClient();
+  it("keeps cached categories unchanged and broadly invalidates after update", async () => {
+    const { queryClient, wrapper } = setup();
     queryClient.setQueryData(queryKeys.entryCategories("ledger-1"), [
-      { ...categories[0]!, entryCount: 7 },
+      { ...category, entryCount: 7 },
     ]);
-    updateEntryCategoryActionMock.mockResolvedValue({
-      ...categories[0]!,
-      name: "Dining",
-      updatedAt: "2026-08-07T00:00:00.000Z",
-    });
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
+    updateAction.mockResolvedValue({ ...category, name: "Dining" });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
 
     await act(async () => {
       await result.current.updateCategory.mutateAsync({
-        id: "category-1",
+        id: category.id,
         data: { name: "Dining" },
       });
     });
 
     expect(queryClient.getQueryData(queryKeys.entryCategories("ledger-1"))).toEqual([
-      expect.objectContaining({ id: "category-1", name: "Dining", entryCount: 7 }),
+      { ...category, entryCount: 7 },
     ]);
+    expect(invalidate).toHaveBeenCalledOnce();
+    const predicate = invalidate.mock.calls[0]?.[0]?.predicate;
+    const matches = (queryKey: readonly unknown[]) =>
+      predicate?.({ queryKey } as Parameters<NonNullable<typeof predicate>>[0]);
+    expect(matches(queryKeys.entryCategories("ledger-1"))).toBe(true);
+    expect(matches(queryKeys.sourceDocumentStream("ledger-1"))).toBe(true);
+    expect(matches(queryKeys.entryCategories("ledger-2"))).toBe(false);
   });
 
-  it("declares full invalidation for reorder instead of manual refresh", async () => {
-    const queryClient = createQueryClient();
-    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    reorderEntryCategoriesActionMock.mockResolvedValue({
-      categoryIds: ["category-2", "category-1"],
+  it("keeps a save pending until broad invalidation settles", async () => {
+    const { queryClient, wrapper } = setup();
+    let resolveRefresh!: () => void;
+    const refresh = new Promise<void>((resolve) => {
+      resolveRefresh = resolve;
     });
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
+    vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(refresh);
+    saveAction.mockResolvedValue([{ ...category, name: "Dining" }]);
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
 
-    await act(async () => {
-      await result.current.reorderCategories.mutateAsync(["category-2", "category-1"]);
-    });
-
-    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(4));
-    const matchedKeys = invalidate.mock.calls.map((call) => {
-      const predicate = call[0]!.predicate;
-      return [
-        ["entryCategories", "ledger-1"],
-        ["ledgerEntries", "ledger-1", "pending"],
-        ["sourceDocuments", "ledger-1", "stream"],
-        ["summary", "ledger-1"],
-      ].filter(
-        (key) =>
-          predicate?.({
-            queryKey: key,
-          } as unknown as Parameters<NonNullable<typeof predicate>>[0]) === true
-      );
-    });
-    expect(matchedKeys.flat()).toEqual([
-      ["entryCategories", "ledger-1"],
-      ["ledgerEntries", "ledger-1", "pending"],
-      ["sourceDocuments", "ledger-1", "stream"],
-      ["summary", "ledger-1"],
-    ]);
-  });
-
-  it("reconciles saved categories before the background refresh settles", async () => {
-    const queryClient = createQueryClient();
-    const refresh = deferred<void>();
-    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(() => refresh.promise);
-    const saved = [{ ...categories[0]!, name: "Dining" }];
-    saveEntryCategoriesActionMock.mockResolvedValue(saved);
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await act(async () => {
-      await result.current.saveCategories.mutateAsync({
-        categories: [{ id: "category-1", name: "Dining", description: null, icon: null }],
+    let mutation!: Promise<EntryCategory[]>;
+    act(() => {
+      mutation = result.current.saveCategories.mutateAsync({
+        categories: [{ id: category.id, name: "Dining", description: null, icon: null }],
       });
     });
+    await waitFor(() => expect(result.current.saveCategories.isPending).toBe(true));
 
-    expect(result.current.saveCategories.isPending).toBe(false);
-    expect(queryClient.getQueryData(queryKeys.entryCategories("ledger-1"))).toEqual(saved);
-
-    await act(async () => refresh.resolve());
+    await act(async () => {
+      resolveRefresh();
+      await mutation;
+    });
+    await waitFor(() => expect(result.current.saveCategories.isSuccess).toBe(true));
   });
 
-  it("keeps loading until all same-category requests settle and ignores an older failure", async () => {
-    const first = deferred<{ categoryId: string }>();
-    const second = deferred<{ categoryId: string }>();
-    generateEntryCategoryMetadataActionMock
-      .mockReturnValueOnce(first.promise)
-      .mockReturnValueOnce(second.promise);
-    const queryClient = createQueryClient();
-    const { result } = renderHook(() => useCategoryMutations("ledger-1", categories), {
-      wrapper: createWrapper(queryClient),
-    });
+  it("tracks metadata generation until its invalidation finishes", async () => {
+    const { queryClient, wrapper } = setup();
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const { result } = renderHook(() => useCategoryMutations("ledger-1", [category]), { wrapper });
 
-    act(() => {
-      result.current.retryCategoryMetadata("category-1");
-      result.current.retryCategoryMetadata("category-1");
-    });
-    expect(result.current.generatingCategoryIds.has("category-1")).toBe(true);
-
-    await act(async () => {
-      first.reject(new Error("older request failed"));
-      await first.promise.catch(() => undefined);
-    });
-    expect(result.current.generatingCategoryIds.has("category-1")).toBe(true);
-    expect(result.current.failedCategoryIds.has("category-1")).toBe(false);
-
-    await act(async () => {
-      second.resolve({ categoryId: "category-1" });
-      await second.promise;
-    });
-    await waitFor(() => expect(result.current.generatingCategoryIds.has("category-1")).toBe(false));
-    expect(result.current.failedCategoryIds.has("category-1")).toBe(false);
+    act(() => result.current.retryCategoryMetadata(category.id));
+    expect(result.current.generatingCategoryIds.has(category.id)).toBe(true);
+    await waitFor(() => expect(result.current.generatingCategoryIds.has(category.id)).toBe(false));
+    expect(result.current.failedCategoryIds.has(category.id)).toBe(false);
   });
 });

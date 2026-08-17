@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -93,19 +93,6 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
     },
     [ledgerId, preloadTabCode, queryClient, searchParams]
   );
-
-  useEffect(() => {
-    const preload = () => {
-      preloadTabCode("details");
-      preloadTabCode("stats");
-    };
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(preload, { timeout: 2500 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = globalThis.setTimeout(preload, 1500);
-    return () => globalThis.clearTimeout(id);
-  }, [preloadTabCode]);
 
   return (
     <AppShell

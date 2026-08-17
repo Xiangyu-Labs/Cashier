@@ -907,9 +907,9 @@
     "updating": "Updating…",
     "dirtyBlocked": "Save or discard your changes before updating."
   },
-  "LedgerStartupPreview": {
-    "cachedAt": "Cached at {time}",
-    "currentCachedAt": "Current data cached at {time}"
+  "LedgerQueryError": {
+    "description": "Refresh failed. The displayed data may be out of date.",
+    "retry": "Retry"
   },
   "AuthEmail": {
     "otpSubject": "Your verification code is {otp}",

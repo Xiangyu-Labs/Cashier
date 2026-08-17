@@ -6,7 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
-import { RefreshButton } from "@/components/ui/refresh-button";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -23,7 +22,6 @@ interface StatsHeaderProps {
     percent: number;
     amount: number;
   };
-  onRefresh?: () => Promise<void> | void;
   readOnly?: boolean;
   isLoading?: boolean;
 }
@@ -40,7 +38,6 @@ export function StatsHeader({
   comparison,
   periodLabel,
   trend,
-  onRefresh,
   readOnly = false,
   isLoading = false,
 }: StatsHeaderProps) {
@@ -112,7 +109,6 @@ export function StatsHeader({
             </button>
           ))}
         </div>
-        {onRefresh != null ? <RefreshButton onRefresh={onRefresh} /> : null}
       </div>
 
       {/* 2. Date Navigator */}

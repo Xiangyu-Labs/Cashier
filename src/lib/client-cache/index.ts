@@ -1,10 +1,9 @@
 "use client";
 
 export const CACHE_DB_NAME = "cashier-cache";
-export const CACHE_DB_VERSION = 2;
-export const LEDGER_SNAPSHOT_STORE = "ledgerSnapshots";
+export const CACHE_DB_VERSION = 3;
+const LEGACY_LEDGER_SNAPSHOT_STORE = "ledgerSnapshots";
 export const DOCUMENT_IMAGE_STORE = "documentImages";
-export const ACTIVE_STARTUP_CACHE_KEY = "cashier.startupCache.activeSnapshot";
 
 export function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -33,14 +32,9 @@ export function openCacheDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      // Every upgrade invalidates the whole cache: old snapshot and image
-      // records are never migrated or reused. They are rebuilt from the
-      // server after the next full snapshot download.
-      if (db.objectStoreNames.contains(LEDGER_SNAPSHOT_STORE)) {
-        db.deleteObjectStore(LEDGER_SNAPSHOT_STORE);
+      if (db.objectStoreNames.contains(LEGACY_LEDGER_SNAPSHOT_STORE)) {
+        db.deleteObjectStore(LEGACY_LEDGER_SNAPSHOT_STORE);
       }
-      const snapshots = db.createObjectStore(LEDGER_SNAPSHOT_STORE, { keyPath: "key" });
-      snapshots.createIndex("userId", "userId", { unique: false });
       if (db.objectStoreNames.contains(DOCUMENT_IMAGE_STORE)) {
         db.deleteObjectStore(DOCUMENT_IMAGE_STORE);
       }
@@ -64,20 +58,6 @@ export function openCacheDb(): Promise<IDBDatabase> {
     };
   });
   return databasePromise;
-}
-
-export function getActiveStartupCacheKey(): string | null {
-  return typeof localStorage === "undefined"
-    ? null
-    : localStorage.getItem(ACTIVE_STARTUP_CACHE_KEY);
-}
-
-export function setActiveStartupCacheKey(key: string): void {
-  if (typeof localStorage !== "undefined") localStorage.setItem(ACTIVE_STARTUP_CACHE_KEY, key);
-}
-
-export function removeActiveStartupCacheKey(): void {
-  if (typeof localStorage !== "undefined") localStorage.removeItem(ACTIVE_STARTUP_CACHE_KEY);
 }
 
 function hashIdentifier(value: string): string {
@@ -116,37 +96,30 @@ export function reportClientCacheError(
   });
 }
 
-/** Clears every user-level startup snapshot and document image from the cache. */
-export async function clearUserCacheData(userId?: string): Promise<void> {
+/** Clears cached document images for one user, or all users when omitted. */
+export async function clearUserImageCacheData(userId?: string): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const db = await openCacheDb();
-  const tx = db.transaction([LEDGER_SNAPSHOT_STORE, DOCUMENT_IMAGE_STORE], "readwrite");
-  const snapshots = tx.objectStore(LEDGER_SNAPSHOT_STORE);
+  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
   const images = tx.objectStore(DOCUMENT_IMAGE_STORE);
   if (userId == null || userId === "") {
-    snapshots.clear();
     images.clear();
   } else {
-    const userSnapshots = await requestResult(
-      snapshots.index("userId").getAll(userId) as IDBRequest<Array<{ key: string }>>
-    );
-    for (const snapshot of userSnapshots) snapshots.delete(snapshot.key);
     const userImages = await requestResult(
       images.index("userId").getAll(userId) as IDBRequest<Array<{ key: string }>>
     );
     for (const image of userImages) images.delete(image.key);
   }
   await transactionDone(tx);
-  removeActiveStartupCacheKey();
 }
 
-export async function clearUserCacheDataSafely(
+export async function clearUserImageCacheDataSafely(
   userId: string | undefined,
   identifiers: { userId?: string; ledgerId?: string },
   message: string
 ): Promise<boolean> {
   try {
-    await clearUserCacheData(userId);
+    await clearUserImageCacheData(userId);
     return true;
   } catch (error) {
     reportClientCacheError(error, identifiers, message);

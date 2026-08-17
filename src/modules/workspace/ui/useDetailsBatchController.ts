@@ -1,17 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useSelection } from "@/hooks/use-selection";
-import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-} from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
@@ -26,7 +20,6 @@ export function useDetailsBatchController(
 ) {
   const t = useTranslations("DetailsTab");
   const tCommon = useTranslations("Common");
-  const queryClient = useQueryClient();
   const allIds = useMemo(() => [...entryIds], [entryIds]);
   const selection = useSelection({ allIds, queryFingerprint });
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
@@ -43,52 +36,26 @@ export function useDetailsBatchController(
     };
   }, [selection.isSelectionMode]);
 
-  const invalidate = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerEntries(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerStats(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateSourceDocuments(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateCalendar(ledgerId) },
-        { throwOnError: true }
-      ),
-    ]);
-  }, [ledgerId, queryClient]);
-
-  const refreshDerivedQueries = useCallback(
-    (label: string) => {
-      runBackgroundQueryRefresh({
-        ledgerId,
-        label,
-        failureMessage: tCommon("savedRefreshFailed"),
-        failureMode: "log-only",
-        refresh: invalidate,
-      });
-    },
-    [invalidate, ledgerId, tCommon]
-  );
-
-  const update = useMutation({
+  const update = useLedgerMutation<
+    Awaited<ReturnType<typeof batchUpdateLedgerEntriesAction>>,
+    { categoryId?: string | null; currency?: string | null }
+  >(ledgerId, {
     mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
       batchUpdateLedgerEntriesAction(ledgerId, selection.selectedIds, data),
+    resourceGroups: ["entries"],
+    errorMessage: tCommon("error"),
     onSuccess: (result) => {
       toast.success(t("batchUpdated", { count: result.affectedCount }));
       selection.clearSelection();
-      refreshDerivedQueries("details batch update refresh");
     },
-    onError: () => toast.error(tCommon("error")),
   });
-  const remove = useMutation({
+  const remove = useLedgerMutation<
+    Awaited<ReturnType<typeof batchDeleteLedgerEntriesAction>>,
+    void
+  >(ledgerId, {
     mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selection.selectedIds),
+    resourceGroups: ["entries"],
+    errorMessage: tCommon("deleteFailed"),
     onSuccess: (result) => {
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
       if (unresolved.length > 0) selection.retainSelection(unresolved);
@@ -96,9 +63,7 @@ export function useDetailsBatchController(
       toast.success(t("batchDeleted", { count: result.succeededIds.length }));
       if (unresolved.length > 0) toast.warning(t("batchUnresolved", { count: unresolved.length }));
       setDeleteDialogOpen(false);
-      refreshDerivedQueries("details batch delete refresh");
     },
-    onError: () => toast.error(tCommon("deleteFailed")),
   });
   const previewDate = useMutation({
     mutationFn: () => previewBatchLedgerEntryDateAction(ledgerId, selection.selectedIds),
@@ -108,16 +73,19 @@ export function useDetailsBatchController(
     },
     onError: () => toast.error(tCommon("error")),
   });
-  const updateDates = useMutation({
+  const updateDates = useLedgerMutation<
+    Awaited<ReturnType<typeof batchUpdateLedgerEntryDatesAction>>,
+    void
+  >(ledgerId, {
     mutationFn: () =>
       batchUpdateLedgerEntryDatesAction(ledgerId, selection.selectedIds, selectedDate),
+    resourceGroups: ["entries"],
+    errorMessage: tCommon("error"),
     onSuccess: () => {
       toast.success(t("dateUpdated"));
       selection.clearSelection();
       setDateDialogOpen(false);
-      refreshDerivedQueries("details batch date refresh");
     },
-    onError: () => toast.error(tCommon("error")),
   });
 
   return {

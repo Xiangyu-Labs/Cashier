@@ -73,31 +73,22 @@ describe("PWA policy", () => {
     }
   });
 
-  it("ships a startup preview that is read-only and has no refresh or mutation controls", () => {
-    const preview = read("src/modules/workspace/ui/LedgerStartupPreview.tsx");
-    const stream = read("src/modules/workspace/ui/LedgerStartupStreamPreview.tsx");
-    const details = read("src/modules/workspace/ui/LedgerStartupDetailsPreview.tsx");
-    const card = read("src/modules/source-document/ui/SourceDocumentCard.tsx");
-    expect(preview).toContain("readLedgerStartupSnapshot");
-    expect(preview).toContain('useTranslations("LedgerPage")');
-    expect(preview).toContain("startup-preview-latest-banner");
-    expect(preview).toContain('tPreview("cachedAt"');
-    expect(preview).toContain("SettingsTabSkeleton");
-    for (const source of [preview, stream, details]) {
-      expect(source).not.toContain("useMutation");
-      expect(source).not.toContain("PullToRefresh");
-    }
-    expect(stream).toContain("readOnly");
-    expect(stream).toContain("CACHED_STREAM_PREVIEW_LIMIT");
-    expect(details).toContain("CACHED_DETAILS_PREVIEW_LIMIT");
-    expect(card).toContain("READ_ONLY_RECOVERY");
+  it("uses tab-specific skeletons instead of a persisted startup preview", () => {
+    const fallback = read("src/app/[locale]/(protected)/_ledger-bootstrap-fallback.tsx");
+    expect(fallback).toContain("EntriesTabSkeleton");
+    expect(fallback).toContain("DetailsTabSkeleton");
+    expect(fallback).toContain("StatsTabSkeleton");
+    expect(fallback).toContain("SettingsTabSkeleton");
+    expect(fallback).not.toContain("IndexedDB");
+    expect(fallback).not.toContain("useMutation");
+    expect(exists("src/modules/workspace/ui/LedgerStartupPreview.tsx")).toBe(false);
   });
 
-  it("keeps server-rendered cache keys outside the client IndexedDB module", () => {
+  it("keeps startup snapshots out of the active ledger shell", () => {
     const activeTab = read("src/app/[locale]/(protected)/_active-tab.tsx");
     const pageClient = read("src/modules/workspace/ui/LedgerPageClient.tsx");
-    expect(pageClient).toContain('from "@/modules/workspace/ledger-startup-cache-constants"');
-    expect(pageClient).toContain("ledgerStartupCacheKey");
+    expect(pageClient).not.toContain("ledgerStartupCacheKey");
+    expect(pageClient).not.toContain("LedgerStartupCacheSync");
     expect(activeTab).not.toContain("ledger-startup-cache-store");
   });
 

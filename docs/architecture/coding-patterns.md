@@ -36,7 +36,9 @@ required port through the use case boundary. Concrete runtime wiring belongs in 
 
 - Use centralized query keys and `useLedgerMutation` for server state changes.
 - Load tab-specific components and translations only when that tab is active.
-- Keep canonical ledger entities separate from filtered/paginated window IDs.
+- Treat Infinite Query pages and detail queries as independent server-state views. Ledger mutations
+  invalidate ledger-scoped resource groups; do not patch unrelated filtered windows or maintain a
+  canonical client entity store.
 - Derive render state directly, use functional state updates, and avoid module barrel imports in
   client entrypoints.
 

@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
 import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
-import { clearUserCacheDataSafely, getActiveStartupCacheKey } from "@/lib/client-cache";
+import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 
 export function Providers({ children, userId }: { children: React.ReactNode; userId?: string }) {
   const [queryClient] = useState(
@@ -33,24 +33,11 @@ export function Providers({ children, userId }: { children: React.ReactNode; use
 
   useEffect(() => {
     const clearCurrentUserCache = () =>
-      void clearUserCacheDataSafely(
+      void clearUserImageCacheDataSafely(
         userId,
         userId == null ? {} : { userId },
-        userId == null
-          ? "Failed to clear startup cache after session expiry"
-          : "Failed to synchronize startup cache for authenticated user"
+        "Failed to clear image cache after session expiry"
       );
-    const clearAllUserCache = () =>
-      void clearUserCacheDataSafely(
-        undefined,
-        userId == null ? {} : { userId },
-        "Failed to clear startup cache during user switch"
-      );
-
-    const activeKey = getActiveStartupCacheKey();
-    if (userId != null && activeKey != null && !activeKey.startsWith(`${userId}:`)) {
-      clearAllUserCache();
-    }
 
     const onSessionExpired = clearCurrentUserCache;
     window.addEventListener("cashier:auth-session-expired", onSessionExpired);

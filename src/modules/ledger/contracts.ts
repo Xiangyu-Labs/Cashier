@@ -2,10 +2,6 @@ import type {
   SourceDocumentStatusType as SourceDocumentReferenceStatus,
   SourceDocumentTypeValue as SourceDocumentReferenceType,
 } from "@/modules/source-document/contracts";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
 
 export interface LedgerSettings {
   aiLanguage?: string;
@@ -154,8 +150,6 @@ export interface DeleteLedgerEntryResultDto {
   ledgerEntryId: string;
   deleted: boolean;
   sourceDocumentId?: string;
-  /** Authoritative source-document snapshot for instant stream/detail cache reconciliation. */
-  reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
 }
 
 export interface BatchLedgerEntriesMutationResultDto {

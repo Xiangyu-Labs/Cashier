@@ -44,14 +44,11 @@ describe("frontend motion policy", () => {
     expect(source).not.toContain("framer-motion");
   });
 
-  it("uses the shared group header in online and offline ledger lists", () => {
+  it("uses the shared group header across ledger list views", () => {
     expect(read("src/modules/workspace/ui/LedgerEntriesCompletedGroups.tsx")).toContain(
       "<EntryGroupHeader"
     );
     expect(read("src/modules/ledger/ui/LedgerEntryGroupsView.tsx")).toContain("<EntryGroupHeader");
     expect(read("src/modules/workspace/ui/DetailsTabView.tsx")).toContain("<LedgerEntryGroupsView");
-    expect(read("src/modules/workspace/ui/LedgerStartupDetailsPreview.tsx")).toContain(
-      "<LedgerEntryGroupsView"
-    );
   });
 });

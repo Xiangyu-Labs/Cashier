@@ -4,17 +4,13 @@ import { acceptSourceDocumentCandidate } from "@/modules/source-document/applica
 import { abandonSourceDocumentCandidate } from "@/modules/source-document/application/use-cases/abandon-source-document-candidate";
 import { cancelSourceDocumentProcessing } from "@/modules/source-document/application/use-cases/cancel-source-document-processing";
 import type {
-  AcceptCandidateReconciliationDto,
   AcceptCandidateResponseDto,
-  AbandonCandidateReconciliationDto,
   AbandonCandidateResponseDto,
-  CancelProcessingReconciliationDto,
   CancelProcessingResponseDto,
   SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
 import { parseRevisionMutationIdentity } from "@/modules/source-document/contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
@@ -26,7 +22,6 @@ export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAc
  * Accept a completed candidate revision for a source document.
  *
  * Replaces the active ledger projection with the candidate revision's entries.
- * Returns reconciliation data for the optimistic transaction system.
  */
 export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAccess(
   async (
@@ -34,16 +29,13 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
     sourceDocumentId: string,
     revisionId: string,
     operationId?: string
-  ): Promise<
-    AcceptCandidateResponseDto &
-      Partial<{ reconciliation: AcceptCandidateReconciliationDto["reconciliation"] }>
-  > => {
+  ): Promise<AcceptCandidateResponseDto> => {
     const identity = parseRevisionMutationIdentity({
       sourceDocumentId,
       revisionId,
       ...(operationId === undefined ? {} : { operationId }),
     });
-    const result = await acceptSourceDocumentCandidate(
+    return acceptSourceDocumentCandidate(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -51,19 +43,6 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
       },
       serverComposition.sourceDocumentLifecycle
     );
-
-    if (identity.operationId != null) {
-      return {
-        ...result,
-        reconciliation: await buildAuthoritativeReconciliation(
-          identity.operationId,
-          ledgerId,
-          identity.sourceDocumentId
-        ),
-      };
-    }
-
-    return result;
   }
 );
 
@@ -72,7 +51,6 @@ export const acceptSourceDocumentCandidateAction = withSourceDocumentLedgerAcces
  *
  * Marks the revision as abandoned and clears the pending revision pointer
  * without affecting the active projection.
- * Returns reconciliation data for the optimistic transaction system.
  */
 export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAccess(
   async (
@@ -80,16 +58,13 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
     sourceDocumentId: string,
     revisionId: string,
     operationId?: string
-  ): Promise<
-    AbandonCandidateResponseDto &
-      Partial<{ reconciliation: AbandonCandidateReconciliationDto["reconciliation"] }>
-  > => {
+  ): Promise<AbandonCandidateResponseDto> => {
     const identity = parseRevisionMutationIdentity({
       sourceDocumentId,
       revisionId,
       ...(operationId === undefined ? {} : { operationId }),
     });
-    const result = await abandonSourceDocumentCandidate(
+    return abandonSourceDocumentCandidate(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -97,19 +72,6 @@ export const abandonSourceDocumentCandidateAction = withSourceDocumentLedgerAcce
       },
       serverComposition.sourceDocumentLifecycle
     );
-
-    if (identity.operationId != null) {
-      return {
-        ...result,
-        reconciliation: await buildAuthoritativeReconciliation(
-          identity.operationId,
-          ledgerId,
-          identity.sourceDocumentId
-        ),
-      };
-    }
-
-    return result;
   }
 );
 
@@ -119,16 +81,13 @@ export const cancelSourceDocumentProcessingAction = withSourceDocumentLedgerAcce
     sourceDocumentId: string,
     revisionId: string,
     operationId?: string
-  ): Promise<
-    CancelProcessingResponseDto &
-      Partial<{ reconciliation: CancelProcessingReconciliationDto["reconciliation"] }>
-  > => {
+  ): Promise<CancelProcessingResponseDto> => {
     const identity = parseRevisionMutationIdentity({
       sourceDocumentId,
       revisionId,
       ...(operationId === undefined ? {} : { operationId }),
     });
-    const result = await cancelSourceDocumentProcessing(
+    return cancelSourceDocumentProcessing(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -136,14 +95,5 @@ export const cancelSourceDocumentProcessingAction = withSourceDocumentLedgerAcce
       },
       serverComposition.sourceDocumentLifecycle
     );
-    if (identity.operationId == null) return result;
-    return {
-      ...result,
-      reconciliation: await buildAuthoritativeReconciliation(
-        identity.operationId,
-        ledgerId,
-        identity.sourceDocumentId
-      ),
-    };
   }
 );

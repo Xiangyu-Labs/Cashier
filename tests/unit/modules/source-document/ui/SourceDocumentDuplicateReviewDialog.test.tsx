@@ -109,10 +109,6 @@ function createQueryClient() {
     ],
     pageParams: [null],
   });
-  queryClient.setQueryData(queryKeys.sourceDocumentEntities(LEDGER_ID), {
-    "doc-1": listItem("doc-1", "Original bill"),
-    [DUPLICATE_ID]: listItem(DUPLICATE_ID, "Duplicate bill"),
-  });
   return queryClient;
 }
 
@@ -197,20 +193,10 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     reviewActionMock.mockResolvedValue(reviewDetail());
-    discardActionMock.mockResolvedValue({
-      reconciliation: {
-        entity: null,
-        operationId: "op-discard",
-        entityVersion: "2026-07-15T00:00:00.000Z",
-        countPatch: { processingDelta: 0, attentionDelta: 0 },
-        status: "discarded",
-        enteredWindow: false,
-        exitedWindow: true,
-      },
-    });
+    discardActionMock.mockResolvedValue({ status: "discarded" });
   });
 
-  it("applies the tombstone, closes the dialog, and keeps the remaining item without an error boundary", async () => {
+  it("closes after success without synchronously patching the stream", async () => {
     const queryClient = createQueryClient();
     const onOpenChange = vi.fn();
     const onCaughtError = vi.fn();
@@ -240,24 +226,18 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     );
     expect(screen.queryByRole("button", { name: "删除重复" })).not.toBeInTheDocument();
 
-    // Tombstone applied: the duplicate is gone from the stream and entity store.
+    // The list remains server-owned until its invalidated query refetches.
     const streamItems = screen.getAllByTestId("stream-item");
-    expect(streamItems).toHaveLength(1);
+    expect(streamItems).toHaveLength(2);
     expect(streamItems[0]).toHaveTextContent("Original bill");
-    const entities = queryClient.getQueryData<Record<string, SourceDocumentListItemDto>>(
-      queryKeys.sourceDocumentEntities(LEDGER_ID)
-    );
-    expect(entities?.[DUPLICATE_ID]).toBeUndefined();
-    expect(entities?.["doc-1"]).toBeDefined();
 
     expect(onCaughtError).not.toHaveBeenCalled();
     expect(screen.queryByTestId("error-boundary")).not.toBeInTheDocument();
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
-  it("keeps the successful discard result when the background invalidation fails", async () => {
+  it("keeps the successful discard result when invalidation fails", async () => {
     const queryClient = createQueryClient();
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const invalidate = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockRejectedValue(new Error("refresh failed"));
@@ -276,23 +256,11 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(toastErrorMock).not.toHaveBeenCalled();
 
-    // The failed background refresh must be logged but never flip the result.
-    await waitFor(() => {
-      expect(consoleError).toHaveBeenCalledWith(
-        expect.stringContaining("background cache invalidation failed"),
-        expect.objectContaining({ ledgerId: LEDGER_ID, sourceDocumentId: DUPLICATE_ID })
-      );
-    });
     expect(invalidate).toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(onCaughtError).not.toHaveBeenCalled();
     expect(screen.queryByTestId("error-boundary")).not.toBeInTheDocument();
-
-    const entities = queryClient.getQueryData<Record<string, SourceDocumentListItemDto>>(
-      queryKeys.sourceDocumentEntities(LEDGER_ID)
-    );
-    expect(entities?.[DUPLICATE_ID]).toBeUndefined();
   });
 
   it("shows the detection-time snapshot badge and a modified notice", async () => {

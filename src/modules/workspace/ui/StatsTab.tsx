@@ -1,9 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { getEnhancedStats } from "@/modules/stats/actions";
-import { invalidateCalendar, invalidateLedgerStats } from "@/lib/query-keys";
 import {
   addPeriod,
   formatCivilDate,
@@ -50,7 +49,6 @@ export function StatsTab({
   const locale = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const statsUrlState = useMemo(() => readStatsSearchParams(searchParams), [searchParams]);
   const rangeType: DateRangeType = statsUrlState.range ?? DEFAULT_STATS_RANGE_TYPE;
   const periodOffset = statsUrlState.offset;
@@ -146,14 +144,6 @@ export function StatsTab({
     statsQuery.status,
   ]);
 
-  const handleRefresh = useCallback(async () => {
-    const activeLedgerId = ledgerId ?? "";
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(activeLedgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateCalendar(activeLedgerId) }),
-    ]);
-  }, [queryClient, ledgerId]);
-
   return (
     <StatsContentView
       rangeType={rangeType}
@@ -171,7 +161,6 @@ export function StatsTab({
       isLoading={statsQuery.isFetching}
       isError={isError}
       onRetry={() => void refetch()}
-      onRefresh={handleRefresh}
       chartView={chartView}
       onChartViewChange={(view) => updateStatsUrl({ view })}
       fallbackCurrency={ledger?.settings.mainCurrency ?? "CNY"}

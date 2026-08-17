@@ -1,19 +1,12 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { invalidateSourceDocumentCounts } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createSourceDocumentAction,
   editRetrySourceDocumentAction,
 } from "@/modules/source-document/actions";
-import type {
-  CreatedRecordResult,
-  CreateSourceDocumentResponseDto,
-  SourceDocumentListItemDto,
-  MutationReconciliation,
-} from "@/modules/source-document/contracts";
+import type { CreatedRecordResult } from "@/modules/source-document/contracts";
 import type {
   SourceDocumentInputControllerMessages,
   SourceDocumentSubmitPayload,
@@ -23,10 +16,7 @@ import {
   type SourceDocumentSubmissionProgress,
   uploadSourceDocumentSubmissionImages,
 } from "./source-document-submission-upload";
-import { useNotifyRevisionRefresh } from "./revision-state-refresh";
-import { applyOptimisticUpsert } from "./source-document-optimistic-cache";
 import { toast } from "sonner";
-import { dispatchLedgerMutationEvent } from "@/lib/mutations/ledger-mutation-event";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,8 +64,6 @@ export function useSourceDocumentSubmitMutations({
   messages,
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
-  const queryClient = useQueryClient();
-  const notifyRefresh = useNotifyRevisionRefresh();
   const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
   const uploadControllerRef = useRef<AbortController | null>(null);
   useEffect(() => () => uploadControllerRef.current?.abort(), []);
@@ -112,12 +100,21 @@ export function useSourceDocumentSubmitMutations({
     }
     toast.error(fallbackMessage);
   };
+  const finishUpload = (signal: AbortSignal) => {
+    if (uploadControllerRef.current?.signal === signal) {
+      uploadControllerRef.current = null;
+    }
+    setProgress(null);
+  };
 
   // -----------------------------------------------------------------------
   // Create mutation
   // -----------------------------------------------------------------------
 
-  const createMutation = useMutation({
+  const createMutation = useLedgerMutation<
+    Awaited<ReturnType<typeof createSourceDocumentAction>>,
+    CreateVariables
+  >(ledgerId, {
     mutationFn: async (variables: CreateVariables) => {
       const { payload, clientSubmissionId } = variables;
       const uploadedPayload = await uploadSourceDocumentSubmissionImages(
@@ -135,39 +132,24 @@ export function useSourceDocumentSubmitMutations({
       );
       return result;
     },
+    resourceGroups: ["documents"],
+    successMessage: null,
+    errorMessage: null,
     onSuccess: async (data, variables) => {
-      setMonotonicProgress({ phase: "complete", percent: 100 });
-      if (data != null) {
-        const response = data as CreateSourceDocumentResponseDto &
-          Partial<{
-            reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
-          }>;
-
-        if (response.reconciliation?.entity != null) {
-          applyOptimisticUpsert(queryClient, ledgerId, response.reconciliation.entity);
-        }
+      try {
+        setMonotonicProgress({ phase: "complete", percent: 100 });
+        await waitForPaint();
+        onSuccess?.({
+          sourceDocumentId: data.sourceDocumentId,
+          entryDate: variables.payload.entryDate,
+        });
+      } finally {
+        finishUpload(variables.signal);
       }
-
-      notifyRefresh();
-      await waitForPaint();
-      onSuccess?.({
-        sourceDocumentId: data.sourceDocumentId,
-        entryDate: variables.payload.entryDate,
-      });
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       handleSubmitError(error, messages.createError);
-    },
-    onSettled: async (data, _error, variables) => {
-      if (uploadControllerRef.current?.signal === variables.signal) {
-        uploadControllerRef.current = null;
-      }
-      setProgress(null);
-      // Minimal invalidation for counts only (stream cache is patched)
-      await queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
-      });
-      if (data != null) dispatchLedgerMutationEvent({ ledgerId, reason: "create" });
+      finishUpload(variables.signal);
     },
   });
 
@@ -175,7 +157,10 @@ export function useSourceDocumentSubmitMutations({
   // Retry mutation
   // -----------------------------------------------------------------------
 
-  const retryMutation = useMutation({
+  const retryMutation = useLedgerMutation<
+    Awaited<ReturnType<typeof editRetrySourceDocumentAction>>,
+    RetryVariables
+  >(ledgerId, {
     mutationFn: async (variables: RetryVariables) => {
       if (sourceDocumentId == null) throw new Error("No source document ID for retry");
       const { payload } = variables;
@@ -194,38 +179,24 @@ export function useSourceDocumentSubmitMutations({
       );
       return result;
     },
+    resourceGroups: ["documents"],
+    successMessage: messages.retrySuccess,
+    errorMessage: null,
     onSuccess: async (data, variables) => {
-      setMonotonicProgress({ phase: "complete", percent: 100 });
-      if (data != null) {
-        const response = data as Partial<{
-          reconciliation: MutationReconciliation<SourceDocumentListItemDto>;
-        }>;
-
-        if (response.reconciliation?.entity != null) {
-          applyOptimisticUpsert(queryClient, ledgerId, response.reconciliation.entity);
-        }
+      try {
+        setMonotonicProgress({ phase: "complete", percent: 100 });
+        await waitForPaint();
+        onSuccess?.({
+          sourceDocumentId: data.sourceDocumentId,
+          entryDate: variables.payload.entryDate,
+        });
+      } finally {
+        finishUpload(variables.signal);
       }
-
-      toast.success(messages.retrySuccess);
-      notifyRefresh();
-      await waitForPaint();
-      onSuccess?.({
-        sourceDocumentId: data.sourceDocumentId,
-        entryDate: variables.payload.entryDate,
-      });
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       handleSubmitError(error, messages.retryError);
-    },
-    onSettled: async (data, _error, variables) => {
-      if (uploadControllerRef.current?.signal === variables.signal) {
-        uploadControllerRef.current = null;
-      }
-      setProgress(null);
-      await queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
-      });
-      if (data != null) dispatchLedgerMutationEvent({ ledgerId, reason: "update" });
+      finishUpload(variables.signal);
     },
   });
 

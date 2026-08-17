@@ -38,10 +38,6 @@ vi.mock("@/modules/source-document/hooks/useSourceDocumentRecordMutations", () =
   }),
 }));
 
-vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
-  useNotifyRevisionRefresh: () => vi.fn(),
-}));
-
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   const promise = new Promise<T>((next) => {
@@ -65,7 +61,7 @@ describe("useSourceDocumentDetailMutations", () => {
     vi.clearAllMocks();
   });
 
-  it("saves atomically and resolves before the final refresh round settles", async () => {
+  it("updates the current detail and remains pending until invalidation settles", async () => {
     const { queryClient, wrapper } = setup();
     const write = deferred<{
       sourceDocument: { id: string };
@@ -125,17 +121,19 @@ describe("useSourceDocumentDetailMutations", () => {
         ledgerEntries: [{ id: "entry-1" }, { id: "entry-2" }],
       });
     });
-    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5));
-    expect(settled).toBe(true);
-    expect(result.current.isSavingChanges).toBe(false);
-    for (const call of invalidate.mock.calls) {
-      expect(call[1]).toEqual({ throwOnError: true });
-    }
+    await waitFor(() => expect(invalidate).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    expect(result.current.isSavingChanges).toBe(true);
+    expect(
+      queryClient.getQueryData(["ledger", "ledger-1", "source-document", "source-1", "detail"])
+    ).toEqual({ id: "source-1" });
 
     await act(async () => {
       refresh.resolve();
+      await savePromise;
     });
-    await expect(savePromise).resolves.toBeDefined();
+    await waitFor(() => expect(result.current.isSavingChanges).toBe(false));
+    expect(settled).toBe(true);
   });
 
   it("deletes selected entries in one batch and refreshes each affected resource once", async () => {
@@ -165,13 +163,10 @@ describe("useSourceDocumentDetailMutations", () => {
       "entry-1",
       "entry-2",
     ]);
-    expect(invalidate).toHaveBeenCalledTimes(5);
-    for (const call of invalidate.mock.calls) {
-      expect(call[1]).toEqual({ throwOnError: true });
-    }
+    expect(invalidate).toHaveBeenCalledOnce();
   });
 
-  it("writes both authoritative split details before refreshing affected views", async () => {
+  it("updates only the currently open detail after a split", async () => {
     const { queryClient, wrapper } = setup();
     splitSourceDocumentActionMock.mockResolvedValue({
       sourceDocumentId: "source-1",
@@ -210,6 +205,6 @@ describe("useSourceDocumentDetailMutations", () => {
     ).toEqual({ id: "source-1", title: "Original" });
     expect(
       queryClient.getQueryData(["ledger", "ledger-1", "source-document", "source-2", "detail"])
-    ).toEqual({ id: "source-2", title: "Split" });
+    ).toBeUndefined();
   });
 });

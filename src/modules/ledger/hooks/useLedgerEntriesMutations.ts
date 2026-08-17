@@ -1,66 +1,23 @@
 "use client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  invalidateSourceDocumentStreamTotal,
-} from "@/lib/query-keys";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
-import { toast } from "sonner";
-import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
-import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 
-type UpdateEntryResult = LedgerEntryDto & {
-  reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
-};
+type UpdateEntryResult = LedgerEntryDto;
 type DeleteEntryResult = DeleteLedgerEntryResultDto;
 type UpdateVariables = {
   ledgerEntryId: string;
   data: Partial<Omit<LedgerEntryDto, "amount">> & { amount?: number };
 };
 export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCategory[]) {
-  const queryClient = useQueryClient();
   const tCommon = useTranslations("Common");
-
-  const refreshDerivedQueries = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerEntries(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateSourceDocuments(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerStats(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateSourceDocumentStreamTotal(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateCalendar(ledgerId) },
-        { throwOnError: true }
-      ),
-    ]);
-  };
-
-  const updateEntry = useMutation<UpdateEntryResult, Error, UpdateVariables>({
+  const updateEntry = useLedgerMutation<UpdateEntryResult, UpdateVariables>(ledgerId, {
     mutationFn: async ({ ledgerEntryId, data }) => {
       const operationId = crypto.randomUUID();
       return updateLedgerEntryAction(
@@ -70,29 +27,11 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<UpdateEntryResult>;
     },
-    onSuccess: (result) => {
-      if (result.sourceDocumentId != null) {
-        applySourceDocumentReconciliation(
-          queryClient,
-          ledgerId,
-          result.sourceDocumentId,
-          result.reconciliation
-        );
-      }
-      runBackgroundQueryRefresh({
-        ledgerId,
-        label: "ledger entry update refresh",
-        failureMessage: tCommon("savedRefreshFailed"),
-        failureMode: "log-only",
-        refresh: refreshDerivedQueries,
-      });
-    },
-    onError: () => {
-      toast.error(tCommon("saveFailed"));
-    },
+    resourceGroups: ["entries"],
+    errorMessage: tCommon("saveFailed"),
   });
 
-  const deleteEntry = useMutation<DeleteEntryResult, Error, string>({
+  const deleteEntry = useLedgerMutation<DeleteEntryResult, string>(ledgerId, {
     mutationFn: async (ledgerEntryId) => {
       const operationId = crypto.randomUUID();
       return deleteLedgerEntryAction(
@@ -101,27 +40,9 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<DeleteEntryResult>;
     },
-    onSuccess: (result) => {
-      if (result.sourceDocumentId != null) {
-        applySourceDocumentReconciliation(
-          queryClient,
-          ledgerId,
-          result.sourceDocumentId,
-          result.reconciliation
-        );
-      }
-      toast.success(tCommon("deleteSuccess"));
-      runBackgroundQueryRefresh({
-        ledgerId,
-        label: "ledger entry delete refresh",
-        failureMessage: tCommon("savedRefreshFailed"),
-        failureMode: "log-only",
-        refresh: refreshDerivedQueries,
-      });
-    },
-    onError: () => {
-      toast.error(tCommon("deleteFailed"));
-    },
+    resourceGroups: ["entries"],
+    successMessage: tCommon("deleteSuccess"),
+    errorMessage: tCommon("deleteFailed"),
   });
 
   return {

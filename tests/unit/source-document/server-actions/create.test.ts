@@ -53,10 +53,15 @@ describe("createSourceDocumentAction omission semantics", () => {
     expect(typeof deps.scheduleProcessing).toBe("function");
   });
 
-  it("rejects an invalid operation UUID before invoking the use case", async () => {
-    await expect(
-      createSourceDocumentAction("ledger-1", { text: "Lunch" }, "operation-not-a-uuid")
-    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-    expect(createAndQueueSourceDocumentMock).not.toHaveBeenCalled();
+  it("does not include the legacy operation ID in the business result", async () => {
+    const result = await createSourceDocumentAction(
+      "ledger-1",
+      { text: "Lunch" },
+      "operation-not-a-uuid"
+    );
+
+    expect(createAndQueueSourceDocumentMock).toHaveBeenCalledOnce();
+    expect(result).toEqual({ sourceDocumentId: "doc-1", status: "processing" });
+    expect(result).not.toHaveProperty("reconciliation");
   });
 });

@@ -110,15 +110,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
   return (
     <NextIntlClientProvider messages={activeMessages} locale={locale}>
       <ActiveShell ledgerId={ledgerId}>
-        <Suspense
-          fallback={
-            <LedgerBootstrapFallback
-              userId={context.userId}
-              ledgerId={ledgerId}
-              activeTab={activeTab}
-            />
-          }
-        >
+        <Suspense fallback={<LedgerBootstrapFallback activeTab={activeTab} />}>
           <ActiveTabBootstrap
             pageDataPromise={pageDataPromise}
             ledgerId={ledgerId}

@@ -159,9 +159,9 @@
     "total": "Total",
     "requiresNetwork": "Requires an internet connection"
   },
-  "LedgerStartupPreview": {
-    "cachedAt": "Cached at {time}",
-    "currentCachedAt": "Current data cached at {time}"
+  "LedgerQueryError": {
+    "description": "Refresh failed. The displayed data may be out of date.",
+    "retry": "Retry"
   },
   "Metadata": {
     "title": "Cashier - AI Bookkeeping Assistant",

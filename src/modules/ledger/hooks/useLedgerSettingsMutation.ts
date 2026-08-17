@@ -1,14 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocuments,
-  queryKeys,
-} from "@/lib/query-keys";
 import { updateLedgerAction } from "@/modules/ledger/server-actions/update";
 import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
@@ -36,9 +28,6 @@ export function useLedgerSettingsMutation({
   errorMessage,
 }: UseLedgerSettingsMutationParams) {
   const t = useTranslations("Settings");
-  const tCommon = useTranslations("Common");
-  const queryClient = useQueryClient();
-  const ledgerQueryKey = queryKeys.ledger(ledgerId);
   const translateError = (code: UpdateLedgerActionErrorCode) => {
     switch (code) {
       case "rates_unavailable":
@@ -90,17 +79,7 @@ export function useLedgerSettingsMutation({
     },
     successMessage,
     errorMessage: null,
-    refreshFailureMessage: tCommon("savedRefreshFailed"),
-    mutationReason: "settings",
-    invalidatePredicates: [
-      invalidateLedgerEntries(ledgerId),
-      invalidateSourceDocuments(ledgerId),
-      invalidateLedgerStats(ledgerId),
-      invalidateCalendar(ledgerId),
-    ],
-    onSuccessReconcile: (_client, data) => {
-      queryClient.setQueryData<Ledger>(ledgerQueryKey, data);
-    },
-    onErrorExtra: (error) => toast.error(error.message || errorMessage),
+    resourceGroups: ["settings"],
+    onError: (error) => toast.error(error.message || errorMessage),
   });
 }

@@ -32,7 +32,7 @@ describe("ledger delta", () => {
     return state?.version ?? BigInt(0);
   }
 
-  it("returns canonical documents and tombstones", async () => {
+  it("returns a change signal for document creation and deletion", async () => {
     const documentId = await createTestSourceDocument(getTestDb(), ledgerId, {
       title: "Delta receipt",
     });
@@ -40,12 +40,12 @@ describe("ledger delta", () => {
 
     const created = await getLedgerDelta({ ledgerId, afterVersion: "0" });
     expect(created).toMatchObject({
+      protocolVersion: 3,
       resetRequired: false,
       toVersion: createdVersion.toString(),
       hasMore: false,
-      tombstones: [],
+      changed: true,
     });
-    expect(created.documents.map((document) => document.id)).toContain(documentId);
 
     await getTestDb()
       .update(sourceDocuments)
@@ -55,11 +55,10 @@ describe("ledger delta", () => {
       ledgerId,
       afterVersion: createdVersion.toString(),
     });
-    expect(removed.documents).toEqual([]);
-    expect(removed.tombstones).toEqual([documentId]);
+    expect(removed).toMatchObject({ protocolVersion: 3, changed: true });
   });
 
-  it("returns invalidations without accidentally listing a document", async () => {
+  it("returns settings and stats invalidations", async () => {
     await createTestSourceDocument(getTestDb(), ledgerId);
     const beforeSettings = await version();
     await getTestDb().update(ledgers).set({ aiLanguage: "en" }).where(eq(ledgers.id, ledgerId));
@@ -68,8 +67,6 @@ describe("ledger delta", () => {
       ledgerId,
       afterVersion: beforeSettings.toString(),
     });
-    expect(delta.documents).toEqual([]);
-    expect(delta.tombstones).toEqual([]);
     expect(delta.invalidations).toMatchObject({ settings: true, stats: true });
   });
 

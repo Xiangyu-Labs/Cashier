@@ -1,14 +1,6 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocumentCounts,
-  invalidateSourceDocuments,
-} from "@/lib/query-keys";
 import {
   acceptSourceDocumentCandidateAction,
   abandonSourceDocumentCandidateAction,
@@ -16,14 +8,7 @@ import {
   retrySourceDocumentAction,
 } from "@/modules/source-document/actions";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
-import { useNotifyRevisionRefresh } from "./revision-state-refresh";
-import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 
 interface UseSourceDocumentRecoveryMutationsOptions {
   ledgerId: string;
@@ -46,67 +31,23 @@ export function useSourceDocumentRecoveryMutations({
   revisionId,
   onSuccess,
 }: UseSourceDocumentRecoveryMutationsOptions) {
-  const queryClient = useQueryClient();
-  const notifyRefresh = useNotifyRevisionRefresh();
   const actionLockRef = useRef(false);
   const tActions = useTranslations("CandidateAction");
-  const tCommon = useTranslations("Common");
-
-  const refreshCandidateResult = useCallback(async () => {
-    notifyRefresh();
-    await Promise.all([
-      queryClient.invalidateQueries(
-        { predicate: invalidateSourceDocuments(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerEntries(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateLedgerStats(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateCalendar(ledgerId) },
-        { throwOnError: true }
-      ),
-      queryClient.invalidateQueries(
-        { predicate: invalidateSourceDocumentCounts(ledgerId) },
-        { throwOnError: true }
-      ),
-    ]);
-  }, [ledgerId, notifyRefresh, queryClient]);
-
-  const refreshCandidateResultInBackground = useCallback(() => {
-    runBackgroundQueryRefresh({
-      ledgerId,
-      label: "source-document candidate refresh",
-      failureMessage: tCommon("savedRefreshFailed"),
-      failureMode: "log-only",
-      refresh: refreshCandidateResult,
-    });
-  }, [ledgerId, refreshCandidateResult, tCommon]);
 
   // -----------------------------------------------------------------------
   // Accept candidate
   // -----------------------------------------------------------------------
 
-  const acceptMutation = useMutation<unknown, Error, void>({
+  const acceptMutation = useLedgerMutation<unknown, void>(ledgerId, {
     mutationFn: async () => {
       if (revisionId == null) throw new Error("No revision ID provided for accept");
       return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
     },
+    resourceGroups: ["documents"],
+    successMessage: tActions("acceptSuccess"),
+    errorMessage: tActions("acceptError"),
     onSuccess: () => {
-      // The accept reconciliation entity is intentionally minimal and would
-      // blank the card's entries; the delta refresh overlays authoritative
-      // data, so accept relies on the incremental refresh path.
-      toast.success(tActions("acceptSuccess"));
       onSuccess?.();
-      refreshCandidateResultInBackground();
-    },
-    onError: () => {
-      toast.error(tActions("acceptError"));
     },
   });
 
@@ -114,7 +55,7 @@ export function useSourceDocumentRecoveryMutations({
   // Abandon candidate
   // -----------------------------------------------------------------------
 
-  const abandonMutation = useMutation<unknown, Error, void>({
+  const abandonMutation = useLedgerMutation<unknown, void>(ledgerId, {
     mutationFn: async () => {
       if (revisionId == null) throw new Error("No revision ID provided for abandon");
       return abandonSourceDocumentCandidateAction(
@@ -124,17 +65,11 @@ export function useSourceDocumentRecoveryMutations({
         undefined
       );
     },
+    resourceGroups: ["documents"],
+    successMessage: tActions("abandonSuccess"),
+    errorMessage: tActions("abandonError"),
     onSuccess: () => {
-      // Same as accept: rely on the incremental refresh instead of applying
-      // the minimal placeholder entity. Wake the refresh coordinator so the
-      // delta refresh overlays the authoritative state even when polling has
-      // reached a terminal state.
-      toast.success(tActions("abandonSuccess"));
       onSuccess?.();
-      refreshCandidateResultInBackground();
-    },
-    onError: () => {
-      toast.error(tActions("abandonError"));
     },
   });
 
@@ -142,41 +77,19 @@ export function useSourceDocumentRecoveryMutations({
   // Direct retry
   // -----------------------------------------------------------------------
 
-  const retryMutation = useMutation<unknown, Error, { operationId: string }>({
+  const retryMutation = useLedgerMutation<unknown, { operationId: string }>(ledgerId, {
     mutationFn: async ({ operationId }) => {
       return retrySourceDocumentAction(ledgerId, sourceDocumentId, operationId);
     },
-    onSuccess: async (result) => {
-      applySourceDocumentReconciliation(
-        queryClient,
-        ledgerId,
-        sourceDocumentId,
-        (
-          result as
-            | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
-            | null
-            | undefined
-        )?.reconciliation
-      );
-      notifyRefresh();
-      toast.success(tActions("retrySuccess"), {
-        description: tActions("retrySuccessDescription"),
-      });
+    resourceGroups: ["documents"],
+    successMessage: tActions("retrySuccess"),
+    errorMessage: tActions("retryError"),
+    onSuccess: () => {
       onSuccess?.();
-    },
-    onError: () => {
-      toast.error(tActions("retryError"), {
-        description: tActions("retryErrorDescription"),
-      });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        predicate: invalidateSourceDocumentCounts(ledgerId),
-      });
     },
   });
 
-  const cancelMutation = useMutation<unknown, Error, { operationId: string }>({
+  const cancelMutation = useLedgerMutation<unknown, { operationId: string }>(ledgerId, {
     mutationFn: async ({ operationId }) => {
       if (revisionId == null) throw new Error("No revision ID provided for cancellation");
       return cancelSourceDocumentProcessingAction(
@@ -186,25 +99,11 @@ export function useSourceDocumentRecoveryMutations({
         operationId
       );
     },
-    onSuccess: async (result) => {
-      applySourceDocumentReconciliation(
-        queryClient,
-        ledgerId,
-        sourceDocumentId,
-        (
-          result as
-            | { reconciliation?: MutationReconciliation<SourceDocumentListItemDto> }
-            | null
-            | undefined
-        )?.reconciliation
-      );
-      notifyRefresh();
-      toast.success(tActions("cancelSuccess"));
+    resourceGroups: ["documents"],
+    successMessage: tActions("cancelSuccess"),
+    errorMessage: tActions("cancelError"),
+    onSuccess: () => {
       onSuccess?.();
-    },
-    onError: () => toast.error(tActions("cancelError")),
-    onSettled: () => {
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) });
     },
   });
 

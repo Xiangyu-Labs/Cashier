@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { queryKeys } from "@/lib/query-keys";
 
 const listStreamPageActionMock = vi.hoisted(() => vi.fn());
 const useRevisionStateRefreshMock = vi.hoisted(() => vi.fn());
@@ -12,18 +11,20 @@ vi.mock("@/modules/source-document/actions", () => ({
 }));
 
 vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
+  isRefreshableRevisionState: (status: string) => status === "processing",
   useRevisionStateRefresh: useRevisionStateRefreshMock,
 }));
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createWrapper(
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
         gcTime: 0,
       },
     },
-  });
+  })
+) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
@@ -82,7 +83,7 @@ describe("useSourceDocumentStream", () => {
   it.each([
     ["terminal items", [makeItem("doc-1", { status: "completed" })]],
     ["an empty page", []],
-  ])("keeps the refresh scope subscribed for %s", async (_label, items) => {
+  ])("does not poll for %s", async (_label, items) => {
     listStreamPageActionMock.mockResolvedValue({
       items,
       nextCursor: null,
@@ -95,7 +96,7 @@ describe("useSourceDocumentStream", () => {
 
     await waitFor(() => {
       expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: true, pending: true })
+        expect.objectContaining({ enabled: true, pending: false })
       );
     });
   });
@@ -107,7 +108,7 @@ describe("useSourceDocumentStream", () => {
 
     await waitFor(() => {
       expect(useRevisionStateRefreshMock).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: false, pending: true })
+        expect.objectContaining({ enabled: false, pending: false })
       );
     });
   });
@@ -271,11 +272,7 @@ describe("useSourceDocumentStream", () => {
     });
   });
 
-  it("keeps the old list visible until a generation restart succeeds", async () => {
-    let resolveRestart!: (value: unknown) => void;
-    const restartPromise = new Promise((resolve) => {
-      resolveRestart = resolve;
-    });
+  it("resets the exact stream query once for a generation mismatch", async () => {
     listStreamPageActionMock
       .mockResolvedValueOnce({
         items: [
@@ -290,11 +287,14 @@ describe("useSourceDocumentStream", () => {
         nextCursor: null,
         generation: 2,
         restartRequired: true,
-      })
-      .mockReturnValueOnce(restartPromise as never);
+      });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const reset = vi.spyOn(queryClient, "resetQueries").mockResolvedValue();
 
     const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
-      wrapper: createWrapper(),
+      wrapper: createWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -303,42 +303,18 @@ describe("useSourceDocumentStream", () => {
 
     await result.current.fetchNextPage();
     await waitFor(() => {
-      expect(listStreamPageActionMock).toHaveBeenCalledTimes(3);
+      expect(reset).toHaveBeenCalledTimes(1);
     });
 
-    // The restart page request is in flight; the previously loaded cards must
-    // not have been cleared.
-    expect(
-      result.current.streamGroups.flatMap((group) =>
-        group.items.map((item) => item.sourceDocument.id)
-      )
-    ).toEqual(["doc-1", "doc-2"]);
-
-    await act(async () => {
-      resolveRestart({
-        items: [makeItem("doc-9", { entryDate: "2026-07-09" })],
-        nextCursor: null,
-        generation: 2,
-      });
+    expect(reset).toHaveBeenCalledWith({
+      queryKey: result.current.queryKey,
+      exact: true,
     });
-    await waitFor(() => {
-      expect(
-        result.current.streamGroups.flatMap((group) =>
-          group.items.map((item) => item.sourceDocument.id)
-        )
-      ).toEqual(["doc-9"]);
-    });
+    await act(async () => Promise.resolve());
+    expect(reset).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the filtered page projection while preferring canonical scalar fields", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: 0,
-        },
-      },
-    });
+  it("renders the filtered page projection directly from the server page", async () => {
     const entryLatte = {
       id: "entry-latte",
       ledgerId: "ledger-1",
@@ -355,18 +331,10 @@ describe("useSourceDocumentStream", () => {
       deletedAt: null,
       category: null,
     };
-    const entryCake = { ...entryLatte, id: "entry-cake", itemName: "Cake" };
-    queryClient.setQueryData(queryKeys.sourceDocumentEntities("ledger-1"), {
-      "doc-1": makeItem("doc-1", {
-        title: "Fresh title",
-        updatedAt: "2026-07-01T11:00:00.000Z",
-        ledgerEntries: [entryLatte, entryCake],
-      }),
-    });
     listStreamPageActionMock.mockResolvedValue({
       items: [
         makeItem("doc-1", {
-          title: "Stale page title",
+          title: "Server page title",
           updatedAt: "2026-07-01T10:00:00.000Z",
           ledgerEntries: [entryLatte],
         }),
@@ -376,9 +344,7 @@ describe("useSourceDocumentStream", () => {
     });
 
     const { result } = renderHook(() => useSourceDocumentStream("ledger-1", { search: "latte" }), {
-      wrapper: ({ children }) => (
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      ),
+      wrapper: createWrapper(),
     });
 
     await waitFor(() => {
@@ -386,7 +352,7 @@ describe("useSourceDocumentStream", () => {
     });
 
     const rendered = result.current.streamGroups[0]?.items[0];
-    expect(rendered?.sourceDocument.title).toBe("Fresh title");
+    expect(rendered?.sourceDocument.title).toBe("Server page title");
     expect(rendered?.ledgerEntries.map((entry) => entry.id)).toEqual(["entry-latte"]);
   });
 });

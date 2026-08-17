@@ -76,7 +76,7 @@ describe("Source Document Update Actions", () => {
       expect(updated?.title).toBe("Updated Title");
     });
 
-    it("returns authoritative reconciliation state for each document kind", async () => {
+    it("returns only the business update result for each document kind", async () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({ userId: testUserId });
       await db.insert(ledgers).values(ledgerData);
@@ -146,29 +146,10 @@ describe("Source Document Update Actions", () => {
         ),
       ]);
 
-      expect(processingResult.reconciliation?.entity).toMatchObject({
-        title: "Processing title",
-        status: "processing",
-        type: "ai_parsed",
-        pendingRevisionId: expect.any(String),
-      });
-      expect(failedResult.reconciliation?.entity).toMatchObject({
-        title: "Failed title",
-        status: "failed",
-        type: "ai_parsed",
-        errorCode: expect.any(String),
-      });
-      expect(manualResult.reconciliation?.entity).toMatchObject({
-        title: "Manual title",
-        status: "completed",
-        type: "manual",
-      });
-      expect(candidateResult.reconciliation?.entity).toMatchObject({
-        title: "Candidate title",
-        status: "candidate_pending",
-        type: "ai_parsed",
-        pendingRevisionId: candidatePendingRevision.id,
-      });
+      for (const result of [processingResult, failedResult, manualResult, candidateResult]) {
+        expect(result).toMatchObject({ updated: true });
+        expect(result).not.toHaveProperty("reconciliation");
+      }
     });
 
     it("should update source document entry date", async () => {

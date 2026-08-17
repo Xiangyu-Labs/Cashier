@@ -43,18 +43,6 @@ vi.mock("@/modules/source-document/actions", () => ({
   cancelSourceDocumentProcessingAction: vi.fn(),
 }));
 
-vi.mock("@/modules/source-document/hooks/source-document-optimistic-cache", () => ({
-  applyOptimisticDelete: vi.fn(),
-  applyOptimisticUpsert: vi.fn(),
-  applySourceDocumentReconciliation: vi.fn(),
-  getStreamQueryMatches: vi.fn(() => []),
-}));
-
-vi.mock("@/modules/source-document/hooks/revision-state-refresh", () => ({
-  notifyNewSubmission: vi.fn(),
-  useNotifyRevisionRefresh: () => vi.fn(),
-}));
-
 function createWrapper(
   queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
@@ -104,7 +92,7 @@ describe("source document mutation toast ownership", () => {
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 
-  it("finishes list deletion before the derived-query refresh settles", async () => {
+  it("applies deletion feedback before refresh settles and remains pending", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -116,21 +104,23 @@ describe("source document mutation toast ownership", () => {
       wrapper: createWrapper(queryClient),
     });
 
-    await act(async () => {
-      await expect(
-        result.current.deleteSourceDocument.mutateAsync("document-1")
-      ).resolves.toBeUndefined();
+    let mutation!: Promise<void>;
+    act(() => {
+      mutation = result.current.deleteSourceDocument.mutateAsync("document-1");
     });
 
-    expect(result.current.deleteSourceDocument.isPending).toBe(false);
-    expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess");
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess"));
+    expect(result.current.deleteSourceDocument.isPending).toBe(true);
     expect(clearSelection).toHaveBeenCalledTimes(1);
     expect(toastWarningMock).not.toHaveBeenCalled();
 
-    await act(async () => refreshGate.resolve());
+    await act(async () => {
+      refreshGate.resolve();
+      await mutation;
+    });
   });
 
-  it("keeps detached list refresh failures out of user-facing toasts", async () => {
+  it("keeps refresh failures out of mutation error feedback", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -151,7 +141,7 @@ describe("source document mutation toast ownership", () => {
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
-  it("finishes candidate acceptance before its refresh settles", async () => {
+  it("runs candidate success feedback before refresh settles and remains pending", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -170,15 +160,19 @@ describe("source document mutation toast ownership", () => {
       { wrapper: createWrapper(queryClient) }
     );
 
-    await act(async () => {
-      await expect(result.current.acceptCandidate()).resolves.toBeUndefined();
+    let mutation!: Promise<void>;
+    act(() => {
+      mutation = result.current.acceptCandidate();
     });
 
-    expect(result.current.isAccepting).toBe(false);
-    expect(toastSuccessMock).toHaveBeenCalledWith("acceptSuccess");
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("acceptSuccess"));
+    expect(result.current.isAccepting).toBe(true);
     expect(onSuccess).toHaveBeenCalledTimes(1);
 
-    await act(async () => refreshGate.resolve());
+    await act(async () => {
+      refreshGate.resolve();
+      await mutation;
+    });
   });
 
   it("reports direct retry success and failure exactly once", async () => {
@@ -198,9 +192,7 @@ describe("source document mutation toast ownership", () => {
       await result.current.retry();
     });
 
-    expect(toastSuccessMock).toHaveBeenCalledWith("retrySuccess", {
-      description: "retrySuccessDescription",
-    });
+    expect(toastSuccessMock).toHaveBeenCalledWith("retrySuccess");
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
     expect(onSuccess).toHaveBeenCalledTimes(1);
 
@@ -209,11 +201,7 @@ describe("source document mutation toast ownership", () => {
       await expect(result.current.retry()).rejects.toThrow("retry failed");
     });
 
-    await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith("retryError", {
-        description: "retryErrorDescription",
-      })
-    );
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("retryError"));
     expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 });

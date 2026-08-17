@@ -7,7 +7,6 @@ import {
 } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
 import type { SourceDocumentDuplicateReviewDetailDto } from "@/modules/source-document/contracts";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { buildAuthoritativeReconciliation } from "./reconciliation";
 import { serverComposition } from "@/application/server-composition-root";
 import type { ResolveDuplicateReviewResult } from "@/modules/source-document/application/use-cases/resolve-duplicate-review";
 import type { BatchActionResult } from "@/lib/batch-ids";
@@ -24,7 +23,7 @@ export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAc
 
 /**
  * Keep a duplicate-pending document: activates its completed pending revision.
- * Idempotent; returns reconciliation data for the optimistic cache.
+ * Idempotent.
  */
 export const keepDuplicateSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
@@ -32,18 +31,13 @@ export const keepDuplicateSourceDocumentAction = withSourceDocumentLedgerAccess(
     sourceDocumentId: string,
     revisionId: string,
     operationId?: string
-  ): Promise<
-    ResolveDuplicateReviewResult &
-      Partial<{
-        reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>>;
-      }>
-  > => {
+  ): Promise<ResolveDuplicateReviewResult> => {
     const identity = parseRevisionMutationIdentity({
       sourceDocumentId,
       revisionId,
       ...(operationId === undefined ? {} : { operationId }),
     });
-    const result = await keepDuplicateDocument(
+    return keepDuplicateDocument(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -51,15 +45,6 @@ export const keepDuplicateSourceDocumentAction = withSourceDocumentLedgerAccess(
       },
       serverComposition.sourceDocumentLifecycle
     );
-    if (identity.operationId == null) return result;
-    return {
-      ...result,
-      reconciliation: await buildAuthoritativeReconciliation(
-        identity.operationId,
-        ledgerId,
-        identity.sourceDocumentId
-      ),
-    };
   }
 );
 
@@ -73,18 +58,13 @@ export const discardDuplicateSourceDocumentAction = withSourceDocumentLedgerAcce
     sourceDocumentId: string,
     revisionId: string,
     operationId?: string
-  ): Promise<
-    ResolveDuplicateReviewResult &
-      Partial<{
-        reconciliation: Awaited<ReturnType<typeof buildAuthoritativeReconciliation>>;
-      }>
-  > => {
+  ): Promise<ResolveDuplicateReviewResult> => {
     const identity = parseRevisionMutationIdentity({
       sourceDocumentId,
       revisionId,
       ...(operationId === undefined ? {} : { operationId }),
     });
-    const result = await discardDuplicateDocument(
+    return discardDuplicateDocument(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
@@ -92,15 +72,6 @@ export const discardDuplicateSourceDocumentAction = withSourceDocumentLedgerAcce
       },
       serverComposition.sourceDocumentLifecycle
     );
-    if (identity.operationId == null) return result;
-    return {
-      ...result,
-      reconciliation: await buildAuthoritativeReconciliation(
-        identity.operationId,
-        ledgerId,
-        identity.sourceDocumentId
-      ),
-    };
   }
 );
 

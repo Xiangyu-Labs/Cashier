@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import type { EntryCategory, Ledger } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams } from "@/lib/period-utils";
-import { invalidateLedgerEntries, invalidateLedgerStats } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useDetailsTabData } from "@/modules/ledger/hooks/useDetailsTabData";
 import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGrouping";
@@ -44,7 +42,6 @@ export function DetailsTab({
   timeZone,
   onQueryStateChange,
 }: DetailsTabProps) {
-  const queryClient = useQueryClient();
   const data = useDetailsTabData({
     ledgerId,
     periodParams,
@@ -91,12 +88,6 @@ export function DetailsTab({
     isFetchingNextPage: data.isFetchingNextPage,
     fetchNextPage: data.fetchNextPage,
   });
-  const handleRefresh = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-    ]);
-  }, [ledgerId, queryClient]);
   return (
     <DetailsTabView
       categories={categories}
@@ -117,7 +108,6 @@ export function DetailsTab({
       onViewEntry={(entry) =>
         openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId })
       }
-      onRefresh={handleRefresh}
     />
   );
 }

@@ -29,7 +29,6 @@ interface StatsContentViewProps {
   fallbackCurrency?: string;
   onCategoryDrilldown?: (categoryId: string, startDate: string, endDate: string) => void;
   onDateDrilldown?: (date: string) => void;
-  onRefresh?: () => Promise<void> | void;
   readOnly?: boolean;
 }
 
@@ -52,7 +51,6 @@ export function StatsContentView({
   fallbackCurrency = "CNY",
   onCategoryDrilldown,
   onDateDrilldown,
-  onRefresh,
   readOnly = false,
 }: StatsContentViewProps) {
   const t = useTranslations("StatsTab");
@@ -113,7 +111,6 @@ export function StatsContentView({
         periodLabel={periodLabel}
         {...(comparison !== undefined ? { comparison } : {})}
         {...(trend !== undefined ? { trend } : {})}
-        {...(onRefresh !== undefined ? { onRefresh } : {})}
         readOnly={readOnly}
         isLoading={isLoading && stats == null}
       />

@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import type { SourceDocument } from "@/modules/source-document/contracts";
@@ -67,10 +69,15 @@ function documentWithFiles(count: number): SourceDocument {
   };
 }
 
+function renderWithQueryClient(element: ReactElement) {
+  const queryClient = new QueryClient();
+  return render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
+}
+
 function renderDetails(count: number, isLoadingImages = false) {
   const sourceDocument = documentWithFiles(count);
   const urls = new Map(sourceDocument.files.map((file, index) => [file.id, `blob:image-${index}`]));
-  return render(
+  return renderWithQueryClient(
     <SourceDocumentViewDetails
       sourceDocument={sourceDocument}
       ledgerEntries={[]}
@@ -136,7 +143,7 @@ describe("SourceDocumentViewDetails selection", () => {
     };
     const onToggleSelectionMode = vi.fn();
 
-    render(
+    renderWithQueryClient(
       <SourceDocumentViewDetails
         sourceDocument={documentWithFiles(0)}
         ledgerEntries={[entry]}
@@ -190,7 +197,12 @@ describe("SourceDocumentViewDetails selection", () => {
       onSelectAllEntries: vi.fn(),
       onToggleSelectionMode: vi.fn(),
     };
-    const { rerender } = render(<SourceDocumentViewDetails {...commonProps} isSelectionMode />);
+    const queryClient = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <SourceDocumentViewDetails {...commonProps} isSelectionMode />
+      </QueryClientProvider>
+    );
 
     const input = screen.getByDisplayValue("Edited lunch");
     expect(input.closest("[inert]")).toBeInTheDocument();
@@ -202,7 +214,11 @@ describe("SourceDocumentViewDetails selection", () => {
     expect(onSelectEntry).toHaveBeenCalledTimes(1);
     expect(onSelectEntry).toHaveBeenCalledWith("entry-1", true);
 
-    rerender(<SourceDocumentViewDetails {...commonProps} isSelectionMode={false} />);
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SourceDocumentViewDetails {...commonProps} isSelectionMode={false} />
+      </QueryClientProvider>
+    );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Edited lunch").closest("[inert]")).toBeNull();
   });

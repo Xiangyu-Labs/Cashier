@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -16,27 +16,12 @@ import {
   keepDuplicateSourceDocumentAction,
 } from "@/modules/source-document/actions";
 import type { SourceDocumentDuplicateReviewDetailDto } from "@/modules/source-document/contracts";
-import type {
-  MutationReconciliation,
-  SourceDocumentListItemDto,
-} from "@/modules/source-document/contracts";
 import { storedFileReadUrl } from "../stored-file-read";
-import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
-import {
-  invalidateCalendar,
-  invalidateLedgerEntries,
-  invalidateLedgerStats,
-  invalidateSourceDocumentCounts,
-  invalidateSourceDocuments,
-  invalidateSourceDocumentStream,
-  invalidateSourceDocumentStreamTotal,
-  queryKeys,
-} from "@/lib/query-keys";
-import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
+import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { dispatchLedgerMutationEvent } from "@/lib/mutations/ledger-mutation-event";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -66,18 +51,6 @@ export function SourceDocumentDuplicateReviewDialog({
   });
   const revisionId = reviewQuery.data?.review.revisionId;
 
-  const invalidateLedgerViews = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStream(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentStreamTotal(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateLedgerStats(ledgerId) }),
-      queryClient.invalidateQueries({ predicate: invalidateCalendar(ledgerId) }),
-    ]);
-  }, [ledgerId, queryClient]);
-
   const removeResolvedDocumentQueries = useCallback(() => {
     queryClient.removeQueries({ queryKey: reviewQueryKey });
     queryClient.removeQueries({ queryKey: queryKeys.sourceDocument(ledgerId, sourceDocumentId) });
@@ -89,59 +62,31 @@ export function SourceDocumentDuplicateReviewDialog({
     });
   }, [ledgerId, queryClient, reviewQueryKey, sourceDocumentId]);
 
-  const reconcileAndClose = useCallback(
-    (
-      result: {
-        reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
-      },
-      successMessage: string
-    ) => {
-      applySourceDocumentReconciliation(
-        queryClient,
-        ledgerId,
-        sourceDocumentId,
-        result.reconciliation
-      );
-      // Remove the review/detail queries and close before any background
-      // invalidation. A discarded document is expected to return Not Found.
-      removeResolvedDocumentQueries();
-      onOpenChange(false);
-      toast.success(successMessage);
-      // Background refresh: the Server Action already committed the write, so
-      // cache invalidation must never block the success path or turn the
-      // mutation into an error when the refresh itself fails.
-      void invalidateLedgerViews()
-        .catch((error) => {
-          console.error(
-            "[SourceDocumentDuplicateReviewDialog] background cache invalidation failed after a successful action",
-            { ledgerId, sourceDocumentId, error }
-          );
-        })
-        .finally(() => dispatchLedgerMutationEvent({ ledgerId, reason: "delete" }));
-    },
-    [
-      invalidateLedgerViews,
-      ledgerId,
-      onOpenChange,
-      queryClient,
-      removeResolvedDocumentQueries,
-      sourceDocumentId,
-    ]
-  );
+  const closeResolvedReview = useCallback(() => {
+    removeResolvedDocumentQueries();
+    setDiscardConfirmOpen(false);
+    onOpenChange(false);
+  }, [onOpenChange, removeResolvedDocumentQueries]);
 
-  const keepMutation = useMutation({
+  const keepMutation = useLedgerMutation<
+    Awaited<ReturnType<typeof keepDuplicateSourceDocumentAction>>,
+    { operationId: string }
+  >(ledgerId, {
     mutationFn: ({ operationId }: { operationId: string }) => {
       if (revisionId == null || revisionId === "") {
         throw new Error("Duplicate review revision is unavailable");
       }
       return keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId, operationId);
     },
-    onSuccess: (result) => {
-      reconcileAndClose(result, t("keepSuccess"));
-    },
-    onError: () => toast.error(t("actionFailed")),
+    resourceGroups: ["documents"],
+    successMessage: t("keepSuccess"),
+    errorMessage: t("actionFailed"),
+    onSuccess: closeResolvedReview,
   });
-  const discardMutation = useMutation({
+  const discardMutation = useLedgerMutation<
+    Awaited<ReturnType<typeof discardDuplicateSourceDocumentAction>>,
+    { operationId: string }
+  >(ledgerId, {
     mutationFn: ({ operationId }: { operationId: string }) => {
       if (revisionId == null || revisionId === "") {
         throw new Error("Duplicate review revision is unavailable");
@@ -153,10 +98,10 @@ export function SourceDocumentDuplicateReviewDialog({
         operationId
       );
     },
-    onSuccess: (result) => {
-      reconcileAndClose(result, t("discardSuccess"));
-    },
-    onError: () => toast.error(t("actionFailed")),
+    resourceGroups: ["documents"],
+    successMessage: t("discardSuccess"),
+    errorMessage: t("actionFailed"),
+    onSuccess: closeResolvedReview,
   });
   const isPending = keepMutation.isPending || discardMutation.isPending;
   const data = reviewQuery.data;

@@ -1,6 +1,4 @@
-import type { SourceDocumentListItemDto } from "./contracts";
-
-export const LEDGER_DELTA_PROTOCOL_VERSION = 2;
+export const LEDGER_DELTA_PROTOCOL_VERSION = 3;
 export const STREAM_REFRESH_PROTOCOL_VERSION = LEDGER_DELTA_PROTOCOL_VERSION;
 export const MAX_DELTA_VERSIONS = 100;
 export const MAX_DELTA_DOCUMENTS = 200;
@@ -11,16 +9,13 @@ export interface LedgerDeltaRequest {
 }
 
 export interface LedgerDeltaResult {
-  protocolVersion: number;
+  protocolVersion: 3;
   fromVersion: string;
   toVersion: string;
   hasMore: boolean;
   resetRequired: boolean;
   changed: boolean;
   hasTransitionalWork: boolean;
-  documents: SourceDocumentListItemDto[];
-  tombstones: string[];
-  counts: { processingCount: number; attentionCount: number } | null;
   invalidations: {
     categories: boolean;
     settings: boolean;
