@@ -15,6 +15,7 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { applyDetailToStreamCaches } from "./source-document-optimistic-cache";
 import { QUERY } from "@/lib/constants";
+import { withQueryTimeout } from "@/lib/query-timeout";
 
 interface UseSourceDocumentDetailDataOptions {
   ledgerId: string;
@@ -33,11 +34,11 @@ export function useSourceDocumentDetailData({
 
   const query = useQuery({
     queryKey: queryKeys.sourceDocument(ledgerId, id),
-    queryFn: () => getSourceDocumentLightAction(ledgerId, id),
+    queryFn: () => withQueryTimeout(getSourceDocumentLightAction(ledgerId, id)),
     enabled: open && id !== "",
     staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
     retry: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
   const { data: sourceDocument, isLoading, error } = query;

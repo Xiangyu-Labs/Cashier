@@ -119,12 +119,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
         />
       }
     >
-      <SwipeTabSurface
-        key={activeTab}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onTabIntent={preloadTab}
-      >
+      <SwipeTabSurface activeTab={activeTab} onTabChange={handleTabChange} onTabIntent={preloadTab}>
         {children}
       </SwipeTabSurface>
     </AppShell>

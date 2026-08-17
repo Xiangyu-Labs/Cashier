@@ -37,10 +37,7 @@ import {
   LedgerStartupCacheSync,
   requestLedgerStartupCacheSync,
 } from "@/modules/workspace/ledger-startup-cache-sync";
-import {
-  LedgerDataFreshnessBanner,
-  LedgerStartupPreview,
-} from "@/modules/workspace/ui/LedgerStartupPreview";
+import { LedgerDataFreshnessBanner } from "@/modules/workspace/ui/LedgerStartupPreview";
 import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/filters";
@@ -480,23 +477,15 @@ function LedgerPageClientContent({
       />
       <div>
         {/* Only mount the active tab — inactive tabs load lazily */}
-        {(activeTabQueryState === "refreshing" || activeTabQueryState === "error-with-data") && (
+        {(activeTabQueryState === "error-with-data" || activeTabQueryState === "error-empty") && (
           <LedgerDataFreshnessBanner
             snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
-            state={activeTabQueryState}
+            state="error-with-data"
             onRetry={retryActiveTab}
           />
         )}
 
-        <div
-          className={
-            activeTabQueryState === "ready" ||
-            activeTabQueryState === "refreshing" ||
-            activeTabQueryState === "error-with-data"
-              ? undefined
-              : "hidden"
-          }
-        >
+        <div>
           {activeTab === "stream" && (
             <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
               <LedgerEntriesTab
@@ -578,16 +567,6 @@ function LedgerPageClientContent({
             </div>
           )}
         </div>
-
-        {(activeTabQueryState === "initial-loading" || activeTabQueryState === "error-empty") && (
-          <LedgerStartupPreview
-            snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
-            activeTab={activeTab}
-            initialFilters={filters}
-            queryState={activeTabQueryState === "error-empty" ? "error" : "loading"}
-            onRetry={retryActiveTab}
-          />
-        )}
 
         <Dialog
           open={isInputOpen}

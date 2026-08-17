@@ -140,6 +140,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     isAccepting ||
     isAbandoning ||
     isCancelling;
+  const interactionDisabled = busy || sourceDocument == null;
 
   const {
     pendingChanges,
@@ -157,7 +158,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     isAllSelected,
     handleSelect: handleSelectEntry,
     handleSelectAll: handleSelectAllEntries,
-    toggleSelectionMode: handleToggleSelectionMode,
+    setSelectionMode,
     clearSelection,
     retainSelection,
   } = useSelection({ allIds: ledgerEntries.map((e) => e.id) });
@@ -169,6 +170,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [showAddEntryDialog, setShowAddEntryDialog] = useState(false);
   const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<string | null>(null);
   const [showSaveAndContinueConfirm, setShowSaveAndContinueConfirm] = useState(false);
+  const [showBatchModePendingConfirm, setShowBatchModePendingConfirm] = useState(false);
 
   useEffect(() => {
     if (!open) setIsEditMode(false);
@@ -264,9 +266,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   ]);
 
   const handleEnterEditMode = useCallback(() => {
-    if (busy) return;
+    if (interactionDisabled || isSelectionMode) return;
     setIsEditMode(true);
-  }, [busy]);
+  }, [interactionDisabled, isSelectionMode]);
 
   const handleCancelEditMode = useCallback(() => {
     if (busy) return;
@@ -279,6 +281,49 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     if (saved) setIsEditMode(false);
     return saved;
   }, [handleSaveAll]);
+
+  const enterBatchSelectionMode = useCallback(() => {
+    discardAllChanges();
+    setIsEditMode(false);
+    setSelectionMode(true);
+  }, [discardAllChanges, setSelectionMode]);
+
+  const handleToggleSelectionMode = useCallback(() => {
+    if (busy || readOnly || sourceDocument == null || ledgerEntries.length === 0) return;
+    if (isSelectionMode) {
+      setSelectionMode(false);
+      return;
+    }
+    if (!isEditMode || !hasPendingChanges) {
+      enterBatchSelectionMode();
+      return;
+    }
+    setShowBatchModePendingConfirm(true);
+  }, [
+    busy,
+    enterBatchSelectionMode,
+    hasPendingChanges,
+    isEditMode,
+    isSelectionMode,
+    ledgerEntries.length,
+    readOnly,
+    setSelectionMode,
+    sourceDocument,
+  ]);
+
+  const handleSaveAndEnterBatchMode = useCallback(async () => {
+    const saved = await handleSaveAll();
+    if (!saved) return false;
+    setIsEditMode(false);
+    setSelectionMode(true);
+    setShowBatchModePendingConfirm(false);
+    return true;
+  }, [handleSaveAll, setSelectionMode]);
+
+  const handleDiscardAndEnterBatchMode = useCallback(() => {
+    enterBatchSelectionMode();
+    setShowBatchModePendingConfirm(false);
+  }, [enterBatchSelectionMode]);
 
   const handleSaveAllAndClose = useCallback(async () => {
     const saved = await handleSaveAll();
@@ -320,7 +365,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
   const requestAction = useCallback(
     (action: () => void | Promise<void>) => {
-      if (busy) return;
+      if (interactionDisabled) return;
       if (hasRevisionConflict) return;
       if (hasPendingChanges) {
         continueActionRef.current = action;
@@ -329,7 +374,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       }
       void action();
     },
-    [busy, hasPendingChanges, hasRevisionConflict]
+    [hasPendingChanges, hasRevisionConflict, interactionDisabled]
   );
 
   const handleSaveAndContinue = useCallback(async () => {
@@ -482,7 +527,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     requestAction(() => setPendingDeleteEntryId(entryId));
 
   const handleDeleteDocument = async () => {
-    if (busy) return;
+    if (interactionDisabled) return;
     setIsDeleting(true);
     try {
       await onDelete?.();
@@ -684,7 +729,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             )}
           </div>
 
-          {!readOnly && isEditMode && (
+          {!readOnly && isSelectionMode && (
             <LedgerEntriesBatchActionToolbar
               selectedCount={selectedIds.length}
               totalCount={ledgerEntries.length}
@@ -705,6 +750,19 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               variant="inline"
             />
           )}
+
+          <ConfirmDialog
+            open={showBatchModePendingConfirm}
+            onOpenChange={setShowBatchModePendingConfirm}
+            title={t("batchModePendingTitle")}
+            description={t("batchModePendingDescription")}
+            onConfirm={() => setShowBatchModePendingConfirm(false)}
+            cancelLabel={tCommon("cancel")}
+            onSave={handleSaveAndEnterBatchMode}
+            saveLabel={tCommon("save")}
+            onDiscard={handleDiscardAndEnterBatchMode}
+            discardLabel={t("discardChanges")}
+          />
 
           <ConfirmDialog
             open={showBatchDeleteConfirm}
@@ -743,7 +801,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                         size="sm"
                         className="h-9 px-3 gap-1.5"
                         onClick={onAcceptCandidate}
-                        disabled={busy}
+                        disabled={interactionDisabled}
                       >
                         <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
                         <span className="hidden sm:inline">{tActions("accept")}</span>
@@ -755,7 +813,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             size="sm"
                             className="h-9 px-3 gap-1.5 text-muted-foreground"
                             onClick={onAbandonCandidate}
-                            disabled={busy}
+                            disabled={interactionDisabled}
                           >
                             <XCircle className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">{tActions("abandon")}</span>
@@ -772,7 +830,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       size="sm"
                       className="h-9 gap-1.5 px-3 text-muted-foreground"
                       onClick={onAbandonCandidate}
-                      disabled={busy}
+                      disabled={interactionDisabled}
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{tActions("abandon")}</span>
@@ -786,7 +844,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       size="sm"
                       className="h-9 gap-1.5 px-3 text-muted-foreground"
                       onClick={onCancelProcessing}
-                      disabled={busy}
+                      disabled={interactionDisabled}
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{tActions("cancelProcessing")}</span>
@@ -800,7 +858,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     size="sm"
                     className="h-9 px-3 gap-1.5 text-muted-foreground"
                     onClick={() => setShowRetryDialog(true)}
-                    disabled={busy}
+                    disabled={interactionDisabled}
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{t("editRetry")}</span>
@@ -812,7 +870,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   size="sm"
                   className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
                   onClick={() => requestAction(() => setShowDeleteConfirm(true))}
-                  disabled={busy}
+                  disabled={interactionDisabled}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{tCommon("delete")}</span>
@@ -820,7 +878,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               </div>
 
               <div className="flex items-center gap-2">
-                {isEditMode ? (
+                {isSelectionMode ? null : isEditMode ? (
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
@@ -853,7 +911,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     size="sm"
                     className="h-9 gap-1.5"
                     onClick={handleEnterEditMode}
-                    disabled={busy}
+                    disabled={interactionDisabled}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     {tCommon("edit")}

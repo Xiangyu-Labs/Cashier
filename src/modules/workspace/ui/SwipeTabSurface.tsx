@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { LedgerTab } from "../tabs";
 import { LEDGER_TAB_ORDER, resolveSwipeDestination, shouldIgnoreTabSwipe } from "../tab-swipe";
@@ -23,6 +23,16 @@ export function SwipeTabSurface({
   const horizontal = useRef(false);
   const [offset, setOffset] = useState(0);
   const [settling, setSettling] = useState(false);
+
+  useEffect(() => {
+    start.current = null;
+    horizontal.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      setOffset(0);
+      setSettling(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (

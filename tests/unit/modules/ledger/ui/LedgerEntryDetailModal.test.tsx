@@ -249,4 +249,53 @@ describe("LedgerEntryDetailModal feedback", () => {
     fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("save-entry"));
   });
+
+  it("keeps a failed detail open and retries it in place", async () => {
+    const onClose = vi.fn();
+    const onReload = vi.fn(async () => undefined);
+    render(
+      <LedgerEntryDetailModal
+        ledgerEntry={null}
+        loadError
+        onReload={onReload}
+        categories={[]}
+        open
+        onClose={onClose}
+        onUpdate={vi.fn(async () => undefined)}
+        onDelete={vi.fn(async () => undefined)}
+      />
+    );
+
+    expect(screen.getByText("loadError")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("retry"));
+    await waitFor(() => expect(onReload).toHaveBeenCalledTimes(1));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("close"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the error UI available when an in-place retry fails", async () => {
+    const onClose = vi.fn();
+    const onReload = vi.fn().mockRejectedValue(new Error("retry failed"));
+    render(
+      <LedgerEntryDetailModal
+        ledgerEntry={null}
+        loadError
+        onReload={onReload}
+        categories={[]}
+        open
+        onClose={onClose}
+        onUpdate={vi.fn(async () => undefined)}
+        onDelete={vi.fn(async () => undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByText("retry"));
+
+    await waitFor(() => expect(onReload).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText("retry")).not.toBeDisabled());
+    expect(screen.getByText("loadError")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

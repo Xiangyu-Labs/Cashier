@@ -7,14 +7,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LedgerEntryViewDetails, type EntryPendingChanges } from "./LedgerEntryViewDetails";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { cn } from "@/lib/utils";
 
 interface LedgerEntryDetailModalProps {
   ledgerEntry: LedgerEntry | null;
   isLoading?: boolean;
+  loadError?: boolean;
+  onReload?: () => Promise<void>;
   categories: EntryCategory[];
   preferredCurrencies?: string[];
   mainCurrency?: string;
@@ -36,6 +39,8 @@ interface LedgerEntryDetailModalProps {
 function LedgerEntryDetailEditor({
   ledgerEntry,
   isLoading = false,
+  loadError = false,
+  onReload,
   categories,
   preferredCurrencies,
   mainCurrency = "CNY",
@@ -57,7 +62,8 @@ function LedgerEntryDetailEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const busy = isSaving || isDeleting;
+  const [isReloading, setIsReloading] = useState(false);
+  const busy = isSaving || isDeleting || isReloading;
   const continueNavigationRef = useRef<(() => void) | null>(null);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
@@ -231,6 +237,18 @@ function LedgerEntryDetailEditor({
     }
   }, [busy, onDelete, onClose]);
 
+  const handleReload = useCallback(async () => {
+    if (onReload == null || isReloading) return;
+    setIsReloading(true);
+    try {
+      await onReload();
+    } catch {
+      // The query state keeps the load error visible for another retry.
+    } finally {
+      setIsReloading(false);
+    }
+  }, [isReloading, onReload]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && !busy && handleClose()}>
@@ -263,7 +281,22 @@ function LedgerEntryDetailEditor({
             </div>
           )}
 
-          {isLoading && !ledgerEntry && (
+          {loadError && !ledgerEntry ? (
+            <div className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-sm font-medium text-text">{t("loadError")}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose} disabled={isReloading}>
+                  {tCommon("close")}
+                </Button>
+                <Button onClick={() => void handleReload()} disabled={isReloading}>
+                  <RefreshCw className={cn("size-4", isReloading && "animate-spin")} />
+                  {tCommon("retry")}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {isLoading && !ledgerEntry && !loadError && (
             <div className="p-6 space-y-4 animate-pulse">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-border" />

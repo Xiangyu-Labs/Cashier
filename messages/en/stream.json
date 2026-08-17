@@ -256,7 +256,8 @@
     "discardChanges": "Discard",
     "unsavedChanges": "Unsaved Changes",
     "unsavedChangesDesc": "You have unsaved changes. Are you sure you want to discard them?",
-    "discardAndClose": "Discard & Close"
+    "discardAndClose": "Discard & Close",
+    "loadError": "This entry could not be loaded. The dialog remains open so you can retry."
   },
   "LedgerPage": {
     "notFound": "Ledger not found",
@@ -638,7 +639,9 @@
     "reloadFailed": "Reload failed. Your local changes are still preserved.",
     "saveBeforeActionTitle": "Save changes first?",
     "saveBeforeActionDescription": "Save your current edits, then continue with the selected action. If saving fails, the action will not run.",
-    "saveAndContinue": "Save and continue"
+    "saveAndContinue": "Save and continue",
+    "batchModePendingTitle": "Resolve current changes first",
+    "batchModePendingDescription": "Save or discard your current edits before entering batch actions."
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry"

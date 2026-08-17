@@ -18,9 +18,8 @@ import {
   deleteLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
 import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
-import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { useCallback } from "react";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
@@ -29,6 +28,7 @@ import type {
   SourceDocumentListItemDto,
 } from "@/modules/source-document/contracts";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
+import { withQueryTimeout } from "@/lib/query-timeout";
 
 interface LedgerEntryDetailWrapperProps {
   id: string;
@@ -51,16 +51,14 @@ export function LedgerEntryDetailWrapper({
 }: LedgerEntryDetailWrapperProps) {
   const tCommon = useTranslations("Common");
 
-  const {
-    data: ledgerEntry,
-    isLoading,
-    error,
-  } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.ledgerEntry(ledgerId, id),
-    queryFn: () => getLedgerEntryAction(ledgerId, id),
+    queryFn: () => withQueryTimeout(getLedgerEntryAction(ledgerId, id)),
     enabled: open && id !== "",
     retry: false,
   });
+  const { data: ledgerEntry, isLoading, error } = query;
+  const loadError = error != null || (!isLoading && ledgerEntry == null);
 
   const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
@@ -109,26 +107,20 @@ export function LedgerEntryDetailWrapper({
     },
   });
 
-  // Handle error state - moved to useEffect to avoid render-path side effects
-  useEffect(() => {
-    if (error) {
-      toast.error(tCommon("error"));
-      onClose();
+  const handleReload = useCallback(async () => {
+    const result = await query.refetch();
+    if (result.error != null || result.data == null) {
+      throw result.error ?? new Error("Ledger entry is unavailable");
     }
-  }, [error, onClose, tCommon]);
-
-  // Handle deleted/not-found case - moved to useEffect
-  useEffect(() => {
-    if (!isLoading && !ledgerEntry && open) {
-      onClose();
-    }
-  }, [isLoading, ledgerEntry, open, onClose]);
+  }, [query]);
 
   // Always render Modal - pass isLoading for skeleton state
   return (
     <LedgerEntryDetailModal
       ledgerEntry={ledgerEntry ?? null}
       isLoading={isLoading}
+      loadError={loadError}
+      onReload={handleReload}
       categories={categories}
       open={open}
       onClose={onClose}

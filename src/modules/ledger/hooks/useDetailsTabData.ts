@@ -77,7 +77,7 @@ export function useDetailsTabData({
       ),
     enabled: true,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const entriesQuery = useInfiniteQuery({
@@ -87,7 +87,7 @@ export function useDetailsTabData({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = entriesQuery;
 

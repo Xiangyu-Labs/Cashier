@@ -14,7 +14,9 @@ const deleteLedgerEntryAction = vi.fn();
 const modalProps: {
   ledgerEntry: LedgerEntry | null;
   isLoading: boolean;
-} = { ledgerEntry: null, isLoading: true };
+  loadError: boolean;
+  onReload: (() => Promise<void>) | undefined;
+} = { ledgerEntry: null, isLoading: true, loadError: false, onReload: undefined };
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -34,10 +36,22 @@ vi.mock("@/modules/ledger/server-actions/entries", () => ({
 }));
 
 vi.mock("@/modules/ledger/ui/LedgerEntryDetailModal", () => ({
-  LedgerEntryDetailModal: ({ ledgerEntry, isLoading }: typeof modalProps) => {
+  LedgerEntryDetailModal: ({ ledgerEntry, isLoading, loadError, onReload }: typeof modalProps) => {
     modalProps.ledgerEntry = ledgerEntry;
     modalProps.isLoading = isLoading;
-    return <div>{isLoading ? "loading" : (ledgerEntry?.itemName ?? "missing")}</div>;
+    modalProps.loadError = loadError;
+    modalProps.onReload = onReload;
+    return (
+      <div>
+        {loadError ? (
+          <button onClick={() => void onReload?.()}>retry-detail</button>
+        ) : isLoading ? (
+          "loading"
+        ) : (
+          (ledgerEntry?.itemName ?? "missing")
+        )}
+      </div>
+    );
   },
 }));
 
@@ -74,6 +88,8 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
     vi.clearAllMocks();
     modalProps.ledgerEntry = null;
     modalProps.isLoading = true;
+    modalProps.loadError = false;
+    modalProps.onReload = undefined;
     useModalStackStore.setState({ stack: [], canGoBack: false });
     getLedgerEntryAction.mockResolvedValue(ledger1Entry);
   });
@@ -123,5 +139,58 @@ describe("LedgerEntryDetailWrapper ledger isolation", () => {
     );
 
     expect(view.getByText("From ledger 1")).toBeTruthy();
+  });
+
+  it("keeps the modal open after a load error and supports an in-place retry", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const onClose = vi.fn();
+    getLedgerEntryAction
+      .mockRejectedValueOnce(new Error("load failed"))
+      .mockResolvedValueOnce(ledger1Entry);
+
+    const view = render(
+      <LedgerEntryDetailWrapper
+        id="entry-1"
+        ledgerId="ledger-1"
+        open
+        onClose={onClose}
+        categories={[]}
+      />,
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => expect(view.getByText("retry-detail")).toBeTruthy());
+    expect(onClose).not.toHaveBeenCalled();
+
+    view.getByText("retry-detail").click();
+    await waitFor(() => expect(view.getByText("From ledger 1")).toBeTruthy());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("treats a successful null result as a load error", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const onClose = vi.fn();
+    getLedgerEntryAction.mockResolvedValueOnce(null);
+
+    const view = render(
+      <LedgerEntryDetailWrapper
+        id="entry-1"
+        ledgerId="ledger-1"
+        open
+        onClose={onClose}
+        categories={[]}
+      />,
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => expect(view.getByText("retry-detail")).toBeTruthy());
+    expect(modalProps.ledgerEntry).toBeNull();
+    expect(modalProps.isLoading).toBe(false);
+    expect(modalProps.loadError).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

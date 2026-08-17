@@ -123,7 +123,7 @@ export function StatsTab({
     queryFn: () => getEnhancedStats(statsDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
   });
   const { data: stats, isError, refetch } = statsQuery;

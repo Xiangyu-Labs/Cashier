@@ -308,7 +308,8 @@
     "discardChanges": "放弃修改",
     "unsavedChanges": "有未保存的修改",
     "unsavedChangesDesc": "您有未保存的修改，确定要放弃这些修改吗？",
-    "discardAndClose": "放弃并关闭"
+    "discardAndClose": "放弃并关闭",
+    "loadError": "明细加载失败。弹窗会保持打开，您可以原位重试。"
   },
   "Settings": {
     "title": "设置",
@@ -653,7 +654,9 @@
     "reloadFailed": "重新加载失败，本地修改仍已保留。",
     "saveBeforeActionTitle": "先保存当前修改？",
     "saveBeforeActionDescription": "先保存当前编辑，再继续所选操作。保存失败时不会执行后续操作。",
-    "saveAndContinue": "保存并继续"
+    "saveAndContinue": "保存并继续",
+    "batchModePendingTitle": "先处理当前修改",
+    "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。"
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试"

@@ -237,7 +237,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       <div className="min-w-0">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <div className="flex items-center gap-2">
-            {sortedEntries.length > 0 && !readOnly && isEditMode && (
+            {sortedEntries.length > 0 && !readOnly && (
               <Button
                 variant={isSelectionMode ? "secondary" : "ghost"}
                 size="icon"

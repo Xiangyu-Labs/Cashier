@@ -118,6 +118,45 @@ describe("SourceDocumentViewDetails image stage", () => {
 });
 
 describe("SourceDocumentViewDetails selection", () => {
+  it("shows the batch selection entry outside edit mode", () => {
+    const entry: LedgerEntry = {
+      id: "entry-1",
+      ledgerId: "ledger-1",
+      categoryId: null,
+      sourceDocumentId: "doc-1",
+      amount: "12.00",
+      currency: "CNY",
+      itemName: "Lunch",
+      description: null,
+      convertedAmount: "12.00",
+      exchangeRate: "1",
+      createdAt: "2026-07-28T00:00:00.000Z",
+      updatedAt: "2026-07-28T00:00:00.000Z",
+      deletedAt: null,
+    };
+    const onToggleSelectionMode = vi.fn();
+
+    render(
+      <SourceDocumentViewDetails
+        sourceDocument={documentWithFiles(0)}
+        ledgerEntries={[entry]}
+        categories={[]}
+        pendingChanges={{ sourceDoc: {}, entries: {} }}
+        selectedEntryIds={[]}
+        isSelectionMode={false}
+        isEditMode={false}
+        onSourceDocChange={vi.fn()}
+        onEntryChange={vi.fn()}
+        onSelectEntry={vi.fn()}
+        onSelectAllEntries={vi.fn()}
+        onToggleSelectionMode={onToggleSelectionMode}
+      />
+    );
+
+    fireEvent.click(screen.getByTitle(/select|选择/i));
+    expect(onToggleSelectionMode).toHaveBeenCalledTimes(1);
+  });
+
   it("freezes the editable card and keeps pending changes when selection mode exits", () => {
     const entry: LedgerEntry = {
       id: "entry-1",

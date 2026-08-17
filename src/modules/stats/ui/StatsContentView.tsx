@@ -88,16 +88,6 @@ export function StatsContentView({
 
   return (
     <div className="relative space-y-6 pb-24" aria-busy={isLoading}>
-      {isLoading && stats != null ? (
-        <div
-          role="status"
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center"
-        >
-          <span className="rounded-full border bg-surface/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
-            {tCommon("loading")}
-          </span>
-        </div>
-      ) : null}
       {isError ? (
         <div
           role="alert"
