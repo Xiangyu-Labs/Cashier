@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import type { SourceDocument } from "@/modules/source-document/contracts";
-import { CheckCheck, RefreshCw, Trash2, ArrowLeft, X, Save, XCircle } from "lucide-react";
+import { CheckCheck, RefreshCw, Trash2, ArrowLeft, X, Save, XCircle, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
@@ -22,6 +22,8 @@ import { usePendingChanges } from "@/modules/source-document/hooks";
 import { useSelection } from "@/hooks/use-selection";
 import { EditableField } from "@/components/ui/editable-field";
 import { SourceDocumentEditRetryDialog } from "./SourceDocumentEditRetryDialog";
+import { AddLedgerEntryDialog } from "./AddLedgerEntryDialog";
+import type { AddEntryData } from "@/modules/source-document/hooks/useSourceDocumentDetailMutations";
 import { LedgerEntriesBatchActionToolbar } from "@/modules/ledger/ui/batch-action-toolbar";
 import type { PendingChanges } from "@/modules/source-document/hooks/usePendingChanges";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
@@ -62,6 +64,8 @@ interface SourceDocumentDetailModalProps {
     }
   ) => Promise<{ affectedCount: number } | undefined>;
   onBatchDeleteEntries: (ids: string[]) => Promise<string[]>;
+  onAddEntry?: (data: AddEntryData) => Promise<unknown>;
+  onDeleteEntry?: (entryId: string) => Promise<unknown>;
   onDelete?: () => void | Promise<void>;
   // Recovery action callbacks
   onAcceptCandidate?: () => Promise<void>;
@@ -93,6 +97,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onSplit,
   onBatchUpdate,
   onBatchDeleteEntries,
+  onAddEntry,
+  onDeleteEntry,
   onDelete,
   onAcceptCandidate,
   onAbandonCandidate,
@@ -124,6 +130,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [isSplitting, setIsSplitting] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [reloadError, setReloadError] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const busy =
     isSaving ||
     isDeleting ||
@@ -159,7 +166,13 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [showAddEntryDialog, setShowAddEntryDialog] = useState(false);
+  const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<string | null>(null);
   const [showSaveAndContinueConfirm, setShowSaveAndContinueConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!open) setIsEditMode(false);
+  }, [open]);
 
   useEffect(() => {
     if (open && sourceDocument && !hasPendingChanges) {
@@ -249,6 +262,23 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     t,
     discardAllChanges,
   ]);
+
+  const handleEnterEditMode = useCallback(() => {
+    if (busy) return;
+    setIsEditMode(true);
+  }, [busy]);
+
+  const handleCancelEditMode = useCallback(() => {
+    if (busy) return;
+    discardAllChanges();
+    setIsEditMode(false);
+  }, [busy, discardAllChanges]);
+
+  const handleEditSave = useCallback(async (): Promise<boolean> => {
+    const saved = await handleSaveAll();
+    if (saved) setIsEditMode(false);
+    return saved;
+  }, [handleSaveAll]);
 
   const handleSaveAllAndClose = useCallback(async () => {
     const saved = await handleSaveAll();
@@ -416,6 +446,41 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     }
   };
 
+  const handleOpenAddEntry = () => requestAction(() => setShowAddEntryDialog(true));
+
+  const handleAddEntrySubmit = async (data: AddEntryData): Promise<boolean> => {
+    if (onAddEntry == null || busy) return false;
+    setIsSaving(true);
+    try {
+      await onAddEntry(data);
+      toast.success(t("addEntrySuccess"));
+      return true;
+    } catch {
+      toast.error(t("addEntryError"));
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string): Promise<boolean> => {
+    if (onDeleteEntry == null || busy) return false;
+    setIsSaving(true);
+    try {
+      await onDeleteEntry(entryId);
+      toast.success(tCommon("deleteSuccess"));
+      return true;
+    } catch {
+      toast.error(tCommon("deleteFailed"));
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRequestDeleteEntry = (entryId: string) =>
+    requestAction(() => setPendingDeleteEntryId(entryId));
+
   const handleDeleteDocument = async () => {
     if (busy) return;
     setIsDeleting(true);
@@ -472,7 +537,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                 placeholder={t("untitled")}
                 displayClassName="font-semibold text-text text-base truncate"
                 inputClassName="font-semibold text-base"
-                disabled={readOnly || busy}
+                disabled={readOnly || busy || !isEditMode}
               />
             </div>
           </DialogHeader>
@@ -610,13 +675,16 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   onSelectAllEntries={handleSelectAllEntries}
                   onToggleSelectionMode={handleToggleSelectionMode}
                   readOnly={readOnly || busy}
+                  isEditMode={isEditMode}
+                  onAddEntry={handleOpenAddEntry}
+                  onDeleteEntry={handleRequestDeleteEntry}
                   {...(cachedImageUrls != null ? { cachedImageUrls } : {})}
                 />
               </>
             )}
           </div>
 
-          {!readOnly && (
+          {!readOnly && isEditMode && (
             <LedgerEntriesBatchActionToolbar
               selectedCount={selectedIds.length}
               totalCount={ledgerEntries.length}
@@ -646,6 +714,21 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
             variant="destructive"
             confirmLabel={tCommon("delete")}
             onConfirm={handleBatchDelete}
+          />
+
+          <ConfirmDialog
+            open={pendingDeleteEntryId != null}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) setPendingDeleteEntryId(null);
+            }}
+            title={t("deleteEntryTitle")}
+            description={t("deleteEntryDescription")}
+            variant="destructive"
+            confirmLabel={tCommon("delete")}
+            onConfirm={async () => {
+              if (pendingDeleteEntryId == null) return false;
+              return handleDeleteEntry(pendingDeleteEntryId);
+            }}
           />
 
           {!readOnly && (
@@ -737,31 +820,45 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               </div>
 
               <div className="flex items-center gap-2">
-                {hasPendingChanges ? (
+                {isEditMode ? (
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       className="h-9"
-                      onClick={discardAllChanges}
+                      onClick={handleCancelEditMode}
                       disabled={busy}
                     >
                       <X className="h-3.5 w-3.5 mr-1.5" />
-                      {t("discardChanges")}
+                      {t("cancelEdit")}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       className="h-9 gap-1.5 shadow-lg shadow-primary/20"
-                      onClick={handleSaveAll}
-                      disabled={busy || hasRevisionConflict}
+                      onClick={handleEditSave}
+                      disabled={busy || hasRevisionConflict || !hasPendingChanges}
                     >
                       <Save className="h-3.5 w-3.5" />
-                      {t("saveChanges", { count: pendingChangesCount })}
+                      {hasPendingChanges
+                        ? t("saveChanges", { count: pendingChangesCount })
+                        : tCommon("save")}
                     </Button>
                   </div>
-                ) : null}
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5"
+                    onClick={handleEnterEditMode}
+                    disabled={busy}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {tCommon("edit")}
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -827,6 +924,17 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           isSubmitting={isSplitting}
           onOpenChange={setShowSplitDialog}
           onSubmit={handleSplit}
+        />
+      ) : null}
+      {showAddEntryDialog && onAddEntry != null ? (
+        <AddLedgerEntryDialog
+          open
+          categories={categories}
+          preferredCurrencies={preferredCurrencies}
+          mainCurrency={_mainCurrency}
+          isSubmitting={isSaving}
+          onOpenChange={setShowAddEntryDialog}
+          onSubmit={handleAddEntrySubmit}
         />
       ) : null}
     </>

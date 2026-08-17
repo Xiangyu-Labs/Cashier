@@ -30,10 +30,12 @@ interface LedgerEntryViewDetailsProps {
   pendingChanges: EntryPendingChanges;
   onFieldChange: (changes: EntryPendingChanges) => void;
   onSave: () => void;
-  onDiscard: () => void;
+  isEditMode: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
   onDelete: () => void;
   onViewSourceDocument?: () => void;
-  disabled?: boolean;
+  busy?: boolean;
 }
 
 export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
@@ -44,10 +46,12 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
   pendingChanges,
   onFieldChange,
   onSave,
-  onDiscard,
+  isEditMode,
+  onEdit,
+  onCancelEdit,
   onDelete,
   onViewSourceDocument,
-  disabled = false,
+  busy = false,
 }: LedgerEntryViewDetailsProps): ReactNode {
   const t = useTranslations("LedgerEntryDetail");
   const locale = useLocale();
@@ -76,6 +80,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
       : "");
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+  // Fields are only interactive while in edit mode (and never while a mutation is in flight).
+  const fieldDisabled = !isEditMode || busy;
 
   const hasPendingAmountOrCurrency =
     pendingChanges.amount !== undefined || pendingChanges.currency !== undefined;
@@ -123,7 +129,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
           convertedAmount={status === "success" && converted != null ? converted : null}
           isDifferentCurrency={isDifferentCurrency}
           onFieldChange={handleFieldChange}
-          disabled={disabled}
+          disabled={fieldDisabled}
           {...(category !== undefined ? { category } : {})}
         />
 
@@ -150,7 +156,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
                 categories={categories}
                 onChange={(categoryId) => handleFieldChange("categoryId", categoryId)}
                 placeholder={t("selectCategory")}
-                disabled={disabled}
+                disabled={fieldDisabled}
               />
             </div>
           </div>
@@ -163,7 +169,7 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
               placeholder={t("addDescription")}
               displayClassName="text-sm text-text"
               inputClassName="text-sm"
-              disabled={disabled}
+              disabled={fieldDisabled}
               renderDisplay={(value: string) => {
                 const hasValue = value.length > 0;
                 return hasValue ? (
@@ -214,11 +220,13 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
 
       <EntryActions
         hasPendingChanges={hasPendingChanges}
+        isEditMode={isEditMode}
+        onEdit={onEdit}
+        onCancelEdit={onCancelEdit}
         onDelete={onDelete}
         onSave={onSave}
-        onDiscard={onDiscard}
         {...(onViewSourceDocument !== undefined ? { onViewSourceDocument } : {})}
-        disabled={disabled}
+        disabled={busy}
       />
     </div>
   );

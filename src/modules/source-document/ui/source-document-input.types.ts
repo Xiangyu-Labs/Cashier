@@ -4,6 +4,7 @@ export interface SourceDocumentInputProps {
   ledgerId: string;
   onSuccess?: (result: CreatedRecordResult) => void;
   onPendingChange?: (pending: boolean) => void;
+  onInitializingChange?: (initializing: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
   timeZone?: string;
   mode?: "create" | "retry";

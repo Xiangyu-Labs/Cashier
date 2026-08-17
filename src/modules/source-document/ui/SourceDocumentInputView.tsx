@@ -39,6 +39,7 @@ export interface SourceDocumentInputViewProps {
   selectedImageIndex: number | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isPending: boolean;
+  isSubmitting: boolean;
   progress: SourceDocumentSubmissionProgress | null;
   canSubmit: boolean;
   canCancelUpload: boolean;
@@ -63,6 +64,7 @@ export function SourceDocumentInputView({
   selectedImageIndex,
   fileInputRef,
   isPending,
+  isSubmitting,
   progress,
   canSubmit,
   canCancelUpload,
@@ -168,7 +170,7 @@ export function SourceDocumentInputView({
           disabled={isPending || !canSubmit}
           className="flex-1 sm:flex-initial"
         >
-          {isPending ? (
+          {isSubmitting ? (
             messages.sendingStatus
           ) : mode === "retry" ? (
             <>

@@ -56,12 +56,17 @@ function LedgerEntryDetailEditor({
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const busy = isSaving || isDeleting;
   const continueNavigationRef = useRef<(() => void) | null>(null);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const detailId = ledgerEntry?.id;
   const detailLedgerId = ledgerEntry?.ledgerId;
+
+  useEffect(() => {
+    if (!open) setIsEditMode(false);
+  }, [open]);
 
   useEffect(() => {
     if (detailId == null || detailLedgerId == null) return;
@@ -164,10 +169,22 @@ function LedgerEntryDetailEditor({
     }
   }, [busy, ledgerEntry, pendingChanges, onUpdate, tCommon]);
 
-  const handleDiscard = useCallback(() => {
+  const handleEnterEditMode = useCallback(() => {
+    if (busy) return;
+    setIsEditMode(true);
+  }, [busy]);
+
+  const handleCancelEditMode = useCallback(() => {
     if (busy) return;
     setPendingChanges({});
+    setIsEditMode(false);
   }, [busy]);
+
+  const handleEditSave = useCallback(async (): Promise<boolean> => {
+    const saved = await handleSave();
+    if (saved) setIsEditMode(false);
+    return saved;
+  }, [handleSave]);
 
   const handleClose = useCallback(() => {
     if (busy) return;
@@ -274,10 +291,12 @@ function LedgerEntryDetailEditor({
               mainCurrency={mainCurrency}
               pendingChanges={pendingChanges}
               onFieldChange={handleFieldChange}
-              onSave={handleSave}
-              onDiscard={handleDiscard}
+              onSave={handleEditSave}
+              isEditMode={isEditMode}
+              onEdit={handleEnterEditMode}
+              onCancelEdit={handleCancelEditMode}
               onDelete={() => setShowDeleteConfirm(true)}
-              disabled={busy}
+              busy={busy}
               {...(preferredCurrencies !== undefined ? { preferredCurrencies } : {})}
               {...(onViewSourceDocument != null &&
               ledgerEntry.sourceDocumentId != null &&

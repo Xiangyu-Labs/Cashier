@@ -52,12 +52,19 @@ export function SourceDocumentDetailWrapper({
     ...(initialLedgerEntries !== undefined ? { initialLedgerEntries } : {}),
   });
 
-  const { saveChanges, splitEntries, batchUpdate, batchDeleteEntries, deleteDocument } =
-    useSourceDocumentDetailMutations({
-      id,
-      ledgerId,
-      onClose,
-    });
+  const {
+    saveChanges,
+    splitEntries,
+    addEntry,
+    deleteEntry,
+    batchUpdate,
+    batchDeleteEntries,
+    deleteDocument,
+  } = useSourceDocumentDetailMutations({
+    id,
+    ledgerId,
+    onClose,
+  });
 
   const pendingRevisionId = sourceDocument?.pendingRevisionId ?? undefined;
 
@@ -124,6 +131,8 @@ export function SourceDocumentDetailWrapper({
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
       onSaveAll={saveChanges}
       onSplit={splitEntries}
+      onAddEntry={addEntry}
+      onDeleteEntry={deleteEntry}
       onBatchUpdate={batchUpdate}
       onBatchDeleteEntries={batchDeleteEntries}
       onDelete={deleteDocument}

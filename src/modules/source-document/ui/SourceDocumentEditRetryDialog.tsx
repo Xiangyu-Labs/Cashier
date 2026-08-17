@@ -30,6 +30,7 @@ export function SourceDocumentEditRetryDialog({
 }: SourceDocumentEditRetryDialogProps) {
   const t = useTranslations("SourceDocumentEditRetryDialog");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const hasStoredFiles = (sourceDocument.files?.length ?? 0) > 0;
   const hasText = sourceDocument.text != null && sourceDocument.text !== "";
@@ -75,24 +76,35 @@ export function SourceDocumentEditRetryDialog({
         <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+        <div
+          className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+          aria-busy={isLoading || isInitializing}
+        >
           {isLoading ? (
             <EditRetryDialogSkeleton />
           ) : (
-            <SourceDocumentInput
-              ledgerId={ledgerId}
-              mode="retry"
-              sourceDocumentId={sourceDocument.id}
-              initialData={initialData}
-              onPendingChange={(pending) => {
-                setIsSubmitting(pending);
-                onPendingChange?.(pending);
-              }}
-              onSuccess={() => {
-                onOpenChange(false);
-                onSuccess?.();
-              }}
-            />
+            <div className="relative">
+              <SourceDocumentInput
+                ledgerId={ledgerId}
+                mode="retry"
+                sourceDocumentId={sourceDocument.id}
+                initialData={initialData}
+                onPendingChange={(pending) => {
+                  setIsSubmitting(pending);
+                  onPendingChange?.(pending);
+                }}
+                onInitializingChange={setIsInitializing}
+                onSuccess={() => {
+                  onOpenChange(false);
+                  onSuccess?.();
+                }}
+              />
+              {isInitializing ? (
+                <div className="absolute inset-0 z-10 bg-background" aria-hidden="true">
+                  <EditRetryDialogSkeleton />
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
       </DialogContent>

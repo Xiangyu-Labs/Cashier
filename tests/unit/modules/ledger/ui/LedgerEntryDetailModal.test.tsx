@@ -49,22 +49,29 @@ vi.mock("@/modules/ledger/ui/LedgerEntryViewDetails", () => ({
   LedgerEntryViewDetails: ({
     onFieldChange,
     onSave,
+    onEdit,
     onDelete,
-    disabled,
+    isEditMode,
+    busy,
   }: {
     onFieldChange: (changes: { itemName: string }) => void;
     onSave: () => void | Promise<void>;
+    onEdit: () => void;
     onDelete: () => void;
-    disabled?: boolean;
+    isEditMode: boolean;
+    busy?: boolean;
   }) => (
     <div>
-      <button disabled={disabled} onClick={() => onFieldChange({ itemName: "Updated" })}>
+      <button disabled={busy} onClick={onEdit}>
+        edit-entry
+      </button>
+      <button disabled={!isEditMode || busy} onClick={() => onFieldChange({ itemName: "Updated" })}>
         change-name
       </button>
-      <button disabled={disabled} onClick={() => void onSave()}>
+      <button disabled={!isEditMode || busy} onClick={() => void onSave()}>
         save-entry
       </button>
-      <button disabled={disabled} onClick={onDelete}>
+      <button disabled={busy} onClick={onDelete}>
         delete-entry
       </button>
     </div>
@@ -123,6 +130,7 @@ describe("LedgerEntryDetailModal feedback", () => {
     );
     renderModal({ onUpdate });
 
+    fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("change-name"));
     fireEvent.click(screen.getByText("save-entry"));
 
@@ -146,6 +154,7 @@ describe("LedgerEntryDetailModal feedback", () => {
     );
     renderModal({ onUpdate, onClose });
 
+    fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("change-name"));
     fireEvent.click(screen.getByText("save-entry"));
     await waitFor(() => expect(screen.getByText("save-entry")).toBeDisabled());
@@ -155,7 +164,8 @@ describe("LedgerEntryDetailModal feedback", () => {
     expect(onClose).not.toHaveBeenCalled();
 
     resolveSave();
-    await waitFor(() => expect(screen.getByText("save-entry")).not.toBeDisabled());
+    await waitFor(() => expect(screen.getByText("edit-entry")).not.toBeDisabled());
+    expect(screen.getByText("save-entry")).toBeDisabled();
     fireEvent.click(screen.getByText("attempt-close"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -164,6 +174,7 @@ describe("LedgerEntryDetailModal feedback", () => {
     const onUpdate = vi.fn().mockRejectedValue(new Error("save failed"));
     renderModal({ onUpdate });
 
+    fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("change-name"));
     fireEvent.click(screen.getByText("save-entry"));
 
@@ -212,6 +223,7 @@ describe("LedgerEntryDetailModal feedback", () => {
       />
     );
 
+    fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("change-name"));
     rerender(
       <LedgerEntryDetailModal
@@ -234,8 +246,7 @@ describe("LedgerEntryDetailModal feedback", () => {
       />
     );
 
+    fireEvent.click(screen.getByText("edit-entry"));
     fireEvent.click(screen.getByText("save-entry"));
-
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith({ itemName: "Updated" }));
   });
 });

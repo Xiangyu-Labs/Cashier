@@ -9,6 +9,7 @@ export function SourceDocumentInput({
   ledgerId,
   onSuccess,
   onPendingChange,
+  onInitializingChange,
   onDirtyChange,
   mode = "create",
   sourceDocumentId,
@@ -40,9 +41,14 @@ export function SourceDocumentInput({
   });
 
   useEffect(() => {
-    onPendingChange?.(controller.isPending);
+    onPendingChange?.(controller.isSubmitting);
     return () => onPendingChange?.(false);
-  }, [controller.isPending, onPendingChange]);
+  }, [controller.isSubmitting, onPendingChange]);
+
+  useEffect(() => {
+    onInitializingChange?.(controller.isInitializing);
+    return () => onInitializingChange?.(false);
+  }, [controller.isInitializing, onInitializingChange]);
 
   useEffect(() => {
     onDirtyChange?.(controller.isDirty);
@@ -58,6 +64,7 @@ export function SourceDocumentInput({
       selectedImageIndex={controller.selectedImageIndex}
       fileInputRef={controller.fileInputRef}
       isPending={controller.isPending}
+      isSubmitting={controller.isSubmitting}
       progress={controller.progress}
       canSubmit={controller.canSubmit}
       messages={{

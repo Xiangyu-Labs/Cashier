@@ -30,6 +30,8 @@ export function ServiceWorkerUpdate() {
             }
             reloadRequested = true;
             worker.postMessage({ type: "SKIP_WAITING" });
+            // Replace the prompt with visible feedback while the page reloads.
+            toast(t("updating"), { id: "service-worker-update" });
           },
         },
         cancel: {

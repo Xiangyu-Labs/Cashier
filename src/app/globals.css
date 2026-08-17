@@ -446,3 +446,14 @@ body {
     opacity: 0;
   }
 }
+
+/*
+ * Sonner toasts are portaled to <body>. Radix modal dialogs set
+ * `pointer-events: none` on body while open, which would make toast action
+ * buttons (e.g. "查看新账单", "立即更新") unclickable whenever a modal is open.
+ * Restore interactivity on the toast layer itself; its z-index already sits
+ * above every modal overlay.
+ */
+[data-sonner-toast] {
+  pointer-events: auto;
+}

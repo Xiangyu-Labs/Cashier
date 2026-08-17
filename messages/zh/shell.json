@@ -177,6 +177,7 @@
     "description": "请先保存当前更改，再在合适时更新",
     "updateNow": "立即更新",
     "later": "稍后",
+    "updating": "正在更新…",
     "dirtyBlocked": "请先保存或放弃当前更改再更新"
   }
 }

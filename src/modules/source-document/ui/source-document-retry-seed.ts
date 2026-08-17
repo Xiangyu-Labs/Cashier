@@ -1,5 +1,6 @@
 import type { SourceDocumentInputInitialData } from "@/modules/source-document/hooks/source-document-input-controller.types";
 import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
+import { storedFileReadUrl } from "../stored-file-read";
 
 export interface RetrySeedSourceDocument {
   id: string;
@@ -23,7 +24,7 @@ export function buildSourceDocumentRetrySeed(
 
   return {
     images: files.map((file) => ({
-      data: "",
+      data: storedFileReadUrl(file.id),
       mimeType: file.contentType,
       storedFileId: file.id,
     })),

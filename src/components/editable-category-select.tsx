@@ -3,7 +3,6 @@
 import { useId, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -41,19 +40,22 @@ export function EditableCategorySelect({
 
   if (disabled) {
     return (
-      <Badge
-        variant="default"
-        className={cn("font-normal bg-primary/10 text-primary border-none", className)}
+      <span
+        className={cn(
+          "inline-flex min-h-11 items-center gap-1 rounded px-3 py-1 text-sm",
+          "bg-primary/10 text-primary",
+          className
+        )}
       >
         {selectedCategory ? (
           <>
-            <CategoryIcon iconName={selectedCategory.icon} className="h-3 w-3 mr-1.5" />
-            {selectedCategory.name}
+            <CategoryIcon iconName={selectedCategory.icon} className="h-3.5 w-3.5" />
+            <span className="font-medium">{selectedCategory.name}</span>
           </>
         ) : (
-          placeholder
+          <span>{placeholder}</span>
         )}
-      </Badge>
+      </span>
     );
   }
 

@@ -177,6 +177,7 @@
     "description": "Save your work, then update when ready.",
     "updateNow": "Update now",
     "later": "Later",
+    "updating": "Updating…",
     "dirtyBlocked": "Save or discard your changes before updating."
   }
 }

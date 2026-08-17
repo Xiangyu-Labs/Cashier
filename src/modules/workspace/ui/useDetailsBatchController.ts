@@ -70,6 +70,7 @@ export function useDetailsBatchController(
         ledgerId,
         label,
         failureMessage: tCommon("savedRefreshFailed"),
+        failureMode: "log-only",
         refresh: invalidate,
       });
     },

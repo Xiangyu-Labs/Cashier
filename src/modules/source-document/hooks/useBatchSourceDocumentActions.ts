@@ -90,6 +90,7 @@ export function useBatchSourceDocumentActions(
       ledgerId,
       label,
       failureMessage: tCommon("savedRefreshFailed"),
+      failureMode: "log-only",
       refresh: settleDerivedQueries,
     });
   };

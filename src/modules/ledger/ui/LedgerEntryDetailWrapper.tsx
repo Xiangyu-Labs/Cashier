@@ -1,5 +1,9 @@
 "use client";
-import type { LedgerEntry } from "@/modules/ledger/contracts";
+import type {
+  LedgerEntry,
+  LedgerEntryDto,
+  DeleteLedgerEntryResultDto,
+} from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
 import {
   invalidateCalendar,
@@ -19,6 +23,11 @@ import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { EntryCategory } from "@/modules/ledger/contracts";
+import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
+import type {
+  MutationReconciliation,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 import { LedgerEntryDetailModal } from "./LedgerEntryDetailModal";
 
 interface LedgerEntryDetailWrapperProps {
@@ -56,11 +65,12 @@ export function LedgerEntryDetailWrapper({
   const sourceDocumentId = ledgerEntry?.sourceDocumentId;
 
   const updateMutation = useLedgerMutation<
-    void,
+    LedgerEntryDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>,
     Partial<Omit<LedgerEntry, "amount">> & { amount?: number }
   >(ledgerId, {
     mutationFn: async (data) => {
-      await updateLedgerEntryAction(ledgerId, id, data);
+      const operationId = crypto.randomUUID();
+      return updateLedgerEntryAction(ledgerId, id, data, operationId);
     },
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
@@ -71,11 +81,16 @@ export function LedgerEntryDetailWrapper({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
+    onSuccessReconcile: (client, result) => {
+      if (sourceDocumentId == null || sourceDocumentId === "") return;
+      applySourceDocumentReconciliation(client, ledgerId, sourceDocumentId, result?.reconciliation);
+    },
   });
 
-  const deleteMutation = useLedgerMutation<void, void>(ledgerId, {
+  const deleteMutation = useLedgerMutation<DeleteLedgerEntryResultDto, void>(ledgerId, {
     mutationFn: async () => {
-      await deleteLedgerEntryAction(ledgerId, id);
+      const operationId = crypto.randomUUID();
+      return deleteLedgerEntryAction(ledgerId, id, operationId);
     },
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
@@ -88,6 +103,10 @@ export function LedgerEntryDetailWrapper({
       invalidateLedgerStats(ledgerId),
       invalidateCalendar(ledgerId),
     ],
+    onSuccessReconcile: (client, result) => {
+      if (sourceDocumentId == null || sourceDocumentId === "") return;
+      applySourceDocumentReconciliation(client, ledgerId, sourceDocumentId, result.reconciliation);
+    },
   });
 
   // Handle error state - moved to useEffect to avoid render-path side effects
@@ -115,8 +134,12 @@ export function LedgerEntryDetailWrapper({
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}
       {...(onExitComplete !== undefined ? { onExitComplete } : {})}
-      onUpdate={async (data) => await updateMutation.mutateAsync(data)}
-      onDelete={async () => await deleteMutation.mutateAsync()}
+      onUpdate={async (data) => {
+        await updateMutation.mutateAsync(data);
+      }}
+      onDelete={async () => {
+        await deleteMutation.mutateAsync();
+      }}
       {...(sourceDocumentId != null && sourceDocumentId !== ""
         ? {
             onViewSourceDocument: () =>

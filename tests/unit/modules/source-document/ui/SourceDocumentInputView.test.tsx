@@ -45,6 +45,7 @@ function renderView(
       selectedImageIndex={null}
       fileInputRef={createRef<HTMLInputElement>()}
       isPending
+      isSubmitting={false}
       progress={progress}
       canSubmit
       canCancelUpload={canCancelUpload}
@@ -80,6 +81,7 @@ describe("SourceDocumentInputView upload cancellation", () => {
         selectedImageIndex={null}
         fileInputRef={createRef<HTMLInputElement>()}
         isPending
+        isSubmitting={false}
         progress={{ phase: "finalizing", percent: 88 }}
         canSubmit
         canCancelUpload={false}
@@ -127,6 +129,7 @@ describe("SourceDocumentInputView image labels", () => {
         selectedImageIndex={null}
         fileInputRef={createRef<HTMLInputElement>()}
         isPending={false}
+        isSubmitting={false}
         progress={null}
         canSubmit
         canCancelUpload={false}

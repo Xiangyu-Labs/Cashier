@@ -7,7 +7,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateFilter } from "@/components/ui/date-filter";
-import { Wallet, FileText, ImagePlay, Maximize2, CheckSquare, X } from "lucide-react";
+import { Wallet, FileText, ImagePlay, Maximize2, CheckSquare, X, Plus } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
@@ -87,6 +87,13 @@ interface SourceDocumentViewDetailsProps {
   onSelectAllEntries: (selected: boolean) => void;
   onToggleSelectionMode: () => void;
   readOnly?: boolean;
+  /** When true the entry/date fields are editable. Independent of `readOnly` so
+   * batch selection and image browsing stay available in read mode. */
+  isEditMode?: boolean;
+  /** Opens the add-entry dialog; the "add entry" button only shows in edit mode. */
+  onAddEntry?: () => void;
+  /** Deletes a single entry; the per-entry delete button only shows in edit mode. */
+  onDeleteEntry?: (entryId: string) => void;
   cachedImageUrls?: ReadonlyMap<string, string>;
 }
 
@@ -106,6 +113,9 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   onSelectAllEntries: _onSelectAllEntries,
   onToggleSelectionMode,
   readOnly = false,
+  isEditMode = false,
+  onAddEntry,
+  onDeleteEntry,
   cachedImageUrls,
 }: SourceDocumentViewDetailsProps): ReactNode {
   const t = useTranslations("SourceDocumentDetail");
@@ -116,6 +126,8 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const displayEntryDate = pendingChanges.sourceDoc.entryDate ?? sourceDocument.entryDate ?? "";
+  // Entry/date fields are editable only while in edit mode (and never during a mutation).
+  const fieldsDisabled = readOnly || !isEditMode;
 
   const { displayEntries, subtotalsByCurrency, totalInMainCurrency } = useMemo(
     () =>
@@ -179,7 +191,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
               size="sm"
               className="h-8 min-w-fit shrink-0"
               truncate={false}
-              disabled={readOnly}
+              disabled={fieldsDisabled}
             />
             {isAnomaly && (
               <Badge variant="error" className="h-5 rounded-full px-1.5 text-xs font-medium">
@@ -225,7 +237,7 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
       <div className="min-w-0">
         <div className="flex items-center justify-between mb-2 shrink-0">
           <div className="flex items-center gap-2">
-            {sortedEntries.length > 0 && !readOnly && (
+            {sortedEntries.length > 0 && !readOnly && isEditMode && (
               <Button
                 variant={isSelectionMode ? "secondary" : "ghost"}
                 size="icon"
@@ -262,13 +274,30 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
                 onEntryChange={onEntryChange}
                 onSelectEntry={onSelectEntry}
                 sourceDocumentEntryDate={displayEntryDate}
-                readOnly={readOnly}
+                readOnly={fieldsDisabled}
+                onDelete={
+                  !readOnly && isEditMode && onDeleteEntry != null
+                    ? () => onDeleteEntry(entry.id)
+                    : undefined
+                }
                 {...(pendingChanges.entries[entry.id] !== undefined
                   ? { pendingChanges: pendingChanges.entries[entry.id] }
                   : {})}
               />
             ))
           )}
+          {!readOnly && isEditMode && onAddEntry != null ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 border-dashed"
+              onClick={onAddEntry}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("addEntryTitle")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -416,6 +445,7 @@ interface SelectableEditableEntryCardProps {
   onSelectEntry: (entryId: string, selected: boolean) => void;
   sourceDocumentEntryDate: string;
   readOnly: boolean;
+  onDelete?: (() => void) | undefined;
   pendingChanges?: Partial<EntryEditData>;
 }
 
@@ -432,6 +462,7 @@ const SelectableEditableEntryCard = memo(function SelectableEditableEntryCard({
   onSelectEntry,
   sourceDocumentEntryDate,
   readOnly,
+  onDelete,
   pendingChanges,
 }: SelectableEditableEntryCardProps) {
   return (
@@ -458,6 +489,7 @@ const SelectableEditableEntryCard = memo(function SelectableEditableEntryCard({
           onChange={(changes) => onEntryChange(entry.id, changes)}
           sourceDocumentEntryDate={sourceDocumentEntryDate}
           readOnly={readOnly}
+          onDelete={onDelete}
           {...(pendingChanges !== undefined ? { pendingChanges } : {})}
         />
       </Card>

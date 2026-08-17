@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildSourceDocumentRetrySeed } from "@/modules/source-document/ui/source-document-retry-seed";
 
 describe("source document retry seed", () => {
-  it("preserves stored-file identity order without embedding a local URL", () => {
+  it("uses stored-file URLs while preserving file identity order", () => {
     const seed = buildSourceDocumentRetrySeed(
       { id: "doc-1", text: "fallback", files: [], hasImages: true },
       {
@@ -15,8 +15,8 @@ describe("source document retry seed", () => {
     );
 
     expect(seed.images).toEqual([
-      { data: "", mimeType: "image/png", storedFileId: "file-2" },
-      { data: "", mimeType: "image/jpeg", storedFileId: "file-1" },
+      { data: "/api/stored-files/file-2", mimeType: "image/png", storedFileId: "file-2" },
+      { data: "/api/stored-files/file-1", mimeType: "image/jpeg", storedFileId: "file-1" },
     ]);
     expect(JSON.stringify(seed)).not.toContain("/api/uploads/");
     expect(JSON.stringify(seed)).not.toContain("storageKey");

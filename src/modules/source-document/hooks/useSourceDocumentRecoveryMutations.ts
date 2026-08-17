@@ -83,6 +83,7 @@ export function useSourceDocumentRecoveryMutations({
       ledgerId,
       label: "source-document candidate refresh",
       failureMessage: tCommon("savedRefreshFailed"),
+      failureMode: "log-only",
       refresh: refreshCandidateResult,
     });
   }, [ledgerId, refreshCandidateResult, tCommon]);

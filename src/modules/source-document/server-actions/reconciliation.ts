@@ -145,12 +145,13 @@ export function buildEntityReconciliation<T extends SourceDocumentListItemDto | 
   entity: T,
   entityVersion: string,
   streamMembershipChanged: boolean,
-  orderingChanged: boolean
+  orderingChanged: boolean,
+  entityCompleteness: MutationReconciliation<SourceDocumentListItemDto>["entityCompleteness"] = "full"
 ): MutationReconciliation<SourceDocumentListItemDto> {
   return {
     operationId,
     entity: entity as SourceDocumentListItemDto | null,
-    entityCompleteness: "full",
+    entityCompleteness,
     entityVersion,
     countPatch: { processingDelta: 0, attentionDelta: 0 },
     streamMembershipChanged,

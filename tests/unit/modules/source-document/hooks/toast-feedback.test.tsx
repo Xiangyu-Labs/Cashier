@@ -130,7 +130,7 @@ describe("source document mutation toast ownership", () => {
     await act(async () => refreshGate.resolve());
   });
 
-  it("warns once when a detached list refresh fails", async () => {
+  it("keeps detached list refresh failures out of user-facing toasts", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -145,9 +145,9 @@ describe("source document mutation toast ownership", () => {
       await result.current.deleteSourceDocument.mutateAsync("document-1");
     });
 
-    await waitFor(() => expect(toastWarningMock).toHaveBeenCalledTimes(1));
-    expect(toastWarningMock).toHaveBeenCalledWith("savedRefreshFailed");
-    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
+    expect(toastWarningMock).not.toHaveBeenCalled();
+    expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess");
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 

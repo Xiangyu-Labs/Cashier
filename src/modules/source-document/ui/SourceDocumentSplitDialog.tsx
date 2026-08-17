@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { formatCurrencyAmount } from "@/lib/format/currency";
+import { formatDateTimeForApi } from "@/lib/date-utils";
 
 interface SourceDocumentSplitDialogProps {
   open: boolean;
@@ -42,6 +43,20 @@ export function SourceDocumentSplitDialog({
   const previewEntries = selectedEntries.slice(0, 5);
   const remainingCount = selectedEntries.length - previewEntries.length;
   const totalSelected = selectedCount ?? selectedEntries.length;
+
+  // Quick date presets, computed in local time (dates are stored as yyyy-MM-dd).
+  const datePresets = (() => {
+    const day = (offset: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return formatDateTimeForApi(date);
+    };
+    return [
+      { label: t("splitDateToday"), value: day(0) },
+      { label: t("splitDateYesterday"), value: day(-1) },
+      { label: t("splitDateDayBeforeYesterday"), value: day(-2) },
+    ];
+  })();
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isSubmitting && onOpenChange(nextOpen)}>
@@ -92,6 +107,21 @@ export function SourceDocumentSplitDialog({
               className="pl-9"
               onChange={(event) => setEntryDate(event.target.value)}
             />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {datePresets.map((preset) => (
+              <Button
+                key={preset.value}
+                type="button"
+                variant={entryDate === preset.value ? "default" : "outline"}
+                size="sm"
+                className="h-8"
+                disabled={isSubmitting}
+                onClick={() => setEntryDate(preset.value)}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
         </div>
         <DialogFooter>

@@ -10,8 +10,9 @@ import { parseAmount } from "@/lib/formatters";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { CalculatorInput } from "@/components/ui/calculator-input";
+import { Button } from "@/components/ui/button";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
@@ -48,6 +49,8 @@ export interface EditableLedgerEntryItemProps extends VariantProps<typeof itemVa
   /** The entryDate of the parent source document, used to detect date differences */
   sourceDocumentEntryDate?: string;
   readOnly?: boolean;
+  /** When provided, a delete affordance is shown for this entry (edit mode only). */
+  onDelete?: (() => void) | undefined;
 }
 
 export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
@@ -62,8 +65,10 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
   pendingChanges,
   sourceDocumentEntryDate,
   readOnly = false,
+  onDelete,
 }: EditableLedgerEntryItemProps) {
   const t = useTranslations("Calendar");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
 
   // Merge pending changes with original data
@@ -193,6 +198,20 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
         <AmountText variant="secondary" className="shrink-0">
           ≈ {formatCurrencyAmount(converted, mainCurrency, locale)}
         </AmountText>
+      )}
+
+      {!readOnly && onDelete != null && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+          onClick={onDelete}
+          aria-label={tCommon("delete")}
+          title={tCommon("delete")}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       )}
     </div>
   );

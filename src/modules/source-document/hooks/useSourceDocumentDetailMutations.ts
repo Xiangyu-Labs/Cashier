@@ -16,8 +16,13 @@ import {
   saveSourceDocumentChangesAction,
   splitSourceDocumentAction,
 } from "@/modules/source-document/actions";
+import {
+  createLedgerEntryAction,
+  deleteLedgerEntryAction,
+} from "@/modules/ledger/server-actions/entries";
 import type { SplitSourceDocumentInput } from "@/modules/source-document/contracts";
 import type { PendingChanges } from "./usePendingChanges";
+import { applySourceDocumentReconciliation } from "./source-document-optimistic-cache";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";
 import { useSourceDocumentRecordMutations } from "./useSourceDocumentRecordMutations";
 import type { BatchEntryUpdateData } from "./source-document-detail-cache";
@@ -43,6 +48,15 @@ interface SaveDetailChanges {
   expectedRevisionId: string;
   operationId: string;
   changes: PendingChanges;
+}
+
+/** Fields collected by the "add entry" dialog for a new ledger entry. */
+export interface AddEntryData {
+  itemName: string;
+  amount: number;
+  currency?: string;
+  categoryId?: string;
+  description?: string | null;
 }
 
 function buildPredicates(ledgerId: string | undefined): SourceDocumentMutationPredicates {
@@ -178,10 +192,83 @@ export function useSourceDocumentDetailMutations({
     onWriteSuccess: notifyRefresh,
   });
 
+  const addEntryMutation = useLedgerMutation(ledgerId, {
+    mutationFn: async (data: AddEntryData) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const operationId = crypto.randomUUID();
+      return createLedgerEntryAction(ledgerId, { sourceDocumentId: id, ...data }, operationId);
+    },
+    successMessage: null,
+    errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
+    mutationReason: "create",
+    ...(predicates.detailWritePredicates == null
+      ? {}
+      : {
+          cancelPredicates: predicates.detailWritePredicates,
+          invalidatePredicates: [
+            ...predicates.detailWritePredicates,
+            ...(ledgerId == null || ledgerId === ""
+              ? []
+              : [
+                  invalidateSourceDocumentStream(ledgerId),
+                  invalidateSourceDocumentStreamTotal(ledgerId),
+                ]),
+          ],
+        }),
+    onSuccessReconcile: (queryClient, result) => {
+      if (ledgerId == null || ledgerId === "") return;
+      applySourceDocumentReconciliation(queryClient, ledgerId, id, result.reconciliation);
+    },
+    onWriteSuccess: notifyRefresh,
+  });
+
+  const deleteEntryMutation = useLedgerMutation(ledgerId, {
+    mutationFn: async (entryId: string) => {
+      if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
+      const operationId = crypto.randomUUID();
+      return deleteLedgerEntryAction(ledgerId, entryId, operationId);
+    },
+    successMessage: null,
+    errorMessage: null,
+    refreshFailureMessage: tCommon("savedRefreshFailed"),
+    refreshFailureMode: "log-only",
+    mutationReason: "delete",
+    ...(predicates.detailWritePredicates == null
+      ? {}
+      : {
+          cancelPredicates: predicates.detailWritePredicates,
+          invalidatePredicates: [
+            ...predicates.detailWritePredicates,
+            ...(ledgerId == null || ledgerId === ""
+              ? []
+              : [
+                  invalidateSourceDocumentStream(ledgerId),
+                  invalidateSourceDocumentStreamTotal(ledgerId),
+                ]),
+          ],
+        }),
+    onSuccessReconcile: (queryClient, result) => {
+      if (ledgerId == null || ledgerId === "") return;
+      if (result.sourceDocumentId != null) {
+        applySourceDocumentReconciliation(
+          queryClient,
+          ledgerId,
+          result.sourceDocumentId,
+          result.reconciliation
+        );
+      }
+    },
+    onWriteSuccess: notifyRefresh,
+  });
+
   return {
     saveChanges: (input: SaveDetailChanges) => saveChangesMutation.mutateAsync(input),
     splitEntries: (input: Omit<SplitSourceDocumentInput, "sourceDocumentId">) =>
       splitMutation.mutateAsync(input),
+    addEntry: (data: AddEntryData) => addEntryMutation.mutateAsync(data),
+    deleteEntry: (entryId: string) => deleteEntryMutation.mutateAsync(entryId),
     batchUpdate: async (ids: string[], data: BatchEntryUpdateData) =>
       batchUpdateMutation.mutateAsync({ ids, data }),
     batchDeleteEntries: async (entryIds: string[]) => {

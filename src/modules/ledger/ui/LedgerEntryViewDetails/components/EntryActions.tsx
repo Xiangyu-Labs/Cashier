@@ -1,22 +1,26 @@
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText, Save, X } from "lucide-react";
+import { Trash2, FileText, Save, X, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 interface EntryActionsProps {
   hasPendingChanges: boolean;
+  isEditMode: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
   onViewSourceDocument?: () => void;
   onDelete: () => void;
   onSave: () => void;
-  onDiscard: () => void;
   disabled?: boolean;
 }
 
 export function EntryActions({
   hasPendingChanges,
+  isEditMode,
+  onEdit,
+  onCancelEdit,
   onViewSourceDocument,
   onDelete,
   onSave,
-  onDiscard,
   disabled = false,
 }: EntryActionsProps) {
   const t = useTranslations("LedgerEntryDetail");
@@ -50,23 +54,40 @@ export function EntryActions({
         </Button>
       </div>
 
-      {hasPendingChanges ? (
+      {isEditMode ? (
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onDiscard} className="h-9" disabled={disabled}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancelEdit}
+            className="h-9"
+            disabled={disabled}
+          >
             <X className="h-3.5 w-3.5 mr-1.5" />
-            {t("discardChanges")}
+            {t("cancelEdit")}
           </Button>
           <Button
             size="sm"
             onClick={onSave}
-            disabled={disabled}
+            disabled={disabled || !hasPendingChanges}
             className="h-9 gap-1.5 shadow-lg shadow-primary/20"
           >
             <Save className="h-3.5 w-3.5" />
             {tCommon("save")}
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+          className="h-9 gap-1.5"
+          disabled={disabled}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          {tCommon("edit")}
+        </Button>
+      )}
     </div>
   );
 }

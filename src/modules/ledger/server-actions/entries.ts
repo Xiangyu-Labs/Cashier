@@ -33,7 +33,13 @@ import type { BatchActionResult } from "@/lib/batch-ids";
 import { serverComposition } from "@/application/server-composition-root";
 
 export const createLedgerEntryAction = withLedgerAccess(
-  async (ledgerId: string, data: CreateLedgerEntryInput): Promise<LedgerEntryDto> => {
+  async (
+    ledgerId: string,
+    data: CreateLedgerEntryInput,
+    operationId?: string
+  ): Promise<
+    LedgerEntryDto & Partial<{ reconciliation: MutationReconciliation<SourceDocumentListItemDto> }>
+  > => {
     const validated = parseCreateLedgerEntryInput(data);
     const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
@@ -44,10 +50,30 @@ export const createLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
     if (validated.description !== undefined) payload.description = validated.description;
-    return createLedgerEntryWithConversion(payload, {
+    const result = await createLedgerEntryWithConversion(payload, {
       mutations: serverComposition.ledgerMutations,
       categories: serverComposition.categories,
     });
+
+    if (operationId != null && validated.sourceDocumentId != null) {
+      // C3: Read authoritative source document from DB instead of fabricating.
+      const authoritativeEntity = await readSourceDocumentListItem(
+        ledgerId,
+        validated.sourceDocumentId
+      );
+      const now = authoritativeEntity?.updatedAt ?? result.updatedAt;
+      const entity = buildEntityReconciliation(
+        operationId,
+        authoritativeEntity,
+        now,
+        true,
+        true,
+        "sparse"
+      );
+      return { ...result, reconciliation: entity };
+    }
+
+    return result;
   }
 );
 
@@ -83,7 +109,14 @@ export const updateLedgerEntryAction = withLedgerAccess(
         result.sourceDocumentId
       );
       const now = authoritativeEntity?.updatedAt ?? result.updatedAt;
-      const entity = buildEntityReconciliation(operationId, authoritativeEntity, now, true, true);
+      const entity = buildEntityReconciliation(
+        operationId,
+        authoritativeEntity,
+        now,
+        true,
+        true,
+        "sparse"
+      );
       return { ...result, reconciliation: entity };
     }
 
@@ -114,7 +147,14 @@ export const deleteLedgerEntryAction = withLedgerAccess(
         canonicalEntity = await readSourceDocumentListItem(ledgerId, result.sourceDocumentId);
       }
       const now = canonicalEntity?.updatedAt ?? new Date().toISOString();
-      const entity = buildEntityReconciliation(operationId, canonicalEntity, now, true, true);
+      const entity = buildEntityReconciliation(
+        operationId,
+        canonicalEntity,
+        now,
+        true,
+        true,
+        "sparse"
+      );
       return { ...result, reconciliation: entity };
     }
 

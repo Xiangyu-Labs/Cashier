@@ -15,10 +15,17 @@ import {
 } from "@/modules/ledger/server-actions/entries";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
+import type {
+  MutationReconciliation,
+  SourceDocumentListItemDto,
+} from "@/modules/source-document/contracts";
 import { toast } from "sonner";
 import { runBackgroundQueryRefresh } from "@/lib/mutations/background-query-refresh";
+import { applySourceDocumentReconciliation } from "@/modules/source-document/hooks/source-document-optimistic-cache";
 
-type UpdateEntryResult = LedgerEntryDto;
+type UpdateEntryResult = LedgerEntryDto & {
+  reconciliation?: MutationReconciliation<SourceDocumentListItemDto>;
+};
 type DeleteEntryResult = DeleteLedgerEntryResultDto;
 type UpdateVariables = {
   ledgerEntryId: string;
@@ -63,11 +70,20 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<UpdateEntryResult>;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.sourceDocumentId != null) {
+        applySourceDocumentReconciliation(
+          queryClient,
+          ledgerId,
+          result.sourceDocumentId,
+          result.reconciliation
+        );
+      }
       runBackgroundQueryRefresh({
         ledgerId,
         label: "ledger entry update refresh",
         failureMessage: tCommon("savedRefreshFailed"),
+        failureMode: "log-only",
         refresh: refreshDerivedQueries,
       });
     },
@@ -85,12 +101,21 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
         operationId
       ) as Promise<DeleteEntryResult>;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.sourceDocumentId != null) {
+        applySourceDocumentReconciliation(
+          queryClient,
+          ledgerId,
+          result.sourceDocumentId,
+          result.reconciliation
+        );
+      }
       toast.success(tCommon("deleteSuccess"));
       runBackgroundQueryRefresh({
         ledgerId,
         label: "ledger entry delete refresh",
         failureMessage: tCommon("savedRefreshFailed"),
+        failureMode: "log-only",
         refresh: refreshDerivedQueries,
       });
     },

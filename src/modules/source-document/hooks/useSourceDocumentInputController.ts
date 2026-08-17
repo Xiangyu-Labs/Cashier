@@ -126,6 +126,8 @@ export function useSourceDocumentInputController({
     selectedImageIndex: draft.selectedImageIndex,
     fileInputRef,
     isPending: draft.isInitializing || submitMutations.isPending,
+    isSubmitting: submitMutations.isPending,
+    isInitializing: draft.isInitializing,
     progress: submitMutations.progress,
     canCancelUpload: submitMutations.canCancel,
     canSubmit: draft.canSubmit,
