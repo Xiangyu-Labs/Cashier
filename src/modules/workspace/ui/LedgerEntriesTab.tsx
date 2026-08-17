@@ -28,7 +28,7 @@ import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import type { TabQueryStateReport } from "./tab-query-state";
-import { previewBatchLedgerEntryDateAction } from "@/modules/ledger/actions";
+import { previewSourceDocumentDateImpact } from "../source-document-date-impact";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -315,7 +315,9 @@ export function LedgerEntriesTab({
         onSelectAll={() => !isBatchPending && selectAll()}
         onClearSelection={() => !isBatchPending && clearSelection()}
         onUpdateDates={handleBatchUpdateDates}
-        onPreviewDateImpact={() => previewBatchLedgerEntryDateAction(ledgerId, selectedEntryIds)}
+        onPreviewDateImpact={() =>
+          previewSourceDocumentDateImpact(ledgerId, selectedIds, selectedEntryIds)
+        }
         isUpdatingDates={batchUpdateDates.isPending}
         onRetry={async () => {
           await batchRetry.mutateAsync(selectedIds);

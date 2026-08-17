@@ -247,15 +247,25 @@ export async function runStartupCacheSync(
   ) {
     return;
   }
-  const flight = syncStartupCache(input, signal).finally(() => {
-    // Only the flight currently registered for this ledger is removed, so a
-    // settling flight never deletes a newer flight that replaced it.
-    if (syncFlights.get(input.ledgerId)?.flight === flight) {
-      syncFlights.delete(input.ledgerId);
-    }
-  });
+  let completed = false;
+  const flight = syncStartupCache(input, signal)
+    .then(() => {
+      if (!signal.aborted) {
+        lastVersionChecks.set(input.ledgerId, Date.now());
+        completed = true;
+      }
+    })
+    .finally(() => {
+      // Only the flight currently registered for this ledger is removed, so a
+      // settling flight never deletes a newer flight that replaced it.
+      if (syncFlights.get(input.ledgerId)?.flight === flight) {
+        syncFlights.delete(input.ledgerId);
+        if (!completed) {
+          lastVersionChecks.delete(input.ledgerId);
+        }
+      }
+    });
   syncFlights.set(input.ledgerId, { signal, flight });
-  lastVersionChecks.set(input.ledgerId, now);
   return flight;
 }
 

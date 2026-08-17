@@ -271,4 +271,32 @@ describe("runStartupCacheSync flight reuse", () => {
 
     expect(serverActions.getLedgerStartupCacheSnapshot).toHaveBeenCalledWith("flight-ledger", "9");
   });
+
+  it("retries after an aborted flight settles instead of treating it as fresh", async () => {
+    const flightProps = { ...props, ledgerId: "settled-abort-ledger" };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    serverActions.getLedgerStartupCacheVersion
+      .mockImplementationOnce(async () => {
+        await gate;
+        return version({ version: "10" });
+      })
+      .mockResolvedValue(version({ version: "10" }));
+
+    const aborted = new AbortController();
+    const first = runStartupCacheSync(flightProps, aborted.signal, false);
+    aborted.abort();
+    release();
+    await first;
+
+    await runStartupCacheSync(flightProps, new AbortController().signal, false);
+
+    expect(serverActions.getLedgerStartupCacheVersion).toHaveBeenCalledTimes(2);
+    expect(serverActions.getLedgerStartupCacheSnapshot).toHaveBeenCalledWith(
+      "settled-abort-ledger",
+      "10"
+    );
+  });
 });
