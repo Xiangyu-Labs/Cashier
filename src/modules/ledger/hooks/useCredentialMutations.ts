@@ -26,6 +26,7 @@ export function useCredentialMutations(ledgerId: string) {
     successMessage: t("credentialCreated"),
     errorMessage: t("createFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    emitMutationEvent: false,
     cancelPredicates: [matchExactQueryKey(queryKey)],
     skipInvalidation: true,
     onSuccessReconcile: (_client, data) => {
@@ -47,6 +48,7 @@ export function useCredentialMutations(ledgerId: string) {
     successMessage: t("credentialDeleted"),
     errorMessage: t("deleteFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    emitMutationEvent: false,
     cancelPredicates: [matchExactQueryKey(queryKey)],
     skipInvalidation: true,
     onSuccessReconcile: (_client, _data, id) => {

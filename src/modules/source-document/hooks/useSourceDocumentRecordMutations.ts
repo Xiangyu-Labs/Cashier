@@ -62,6 +62,7 @@ export function useSourceDocumentRecordMutations({
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
     refreshFailureMode: "log-only",
+    mutationReason: "delete",
     cancelPredicates,
     invalidatePredicates,
     onSuccessReconcile: (client, result) => {

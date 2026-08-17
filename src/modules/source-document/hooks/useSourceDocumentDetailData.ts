@@ -14,6 +14,7 @@ import type { StreamRefreshResult } from "@/modules/source-document/contract-ref
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
 import { applyDetailToStreamCaches } from "./source-document-optimistic-cache";
+import { QUERY } from "@/lib/constants";
 
 interface UseSourceDocumentDetailDataOptions {
   ledgerId: string;
@@ -30,20 +31,16 @@ export function useSourceDocumentDetailData({
 }: UseSourceDocumentDetailDataOptions) {
   const queryClient = useQueryClient();
 
-  const {
-    data: sourceDocument,
-    isLoading,
-    error,
-  } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.sourceDocument(ledgerId, id),
     queryFn: () => getSourceDocumentLightAction(ledgerId, id),
     enabled: open && id !== "",
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: QUERY.SOURCE_DOC_STALE_TIME_MS,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnReconnect: false,
   });
+  const { data: sourceDocument, isLoading, error } = query;
 
   const pending = sourceDocument != null && isRefreshableRevisionState(sourceDocument.status);
 
@@ -83,5 +80,6 @@ export function useSourceDocumentDetailData({
     isLoading,
     isLoadingImages,
     error,
+    refetch: query.refetch,
   };
 }

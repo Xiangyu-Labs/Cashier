@@ -15,8 +15,8 @@ vi.mock("@/modules/auth/actions", () => ({
 describe("EmailChangeForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sendCode.mockResolvedValue(undefined);
-    verifyCode.mockResolvedValue({ email: "next@example.com" });
+    sendCode.mockResolvedValue({ ok: true, expiresAt: Date.now() + 300_000, canResendAt: 0 });
+    verifyCode.mockResolvedValue({ ok: true, email: "next@example.com" });
   });
 
   it("sends, resends, verifies, and resets the dialog draft when closed", async () => {
@@ -58,7 +58,7 @@ describe("EmailChangeForm", () => {
   });
 
   it("shows an error in the dialog when sending fails", async () => {
-    sendCode.mockRejectedValueOnce(new Error("failed"));
+    sendCode.mockResolvedValueOnce({ ok: false, code: "rate_limited" });
     render(<EmailChangeForm currentEmail="old@example.com" />);
     fireEvent.click(
       screen.getByRole("button", { name: /changeEmailButton|change email|修改邮箱/i })
@@ -73,8 +73,8 @@ describe("EmailChangeForm", () => {
   it("prevents closing and duplicate submission while a request is pending", async () => {
     let resolveSend!: () => void;
     sendCode.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        resolveSend = resolve;
+      new Promise((resolve) => {
+        resolveSend = () => resolve({ ok: true, expiresAt: Date.now() + 300_000, canResendAt: 0 });
       })
     );
     render(<EmailChangeForm currentEmail="old@example.com" />);

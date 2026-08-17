@@ -28,6 +28,7 @@ import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import { patchExistingSourceDocumentDetail } from "@/modules/source-document/hooks/source-document-detail-cache";
 import type { TabQueryStateReport } from "./tab-query-state";
+import { previewBatchLedgerEntryDateAction } from "@/modules/ledger/actions";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -130,6 +131,7 @@ export function LedgerEntriesTab({
     queryKey,
     queryStatus,
     queryIsFetching,
+    queryHasData,
   } = useSourceDocumentStream(ledgerId, {
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
@@ -150,8 +152,9 @@ export function LedgerEntriesTab({
       queryKey,
       status: queryStatus,
       isFetching: queryIsFetching,
+      hasData: queryHasData,
     });
-  }, [ledgerId, onQueryStateChange, queryIsFetching, queryKey, queryStatus]);
+  }, [ledgerId, onQueryStateChange, queryHasData, queryIsFetching, queryKey, queryStatus]);
 
   // Build groupedItems from completed groups for useGroupedEntries — no longer needed
   // Selection uses unified stream groups
@@ -202,6 +205,18 @@ export function LedgerEntriesTab({
     const duplicateIds = new Set(selectedDuplicateIds);
     return selectedIds.filter((id) => !duplicateIds.has(id));
   }, [selectedDuplicateIds, selectedIds]);
+  const selectedEntryIds = useMemo(() => {
+    const selected = new Set(selectedIds);
+    return [
+      ...new Set(
+        streamGroups.flatMap((group) =>
+          group.items.flatMap((item) =>
+            selected.has(item.sourceDocument.id) ? item.ledgerEntries.map((entry) => entry.id) : []
+          )
+        )
+      ),
+    ];
+  }, [selectedIds, streamGroups]);
   const isBatchPending =
     batchUpdateDates.isPending ||
     batchDelete.isPending ||
@@ -293,12 +308,14 @@ export function LedgerEntriesTab({
       <LedgerEntriesToolbar
         isSelectionMode={isSelectionMode}
         isAllSelected={isAllSelected}
+        hasMoreData={hasNextPage}
         selectedCount={selectedIds.length}
         selectedDuplicateCount={selectedDuplicateCount}
         onToggleSelectionMode={handleToggleSelectionMode}
         onSelectAll={() => !isBatchPending && selectAll()}
         onClearSelection={() => !isBatchPending && clearSelection()}
         onUpdateDates={handleBatchUpdateDates}
+        onPreviewDateImpact={() => previewBatchLedgerEntryDateAction(ledgerId, selectedEntryIds)}
         isUpdatingDates={batchUpdateDates.isPending}
         onRetry={async () => {
           await batchRetry.mutateAsync(selectedIds);

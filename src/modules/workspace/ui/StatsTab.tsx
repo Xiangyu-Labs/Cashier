@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { getEnhancedStats } from "@/modules/stats/actions";
 import { invalidateCalendar, invalidateLedgerStats } from "@/lib/query-keys";
@@ -123,8 +123,10 @@ export function StatsTab({
     queryFn: () => getEnhancedStats(statsDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
-  const { data: stats, isLoading, isError, refetch } = statsQuery;
+  const { data: stats, isError, refetch } = statsQuery;
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -133,12 +135,14 @@ export function StatsTab({
       queryKey: statsDescriptor.queryKey,
       status: statsQuery.status,
       isFetching: statsQuery.isFetching,
+      hasData: statsQuery.data !== undefined,
     });
   }, [
     ledgerId,
     onQueryStateChange,
     statsDescriptor.queryKey,
     statsQuery.isFetching,
+    statsQuery.data,
     statsQuery.status,
   ]);
 
@@ -164,7 +168,7 @@ export function StatsTab({
       startDateStr={startDateStr}
       endDateStr={endDateStr}
       stats={stats}
-      isLoading={isLoading}
+      isLoading={statsQuery.isFetching}
       isError={isError}
       onRetry={() => void refetch()}
       onRefresh={handleRefresh}

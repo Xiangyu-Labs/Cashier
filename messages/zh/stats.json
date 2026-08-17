@@ -59,6 +59,7 @@
     "noData": "这个时间段暂无图表数据"
   },
   "StatsTab": {
+    "throughToday": "截至今日",
     "expenseTrend": "支出趋势",
     "expenseRanking": "支出排行",
     "dailyHeatmap": "每日热力图",

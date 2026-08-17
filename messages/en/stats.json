@@ -59,6 +59,7 @@
     "noData": "No chart data for this period"
   },
   "StatsTab": {
+    "throughToday": "Through today",
     "expenseTrend": "Expense Trend",
     "expenseRanking": "Expense Ranking",
     "dailyHeatmap": "Daily Heatmap",

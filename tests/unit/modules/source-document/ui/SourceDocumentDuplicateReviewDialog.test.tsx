@@ -221,6 +221,8 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     expect(screen.getAllByTestId("stream-item")).toHaveLength(2);
 
     fireEvent.click(discardButton);
+    expect(discardActionMock).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "删除重复" }));
 
     await waitFor(() => {
       expect(discardActionMock).toHaveBeenCalledWith(
@@ -267,6 +269,8 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
     await waitFor(() => expect(discardButton).not.toBeDisabled());
 
     fireEvent.click(discardButton);
+    expect(discardActionMock).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "删除重复" }));
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("已删除重复账单"));
     expect(onOpenChange).toHaveBeenCalledWith(false);

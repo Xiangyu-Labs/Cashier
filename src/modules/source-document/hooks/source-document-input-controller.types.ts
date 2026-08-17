@@ -26,6 +26,9 @@ export interface SourceDocumentInputControllerMessages {
   imageUnsupported: (fileName: string) => string;
   imageReadError: string;
   imageUploadError: string;
+  networkError: string;
+  validationError: string;
+  createError: string;
   tooManyImages: string;
 }
 

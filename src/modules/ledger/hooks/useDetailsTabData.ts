@@ -28,6 +28,7 @@ export interface UseDetailsTabDataReturn {
   queryKey: readonly unknown[];
   queryStatus: "pending" | "success" | "error";
   queryIsFetching: boolean;
+  queryHasData: boolean;
 }
 
 interface UseDetailsTabDataProps {
@@ -76,6 +77,7 @@ export function useDetailsTabData({
       ),
     enabled: true,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
   });
 
   const entriesQuery = useInfiniteQuery({
@@ -85,6 +87,7 @@ export function useDetailsTabData({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: undefined as string | undefined,
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
   });
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = entriesQuery;
 
@@ -125,5 +128,6 @@ export function useDetailsTabData({
     queryKey: descriptor.entriesQueryKey,
     queryStatus: entriesQuery.status,
     queryIsFetching: entriesQuery.isFetching,
+    queryHasData: entriesQuery.data !== undefined,
   };
 }

@@ -15,16 +15,19 @@ import { EntriesToolbarShell } from "./EntriesToolbarShell";
 import type { ReactNode } from "react";
 import { BatchActionButton } from "@/components/batch-action-button";
 import { RefreshButton } from "@/components/ui/refresh-button";
+import type { BatchEntryDateImpact } from "@/modules/ledger/application/ports";
 
 interface LedgerEntriesToolbarProps {
   isSelectionMode: boolean;
   isAllSelected: boolean;
+  hasMoreData?: boolean;
   selectedCount: number;
   selectedDuplicateCount?: number;
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
   onUpdateDates?: (date: string) => Promise<void> | void;
+  onPreviewDateImpact?: () => Promise<BatchEntryDateImpact>;
   isUpdatingDates?: boolean;
   onRetry?: () => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -51,12 +54,14 @@ interface LedgerEntriesToolbarProps {
 export function LedgerEntriesToolbar({
   isSelectionMode,
   isAllSelected,
+  hasMoreData = false,
   selectedCount,
   selectedDuplicateCount = 0,
   onToggleSelectionMode,
   onSelectAll,
   onClearSelection,
   onUpdateDates,
+  onPreviewDateImpact,
   isUpdatingDates = false,
   onRetry,
   onDelete,
@@ -85,6 +90,10 @@ export function LedgerEntriesToolbar({
   const locale = useLocale();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [dateImpact, setDateImpact] = useState<BatchEntryDateImpact | null>(null);
+  const [dateImpactError, setDateImpactError] = useState(false);
+  const [isPreviewingDateImpact, setIsPreviewingDateImpact] = useState(false);
+  const [dateConfirmOpen, setDateConfirmOpen] = useState(false);
   const showBatchActions = isSelectionMode && selectedCount > 0;
   const isProcessing =
     externallyProcessing ||
@@ -98,9 +107,22 @@ export function LedgerEntriesToolbar({
     : selectedCount > 0
       ? "indeterminate"
       : false;
-  const handleUpdateDates = () => {
+  const handlePreviewDateImpact = async () => {
     if (!onUpdateDates) return;
-    return onUpdateDates(formatDateTimeForApi(selectedDate));
+    if (onPreviewDateImpact == null) {
+      return onUpdateDates(formatDateTimeForApi(selectedDate));
+    }
+    setIsPreviewingDateImpact(true);
+    setDateImpactError(false);
+    try {
+      setDateImpact(await onPreviewDateImpact());
+      setDatePickerOpen(false);
+      setDateConfirmOpen(true);
+    } catch {
+      setDateImpactError(true);
+    } finally {
+      setIsPreviewingDateImpact(false);
+    }
   };
 
   return (
@@ -146,6 +168,11 @@ export function LedgerEntriesToolbar({
             <span className="text-xs font-medium text-text">
               {tBatch("selected", { count: selectedCount })}
             </span>
+            {isAllSelected && hasMoreData ? (
+              <span className="text-xs text-muted-foreground">
+                {tBatch("loadedOnly", { count: selectedCount })}
+              </span>
+            ) : null}
           </div>
         </>
       )}
@@ -156,7 +183,7 @@ export function LedgerEntriesToolbar({
             <SourceDocumentActions
               isProcessing={isProcessing}
               isUpdatingDates={isUpdatingDates}
-              onUpdateDates={handleUpdateDates}
+              onUpdateDates={() => void handlePreviewDateImpact()}
               onCancel={() => setDatePickerOpen(false)}
               datePickerOpen={datePickerOpen}
               setDatePickerOpen={setDatePickerOpen}
@@ -168,6 +195,8 @@ export function LedgerEntriesToolbar({
               {...(onDiscardDuplicates != null ? { onDiscardDuplicates } : {})}
               isKeepingDuplicates={isKeepingDuplicates}
               isDiscardingDuplicates={isDiscardingDuplicates}
+              dateImpactError={dateImpactError}
+              isPreviewingDateImpact={isPreviewingDateImpact}
             />
             {onRetry != null && (
               <BatchActionButton
@@ -183,7 +212,10 @@ export function LedgerEntriesToolbar({
             {onDelete != null && (
               <ConfirmDialog
                 title={tBatch("deleteTitle")}
-                description={tBatch("deleteDescription", { count: selectedCount })}
+                description={tBatch("deleteDescription", {
+                  count: selectedCount,
+                  scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
+                })}
                 variant="destructive"
                 confirmLabel={tCommon("delete")}
                 onConfirm={onDelete}
@@ -215,6 +247,23 @@ export function LedgerEntriesToolbar({
           {...(onResetFilters != null ? { onResetFilters } : {})}
         />
       )}
+      <ConfirmDialog
+        open={dateConfirmOpen}
+        onOpenChange={setDateConfirmOpen}
+        title={tBatch("dateImpactTitle")}
+        description={tBatch("dateImpactDescription", {
+          documents: dateImpact?.sourceDocumentCount ?? 0,
+          entries: dateImpact?.affectedEntryCount ?? 0,
+          scope: isAllSelected && hasMoreData ? tBatch("loadedScope") : "",
+        })}
+        confirmLabel={tBatch("confirm")}
+        onConfirm={async () => {
+          if (dateImpact == null || onUpdateDates == null) return false;
+          await onUpdateDates(formatDateTimeForApi(selectedDate));
+          setDateImpact(null);
+          return true;
+        }}
+      />
     </EntriesToolbarShell>
   );
 }

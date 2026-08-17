@@ -147,6 +147,7 @@ export function useSourceDocumentDetailMutations({
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
     refreshFailureMode: "log-only",
+    mutationReason: "batch",
     ...(predicates.detailWritePredicates == null
       ? {}
       : {

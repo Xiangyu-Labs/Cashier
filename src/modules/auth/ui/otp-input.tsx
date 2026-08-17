@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type KeyboardEvent, type ClipboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ClipboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,10 @@ export function OTPInput({
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const digits = value.padEnd(length, " ").slice(0, length).split("");
+
+  useEffect(() => {
+    if (value === "" && !disabled) inputRefs.current[0]?.focus();
+  }, [disabled, value]);
 
   const handleChange = (index: number, digit: string) => {
     if (disabled) return;
@@ -108,6 +112,8 @@ export function OTPInput({
           }}
           type="text"
           inputMode="numeric"
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          autoFocus={index === 0}
           pattern="\d*"
           maxLength={1}
           value={digit === " " ? "" : digit}

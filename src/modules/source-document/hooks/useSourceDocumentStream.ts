@@ -332,6 +332,7 @@ export function useSourceDocumentStream(
     queryKey: streamPageKey,
     queryStatus: streamQuery.status,
     queryIsFetching: streamQuery.isFetching,
+    queryHasData: streamQuery.data !== undefined,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,

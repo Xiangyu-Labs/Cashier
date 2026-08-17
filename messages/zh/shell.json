@@ -160,7 +160,8 @@
     "requiresNetwork": "需要联网"
   },
   "LedgerStartupPreview": {
-    "cachedAt": "缓存于 {time}"
+    "cachedAt": "缓存于 {time}",
+    "currentCachedAt": "当前缓存于 {time}"
   },
   "Metadata": {
     "title": "Cashier - AI 记账助手",

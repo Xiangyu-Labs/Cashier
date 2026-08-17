@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { sendEmailChangeCodeAction, verifyEmailChangeCodeAction } from "../actions";
+import type { EmailChangeErrorCode } from "../server-actions/change-email";
+import { ResendCountdown } from "./resend-countdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,11 +35,32 @@ export function EmailChangeForm({
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canResendAt, setCanResendAt] = useState<number | null>(null);
+
+  const errorMessage = (code: EmailChangeErrorCode) => {
+    switch (code) {
+      case "invalid_code":
+        return t("emailChangeErrors.invalid_code");
+      case "expired_code":
+        return t("emailChangeErrors.expired_code");
+      case "email_in_use":
+        return t("emailChangeErrors.email_in_use");
+      case "rate_limited":
+        return t("emailChangeErrors.rate_limited");
+      case "locked":
+        return t("emailChangeErrors.locked");
+      case "same_email":
+        return t("emailChangeErrors.same_email");
+      case "unknown":
+        return t("emailChangeErrors.unknown");
+    }
+  };
 
   const reset = () => {
     setEmail("");
     setCode("");
     setSent(false);
+    setCanResendAt(null);
     setError(null);
   };
   const close = () => {
@@ -49,8 +72,16 @@ export function EmailChangeForm({
     setPending(true);
     setError(null);
     try {
-      await sendEmailChangeCodeAction(email, locale);
+      const result = await sendEmailChangeCodeAction(email, locale);
+      if (!result.ok) {
+        const message = errorMessage(result.code);
+        setError(message);
+        toast.error(message);
+        return;
+      }
       setSent(true);
+      setCode("");
+      setCanResendAt(result.canResendAt);
       toast.success(t("emailCodeSent"));
     } catch {
       setError(t("emailChangeError"));
@@ -64,6 +95,12 @@ export function EmailChangeForm({
     setError(null);
     try {
       const result = await verifyEmailChangeCodeAction(email, code);
+      if (!result.ok) {
+        const message = errorMessage(result.code);
+        setError(message);
+        toast.error(message);
+        return;
+      }
       toast.success(t("emailChanged"));
       onChanged?.(result.email);
       close();
@@ -120,10 +157,22 @@ export function EmailChangeForm({
                   disabled={pending}
                   className="h-11 min-w-0 flex-1"
                 />
-                <Button variant="outline" disabled={pending || email.trim() === ""} onClick={send}>
-                  {pending && !sent ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {sent ? t("resendCode") : t("sendCode")}
-                </Button>
+                {sent ? (
+                  <ResendCountdown
+                    canResendAt={canResendAt}
+                    disabled={pending || email.trim() === ""}
+                    onResend={send}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    disabled={pending || email.trim() === ""}
+                    onClick={send}
+                  >
+                    {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {t("sendCode")}
+                  </Button>
+                )}
               </div>
             </div>
             {sent ? (

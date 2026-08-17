@@ -26,6 +26,7 @@ export function useLedgerSettings({
     settingsQueryKey,
     settingsQueryStatus,
     settingsQueryIsFetching,
+    settingsQueryHasData,
   } = useLedgerSettingsQueries({
     ledgerId,
     initialLedger,
@@ -49,5 +50,6 @@ export function useLedgerSettings({
     settingsQueryKey,
     settingsQueryStatus,
     settingsQueryIsFetching,
+    settingsQueryHasData,
   };
 }

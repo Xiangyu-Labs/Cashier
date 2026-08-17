@@ -25,6 +25,7 @@ interface StatsHeaderProps {
   };
   onRefresh?: () => Promise<void> | void;
   readOnly?: boolean;
+  isLoading?: boolean;
 }
 
 export function StatsHeader({
@@ -41,6 +42,7 @@ export function StatsHeader({
   trend,
   onRefresh,
   readOnly = false,
+  isLoading = false,
 }: StatsHeaderProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
@@ -140,17 +142,24 @@ export function StatsHeader({
             <ChevronRight size={20} />
           </button>
         </div>
+        {periodOffset === 0 ? (
+          <span className="text-xs text-muted-foreground">{t("throughToday")}</span>
+        ) : null}
       </div>
 
       {/* 3. Summary Stats */}
       <div className="flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground">{t("totalExpense")}</div>
-        <AmountText variant="hero">
-          {formatCurrencyAmount(totalExpense, currencySymbol, locale)}
-        </AmountText>
+        {isLoading ? (
+          <div className="h-10 w-36 animate-pulse rounded bg-surface2" aria-hidden />
+        ) : (
+          <AmountText variant="hero">
+            {formatCurrencyAmount(totalExpense, currencySymbol, locale)}
+          </AmountText>
+        )}
 
         {/* Comparison Section */}
-        {(comparison != null || trend != null) && (
+        {!isLoading && (comparison != null || trend != null) && (
           <div
             className={cn(
               "flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full mt-1",
@@ -169,12 +178,16 @@ export function StatsHeader({
           </div>
         )}
 
-        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-          {t("averageDaily")}{" "}
-          <AmountText variant="secondary">
-            {formatCurrencyAmount(averageDaily, currencySymbol, locale)}
-          </AmountText>
-        </div>
+        {isLoading ? (
+          <div className="mt-1 h-4 w-28 animate-pulse rounded bg-surface2" aria-hidden />
+        ) : (
+          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+            {t("averageDaily")}{" "}
+            <AmountText variant="secondary">
+              {formatCurrencyAmount(averageDaily, currencySymbol, locale)}
+            </AmountText>
+          </div>
+        )}
       </div>
     </div>
   );

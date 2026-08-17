@@ -41,6 +41,7 @@ export function useEntryMutations({
     },
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "delete",
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),

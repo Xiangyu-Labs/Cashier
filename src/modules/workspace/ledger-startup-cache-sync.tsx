@@ -22,8 +22,27 @@ import {
   getLedgerStartupCacheSnapshot,
   getLedgerStartupCacheVersion,
 } from "./server-actions/ledger-startup-cache";
+import {
+  LEDGER_MUTATION_EVENT,
+  type LedgerMutationEventDetail,
+} from "@/lib/mutations/ledger-mutation-event";
+import { writeLedgerSyncVersion } from "@/modules/source-document/hooks/stream-refresh-cache";
 
 const SNAPSHOT_CONFLICT_RETRY_DELAYS_MS = [100, 300] as const;
+const MAX_DELTA_PAGES = 3;
+const VERSION_CHECK_FRESHNESS_MS = 5 * 60 * 1000;
+const STARTUP_SYNC_REQUEST_EVENT = "cashier:ledger-startup-sync-request";
+const syncFlights = new Map<string, { signal: AbortSignal; flight: Promise<void> }>();
+const lastVersionChecks = new Map<string, number>();
+
+export function requestLedgerStartupCacheSync(ledgerId: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<{ ledgerId: string; force: true }>(STARTUP_SYNC_REQUEST_EVENT, {
+      detail: { ledgerId, force: true },
+    })
+  );
+}
 
 function isSnapshotConflict(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -129,7 +148,11 @@ export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signa
   if (previous != null && !fullSyncDue && /^\d+$/.test(previous.syncVersion)) {
     let snapshot = previous;
     let resetRequired = false;
-    for (let page = 0; page < 100 && snapshot.syncVersion !== version.version; page += 1) {
+    for (
+      let page = 0;
+      page < MAX_DELTA_PAGES && snapshot.syncVersion !== version.version;
+      page += 1
+    ) {
       const delta: LedgerDeltaResult = await getStreamRefreshAction(input.ledgerId, {
         ledgerId: input.ledgerId,
         afterVersion: snapshot.syncVersion,
@@ -164,7 +187,9 @@ export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signa
       if (!delta.hasMore) break;
     }
     if (!resetRequired && snapshot.syncVersion === version.version) {
+      if (signal.aborted) return;
       await replaceLedgerStartupSnapshot(snapshot);
+      writeLedgerSyncVersion(input.ledgerId, snapshot.syncVersion);
       return;
     }
   }
@@ -193,6 +218,45 @@ export async function syncStartupCache(input: LedgerStartupCacheSyncProps, signa
     lastSyncedAt: payload.generatedAt,
     fullSyncAt: payload.generatedAt,
   });
+  writeLedgerSyncVersion(input.ledgerId, payload.version);
+}
+
+/**
+ * Runs a single-flight startup cache sync for one ledger.
+ *
+ * A caller must never reuse a flight created with an already-aborted signal:
+ * that flight aborts its work immediately, so reusing it would look like a
+ * completed sync while leaving the snapshot stale. Callers whose sync effect
+ * was torn down (cancelling its signal) therefore always start a fresh flight.
+ * Exported for unit tests; the mounted effect is the only production caller.
+ */
+export async function runStartupCacheSync(
+  input: LedgerStartupCacheSyncProps,
+  signal: AbortSignal,
+  force: boolean
+): Promise<void> {
+  const existing = syncFlights.get(input.ledgerId);
+  if (existing != null && !existing.signal.aborted) {
+    return existing.flight;
+  }
+  const now = Date.now();
+  if (
+    !force &&
+    existing == null &&
+    now - (lastVersionChecks.get(input.ledgerId) ?? 0) < VERSION_CHECK_FRESHNESS_MS
+  ) {
+    return;
+  }
+  const flight = syncStartupCache(input, signal).finally(() => {
+    // Only the flight currently registered for this ledger is removed, so a
+    // settling flight never deletes a newer flight that replaced it.
+    if (syncFlights.get(input.ledgerId)?.flight === flight) {
+      syncFlights.delete(input.ledgerId);
+    }
+  });
+  syncFlights.set(input.ledgerId, { signal, flight });
+  lastVersionChecks.set(input.ledgerId, now);
+  return flight;
 }
 
 /**
@@ -216,25 +280,23 @@ export function LedgerStartupCacheSync(props: LedgerStartupCacheSyncProps) {
     const controller = new AbortController();
     let running = false;
     let rerunRequested = false;
-    const run = () => {
+    const input = {
+      userId,
+      ledgerId,
+      locale,
+      mainCurrency,
+      timeZone,
+      collapseEntriesDefault,
+      preferredCurrencies,
+      categories,
+    };
+    const run = (force = false) => {
       if (running) {
         rerunRequested = true;
         return;
       }
       running = true;
-      void syncStartupCache(
-        {
-          userId,
-          ledgerId,
-          locale,
-          mainCurrency,
-          timeZone,
-          collapseEntriesDefault,
-          preferredCurrencies,
-          categories,
-        },
-        controller.signal
-      )
+      void runStartupCacheSync(input, controller.signal, force)
         .catch((error) => {
           if (!controller.signal.aborted) {
             reportClientCacheError(
@@ -248,30 +310,35 @@ export function LedgerStartupCacheSync(props: LedgerStartupCacheSyncProps) {
           running = false;
           if (rerunRequested && !controller.signal.aborted) {
             rerunRequested = false;
-            timerId = setTimeout(run, 500);
+            timerId = setTimeout(() => run(true), 500);
           }
         });
     };
     let idleId: number | null = null;
     let timerId: ReturnType<typeof setTimeout> | null = null;
     let mutationTimerId: ReturnType<typeof setTimeout> | null = null;
-    const periodicId = setInterval(run, LEDGER_STARTUP_CACHE_FULL_SYNC_INTERVAL_MS);
+    const periodicId = setInterval(() => run(false), LEDGER_STARTUP_CACHE_FULL_SYNC_INTERVAL_MS);
     if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(run, { timeout: 5000 });
+      idleId = window.requestIdleCallback(() => run(false), { timeout: 5000 });
     } else {
-      timerId = setTimeout(run, 1500);
+      timerId = setTimeout(() => run(false), 1500);
     }
     const onMutation = (event: Event) => {
-      if ((event as CustomEvent<string>).detail !== ledgerId) return;
+      if ((event as CustomEvent<LedgerMutationEventDetail>).detail.ledgerId !== ledgerId) return;
       if (mutationTimerId != null) clearTimeout(mutationTimerId);
-      mutationTimerId = setTimeout(run, 500);
+      mutationTimerId = setTimeout(() => run(true), 500);
     };
-    const onOnline = () => run();
-    window.addEventListener("cashier:ledger-mutated", onMutation);
+    const onForcedSync = (event: Event) => {
+      if ((event as CustomEvent<{ ledgerId: string }>).detail.ledgerId === ledgerId) run(true);
+    };
+    const onOnline = () => run(true);
+    window.addEventListener(LEDGER_MUTATION_EVENT, onMutation);
+    window.addEventListener(STARTUP_SYNC_REQUEST_EVENT, onForcedSync);
     window.addEventListener("online", onOnline);
     return () => {
       controller.abort();
-      window.removeEventListener("cashier:ledger-mutated", onMutation);
+      window.removeEventListener(LEDGER_MUTATION_EVENT, onMutation);
+      window.removeEventListener(STARTUP_SYNC_REQUEST_EVENT, onForcedSync);
       window.removeEventListener("online", onOnline);
       if (idleId != null) window.cancelIdleCallback(idleId);
       if (timerId != null) clearTimeout(timerId);

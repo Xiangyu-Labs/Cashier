@@ -90,6 +90,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "settings",
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     skipInvalidation: true,
     onSuccessReconcile: (_client, category) => {
@@ -121,6 +122,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     successMessage: t("categoryUpdated"),
     errorMessage: t("updateCategoryFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "settings",
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -144,6 +146,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "settings",
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -166,6 +169,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "settings",
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),
@@ -188,6 +192,7 @@ export function useCategoryMutations(ledgerId: string, categories: EntryCategory
     mutationFn: (input) => saveEntryCategoriesAction(ledgerId, input),
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),
+    mutationReason: "settings",
     cancelPredicates: [invalidateEntryCategories(ledgerId)],
     invalidatePredicates: [
       invalidateEntryCategories(ledgerId),

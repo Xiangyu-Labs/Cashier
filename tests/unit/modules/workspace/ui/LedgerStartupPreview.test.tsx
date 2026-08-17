@@ -123,10 +123,13 @@ describe("LedgerStartupPreview", () => {
     expect(await screen.findByTestId("entries-tab-skeleton")).toBeInTheDocument();
   });
 
-  it("renders the settings skeleton without reading the cache", async () => {
+  it("renders the settings skeleton while reading only the ledger cache timestamp", async () => {
+    readSnapshot.mockResolvedValue(snapshot());
     renderPreview("loading", "settings");
     expect(await screen.findByTestId("settings-tab-skeleton")).toBeInTheDocument();
-    expect(readSnapshot).not.toHaveBeenCalled();
+    expect(readSnapshot).toHaveBeenCalledWith("user:ledger");
+    expect(screen.getByText("正在加载最新数据…")).toBeInTheDocument();
+    expect(screen.getByText(/^缓存于/)).toBeInTheDocument();
   });
 
   it("lazily loads the details preview for the details tab", async () => {

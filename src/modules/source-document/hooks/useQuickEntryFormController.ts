@@ -67,6 +67,7 @@ export function useQuickEntryFormController({
     successMessage: null,
     errorMessage: t("quickEntryError"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "create",
     cancelPredicates: [invalidateSourceDocuments(ledgerId), invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateSourceDocuments(ledgerId),

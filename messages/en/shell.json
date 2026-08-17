@@ -160,7 +160,8 @@
     "requiresNetwork": "Requires an internet connection"
   },
   "LedgerStartupPreview": {
-    "cachedAt": "Cached at {time}"
+    "cachedAt": "Cached at {time}",
+    "currentCachedAt": "Current data cached at {time}"
   },
   "Metadata": {
     "title": "Cashier - AI Bookkeeping Assistant",

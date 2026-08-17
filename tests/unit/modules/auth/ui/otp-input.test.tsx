@@ -13,11 +13,8 @@ describe("OTPInput", () => {
     for (let position = 1; position <= 4; position += 1) {
       expect(screen.getByRole("textbox", { name: `Digit ${position} of 4` })).toBeInTheDocument();
     }
-    expect(getDigitLabel.mock.calls).toEqual([
-      [1, 4],
-      [2, 4],
-      [3, 4],
-      [4, 4],
-    ]);
+    for (let position = 1; position <= 4; position += 1) {
+      expect(getDigitLabel).toHaveBeenCalledWith(position, 4);
+    }
   });
 });

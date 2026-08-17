@@ -33,13 +33,19 @@ import { useLedgerDialogState } from "./useLedgerDialogState";
 import { RevisionStateRefreshProvider } from "@/modules/source-document/hooks/revision-state-refresh";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
-import { LedgerStartupCacheSync } from "@/modules/workspace/ledger-startup-cache-sync";
-import { LedgerStartupPreview } from "@/modules/workspace/ui/LedgerStartupPreview";
+import {
+  LedgerStartupCacheSync,
+  requestLedgerStartupCacheSync,
+} from "@/modules/workspace/ledger-startup-cache-sync";
+import {
+  LedgerDataFreshnessBanner,
+  LedgerStartupPreview,
+} from "@/modules/workspace/ui/LedgerStartupPreview";
 import { ledgerStartupCacheKey } from "@/modules/workspace/ledger-startup-cache-constants";
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/filters";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
-import type { TabQueryStateReport } from "./tab-query-state";
+import type { ActiveTabDataState, TabQueryStateReport } from "./tab-query-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import {
@@ -266,8 +272,6 @@ interface LedgerPageClientProps {
   interfaceLanguage?: InterfaceLanguage;
 }
 
-type TabQueryState = "loading" | "success" | "error";
-
 function getFeatureForTab(activeTab: LedgerTab): keyof typeof FEATURE_MESSAGES {
   return activeTab === "details"
     ? "details"
@@ -283,13 +287,19 @@ function getActiveTabQueryState(
   activeTab: LedgerTab,
   featureStatus: "loading" | "success" | "error",
   report: TabQueryStateReport | null
-): TabQueryState {
-  if (featureStatus === "error") return "error";
-  if (featureStatus !== "success") return "loading";
-  if (report == null || report.ledgerId !== ledgerId || report.tab !== activeTab) return "loading";
-  if (report.status === "error") return report.isFetching ? "loading" : "error";
-  if (report.status === "pending") return "loading";
-  return "success";
+): ActiveTabDataState {
+  const matchingReport =
+    report != null && report.ledgerId === ledgerId && report.tab === activeTab ? report : null;
+  if (featureStatus === "error") {
+    return matchingReport?.hasData === true ? "error-with-data" : "error-empty";
+  }
+  if (featureStatus !== "success" || matchingReport == null) return "initial-loading";
+  if (matchingReport.status === "error") {
+    return matchingReport.hasData ? "error-with-data" : "error-empty";
+  }
+  if (matchingReport.status === "pending" || !matchingReport.hasData) return "initial-loading";
+  if (matchingReport.isFetching) return "refreshing";
+  return "ready";
 }
 
 const STALE_TIME = LEDGER.STALE_TIME_MS;
@@ -394,6 +404,7 @@ function LedgerPageClientContent({
     [activeFeatureStatus, activeTab, ledgerId, tabQueryReport]
   );
   const retryActiveTab = useCallback(() => {
+    requestLedgerStartupCacheSync(ledgerId);
     retryFeatureMessages();
     if (
       tabQueryReport?.ledgerId === ledgerId &&
@@ -469,7 +480,23 @@ function LedgerPageClientContent({
       />
       <div>
         {/* Only mount the active tab — inactive tabs load lazily */}
-        <div className={activeTabQueryState === "success" ? undefined : "hidden"}>
+        {(activeTabQueryState === "refreshing" || activeTabQueryState === "error-with-data") && (
+          <LedgerDataFreshnessBanner
+            snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
+            state={activeTabQueryState}
+            onRetry={retryActiveTab}
+          />
+        )}
+
+        <div
+          className={
+            activeTabQueryState === "ready" ||
+            activeTabQueryState === "refreshing" ||
+            activeTabQueryState === "error-with-data"
+              ? undefined
+              : "hidden"
+          }
+        >
           {activeTab === "stream" && (
             <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
               <LedgerEntriesTab
@@ -552,12 +579,12 @@ function LedgerPageClientContent({
           )}
         </div>
 
-        {activeTabQueryState !== "success" && (
+        {(activeTabQueryState === "initial-loading" || activeTabQueryState === "error-empty") && (
           <LedgerStartupPreview
             snapshotKey={ledgerStartupCacheKey(ledger.userId, ledgerId)}
             activeTab={activeTab}
             initialFilters={filters}
-            queryState={activeTabQueryState}
+            queryState={activeTabQueryState === "error-empty" ? "error" : "loading"}
             onRetry={retryActiveTab}
           />
         )}

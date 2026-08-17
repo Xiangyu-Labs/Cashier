@@ -30,6 +30,7 @@ vi.mock("@/modules/workspace/server-actions/ledger-startup-cache", () => serverA
 vi.mock("@/modules/source-document/actions", () => sourceActions);
 
 import {
+  runStartupCacheSync,
   syncStartupCache,
   type LedgerStartupCacheSyncProps,
 } from "@/modules/workspace/ledger-startup-cache-sync";
@@ -228,5 +229,46 @@ describe("syncStartupCache", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("runStartupCacheSync flight reuse", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clientCache.getActiveStartupCacheKey.mockReturnValue(null);
+    store.readLedgerStartupSnapshot.mockResolvedValue(null);
+    serverActions.getLedgerStartupCacheVersion.mockResolvedValue(version());
+    serverActions.getLedgerStartupCacheSnapshot.mockResolvedValue({
+      ...version(),
+      items: [],
+      generatedAt: "2026-08-02T00:00:00.000Z",
+    });
+  });
+
+  it("starts a fresh flight instead of reusing one whose signal was aborted", async () => {
+    const flightProps = { ...props, ledgerId: "flight-ledger" };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    serverActions.getLedgerStartupCacheVersion.mockImplementation(async () => {
+      await gate;
+      return version({ version: "9" });
+    });
+
+    const aborted = new AbortController();
+    const live = new AbortController();
+    aborted.abort();
+
+    const first = runStartupCacheSync(flightProps, aborted.signal, false);
+    const second = runStartupCacheSync(flightProps, live.signal, false);
+
+    // The aborted flight must not be handed to the replacement caller.
+    expect(second).not.toBe(first);
+
+    release();
+    await Promise.all([first, second]);
+
+    expect(serverActions.getLedgerStartupCacheSnapshot).toHaveBeenCalledWith("flight-ledger", "9");
   });
 });

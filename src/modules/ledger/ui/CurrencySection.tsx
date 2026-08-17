@@ -25,10 +25,12 @@ interface CurrencySectionProps {
 
 function PreferredCurrenciesMenu({
   initialCurrencies,
+  mainCurrency,
   onUpdateSettings,
   disabled = false,
 }: {
   initialCurrencies: string[];
+  mainCurrency: string;
   onUpdateSettings: CurrencySectionProps["onUpdateSettings"];
   disabled?: boolean;
 }) {
@@ -40,6 +42,7 @@ function PreferredCurrenciesMenu({
   );
 
   const toggleCurrency = (currency: string) => {
+    if (currency === mainCurrency) return;
     const newCurrencies = initialCurrencies.includes(currency)
       ? initialCurrencies.filter((current) => current !== currency)
       : [...initialCurrencies, currency];
@@ -86,7 +89,8 @@ function PreferredCurrenciesMenu({
         </div>
         <div className="max-h-64 overflow-y-auto">
           {filteredCurrencies.map((currency) => {
-            const isSelected = initialCurrencies.includes(currency);
+            const isMainCurrency = currency === mainCurrency;
+            const isSelected = isMainCurrency || initialCurrencies.includes(currency);
             return (
               <label
                 key={currency}
@@ -95,9 +99,14 @@ function PreferredCurrenciesMenu({
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={() => toggleCurrency(currency)}
-                  disabled={disabled}
+                  disabled={disabled || isMainCurrency}
                 />
                 <span>{currency}</span>
+                {isMainCurrency ? (
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {t("mainCurrencyMustBeEnabled")}
+                  </span>
+                ) : null}
               </label>
             );
           })}
@@ -165,7 +174,12 @@ export function CurrencySection({
           <p className="mt-1 text-sm text-muted-foreground">{t("preferredCurrenciesDesc")}</p>
         </div>
         <PreferredCurrenciesMenu
-          initialCurrencies={settingsCurrencies}
+          initialCurrencies={
+            settingsCurrencies.includes(mainCurrency)
+              ? settingsCurrencies
+              : [mainCurrency, ...settingsCurrencies]
+          }
+          mainCurrency={mainCurrency}
           onUpdateSettings={onUpdateSettings}
           disabled={disabled}
         />

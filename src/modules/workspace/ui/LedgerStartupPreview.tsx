@@ -54,6 +54,81 @@ interface LedgerStartupPreviewProps {
   onRetry: () => void;
 }
 
+interface LedgerDataFreshnessBannerProps {
+  snapshotKey: string;
+  state: "refreshing" | "error-with-data";
+  onRetry: () => void;
+}
+
+export function LedgerDataFreshnessBanner({
+  snapshotKey,
+  state,
+  onRetry,
+}: LedgerDataFreshnessBannerProps) {
+  const t = useTranslations("LedgerPage");
+  const tPreview = useTranslations("LedgerStartupPreview");
+  const locale = useLocale();
+  const reducedMotion = useReducedMotion();
+  const [snapshot, setSnapshot] = useState<LedgerStartupCacheSnapshot | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    void readLedgerStartupSnapshot(snapshotKey)
+      .then((next) => {
+        if (!disposed) setSnapshot(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+    };
+  }, [snapshotKey]);
+
+  const failed = state === "error-with-data";
+  return (
+    <div
+      role={failed ? "alert" : "status"}
+      data-testid="ledger-data-freshness-banner"
+      aria-live="polite"
+      className={`mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+        failed ? "border-danger/30 bg-danger/10 text-text" : "border-info/25 bg-info/10 text-text"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={
+          failed
+            ? "size-3 rounded-full bg-danger"
+            : reducedMotion
+              ? "size-3 rounded-full bg-info"
+              : "size-3 animate-spin rounded-full border-2 border-info/25 border-t-info"
+        }
+      />
+      <span>{failed ? t("startupCacheError") : t("loadingLatest")}</span>
+      {!failed && snapshot != null ? (
+        <span className="text-muted">
+          {tPreview("currentCachedAt", {
+            time: new Intl.DateTimeFormat(locale, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(new Date(snapshot.lastSyncedAt)),
+          })}
+        </span>
+      ) : null}
+      {failed ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto h-7 px-2 text-xs"
+          onClick={onRetry}
+        >
+          {t("retry")}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Suspense fallback that always attempts to show the startup preview cache.
  * Server data replaces it as soon as the bootstrap finishes; cache misses
@@ -74,7 +149,6 @@ export function LedgerStartupPreview({
   const [loadState, setLoadState] = useState<LoadState>("loading");
 
   useEffect(() => {
-    if (activeTab === "settings") return;
     let disposed = false;
     const load = async () => {
       setLoadState("loading");

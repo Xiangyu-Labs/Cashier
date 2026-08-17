@@ -94,6 +94,30 @@ describe("useLoginFlow OTP sending", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("enters the OTP step even when sessionStorage writes are restricted", async () => {
+    sendOTPActionMock.mockResolvedValue({
+      ok: true,
+      expiresIn: 300,
+      expiresAt: 1_800_000_000,
+      canResendAt: 1_799_999_760,
+    });
+    const originalSetItem = sessionStorage.setItem;
+    sessionStorage.setItem = () => {
+      throw new Error("quota exceeded");
+    };
+    try {
+      const { result } = renderHook(() => useLoginFlow(t));
+
+      act(() => result.current.setEmail("user@example.com"));
+      await act(() => result.current.handleSendOTP(submitEvent));
+
+      expect(window.location.search).toBe("?authMode=otp&authStep=otp");
+      expect(result.current.error).toBeNull();
+    } finally {
+      sessionStorage.setItem = originalSetItem;
+    }
+  });
+
   it("starts in the requested login mode", () => {
     const { result } = renderHook(() => useLoginFlow(t, { initialMode: "otp" }));
 

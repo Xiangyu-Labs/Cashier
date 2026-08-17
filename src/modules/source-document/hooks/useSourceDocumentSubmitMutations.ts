@@ -26,6 +26,7 @@ import {
 import { useNotifyRevisionRefresh } from "./revision-state-refresh";
 import { applyOptimisticUpsert } from "./source-document-optimistic-cache";
 import { toast } from "sonner";
+import { dispatchLedgerMutationEvent } from "@/lib/mutations/ledger-mutation-event";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,6 +95,21 @@ export function useSourceDocumentSubmitMutations({
       toast.error(error.stage === "prepare" ? messages.imageReadError : messages.imageUploadError);
       return;
     }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error(messages.networkError);
+      return;
+    }
+    if (
+      error instanceof TypeError ||
+      /network|fetch failed|request (?:was )?aborted|connection/i.test(error.message)
+    ) {
+      toast.error(messages.networkError);
+      return;
+    }
+    if (/validation|invalid|required|must be/i.test(error.message)) {
+      toast.error(messages.validationError);
+      return;
+    }
     toast.error(fallbackMessage);
   };
 
@@ -117,7 +133,6 @@ export function useSourceDocumentSubmitMutations({
         variables.operationId,
         clientSubmissionId
       );
-      setMonotonicProgress({ phase: "submitting", percent: 99 });
       return result;
     },
     onSuccess: async (data, variables) => {
@@ -141,17 +156,18 @@ export function useSourceDocumentSubmitMutations({
       });
     },
     onError: (error) => {
-      handleSubmitError(error, messages.uploadError);
+      handleSubmitError(error, messages.createError);
     },
-    onSettled: (_data, _error, variables) => {
+    onSettled: async (data, _error, variables) => {
       if (uploadControllerRef.current?.signal === variables.signal) {
         uploadControllerRef.current = null;
       }
       setProgress(null);
       // Minimal invalidation for counts only (stream cache is patched)
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         predicate: invalidateSourceDocumentCounts(ledgerId),
       });
+      if (data != null) dispatchLedgerMutationEvent({ ledgerId, reason: "create" });
     },
   });
 
@@ -176,7 +192,6 @@ export function useSourceDocumentSubmitMutations({
         uploadedPayload,
         variables.operationId
       );
-      setMonotonicProgress({ phase: "submitting", percent: 99 });
       return result;
     },
     onSuccess: async (data, variables) => {
@@ -202,14 +217,15 @@ export function useSourceDocumentSubmitMutations({
     onError: (error) => {
       handleSubmitError(error, messages.retryError);
     },
-    onSettled: (_data, _error, variables) => {
+    onSettled: async (data, _error, variables) => {
       if (uploadControllerRef.current?.signal === variables.signal) {
         uploadControllerRef.current = null;
       }
       setProgress(null);
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         predicate: invalidateSourceDocumentCounts(ledgerId),
       });
+      if (data != null) dispatchLedgerMutationEvent({ ledgerId, reason: "update" });
     },
   });
 

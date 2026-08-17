@@ -1,9 +1,7 @@
 "use client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
 import {
@@ -36,7 +34,6 @@ export function SourceDocumentDetailWrapper({
   categories,
   ledgerEntries: initialLedgerEntries,
 }: SourceDocumentDetailWrapperProps) {
-  const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
@@ -47,6 +44,7 @@ export function SourceDocumentDetailWrapper({
     isLoading,
     isLoadingImages,
     error,
+    refetch,
   } = useSourceDocumentDetailData({
     id,
     ledgerId,
@@ -87,18 +85,12 @@ export function SourceDocumentDetailWrapper({
     await abandonCandidate();
   }, [sourceDocument, abandonCandidate]);
 
-  useEffect(() => {
-    if (error != null) {
-      toast.error(tCommon("error"));
-      onClose();
+  const handleReload = useCallback(async () => {
+    const result = await refetch();
+    if (result.error != null || result.data == null) {
+      throw result.error ?? new Error("Source document is unavailable");
     }
-  }, [error, onClose, tCommon]);
-
-  useEffect(() => {
-    if (!isLoading && sourceDocument == null && open) {
-      onClose();
-    }
-  }, [isLoading, sourceDocument, open, onClose]);
+  }, [refetch]);
 
   if (
     open &&
@@ -122,6 +114,8 @@ export function SourceDocumentDetailWrapper({
       sourceDocument={sourceDocument}
       isLoading={isLoading}
       isLoadingImages={isLoadingImages}
+      loadError={error != null}
+      onReload={handleReload}
       ledgerEntries={currentLedgerEntries}
       categories={categories}
       open={open}

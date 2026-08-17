@@ -210,6 +210,7 @@ function SubmissionProgress({
   onCancel: () => void;
 }) {
   const percent = progress.percent;
+  const isIndeterminate = progress.phase === "submitting";
   const phaseLabel =
     progress.phase === "preparing" || progress.phase === "planning"
       ? messages.preparing
@@ -226,7 +227,7 @@ function SubmissionProgress({
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{phaseLabel}</span>
         <div className="flex items-center gap-2">
-          <span className="tabular-nums">{percent}%</span>
+          {isIndeterminate ? null : <span className="tabular-nums">{percent}%</span>}
           {canCancel ? (
             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
               {messages.cancelUpload}
@@ -239,12 +240,16 @@ function SubmissionProgress({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={percent}
+        {...(isIndeterminate ? {} : { "aria-valuenow": percent })}
         aria-label={phaseLabel}
       >
         <div
-          className="h-full bg-primary transition-[width] duration-200"
-          style={{ width: `${percent}%` }}
+          className={
+            isIndeterminate
+              ? "h-full w-1/3 animate-pulse rounded-full bg-primary"
+              : "h-full bg-primary transition-[width] duration-200"
+          }
+          {...(isIndeterminate ? {} : { style: { width: `${percent}%` } })}
         />
       </div>
     </div>

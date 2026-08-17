@@ -8,6 +8,7 @@ import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/catego
 import { getLedgerAction } from "@/modules/ledger/server-actions/get";
 import { getLedgerSettingsAction } from "@/modules/ledger/server-actions/settings";
 import type { EntryCategoryWithCount, Ledger, ServiceCredential } from "@/modules/ledger/contracts";
+import { LEDGER } from "@/lib/constants";
 
 interface UseLedgerSettingsQueriesParams {
   ledgerId: string;
@@ -39,6 +40,8 @@ export function useLedgerSettingsQueries({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
     initialData: initialLedger,
+    staleTime: LEDGER.STALE_TIME_MS,
+    refetchOnWindowFocus: true,
   });
 
   const { data: categories = initialCategories } = useQuery<EntryCategoryWithCount[]>({
@@ -46,6 +49,8 @@ export function useLedgerSettingsQueries({
     queryFn: () => getEntryCategoriesAction(ledgerId),
     initialData: initialCategories,
     refetchInterval: categoryMetadataPolling,
+    staleTime: LEDGER.STALE_TIME_MS,
+    refetchOnWindowFocus: true,
   });
 
   const settingsQuery = useQuery<{
@@ -54,6 +59,8 @@ export function useLedgerSettingsQueries({
   }>({
     queryKey: settingsQueryKey,
     queryFn: () => getLedgerSettingsAction(ledgerId),
+    staleTime: LEDGER.STALE_TIME_MS,
+    refetchOnWindowFocus: true,
   });
   const { data: settingsData, isLoading: isSettingsLoading } = settingsQuery;
 
@@ -66,5 +73,6 @@ export function useLedgerSettingsQueries({
     settingsQueryKey,
     settingsQueryStatus: settingsQuery.status,
     settingsQueryIsFetching: settingsQuery.isFetching,
+    settingsQueryHasData: settingsQuery.data !== undefined,
   };
 }

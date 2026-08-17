@@ -80,6 +80,7 @@ export function LedgerEntryDetailWrapper({
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "delete",
     cancelPredicates: [invalidateLedgerEntries(ledgerId)],
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),

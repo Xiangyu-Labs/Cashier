@@ -110,7 +110,8 @@
     "setCurrency": "修改货币",
     "setCurrencyShort": "货币",
     "currencyChanged": "已更改 {count} 项的货币",
-    "loadedOnly": "仅选中已加载的条目",
+    "loadedOnly": "仅选中已加载的 {count} 项",
+    "loadedScope": "仅作用于当前已加载并已选中的项目。",
     "setDate": "修改日期",
     "setDateShort": "日期",
     "split": "拆分",
@@ -119,7 +120,11 @@
     "retry": "重试",
     "delete": "删除",
     "deleteTitle": "删除所选记录",
-    "deleteDescription": "确定删除所选 {count} 条记录吗？此操作无法撤销。",
+    "deleteDescription": "确定删除所选 {count} 条记录吗？{scope} 此操作无法撤销。",
+    "dateImpactTitle": "修改所选项目的日期？",
+    "dateImpactDescription": "将影响 {documents} 张单据和 {entries} 条分录。{scope}",
+    "dateImpactFailed": "无法计算受影响的单据和分录，请重试后再继续。",
+    "retryImpact": "重试预览",
     "deleted": "已删除 {count} 条记录",
     "retried": "已提交 {count} 条记录重试",
     "partialResult": "成功 {succeeded} 项，跳过 {skipped} 项，失败 {failed} 项",
@@ -175,6 +180,7 @@
     "noMatchingResults": "没有符合条件的结果"
   },
   "StatsTab": {
+    "throughToday": "截至今日",
     "expenseTrend": "支出趋势",
     "expenseRanking": "支出排行",
     "dailyHeatmap": "每日热力图",
@@ -283,7 +289,9 @@
     "quickEntrySuccess": "记录成功",
     "quickEntryError": "记录失败",
     "amountRequired": "请输入金额",
-    "categoryRequired": "请选择分类"
+    "categoryRequired": "请选择分类",
+    "noCategories": "请先创建分类，再添加快速记录。",
+    "goToSettings": "前往设置"
   },
   "Common": {
     "back": "返回",
@@ -340,12 +348,15 @@
     "preparing": "正在准备图片",
     "uploading": "正在上传图片",
     "finalizing": "正在确认上传",
-    "submitting": "正在提交",
+    "submitting": "正在创建记录，此阶段无法取消",
     "cancelling": "正在取消上传…",
     "imageTooLarge": "图片过大：{fileName}。请使用更小的图片。",
     "imageUnsupported": "不支持的图片格式：{fileName}。请使用 JPEG、PNG、GIF 或 WebP。",
     "imageReadError": "无法读取所选图片，请重新选择。",
     "imageUploadError": "图片上传失败，输入内容已保留，请重试。",
+    "networkError": "网络请求已中断，输入内容已保留，请重试。",
+    "validationError": "记录内容校验失败，请检查后重试。",
+    "createError": "创建记录失败，输入内容已保留，请重试。",
     "tooManyImages": "最多只能上传 3 张图片。",
     "cancelUpload": "取消上传",
     "savedMayBeHidden": "已保存，但当前筛选可能隐藏这条记录。",
@@ -428,12 +439,21 @@
     "activeResultDescription": "以下明细为当前有效结果，重试处理期间仍继续使用。",
     "splitTitle": "拆分账单",
     "splitDescription": "将选中的 {count} 项明细移动到一张新账单。",
+    "splitMore": "另有 {count} 条",
     "splitDate": "新账单日期",
     "splitSuccess": "已将 {count} 项明细拆分为新账单",
     "splitFailed": "拆分失败，未保存任何更改",
     "splitKeepOne": "原账单至少需要保留一项",
     "splitSaveFirst": "请先保存或放弃当前修改后再拆分",
-    "viewSplitBill": "查看新账单"
+    "viewSplitBill": "查看新账单",
+    "loadError": "账单加载失败。弹窗会保持打开，您可以原位重试。",
+    "revisionConflict": "服务器数据已更新",
+    "revisionConflictDescription": "本地修改暂不能基于旧版本保存。请重新加载最新数据后再编辑。",
+    "reloadServerData": "重新加载最新数据",
+    "reloadFailed": "重新加载失败，本地修改仍已保留。",
+    "saveBeforeActionTitle": "先保存当前修改？",
+    "saveBeforeActionDescription": "先保存当前编辑，再继续所选操作。保存失败时不会执行后续操作。",
+    "saveAndContinue": "保存并继续"
   },
   "SourceDocumentImageModal": {
     "title": "查看图片",
@@ -444,6 +464,9 @@
     "close": "关闭",
     "previous": "上一张图片",
     "next": "下一张图片",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resetZoom": "重置缩放",
     "pendingChangesTitle": "当前编辑尚未保存",
     "pendingChangesCloseDescription": "关闭前，请先保存或放弃当前这次编辑。",
     "pendingChangesLeaveDescription": "返回查看前，请先保存或放弃当前这次编辑。",
@@ -569,6 +592,8 @@
     "confirm": "确认",
     "signOut": "退出登录",
     "signOutDesc": "退出当前账户登录状态",
+    "signOutConfirmTitle": "退出登录？",
+    "signOutConfirmDescription": "结束当前会话前，将清理本机缓存的账本数据。",
     "ledgerManagement": "账本",
     "noLedgerAvailable": "暂无账本",
     "ledgerSettings": "账本设置",
@@ -665,7 +690,16 @@
       "verifyEmail": "验证",
       "emailCodeSent": "验证码已发送",
       "emailChanged": "邮箱已更新",
-      "emailChangeError": "无法更新邮箱"
+      "emailChangeError": "无法更新邮箱",
+      "emailChangeErrors": {
+        "invalid_code": "验证码不正确。",
+        "expired_code": "验证码已过期，请重新获取。",
+        "email_in_use": "该邮箱已被使用。",
+        "rate_limited": "请求过于频繁，请稍后再试。",
+        "locked": "错误次数过多，验证已暂时锁定。",
+        "same_email": "新邮箱必须与当前邮箱不同。",
+        "unknown": "无法更新邮箱。"
+      }
     }
   },
   "ServiceCredentials": {
@@ -854,7 +888,8 @@
     "dirtyBlocked": "请先保存或放弃当前更改再更新"
   },
   "LedgerStartupPreview": {
-    "cachedAt": "缓存于 {time}"
+    "cachedAt": "缓存于 {time}",
+    "currentCachedAt": "当前缓存于 {time}"
   },
   "AuthEmail": {
     "otpSubject": "您的验证码是 {otp}",
@@ -890,6 +925,8 @@
     "noEntries": "暂无明细",
     "keep": "仍然保留",
     "discard": "删除重复",
+    "discardConfirmTitle": "删除整张账单？",
+    "discardConfirmDescription": "这将删除日期为 {date}、金额为 {amount} 的整张单据及其全部 {count} 条明细，且无法撤销。",
     "keepSuccess": "已保留账单",
     "discardSuccess": "已删除重复账单",
     "cancel": "取消",

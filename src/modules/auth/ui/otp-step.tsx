@@ -39,7 +39,13 @@ export function OtpStep({
   const t = useTranslations("Auth");
 
   return (
-    <div className="space-y-6">
+    <form
+      className="space-y-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onVerify();
+      }}
+    >
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-text">{t("enterCode")}</label>
@@ -56,10 +62,9 @@ export function OtpStep({
         <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
       <Button
-        type="button"
+        type="submit"
         className="w-full h-11"
         disabled={isLoading || resendPending || otpExpired || otp.length !== OTP_LENGTH}
-        onClick={onVerify}
       >
         {isLoading ? (
           <>
@@ -92,9 +97,6 @@ export function OtpStep({
           {t("resendInProgress")}
         </p>
       ) : null}
-      <p className="text-center text-xs text-muted-foreground">
-        {t("codeExpires", { minutes: 5 })}
-      </p>
-    </div>
+    </form>
   );
 }

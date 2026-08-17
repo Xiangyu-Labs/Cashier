@@ -87,7 +87,17 @@ export function StatsContentView({
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="relative space-y-6 pb-24" aria-busy={isLoading}>
+      {isLoading && stats != null ? (
+        <div
+          role="status"
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center"
+        >
+          <span className="rounded-full border bg-surface/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+            {tCommon("loading")}
+          </span>
+        </div>
+      ) : null}
       {isError ? (
         <div
           role="alert"
@@ -115,6 +125,7 @@ export function StatsContentView({
         {...(trend !== undefined ? { trend } : {})}
         {...(onRefresh !== undefined ? { onRefresh } : {})}
         readOnly={readOnly}
+        isLoading={isLoading && stats == null}
       />
       {stats?.unconvertedCount != null && stats.unconvertedCount > 0 ? (
         <div
@@ -155,9 +166,14 @@ export function StatsContentView({
             </Button>
           </div>
         </div>
-        {chartView === "trend" ? (
+        {stats == null ? (
+          <div
+            className="h-64 animate-pulse rounded-lg border border-border bg-surface2/60"
+            data-testid="stats-visualization-skeleton"
+          />
+        ) : chartView === "trend" ? (
           <StatsChart
-            data={stats?.chart ?? []}
+            data={stats.chart}
             rangeType={rangeType}
             startDate={startDate}
             endDate={endDate}
@@ -166,15 +182,8 @@ export function StatsContentView({
           />
         ) : (
           <CalendarHeatmapSection
-            days={stats?.heatmap.days ?? []}
-            stats={
-              stats?.heatmap.stats ?? {
-                minAmount: 0,
-                maxAmount: 0,
-                avgAmount: 0,
-                p80Amount: 0,
-              }
-            }
+            days={stats.heatmap.days}
+            stats={stats.heatmap.stats}
             {...(onDateDrilldown !== undefined ? { onDateDrilldown } : {})}
             currency={currencySymbol}
             locale={locale}

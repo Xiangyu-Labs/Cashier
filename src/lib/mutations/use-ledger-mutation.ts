@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { runBackgroundQueryRefresh, type RefreshFailureMode } from "./background-query-refresh";
+import { dispatchLedgerMutationEvent, type LedgerMutationReason } from "./ledger-mutation-event";
 
 // Kept for compatibility with cache helper tests and non-persistent draft helpers.
 export type MutationSnapshot = [QueryKey, unknown][];
@@ -54,6 +55,9 @@ export interface UseLedgerMutationOptions<TData, TVariables, TContext = unknown>
    * conflicting warning right after the success toast.
    */
   refreshFailureMode?: RefreshFailureMode;
+
+  mutationReason?: LedgerMutationReason;
+  emitMutationEvent?: boolean;
 
   /**
    * Applies the authoritative server response before affected queries refresh.
@@ -155,6 +159,8 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
     errorMessage,
     refreshFailureMessage,
     refreshFailureMode,
+    mutationReason = "update",
+    emitMutationEvent = true,
     skipInvalidation = false,
     cancelPredicates,
     invalidatePredicates,
@@ -202,10 +208,6 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
       if (successMessage !== null && successMessage !== undefined) {
         toast.success(successMessage);
       }
-      if (ledgerId != null && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("cashier:ledger-mutated", { detail: ledgerId }));
-      }
-
       // Start the background invalidation / custom refresh and return
       // immediately so mutateAsync, isPending and onMutationSettled do not wait
       // for the query refetch to finish.
@@ -213,7 +215,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
         ledgerId,
         label: "cache refresh",
         ...(refreshFailureMessage !== undefined ? { failureMessage: refreshFailureMessage } : {}),
-        ...(refreshFailureMode !== undefined ? { failureMode: refreshFailureMode } : {}),
+        failureMode: refreshFailureMode ?? "log-only",
         refresh: () =>
           refreshCache(queryClient, {
             ledgerId,
@@ -221,7 +223,12 @@ export function useLedgerMutation<TData = unknown, TVariables = void, TContext =
             invalidatePredicates,
             customInvalidation,
           }),
-        onSettled: (refreshError) => onRefreshSettled?.(queryClient, variables, refreshError),
+        onSettled: async (refreshError) => {
+          if (ledgerId != null && emitMutationEvent) {
+            dispatchLedgerMutationEvent({ ledgerId, reason: mutationReason });
+          }
+          await onRefreshSettled?.(queryClient, variables, refreshError);
+        },
       });
     },
 

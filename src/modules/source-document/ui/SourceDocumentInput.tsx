@@ -32,6 +32,9 @@ export function SourceDocumentInput({
       imageUnsupported: (fileName: string) => t("imageUnsupported", { fileName }),
       imageReadError: t("imageReadError"),
       imageUploadError: t("imageUploadError"),
+      networkError: t("networkError"),
+      validationError: t("validationError"),
+      createError: t("createError"),
       tooManyImages: t("tooManyImages"),
     },
   });
@@ -42,9 +45,9 @@ export function SourceDocumentInput({
   }, [controller.isPending, onPendingChange]);
 
   useEffect(() => {
-    onDirtyChange?.(controller.canSubmit);
+    onDirtyChange?.(controller.isDirty);
     return () => onDirtyChange?.(false);
-  }, [controller.canSubmit, onDirtyChange]);
+  }, [controller.isDirty, onDirtyChange]);
 
   return (
     <SourceDocumentInputView

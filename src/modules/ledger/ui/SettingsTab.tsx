@@ -120,6 +120,7 @@ export function SettingsTab({
     settingsQueryKey,
     settingsQueryStatus,
     settingsQueryIsFetching,
+    settingsQueryHasData,
   } = useLedgerSettings({ ledgerId, ledger, initialCategories });
 
   useEffect(() => {
@@ -129,11 +130,13 @@ export function SettingsTab({
       queryKey: settingsQueryKey,
       status: settingsQueryStatus,
       isFetching: settingsQueryIsFetching,
+      hasData: settingsQueryHasData,
     });
   }, [
     ledgerId,
     onQueryStateChange,
     settingsQueryIsFetching,
+    settingsQueryHasData,
     settingsQueryKey,
     settingsQueryStatus,
   ]);

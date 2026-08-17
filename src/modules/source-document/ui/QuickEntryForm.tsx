@@ -19,6 +19,7 @@ import { DateFilter } from "@/components/ui/date-filter";
 import { useQuickEntryFormController } from "@/modules/source-document/hooks/useQuickEntryFormController";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
+import { Link } from "@/i18n/routing";
 
 interface QuickEntryFormProps {
   ledgerId: string;
@@ -79,6 +80,8 @@ export function QuickEntryForm({
   const parsedAmount = Number(amount);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const isPending = mutation.isPending;
+  const amountErrorId = "quick-entry-amount-required";
+  const categoryErrorId = "quick-entry-category-required";
 
   useEffect(() => {
     onPendingChange?.(isPending);
@@ -124,6 +127,20 @@ export function QuickEntryForm({
       {/* Category Grid */}
       <div>
         <p className="text-sm text-muted-foreground mb-2">{t("selectCategory")}</p>
+        {categories.length === 0 ? (
+          <div
+            role="alert"
+            className="mb-2 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm"
+          >
+            <p>{t("noCategories")}</p>
+            <Link
+              href="/?tab=settings"
+              className="mt-2 inline-flex font-medium text-primary underline"
+            >
+              {t("goToSettings")}
+            </Link>
+          </div>
+        ) : null}
         <div
           className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto"
           role="group"
@@ -195,6 +212,14 @@ export function QuickEntryForm({
         type="button"
         onClick={handleSubmit}
         disabled={selectedCategoryId === null || !hasValidAmount || isPending}
+        aria-describedby={
+          [
+            !hasValidAmount ? amountErrorId : null,
+            selectedCategoryId === null ? categoryErrorId : null,
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
         className="w-full"
       >
         {isPending ? (
@@ -206,6 +231,16 @@ export function QuickEntryForm({
           </>
         )}
       </Button>
+      {!hasValidAmount ? (
+        <p id={amountErrorId} className="text-sm text-destructive">
+          {t("amountRequired")}
+        </p>
+      ) : null}
+      {selectedCategoryId === null && categories.length > 0 ? (
+        <p id={categoryErrorId} className="text-sm text-destructive">
+          {t("categoryRequired")}
+        </p>
+      ) : null}
     </div>
   );
 }

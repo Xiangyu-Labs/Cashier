@@ -129,6 +129,7 @@ export function useSourceDocumentInputController({
     progress: submitMutations.progress,
     canCancelUpload: submitMutations.canCancel,
     canSubmit: draft.canSubmit,
+    isDirty: draft.isDirty,
     setText: draft.setText,
     setEntryDate: draft.setEntryDate,
     openImage: draft.openImage,

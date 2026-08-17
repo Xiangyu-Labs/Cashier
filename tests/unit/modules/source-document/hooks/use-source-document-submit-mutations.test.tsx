@@ -37,6 +37,9 @@ const messages: SourceDocumentInputControllerMessages = {
   imageUnsupported: (fileName) => `unsupported: ${fileName}`,
   imageReadError: "read failed",
   imageUploadError: "upload failed",
+  networkError: "network failed",
+  validationError: "validation failed",
+  createError: "create failed",
   tooManyImages: "too many images",
 };
 
@@ -119,7 +122,7 @@ describe("useSourceDocumentSubmitMutations", () => {
       result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
     });
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("submit failed"));
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("create failed"));
     expect(onSuccess).not.toHaveBeenCalled();
   });
 

@@ -9,6 +9,7 @@ import { SettingsField } from "./SettingsField";
 import { SettingsSection } from "./SettingsSection";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface AccountSettingsProps {
   displayEmail: string;
@@ -38,6 +39,7 @@ export function AccountSettings({
   const t = useTranslations("Settings");
   const ta = useTranslations("Settings.Account");
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
 
   return (
     <SettingsSection title={t("account")}>
@@ -57,18 +59,27 @@ export function AccountSettings({
         <Button
           variant="outline"
           disabled={isPending || isSigningOut}
-          onClick={async () => {
-            if (isSigningOut) return;
+          onClick={() => setSignOutConfirmOpen(true)}
+        >
+          {t("signOut")}
+        </Button>
+        <ConfirmDialog
+          open={signOutConfirmOpen}
+          onOpenChange={setSignOutConfirmOpen}
+          title={t("signOutConfirmTitle")}
+          description={t("signOutConfirmDescription")}
+          confirmLabel={t("signOut")}
+          onConfirm={async () => {
+            if (isSigningOut) return false;
             setIsSigningOut(true);
             try {
               await onSignOut();
+              return true;
             } finally {
               setIsSigningOut(false);
             }
           }}
-        >
-          {t("signOut")}
-        </Button>
+        />
       </SettingsField>
     </SettingsSection>
   );

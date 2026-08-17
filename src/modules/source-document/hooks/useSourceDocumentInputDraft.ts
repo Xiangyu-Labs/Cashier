@@ -29,14 +29,17 @@ export function useSourceDocumentInputDraft({
   const [entryDate, setEntryDate] = useState<Date>(() =>
     resolveInitialEntryDate(initialData?.entryDate, timeZone)
   );
+  const [initialEntryDate, setInitialEntryDate] = useState(() => entryDate.getTime());
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isInitializing, startTransition] = useTransition();
   const hasInitializedRef = useRef(false);
   const previousSourceDocumentIdRef = useRef<string | undefined>(sourceDocumentId);
   const resetDraft = () => {
+    const nextEntryDate = resolveInitialEntryDate(undefined, timeZone);
     setText("");
     setImages([]);
-    setEntryDate(resolveInitialEntryDate(undefined, timeZone));
+    setEntryDate(nextEntryDate);
+    setInitialEntryDate(nextEntryDate.getTime());
     setSelectedImageIndex(null);
   };
 
@@ -54,7 +57,9 @@ export function useSourceDocumentInputDraft({
     startTransition(() => {
       setText(initialData.text ?? "");
       setImages(toEditableImages(initialData.images));
-      setEntryDate(resolveInitialEntryDate(initialData.entryDate, timeZone));
+      const nextEntryDate = resolveInitialEntryDate(initialData.entryDate, timeZone);
+      setInitialEntryDate(nextEntryDate.getTime());
+      setEntryDate(nextEntryDate);
     });
   }, [initialData, startTransition, timeZone]);
 
@@ -72,6 +77,7 @@ export function useSourceDocumentInputDraft({
     removeImage: (index: number) =>
       setImages((previousImages) => previousImages.filter((_, imageIndex) => imageIndex !== index)),
     canSubmit: text !== "" || images.length > 0,
+    isDirty: text !== "" || images.length > 0 || entryDate.getTime() !== initialEntryDate,
     isInitializing,
     resetDraft,
   };

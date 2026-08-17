@@ -14,6 +14,55 @@ import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 
 type LoginStep = "email" | "otp";
 export type LoginMode = "password" | "otp";
+const OTP_CONTEXT_KEY = "cashier:login-otp-context:v1";
+
+interface StoredOtpContext {
+  email: string;
+  expiresAt: number;
+  canResendAt: number;
+}
+
+function clearOtpContext(): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.removeItem(OTP_CONTEXT_KEY);
+  } catch {
+    // Storage is disabled or restricted; the login flow must still work.
+  }
+}
+
+function storeOtpContext(context: StoredOtpContext): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(OTP_CONTEXT_KEY, JSON.stringify(context));
+  } catch {
+    // Best-effort persistence only: the in-memory draft store still drives the UI.
+  }
+}
+
+function readOtpContext(): StoredOtpContext | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(OTP_CONTEXT_KEY);
+    if (raw == null) return null;
+    const stored = JSON.parse(raw) as Partial<StoredOtpContext>;
+    if (
+      typeof stored.email === "string" &&
+      stored.email !== "" &&
+      typeof stored.expiresAt === "number" &&
+      typeof stored.canResendAt === "number"
+    ) {
+      return {
+        email: stored.email,
+        expiresAt: stored.expiresAt,
+        canResendAt: stored.canResendAt,
+      };
+    }
+  } catch {
+    // Treat unreadable or malformed context as absent.
+  }
+  return null;
+}
 
 interface LoginFlowOptions {
   initialMode?: LoginMode;
@@ -97,6 +146,7 @@ export function useLoginFlow(
   const resetDraft = useLoginDraftStore((state) => state.reset);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contextHydrated, setContextHydrated] = useState(false);
 
   const writeFlowUrl = useCallback(
     (nextMode: LoginMode, nextStep: LoginStep, replace = false) => {
@@ -124,14 +174,34 @@ export function useLoginFlow(
     }
   }, [mode, rawMode, rawStep, writeFlowUrl]);
 
+  useEffect(() => {
+    if (rawStep !== "otp" || mode !== "otp") {
+      setContextHydrated(true);
+      return;
+    }
+    const stored = readOtpContext();
+    const now = Math.floor(Date.now() / 1000);
+    if (stored != null && stored.expiresAt > now) {
+      setEmail(stored.email);
+      setOtpExpiry(stored.expiresAt, stored.canResendAt);
+    } else {
+      clearOtpContext();
+      writeFlowUrl("otp", "email", true);
+    }
+    setContextHydrated(true);
+  }, [mode, rawStep, setEmail, setOtpExpiry, writeFlowUrl]);
+
   const setMode = (nextMode: LoginMode) => {
     if (resendPending) return;
     setError(null);
+    clearOtpContext();
+    setOtp("");
     writeFlowUrl(nextMode, "email");
   };
 
   const finishSignIn = (result: SignInResponse | undefined) => {
     if (result?.ok) {
+      clearOtpContext();
       resetDraft();
       router.push(callbackUrl);
       router.refresh();
@@ -181,6 +251,10 @@ export function useLoginFlow(
         return;
       }
       setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
+      setOtp("");
+      if (result.expiresAt != null && result.canResendAt != null) {
+        storeOtpContext({ email, expiresAt: result.expiresAt, canResendAt: result.canResendAt });
+      }
       writeFlowUrl("otp", "otp");
     } catch {
       setError(t("unexpectedError"));
@@ -219,6 +293,11 @@ export function useLoginFlow(
         return;
       }
       setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
+      setOtp("");
+      setError(null);
+      if (result.expiresAt != null && result.canResendAt != null) {
+        storeOtpContext({ email, expiresAt: result.expiresAt, canResendAt: result.canResendAt });
+      }
     } catch {
       setError(t("resendFailed"));
     } finally {
@@ -229,6 +308,8 @@ export function useLoginFlow(
   const handleChangeEmail = () => {
     if (resendPending) return;
     setError(null);
+    clearOtpContext();
+    setOtp("");
     writeFlowUrl("otp", "email");
   };
 
@@ -257,9 +338,13 @@ export function useLoginFlow(
     canResendAt,
     resendPending,
     otpExpired,
+    contextHydrated,
     isDevAuthAvailable,
     setMode,
-    setEmail,
+    setEmail: (nextEmail: string) => {
+      if (nextEmail !== email) clearOtpContext();
+      setEmail(nextEmail);
+    },
     setPassword,
     setOtp,
     handlePasswordLogin,

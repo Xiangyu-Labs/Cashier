@@ -91,6 +91,7 @@ export function useLedgerSettingsMutation({
     successMessage,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "settings",
     invalidatePredicates: [
       invalidateLedgerEntries(ledgerId),
       invalidateSourceDocuments(ledgerId),

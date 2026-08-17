@@ -6,4 +6,8 @@ export interface TabQueryStateReport {
   queryKey: readonly unknown[];
   status: TabQueryStatus;
   isFetching: boolean;
+  hasData: boolean;
 }
+
+export type ActiveTabDataState =
+  "initial-loading" | "cached-preview" | "refreshing" | "ready" | "error-with-data" | "error-empty";

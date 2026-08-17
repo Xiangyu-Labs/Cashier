@@ -60,6 +60,7 @@ export function ServiceWorkerUpdate() {
       observedRegistration = registration;
       if (registration.waiting != null) showUpdate(registration.waiting);
       registration.addEventListener("updatefound", handleUpdateFound);
+      if (registration.installing != null) handleUpdateFound();
     };
 
     void navigator.serviceWorker.ready

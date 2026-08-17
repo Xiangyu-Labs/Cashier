@@ -35,6 +35,8 @@ import {
 import { toast } from "sonner";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { dispatchLedgerMutationEvent } from "@/lib/mutations/ledger-mutation-event";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -54,6 +56,7 @@ export function SourceDocumentDuplicateReviewDialog({
   const t = useTranslations("DuplicateReview");
   const locale = useLocale();
   const queryClient = useQueryClient();
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const reviewQueryKey = queryKeys.sourceDocumentDuplicateReview(ledgerId, sourceDocumentId);
   const reviewQuery = useQuery({
     queryKey: reviewQueryKey,
@@ -107,12 +110,14 @@ export function SourceDocumentDuplicateReviewDialog({
       // Background refresh: the Server Action already committed the write, so
       // cache invalidation must never block the success path or turn the
       // mutation into an error when the refresh itself fails.
-      void invalidateLedgerViews().catch((error) => {
-        console.error(
-          "[SourceDocumentDuplicateReviewDialog] background cache invalidation failed after a successful action",
-          { ledgerId, sourceDocumentId, error }
-        );
-      });
+      void invalidateLedgerViews()
+        .catch((error) => {
+          console.error(
+            "[SourceDocumentDuplicateReviewDialog] background cache invalidation failed after a successful action",
+            { ledgerId, sourceDocumentId, error }
+          );
+        })
+        .finally(() => dispatchLedgerMutationEvent({ ledgerId, reason: "delete" }));
     },
     [
       invalidateLedgerViews,
@@ -164,109 +169,130 @@ export function SourceDocumentDuplicateReviewDialog({
           candidateSourceDocumentIds: data.matched == null ? [] : [data.matched.id],
           aiLanguage: locale,
         });
+  const duplicateTotal =
+    data?.duplicate.entries.reduce((sum, entry) => {
+      const amount = Number(entry.convertedAmount ?? entry.amount);
+      return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0) ?? 0;
+  const duplicateDate = data?.duplicate.entryDate ?? data?.duplicate.createdAt.slice(0, 10) ?? "";
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
-      <DialogContent
-        variant="detail"
-        className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-lg"
-        aria-describedby={undefined}
-        hideCloseButton={isPending}
-        onEscapeKeyDown={(event) => isPending && event.preventDefault()}
-        onPointerDownOutside={(event) => isPending && event.preventDefault()}
-      >
-        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
-            <ShieldCheck className="h-4 w-4 text-warning" />
-            {t("title")}
-          </DialogTitle>
-          {displayReason != null && displayReason !== "" && (
-            <p className="mt-1 text-xs text-muted-foreground">{displayReason}</p>
-          )}
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)}>
+        <DialogContent
+          variant="detail"
+          className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(88dvh,760px)] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-lg"
+          aria-describedby={undefined}
+          hideCloseButton={isPending}
+          onEscapeKeyDown={(event) => isPending && event.preventDefault()}
+          onPointerDownOutside={(event) => isPending && event.preventDefault()}
+        >
+          <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
+              <ShieldCheck className="h-4 w-4 text-warning" />
+              {t("title")}
+            </DialogTitle>
+            {displayReason != null && displayReason !== "" && (
+              <p className="mt-1 text-xs text-muted-foreground">{displayReason}</p>
+            )}
+          </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          {reviewQuery.isLoading ? (
-            <div className="grid min-w-0 gap-4 md:grid-cols-2" aria-busy="true">
-              <ReviewPanelSkeleton />
-              <ReviewPanelSkeleton />
-            </div>
-          ) : reviewQuery.isError || data == null ? (
-            <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
-              <p className="text-sm text-danger">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => reviewQuery.refetch()}>
-                {t("reload")}
-              </Button>
-            </div>
-          ) : (
-            <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              {data.matched != null ? (
-                <>
-                  {(data.matchedState === "modified" || data.matchedState === "deleted") && (
-                    <div className="col-span-full rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 text-sm text-text">
-                      {data.matchedState === "modified"
-                        ? t("matchedModified")
-                        : t("matchedDeleted")}
-                    </div>
-                  )}
-                  <ReviewPanel
-                    side={data.matched}
-                    label={t("original")}
-                    tone="original"
-                    badge={t("snapshotVersion")}
-                    mainCurrency={mainCurrency}
-                    locale={locale}
-                  />
-                </>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            {reviewQuery.isLoading ? (
+              <div className="grid min-w-0 gap-4 md:grid-cols-2" aria-busy="true">
+                <ReviewPanelSkeleton />
+                <ReviewPanelSkeleton />
+              </div>
+            ) : reviewQuery.isError || data == null ? (
+              <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+                <p className="text-sm text-danger">{t("loadError")}</p>
+                <Button variant="outline" size="sm" onClick={() => reviewQuery.refetch()}>
+                  {t("reload")}
+                </Button>
+              </div>
+            ) : (
+              <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                {data.matched != null ? (
+                  <>
+                    {(data.matchedState === "modified" || data.matchedState === "deleted") && (
+                      <div className="col-span-full rounded-lg border border-warning/40 bg-warning/5 px-4 py-3 text-sm text-text">
+                        {data.matchedState === "modified"
+                          ? t("matchedModified")
+                          : t("matchedDeleted")}
+                      </div>
+                    )}
+                    <ReviewPanel
+                      side={data.matched}
+                      label={t("original")}
+                      tone="original"
+                      badge={t("snapshotVersion")}
+                      mainCurrency={mainCurrency}
+                      locale={locale}
+                    />
+                  </>
+                ) : (
+                  <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-surface px-4 text-center text-sm text-muted-foreground">
+                    {t("matchedMissing")}
+                  </div>
+                )}
+                <ReviewPanel
+                  side={data.duplicate}
+                  label={t("newBill")}
+                  tone="candidate"
+                  mainCurrency={mainCurrency}
+                  locale={locale}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap-reverse justify-end gap-2 border-t bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setDiscardConfirmOpen(true)}
+              disabled={isPending || data == null}
+            >
+              {discardMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-surface px-4 text-center text-sm text-muted-foreground">
-                  {t("matchedMissing")}
-                </div>
+                <Trash2 className="mr-2 h-4 w-4" />
               )}
-              <ReviewPanel
-                side={data.duplicate}
-                label={t("newBill")}
-                tone="candidate"
-                mainCurrency={mainCurrency}
-                locale={locale}
-              />
-            </div>
+              {t("discard")}
+            </Button>
+            <Button
+              onClick={() => keepMutation.mutate({ operationId: crypto.randomUUID() })}
+              disabled={isPending || data == null}
+            >
+              {keepMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
+              {t("keep")}
+            </Button>
+          </div>
+
+          {isPending && (
+            <div className="absolute inset-0 z-50 cursor-wait bg-surface/20" aria-hidden />
           )}
-        </div>
-
-        <div className="flex shrink-0 flex-wrap-reverse justify-end gap-2 border-t bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            {t("cancel")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => discardMutation.mutate({ operationId: crypto.randomUUID() })}
-            disabled={isPending || data == null}
-          >
-            {discardMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            {t("discard")}
-          </Button>
-          <Button
-            onClick={() => keepMutation.mutate({ operationId: crypto.randomUUID() })}
-            disabled={isPending || data == null}
-          >
-            {keepMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="mr-2 h-4 w-4" />
-            )}
-            {t("keep")}
-          </Button>
-        </div>
-
-        {isPending && (
-          <div className="absolute inset-0 z-50 cursor-wait bg-surface/20" aria-hidden />
-        )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onOpenChange={(nextOpen) => !isPending && setDiscardConfirmOpen(nextOpen)}
+        title={t("discardConfirmTitle")}
+        description={t("discardConfirmDescription", {
+          date: duplicateDate,
+          amount: formatCurrencyAmount(duplicateTotal, mainCurrency, locale),
+          count: data?.duplicate.entries.length ?? 0,
+        })}
+        confirmLabel={t("discard")}
+        variant="destructive"
+        onConfirm={() => discardMutation.mutate({ operationId: crypto.randomUUID() })}
+      />
+    </>
   );
 }
 

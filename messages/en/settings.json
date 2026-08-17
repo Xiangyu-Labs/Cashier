@@ -142,6 +142,8 @@
     "confirm": "Confirm",
     "signOut": "Sign Out",
     "signOutDesc": "Sign out of your current account",
+    "signOutConfirmTitle": "Sign out?",
+    "signOutConfirmDescription": "Your local cached ledger data will be cleared before this session ends.",
     "ledgerManagement": "Ledger",
     "noLedgerAvailable": "No ledger available",
     "ledgerSettings": "Ledger Settings",
@@ -238,7 +240,16 @@
       "verifyEmail": "Verify",
       "emailCodeSent": "Verification code sent",
       "emailChanged": "Email address updated",
-      "emailChangeError": "Could not update the email address"
+      "emailChangeError": "Could not update the email address",
+      "emailChangeErrors": {
+        "invalid_code": "The verification code is incorrect.",
+        "expired_code": "The verification code has expired. Request a new one.",
+        "email_in_use": "That email address is already in use.",
+        "rate_limited": "Please wait before requesting another code.",
+        "locked": "Verification is temporarily locked after too many attempts.",
+        "same_email": "Enter an email address different from your current one.",
+        "unknown": "Could not update the email address."
+      }
     }
   }
 }

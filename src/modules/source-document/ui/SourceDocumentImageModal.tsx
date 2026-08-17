@@ -1,8 +1,8 @@
 "use client";
-import { useRef, useState, type SetStateAction } from "react";
+import { useCallback, useRef, useState, type SetStateAction } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,9 @@ export function SourceDocumentImageModal({
 }: SourceDocumentImageModalProps) {
   const t = useTranslations("SourceDocumentImageModal");
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ distance: number; scale: number } | null>(null);
   const hasImages = images.length > 0;
   const resetKey = `${open}:${initialIndex}:${images.length}`;
   const [navigation, setNavigation] = useState({ resetKey, index: initialIndex });
@@ -45,6 +48,52 @@ export function SourceDocumentImageModal({
     });
   };
   const currentImage = hasImages ? images[currentIndex] : null;
+  const viewResetKey = `${open}:${currentIndex}:${currentImage?.storedFileId ?? currentImage?.data ?? ""}`;
+  const [storedView, setStoredView] = useState({ resetKey: viewResetKey, scale: 1, x: 0, y: 0 });
+  const [draggingState, setDraggingState] = useState({ resetKey: viewResetKey, value: false });
+  const view =
+    storedView.resetKey === viewResetKey
+      ? storedView
+      : { resetKey: viewResetKey, scale: 1, x: 0, y: 0 };
+  const isDragging = draggingState.resetKey === viewResetKey && draggingState.value;
+  const setView = useCallback(
+    (update: SetStateAction<{ scale: number; x: number; y: number }>) => {
+      setStoredView((previous) => {
+        const current =
+          previous.resetKey === viewResetKey
+            ? previous
+            : { resetKey: viewResetKey, scale: 1, x: 0, y: 0 };
+        const next = typeof update === "function" ? update(current) : update;
+        return { resetKey: viewResetKey, ...next };
+      });
+    },
+    [viewResetKey]
+  );
+  const setIsDragging = useCallback(
+    (value: boolean) => setDraggingState({ resetKey: viewResetKey, value }),
+    [viewResetKey]
+  );
+
+  const clampTranslation = useCallback((scale: number, x: number, y: number) => {
+    const viewport = viewportRef.current;
+    if (viewport == null || scale <= 1) return { x: 0, y: 0 };
+    const maxX = (viewport.clientWidth * (scale - 1)) / 2;
+    const maxY = (viewport.clientHeight * (scale - 1)) / 2;
+    return { x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
+  }, []);
+  const setScale = useCallback(
+    (nextScale: number) => {
+      const scale = Math.max(1, Math.min(4, nextScale));
+      setView((previous) => ({ scale, ...clampTranslation(scale, previous.x, previous.y) }));
+    },
+    [clampTranslation, setView]
+  );
+  const resetView = useCallback(() => {
+    pointersRef.current.clear();
+    pinchRef.current = null;
+    setIsDragging(false);
+    setView({ scale: 1, x: 0, y: 0 });
+  }, [setIsDragging, setView]);
 
   const title = !hasImages
     ? ""
@@ -61,7 +110,7 @@ export function SourceDocumentImageModal({
         if (nextOpen) {
           onOpenChange(true);
         } else {
-          onOpenChange(false);
+          if (view.scale === 1 && !isDragging) onOpenChange(false);
         }
       }}
     >
@@ -76,7 +125,9 @@ export function SourceDocumentImageModal({
           event.preventDefault();
           restoreFocusRef.current?.focus();
         }}
-        onPointerDownOutside={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => {
+          if (view.scale > 1 || isDragging) event.preventDefault();
+        }}
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             setCurrentIndex((previous) => Math.max(0, previous - 1));
@@ -84,11 +135,44 @@ export function SourceDocumentImageModal({
           if (event.key === "ArrowRight") {
             setCurrentIndex((previous) => Math.min(images.length - 1, previous + 1));
           }
+          if (event.key === "+" || event.key === "=") setScale(view.scale + 0.5);
+          if (event.key === "-") setScale(view.scale - 0.5);
+          if (event.key === "0") resetView();
         }}
       >
         <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <DialogTitle>{title}</DialogTitle>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setScale(view.scale - 0.5)}
+              disabled={view.scale <= 1}
+              aria-label={t("zoomOut")}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="min-w-12 text-center text-sm tabular-nums" aria-live="polite">
+              {view.scale.toFixed(1)}×
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setScale(view.scale + 0.5)}
+              disabled={view.scale >= 4}
+              aria-label={t("zoomIn")}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={resetView}
+              disabled={view.scale === 1 && view.x === 0 && view.y === 0}
+              aria-label={t("resetZoom")}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -117,13 +201,68 @@ export function SourceDocumentImageModal({
               </Button>
             )}
 
-            <div className="relative h-full w-full">
+            <div
+              ref={viewportRef}
+              className="relative h-full w-full overflow-hidden touch-none"
+              onDoubleClick={() => setScale(view.scale === 1 ? 2 : 1)}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+                setIsDragging(view.scale > 1);
+                if (pointersRef.current.size === 2) {
+                  const [a, b] = [...pointersRef.current.values()];
+                  if (a && b)
+                    pinchRef.current = {
+                      distance: Math.hypot(a.x - b.x, a.y - b.y),
+                      scale: view.scale,
+                    };
+                }
+              }}
+              onPointerMove={(event) => {
+                const previous = pointersRef.current.get(event.pointerId);
+                if (previous == null) return;
+                pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+                const points = [...pointersRef.current.values()];
+                if (points.length >= 2 && pinchRef.current != null) {
+                  const [a, b] = points;
+                  if (a && b)
+                    setScale(
+                      pinchRef.current.scale *
+                        (Math.hypot(a.x - b.x, a.y - b.y) / pinchRef.current.distance)
+                    );
+                  return;
+                }
+                if (view.scale > 1) {
+                  const dx = event.clientX - previous.x;
+                  const dy = event.clientY - previous.y;
+                  setView((current) => ({
+                    scale: current.scale,
+                    ...clampTranslation(current.scale, current.x + dx, current.y + dy),
+                  }));
+                }
+              }}
+              onPointerUp={(event) => {
+                pointersRef.current.delete(event.pointerId);
+                pinchRef.current = null;
+                setIsDragging(pointersRef.current.size > 0 && view.scale > 1);
+              }}
+              onPointerCancel={(event) => {
+                pointersRef.current.delete(event.pointerId);
+                pinchRef.current = null;
+                setIsDragging(false);
+              }}
+            >
               <Image
                 src={currentImage == null ? "" : imageSource(currentImage)}
                 alt={t("imageAlt", { index: currentIndex + 1 })}
                 fill
                 unoptimized
-                className="object-contain"
+                className="select-none object-contain"
+                draggable={false}
+                style={{
+                  transform:
+                    "translate3d(" + view.x + "px, " + view.y + "px, 0) scale(" + view.scale + ")",
+                }}
               />
             </div>
 

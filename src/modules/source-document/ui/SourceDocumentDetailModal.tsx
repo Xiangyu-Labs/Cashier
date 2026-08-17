@@ -34,6 +34,8 @@ interface SourceDocumentDetailModalProps {
   sourceDocument: SourceDocument | SourceDocumentLight | null;
   isLoading?: boolean;
   isLoadingImages?: boolean;
+  loadError?: boolean;
+  onReload?: () => Promise<void>;
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
   preferredCurrencies?: string[];
@@ -77,6 +79,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   sourceDocument,
   isLoading = false,
   isLoadingImages = false,
+  loadError = false,
+  onReload,
   ledgerEntries,
   categories,
   preferredCurrencies = [],
@@ -107,6 +111,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const saveOperationIdRef = useRef<string | null>(null);
   const draftRevisionIdRef = useRef<string | null>(null);
   const continueNavigationRef = useRef<(() => void) | null>(null);
+  const continueActionRef = useRef<(() => void | Promise<void>) | null>(null);
   const splitIdentityRef = useRef<{
     operationId: string;
     newSourceDocumentId: string;
@@ -117,11 +122,14 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isSplitting, setIsSplitting] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [reloadError, setReloadError] = useState(false);
   const busy =
     isSaving ||
     isDeleting ||
     isRetrying ||
     isSplitting ||
+    isReloading ||
     isAccepting ||
     isAbandoning ||
     isCancelling;
@@ -151,6 +159,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [showSaveAndContinueConfirm, setShowSaveAndContinueConfirm] = useState(false);
 
   useEffect(() => {
     if (open && sourceDocument && !hasPendingChanges) {
@@ -262,7 +271,48 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     else onClose();
   }, [onClose, discardAllChanges]);
 
-  const handleBatchCategory = async (categoryId: string | null) => {
+  const handleReload = useCallback(async () => {
+    if (onReload == null || isReloading) return false;
+    setIsReloading(true);
+    setReloadError(false);
+    try {
+      await onReload();
+      discardAllChanges();
+      clearSelection();
+      return true;
+    } catch {
+      setReloadError(true);
+      return false;
+    } finally {
+      setIsReloading(false);
+    }
+  }, [clearSelection, discardAllChanges, isReloading, onReload]);
+
+  const requestAction = useCallback(
+    (action: () => void | Promise<void>) => {
+      if (busy) return;
+      if (hasRevisionConflict) return;
+      if (hasPendingChanges) {
+        continueActionRef.current = action;
+        setShowSaveAndContinueConfirm(true);
+        return;
+      }
+      void action();
+    },
+    [busy, hasPendingChanges, hasRevisionConflict]
+  );
+
+  const handleSaveAndContinue = useCallback(async () => {
+    const saved = await handleSaveAll();
+    if (!saved) return false;
+    const action = continueActionRef.current;
+    continueActionRef.current = null;
+    setShowSaveAndContinueConfirm(false);
+    await action?.();
+    return true;
+  }, [handleSaveAll]);
+
+  const performBatchCategory = async (categoryId: string | null) => {
     if (selectedIds.length === 0 || busy) return;
     setIsSaving(true);
     try {
@@ -275,8 +325,10 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       setIsSaving(false);
     }
   };
+  const handleBatchCategory = (categoryId: string | null) =>
+    requestAction(() => performBatchCategory(categoryId));
 
-  const handleBatchCurrency = async (currency: string) => {
+  const performBatchCurrency = async (currency: string) => {
     if (selectedIds.length === 0 || busy) return;
     setIsSaving(true);
     try {
@@ -289,6 +341,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       setIsSaving(false);
     }
   };
+  const handleBatchCurrency = (currency: string) =>
+    requestAction(() => performBatchCurrency(currency));
 
   const handleBatchDelete = async () => {
     if (busy) return;
@@ -311,11 +365,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       toast.error(t("splitKeepOne"));
       return;
     }
-    if (hasPendingChanges) {
-      toast.error(t("splitSaveFirst"));
-      return;
-    }
-    setShowSplitDialog(true);
+    requestAction(() => setShowSplitDialog(true));
   };
 
   const handleSplit = async (entryDate: string) => {
@@ -428,6 +478,20 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+            {loadError && !sourceDocument ? (
+              <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
+                <p className="text-sm font-medium text-text">{t("loadError")}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={onClose} disabled={isReloading}>
+                    {tCommon("close")}
+                  </Button>
+                  <Button onClick={() => void handleReload()} disabled={isReloading}>
+                    <RefreshCw className={cn("size-4", isReloading && "animate-spin")} />
+                    {tCommon("retry")}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {isLoading && !sourceDocument && (
               <div className="space-y-3 animate-pulse">
                 <div className="flex items-center gap-2">
@@ -458,6 +522,31 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
 
             {sourceDocument && (
               <>
+                {hasRevisionConflict ? (
+                  <div
+                    className="mb-3 rounded-lg border border-warning/40 bg-warning/10 p-3"
+                    role="alert"
+                  >
+                    <p className="text-sm font-medium text-text">{t("revisionConflict")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("revisionConflictDescription")}
+                    </p>
+                    {reloadError ? (
+                      <p className="mt-2 text-xs text-destructive">{t("reloadFailed")}</p>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => void handleReload()}
+                      disabled={isReloading}
+                    >
+                      <RefreshCw className={cn("size-4", isReloading && "animate-spin")} />
+                      {t("reloadServerData")}
+                    </Button>
+                  </div>
+                ) : null}
                 {/* Diagnostic code display for anomaly/failed states */}
                 {(sourceDocument.status === "anomaly" || sourceDocument.status === "failed") && (
                   <div className="mb-3 px-1">
@@ -539,7 +628,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
               {...(sourceDocument?.supportedActions.includes("split_entries") && onSplit != null
                 ? { onSplit: handleOpenSplit }
                 : {})}
-              onDelete={() => setShowBatchDeleteConfirm(true)}
+              onDelete={() => requestAction(() => setShowBatchDeleteConfirm(true))}
               categories={categories}
               preferredCurrencies={preferredCurrencies}
               isChangingCategory={isSaving}
@@ -639,7 +728,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   variant="outline"
                   size="sm"
                   className="h-9 px-3 gap-1.5 text-destructive/70 border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={() => requestAction(() => setShowDeleteConfirm(true))}
                   disabled={busy}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -689,6 +778,18 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
         />
 
         <ConfirmDialog
+          open={showSaveAndContinueConfirm}
+          onOpenChange={(nextOpen) => {
+            setShowSaveAndContinueConfirm(nextOpen);
+            if (!nextOpen) continueActionRef.current = null;
+          }}
+          title={t("saveBeforeActionTitle")}
+          description={t("saveBeforeActionDescription")}
+          onConfirm={handleSaveAndContinue}
+          confirmLabel={t("saveAndContinue")}
+        />
+
+        <ConfirmDialog
           open={showUnsavedConfirm}
           onOpenChange={(nextOpen) => {
             setShowUnsavedConfirm(nextOpen);
@@ -721,7 +822,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       {showSplitDialog ? (
         <SourceDocumentSplitDialog
           open
-          selectedCount={selectedIds.length}
+          selectedEntries={ledgerEntries.filter((entry) => selectedIds.includes(entry.id))}
           initialDate={splitInitialDate}
           isSubmitting={isSplitting}
           onOpenChange={setShowSplitDialog}

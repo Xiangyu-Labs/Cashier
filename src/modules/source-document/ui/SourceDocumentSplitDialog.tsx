@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Calendar, Loader2, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
+import { formatCurrencyAmount } from "@/lib/format/currency";
 
 interface SourceDocumentSplitDialogProps {
   open: boolean;
-  selectedCount: number;
+  selectedEntries?: LedgerEntry[];
+  selectedCount?: number;
   initialDate: string;
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +28,7 @@ interface SourceDocumentSplitDialogProps {
 
 export function SourceDocumentSplitDialog({
   open,
+  selectedEntries = [],
   selectedCount,
   initialDate,
   isSubmitting,
@@ -33,7 +37,11 @@ export function SourceDocumentSplitDialog({
 }: SourceDocumentSplitDialogProps) {
   const t = useTranslations("SourceDocumentDetail");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const [entryDate, setEntryDate] = useState(() => initialDate);
+  const previewEntries = selectedEntries.slice(0, 5);
+  const remainingCount = selectedEntries.length - previewEntries.length;
+  const totalSelected = selectedCount ?? selectedEntries.length;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !isSubmitting && onOpenChange(nextOpen)}>
@@ -51,8 +59,26 @@ export function SourceDocumentSplitDialog({
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {t("splitDescription", { count: selectedCount })}
+          {t("splitDescription", { count: totalSelected })}
         </p>
+        <ul className="divide-y rounded-lg border">
+          {previewEntries.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0 truncate">{entry.itemName}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {formatCurrencyAmount(Number(entry.amount), entry.currency ?? "CNY", locale)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {remainingCount > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {t("splitMore", { count: remainingCount })}
+          </p>
+        ) : null}
         <div className="grid gap-2">
           <Label htmlFor="split-entry-date">{t("splitDate")}</Label>
           <div className="relative">

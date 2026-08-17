@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { emailChangeChallenges, otpTokens, users } from "@/persistence";
 import { hashOTP } from "@/modules/auth/services/otp";
-import { ConflictError, ValidationError } from "@/lib/errors";
 
 const userId = "00000000-0000-0000-0000-000000000000";
 
@@ -31,7 +30,9 @@ describe("email change challenges", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("stores a dedicated challenge without creating a login OTP or user", async () => {
-    await sendEmailChangeCodeAction("New@Example.com", "en-US");
+    await expect(sendEmailChangeCodeAction("New@Example.com", "en-US")).resolves.toMatchObject({
+      ok: true,
+    });
     const db = getTestDb();
     const challenge = await db.query.emailChangeChallenges.findFirst({
       where: eq(emailChangeChallenges.userId, userId),
@@ -54,6 +55,7 @@ describe("email change challenges", () => {
       expiresAt: new Date(Date.now() + 60_000),
     });
     await expect(verifyEmailChangeCodeAction("new@example.com", "123456")).resolves.toEqual({
+      ok: true,
       email: "new@example.com",
     });
     const updated = await db.query.users.findFirst({ where: eq(users.id, userId) });
@@ -73,9 +75,10 @@ describe("email change challenges", () => {
       tokenHash: hashOTP("123456"),
       expiresAt: new Date(Date.now() + 60_000),
     });
-    await expect(verifyEmailChangeCodeAction("new@example.com", "000000")).rejects.toThrow(
-      ValidationError
-    );
+    await expect(verifyEmailChangeCodeAction("new@example.com", "000000")).resolves.toEqual({
+      ok: false,
+      code: "invalid_code",
+    });
     const failed = await db.query.emailChangeChallenges.findFirst({
       where: eq(emailChangeChallenges.userId, userId),
     });
@@ -84,9 +87,10 @@ describe("email change challenges", () => {
       .update(emailChangeChallenges)
       .set({ expiresAt: new Date(Date.now() - 1) })
       .where(eq(emailChangeChallenges.userId, userId));
-    await expect(verifyEmailChangeCodeAction("new@example.com", "123456")).rejects.toThrow(
-      "expired"
-    );
+    await expect(verifyEmailChangeCodeAction("new@example.com", "123456")).resolves.toEqual({
+      ok: false,
+      code: "expired_code",
+    });
   });
 
   it("checks target-email uniqueness again during verification", async () => {
@@ -98,9 +102,10 @@ describe("email change challenges", () => {
       tokenHash: hashOTP("123456"),
       expiresAt: new Date(Date.now() + 60_000),
     });
-    await expect(verifyEmailChangeCodeAction("taken@example.com", "123456")).rejects.toThrow(
-      ConflictError
-    );
+    await expect(verifyEmailChangeCodeAction("taken@example.com", "123456")).resolves.toEqual({
+      ok: false,
+      code: "email_in_use",
+    });
     const original = await db.query.users.findFirst({
       where: and(eq(users.id, userId), eq(users.email, "test@example.com")),
     });
@@ -119,7 +124,15 @@ describe("email change challenges", () => {
     const attempts = await Promise.allSettled(
       Array.from({ length: 3 }, () => verifyEmailChangeCodeAction("new@example.com", "000000"))
     );
-    expect(attempts.every((attempt) => attempt.status === "rejected")).toBe(true);
+    expect(attempts.every((attempt) => attempt.status === "fulfilled")).toBe(true);
+    expect(
+      attempts.every(
+        (attempt) =>
+          attempt.status === "fulfilled" &&
+          attempt.value.ok === false &&
+          attempt.value.code === "invalid_code"
+      )
+    ).toBe(true);
 
     const challenge = await db.query.emailChangeChallenges.findFirst({
       where: eq(emailChangeChallenges.userId, userId),
@@ -140,8 +153,12 @@ describe("email change challenges", () => {
       verifyEmailChangeCodeAction("new@example.com", "123456"),
       verifyEmailChangeCodeAction("new@example.com", "123456"),
     ]);
-    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
-    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
+    expect(
+      outcomes.filter((outcome) => outcome.status === "fulfilled" && outcome.value.ok === true)
+    ).toHaveLength(1);
+    expect(
+      outcomes.filter((outcome) => outcome.status === "fulfilled" && outcome.value.ok === false)
+    ).toHaveLength(1);
     expect(
       await db.query.emailChangeChallenges.findFirst({
         where: eq(emailChangeChallenges.userId, userId),

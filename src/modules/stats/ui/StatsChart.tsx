@@ -83,6 +83,14 @@ export function StatsChart({
   const paddingTop = 10; // 10% top padding
   const paddingBottom = 10; // 10% bottom padding
   const formatAmount = (value: number) => formatCurrencyAmount(value, currencySymbol, locale);
+  const formatAxisAmount = (value: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencySymbol,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+  const yAxisTicks = [yAxisMax, (yAxisMax * 2) / 3, yAxisMax / 3, 0];
 
   return (
     <div className="w-full h-52 relative pt-6 pb-6 select-none">
@@ -93,10 +101,14 @@ export function StatsChart({
         </div>
       )}
       {/* Grid Lines */}
-      <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none">
-        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
-        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
-        <div className="border-b border-dashed border-border/40 w-full h-[1px]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-8 top-6 flex flex-col justify-between pl-12">
+        {yAxisTicks.map((tick) => (
+          <div key={tick} className="relative h-px w-full border-b border-dashed border-border/40">
+            <span className="absolute right-full -translate-y-1/2 pr-2 text-[10px] tabular-nums text-muted-foreground">
+              {formatAxisAmount(tick)}
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* Chart Area - Using relative positioning for points */}
@@ -199,7 +211,7 @@ export function StatsChart({
       </div>
 
       {/* X Axis Labels */}
-      <div className="relative mt-2 h-6 w-full px-2">
+      <div className="relative ml-12 mt-2 h-6 px-2">
         {chartPoints.map((p, i) => {
           // Label Filtering
           let showLabel = false;

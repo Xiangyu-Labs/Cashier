@@ -59,8 +59,16 @@ export function DetailsTab({
       queryKey: data.queryKey,
       status: data.queryStatus,
       isFetching: data.queryIsFetching,
+      hasData: data.queryHasData,
     });
-  }, [data.queryIsFetching, data.queryKey, data.queryStatus, ledgerId, onQueryStateChange]);
+  }, [
+    data.queryHasData,
+    data.queryIsFetching,
+    data.queryKey,
+    data.queryStatus,
+    ledgerId,
+    onQueryStateChange,
+  ]);
   const { groupedItems } = useDetailsTabGrouping(data.entries, timeZone);
   const entryIds = useMemo(() => data.entries.map((entry) => entry.id), [data.entries]);
   const queryFingerprint = useMemo(

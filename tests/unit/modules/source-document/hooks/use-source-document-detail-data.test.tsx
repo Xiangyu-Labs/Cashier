@@ -60,7 +60,7 @@ describe("useSourceDocumentDetailData", () => {
     );
   });
 
-  it("shows cached data immediately and refreshes it whenever detail opens", async () => {
+  it("shows fresh cached data immediately without refetching on every open", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
@@ -99,6 +99,49 @@ describe("useSourceDocumentDetailData", () => {
     );
 
     expect(result.current.sourceDocument?.entryDate).toBe("2026-07-28");
+    expect(getSourceDocumentLightAction).not.toHaveBeenCalled();
+  });
+
+  it("shows stale cached data immediately and refreshes it in the background", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    queryClient.setQueryData(
+      queryKeys.sourceDocument("ledger-1", "11111111-1111-4111-8111-111111111111"),
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        ledgerId: "ledger-1",
+        title: "Cached",
+        text: "receipt",
+        files: [],
+        status: "completed",
+        type: "text",
+        anomalyReason: null,
+        entryDate: "2026-07-28",
+        createdAt: "2026-07-15T00:00:00.000Z",
+        ledgerEntries: [],
+        hasImages: false,
+        supportedActions: [],
+        errorCode: null,
+        pendingRevisionId: null,
+      },
+      { updatedAt: Date.now() - 2 * 60 * 1000 - 1 }
+    );
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useSourceDocumentDetailData({
+          ledgerId: "ledger-1",
+          id: "11111111-1111-4111-8111-111111111111",
+          open: true,
+        }),
+      { wrapper }
+    );
+
+    expect(result.current.sourceDocument?.title).toBe("Cached");
     await waitFor(() => expect(getSourceDocumentLightAction).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(result.current.sourceDocument?.title).toBe("Lunch"));
   });

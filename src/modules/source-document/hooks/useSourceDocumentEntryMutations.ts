@@ -35,6 +35,7 @@ export function useSourceDocumentEntryMutations({
     },
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "batch",
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),
@@ -56,6 +57,7 @@ export function useSourceDocumentEntryMutations({
     successMessage: null,
     errorMessage: null,
     refreshFailureMessage: tCommon("savedRefreshFailed"),
+    mutationReason: "batch",
     ...(sourceDocumentAndEntriesPredicates !== null
       ? { cancelPredicates: sourceDocumentAndEntriesPredicates }
       : {}),

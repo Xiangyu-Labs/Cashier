@@ -21,6 +21,8 @@ interface SourceDocumentActionsProps {
   onDiscardDuplicates?: () => Promise<void> | void;
   isKeepingDuplicates?: boolean;
   isDiscardingDuplicates?: boolean;
+  dateImpactError?: boolean;
+  isPreviewingDateImpact?: boolean;
 }
 
 export function SourceDocumentActions({
@@ -38,6 +40,8 @@ export function SourceDocumentActions({
   onDiscardDuplicates,
   isKeepingDuplicates = false,
   isDiscardingDuplicates = false,
+  dateImpactError = false,
+  isPreviewingDateImpact = false,
 }: SourceDocumentActionsProps) {
   const t = useTranslations("BatchActions");
   const tCommon = useTranslations("Common");
@@ -74,6 +78,11 @@ export function SourceDocumentActions({
               showShortcuts={false}
             />
             <div className="flex justify-end gap-2 p-3 border-t">
+              {dateImpactError ? (
+                <p className="mr-auto max-w-48 text-xs text-destructive" role="alert">
+                  {t("dateImpactFailed")}
+                </p>
+              ) : null}
               <Button variant="ghost" size="sm" onClick={onCancel}>
                 {tCommon("cancel")}
               </Button>
@@ -81,9 +90,10 @@ export function SourceDocumentActions({
                 variant="default"
                 size="sm"
                 onClick={onUpdateDates}
-                disabled={isUpdatingDates}
+                disabled={isUpdatingDates || isPreviewingDateImpact}
               >
-                {t("confirm")}
+                {isPreviewingDateImpact ? <Loader2 className="size-4 animate-spin" /> : null}
+                {dateImpactError ? t("retryImpact") : t("confirm")}
               </Button>
             </div>
           </PopoverContent>
