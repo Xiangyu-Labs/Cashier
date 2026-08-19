@@ -43,6 +43,7 @@ import {
   showNewRecordSuccessFeedback,
   type NewRecordInputMode,
 } from "./new-record-success-feedback";
+import { RefreshButton } from "@/components/ui/refresh-button";
 
 // Dynamic imports keep inactive tab dependencies out of the initial Stream bundle.
 // Each inactive tab is lazily loaded by next/dynamic; its locale messages
@@ -396,6 +397,30 @@ export function LedgerPageClient({
       void queryClient.refetchQueries({ queryKey: tabQueryReport.queryKey, exact: true });
     }
   }, [activeTab, ledgerId, queryClient, retryFeatureMessages, tabQueryReport]);
+  const refreshActiveTab = useCallback(async () => {
+    const matchesActiveTab = (query: { queryKey: readonly unknown[] }) => {
+      const key = query.queryKey;
+      if (activeTab === "stream") {
+        return (
+          key[0] === "sourceDocuments" &&
+          key[1] === ledgerId &&
+          (key[2] === "stream" || key[2] === "streamTotal")
+        );
+      }
+      if (activeTab === "details") {
+        return (key[0] === "ledgerEntries" || key[0] === "summary") && key[1] === ledgerId;
+      }
+      if (activeTab === "stats") return key[0] === "enhanced-stats" && key[1] === ledgerId;
+      return (
+        (key[0] === "ledger" || key[0] === "entryCategories" || key[0] === "ledgerSettings") &&
+        key[1] === ledgerId
+      );
+    };
+    await queryClient.refetchQueries(
+      { predicate: matchesActiveTab, type: "active" },
+      { throwOnError: true }
+    );
+  }, [activeTab, ledgerId, queryClient]);
   const { handleCategoryDrilldown, handleDateDrilldown } = useDrilldownNavigation({
     searchParams,
     pathname,
@@ -451,12 +476,25 @@ export function LedgerPageClient({
   return (
     <>
       <div>
+        <div className="flex h-9 items-center justify-end px-2">
+          <RefreshButton
+            onRefresh={refreshActiveTab}
+            isRefreshing={activeTabQueryState === "refreshing"}
+            disabled={activeTab === "settings" && dirtyChangeCount > 0}
+          />
+        </div>
         {/* Only mount the active tab — inactive tabs load lazily */}
         {activeTabQueryState === "error-with-data" ? (
           <LedgerQueryErrorBanner onRetry={retryActiveTab} />
         ) : null}
+        {activeTabQueryState === "error-empty" ? (
+          <LedgerQueryErrorBanner empty onRetry={retryActiveTab} />
+        ) : null}
 
-        <div>
+        <div
+          className={activeTabQueryState === "error-empty" ? "hidden" : undefined}
+          aria-hidden={activeTabQueryState === "error-empty" ? true : undefined}
+        >
           {activeTab === "stream" && (
             <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
               <LedgerEntriesTab

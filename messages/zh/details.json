@@ -147,6 +147,7 @@
   },
   "DetailsTab": {
     "selectAllLoaded": "选择当前已加载的 {count} 条记录",
+    "loadMoreFailed": "加载更多失败，重试",
     "expenseSummary": "支出统计",
     "today": "今天",
     "yesterday": "昨天",
@@ -225,6 +226,7 @@
     "retryAll": "全部重试",
     "noRecords": "暂无记录",
     "loadMore": "加载更多",
+    "loadMoreFailed": "加载更多失败，重试",
     "noMore": "没有更多了",
     "manualRecord": "手动记录",
     "deleteConfirmTitle": "确认删除",
@@ -246,7 +248,7 @@
     "close": "关闭",
     "confirm": "确认",
     "delete": "删除",
-    "retry": "编辑重试",
+    "retry": "重试",
     "selectItem": "选择{item}",
     "cancel": "取消",
     "save": "保存",
@@ -281,7 +283,8 @@
     "unsavedChangesTitle": "有未保存的更改",
     "unsavedChangesDescription": "离开前请保存或放弃这些更改",
     "saveAndContinue": "保存并继续",
-    "discardAndContinue": "放弃并继续"
+    "discardAndContinue": "放弃并离开",
+    "continueEditing": "继续编辑"
   },
   "LedgerEntryDetail": {
     "category": "交易类别",
@@ -349,8 +352,8 @@
     "mainCurrency": "主货币",
     "mainCurrencyDesc": "用于统计和总计；更改后按交易日汇率重算历史折算金额。",
     "mainCurrencyChangeTitle": "更改主货币？",
-    "mainCurrencyChangeDescription": "主货币将改为 {currency}，所有历史汇总和当前有效及待确认明细的折算金额会按交易日汇率重新计算。原始金额和币种不会改变。",
-    "mainCurrencyChangeConfirm": "更改并重新计算",
+    "mainCurrencyChangeDescription": "这只会将草稿更新为 {currency}。保存“记账规则”后，历史汇总才会重新计算。",
+    "mainCurrencyChangeConfirm": "使用 {currency}",
     "timeZone": "账本时区",
     "timeZoneDesc": "用于默认日期、区间和统计；不改变已有记录日期。",
     "collapseEntries": "默认折叠记录",
@@ -659,7 +662,11 @@
     "batchModePendingDescription": "进入批量操作前，请保存或放弃当前编辑。"
   },
   "SourceDocumentEditRetryDialog": {
-    "title": "编辑重试"
+    "title": "编辑重试",
+    "unsavedTitle": "放弃更改？",
+    "unsavedDescription": "重试草稿将会丢失。",
+    "continueEditing": "继续编辑",
+    "discardAndLeave": "放弃并离开"
   },
   "SourceDocumentImageModal": {
     "title": "查看图片",

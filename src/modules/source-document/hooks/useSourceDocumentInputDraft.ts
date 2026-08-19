@@ -17,6 +17,27 @@ interface UseSourceDocumentInputDraftOptions {
   timeZone?: string;
 }
 
+interface InitialDraftSnapshot {
+  text: string;
+  images: EditableInputImage[];
+  entryDate: number;
+}
+
+function areImagesEqual(left: EditableInputImage[], right: EditableInputImage[]) {
+  return (
+    left.length === right.length &&
+    left.every((image, index) => {
+      const other = right[index];
+      return (
+        other != null &&
+        image.data === other.data &&
+        image.mimeType === other.mimeType &&
+        image.storedFileId === other.storedFileId
+      );
+    })
+  );
+}
+
 export function useSourceDocumentInputDraft({
   sourceDocumentId,
   initialData,
@@ -29,7 +50,11 @@ export function useSourceDocumentInputDraft({
   const [entryDate, setEntryDate] = useState<Date>(() =>
     resolveInitialEntryDate(initialData?.entryDate, timeZone)
   );
-  const [initialEntryDate, setInitialEntryDate] = useState(() => entryDate.getTime());
+  const [initialDraft, setInitialDraft] = useState<InitialDraftSnapshot>(() => ({
+    text: initialData?.text ?? "",
+    images: toEditableImages(initialData?.images),
+    entryDate: entryDate.getTime(),
+  }));
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [isInitializing, startTransition] = useTransition();
   const hasInitializedRef = useRef(false);
@@ -39,7 +64,7 @@ export function useSourceDocumentInputDraft({
     setText("");
     setImages([]);
     setEntryDate(nextEntryDate);
-    setInitialEntryDate(nextEntryDate.getTime());
+    setInitialDraft({ text: "", images: [], entryDate: nextEntryDate.getTime() });
     setSelectedImageIndex(null);
   };
 
@@ -55,10 +80,16 @@ export function useSourceDocumentInputDraft({
 
     hasInitializedRef.current = true;
     startTransition(() => {
-      setText(initialData.text ?? "");
-      setImages(toEditableImages(initialData.images));
+      const nextText = initialData.text ?? "";
+      const nextImages = toEditableImages(initialData.images);
       const nextEntryDate = resolveInitialEntryDate(initialData.entryDate, timeZone);
-      setInitialEntryDate(nextEntryDate.getTime());
+      setInitialDraft({
+        text: nextText,
+        images: nextImages,
+        entryDate: nextEntryDate.getTime(),
+      });
+      setText(nextText);
+      setImages(nextImages);
       setEntryDate(nextEntryDate);
     });
   }, [initialData, startTransition, timeZone]);
@@ -77,7 +108,10 @@ export function useSourceDocumentInputDraft({
     removeImage: (index: number) =>
       setImages((previousImages) => previousImages.filter((_, imageIndex) => imageIndex !== index)),
     canSubmit: text !== "" || images.length > 0,
-    isDirty: text !== "" || images.length > 0 || entryDate.getTime() !== initialEntryDate,
+    isDirty:
+      text !== initialDraft.text ||
+      !areImagesEqual(images, initialDraft.images) ||
+      entryDate.getTime() !== initialDraft.entryDate,
     isInitializing,
     resetDraft,
   };

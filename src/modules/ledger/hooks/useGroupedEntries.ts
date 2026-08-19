@@ -36,7 +36,7 @@ export function useGroupedEntries({
         const amount =
           entry.convertedAmount != null && entry.convertedAmount !== ""
             ? parseAmount(entry.convertedAmount)
-            : parseAmount(entry.amount);
+            : 0;
         return sum + amount;
       }, 0),
     locale,

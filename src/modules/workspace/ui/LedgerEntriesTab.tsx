@@ -27,6 +27,7 @@ import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import type { TabQueryStateReport } from "./tab-query-state";
 import { previewSourceDocumentDateImpact } from "../source-document-date-impact";
+import { Button } from "@/components/ui/button";
 
 interface LedgerEntriesTabProps {
   ledgerId: string;
@@ -96,7 +97,7 @@ export function LedgerEntriesTab({
     queryKey: streamQueryDescriptor.totalQueryKey,
     queryFn: () => getStreamTotalAction(ledgerId, streamQueryDescriptor.totalInput),
   });
-  const filteredTotal = Number(streamTotalData?.total ?? 0);
+  const filteredTotal = streamTotalData == null ? undefined : Number(streamTotalData.total);
   const hasActiveFilters =
     filters.startDate != null ||
     filters.endDate != null ||
@@ -123,6 +124,7 @@ export function LedgerEntriesTab({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     queryKey,
     queryStatus,
     queryIsFetching,
@@ -276,8 +278,8 @@ export function LedgerEntriesTab({
   }, [deleteConfirm, deleteSourceDocument, deleteEntry]);
 
   const handleBatchUpdateDates = useCallback(
-    (date: string) => batchUpdateDates.mutate({ ids: selectedIds, entryDate: date }),
-    [batchUpdateDates, selectedIds]
+    (date: string, ids: string[]) => batchUpdateDates.mutate({ ids, entryDate: date }),
+    [batchUpdateDates]
   );
 
   const sentinelRef = useInfiniteScroll({
@@ -294,13 +296,15 @@ export function LedgerEntriesTab({
         isAllSelected={isAllSelected}
         hasMoreData={hasNextPage}
         selectedCount={selectedIds.length}
+        selectedSourceDocumentIds={selectedIds}
+        selectedEntryIds={selectedEntryIds}
         selectedDuplicateCount={selectedDuplicateCount}
         onToggleSelectionMode={handleToggleSelectionMode}
         onSelectAll={() => !isBatchPending && selectAll()}
         onClearSelection={() => !isBatchPending && clearSelection()}
         onUpdateDates={handleBatchUpdateDates}
-        onPreviewDateImpact={() =>
-          previewSourceDocumentDateImpact(ledgerId, selectedIds, selectedEntryIds)
+        onPreviewDateImpact={(sourceDocumentIds, entryIds) =>
+          previewSourceDocumentDateImpact(ledgerId, sourceDocumentIds, entryIds)
         }
         isUpdatingDates={batchUpdateDates.isPending}
         onRetry={async () => {
@@ -331,7 +335,7 @@ export function LedgerEntriesTab({
         periodParams={periodParams}
         {...(!hasActiveFilters ? { totalPrefix: tFilter("total") } : {})}
         mainCurrency={mainCurrency}
-        filteredTotal={filteredTotal}
+        {...(filteredTotal === undefined ? {} : { filteredTotal })}
         onResetFilters={onResetFilters}
         {...(onApplyPreset != null ? { onApplyPreset } : {})}
       />
@@ -386,12 +390,16 @@ export function LedgerEntriesTab({
             {/* Load completed history before the user reaches the list end. */}
             {hasNextPage && (
               <div ref={sentinelRef} className="flex h-12 justify-center py-4" aria-live="polite">
-                {isFetchingNextPage && (
+                {isFetchNextPageError ? (
+                  <Button variant="outline" size="sm" onClick={() => void fetchNextPage()}>
+                    {t("loadMoreFailed")}
+                  </Button>
+                ) : isFetchingNextPage ? (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     {t("loadingMore")}
                   </span>
-                )}
+                ) : null}
               </div>
             )}
 

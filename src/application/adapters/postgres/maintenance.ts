@@ -20,8 +20,8 @@ export async function runBoundedMaintenance(now = new Date()): Promise<void> {
     await tx.execute(sql`DELETE FROM rate_limit_buckets WHERE bucket_key IN (
       SELECT bucket_key FROM rate_limit_buckets WHERE window_start < ${twoDaysAgo} LIMIT ${LIMIT}
     )`);
-    await tx.execute(sql`DELETE FROM idempotency_records WHERE (credential_id, key) IN (
-      SELECT credential_id, key FROM idempotency_records
+    await tx.execute(sql`DELETE FROM idempotency_records WHERE (principal_type, principal_id, key) IN (
+      SELECT principal_type, principal_id, key FROM idempotency_records
       WHERE expires_at < ${now} OR (status = 'completed' AND completed_at < ${dayAgo})
       LIMIT ${LIMIT}
     )`);

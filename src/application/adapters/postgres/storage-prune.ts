@@ -241,13 +241,13 @@ export async function runStoragePrune(
     summary.expiredRecords.otpTokens = affectedRowCount(expiredOtp);
 
     const expiredIdempotency = await (apply
-      ? db.execute<{ credentialId: string; key: string }>(sql`
-          DELETE FROM idempotency_records WHERE (credential_id, key) IN (
-            SELECT credential_id, key FROM idempotency_records
+      ? db.execute<{ principalType: string; principalId: string; key: string }>(sql`
+          DELETE FROM idempotency_records WHERE (principal_type, principal_id, key) IN (
+            SELECT principal_type, principal_id, key FROM idempotency_records
             WHERE expires_at < ${now} OR (status = 'completed' AND completed_at < ${new Date(now.getTime() - DAY_MS)})
             LIMIT ${batchSize * 10}
           )
-          RETURNING credential_id, key
+          RETURNING principal_type, principal_id, key
         `)
       : db.execute<{ count: number }>(sql`
           SELECT count(*)::int AS count FROM idempotency_records

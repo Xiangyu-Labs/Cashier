@@ -190,7 +190,7 @@ async function createIdempotentSubmission(
   idempotency: SourceDocumentIdempotencyInput,
   prepare: () => Promise<SourceDocumentSubmissionInput>
 ): Promise<PendingRevisionSubmissionContract> {
-  const { credentialId, key, contentFingerprint } = idempotency;
+  const { principalType, principalId, key, contentFingerprint } = idempotency;
   if (key.trim() === "" || key.length > 512) {
     throw new ValidationError("Idempotency key must contain between 1 and 512 characters");
   }
@@ -200,7 +200,8 @@ async function createIdempotentSubmission(
   const claimed = await db
     .insert(idempotencyRecords)
     .values({
-      credentialId,
+      principalType,
+      principalId,
       key,
       status: "pending",
       contentFingerprint,
@@ -209,7 +210,11 @@ async function createIdempotentSubmission(
       expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
     })
     .onConflictDoUpdate({
-      target: [idempotencyRecords.credentialId, idempotencyRecords.key],
+      target: [
+        idempotencyRecords.principalType,
+        idempotencyRecords.principalId,
+        idempotencyRecords.key,
+      ],
       set: {
         leaseToken,
         leaseExpiresAt: new Date(now.getTime() + IDEMPOTENCY_LEASE_MS),
@@ -229,7 +234,8 @@ async function createIdempotentSubmission(
         .set({ leaseExpiresAt: new Date(renewedAt.getTime() + IDEMPOTENCY_LEASE_MS) })
         .where(
           and(
-            eq(idempotencyRecords.credentialId, credentialId),
+            eq(idempotencyRecords.principalType, principalType),
+            eq(idempotencyRecords.principalId, principalId),
             eq(idempotencyRecords.key, key),
             eq(idempotencyRecords.status, "pending"),
             eq(idempotencyRecords.leaseToken, leaseToken)
@@ -256,7 +262,8 @@ async function createIdempotentSubmission(
           })
           .where(
             and(
-              eq(idempotencyRecords.credentialId, credentialId),
+              eq(idempotencyRecords.principalType, principalType),
+              eq(idempotencyRecords.principalId, principalId),
               eq(idempotencyRecords.key, key),
               eq(idempotencyRecords.leaseToken, leaseToken)
             )
@@ -272,7 +279,8 @@ async function createIdempotentSubmission(
         .delete(idempotencyRecords)
         .where(
           and(
-            eq(idempotencyRecords.credentialId, credentialId),
+            eq(idempotencyRecords.principalType, principalType),
+            eq(idempotencyRecords.principalId, principalId),
             eq(idempotencyRecords.key, key),
             eq(idempotencyRecords.leaseToken, leaseToken)
           )
@@ -286,7 +294,8 @@ async function createIdempotentSubmission(
   for (let attempt = 0; attempt < IDEMPOTENCY_WAIT_ATTEMPTS; attempt += 1) {
     const record = await db.query.idempotencyRecords.findFirst({
       where: and(
-        eq(idempotencyRecords.credentialId, credentialId),
+        eq(idempotencyRecords.principalType, principalType),
+        eq(idempotencyRecords.principalId, principalId),
         eq(idempotencyRecords.key, key)
       ),
     });

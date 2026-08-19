@@ -5,6 +5,7 @@ import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import {
   createSourceDocumentInputSchema,
+  parseOperationIdentity,
   type CreateSourceDocumentInputContract,
 } from "@/modules/source-document/contract-schemas";
 import { omitUndefinedProperties } from "@/lib/validation";
@@ -19,20 +20,37 @@ import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
  */
 export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId, ledger },
+    { ledgerId, ledger, userId },
     input: CreateSourceDocumentInputContract,
     _operationId?: string,
-    _clientSubmissionId?: string
+    clientSubmissionId?: string
   ): Promise<CreateSourceDocumentResponseDto> => {
     const validated = createSourceDocumentInputSchema.parse(input);
     const payload = omitUndefinedProperties(validated);
+    const submissionIdentity = parseOperationIdentity({
+      ...(clientSubmissionId === undefined ? {} : { operationId: clientSubmissionId }),
+    });
 
     const scheduleProcessing = (intent: ProcessingIntentContract) => {
       scheduleProcessingAfter(intent);
     };
 
     const result = await createAndQueueSourceDocument(
-      { ledgerId, ledger, ...payload },
+      {
+        ledgerId,
+        ledger,
+        ...payload,
+        ...(submissionIdentity.operationId == null
+          ? {}
+          : {
+              idempotency: {
+                principalType: "user" as const,
+                principalId: userId,
+                key: `create:${submissionIdentity.operationId}`,
+                contentFingerprint: null,
+              },
+            }),
+      },
       {
         submissions: serverComposition.sourceDocumentSubmissions,
         storedFiles: serverComposition.storedFiles,

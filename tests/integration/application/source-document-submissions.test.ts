@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { StoredFileAdapter } from "@/application/adapters/storage";
 import {
   PostgresProcessingIntentAdapter,
@@ -72,6 +72,35 @@ const entry = {
 } as const;
 
 describe("target source-document submissions", () => {
+  it("creates one document, revision, and intent for concurrent user submissions", async () => {
+    const db = getTestDb();
+    const { userId, ledgerId } = await createTestUserWithLedger(db);
+    const prepare = vi.fn(async () => ({ ledgerId, submittedText: "Lunch 12.50" }));
+    const idempotency = {
+      principalType: "user" as const,
+      principalId: userId,
+      key: `create:${crypto.randomUUID()}`,
+      contentFingerprint: null,
+    };
+
+    const [first, replay] = await Promise.all([
+      postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+        idempotency,
+        prepare
+      ),
+      postgresSourceDocumentSubmissionAdapter.createIdempotentPendingWithIntent!(
+        idempotency,
+        prepare
+      ),
+    ]);
+
+    expect(first.document.id).toBe(replay.document.id);
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(await db.select().from(sourceDocuments)).toHaveLength(1);
+    expect(await db.select().from(sourceDocumentRevisions)).toHaveLength(1);
+    expect(await db.select().from(processingOutbox)).toHaveLength(1);
+  });
+
   it("rolls back a fencing loser after an expired idempotency lease is taken over", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
@@ -85,7 +114,8 @@ describe("target source-document submissions", () => {
       tokenSuffix: "test",
     });
     const idempotency = {
-      credentialId,
+      principalType: "credential" as const,
+      principalId: credentialId,
       key: "fencing-takeover",
       contentFingerprint: "same-content",
     };

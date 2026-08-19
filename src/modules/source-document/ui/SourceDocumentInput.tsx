@@ -65,6 +65,7 @@ export function SourceDocumentInput({
       fileInputRef={controller.fileInputRef}
       isPending={controller.isPending}
       isSubmitting={controller.isSubmitting}
+      isPreparingImages={controller.isPreparingImages}
       progress={controller.progress}
       canSubmit={controller.canSubmit}
       messages={{

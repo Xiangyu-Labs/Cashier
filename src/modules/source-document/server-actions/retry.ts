@@ -25,7 +25,7 @@ import { processImage } from "@/lib/storage/image-processing";
  */
 export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId },
+    { ledgerId, userId },
     sourceDocumentId: string,
     operationId?: string
   ): Promise<RetrySourceDocumentResponseDto> => {
@@ -38,7 +38,20 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
     };
 
     const result = await retrySourceDocument(
-      { ledgerId, sourceDocumentId: identity.sourceDocumentId },
+      {
+        ledgerId,
+        sourceDocumentId: identity.sourceDocumentId,
+        ...(identity.operationId == null
+          ? {}
+          : {
+              idempotency: {
+                principalType: "user" as const,
+                principalId: userId,
+                key: `retry:${identity.sourceDocumentId}:${identity.operationId}`,
+                contentFingerprint: null,
+              },
+            }),
+      },
       {
         submissions: serverComposition.sourceDocumentSubmissions,
         storedFiles: serverComposition.storedFiles,
@@ -64,7 +77,7 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
  */
 export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId },
+    { ledgerId, userId },
     sourceDocumentId: string,
     input?: RetrySourceDocumentInputContract,
     operationId?: string
@@ -84,6 +97,16 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
       {
         ledgerId,
         sourceDocumentId: identity.sourceDocumentId,
+        ...(identity.operationId == null
+          ? {}
+          : {
+              idempotency: {
+                principalType: "user" as const,
+                principalId: userId,
+                key: `retry:${identity.sourceDocumentId}:${identity.operationId}`,
+                contentFingerprint: null,
+              },
+            }),
         ...(validatedInput == null ? {} : { input: validatedInput }),
       },
       {

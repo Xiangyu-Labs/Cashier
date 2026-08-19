@@ -22,6 +22,20 @@ describe("EditableField", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("contains Escape so a parent dialog does not close", () => {
+    const parentKeyDown = vi.fn();
+    render(
+      <div onKeyDown={parentKeyDown}>
+        <EditableField value="Initial" onChange={vi.fn()} saveOnBlur={false} />
+      </div>
+    );
+
+    fireEvent.click(screen.getByText("Initial"));
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+
+    expect(parentKeyDown).not.toHaveBeenCalled();
+  });
+
   it("starts editing with Enter and commits a single-line field with Enter", () => {
     const onChange = vi.fn();
     render(<EditableField value="Initial" onChange={onChange} saveOnBlur={false} />);

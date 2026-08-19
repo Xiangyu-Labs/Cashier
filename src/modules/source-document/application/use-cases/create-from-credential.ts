@@ -60,7 +60,8 @@ export async function createSourceDocumentFromCredential(
         ? {}
         : {
             idempotency: {
-              credentialId: input.credentialId,
+              principalType: "credential",
+              principalId: input.credentialId,
               key: input.idempotencyKey,
               contentFingerprint: contentFingerprint(payload),
             },

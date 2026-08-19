@@ -255,6 +255,7 @@ export function useSourceDocumentStream(
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError: streamQuery.isFetchNextPageError,
     /** Call the bounded explicit refresh path. */
     refresh,
   };

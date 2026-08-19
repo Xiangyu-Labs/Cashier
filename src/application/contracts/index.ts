@@ -390,9 +390,10 @@ export interface SourceDocumentSubmissionInput {
 }
 
 export interface SourceDocumentIdempotencyInput {
-  credentialId: string;
+  principalType: "credential" | "user";
+  principalId: string;
   key: string;
-  contentFingerprint: string;
+  contentFingerprint: string | null;
 }
 
 export interface SourceDocumentSubmissionPort {

@@ -66,6 +66,11 @@ export function useSourceDocumentSubmitMutations({
 }: UseSourceDocumentSubmitMutationsOptions) {
   const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
   const uploadControllerRef = useRef<AbortController | null>(null);
+  const submissionIdentityRef = useRef({
+    fingerprint: "",
+    createId: crypto.randomUUID(),
+    retryId: crypto.randomUUID(),
+  });
   useEffect(() => () => uploadControllerRef.current?.abort(), []);
   const setMonotonicProgress = (next: SourceDocumentSubmissionProgress) => {
     setProgress((current) => {
@@ -137,6 +142,8 @@ export function useSourceDocumentSubmitMutations({
     errorMessage: null,
     onSuccess: async (data, variables) => {
       try {
+        submissionIdentityRef.current.createId = crypto.randomUUID();
+        submissionIdentityRef.current.fingerprint = "";
         setMonotonicProgress({ phase: "complete", percent: 100 });
         await waitForPaint();
         onSuccess?.({
@@ -184,6 +191,8 @@ export function useSourceDocumentSubmitMutations({
     errorMessage: null,
     onSuccess: async (data, variables) => {
       try {
+        submissionIdentityRef.current.retryId = crypto.randomUUID();
+        submissionIdentityRef.current.fingerprint = "";
         setMonotonicProgress({ phase: "complete", percent: 100 });
         await waitForPaint();
         onSuccess?.({
@@ -217,6 +226,14 @@ export function useSourceDocumentSubmitMutations({
     const controller = new AbortController();
     uploadControllerRef.current = controller;
     setProgress({ phase: "preparing", percent: 0 });
+    const fingerprint = JSON.stringify(payload);
+    if (submissionIdentityRef.current.fingerprint !== fingerprint) {
+      submissionIdentityRef.current = {
+        fingerprint,
+        createId: crypto.randomUUID(),
+        retryId: crypto.randomUUID(),
+      };
+    }
     const startMutation = () => {
       if (controller.signal.aborted) {
         if (uploadControllerRef.current === controller) {
@@ -227,13 +244,13 @@ export function useSourceDocumentSubmitMutations({
       }
       if (mode === "retry") {
         if (sourceDocumentId == null) return;
-        const operationId = crypto.randomUUID();
+        const operationId = submissionIdentityRef.current.retryId;
         retryMutation.mutate({ payload, operationId, signal: controller.signal });
         return;
       }
 
       const operationId = crypto.randomUUID();
-      const clientSubmissionId = crypto.randomUUID();
+      const clientSubmissionId = submissionIdentityRef.current.createId;
       createMutation.mutate({
         payload,
         operationId,

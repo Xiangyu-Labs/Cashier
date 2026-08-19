@@ -1,11 +1,12 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SourceDocumentInput } from "./SourceDocumentInput";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   buildSourceDocumentRetrySeed,
   type RetrySeedSourceDocument,
@@ -31,6 +32,19 @@ export function SourceDocumentEditRetryDialog({
   const t = useTranslations("SourceDocumentEditRetryDialog");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const closeRequestedRef = useRef(false);
+
+  const requestClose = () => {
+    if (isSubmitting) return;
+    if (isDirty) {
+      closeRequestedRef.current = true;
+      setDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  };
 
   const hasStoredFiles = (sourceDocument.files?.length ?? 0) > 0;
   const hasText = sourceDocument.text != null && sourceDocument.text !== "";
@@ -57,20 +71,23 @@ export function SourceDocumentEditRetryDialog({
   );
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => (!next && isSubmitting ? undefined : onOpenChange(next))}
-    >
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
       <DialogContent
         variant="detail"
         className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:rounded-lg"
         aria-describedby={undefined}
         hideCloseButton={isSubmitting}
         onEscapeKeyDown={(event) => {
-          if (isSubmitting) event.preventDefault();
+          if (isSubmitting || isDirty) {
+            event.preventDefault();
+            if (!isSubmitting) requestClose();
+          }
         }}
         onPointerDownOutside={(event) => {
-          if (isSubmitting) event.preventDefault();
+          if (isSubmitting || isDirty) {
+            event.preventDefault();
+            if (!isSubmitting) requestClose();
+          }
         }}
       >
         <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
@@ -94,6 +111,7 @@ export function SourceDocumentEditRetryDialog({
                   onPendingChange?.(pending);
                 }}
                 onInitializingChange={setIsInitializing}
+                onDirtyChange={setIsDirty}
                 onSuccess={() => {
                   onOpenChange(false);
                   onSuccess?.();
@@ -108,6 +126,21 @@ export function SourceDocumentEditRetryDialog({
           )}
         </div>
       </DialogContent>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={t("unsavedTitle")}
+        description={t("unsavedDescription")}
+        cancelLabel={t("continueEditing")}
+        confirmLabel={t("discardAndLeave")}
+        variant="destructive"
+        onConfirm={() => {
+          setIsDirty(false);
+          setDiscardOpen(false);
+          if (closeRequestedRef.current) onOpenChange(false);
+          closeRequestedRef.current = false;
+        }}
+      />
     </Dialog>
   );
 }

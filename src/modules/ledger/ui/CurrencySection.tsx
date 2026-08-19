@@ -159,10 +159,17 @@ export function CurrencySection({
         description={t("mainCurrencyChangeDescription", {
           currency: pendingMainCurrency ?? mainCurrency,
         })}
-        confirmLabel={t("mainCurrencyChangeConfirm")}
+        confirmLabel={t("mainCurrencyChangeConfirm", {
+          currency: pendingMainCurrency ?? mainCurrency,
+        })}
         onConfirm={async () => {
           if (pendingMainCurrency == null || pendingMainCurrency === mainCurrency) return;
-          onUpdateSettings({ mainCurrency: pendingMainCurrency });
+          onUpdateSettings({
+            mainCurrency: pendingMainCurrency,
+            currencies: settingsCurrencies.includes(pendingMainCurrency)
+              ? settingsCurrencies
+              : [...settingsCurrencies, pendingMainCurrency],
+          });
         }}
       />
 

@@ -21,7 +21,10 @@ import { retrySourceDocumentAction } from "@/modules/source-document/actions";
 describe("retrySourceDocumentAction omission semantics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
+    requireLedgerAccessMock.mockResolvedValue({
+      ledger: { id: "ledger-1" },
+      userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    });
     retrySourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "22222222-2222-4222-8222-222222222222",
       previousSourceDocumentId: "11111111-1111-4111-8111-111111111111",
@@ -46,6 +49,23 @@ describe("retrySourceDocumentAction omission semantics", () => {
     const deps = retrySourceDocumentMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(deps).toBeDefined();
     expect(typeof deps.scheduleProcessing).toBe("function");
+  });
+
+  it("scopes the retry operation ID to the authenticated user and document", async () => {
+    const sourceDocumentId = "11111111-1111-4111-8111-111111111111";
+    const operationId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    await retrySourceDocumentAction("ledger-1", sourceDocumentId, operationId);
+
+    expect(retrySourceDocumentMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        idempotency: {
+          principalType: "user",
+          principalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          key: `retry:${sourceDocumentId}:${operationId}`,
+          contentFingerprint: null,
+        },
+      })
+    );
   });
 
   it("rejects an invalid source-document UUID before invoking the use case", async () => {

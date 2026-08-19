@@ -41,6 +41,10 @@
     {
       "file": "0024_duplicate_review_snapshots.sql",
       "sha256": "17db95ad26e495afc2c1e229a6d1c10ae0d7fc636aa3fbcd040629c1f8c2ec64"
+    },
+    {
+      "file": "0025_generalize_idempotency_principal.sql",
+      "sha256": "2157d87a028f5e76c071de98b5156b8db1f74f8199f11801422c3c8aec8a3bfe"
     }
   ]
 }

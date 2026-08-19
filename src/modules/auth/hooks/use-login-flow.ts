@@ -207,6 +207,7 @@ export function useLoginFlow(
       router.refresh();
       return true;
     }
+    if (result?.code === AUTH_ERROR_CODES.OTP_EXPIRED) setOtpExpired(true);
     setError(getSignInErrorMessage(result, t));
     setIsLoading(false);
     return false;

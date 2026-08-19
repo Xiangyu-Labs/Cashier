@@ -21,7 +21,10 @@ import { createSourceDocumentAction } from "@/modules/source-document/actions";
 describe("createSourceDocumentAction omission semantics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireLedgerAccessMock.mockResolvedValue({ ledger: { id: "ledger-1" } });
+    requireLedgerAccessMock.mockResolvedValue({
+      ledger: { id: "ledger-1" },
+      userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
       status: "processing",
@@ -51,6 +54,22 @@ describe("createSourceDocumentAction omission semantics", () => {
     const deps = createAndQueueSourceDocumentMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(deps).toBeDefined();
     expect(typeof deps.scheduleProcessing).toBe("function");
+  });
+
+  it("scopes a client submission ID to the authenticated user", async () => {
+    const clientSubmissionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    await createSourceDocumentAction("ledger-1", { text: "Lunch" }, undefined, clientSubmissionId);
+
+    expect(createAndQueueSourceDocumentMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        idempotency: {
+          principalType: "user",
+          principalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          key: `create:${clientSubmissionId}`,
+          contentFingerprint: null,
+        },
+      })
+    );
   });
 
   it("does not include the legacy operation ID in the business result", async () => {

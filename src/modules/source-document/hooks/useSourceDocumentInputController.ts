@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { fireAndForget } from "@/lib/safe-async";
@@ -26,6 +26,8 @@ export function useSourceDocumentInputController({
 }: UseSourceDocumentInputControllerOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileReservationsRef = useRef(0);
+  const mountedRef = useRef(true);
+  const [pendingFileCount, setPendingFileCount] = useState(0);
   const imageCountRef = useRef(0);
   const draft = useSourceDocumentInputDraft({
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
@@ -43,6 +45,12 @@ export function useSourceDocumentInputController({
     ...(sourceDocumentId != null ? { sourceDocumentId } : {}),
   });
   imageCountRef.current = draft.images.length;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const appendFiles = async (files: File[]) => {
     const remainingCapacity = Math.max(
@@ -55,12 +63,16 @@ export function useSourceDocumentInputController({
     if (remainingCapacity === 0) return;
     const reservedFiles = files.slice(0, remainingCapacity);
     pendingFileReservationsRef.current += reservedFiles.length;
+    setPendingFileCount(pendingFileReservationsRef.current);
     let results: Awaited<ReturnType<typeof loadSourceDocumentInputFiles>>;
     try {
       results = await loadSourceDocumentInputFiles(reservedFiles);
     } finally {
       pendingFileReservationsRef.current -= reservedFiles.length;
+      if (mountedRef.current) setPendingFileCount(pendingFileReservationsRef.current);
     }
+
+    if (!mountedRef.current) return;
 
     const loadedImages = results.flatMap((result) => {
       if (result.kind === "too-large") {
@@ -125,13 +137,14 @@ export function useSourceDocumentInputController({
     images: draft.modalImages,
     selectedImageIndex: draft.selectedImageIndex,
     fileInputRef,
-    isPending: draft.isInitializing || submitMutations.isPending,
+    isPending: draft.isInitializing || pendingFileCount > 0 || submitMutations.isPending,
+    isPreparingImages: pendingFileCount > 0,
     isSubmitting: submitMutations.isPending,
     isInitializing: draft.isInitializing,
     progress: submitMutations.progress,
     canCancelUpload: submitMutations.canCancel,
-    canSubmit: draft.canSubmit,
-    isDirty: draft.isDirty,
+    canSubmit: draft.canSubmit && pendingFileCount === 0,
+    isDirty: draft.isDirty || pendingFileCount > 0,
     setText: draft.setText,
     setEntryDate: draft.setEntryDate,
     openImage: draft.openImage,

@@ -35,10 +35,7 @@ export function useDetailsTabGrouping(
   const { groupedItems } = useDateGrouping({
     items: entries,
     getDateStr,
-    getAmount: (entry) =>
-      entry.convertedAmount != null
-        ? parseAmount(entry.convertedAmount)
-        : parseAmount(entry.amount),
+    getAmount: (entry) => (entry.convertedAmount != null ? parseAmount(entry.convertedAmount) : 0),
     locale,
     t,
     preserveOrder: true,

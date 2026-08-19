@@ -86,6 +86,19 @@ describe("CalculatorInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(21.5);
   });
 
+  it("commits a valid inline value when Tab moves focus away", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "19.75" } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith(19.75);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
   it("keeps invalid inline input open and announces an error on outside click", () => {
     const onChange = vi.fn();
     render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);

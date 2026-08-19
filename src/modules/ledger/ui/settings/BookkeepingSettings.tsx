@@ -160,17 +160,15 @@ export function BookkeepingSettings({
         onSave={() => void handleSave()}
         onCancel={handleCancel}
       />
-      {categories.length > 0 ? (
-        <CategorySection
-          categories={categories}
-          uncategorizedCount={uncategorizedCount}
-          onSaveCategories={onSaveCategories}
-          generatingCategoryIds={generatingCategoryIds}
-          failedCategoryIds={failedCategoryIds}
-          onRetryMetadata={onRetryMetadata}
-          isSaving={isSavingCategories}
-        />
-      ) : null}
+      <CategorySection
+        categories={categories}
+        uncategorizedCount={uncategorizedCount}
+        onSaveCategories={onSaveCategories}
+        generatingCategoryIds={generatingCategoryIds}
+        failedCategoryIds={failedCategoryIds}
+        onRetryMetadata={onRetryMetadata}
+        isSaving={isSavingCategories}
+      />
     </SettingsSection>
   );
 }

@@ -159,6 +159,7 @@ export function StatsTab({
       endDateStr={endDateStr}
       stats={stats}
       isLoading={statsQuery.isFetching}
+      isPlaceholderData={statsQuery.isPlaceholderData}
       isError={isError}
       onRetry={() => void refetch()}
       chartView={chartView}

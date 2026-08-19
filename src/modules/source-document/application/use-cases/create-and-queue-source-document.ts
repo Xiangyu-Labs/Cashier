@@ -28,9 +28,10 @@ export interface CreateAndQueueSourceDocumentInput {
   entryDate?: string;
   timezone?: string;
   idempotency?: {
-    credentialId: string;
+    principalType: "credential" | "user";
+    principalId: string;
     key: string;
-    contentFingerprint: string;
+    contentFingerprint: string | null;
   };
 }
 

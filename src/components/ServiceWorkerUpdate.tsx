@@ -36,7 +36,7 @@ export function ServiceWorkerUpdate() {
         },
         cancel: {
           label: t("later"),
-          onClick: () => showUpdate(worker),
+          onClick: () => toast.dismiss("service-worker-update"),
         },
       });
     };

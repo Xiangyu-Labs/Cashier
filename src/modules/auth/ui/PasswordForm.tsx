@@ -74,6 +74,7 @@ export function PasswordForm({
   const [savedPasswordUpdatedAt, setSavedPasswordUpdatedAt] = useState<string | null>(
     passwordUpdatedAt
   );
+  const [savedHasPassword, setSavedHasPassword] = useState(hasPassword);
 
   const messageForErrorCode = (code: PasswordMutationActionErrorCode) => {
     switch (code) {
@@ -105,7 +106,7 @@ export function PasswordForm({
     setError(null);
     try {
       const input = { currentPassword, newPassword, confirmPassword };
-      const result = hasPassword
+      const result = savedHasPassword
         ? await changePasswordAction(input)
         : await setPasswordAction(input);
       if (!result.ok) {
@@ -113,6 +114,7 @@ export function PasswordForm({
         return;
       }
       setSavedPasswordUpdatedAt(result.passwordUpdatedAt);
+      setSavedHasPassword(true);
       toast.success(t("passwordSaved"));
       setOpen(false);
       reset();
@@ -124,7 +126,7 @@ export function PasswordForm({
   };
 
   const matches = newPassword !== "" && newPassword === confirmPassword;
-  const canSubmit = matches && (!hasPassword || currentPassword !== "");
+  const canSubmit = matches && (!savedHasPassword || currentPassword !== "");
 
   return (
     <div className="flex w-full flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -147,7 +149,7 @@ export function PasswordForm({
       >
         <DialogTrigger asChild>
           <Button variant="outline">
-            {hasPassword ? t("changePasswordButton") : t("setPasswordButton")}
+            {savedHasPassword ? t("changePasswordButton") : t("setPasswordButton")}
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -159,12 +161,12 @@ export function PasswordForm({
         >
           <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
             <DialogTitle>
-              {hasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}
+              {savedHasPassword ? t("changePasswordTitle") : t("setPasswordTitle")}
             </DialogTitle>
             <DialogDescription>{t("passwordRequirements")}</DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
-            {hasPassword ? (
+            {savedHasPassword ? (
               <PasswordField
                 id="current-password"
                 label={t("currentPassword")}

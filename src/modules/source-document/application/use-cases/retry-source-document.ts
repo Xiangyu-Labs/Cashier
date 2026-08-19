@@ -22,6 +22,12 @@ interface RetrySourceDocumentInput {
   ledgerId: string;
   ledger?: unknown;
   sourceDocumentId: string;
+  idempotency?: {
+    principalType: "credential" | "user";
+    principalId: string;
+    key: string;
+    contentFingerprint: string | null;
+  };
   input?: SourceDocumentRetryPayload;
 }
 
@@ -33,7 +39,7 @@ interface RetrySourceDocumentDependencies {
 }
 
 export async function retrySourceDocument(
-  { ledgerId, sourceDocumentId, input }: RetrySourceDocumentInput,
+  { ledgerId, sourceDocumentId, input, idempotency }: RetrySourceDocumentInput,
   dependencies: RetrySourceDocumentDependencies
 ): Promise<RetrySourceDocumentResponseDto> {
   if ((input?.originalImages?.length ?? 0) > 0) {
@@ -46,31 +52,41 @@ export async function retrySourceDocument(
   ) {
     throw new ValidationError("Images must be finalized before source-document retry");
   }
-  const inlineFileIds =
-    inlineImages.length === 0
-      ? []
-      : await prepareInlineImages(
-          inlineImages,
-          dependencies.storedFiles!,
-          dependencies.processImage!,
-          ledgerId,
-          3 * 1024 * 1024
-        );
-  const storedFileIds =
-    input?.storedFileIds == null && inlineFileIds.length === 0
-      ? undefined
-      : [...(input?.storedFileIds ?? []), ...inlineFileIds];
+  const prepareSubmission = async () => {
+    const inlineFileIds =
+      inlineImages.length === 0
+        ? []
+        : await prepareInlineImages(
+            inlineImages,
+            dependencies.storedFiles!,
+            dependencies.processImage!,
+            ledgerId,
+            3 * 1024 * 1024
+          );
+    const storedFileIds =
+      input?.storedFileIds == null && inlineFileIds.length === 0
+        ? undefined
+        : [...(input?.storedFileIds ?? []), ...inlineFileIds];
 
-  const pending = await dependencies.submissions.createPendingWithIntent({
-    ledgerId,
-    sourceDocumentId,
-    inheritEvidence: true,
-    supersedeProcessing: true,
-    ...(input?.text === undefined ? {} : { submittedText: input.text }),
-    ...(storedFileIds === undefined ? {} : { storedFileIds }),
-    ...(input?.entryDate === undefined ? {} : { entryDate: input.entryDate }),
-  });
-  dependencies.scheduleProcessing(pending.intent);
+    return {
+      ledgerId,
+      sourceDocumentId,
+      inheritEvidence: true,
+      supersedeProcessing: true,
+      ...(input?.text === undefined ? {} : { submittedText: input.text }),
+      ...(storedFileIds === undefined ? {} : { storedFileIds }),
+      ...(input?.entryDate === undefined ? {} : { entryDate: input.entryDate }),
+    };
+  };
+
+  const pending =
+    idempotency != null && dependencies.submissions.createIdempotentPendingWithIntent != null
+      ? await dependencies.submissions.createIdempotentPendingWithIntent(
+          idempotency,
+          prepareSubmission
+        )
+      : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
 
   return {
     sourceDocumentId: pending.document.id,

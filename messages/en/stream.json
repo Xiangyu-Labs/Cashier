@@ -216,6 +216,7 @@
     "retryAll": "Retry All",
     "noRecords": "No Records",
     "loadMore": "Load More",
+    "loadMoreFailed": "Failed to load more records. Retry",
     "noMore": "No more items",
     "manualRecord": "Manual Record",
     "deleteConfirmTitle": "Delete Confirmation",
@@ -334,8 +335,8 @@
     "mainCurrency": "Main Currency",
     "mainCurrencyDesc": "Used for statistics and totals; changing it recalculates history at transaction-date rates.",
     "mainCurrencyChangeTitle": "Change main currency?",
-    "mainCurrencyChangeDescription": "The main currency will change to {currency}. Historical totals and converted amounts for current and pending entries will be recalculated using transaction-date rates. Original amounts and currencies will not change.",
-    "mainCurrencyChangeConfirm": "Change and recalculate",
+    "mainCurrencyChangeDescription": "This only updates the draft to {currency}. Historical totals are recalculated after you save Bookkeeping rules.",
+    "mainCurrencyChangeConfirm": "Use {currency}",
     "timeZone": "Ledger time zone",
     "timeZoneDesc": "Used for default dates, ranges, and statistics. Existing entry dates do not change.",
     "collapseEntries": "Collapse records by default",
@@ -644,7 +645,11 @@
     "batchModePendingDescription": "Save or discard your current edits before entering batch actions."
   },
   "SourceDocumentEditRetryDialog": {
-    "title": "Edit and Retry"
+    "title": "Edit and Retry",
+    "unsavedTitle": "Discard changes?",
+    "unsavedDescription": "Your retry draft will be lost.",
+    "continueEditing": "Continue editing",
+    "discardAndLeave": "Discard and leave"
   },
   "SourceDocumentImageModal": {
     "title": "View Image",

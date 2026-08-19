@@ -101,6 +101,8 @@ export function DetailsTab({
       groupedItems={groupedItems}
       isLoading={data.isLoading}
       isFetchingNextPage={data.isFetchingNextPage}
+      isFetchNextPageError={data.isFetchNextPageError}
+      onRetryNextPage={() => void data.fetchNextPage()}
       hasNextPage={data.hasNextPage}
       monthStats={data.monthStats}
       sentinelRef={sentinelRef}

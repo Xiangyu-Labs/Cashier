@@ -149,6 +149,11 @@ export function CalculatorInput({
     }
   };
 
+  const handleInputBlur = () => {
+    const didCommit = confirmInputValue();
+    if (!didCommit) requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (inlineInputMode === "minor-unit") {
       const nextDigits = e.target.value.replace(/\D/g, "");
@@ -421,6 +426,7 @@ export function CalculatorInput({
             }
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
             aria-label={ariaLabel}
             aria-invalid={inputError !== null}
             aria-describedby={inputError === null ? undefined : "calculator-input-error"}

@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0024_duplicate_review_snapshots");
+    expect(journal.entries.at(-1)?.tag).toBe("0025_generalize_idempotency_principal");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

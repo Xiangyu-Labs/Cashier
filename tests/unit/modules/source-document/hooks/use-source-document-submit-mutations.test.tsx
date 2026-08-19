@@ -124,6 +124,13 @@ describe("useSourceDocumentSubmitMutations", () => {
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("create failed"));
     expect(onSuccess).not.toHaveBeenCalled();
+
+    const firstClientSubmissionId = createSourceDocumentActionMock.mock.calls[0]?.[3];
+    act(() => {
+      result.current.submit({ entryDate: "2026-07-17", text: "Lunch" });
+    });
+    await waitFor(() => expect(createSourceDocumentActionMock).toHaveBeenCalledTimes(2));
+    expect(createSourceDocumentActionMock.mock.calls[1]?.[3]).toBe(firstClientSubmissionId);
   });
 
   it("cancels before the deferred mutation starts", async () => {

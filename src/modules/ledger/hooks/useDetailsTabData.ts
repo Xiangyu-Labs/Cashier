@@ -13,10 +13,11 @@ export interface UseDetailsTabDataReturn {
   summaryData: Awaited<ReturnType<typeof getLedgerStatsAction>> | undefined;
   isLoading: boolean;
   isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;
   monthStats: {
-    mainTotal: string;
+    mainTotal: string | null;
     mainCurrency: string;
     unconvertedCount: number;
     hasMultipleCurrencies: boolean;
@@ -102,7 +103,7 @@ export function useDetailsTabData({
   const monthStats = useMemo(() => {
     const totals = summaryData?.totals ?? [];
     const convertedTotal = summaryData?.convertedTotal;
-    const mainTotal = convertedTotal?.total ?? "0";
+    const mainTotal = convertedTotal?.total ?? null;
     const hasMultipleCurrencies = totals.length > 1;
 
     return {
@@ -119,6 +120,7 @@ export function useDetailsTabData({
     summaryData,
     isLoading,
     isFetchingNextPage,
+    isFetchNextPageError: entriesQuery.isFetchNextPageError,
     hasNextPage,
     fetchNextPage,
     monthStats,

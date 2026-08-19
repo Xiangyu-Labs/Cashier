@@ -21,12 +21,17 @@ interface LedgerEntriesToolbarProps {
   isAllSelected: boolean;
   hasMoreData?: boolean;
   selectedCount: number;
+  selectedSourceDocumentIds?: string[];
+  selectedEntryIds?: string[];
   selectedDuplicateCount?: number;
   onToggleSelectionMode: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
-  onUpdateDates?: (date: string) => Promise<void> | void;
-  onPreviewDateImpact?: () => Promise<BatchEntryDateImpact>;
+  onUpdateDates?: (date: string, sourceDocumentIds: string[]) => Promise<void> | void;
+  onPreviewDateImpact?: (
+    sourceDocumentIds: string[],
+    entryIds: string[]
+  ) => Promise<BatchEntryDateImpact>;
   isUpdatingDates?: boolean;
   onRetry?: () => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -42,7 +47,7 @@ interface LedgerEntriesToolbarProps {
   periodParams: PeriodParams;
   totalPrefix?: string;
   mainCurrency: string;
-  filteredTotal: number;
+  filteredTotal?: number;
   onApplyPreset?: (preset: StreamStatusPreset) => void;
   onResetFilters?: () => void;
   readOnly?: boolean;
@@ -54,6 +59,8 @@ export function LedgerEntriesToolbar({
   isAllSelected,
   hasMoreData = false,
   selectedCount,
+  selectedSourceDocumentIds = [],
+  selectedEntryIds = [],
   selectedDuplicateCount = 0,
   onToggleSelectionMode,
   onSelectAll,
@@ -91,6 +98,10 @@ export function LedgerEntriesToolbar({
   const [dateImpactError, setDateImpactError] = useState(false);
   const [isPreviewingDateImpact, setIsPreviewingDateImpact] = useState(false);
   const [dateConfirmOpen, setDateConfirmOpen] = useState(false);
+  const [dateSelectionSnapshot, setDateSelectionSnapshot] = useState<{
+    sourceDocumentIds: string[];
+    entryIds: string[];
+  } | null>(null);
   const showBatchActions = isSelectionMode && selectedCount > 0;
   const isProcessing =
     externallyProcessing ||
@@ -106,13 +117,18 @@ export function LedgerEntriesToolbar({
       : false;
   const handlePreviewDateImpact = async () => {
     if (!onUpdateDates) return;
+    const snapshot = {
+      sourceDocumentIds: [...selectedSourceDocumentIds],
+      entryIds: [...selectedEntryIds],
+    };
     if (onPreviewDateImpact == null) {
-      return onUpdateDates(formatDateTimeForApi(selectedDate));
+      return onUpdateDates(formatDateTimeForApi(selectedDate), snapshot.sourceDocumentIds);
     }
     setIsPreviewingDateImpact(true);
     setDateImpactError(false);
     try {
-      setDateImpact(await onPreviewDateImpact());
+      setDateImpact(await onPreviewDateImpact(snapshot.sourceDocumentIds, snapshot.entryIds));
+      setDateSelectionSnapshot(snapshot);
       setDatePickerOpen(false);
       setDateConfirmOpen(true);
     } catch {
@@ -126,7 +142,7 @@ export function LedgerEntriesToolbar({
     <EntriesToolbarShell
       syncStatus={syncStatus}
       totalLabel={
-        !isSelectionMode
+        !isSelectionMode && filteredTotal !== undefined
           ? [totalPrefix, formatCurrencyAmount(filteredTotal, mainCurrency, locale)]
               .filter(Boolean)
               .join(" ")
@@ -253,8 +269,13 @@ export function LedgerEntriesToolbar({
         confirmLabel={tBatch("confirm")}
         onConfirm={async () => {
           if (dateImpact == null || onUpdateDates == null) return false;
-          await onUpdateDates(formatDateTimeForApi(selectedDate));
+          if (dateSelectionSnapshot == null) return false;
+          await onUpdateDates(
+            formatDateTimeForApi(selectedDate),
+            dateSelectionSnapshot.sourceDocumentIds
+          );
           setDateImpact(null);
+          setDateSelectionSnapshot(null);
           return true;
         }}
       />

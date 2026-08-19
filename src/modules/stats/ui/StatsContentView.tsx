@@ -22,6 +22,7 @@ interface StatsContentViewProps {
   endDateStr: string;
   stats: EnhancedStatsDto | undefined;
   isLoading?: boolean;
+  isPlaceholderData?: boolean;
   isError?: boolean;
   onRetry?: () => void;
   chartView: "trend" | "heatmap";
@@ -44,6 +45,7 @@ export function StatsContentView({
   endDateStr,
   stats,
   isLoading = false,
+  isPlaceholderData = false,
   isError = false,
   onRetry,
   chartView,
@@ -153,7 +155,7 @@ export function StatsContentView({
             </Button>
           </div>
         </div>
-        {stats == null ? (
+        {stats == null || (chartView === "heatmap" && isPlaceholderData) ? (
           <div
             className="h-64 animate-pulse rounded-lg border border-border bg-surface2/60"
             data-testid="stats-visualization-skeleton"

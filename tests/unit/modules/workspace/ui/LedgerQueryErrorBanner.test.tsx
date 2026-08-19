@@ -15,4 +15,11 @@ describe("LedgerQueryErrorBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "retry" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
+
+  it("renders the standalone first-load error message", () => {
+    render(<LedgerQueryErrorBanner empty onRetry={vi.fn()} />);
+
+    expect(screen.getByText("emptyDescription")).toBeInTheDocument();
+    expect(screen.queryByText("description")).not.toBeInTheDocument();
+  });
 });

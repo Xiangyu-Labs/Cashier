@@ -32,6 +32,7 @@ export function useSourceDocumentRecoveryMutations({
   onSuccess,
 }: UseSourceDocumentRecoveryMutationsOptions) {
   const actionLockRef = useRef(false);
+  const retryOperationIdRef = useRef(crypto.randomUUID());
   const tActions = useTranslations("CandidateAction");
 
   // -----------------------------------------------------------------------
@@ -85,6 +86,7 @@ export function useSourceDocumentRecoveryMutations({
     successMessage: tActions("retrySuccess"),
     errorMessage: tActions("retryError"),
     onSuccess: () => {
+      retryOperationIdRef.current = crypto.randomUUID();
       onSuccess?.();
     },
   });
@@ -135,7 +137,7 @@ export function useSourceDocumentRecoveryMutations({
     if (actionLockRef.current) return;
     actionLockRef.current = true;
     try {
-      await retryMutation.mutateAsync({ operationId: crypto.randomUUID() });
+      await retryMutation.mutateAsync({ operationId: retryOperationIdRef.current });
     } finally {
       actionLockRef.current = false;
     }

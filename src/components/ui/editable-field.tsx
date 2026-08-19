@@ -114,6 +114,8 @@ export function EditableField({
       e.preventDefault();
       handleConfirm();
     } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
       handleCancel();
     }
   };

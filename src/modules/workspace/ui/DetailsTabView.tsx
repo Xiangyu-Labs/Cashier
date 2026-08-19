@@ -43,8 +43,10 @@ interface DetailsTabViewProps {
   groupedItems: GroupedEntry[];
   isLoading: boolean;
   isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
+  onRetryNextPage: () => void;
   hasNextPage: boolean;
-  monthStats: { mainTotal: string; mainCurrency: string; unconvertedCount: number };
+  monthStats: { mainTotal: string | null; mainCurrency: string; unconvertedCount: number };
   sentinelRef: RefCallback<HTMLDivElement>;
   batch: BatchController;
   onViewEntry: (entry: LedgerEntry) => void;
@@ -63,6 +65,8 @@ export function DetailsTabView(props: DetailsTabViewProps) {
     groupedItems,
     isLoading,
     isFetchingNextPage,
+    isFetchNextPageError,
+    onRetryNextPage,
     hasNextPage,
     monthStats,
     sentinelRef,
@@ -77,7 +81,7 @@ export function DetailsTabView(props: DetailsTabViewProps) {
   return (
     <>
       <DetailsToolbar
-        {...(!batch.isSelectionMode
+        {...(!batch.isSelectionMode && monthStats.mainTotal != null
           ? {
               totalLabel: formatCurrencyAmount(
                 Number(monthStats.mainTotal),
@@ -183,6 +187,13 @@ export function DetailsTabView(props: DetailsTabViewProps) {
           {isFetchingNextPage ? (
             <div className="flex justify-center py-4">
               <span className="text-sm text-muted-foreground">{tCommon("loading")}</span>
+            </div>
+          ) : null}
+          {isFetchNextPageError ? (
+            <div className="flex justify-center py-4">
+              <Button variant="outline" size="sm" onClick={onRetryNextPage}>
+                {t("loadMoreFailed")}
+              </Button>
             </div>
           ) : null}
           {!hasNextPage && entries.length > 0 ? (

@@ -72,7 +72,17 @@ export function useLedgerHistorySync({
       }
 
       const top = useModalStackStore.getState().stack.at(-1);
-      if (top == null) return;
+      if (top == null) {
+        const settingsGuard = useUnsavedChangesStore
+          .getState()
+          .getLeaveGuard("settings-navigation");
+        if (settingsGuard == null) return;
+        blockSyncRef.current = true;
+        restoringRef.current = true;
+        pendingGuardRef.current = settingsGuard;
+        window.history.go(1);
+        return;
+      }
       const destination = readLedgerDetailSearchParams(new URLSearchParams(window.location.search));
       if (destination?.detailType === top.type && destination.detailId === top.id) {
         return;

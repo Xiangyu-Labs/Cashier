@@ -1,6 +1,6 @@
 "use client";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QUERY } from "@/lib/constants";
@@ -8,43 +8,41 @@ import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
 import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 
 export function Providers({ children, userId }: { children: React.ReactNode; userId?: string }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        queryCache: new QueryCache({
-          onError: (error) => {
-            if (getErrorStatus(error) === 401 && typeof window !== "undefined") {
-              window.dispatchEvent(new Event("cashier:auth-session-expired"));
-            }
-          },
-        }),
-        defaultOptions: {
-          queries: {
-            staleTime: QUERY.DEFAULT_STALE_TIME_MS, // 5 minutes
-            gcTime: 30 * 60 * 1000,
-            refetchOnWindowFocus: false,
-            refetchOnMount: true,
-            refetchOnReconnect: true,
-            retry: (failureCount, error) => shouldRetryQuery(failureCount, error),
-          },
-        },
-      })
-  );
-
-  useEffect(() => {
-    const clearCurrentUserCache = () =>
+  const [queryClient] = useState(() => {
+    let redirectStarted = false;
+    const handleError = (error: unknown) => {
+      if (getErrorStatus(error) !== 401 || typeof window === "undefined" || redirectStarted) {
+        return;
+      }
+      redirectStarted = true;
+      client.clear();
       void clearUserImageCacheDataSafely(
         userId,
         userId == null ? {} : { userId },
         "Failed to clear image cache after session expiry"
       );
-
-    const onSessionExpired = clearCurrentUserCache;
-    window.addEventListener("cashier:auth-session-expired", onSessionExpired);
-    return () => {
-      window.removeEventListener("cashier:auth-session-expired", onSessionExpired);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      const locale = window.location.pathname.split("/")[1] || "en";
+      window.location.replace(`/${locale}/login?callbackUrl=${encodeURIComponent(currentUrl)}`);
     };
-  }, [userId]);
+    const client = new QueryClient({
+      queryCache: new QueryCache({
+        onError: handleError,
+      }),
+      mutationCache: new MutationCache({ onError: handleError }),
+      defaultOptions: {
+        queries: {
+          staleTime: QUERY.DEFAULT_STALE_TIME_MS, // 5 minutes
+          gcTime: 30 * 60 * 1000,
+          refetchOnWindowFocus: false,
+          refetchOnMount: true,
+          refetchOnReconnect: true,
+          retry: (failureCount, error) => shouldRetryQuery(failureCount, error),
+        },
+      },
+    });
+    return client;
+  });
 
   return (
     <QueryClientProvider client={queryClient}>

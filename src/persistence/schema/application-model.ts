@@ -17,7 +17,7 @@ import {
   boolean,
   date,
 } from "drizzle-orm/pg-core";
-import { ledgers, serviceCredentials } from "./ledger";
+import { ledgers } from "./ledger";
 import { sourceDocuments } from "./source-document";
 
 const requiredTimestamp = (name: string) => timestamp(name, { withTimezone: true }).notNull();
@@ -436,9 +436,8 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
 export const idempotencyRecords = pgTable(
   "idempotency_records",
   {
-    credentialId: uuid("credential_id")
-      .notNull()
-      .references(() => serviceCredentials.id, { onDelete: "cascade" }),
+    principalType: text("principal_type").$type<"credential" | "user">().notNull(),
+    principalId: uuid("principal_id").notNull(),
     key: text("key").notNull(),
     status: idempotencyStatusEnum("status").notNull().default("pending"),
     result: jsonb("result").$type<unknown>(),
@@ -450,7 +449,11 @@ export const idempotencyRecords = pgTable(
     expiresAt: requiredTimestamp("expires_at"),
   },
   (table) => [
-    primaryKey({ columns: [table.credentialId, table.key] }),
+    primaryKey({ columns: [table.principalType, table.principalId, table.key] }),
+    check(
+      "ck_idempotency_records_principal_type",
+      sql`${table.principalType} IN ('credential', 'user')`
+    ),
     index("idx_idempotency_records_status_expiry").on(table.status, table.expiresAt),
     index("idx_idempotency_pending_lease")
       .on(table.leaseExpiresAt, table.createdAt)

@@ -40,6 +40,7 @@ export interface SourceDocumentInputViewProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   isPending: boolean;
   isSubmitting: boolean;
+  isPreparingImages?: boolean;
   progress: SourceDocumentSubmissionProgress | null;
   canSubmit: boolean;
   canCancelUpload: boolean;
@@ -65,6 +66,7 @@ export function SourceDocumentInputView({
   fileInputRef,
   isPending,
   isSubmitting,
+  isPreparingImages = false,
   progress,
   canSubmit,
   canCancelUpload,
@@ -141,6 +143,11 @@ export function SourceDocumentInputView({
           canCancel={canCancelUpload}
           onCancel={onCancelUpload}
         />
+      ) : isPreparingImages ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          {messages.preparing}
+        </div>
       ) : null}
 
       <div className="flex items-center gap-2">

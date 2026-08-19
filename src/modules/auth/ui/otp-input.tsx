@@ -103,7 +103,7 @@ export function OTPInput({
   };
 
   return (
-    <div className={cn("flex gap-2 justify-center", className)}>
+    <div className={cn("grid w-full grid-cols-6 gap-1.5 sm:gap-2", className)}>
       {digits.map((digit, index) => (
         <Input
           key={index}
@@ -124,7 +124,7 @@ export function OTPInput({
           onBlur={handleBlur}
           disabled={disabled}
           className={cn(
-            "w-12 h-14 text-center text-2xl font-bold",
+            "h-12 min-w-0 w-full px-0 text-center text-xl font-bold sm:h-14 sm:text-2xl",
             "transition-[color,background-color,border-color,opacity] duration-[var(--motion-state)]",
             focusedIndex === index && "ring-2 ring-ring ring-offset-2",
             digit !== " " && "border-primary"
