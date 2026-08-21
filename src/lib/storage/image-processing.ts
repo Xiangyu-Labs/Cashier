@@ -16,7 +16,7 @@ import {
   SUPPORTED_MIME_SET,
   validateImageProcessing,
   sanitizeMimeType,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 
 /**
  * Image processing options

@@ -6,7 +6,7 @@ import { getLedgerEntriesAction, getLedgerStatsAction } from "@/modules/ledger/a
 import { type PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import { QUERY } from "@/lib/constants";
-import { buildDetailsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
+import { buildDetailsQueryDescriptor } from "@/modules/ledger/ledger-query-descriptor";
 
 export interface UseDetailsTabDataReturn {
   entries: LedgerEntry[];

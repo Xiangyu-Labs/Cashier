@@ -10,8 +10,8 @@ import { useDetailsTabGrouping } from "@/modules/ledger/hooks/useDetailsTabGroup
 import { useDetailsTabFilters } from "./useDetailsTabFilters";
 import { useDetailsBatchController } from "./useDetailsBatchController";
 import { DetailsTabView } from "./DetailsTabView";
-import type { TabQueryStateReport } from "./tab-query-state";
-import { openLedgerDetail } from "../ledger-detail-navigation";
+import type { TabQueryStateReport } from "@/components/tab-query-state";
+import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 
 interface DetailsTabProps {
   ledgerId: string;

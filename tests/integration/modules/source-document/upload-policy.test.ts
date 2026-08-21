@@ -17,7 +17,7 @@ import {
   MAX_NORMALIZED_BYTES_PER_REVISION,
   MAX_ORIGINAL_BYTES_PER_FILE,
   MAX_FILES,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 import { sourceDocumentRevisions, storedFiles, uploadSessions } from "@/persistence";
 import { createTestUserWithLedger } from "../../../helpers/schema-setup";
 import { getTestDb } from "../../../setup";

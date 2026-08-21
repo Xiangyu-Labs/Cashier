@@ -3,8 +3,8 @@
 import { toast } from "sonner";
 import type { EntryFilters } from "@/modules/ledger/filters";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
-import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 export type NewRecordInputMode = "ai" | "quick";
 

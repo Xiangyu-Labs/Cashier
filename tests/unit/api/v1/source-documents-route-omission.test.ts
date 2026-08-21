@@ -7,7 +7,7 @@ const { handleApiV1RouteMock, createSourceDocumentFromCredentialRequestMock } = 
   createSourceDocumentFromCredentialRequestMock: vi.fn(),
 }));
 
-vi.mock("@/app/api/v1/_shared/route-helper", () => ({
+vi.mock("@/application/transport/api-v1/request-pipeline", () => ({
   handleApiV1Route: handleApiV1RouteMock,
   ApiV1HandlerFailure: class ApiV1HandlerFailure extends Error {
     readonly cause: unknown;

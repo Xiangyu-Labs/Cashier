@@ -2,7 +2,7 @@
 import { BarChart3, ListChecks, Plus, ReceiptText, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 interface TabNavigationProps {
   activeTab: LedgerTab;

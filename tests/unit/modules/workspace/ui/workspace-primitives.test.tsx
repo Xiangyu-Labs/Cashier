@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { EmptyState } from "@/modules/workspace/ui/EmptyState";
-import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { EntryGroupHeader } from "@/components/EntryGroupHeader";
 
 describe("workspace primitives", () => {
   it("renders an accessible empty state with an optional action", () => {

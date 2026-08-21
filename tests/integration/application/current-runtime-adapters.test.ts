@@ -21,7 +21,7 @@ import {
   MAX_NORMALIZED_BYTES_PER_REVISION,
   MAX_ORIGINAL_BYTES_PER_FILE,
   UPLOAD_SESSION_EXPIRY_MS,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 import {
   currencyRates,
   entryCategories,

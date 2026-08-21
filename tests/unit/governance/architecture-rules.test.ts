@@ -12,7 +12,7 @@ describe("findBoundaryViolations", () => {
     expect(
       findBoundaryViolations(
         "src/lib/tasks/ai-context.ts",
-        'import type { SourceDocumentContract } from "@/modules/ledger/contracts";'
+        'import type { SourceDocumentContract } from "@/application/contracts";'
       )
     ).toEqual([]);
     expect(
@@ -56,7 +56,7 @@ describe("findBoundaryViolations", () => {
       `import { thing } from "${specifier}";`
     );
     expect(violations).toEqual([
-      "src/lib/orchestration/worker.ts: src/lib must not import module application use-cases, hooks, ui, or events",
+      "src/lib/orchestration/worker.ts: src/lib must not import modules, app, or application adapters",
     ]);
   });
 

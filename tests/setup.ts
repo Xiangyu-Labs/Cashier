@@ -62,6 +62,13 @@ export function getTestDb() {
   return testDatabase.db;
 }
 
+export function getTestPool() {
+  if (testDatabase == null) {
+    throw new Error("Test PostgreSQL database is not initialized");
+  }
+  return testDatabase.pool;
+}
+
 /**
  * TRUNCATE every table in the worker schema. A leftover request-bound
  * transaction (see `flushAfterCallbacks`) can occasionally make PostgreSQL
@@ -154,5 +161,8 @@ beforeEach(async () => {
 vi.mock("@/lib/db", () => ({
   get db() {
     return getTestDb();
+  },
+  get databasePool() {
+    return getTestPool();
   },
 }));

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { handleApiV1Route } from "@/app/api/v1/_shared/route-helper";
+import { handleApiV1Route } from "@/application/transport/api-v1/request-pipeline";
 import { getCredentialSourceDocumentStatus } from "@/modules/source-document/application/queries/get-credential-source-document-status";
 import { serverComposition } from "@/application/server-composition-root";
 import { sourceDocumentIdSchema } from "@/modules/source-document/contract-schemas";

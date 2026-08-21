@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ValidationError } from "@/lib/errors";
-import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { createAndQueueSourceDocument } from "@/modules/source-document/application/use-cases/create-and-queue-source-document";
 import type { InlineImageUploader } from "@/modules/source-document/application/use-cases/prepare-inline-images";
 

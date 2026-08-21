@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { serverComposition } from "@/application/server-composition-root";
 import { requireAuth } from "@/lib/auth-actions";
-import { AppError, UnauthorizedError } from "@/lib/errors";
+import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { getErrorStatusCode, toSanitizedErrorResponse } from "@/lib/error-handlers";
 
 const CACHE_CONTROL = "private, no-store";
 
@@ -10,11 +11,12 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ fileId: string }> }
 ) {
+  const requestId = crypto.randomUUID();
   try {
     const userId = await requireAuth();
     const { fileId } = await params;
     const read = await serverComposition.storedFiles.readAuthorizedStreamForUser(userId, fileId);
-    if (read == null) return new NextResponse("Not Found", { status: 404 });
+    if (read == null) throw new AppError("Stored file not found", "FILE_NOT_FOUND", 404);
     return new NextResponse(read.body, {
       status: 200,
       headers: {
@@ -22,19 +24,20 @@ export async function GET(
         "Content-Length": String(read.file.metadata.byteSize),
         "Cache-Control": CACHE_CONTROL,
         "X-Content-Type-Options": "nosniff",
+        "X-Request-Id": requestId,
       },
     });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    if (error instanceof AppError) {
-      logger.error({ code: error.code, statusCode: error.statusCode }, "Stored file read failed");
-      return new NextResponse(error.statusCode === 404 ? "Not Found" : "Storage Unavailable", {
-        status: error.statusCode,
-      });
-    }
-    logger.error({ error }, "Failed to read stored file");
-    return new NextResponse("Internal Server Error", { status: 500 });
+    const status = getErrorStatusCode(error);
+    const body = toSanitizedErrorResponse(error);
+    const log = status < 500 ? logger.warn : logger.error;
+    log(
+      { requestId, status, errorCode: body.error.code },
+      status < 500 ? "Stored file request rejected" : "Stored file request failed"
+    );
+    return NextResponse.json(body, {
+      status,
+      headers: { "Cache-Control": CACHE_CONTROL, "X-Request-Id": requestId },
+    });
   }
 }

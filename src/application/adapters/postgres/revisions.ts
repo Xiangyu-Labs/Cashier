@@ -8,10 +8,7 @@ import type {
 import { supportedSourceDocumentActions } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import {
-  MAX_FILES,
-  MAX_NORMALIZED_BYTES_PER_REVISION,
-} from "@/modules/source-document/upload-policy";
+import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
 import {
   duplicateReviews,
   ledgerEntries,

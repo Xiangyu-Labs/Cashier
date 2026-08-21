@@ -8,7 +8,7 @@ import type {
 import { toSourceDocumentSubmissionContract } from "@/application/contracts";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { parseSourceDocumentPayloadInput } from "@/modules/source-document/contract-schemas";
-import { validateAggregateFileCount } from "@/modules/source-document/upload-policy";
+import { validateAggregateFileCount } from "@/lib/storage/upload-policy";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { API_V1_MAX_DECODED_BATCH_BYTES } from "@/modules/source-document/api-v1-policy";
 import type { PreparedInlineImage } from "@/modules/source-document/api-v1-policy";

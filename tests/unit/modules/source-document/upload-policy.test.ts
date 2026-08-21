@@ -20,7 +20,7 @@ import {
   validateFileCount,
   validateAggregateFileCount,
   sanitizeMimeType,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 
 describe("upload-policy constants", () => {
   it("has the designed Web defaults", () => {

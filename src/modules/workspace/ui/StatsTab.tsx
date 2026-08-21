@@ -19,7 +19,7 @@ import { MAX_HEATMAP_DAYS } from "@/modules/stats/lib/heatmap-range";
 import { QUERY } from "@/lib/constants";
 import { DEFAULT_STATS_RANGE_TYPE } from "@/modules/workspace/initial-query-state";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
-import type { TabQueryStateReport } from "./tab-query-state";
+import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { usePathname } from "@/i18n/routing";
 import {
   readStatsSearchParams,

@@ -87,7 +87,7 @@ vi.mock("@/modules/source-document/ui/SourceDocumentSplitDialog", () => ({
 vi.mock("@/modules/source-document/ui/use-diagnostic-messages", () => ({
   useDiagnosticMessages: () => ({ label: vi.fn(), description: vi.fn() }),
 }));
-vi.mock("@/modules/workspace/ledger-detail-navigation", () => ({
+vi.mock("@/lib/navigation/ledger-detail-navigation", () => ({
   openLedgerDetail: vi.fn(),
 }));
 

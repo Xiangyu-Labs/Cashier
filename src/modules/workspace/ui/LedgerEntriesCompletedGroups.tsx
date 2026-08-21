@@ -5,7 +5,7 @@ import { SourceDocumentCard } from "@/modules/source-document/ui";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import type { UnifiedStreamGroup } from "@/modules/source-document/stream-grouping";
-import { EntryGroupHeader } from "./EntryGroupHeader";
+import { EntryGroupHeader } from "@/components/EntryGroupHeader";
 import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import { memo, useCallback, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";

@@ -126,14 +126,17 @@ describe("GET /api/stored-files/[fileId]", () => {
     const { file } = await createLinkedStoredFile(ledgerId);
 
     downloadMock.mockRejectedValueOnce(new AppError("missing", "FILE_NOT_FOUND", 404));
-    await expect(
-      GET(request(), { params: Promise.resolve({ fileId: file.id }) })
-    ).resolves.toMatchObject({ status: 404 });
+    const missing = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
+    expect(missing.status).toBe(404);
+    await expect(missing.json()).resolves.toMatchObject({ error: { code: "NOT_FOUND" } });
+    expect(missing.headers.get("X-Request-Id")).toBeTruthy();
 
     downloadMock.mockRejectedValueOnce(new AppError("outage", "S3_DOWNLOAD_FAILED", 503));
-    await expect(
-      GET(request(), { params: Promise.resolve({ fileId: file.id }) })
-    ).resolves.toMatchObject({ status: 503 });
+    const outage = await GET(request(), { params: Promise.resolve({ fileId: file.id }) });
+    expect(outage.status).toBe(503);
+    await expect(outage.json()).resolves.toMatchObject({
+      error: { code: "STORAGE_UNAVAILABLE", details: { correlationId: expect.any(String) } },
+    });
   });
 
   it("returns 401 without authentication", async () => {
@@ -142,5 +145,8 @@ describe("GET /api/stored-files/[fileId]", () => {
       params: Promise.resolve({ fileId: crypto.randomUUID() }),
     });
     expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "UNAUTHENTICATED" },
+    });
   });
 });

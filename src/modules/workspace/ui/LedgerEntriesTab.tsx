@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { type PeriodParams } from "@/lib/period-utils";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import { openLedgerDetail } from "../ledger-detail-navigation";
+import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSelection } from "@/hooks/use-selection";
 import { useLedgerEntriesMutations } from "@/modules/ledger/hooks/useLedgerEntriesMutations";
@@ -25,7 +25,7 @@ import { LedgerEntriesOverlays } from "./LedgerEntriesOverlays";
 import { useLedgerEntriesTabState } from "./useLedgerEntriesTabState";
 import { useLedgerEntriesFilters } from "./useLedgerEntriesFilters";
 import { buildStreamQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
-import type { TabQueryStateReport } from "./tab-query-state";
+import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { previewSourceDocumentDateImpact } from "../source-document-date-impact";
 import { Button } from "@/components/ui/button";
 

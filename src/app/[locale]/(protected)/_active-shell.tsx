@@ -7,8 +7,11 @@ import { AppShell } from "@/modules/workspace/ui/AppShell";
 import { SwipeTabSurface } from "@/modules/workspace/ui/SwipeTabSurface";
 import { TabNavigation } from "@/modules/workspace/ui/TabNavigation";
 import { useLedgerTabs, useTabScrollRestoration } from "@/modules/workspace/hooks";
-import { ShellControllerProvider, useShellController } from "./shell-controller";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import {
+  ShellControllerProvider,
+  useShellController,
+} from "@/components/providers/shell-controller";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 import { preloadFeatureMessages } from "@/i18n/use-feature-messages";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import {

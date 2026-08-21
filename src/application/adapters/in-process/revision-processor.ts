@@ -44,7 +44,7 @@ import {
   isFailedLoadImageResult,
   isSuccessfulLoadImageResult,
   loadStoredFilesForAI,
-} from "@/lib/storage/utils";
+} from "@/application/adapters/in-process/stored-image-loader";
 
 export interface CurrentRevisionProcessorOptions {
   createAIContext: (signal: AbortSignal) => AIContext;

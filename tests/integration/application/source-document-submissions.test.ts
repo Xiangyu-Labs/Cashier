@@ -20,7 +20,7 @@ import {
   storedFiles,
 } from "@/persistence";
 import { ValidationError } from "@/lib/errors";
-import { MAX_FILES } from "@/modules/source-document/upload-policy";
+import { MAX_FILES } from "@/lib/storage/upload-policy";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 

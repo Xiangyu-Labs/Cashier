@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLedgerTab, parseLedgerTab } from "@/modules/workspace/tabs";
+import { isLedgerTab, parseLedgerTab } from "@/lib/ledger-tabs";
 
 describe("ledger tabs helpers", () => {
   it("parses a valid tab from URLSearchParams", () => {

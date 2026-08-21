@@ -81,6 +81,12 @@ describe("Proxy Logic", () => {
       // Returns NextResponse.next() for /api/auth paths, which in Vitest mock might not have headers
       expect(res.status).toBe(200);
     });
+
+    it("allows versioned i18n assets without authentication", async () => {
+      const res = await invokeProxy(createRequest("/api/i18n/en/stats.json"));
+      expect(res.status).toBe(200);
+      expect(mockIntlMiddleware).not.toHaveBeenCalled();
+    });
   });
 
   describe("Protected Page Routes", () => {
@@ -125,6 +131,12 @@ describe("Proxy Logic", () => {
 
       // API routes should return next() (status 200)
       expect(res.status).toBe(200);
+      expect(mockIntlMiddleware).not.toHaveBeenCalled();
+    });
+
+    it("does not let a dot bypass API authentication", async () => {
+      const res = await invokeProxy(createRequest("/api/private/file.json"));
+      expect(res.status).toBe(401);
       expect(mockIntlMiddleware).not.toHaveBeenCalled();
     });
   });

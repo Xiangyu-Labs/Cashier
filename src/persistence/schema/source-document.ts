@@ -15,7 +15,7 @@ import {
   type SourceDocumentTypeValue,
   SourceDocumentStatus,
   SourceDocumentType,
-} from "@/modules/source-document/types";
+} from "@/lib/source-document-values";
 import { ledgers } from "./ledger";
 
 const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {

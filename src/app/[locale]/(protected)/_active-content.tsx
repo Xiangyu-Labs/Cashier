@@ -1,5 +1,5 @@
 import { LedgerPageClient } from "@/modules/workspace/ui/LedgerPageClient";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { EntryCategoryWithCount } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";

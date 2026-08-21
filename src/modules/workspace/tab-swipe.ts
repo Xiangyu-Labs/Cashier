@@ -1,4 +1,4 @@
-import type { LedgerTab } from "./tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 export const LEDGER_TAB_ORDER: LedgerTab[] = ["stream", "details", "stats", "settings"];
 export const SWIPE_DISTANCE_THRESHOLD = 72;

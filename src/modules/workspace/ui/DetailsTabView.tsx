@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DetailsToolbar } from "./DetailsToolbar";
-import { EmptyState } from "./EmptyState";
+import { EmptyState } from "@/components/EmptyState";
 import type { useDetailsBatchController } from "./useDetailsBatchController";
 
 type BatchController = ReturnType<typeof useDetailsBatchController>;

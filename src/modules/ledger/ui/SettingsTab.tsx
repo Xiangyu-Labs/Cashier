@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
-import type { TabQueryStateReport } from "@/modules/workspace/ui/tab-query-state";
+import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 

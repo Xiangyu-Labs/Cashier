@@ -12,6 +12,7 @@ import type { S3ListedObject, S3ListObjectsPage, S3ObjectMetadata } from "@/lib/
 
 class FakeStorage implements PruneStorage {
   objects = new Map<string, { byteSize: number; lastModified: Date }>();
+  failedDeletes = new Set<string>();
 
   add(key: string, byteSize = 100, lastModified = new Date(Date.now() - 30 * 24 * 3600_000)) {
     this.objects.set(key, { byteSize, lastModified });
@@ -49,6 +50,9 @@ class FakeStorage implements PruneStorage {
   }
 
   async delete(key: string): Promise<{ success: boolean; key: string; error?: Error }> {
+    if (this.failedDeletes.has(key)) {
+      return { success: false, key, error: new Error("planned deletion failure") };
+    }
     if (!this.objects.delete(key)) {
       return { success: true, key };
     }
@@ -101,7 +105,7 @@ describe("storage prune", () => {
     expect(bucket).not.toBeNull();
   });
 
-  it("apply deletes unreferenced R2 objects first, then database rows", async () => {
+  it("apply durably claims unreferenced files before deleting R2 objects", async () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "prune-apply");
     const storage = new FakeStorage();
@@ -164,6 +168,45 @@ describe("storage prune", () => {
       where: (files, { eq }) => eq(files.id, missingId),
     });
     expect(missingRow).not.toBeNull();
+  });
+
+  it("keeps a durable cleanup job when external deletion fails", async () => {
+    const db = getTestDb();
+    const { ledgerId } = await createTestUserWithLedger(db, "prune-retry");
+    const storage = new FakeStorage();
+    const fileId = crypto.randomUUID();
+    const key = durableKey(ledgerId, fileId);
+    storage.add(key);
+    storage.failedDeletes.add(key);
+    await db.insert(storedFiles).values({
+      id: fileId,
+      ledgerId,
+      storageProvider: "s3",
+      storageKey: key,
+      contentType: "image/jpeg",
+      byteSize: 100,
+      createdAt: new Date(Date.now() - 30 * 24 * 3600_000),
+    });
+
+    const summary = await executeStoragePrune({ storage, now: new Date(), apply: true });
+
+    expect(summary.unreferencedFiles.failed).toBe(1);
+    expect(
+      await db.query.storedFiles.findFirst({ where: (files, { eq }) => eq(files.id, fileId) })
+    ).toBeUndefined();
+    const job = await db.query.objectCleanupJobs.findFirst({
+      where: (jobs, { eq }) => eq(jobs.storageKey, key),
+    });
+    expect(job).toMatchObject({ attempts: 1, lastError: "planned deletion failure" });
+
+    storage.failedDeletes.delete(key);
+    const retry = await executeStoragePrune({ storage, now: new Date(), apply: true });
+    expect(retry.durableOrphans.deleted).toBe(1);
+    expect(
+      await db.query.objectCleanupJobs.findFirst({
+        where: (jobs, { eq }) => eq(jobs.storageKey, key),
+      })
+    ).toBeUndefined();
   });
 
   it("removes durable and temporary orphans older than the grace period", async () => {

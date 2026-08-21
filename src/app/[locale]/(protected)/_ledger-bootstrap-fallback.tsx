@@ -4,7 +4,7 @@ import {
   SettingsTabSkeleton,
   StatsTabSkeleton,
 } from "@/components/skeletons/TabSkeletons";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 interface LedgerBootstrapFallbackProps {
   activeTab: LedgerTab;

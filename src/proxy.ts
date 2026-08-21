@@ -10,19 +10,20 @@ const intlMiddleware = createMiddleware(routing);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // 1. Skip static files
-  if (pathname.startsWith("/_next") || pathname.includes(".")) {
-    return NextResponse.next();
-  }
-
-  // 2. Handle API Routes
+  // API routes must be classified before dotted static-looking paths.
   if (pathname.startsWith("/api/")) {
-    // Exclude public APIs
-    const isPublicApi = pathname.startsWith("/api/auth") || pathname.startsWith("/api/v1/");
+    const isPublicApi =
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/api/v1/") ||
+      pathname.startsWith("/api/i18n/");
 
     if (!isPublicApi && !req.auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
@@ -33,5 +34,5 @@ export default auth((req) => {
 
 export const config = {
   // Matcher ignoring static files
-  matcher: ["/((?!_next|.*\\..*).*)"],
+  matcher: ["/api/:path*", "/((?!_next|.*\\..*).*)"],
 };

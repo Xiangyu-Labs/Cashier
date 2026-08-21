@@ -1,7 +1,7 @@
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTabScrollRestoration } from "@/modules/workspace/hooks/useTabScrollRestoration";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 function Harness({ ledgerId, tab }: { ledgerId: string; tab: LedgerTab }) {
   useTabScrollRestoration(ledgerId, tab);

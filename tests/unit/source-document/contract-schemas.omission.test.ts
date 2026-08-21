@@ -5,7 +5,7 @@ import {
   listSourceDocumentsInputSchema,
   retrySourceDocumentInputSchema,
 } from "@/modules/source-document/contract-schemas";
-import { MAX_FILES } from "@/modules/source-document/upload-policy";
+import { MAX_FILES } from "@/lib/storage/upload-policy";
 import {
   ledgerStatsQuerySchema,
   listLedgerEntriesInputSchema,

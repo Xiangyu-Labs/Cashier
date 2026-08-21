@@ -1,7 +1,7 @@
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { ValidationError } from "@/lib/errors";
-import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
+import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
 import { preparedApiV1SourceDocumentInputSchema } from "@/modules/source-document/contract-schemas";
 import { createSourceDocumentFromCredential } from "../application/use-cases/create-from-credential";

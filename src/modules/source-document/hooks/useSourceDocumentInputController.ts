@@ -9,7 +9,7 @@ import { loadSourceDocumentInputFiles } from "./source-document-input-images";
 import type { SourceDocumentInputControllerMessages } from "./source-document-input-controller.types";
 import { useSourceDocumentInputDraft } from "./useSourceDocumentInputDraft";
 import { useSourceDocumentSubmitMutations } from "./useSourceDocumentSubmitMutations";
-import { MAX_FILES } from "@/modules/source-document/upload-policy";
+import { MAX_FILES } from "@/lib/storage/upload-policy";
 
 interface UseSourceDocumentInputControllerOptions extends SourceDocumentInputProps {
   messages: SourceDocumentInputControllerMessages;

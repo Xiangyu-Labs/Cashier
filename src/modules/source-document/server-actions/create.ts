@@ -13,7 +13,7 @@ import { createAndQueueSourceDocument } from "../application/use-cases/create-an
 import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { scheduleProcessingAfter } from "./schedule-processing";
-import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
+import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 
 /**
  * Create a new source document and trigger processing.

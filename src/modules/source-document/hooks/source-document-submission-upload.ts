@@ -2,7 +2,7 @@
 
 import { compressImage } from "@/lib/image-utils";
 import { API_V1_MAX_IMAGES } from "@/modules/source-document/api-v1-policy";
-import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import type { SourceDocumentSubmitPayload } from "./source-document-input-controller.types";
 import {
   createSourceDocumentUploadPlanAction,

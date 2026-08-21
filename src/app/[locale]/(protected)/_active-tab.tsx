@@ -11,7 +11,7 @@ import { UnauthorizedError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
 import { parsePeriodFromSearchParams } from "@/lib/period-utils";
-import { parseLedgerTab } from "@/modules/workspace/tabs";
+import { parseLedgerTab } from "@/lib/ledger-tabs";
 import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import {
   getScopedLedgerSearchParams,
@@ -27,7 +27,7 @@ import { serverComposition } from "@/application/server-composition-root";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 
 type PageBootstrapResult = Awaited<ReturnType<typeof getLedgerPageBootstrap>>;
 

@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, lt, notInArray, or, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { databasePool, db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import {
   getS3Storage,
@@ -7,7 +7,7 @@ import {
   type S3ObjectMetadata,
   type S3ListObjectsPage,
 } from "@/lib/storage/s3";
-import { storedFiles, uploadSessions } from "@/persistence";
+import { objectCleanupJobs, storedFiles, uploadSessions } from "@/persistence";
 
 /**
  * Safe storage prune.
@@ -129,6 +129,46 @@ function isMissingObjectError(error: unknown): boolean {
   return value.code === "FILE_NOT_FOUND" || value.name === "FILE_NOT_FOUND";
 }
 
+async function ensureCleanupJob(storageKey: string): Promise<void> {
+  await db
+    .insert(objectCleanupJobs)
+    .values({ storageKey })
+    .onConflictDoNothing({ target: objectCleanupJobs.storageKey });
+}
+
+async function finalizeCleanupJob(storageKey: string): Promise<void> {
+  await db.delete(objectCleanupJobs).where(eq(objectCleanupJobs.storageKey, storageKey));
+}
+
+async function deferCleanupJob(storageKey: string, error: unknown, now: Date): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(objectCleanupJobs)
+    .set({
+      attempts: sql`${objectCleanupJobs.attempts} + 1`,
+      lastError: message.slice(0, 1000),
+      nextAttemptAt: new Date(now.getTime() + 60 * 60 * 1000),
+    })
+    .where(eq(objectCleanupJobs.storageKey, storageKey));
+}
+
+async function deleteQueuedObject(
+  storage: PruneStorage,
+  storageKey: string,
+  now: Date
+): Promise<boolean> {
+  await ensureCleanupJob(storageKey);
+  try {
+    const deleted = await storage.delete(storageKey);
+    if (!deleted.success) throw deleted.error ?? new Error("Object deletion failed");
+    await finalizeCleanupJob(storageKey);
+    return true;
+  } catch (error) {
+    await deferCleanupJob(storageKey, error, now);
+    return false;
+  }
+}
+
 async function forEachDurableObjectPage(
   storage: PruneStorage,
   batchSize: number,
@@ -205,6 +245,7 @@ export async function runStoragePrune(
   const temporaryGraceHours = Math.max(1, options.temporaryGraceHours ?? 24);
   const summary = emptySummary(now, apply);
   const storage = options.storage ?? getS3Storage();
+  const attemptedCleanupKeys = new Set<string>();
 
   const fileCutoff = new Date(now.getTime() - orphanGraceDays * DAY_MS);
   const temporaryCutoff = new Date(now.getTime() - temporaryGraceHours * 60 * 60 * 1000);
@@ -379,29 +420,38 @@ export async function runStoragePrune(
         }
 
         if (!apply) continue;
-        const claimed = await db
-          .delete(storedFiles)
-          .where(
-            and(
-              eq(storedFiles.id, file.id),
-              eq(storedFiles.storageKey, file.storageKey),
-              sql`NOT EXISTS (
-                SELECT 1 FROM revision_files rf
-                WHERE rf.ledger_id = ${storedFiles.ledgerId}
-                  AND rf.stored_file_id = ${storedFiles.id}
-              )`,
-              sql`NOT EXISTS (
-                SELECT 1 FROM upload_session_files usf
-                JOIN upload_sessions us
-                  ON us.ledger_id = usf.ledger_id AND us.id = usf.upload_session_id
-                WHERE usf.ledger_id = ${storedFiles.ledgerId}
-                  AND usf.stored_file_id = ${storedFiles.id}
-                  AND us.status IN ('open', 'finalizing')
-              )`
+        const claimed = await db.transaction(async (tx) => {
+          const deleted = await tx
+            .delete(storedFiles)
+            .where(
+              and(
+                eq(storedFiles.id, file.id),
+                eq(storedFiles.storageKey, file.storageKey),
+                sql`NOT EXISTS (
+                  SELECT 1 FROM revision_files rf
+                  WHERE rf.ledger_id = ${storedFiles.ledgerId}
+                    AND rf.stored_file_id = ${storedFiles.id}
+                )`,
+                sql`NOT EXISTS (
+                  SELECT 1 FROM upload_session_files usf
+                  JOIN upload_sessions us
+                    ON us.ledger_id = usf.ledger_id AND us.id = usf.upload_session_id
+                  WHERE usf.ledger_id = ${storedFiles.ledgerId}
+                    AND usf.stored_file_id = ${storedFiles.id}
+                    AND us.status IN ('open', 'finalizing')
+                )`
+              )
             )
-          )
-          .returning({ id: storedFiles.id })
-          .then((rows) => rows[0]);
+            .returning({ id: storedFiles.id })
+            .then((rows) => rows[0]);
+          if (deleted != null) {
+            await tx
+              .insert(objectCleanupJobs)
+              .values({ storageKey: file.storageKey })
+              .onConflictDoNothing({ target: objectCleanupJobs.storageKey });
+          }
+          return deleted;
+        });
         if (claimed == null) {
           logger.debug(
             { storedFileId: file.id, storageKey: file.storageKey },
@@ -409,8 +459,8 @@ export async function runStoragePrune(
           );
           continue;
         }
-        const deleted = await storage.delete(file.storageKey);
-        if (!deleted.success) {
+        attemptedCleanupKeys.add(file.storageKey);
+        if (!(await deleteQueuedObject(storage, file.storageKey, now))) {
           summary.unreferencedFiles.failed += 1;
           summary.errors.push(`delete failed after row claim: ${file.storageKey}`);
           continue;
@@ -423,7 +473,10 @@ export async function runStoragePrune(
     // 3. Durable orphans: R2 objects with no stored_files row at all.
     await forEachDurableObjectPage(storage, batchSize, async (pageObjects) => {
       const oldObjects = pageObjects.filter(
-        (object) => object.lastModified != null && object.lastModified <= fileCutoff
+        (object) =>
+          object.lastModified != null &&
+          object.lastModified <= fileCutoff &&
+          !attemptedCleanupKeys.has(object.key)
       );
       if (oldObjects.length === 0) return;
       const keys = oldObjects.map((object) => object.key);
@@ -437,8 +490,8 @@ export async function runStoragePrune(
         summary.durableOrphans.count += 1;
         summary.durableOrphans.bytes += object.byteSize;
         if (!apply) continue;
-        const deleted = await storage.delete(object.key);
-        if (deleted.success) {
+        attemptedCleanupKeys.add(object.key);
+        if (await deleteQueuedObject(storage, object.key, now)) {
           summary.durableOrphans.deleted += 1;
           summary.durableOrphans.deletedBytes += object.byteSize;
         } else {
@@ -451,7 +504,10 @@ export async function runStoragePrune(
     // 4. Temporary orphans: R2 temporary objects with no valid open/finalizing session.
     await forEachTemporaryObjectPage(storage, batchSize, async (pageObjects) => {
       const oldTemporary = pageObjects.filter(
-        (object) => object.lastModified != null && object.lastModified <= temporaryCutoff
+        (object) =>
+          object.lastModified != null &&
+          object.lastModified <= temporaryCutoff &&
+          !attemptedCleanupKeys.has(object.key)
       );
       if (oldTemporary.length === 0) return;
       const parsedPairs = oldTemporary.flatMap((object) => {
@@ -468,8 +524,8 @@ export async function runStoragePrune(
         summary.temporaryOrphans.count += 1;
         summary.temporaryOrphans.bytes += target.object.byteSize;
         if (!apply) continue;
-        const deleted = await storage.delete(target.object.key);
-        if (deleted.success) {
+        attemptedCleanupKeys.add(target.object.key);
+        if (await deleteQueuedObject(storage, target.object.key, now)) {
           summary.temporaryOrphans.deleted += 1;
           summary.temporaryOrphans.deletedBytes += target.object.byteSize;
         } else {
@@ -492,13 +548,18 @@ export async function runStoragePrune(
 export async function executeStoragePrune(
   options: StoragePruneOptions = {}
 ): Promise<StoragePruneSummary> {
-  return db.transaction(async (tx) => {
-    const lock = await tx.execute<{ acquired: boolean }>(
-      sql`SELECT pg_try_advisory_xact_lock(${PRUNE_ADVISORY_LOCK}) AS acquired`
+  const client = await databasePool.connect();
+  try {
+    const lock = await client.query<{ acquired: boolean }>(
+      "SELECT pg_try_advisory_lock($1) AS acquired",
+      [PRUNE_ADVISORY_LOCK]
     );
-    if (lock.rows?.[0]?.acquired !== true) {
+    if (lock.rows[0]?.acquired !== true) {
       throw new Error("Another prune/maintenance run holds the advisory lock");
     }
     return runStoragePrune(options);
-  });
+  } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [PRUNE_ADVISORY_LOCK]).catch(() => {});
+    client.release();
+  }
 }

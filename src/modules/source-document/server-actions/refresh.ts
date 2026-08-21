@@ -6,7 +6,7 @@ import { getLedgerDelta } from "@/modules/source-document/application/queries/ge
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import type { LedgerDeltaRequest, LedgerDeltaResult } from "../contract-refresh";
 import { ValidationError } from "@/lib/errors";
-import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
+import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 import { serverComposition } from "@/application/server-composition-root";
 
 const ledgerDeltaRequestSchema = z.object({

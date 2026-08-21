@@ -2,7 +2,7 @@
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "@/modules/workspace/ui/EmptyState";
+import { EmptyState } from "@/components/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import Decimal from "decimal.js";

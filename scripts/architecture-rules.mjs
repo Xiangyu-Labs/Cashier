@@ -44,14 +44,15 @@ const libDbPattern = /^@\/lib\/db(?:\/|$)/;
 const applicationAdaptersPattern = /^@\/application\/adapters(?:\/|$)/;
 const s3Pattern = /^@\/lib\/storage\/s3(?:\/|$)/;
 const openaiClientPattern = /^@\/lib\/ai\/openai-client(?:\/|$)/;
-const moduleUseCasesPattern = /^@\/modules\/[^/]+\/application\/use-cases(?:\/|$)/;
 const moduleHooksPattern = /^@\/modules\/[^/]+\/hooks(?:\/|$)/;
 const moduleUiPattern = /^@\/modules\/[^/]+\/ui(?:\/|$)/;
-const moduleEventsPattern = /^@\/modules\/[^/]+\/events(?:\/|$)/;
 const providerSdkPattern = /^(?:pg|openai|resend)$|^drizzle-orm(?:\/|$)|^@aws-sdk\//;
 const transportFrameworkPattern = /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/;
 const moduleServerActionsPattern = /^@\/modules\/[^/]+\/server-actions(?:\/|$)/;
 const moduleActionsBarrelPattern = /^@\/modules\/[^/]+\/actions$/;
+const appPattern = /^@\/app(?:\/|$)/;
+const anyModulePattern = /^@\/modules(?:\/|$)/;
+const workspaceModulePattern = /^@\/modules\/workspace(?:\/|$)/;
 
 function collectSpecifiers(source) {
   const specifiers = [];
@@ -74,15 +75,38 @@ export function findBoundaryViolations(relativePath, source) {
   const violations = [];
   const specifiers = collectSpecifiers(source);
   const isModuleApplication = /^src\/modules\/[^/]+\/application\//.test(relativePath);
+  const moduleMatch = /^src\/modules\/([^/]+)\//.exec(relativePath);
+  const isModule = moduleMatch != null;
+  const isWorkspaceModule = moduleMatch?.[1] === "workspace";
   const isAuthInternal = /^src\/modules\/auth\/(services|repositories)\//.test(relativePath);
   const isServerAction = /^src\/modules\/[^/]+\/server-actions\//.test(relativePath);
   const isLib = /^src\/lib\//.test(relativePath);
   const isProviders = /^src\/components\/providers\//.test(relativePath);
   const isContracts = /^src\/application\/contracts\//.test(relativePath);
+  const isPersistence = /^src\/persistence\//.test(relativePath);
   const isApiRoute = /^src\/app\/api\//.test(relativePath);
   const isClientComponent = hasClientDirective(source);
 
   for (const specifier of specifiers) {
+    if (isModule && appPattern.test(specifier)) {
+      violations.push(`${relativePath}: modules must not import app entrypoints`);
+    }
+    if (
+      isLib &&
+      (anyModulePattern.test(specifier) ||
+        appPattern.test(specifier) ||
+        applicationAdaptersPattern.test(specifier))
+    ) {
+      violations.push(
+        `${relativePath}: src/lib must not import modules, app, or application adapters`
+      );
+    }
+    if (isPersistence && anyModulePattern.test(specifier)) {
+      violations.push(`${relativePath}: persistence must not import domain modules`);
+    }
+    if (isModule && !isWorkspaceModule && workspaceModulePattern.test(specifier)) {
+      violations.push(`${relativePath}: domain modules must not depend on workspace orchestration`);
+    }
     if (isModuleApplication && transportFrameworkPattern.test(specifier)) {
       violations.push(`${relativePath}: application code must not import transport frameworks`);
     }
@@ -110,17 +134,6 @@ export function findBoundaryViolations(relativePath, source) {
     }
     if (isLib && serverCompositionRootPattern.test(specifier)) {
       violations.push(`${relativePath}: src/lib must not import the server composition root`);
-    }
-    if (
-      isLib &&
-      (moduleUseCasesPattern.test(specifier) ||
-        moduleHooksPattern.test(specifier) ||
-        moduleUiPattern.test(specifier) ||
-        moduleEventsPattern.test(specifier))
-    ) {
-      violations.push(
-        `${relativePath}: src/lib must not import module application use-cases, hooks, ui, or events`
-      );
     }
     if (isProviders && moduleUiPattern.test(specifier)) {
       violations.push(`${relativePath}: src/components/providers must not import module UI`);

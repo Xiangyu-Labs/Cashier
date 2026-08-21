@@ -102,3 +102,67 @@ export async function GET() {
     expect(result.status).toBe(0);
   });
 });
+
+describe("check-architecture inward dependency rules", () => {
+  it("rejects modules importing app entrypoints", () => {
+    const root = makeFixture({
+      "src/modules/ledger/ui/example.ts": 'import x from "@/app/example";',
+    });
+    expect(runChecker(root)).toMatchObject({ status: 1 });
+  });
+
+  it("allows modules importing shared components", () => {
+    const root = makeFixture({
+      "src/modules/ledger/ui/example.ts": 'import x from "@/components/example";',
+    });
+    expect(runChecker(root).status).toBe(0);
+  });
+
+  it("rejects lib importing modules, app, or application adapters", () => {
+    for (const specifier of [
+      "@/modules/ledger/contracts",
+      "@/app/api/example/route",
+      "@/application/adapters/storage",
+    ]) {
+      const root = makeFixture({
+        "src/lib/example.ts": `import x from ${JSON.stringify(specifier)};`,
+      });
+      expect(runChecker(root).status).toBe(1);
+    }
+  });
+
+  it("allows lib importing application contracts", () => {
+    const root = makeFixture({
+      "src/lib/example.ts": 'import type { Port } from "@/application/contracts";',
+    });
+    expect(runChecker(root).status).toBe(0);
+  });
+
+  it("rejects persistence importing domain modules", () => {
+    const root = makeFixture({
+      "src/persistence/schema/example.ts": 'import x from "@/modules/ledger/contracts";',
+    });
+    expect(runChecker(root).status).toBe(1);
+  });
+
+  it("allows persistence importing shared values", () => {
+    const root = makeFixture({
+      "src/persistence/schema/example.ts": 'import x from "@/lib/shared-values";',
+    });
+    expect(runChecker(root).status).toBe(0);
+  });
+
+  it("rejects domain modules importing workspace orchestration", () => {
+    const root = makeFixture({
+      "src/modules/stats/ui/example.ts": 'import x from "@/modules/workspace/example";',
+    });
+    expect(runChecker(root).status).toBe(1);
+  });
+
+  it("allows workspace to orchestrate domain modules", () => {
+    const root = makeFixture({
+      "src/modules/workspace/example.ts": 'import x from "@/modules/stats/contracts";',
+    });
+    expect(runChecker(root).status).toBe(0);
+  });
+});

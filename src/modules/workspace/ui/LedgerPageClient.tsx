@@ -20,7 +20,7 @@ import { getEntryCategoriesAction } from "@/modules/ledger/server-actions/catego
 import { DeferredFeatureMessages } from "@/i18n/DeferredFeatureMessages";
 import { FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import { useFeatureMessages } from "@/i18n/use-feature-messages";
-import { useShellController } from "@/app/[locale]/(protected)/shell-controller";
+import { useShellController } from "@/components/providers/shell-controller";
 import { LedgerEntriesTab } from "@/modules/workspace/ui/LedgerEntriesTab";
 import {
   useDrilldownNavigation,
@@ -28,7 +28,7 @@ import {
   useLedgerTabs,
   usePeriodFilter,
 } from "../hooks";
-import type { LedgerTab } from "../tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 import { useLedgerDialogState } from "./useLedgerDialogState";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { useModalStackStore } from "@/lib/store/modal-stack";
@@ -36,7 +36,7 @@ import { LedgerQueryErrorBanner } from "@/modules/workspace/ui/LedgerQueryErrorB
 import type { EntryCategoryWithCount, LedgerDto } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/filters";
 import type { CreatedRecordResult } from "@/modules/source-document/contracts";
-import type { ActiveTabDataState, TabQueryStateReport } from "./tab-query-state";
+import type { ActiveTabDataState, TabQueryStateReport } from "@/components/tab-query-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import {

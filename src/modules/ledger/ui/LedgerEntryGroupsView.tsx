@@ -3,7 +3,7 @@
 import { useLocale } from "next-intl";
 import type { EntryCategory, LedgerEntry } from "@/modules/ledger/contracts";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { EntryGroupHeader } from "@/modules/workspace/ui/EntryGroupHeader";
+import { EntryGroupHeader } from "@/components/EntryGroupHeader";
 import { LedgerEntryCard } from "./LedgerEntryCard";
 
 interface LedgerEntryGroupsViewProps {

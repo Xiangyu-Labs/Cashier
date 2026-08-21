@@ -15,7 +15,7 @@ import {
   MAX_ORIGINAL_BYTES_PER_FILE,
   MAX_TEXT_CHARACTERS,
   SUPPORTED_MIME_TYPES,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 import {
   API_V1_MAX_DECODED_BATCH_BYTES,
   API_V1_MAX_DECODED_IMAGE_BYTES,

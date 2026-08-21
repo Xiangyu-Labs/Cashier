@@ -13,7 +13,7 @@ import { requireLedgerAccess } from "@/modules/ledger/access";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
-import type { LedgerTab } from "@/modules/workspace/tabs";
+import type { LedgerTab } from "@/lib/ledger-tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { addPeriod, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import type { CategoryPort } from "@/application/contracts";

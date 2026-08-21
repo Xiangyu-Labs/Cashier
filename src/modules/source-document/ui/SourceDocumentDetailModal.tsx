@@ -29,7 +29,7 @@ import type { PendingChanges } from "@/modules/source-document/hooks/usePendingC
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 import { useDiagnosticMessages } from "./use-diagnostic-messages";
 import { SourceDocumentSplitDialog } from "./SourceDocumentSplitDialog";
-import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
+import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 
 interface SourceDocumentDetailModalProps {
   ledgerId: string;

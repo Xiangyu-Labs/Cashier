@@ -11,7 +11,7 @@ import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
 } from "@/modules/ledger/server-actions/entries";
-import { openLedgerDetail } from "@/modules/workspace/ledger-detail-navigation";
+import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";

@@ -2,7 +2,7 @@
 import { useCallback, useMemo } from "react";
 import { updateLedgerSearchParams } from "../ledger-url-params";
 import { pushLedgerUrl } from "../ledger-url-navigation";
-import { parseLedgerTab, type LedgerTab } from "@/modules/workspace/tabs";
+import { parseLedgerTab, type LedgerTab } from "@/lib/ledger-tabs";
 
 interface UseLedgerTabsOptions {
   initialTab?: LedgerTab;

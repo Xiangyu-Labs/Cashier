@@ -14,6 +14,21 @@ const nextConfig: NextConfig = {
     unoptimized: true, // Disable Next.js image optimization - images are pre-processed on upload
     remotePatterns,
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "same-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 const withSerwist = withSerwistInit({

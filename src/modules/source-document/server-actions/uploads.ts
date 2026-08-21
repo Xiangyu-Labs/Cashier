@@ -8,7 +8,7 @@ import {
   type FinalizeSourceDocumentUploadInput,
 } from "../contract-schemas";
 import { withSourceDocumentLedgerAccess } from "./access";
-import { scheduleRequestMaintenance } from "@/lib/tasks/request-maintenance";
+import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 
 export const createSourceDocumentUploadPlanAction = withSourceDocumentLedgerAccess(
   async ({ ledgerId }, input: CreateSourceDocumentUploadPlanInput): Promise<UploadPlanContract> =>

@@ -23,7 +23,7 @@ import {
   DIRECT_UPLOAD_FINALIZE_BUFFER_MS,
   SUPPORTED_MIME_SET,
   UPLOAD_SESSION_EXPIRY_MS,
-} from "@/modules/source-document/upload-policy";
+} from "@/lib/storage/upload-policy";
 import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cleanup";
 import { validateStoredImageBytes } from "@/lib/storage/image-processing";
 import {

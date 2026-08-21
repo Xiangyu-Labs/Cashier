@@ -5,7 +5,7 @@ import type {
   UploadPlanContract,
 } from "@/application/contracts";
 import { ValidationError } from "@/lib/errors";
-import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/modules/source-document/upload-policy";
+import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
 
 /**
