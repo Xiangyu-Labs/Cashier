@@ -16,7 +16,6 @@ interface CompressionResult {
 
 class WorkerPool {
   private maxWorkers: number;
-  private workers: Worker[] = [];
   private queue: Array<{
     task: () => Promise<CompressionResult>;
     resolve: (value: CompressionResult) => void;
@@ -70,23 +69,24 @@ function createWorker(): Worker | null {
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    const byte = bytes[i];
-    if (byte != null) {
-      binary += String.fromCharCode(byte);
-    }
+  const chunks: string[] = [];
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
   }
-  return btoa(binary);
+  return btoa(chunks.join(""));
 }
 
 export async function compressImage(
   file: File,
   maxWidth = 1080,
   maxHeight = 1080,
-  quality = 0.8
+  quality = 0.8,
+  signal?: AbortSignal
 ): Promise<CompressionResult> {
   return workerPool.execute(async () => {
+    if (signal?.aborted === true)
+      throw new DOMException("Image compression was cancelled", "AbortError");
     const worker = createWorker();
 
     // Use Web Worker if available (non-blocking)
@@ -94,20 +94,36 @@ export async function compressImage(
       const arrayBuffer = await file.arrayBuffer();
 
       return new Promise((resolve, reject) => {
-        const handler = (e: MessageEvent) => {
-          worker.removeEventListener("message", handler);
+        const cleanup = () => {
+          worker.removeEventListener("message", handleMessage);
+          worker.removeEventListener("error", handleError);
+          signal?.removeEventListener("abort", handleAbort);
+          worker.terminate();
+        };
+        const fail = (error: Error) => {
+          cleanup();
+          reject(error);
+        };
+        const handleMessage = (e: MessageEvent) => {
           if (e.data.success === true) {
             const base64 = arrayBufferToBase64(e.data.data);
+            cleanup();
             resolve({
               data: `data:image/jpeg;base64,${base64}`,
               mimeType: "image/jpeg",
             });
           } else {
-            reject(new Error(e.data.error));
+            fail(new Error(e.data.error));
           }
         };
+        const handleError = (event: ErrorEvent) =>
+          fail(event.error instanceof Error ? event.error : new Error(event.message));
+        const handleAbort = () =>
+          fail(new DOMException("Image compression was cancelled", "AbortError"));
 
-        worker.addEventListener("message", handler);
+        worker.addEventListener("message", handleMessage);
+        worker.addEventListener("error", handleError);
+        signal?.addEventListener("abort", handleAbort, { once: true });
         worker.postMessage({ imageData: arrayBuffer, maxWidth, maxHeight, quality }, [arrayBuffer]);
       });
     }

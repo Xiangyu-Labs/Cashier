@@ -1,4 +1,4 @@
-import type { LedgerEntry, EntryCategory } from "@/modules/ledger/contracts";
+import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { Badge } from "@/components/ui/badge";
 import { EntryCardShell } from "@/components/entry-card-shell";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
@@ -12,7 +12,6 @@ import { useTranslations } from "next-intl";
 
 interface LedgerEntryCardProps {
   ledgerEntry: LedgerEntry;
-  categories: EntryCategory[];
   onView?: (entry: LedgerEntry) => void;
   className?: string;
   mainCurrency?: string;
@@ -45,6 +44,17 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
         interactive={onView != null || selectionMode}
         className={className}
         data-testid="ledger-entry-card-root"
+        {...(!selectionMode && onView != null
+          ? {
+              role: "button",
+              tabIndex: 0,
+              onKeyDown: (event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onView(ledgerEntry);
+              },
+            }
+          : {})}
       >
         <div className="px-3 py-3 sm:px-4">
           <div

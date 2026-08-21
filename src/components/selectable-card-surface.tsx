@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ const indicatorPositionClass: Record<
   header: "top-[24px] -translate-y-1/2",
 };
 
-export function SelectableCardSurface({
+export const SelectableCardSurface = memo(function SelectableCardSurface({
   selectionMode,
   selected,
   selectionLabel,
@@ -95,4 +95,4 @@ export function SelectableCardSurface({
       ) : null}
     </div>
   );
-}
+});

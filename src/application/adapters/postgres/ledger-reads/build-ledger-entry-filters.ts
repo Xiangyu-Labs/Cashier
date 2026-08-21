@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { eq, isNull, sql, type SQL } from "drizzle-orm";
 import { ValidationError } from "@/lib/errors";
 import { forLedger } from "@/lib/db/scoped-query";
+import { escapedLikeContains } from "@/lib/db/like-pattern";
 import { ledgerEntries } from "@/persistence";
 import {
   buildLedgerEntrySourceDocumentDateCondition,
@@ -50,10 +51,10 @@ export function buildLedgerEntryValueConditions(filters: LedgerEntryFilterParams
   }
 
   if (filters.search != null && filters.search !== "") {
-    const literalPattern = `%${filters.search.toLocaleLowerCase().replace(/[\\%_]/g, "\\$&")}%`;
+    const literalPattern = escapedLikeContains(filters.search);
     conditions.push(
       sql`lower(${ledgerEntries.itemName} || ' ' || COALESCE(${ledgerEntries.description}, ''))
-        LIKE ${literalPattern} ESCAPE '\'`
+        LIKE ${literalPattern}`
     );
   }
 

@@ -32,7 +32,7 @@ describe("source-document inline submission preparation", () => {
       { compress, createPlan, put, finalize }
     );
 
-    expect(compress).toHaveBeenCalledWith(expect.any(File), 1080, 1080, 0.78);
+    expect(compress).toHaveBeenCalledWith(expect.any(File), 1080, 1080, 0.78, undefined);
     expect(result).toEqual({
       entryDate: "2026-07-15",
       storedFileIds: ["file-1"],

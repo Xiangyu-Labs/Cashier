@@ -24,4 +24,9 @@ describe("heatmap range", () => {
   it("refuses to generate more than 3660 date keys", () => {
     expect(generateHeatmapDateKeys({ startDate: "2015-01-01", endDate: "2026-01-01" })).toEqual([]);
   });
+
+  it("reuses date keys for the same range", () => {
+    const range = { startDate: "2026-07-01", endDate: "2026-07-31" };
+    expect(generateHeatmapDateKeys(range)).toBe(generateHeatmapDateKeys({ ...range }));
+  });
 });

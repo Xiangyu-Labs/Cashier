@@ -1,5 +1,5 @@
 "use client";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { useFeatureMessages } from "./use-feature-messages";
 
@@ -35,6 +35,10 @@ export function DeferredFeatureMessages({
     feature,
     parentMessages as Record<string, unknown>
   );
+  const merged = useMemo(
+    () => (featureState.data == null ? null : { ...parentMessages, ...featureState.data }),
+    [featureState.data, parentMessages]
+  );
 
   if (featureState.status === "loading") return <>{fallback}</>;
   if (featureState.status === "error" || featureState.data == null) {
@@ -55,12 +59,8 @@ export function DeferredFeatureMessages({
     );
   }
 
-  // Merge feature messages on top of parent messages so the feature
-  // gets its namespaces without losing shell/global ones.
-  const merged = { ...parentMessages, ...featureState.data };
-
   return (
-    <NextIntlClientProvider messages={merged} locale={locale}>
+    <NextIntlClientProvider messages={merged!} locale={locale}>
       {children}
     </NextIntlClientProvider>
   );

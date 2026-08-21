@@ -28,6 +28,9 @@ import {
   type StatsView,
 } from "@/modules/workspace/ledger-url-params";
 import { pushLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+
+const STATS_QUERY_DEBOUNCE_MS = 250;
 
 interface StatsTabProps {
   ledgerId?: string;
@@ -104,6 +107,7 @@ export function StatsTab({
     [currentDate, ledger?.settings.mainCurrency, ledgerId, periodOffset, rangeType]
   );
   const { startDate, endDate, startDateStr, endDateStr } = statsDescriptor.state;
+  const queryDescriptor = useDebouncedValue(statsDescriptor, STATS_QUERY_DEBOUNCE_MS);
 
   const label = useMemo(() => {
     switch (rangeType) {
@@ -119,8 +123,8 @@ export function StatsTab({
   }, [endDateStr, locale, rangeType, startDateStr]);
 
   const statsQuery = useQuery({
-    queryKey: statsDescriptor.queryKey,
-    queryFn: () => getEnhancedStats(statsDescriptor.input),
+    queryKey: queryDescriptor.queryKey,
+    queryFn: () => getEnhancedStats(queryDescriptor.input),
     enabled: ledgerId !== undefined && ledgerId !== "",
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     refetchOnWindowFocus: false,
@@ -135,7 +139,7 @@ export function StatsTab({
     onQueryStateChange?.({
       ledgerId: ledgerId ?? "",
       tab: "stats",
-      queryKey: statsDescriptor.queryKey,
+      queryKey: queryDescriptor.queryKey,
       status: statsQuery.status,
       isFetching: statsQuery.isFetching,
       hasData: statsQuery.data !== undefined,
@@ -143,7 +147,7 @@ export function StatsTab({
   }, [
     ledgerId,
     onQueryStateChange,
-    statsDescriptor.queryKey,
+    queryDescriptor.queryKey,
     statsQuery.isFetching,
     statsQuery.data,
     statsQuery.status,

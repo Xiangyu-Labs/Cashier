@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CACHE_DB_NAME,
   CACHE_DB_VERSION,
+  DOCUMENT_IMAGE_ACCESS_STORE,
   DOCUMENT_IMAGE_STORE,
   clearUserImageCacheData,
   openCacheDb,
@@ -15,7 +16,7 @@ afterEach(() => {
 });
 
 describe("client cache database", () => {
-  it("removes v2 snapshots and rebuilds the image store when upgrading to v3", async () => {
+  it("removes legacy snapshots and preserves images while adding access metadata", async () => {
     const seeded = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(CACHE_DB_NAME, 2);
       request.onupgradeneeded = () => {
@@ -39,13 +40,15 @@ describe("client cache database", () => {
 
     const db = await openCacheDb();
     expect(db.version).toBe(CACHE_DB_VERSION);
-    expect(CACHE_DB_VERSION).toBe(3);
+    expect(CACHE_DB_VERSION).toBe(4);
     expect(db.objectStoreNames.contains("ledgerSnapshots")).toBe(false);
     expect(db.objectStoreNames.contains(DOCUMENT_IMAGE_STORE)).toBe(true);
+    expect(db.objectStoreNames.contains(DOCUMENT_IMAGE_ACCESS_STORE)).toBe(true);
     const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readonly");
-    await expect(
-      requestResult(tx.objectStore(DOCUMENT_IMAGE_STORE).getAll() as IDBRequest<unknown[]>)
-    ).resolves.toEqual([]);
+    const images = await requestResult(
+      tx.objectStore(DOCUMENT_IMAGE_STORE).getAll() as IDBRequest<Array<{ fileId: string }>>
+    );
+    expect(images.map((image) => image.fileId)).toEqual(["file-1"]);
   });
 
   it("clears only the requested user's images", async () => {

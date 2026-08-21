@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { escapedLikeContains } from "@/lib/db/like-pattern";
 import type {
   SourceDocumentStoredFileDto,
   SourceDocumentDto,
@@ -518,6 +519,8 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
   if (input.endDate != null && input.endDate !== "") {
     conditions.push(sql`${sourceDocuments.effectiveDate} <= ${input.endDate}::date`);
   }
+  const searchPattern =
+    input.search != null && input.search !== "" ? escapedLikeContains(input.search) : null;
   if (
     input.minAmount !== undefined ||
     input.maxAmount !== undefined ||
@@ -533,11 +536,9 @@ function baseConditions(input: TargetSourceDocumentFilterInput): SQL<unknown>[] 
         ${input.minAmount !== undefined ? sql`AND matched_entries.converted_amount IS NOT NULL AND matched_entries.converted_amount >= ${input.minAmount}` : sql``}
         ${input.maxAmount !== undefined ? sql`AND matched_entries.converted_amount IS NOT NULL AND matched_entries.converted_amount <= ${input.maxAmount}` : sql``}
         ${
-          input.search != null && input.search !== ""
-            ? sql`AND (
-          position(lower(${input.search}) in lower(matched_entries.item_name)) > 0
-          OR position(lower(${input.search}) in lower(COALESCE(matched_entries.description, ''))) > 0
-        )`
+          searchPattern != null
+            ? sql`AND lower(matched_entries.item_name || ' ' || COALESCE(matched_entries.description, ''))
+          LIKE ${searchPattern}`
             : sql``
         }
     )`);
@@ -567,10 +568,11 @@ export async function calculateCompletedSourceDocumentTotal(
     );
   }
   if (input.search != null && input.search !== "") {
-    matchedEntryConditions.push(sql`(
-      position(lower(${input.search}) in lower(${ledgerEntries.itemName})) > 0
-      OR position(lower(${input.search}) in lower(COALESCE(${ledgerEntries.description}, ''))) > 0
-    )`);
+    const searchPattern = escapedLikeContains(input.search);
+    matchedEntryConditions.push(
+      sql`lower(${ledgerEntries.itemName} || ' ' || COALESCE(${ledgerEntries.description}, ''))
+        LIKE ${searchPattern}`
+    );
   }
   const result = await db
     .select({

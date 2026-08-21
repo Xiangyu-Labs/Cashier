@@ -94,20 +94,29 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
 
 async function pendingOutcomes(rows: readonly (typeof sourceDocuments.$inferSelect)[]) {
   const result = new Map<string, RevisionOutcome>();
-  await Promise.all(
-    rows.map(async (row) => {
-      if (row.pendingRevisionId == null) return;
-      const revision = await db.query.sourceDocumentRevisions.findFirst({
-        where: and(
-          eq(sourceDocumentRevisions.ledgerId, row.ledgerId),
-          eq(sourceDocumentRevisions.id, row.pendingRevisionId),
-          eq(sourceDocumentRevisions.sourceDocumentId, row.id)
-        ),
-        columns: { outcome: true },
-      });
-      if (revision != null) result.set(row.id, revision.outcome as RevisionOutcome);
-    })
+  const pendingRevisionIds = rows.flatMap((row) =>
+    row.pendingRevisionId == null ? [] : [row.pendingRevisionId]
   );
+  if (pendingRevisionIds.length === 0) return result;
+
+  const revisions = await db
+    .select({
+      id: sourceDocumentRevisions.id,
+      sourceDocumentId: sourceDocumentRevisions.sourceDocumentId,
+      outcome: sourceDocumentRevisions.outcome,
+    })
+    .from(sourceDocumentRevisions)
+    .where(inArray(sourceDocumentRevisions.id, pendingRevisionIds));
+  const expectedRevisionByDocument = new Map(
+    rows.flatMap((row) =>
+      row.pendingRevisionId == null ? [] : [[row.id, row.pendingRevisionId] as const]
+    )
+  );
+  for (const revision of revisions) {
+    if (expectedRevisionByDocument.get(revision.sourceDocumentId) === revision.id) {
+      result.set(revision.sourceDocumentId, revision.outcome as RevisionOutcome);
+    }
+  }
   return result;
 }
 

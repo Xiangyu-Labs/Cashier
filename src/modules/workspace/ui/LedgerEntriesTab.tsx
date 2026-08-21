@@ -153,7 +153,6 @@ export function LedgerEntriesTab({
     });
   }, [ledgerId, onQueryStateChange, queryHasData, queryIsFetching, queryKey, queryStatus]);
 
-  // Build groupedItems from completed groups for useGroupedEntries — no longer needed
   // Selection uses unified stream groups
   const allSourceDocumentIds = useMemo(
     () => streamGroups.flatMap((g) => g.items.map((i) => i.sourceDocument.id)),

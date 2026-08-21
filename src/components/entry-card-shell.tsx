@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import { memo, type HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 interface EntryCardShellProps extends HTMLAttributes<HTMLDivElement> {
@@ -6,7 +6,7 @@ interface EntryCardShellProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
 }
 
-export function EntryCardShell({
+export const EntryCardShell = memo(function EntryCardShell({
   selected = false,
   interactive = false,
   className,
@@ -24,4 +24,4 @@ export function EntryCardShell({
       {...props}
     />
   );
-}
+});

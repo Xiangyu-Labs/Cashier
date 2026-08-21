@@ -11,7 +11,6 @@ describe("frontend motion policy", () => {
       "src/components/ui/button.tsx",
       "src/components/ui/calculator-input.tsx",
       "src/components/ui/editable-field.tsx",
-      "src/components/ui/tabs.tsx",
       "src/modules/auth/ui/otp-input.tsx",
       "src/modules/source-document/ui/EditableLedgerEntryItem.tsx",
       "src/modules/source-document/ui/LedgerEntryItem.tsx",

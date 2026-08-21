@@ -1,5 +1,17 @@
 import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+function getNumberFormatter(locale: string | undefined, options: Intl.NumberFormatOptions) {
+  const key = `${locale ?? "default"}:${JSON.stringify(options)}`;
+  let formatter = numberFormatters.get(key);
+  if (formatter == null) {
+    formatter = new Intl.NumberFormat(locale, options);
+    numberFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 export function formatCurrencyAmount(
   amount: string | number,
   currency: string,
@@ -8,7 +20,7 @@ export function formatCurrencyAmount(
 ): string {
   const decimals = getCurrencyDecimals(currency);
   try {
-    const formatter = new Intl.NumberFormat(locale, {
+    const formatter = getNumberFormatter(locale, {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
@@ -18,7 +30,7 @@ export function formatCurrencyAmount(
     });
     return (formatter.format as (value: string | number) => string)(amount);
   } catch {
-    const formatter = new Intl.NumberFormat(locale, {
+    const formatter = getNumberFormatter(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
       ...options,
@@ -42,7 +54,7 @@ export function formatCompactCurrencyAmount(
 }
 
 export function formatCompactNumberAmount(amount: string | number, locale?: string): string {
-  const formatter = new Intl.NumberFormat(locale, {
+  const formatter = getNumberFormatter(locale, {
     notation: "compact",
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
@@ -54,7 +66,7 @@ export function getCurrencySymbol(currency: string, locale?: string): string {
   if (currency === "" || currency === "unknown") return "?";
 
   try {
-    const currencyPart = new Intl.NumberFormat(locale, {
+    const currencyPart = getNumberFormatter(locale, {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",

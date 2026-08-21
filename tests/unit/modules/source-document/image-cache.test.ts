@@ -1,6 +1,11 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DOCUMENT_IMAGE_STORE, openCacheDb, transactionDone } from "@/lib/client-cache";
+import {
+  DOCUMENT_IMAGE_ACCESS_STORE,
+  DOCUMENT_IMAGE_STORE,
+  openCacheDb,
+  transactionDone,
+} from "@/lib/client-cache";
 import {
   CACHED_IMAGE_BYTES_LIMIT,
   type CachedImageRecord,
@@ -45,8 +50,9 @@ afterEach(() => {
 
 beforeEach(async () => {
   const db = await openCacheDb();
-  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
   tx.objectStore(DOCUMENT_IMAGE_STORE).clear();
+  tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE).clear();
   await transactionDone(tx);
 });
 
@@ -93,6 +99,20 @@ describe("cached image reads", () => {
     vi.stubGlobal("indexedDB", undefined);
     await expect(readCachedImages("user:ledger")).resolves.toEqual([]);
     await expect(readCachedImagesForFiles("user:ledger", ["file-1"])).resolves.toEqual([]);
+  });
+
+  it("reads only requested file keys and preserves request order", async () => {
+    const db = await openCacheDb();
+    const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+    const store = tx.objectStore(DOCUMENT_IMAGE_STORE);
+    store.put(image({ key: "user:ledger:file-1", fileId: "file-1" }));
+    store.put(image({ key: "user:ledger:file-2", fileId: "file-2" }));
+    store.put(image({ key: "user:ledger:file-3", fileId: "file-3" }));
+    await transactionDone(tx);
+
+    const records = await readCachedImagesForFiles("user:ledger", ["file-3", "file-1"]);
+
+    expect(records.map((record) => record.fileId)).toEqual(["file-3", "file-1"]);
   });
 });
 

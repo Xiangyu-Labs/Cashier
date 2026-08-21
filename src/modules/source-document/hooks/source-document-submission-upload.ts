@@ -122,7 +122,9 @@ export async function uploadSourceDocumentSubmissionImages(
     const quality = QUALITY_STEPS[qualityIndex]!;
     let compressed;
     try {
-      compressed = await Promise.all(originals.map((file) => compress(file, 1080, 1080, quality)));
+      compressed = await Promise.all(
+        originals.map((file) => compress(file, 1080, 1080, quality, dependencies.signal))
+      );
     } catch (error) {
       if (dependencies.signal?.aborted === true || isAbortError(error)) {
         throwIfAborted(dependencies.signal);

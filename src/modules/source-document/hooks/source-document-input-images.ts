@@ -3,13 +3,14 @@ import { toEditableImage } from "./source-document-input-controller.core";
 import type { SourceDocumentInputImageLoadResult } from "./source-document-input-controller.types";
 
 export async function loadSourceDocumentInputFiles(
-  files: File[]
+  files: File[],
+  signal?: AbortSignal
 ): Promise<SourceDocumentInputImageLoadResult[]> {
   const results: SourceDocumentInputImageLoadResult[] = [];
 
   for (const file of files) {
     try {
-      const compressed = await compressImage(file);
+      const compressed = await compressImage(file, 1080, 1080, 0.8, signal);
       results.push({ kind: "ready", image: toEditableImage(compressed) });
     } catch (error) {
       console.error("Failed to compress image:", error);

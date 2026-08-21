@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import * as schema from "@/persistence";
-import { memoryStore } from "@/lib/memory-store";
 import { flushAfterCallbacks } from "./setup.common";
 
 const TEST_DATABASE_URL =
@@ -140,7 +139,6 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await memoryStore.flushall();
   // Drain request-bound `after()` work from the previous test before taking
   // exclusive table locks, otherwise maintenance/processing transactions can
   // deadlock against the per-test TRUNCATE.

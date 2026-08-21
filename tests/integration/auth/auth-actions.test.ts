@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { otpTokens } from "@/persistence";
 import { eq } from "drizzle-orm";
-import { memoryStore } from "@/lib/memory-store";
 
 // Mock Resend before importing actions
 vi.mock("resend", () => ({
@@ -35,7 +34,6 @@ describe("Auth Actions - sendOTPAction", () => {
     // Clean up
     const db = getTestDb();
     await db.delete(otpTokens).where(eq(otpTokens.email, TEST_EMAIL));
-    await memoryStore.flushall();
   });
 
   it("should send OTP successfully with valid email", async () => {

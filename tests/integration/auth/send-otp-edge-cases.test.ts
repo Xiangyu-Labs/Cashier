@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { render } from "@react-email/render";
 import { otpTokens } from "@/persistence/schema/auth";
 import { getTestDb } from "tests/setup";
-import { memoryStore } from "@/lib/memory-store";
 
 const { headersMock, cookiesMock, resendSendMock } = vi.hoisted(() => ({
   headersMock: vi.fn(),
@@ -33,7 +32,6 @@ describe("sendOTPAction edge cases", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    await memoryStore.flushall();
     delete process.env.AUTH_RESEND_KEY;
     delete process.env.AUTH_EMAIL_FROM;
 

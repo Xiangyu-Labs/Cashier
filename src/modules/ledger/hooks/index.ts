@@ -3,6 +3,5 @@ export { useCredentialMutations } from "./useCredentialMutations";
 export { useDetailsTabData } from "./useDetailsTabData";
 export { useDetailsTabGrouping } from "./useDetailsTabGrouping";
 export { useEntryMutations } from "./useEntryMutations";
-export { useGroupedEntries } from "./useGroupedEntries";
 export { useLedgerEntriesMutations } from "./useLedgerEntriesMutations";
 export { useLedgerSettings } from "./useLedgerSettings";

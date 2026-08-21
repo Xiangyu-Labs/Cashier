@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import type { EntryCategory, Ledger } from "@/modules/ledger/contracts";
+import { useCallback, useEffect, useMemo } from "react";
+import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
 import type { EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
 import type { PeriodParams } from "@/lib/period-utils";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
@@ -88,6 +88,11 @@ export function DetailsTab({
     isFetchingNextPage: data.isFetchingNextPage,
     fetchNextPage: data.fetchNextPage,
   });
+  const handleViewEntry = useCallback(
+    (entry: LedgerEntry) =>
+      openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId }),
+    []
+  );
   return (
     <DetailsTabView
       categories={categories}
@@ -107,9 +112,7 @@ export function DetailsTab({
       monthStats={data.monthStats}
       sentinelRef={sentinelRef}
       batch={batch}
-      onViewEntry={(entry) =>
-        openLedgerDetail({ type: "ledger-entry", id: entry.id, ledgerId: entry.ledgerId })
-      }
+      onViewEntry={handleViewEntry}
     />
   );
 }

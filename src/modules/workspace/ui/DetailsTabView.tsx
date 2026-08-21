@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefCallback } from "react";
+import { useCallback, type RefCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, CheckSquare } from "lucide-react";
 import type { EntryCategory, Ledger, LedgerEntry } from "@/modules/ledger/contracts";
@@ -77,6 +77,13 @@ export function DetailsTabView(props: DetailsTabViewProps) {
   const tCommon = useTranslations("Common");
   const tFilter = useTranslations("EntryFilterPanel");
   const locale = useLocale();
+  const { isPending, toggleSelection } = batch;
+  const handleToggleSelection = useCallback(
+    (id: string) => {
+      if (!isPending) toggleSelection(id);
+    },
+    [isPending, toggleSelection]
+  );
 
   return (
     <>
@@ -134,7 +141,6 @@ export function DetailsTabView(props: DetailsTabViewProps) {
             filters={filters}
             onFiltersChange={onFiltersChange}
             periodParams={periodParams}
-            categories={categories}
             preferredCurrencies={ledger?.settings.currencies ?? []}
             showStatus={false}
             className="flex-1 sm:flex-none"
@@ -154,14 +160,11 @@ export function DetailsTabView(props: DetailsTabViewProps) {
         <div className="space-y-6 pt-2">
           <LedgerEntryGroupsView
             groups={groupedItems}
-            categories={categories}
             mainCurrency={ledger?.settings.mainCurrency ?? monthStats.mainCurrency}
             onView={onViewEntry}
             selectionMode={batch.isSelectionMode}
             selectedIds={batch.selectedIds}
-            onToggleSelection={(id) => {
-              if (!batch.isPending) batch.toggleSelection(id);
-            }}
+            onToggleSelection={handleToggleSelection}
           />
           {isLoading ? (
             <div className="space-y-4 px-2 animate-pulse">

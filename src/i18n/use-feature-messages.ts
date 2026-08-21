@@ -173,21 +173,23 @@ export function useFeatureMessages(
     void preloadFeatureMessages(locale, feature).catch(() => undefined);
   }, [availableFeatureMessages, cacheKey, feature, locale]);
 
-  if (availableFeatureMessages != null) {
-    return {
-      status: "success",
-      data: availableFeatureMessages,
-      messages: availableFeatureMessages,
-      error: null,
-      retry,
-    };
-  }
-
-  return {
-    status: cached.status,
-    data: cached.messages,
-    messages: cached.messages,
-    error: cached.error,
-    retry,
-  };
+  return useMemo(
+    () =>
+      availableFeatureMessages != null
+        ? {
+            status: "success" as const,
+            data: availableFeatureMessages,
+            messages: availableFeatureMessages,
+            error: null,
+            retry,
+          }
+        : {
+            status: cached.status,
+            data: cached.messages,
+            messages: cached.messages,
+            error: cached.error,
+            retry,
+          },
+    [availableFeatureMessages, cached.error, cached.messages, cached.status, retry]
+  );
 }

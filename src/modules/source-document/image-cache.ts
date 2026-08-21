@@ -3,6 +3,7 @@
 import type { SourceDocumentStoredFileDto } from "@/modules/source-document/contracts";
 import {
   DOCUMENT_IMAGE_STORE,
+  DOCUMENT_IMAGE_ACCESS_STORE,
   openCacheDb,
   requestResult,
   transactionDone,
@@ -24,6 +25,13 @@ export interface CachedImageRecord {
   lastAccessedAt: number;
 }
 
+interface CachedImageAccessRecord {
+  key: string;
+  snapshotKey: string;
+  userId: string;
+  lastAccessedAt: number;
+}
+
 export function imageCacheKey(snapshotKey: string, fileId: string) {
   return `${snapshotKey}:${fileId}`;
 }
@@ -38,12 +46,48 @@ const inFlightImageRequests = new Map<string, Promise<CachedImageRecord | null>>
 export async function readCachedImages(snapshotKey: string): Promise<CachedImageRecord[]> {
   if (typeof indexedDB === "undefined") return [];
   const db = await openCacheDb();
-  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readonly");
-  return await requestResult(
-    tx.objectStore(DOCUMENT_IMAGE_STORE).index("snapshotKey").getAll(snapshotKey) as IDBRequest<
-      CachedImageRecord[]
-    >
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readonly");
+  const [images, accessRows] = await Promise.all([
+    requestResult(
+      tx.objectStore(DOCUMENT_IMAGE_STORE).index("snapshotKey").getAll(snapshotKey) as IDBRequest<
+        CachedImageRecord[]
+      >
+    ),
+    requestResult(
+      tx
+        .objectStore(DOCUMENT_IMAGE_ACCESS_STORE)
+        .index("snapshotKey")
+        .getAll(snapshotKey) as IDBRequest<CachedImageAccessRecord[]>
+    ),
+  ]);
+  const accessByKey = new Map(accessRows.map((row) => [row.key, row.lastAccessedAt]));
+  return images.map((image) => ({
+    ...image,
+    lastAccessedAt: accessByKey.get(image.key) ?? image.lastAccessedAt,
+  }));
+}
+
+async function readCachedImageKeys(
+  snapshotKey: string,
+  fileIds: readonly string[]
+): Promise<CachedImageRecord[]> {
+  const db = await openCacheDb();
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readonly");
+  const images = tx.objectStore(DOCUMENT_IMAGE_STORE);
+  const access = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
+  const records = await Promise.all(
+    [...new Set(fileIds)].map(async (fileId) => {
+      const key = imageCacheKey(snapshotKey, fileId);
+      const [image, accessRow] = await Promise.all([
+        requestResult(images.get(key) as IDBRequest<CachedImageRecord | undefined>),
+        requestResult(access.get(key) as IDBRequest<CachedImageAccessRecord | undefined>),
+      ]);
+      return image == null
+        ? null
+        : { ...image, lastAccessedAt: accessRow?.lastAccessedAt ?? image.lastAccessedAt };
+    })
   );
+  return records.filter((record): record is CachedImageRecord => record != null);
 }
 
 export async function readCachedImagesForFiles(
@@ -51,9 +95,7 @@ export async function readCachedImagesForFiles(
   fileIds: readonly string[]
 ): Promise<CachedImageRecord[]> {
   if (typeof indexedDB === "undefined" || fileIds.length === 0) return [];
-  const records = await readCachedImages(snapshotKey);
-  const wanted = new Set(fileIds);
-  return records.filter((record) => wanted.has(record.fileId));
+  return readCachedImageKeys(snapshotKey, fileIds);
 }
 
 export function selectCachedImageEvictions(
@@ -122,8 +164,13 @@ async function runCacheImage(
   );
   if (existing != null) {
     const touched = { ...existing, lastAccessedAt: Date.now() };
-    const touchTx = existingDb.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
-    touchTx.objectStore(DOCUMENT_IMAGE_STORE).put(touched);
+    const touchTx = existingDb.transaction(DOCUMENT_IMAGE_ACCESS_STORE, "readwrite");
+    touchTx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE).put({
+      key,
+      snapshotKey: existing.snapshotKey,
+      userId: existing.userId,
+      lastAccessedAt: touched.lastAccessedAt,
+    } satisfies CachedImageAccessRecord);
     await transactionDone(touchTx);
     return touched;
   }
@@ -134,7 +181,7 @@ async function runCacheImage(
   if (blob.size <= 0 || blob.size > CACHED_IMAGE_BYTES_LIMIT) return null;
 
   const db = await openCacheDb();
-  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
   const store = tx.objectStore(DOCUMENT_IMAGE_STORE);
   const records = await requestResult(
     store.index("snapshotKey").getAll(input.snapshotKey) as IDBRequest<CachedImageRecord[]>
@@ -151,6 +198,8 @@ async function runCacheImage(
     return null;
   }
   for (const record of evictions) store.delete(record.key);
+  const accessStore = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
+  for (const record of evictions) accessStore.delete(record.key);
   const record: CachedImageRecord = {
     key,
     snapshotKey: input.snapshotKey,
@@ -163,6 +212,12 @@ async function runCacheImage(
     lastAccessedAt: Date.now(),
   };
   store.put(record);
+  accessStore.put({
+    key,
+    snapshotKey: input.snapshotKey,
+    userId: record.userId,
+    lastAccessedAt: record.lastAccessedAt,
+  } satisfies CachedImageAccessRecord);
   await transactionDone(tx);
   return record;
 }

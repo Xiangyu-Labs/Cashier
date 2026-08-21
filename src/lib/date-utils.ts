@@ -13,6 +13,21 @@ import {
   parseISO,
 } from "date-fns";
 
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getDateTimeFormatter(
+  locale: string,
+  options: Intl.DateTimeFormatOptions
+): Intl.DateTimeFormat {
+  const key = `${locale}:${JSON.stringify(options)}`;
+  let formatter = dateTimeFormatters.get(key);
+  if (formatter == null) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    dateTimeFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 export type DateRangeType = "week" | "month" | "year";
 
 export interface DateRange {
@@ -123,7 +138,7 @@ export function formatCivilDate(
     throw new RangeError(`Invalid civil date: ${dateString}`);
   }
 
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(date);
+  return getDateTimeFormatter(locale, { ...options, timeZone: "UTC" }).format(date);
 }
 
 /**
@@ -201,7 +216,7 @@ export function isValidDateString(dateStr: string): boolean {
 export function getDateInTimezone(timezone?: string): string | undefined {
   if (timezone == null || timezone === "") return undefined;
   try {
-    return new Intl.DateTimeFormat("sv-SE", { timeZone: timezone }).format(new Date());
+    return getDateTimeFormatter("sv-SE", { timeZone: timezone }).format(new Date());
   } catch {
     return undefined; // invalid timezone string
   }
@@ -209,7 +224,7 @@ export function getDateInTimezone(timezone?: string): string | undefined {
 
 export function isValidTimeZone(timeZone: string): boolean {
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone }).format();
+    getDateTimeFormatter("en-US", { timeZone }).format();
     return true;
   } catch {
     return false;

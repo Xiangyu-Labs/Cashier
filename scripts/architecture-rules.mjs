@@ -44,7 +44,6 @@ const libDbPattern = /^@\/lib\/db(?:\/|$)/;
 const applicationAdaptersPattern = /^@\/application\/adapters(?:\/|$)/;
 const s3Pattern = /^@\/lib\/storage\/s3(?:\/|$)/;
 const openaiClientPattern = /^@\/lib\/ai\/openai-client(?:\/|$)/;
-const moduleHooksPattern = /^@\/modules\/[^/]+\/hooks(?:\/|$)/;
 const moduleUiPattern = /^@\/modules\/[^/]+\/ui(?:\/|$)/;
 const providerSdkPattern = /^(?:pg|openai|resend)$|^drizzle-orm(?:\/|$)|^@aws-sdk\//;
 const transportFrameworkPattern = /^(?:next(?:\/|$)|next-auth(?:\/|$)|@auth(?:\/|$))/;

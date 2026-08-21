@@ -6,7 +6,6 @@ import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { authenticateWithOTP as authenticateWithOTPUseCase } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { serverComposition } from "@/application/server-composition-root";
 import { RegistrationDisabledError } from "@/modules/auth/application/use-cases/registration-policy";
-import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
 
 vi.mock("resend", () => ({
@@ -42,7 +41,6 @@ describe("Registration Policy", () => {
 
   beforeEach(async () => {
     process.env.DISABLE_REGISTRATION = "true";
-    await memoryStore.flushall();
   });
 
   afterEach(() => {

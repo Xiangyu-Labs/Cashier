@@ -11,7 +11,6 @@ import {
   OTPRateLimitedSignInError,
 } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { serverComposition } from "@/application/server-composition-root";
-import { memoryStore } from "@/lib/memory-store";
 import { hashOTP } from "@/modules/auth/services/otp";
 import { completeInteractiveSignIn } from "@/application/use-cases/complete-interactive-sign-in";
 
@@ -51,7 +50,6 @@ describe("authenticateWithOTP", () => {
   beforeEach(async () => {
     delete process.env.DISABLE_REGISTRATION;
     delete process.env.OTP_MAX_ATTEMPTS;
-    await memoryStore.flushall();
   });
 
   afterEach(() => {

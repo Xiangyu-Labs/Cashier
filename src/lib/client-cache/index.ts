@@ -1,9 +1,10 @@
 "use client";
 
 export const CACHE_DB_NAME = "cashier-cache";
-export const CACHE_DB_VERSION = 3;
+export const CACHE_DB_VERSION = 4;
 const LEGACY_LEDGER_SNAPSHOT_STORE = "ledgerSnapshots";
 export const DOCUMENT_IMAGE_STORE = "documentImages";
+export const DOCUMENT_IMAGE_ACCESS_STORE = "documentImageAccess";
 
 export function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -35,13 +36,18 @@ export function openCacheDb(): Promise<IDBDatabase> {
       if (db.objectStoreNames.contains(LEGACY_LEDGER_SNAPSHOT_STORE)) {
         db.deleteObjectStore(LEGACY_LEDGER_SNAPSHOT_STORE);
       }
-      if (db.objectStoreNames.contains(DOCUMENT_IMAGE_STORE)) {
-        db.deleteObjectStore(DOCUMENT_IMAGE_STORE);
+      if (!db.objectStoreNames.contains(DOCUMENT_IMAGE_STORE)) {
+        const images = db.createObjectStore(DOCUMENT_IMAGE_STORE, { keyPath: "key" });
+        images.createIndex("snapshotKey", "snapshotKey", { unique: false });
+        images.createIndex("userId", "userId", { unique: false });
+        images.createIndex("snapshotAccess", ["snapshotKey", "lastAccessedAt"], {
+          unique: false,
+        });
       }
-      const images = db.createObjectStore(DOCUMENT_IMAGE_STORE, { keyPath: "key" });
-      images.createIndex("snapshotKey", "snapshotKey", { unique: false });
-      images.createIndex("userId", "userId", { unique: false });
-      images.createIndex("snapshotAccess", ["snapshotKey", "lastAccessedAt"], {
+      const access = db.createObjectStore(DOCUMENT_IMAGE_ACCESS_STORE, { keyPath: "key" });
+      access.createIndex("snapshotKey", "snapshotKey", { unique: false });
+      access.createIndex("userId", "userId", { unique: false });
+      access.createIndex("snapshotAccess", ["snapshotKey", "lastAccessedAt"], {
         unique: false,
       });
     };
@@ -100,15 +106,21 @@ export function reportClientCacheError(
 export async function clearUserImageCacheData(userId?: string): Promise<void> {
   if (typeof indexedDB === "undefined") return;
   const db = await openCacheDb();
-  const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
   const images = tx.objectStore(DOCUMENT_IMAGE_STORE);
+  const access = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
   if (userId == null || userId === "") {
     images.clear();
+    access.clear();
   } else {
     const userImages = await requestResult(
       images.index("userId").getAll(userId) as IDBRequest<Array<{ key: string }>>
     );
     for (const image of userImages) images.delete(image.key);
+    const accessRows = await requestResult(
+      access.index("userId").getAll(userId) as IDBRequest<Array<{ key: string }>>
+    );
+    for (const row of accessRows) access.delete(row.key);
   }
   await transactionDone(tx);
 }

@@ -7,7 +7,6 @@ import type { ListStreamPageInput } from "@/modules/source-document/application/
 import type { GetEnhancedStatsInput } from "@/modules/stats/contract-schemas";
 import { normalizeSearchTerm } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
-import type { PeriodParams } from "@/lib/period-utils";
 import type { DateRangeType } from "@/lib/date-utils";
 import {
   DEFAULT_STATS_RANGE_TYPE,

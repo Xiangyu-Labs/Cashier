@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,10 @@ export function StatsRanking({
 }: StatsRankingProps) {
   const t = useTranslations("StatsTab");
   const locale = useLocale();
+  const sorted = useMemo(
+    () => data.toSorted((a, b) => new Decimal(b.totalConverted).cmp(a.totalConverted)),
+    [data]
+  );
 
   if (isLoading) {
     return (
@@ -69,9 +74,6 @@ export function StatsRanking({
   if (data.length === 0) {
     return <EmptyState title={t("noStats")} description={t("noStatsDesc")} />;
   }
-
-  // Sort descending by converted amount
-  const sorted = data.toSorted((a, b) => new Decimal(b.totalConverted).cmp(a.totalConverted));
 
   return (
     <div className="space-y-5 px-2">

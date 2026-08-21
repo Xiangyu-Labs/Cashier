@@ -27,6 +27,7 @@ export function useSourceDocumentInputController({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileReservationsRef = useRef(0);
   const mountedRef = useRef(true);
+  const compressionAbortRef = useRef<AbortController | null>(null);
   const [pendingFileCount, setPendingFileCount] = useState(0);
   const imageCountRef = useRef(0);
   const draft = useSourceDocumentInputDraft({
@@ -46,9 +47,13 @@ export function useSourceDocumentInputController({
   });
   imageCountRef.current = draft.images.length;
   useEffect(() => {
+    const compressionAbort = new AbortController();
+    compressionAbortRef.current = compressionAbort;
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      compressionAbort.abort();
+      if (compressionAbortRef.current === compressionAbort) compressionAbortRef.current = null;
     };
   }, []);
 
@@ -66,7 +71,10 @@ export function useSourceDocumentInputController({
     setPendingFileCount(pendingFileReservationsRef.current);
     let results: Awaited<ReturnType<typeof loadSourceDocumentInputFiles>>;
     try {
-      results = await loadSourceDocumentInputFiles(reservedFiles);
+      results = await loadSourceDocumentInputFiles(
+        reservedFiles,
+        compressionAbortRef.current?.signal
+      );
     } finally {
       pendingFileReservationsRef.current -= reservedFiles.length;
       if (mountedRef.current) setPendingFileCount(pendingFileReservationsRef.current);

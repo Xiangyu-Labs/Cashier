@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 
 export async function hasActiveLedgerEntries(ledgerId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
+  const row = await db
+    .select({ exists: sql<number>`1` })
     .from(ledgerEntries)
     .innerJoin(
       sourceDocuments,
@@ -15,6 +15,8 @@ export async function hasActiveLedgerEntries(ledgerId: string): Promise<boolean>
         isNull(sourceDocuments.deletedAt)
       )
     )
-    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
-  return Number(row?.count ?? 0) > 0;
+    .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)))
+    .limit(1)
+    .then((rows) => rows[0]);
+  return row != null;
 }
