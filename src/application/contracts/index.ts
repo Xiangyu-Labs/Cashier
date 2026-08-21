@@ -191,6 +191,7 @@ export type ApplicationErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "IDEMPOTENCY_CONFLICT"
+  | "UPLOAD_QUOTA_EXCEEDED"
   | "RATE_LIMITED"
   | "PROCESSING_UNAVAILABLE"
   | "STORAGE_UNAVAILABLE"
@@ -521,10 +522,16 @@ export interface OtpTokenPort {
   find(email: string): Promise<OtpTokenContract | null>;
   recordFailure(input: {
     email: string;
+    tokenHash: string;
     maxAttempts: number;
     lockedUntil: Date;
   }): Promise<{ attempts: number; lockedUntil: Date | null } | null>;
-  claim(input: { email: string; tokenHash: string; now: Date }): Promise<boolean>;
+  claim(input: {
+    email: string;
+    tokenHash: string;
+    now: Date;
+    maxAttempts: number;
+  }): Promise<boolean>;
   release(input: { email: string; tokenHash: string }): Promise<boolean>;
   consume(input: { email: string; tokenHash: string }): Promise<boolean>;
   discard(input: { email: string; tokenHash: string }): Promise<boolean>;

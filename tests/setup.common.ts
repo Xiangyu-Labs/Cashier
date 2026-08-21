@@ -7,6 +7,7 @@ process.env.DATABASE_URL =
 process.env.AI_MODEL = process.env.AI_MODEL ?? "test-model";
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-openai-key";
 process.env.API_KEY_PEPPER = process.env.API_KEY_PEPPER ?? "test-pepper-for-testing-only";
+process.env.RATE_LIMIT_PEPPER = process.env.RATE_LIMIT_PEPPER ?? "test-rate-limit-pepper";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-auth-secret";
 process.env.AUTH_OTP_PEPPER = process.env.AUTH_OTP_PEPPER ?? "test-auth-otp-pepper";
 process.env.AUTH_RESEND_KEY = process.env.AUTH_RESEND_KEY ?? "test-resend-key";

@@ -182,46 +182,50 @@ export function shouldDualRun(result: NormalizedParseOutput): boolean {
 
 // ===== Result comparison =====
 
-function groupTotals(
-  entries: { currency: string; category_index: number; amount: string }[]
-): Record<string, string> {
-  return entries.reduce<Record<string, string>>((acc, e) => {
-    const key = `${e.currency}:${e.category_index}`;
-    const prev = acc[key];
-    acc[key] = prev != null ? new Decimal(prev).plus(e.amount).toFixed() : e.amount;
-    return acc;
-  }, {});
+function normalizeSignatureText(value: string | null): string {
+  return (value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function groupAdjustments(
-  adjustments: { currency: string; amount: string }[]
-): Record<string, string> {
-  return adjustments.reduce<Record<string, string>>((acc, a) => {
-    const prev = acc[a.currency];
-    acc[a.currency] = prev != null ? new Decimal(prev).plus(a.amount).toFixed() : a.amount;
-    return acc;
-  }, {});
+function entrySignatures(entries: NormalizedLedgerEntry[]): string[] {
+  return entries
+    .map((entry) =>
+      JSON.stringify([
+        entry.receipt_index,
+        normalizeSignatureText(entry.item_name),
+        new Decimal(entry.amount).toFixed(),
+        entry.currency,
+        entry.category_index,
+        normalizeSignatureText(entry.notes),
+      ])
+    )
+    .sort();
 }
 
-function groupReceiptTotals(
-  totals: { receipt_index: number; currency: string; amount: string }[]
-): Record<string, string> {
-  return totals.reduce<Record<string, string>>((acc, total) => {
-    const key = `${total.receipt_index}:${total.currency}`;
-    const prev = acc[key];
-    acc[key] = prev != null ? new Decimal(prev).plus(total.amount).toFixed() : total.amount;
-    return acc;
-  }, {});
+function adjustmentSignatures(adjustments: NormalizedOrderAdjustment[]): string[] {
+  return adjustments
+    .map((adjustment) =>
+      JSON.stringify([
+        adjustment.receipt_index,
+        normalizeSignatureText(adjustment.item_name),
+        new Decimal(adjustment.amount).toFixed(),
+        adjustment.currency,
+      ])
+    )
+    .sort();
 }
 
-function mapsMatch(a: Record<string, string>, b: Record<string, string>): boolean {
-  const aKeys = Object.keys(a).sort();
-  const bKeys = Object.keys(b).sort();
-  if (aKeys.join("|") !== bKeys.join("|")) return false;
-  return aKeys.every((k) => {
-    const diff = new Decimal(a[k] ?? "0").minus(b[k] ?? "0").abs();
-    return diff.lte("0.01");
-  });
+function receiptTotalSignatures(totals: NormalizedReceiptTotal[]): string[] {
+  return totals
+    .map((total) =>
+      JSON.stringify([total.receipt_index, new Decimal(total.amount).toFixed(), total.currency])
+    )
+    .sort();
+}
+
+function signaturesMatch(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length && left.every((signature, index) => signature === right[index])
+  );
 }
 
 /**
@@ -233,21 +237,15 @@ export function compareResults(left: NormalizedParseOutput, right: NormalizedPar
   if (left.ledger_entries.length !== right.ledger_entries.length) return false;
   if (left.order_adjustments.length !== right.order_adjustments.length) return false;
 
-  // Compare receipt totals
-  if (
-    !mapsMatch(groupReceiptTotals(left.receipt_totals), groupReceiptTotals(right.receipt_totals))
-  ) {
-    return false;
-  }
-
-  // Compare entry grouped sums
-  if (!mapsMatch(groupTotals(left.ledger_entries), groupTotals(right.ledger_entries))) return false;
-
-  // Compare adjustment grouped sums
-  if (
-    !mapsMatch(groupAdjustments(left.order_adjustments), groupAdjustments(right.order_adjustments))
-  )
-    return false;
-
-  return true;
+  return (
+    signaturesMatch(
+      receiptTotalSignatures(left.receipt_totals),
+      receiptTotalSignatures(right.receipt_totals)
+    ) &&
+    signaturesMatch(entrySignatures(left.ledger_entries), entrySignatures(right.ledger_entries)) &&
+    signaturesMatch(
+      adjustmentSignatures(left.order_adjustments),
+      adjustmentSignatures(right.order_adjustments)
+    )
+  );
 }

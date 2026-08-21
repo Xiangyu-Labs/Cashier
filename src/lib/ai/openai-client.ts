@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import OpenAI from "openai";
 import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { AppError } from "@/lib/errors";
@@ -18,6 +19,8 @@ export class OpenAIClient {
 
     this.client = new OpenAI({
       apiKey,
+      maxRetries: 0,
+      timeout: runtimeEnv.aiRequestTimeoutMs,
       dangerouslyAllowBrowser: process.env.NODE_ENV === "test", // Only enable in test environment
       ...(baseURL != null && baseURL !== "" ? { baseURL } : {}),
     });
@@ -40,12 +43,21 @@ export class OpenAIClient {
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
     const effectiveMaxTokens = maxTokens ?? 8192;
     const effectiveTemperature = temperature ?? 1;
-    const maxRetries = runtimeEnv.aiMaxRetries;
+    const maxAttempts = Math.min(runtimeEnv.aiMaxRetries + 1, 3);
     const baseDelay = runtimeEnv.aiRetryDelayMs;
+    const correlationId = crypto.randomUUID();
+    const serializedMessages = JSON.stringify(messages);
+    const inputHash = crypto
+      .createHash("sha256")
+      .update(systemPrompt)
+      .update(serializedMessages)
+      .digest("hex")
+      .slice(0, 12);
+    const startedAt = Date.now();
 
     let lastError: unknown;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // Check if aborted before each attempt
       if (signal?.aborted) {
         throw new AppError("Request was aborted", "REQUEST_ABORTED");
@@ -80,7 +92,17 @@ export class OpenAIClient {
           !Array.isArray(response.choices) ||
           response.choices.length === 0
         ) {
-          logger.error({ response }, "OpenAI response missing choices");
+          logger.error(
+            {
+              correlationId,
+              inputHash,
+              inputLength: systemPrompt.length + serializedMessages.length,
+              model,
+              durationMs: Date.now() - startedAt,
+              errorCode: "OPENAI_INVALID_RESPONSE",
+            },
+            "OpenAI response missing choices"
+          );
           throw new AppError("Invalid OpenAI response: missing choices", "OPENAI_INVALID_RESPONSE");
         }
 
@@ -133,10 +155,22 @@ export class OpenAIClient {
           }
         }
 
-        if (attempt < maxRetries && isRetryable) {
-          const delay = baseDelay * Math.pow(2, attempt);
+        if (attempt + 1 < maxAttempts && isRetryable) {
+          const delay = Math.random() * Math.min(5000, baseDelay * Math.pow(2, attempt));
           logger.warn(
-            { err: error, attempt: attempt + 1, maxRetries: maxRetries + 1, delay },
+            {
+              correlationId,
+              inputHash,
+              model,
+              durationMs: Date.now() - startedAt,
+              errorCode:
+                error instanceof OpenAI.APIError
+                  ? `OPENAI_${error.status ?? "API_ERROR"}`
+                  : "OPENAI_REQUEST_FAILED",
+              attempt: attempt + 1,
+              maxAttempts,
+              delayMs: Math.round(delay),
+            },
             "OpenAI request failed, retrying"
           );
           await new Promise((resolve) => setTimeout(resolve, delay));

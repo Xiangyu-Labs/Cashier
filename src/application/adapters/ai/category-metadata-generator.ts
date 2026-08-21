@@ -3,6 +3,7 @@ import { COMMON_LUCIDE_ICONS } from "@/config/icons";
 import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
 import { getOpenAIClient } from "@/lib/ai/openai-client";
 import { runtimeEnv } from "@/lib/env/runtime";
+import { AppError } from "@/lib/errors";
 import { extractJson } from "@/lib/tasks/json-utils";
 import type { CategoryMetadataGeneratorPort } from "@/modules/ledger/application/ports";
 
@@ -35,6 +36,17 @@ Only the category description is user-visible in this response; apply the mandat
       180,
       0.2
     );
-    return metadataSchema.parse(JSON.parse(extractJson(result.content)));
+    try {
+      return metadataSchema.parse(JSON.parse(extractJson(result.content)));
+    } catch (error) {
+      throw new AppError(
+        "AI category metadata response was invalid",
+        "AI_JSON_REPAIR_FAILED",
+        502,
+        {
+          cause: error instanceof Error ? error.name : "UnknownError",
+        }
+      );
+    }
   },
 };

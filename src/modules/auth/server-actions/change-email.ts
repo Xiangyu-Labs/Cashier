@@ -1,10 +1,12 @@
 "use server";
 
+import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { auth } from "@/auth";
 import { resolveSupportedLocale } from "@/i18n/resolve-locale";
 import { ConflictError, RateLimitError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/utils/email";
+import { logger } from "@/lib/logger";
 import { parseSendOTPEmail } from "../contract-schemas";
 import { sendEmailChangeCode, verifyEmailChangeCode } from "../application/use-cases/change-email";
 import { serverComposition } from "@/application/server-composition-root";
@@ -72,7 +74,14 @@ export async function sendEmailChangeCodeAction(
       canResendAt: Math.floor(Date.now() / 1000) + 60,
     };
   } catch (error) {
-    return { ok: false, code: mapEmailChangeError(error) };
+    const code = mapEmailChangeError(error);
+    if (code === "unknown") {
+      logger.error(
+        { correlationId: crypto.randomUUID(), errorCode: "EMAIL_CHANGE_SEND_FAILED" },
+        "Email change code request failed"
+      );
+    }
+    return { ok: false, code };
   }
 }
 
@@ -91,6 +100,13 @@ export async function verifyEmailChangeCodeAction(
     );
     return { ok: true, email: result.email };
   } catch (error) {
-    return { ok: false, code: mapEmailChangeError(error) };
+    const code = mapEmailChangeError(error);
+    if (code === "unknown") {
+      logger.error(
+        { correlationId: crypto.randomUUID(), errorCode: "EMAIL_CHANGE_VERIFY_FAILED" },
+        "Email change verification failed"
+      );
+    }
+    return { ok: false, code };
   }
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -47,13 +48,14 @@ function isNotFound(error: unknown): boolean {
 }
 
 function storageError(message: string, code: string, key: string, cause?: unknown): AppError {
+  const keyHash = crypto.createHash("sha256").update(key).digest("hex").slice(0, 12);
   logger.error(
-    { provider: "s3", key, errorName: cause instanceof Error ? cause.name : "UnknownError" },
+    { provider: "s3", keyHash, errorName: cause instanceof Error ? cause.name : "UnknownError" },
     message
   );
   return new AppError(message, code, code === "FILE_NOT_FOUND" ? 404 : 503, {
     provider: "s3",
-    key,
+    keyHash,
   });
 }
 

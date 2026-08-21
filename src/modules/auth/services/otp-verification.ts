@@ -40,6 +40,7 @@ export async function verifyOTPWithPolicy(
     const nextFailure = verificationChallenges.nextFailure(record.attempts);
     const failure = await tokens.recordFailure({
       email: email.toLowerCase(),
+      tokenHash: record.tokenHash,
       maxAttempts,
       lockedUntil: nextFailure.lockedUntil ?? new Date(0),
     });
@@ -62,6 +63,7 @@ export async function verifyOTPWithPolicy(
     email: email.toLowerCase(),
     tokenHash: record.tokenHash,
     now: new Date(),
+    maxAttempts: getMaxAttempts(),
   });
   if (!claimed) return { success: false, reason: "not_found" };
   logger.info("OTP verified and claimed successfully");

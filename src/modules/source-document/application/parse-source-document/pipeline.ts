@@ -1,6 +1,7 @@
 import { logger } from "@/lib/logger";
 import {
   ProcessingCancelledError,
+  ProcessingFailure,
   throwIfProcessingCancelled,
   type AiContextContract,
   type ParseSourceDocumentInput,
@@ -14,6 +15,7 @@ import { shouldDualRun, compareResults } from "./parser-schema";
 import { convertToParsedEntries } from "./result-mapper";
 import { reconcileParseOutput } from "./reconciliation";
 import type { NormalizedParseOutput } from "./parser-schema";
+import { runtimeEnv } from "@/lib/env/runtime";
 
 // ===== Context =====
 
@@ -112,7 +114,7 @@ function resolveOutcome(
 
 // ===== Pipeline =====
 
-export async function runParsePipeline(
+async function executeParsePipeline(
   input: ParseSourceDocumentInput,
   ctx: StageContext
 ): Promise<ParsePipelineResult> {
@@ -185,5 +187,29 @@ export async function runParsePipeline(
       return { kind: "cancelled" };
     }
     throw error;
+  }
+}
+
+export async function runParsePipeline(
+  input: ParseSourceDocumentInput,
+  ctx: StageContext
+): Promise<ParsePipelineResult> {
+  let timeout: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(
+        new ProcessingFailure(
+          "ai_provider_unavailable",
+          `Source document parsing exceeded ${runtimeEnv.aiRevisionDeadlineMs}ms deadline`
+        )
+      );
+    }, runtimeEnv.aiRevisionDeadlineMs);
+    timeout.unref();
+  });
+
+  try {
+    return await Promise.race([executeParsePipeline(input, ctx), deadline]);
+  } finally {
+    if (timeout != null) clearTimeout(timeout);
   }
 }

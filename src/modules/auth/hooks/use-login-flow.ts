@@ -192,7 +192,7 @@ export function useLoginFlow(
   }, [mode, rawStep, setEmail, setOtpExpiry, writeFlowUrl]);
 
   const setMode = (nextMode: LoginMode) => {
-    if (resendPending) return;
+    if (isLoading || resendPending) return;
     setError(null);
     clearOtpContext();
     setOtp("");

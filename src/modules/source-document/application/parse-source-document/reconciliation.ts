@@ -1,11 +1,10 @@
 import Decimal from "decimal.js";
 import { add, subtract, compare, round } from "@/lib/money/decimal";
 import { getAiOutputCopy } from "@/config/ai-output-locales";
-import type {
-  NormalizedLedgerEntry,
-  NormalizedParseOutput,
-  NormalizedReceiptTotal,
-} from "./parser-schema";
+import type { NormalizedParseOutput, NormalizedReceiptTotal } from "./parser-schema";
+
+const MAX_ABSOLUTE_DIFFERENCE = new Decimal("1.00");
+const MAX_RELATIVE_DIFFERENCE = new Decimal("0.02");
 
 function determineTargetTotal(
   receiptIndex: number,
@@ -40,27 +39,6 @@ function determineTargetTotal(
   }
 
   return { kind: "ok", total: first };
-}
-
-function dominantCategoryIndex(entries: NormalizedLedgerEntry[]): number {
-  const buckets = new Map<number, { amount: string; count: number }>();
-  for (const entry of entries) {
-    if (entry.category_index <= 0) continue;
-    const bucket = buckets.get(entry.category_index) ?? { amount: "0", count: 0 };
-    bucket.amount = add(bucket.amount, entry.amount);
-    bucket.count += 1;
-    buckets.set(entry.category_index, bucket);
-  }
-
-  const ranked = [...buckets.entries()].sort((a, b) => {
-    const amountCmp = compare(b[1].amount, a[1].amount);
-    if (amountCmp !== 0) return amountCmp;
-    const countDiff = b[1].count - a[1].count;
-    if (countDiff !== 0) return countDiff;
-    return a[0] - b[0];
-  });
-
-  return ranked[0]?.[0] ?? 0;
 }
 
 export function reconcileParseOutput({
@@ -120,13 +98,25 @@ export function reconcileParseOutput({
       continue;
     }
 
+    const absoluteDelta = new Decimal(delta).abs();
+    const absoluteTarget = new Decimal(target.total.amount).abs();
+    const withinRelativeLimit =
+      !absoluteTarget.isZero() &&
+      absoluteDelta.dividedBy(absoluteTarget).lte(MAX_RELATIVE_DIFFERENCE);
+    if (absoluteDelta.gt(MAX_ABSOLUTE_DIFFERENCE) || !withinRelativeLimit) {
+      return {
+        kind: "anomaly",
+        reason: `amount_conflict: receipt ${receiptIndex} differs from extracted items by ${delta}`,
+      };
+    }
+
     if (compare(delta, "0") > 0) {
       reconciledEntries.push({
         receipt_index: receiptIndex,
         item_name: copy.otherItems,
         amount: delta,
         currency: target.total.currency,
-        category_index: dominantCategoryIndex(entriesForReceipt),
+        category_index: 0,
         notes: copy.reconciliationNote,
       });
       continue;

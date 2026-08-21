@@ -15,7 +15,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("resend", () => ({
   Resend: class MockResend {
-    emails = { send: vi.fn().mockResolvedValue({ id: "email-id" }) };
+    emails = { send: vi.fn().mockResolvedValue({ data: { id: "email-id" }, error: null }) };
   },
 }));
 

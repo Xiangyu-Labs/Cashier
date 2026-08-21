@@ -193,7 +193,7 @@ describe("parser-schema", () => {
     expect(result.ledger_entries[0]?.amount).toBe("5");
   });
 
-  it("accepts results within 0.01 tolerance as matching", () => {
+  it("requires exact canonical amounts in dual-run signatures", () => {
     const left = normalizeResult(parserOutputSchema.parse(simpleSuccess));
     const right = normalizeResult(
       parserOutputSchema.parse({
@@ -202,6 +202,31 @@ describe("parser-schema", () => {
         receipt_totals: [{ receipt_index: 0, amount: "12.505", currency: "USD" }],
       })
     );
+    expect(compareResults(left, right)).toBe(false);
+  });
+
+  it("normalizes item names and notes before comparing dual-run signatures", () => {
+    const left = normalizeResult(
+      parserOutputSchema.parse({
+        ...simpleSuccess,
+        ledger_entries: [
+          { ...simpleSuccess.ledger_entries[0]!, item_name: " Cafe Latte ", notes: "NO  SUGAR" },
+        ],
+      })
+    );
+    const right = normalizeResult(
+      parserOutputSchema.parse({
+        ...simpleSuccess,
+        ledger_entries: [
+          {
+            ...simpleSuccess.ledger_entries[0]!,
+            item_name: "Ｃａｆｅ   Ｌａｔｔｅ",
+            notes: "no sugar",
+          },
+        ],
+      })
+    );
+
     expect(compareResults(left, right)).toBe(true);
   });
 

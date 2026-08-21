@@ -1,6 +1,7 @@
-import { and, isNull, eq } from "drizzle-orm";
+import { and, isNull, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { NotFoundError } from "@/lib/errors";
+import { AppError, NotFoundError } from "@/lib/errors";
+import { runtimeEnv } from "@/lib/env/runtime";
 import { ledgers, uploadSessionFiles, uploadSessions } from "@/persistence";
 
 export interface CreateUploadSessionInput {
@@ -29,11 +30,59 @@ export const postgresUploadSessionRepository: UploadSessionRepository = {
   async create(input) {
     await db.transaction(async (tx) => {
       const ledger = await tx
-        .select({ id: ledgers.id })
+        .select({ id: ledgers.id, userId: ledgers.userId })
         .from(ledgers)
         .where(and(eq(ledgers.id, input.ledgerId), isNull(ledgers.deletedAt)))
+        .for("update")
         .then((rows) => rows[0]);
       if (ledger == null) throw new NotFoundError("Ledger");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ledger.userId}, 9173))`);
+      const fifteenMinutesAgo = new Date(input.createdAt.getTime() - 15 * 60 * 1000);
+      const utcDayStart = new Date(input.createdAt);
+      utcDayStart.setUTCHours(0, 0, 0, 0);
+      const [recentPlans, openSessions, dailyBytes] = await Promise.all([
+        tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(uploadSessions)
+          .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
+          .where(
+            and(eq(ledgers.userId, ledger.userId), gte(uploadSessions.createdAt, fifteenMinutesAgo))
+          )
+          .then((rows) => rows[0]?.count ?? 0),
+        tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(uploadSessions)
+          .where(
+            and(
+              eq(uploadSessions.ledgerId, input.ledgerId),
+              inArray(uploadSessions.status, ["open", "finalizing"])
+            )
+          )
+          .then((rows) => rows[0]?.count ?? 0),
+        tx
+          .select({
+            bytes: sql<number>`coalesce(sum(${uploadSessionFiles.expectedByteSize}), 0)::bigint`,
+          })
+          .from(uploadSessionFiles)
+          .innerJoin(uploadSessions, eq(uploadSessions.id, uploadSessionFiles.uploadSessionId))
+          .innerJoin(ledgers, eq(ledgers.id, uploadSessions.ledgerId))
+          .where(
+            and(
+              eq(ledgers.userId, ledger.userId),
+              gte(uploadSessions.createdAt, utcDayStart),
+              inArray(uploadSessions.status, ["open", "finalizing", "finalized"])
+            )
+          )
+          .then((rows) => Number(rows[0]?.bytes ?? 0)),
+      ]);
+      const reservedBytes = input.targets.reduce((sum, target) => sum + target.byteSize, 0);
+      if (
+        recentPlans >= runtimeEnv.uploadPlanLimitPer15Min ||
+        openSessions >= runtimeEnv.uploadOpenSessionLimit ||
+        dailyBytes + reservedBytes > runtimeEnv.uploadDailyBytesLimit
+      ) {
+        throw new AppError("Upload quota exceeded", "UPLOAD_QUOTA_EXCEEDED", 429);
+      }
       await tx.insert(uploadSessions).values({
         id: input.id,
         ledgerId: input.ledgerId,

@@ -9,28 +9,36 @@ import {
   uuid,
   inet,
 } from "drizzle-orm/pg-core";
-import { type InferSelectModel } from "drizzle-orm";
+import { sql, type InferSelectModel } from "drizzle-orm";
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name"),
-  email: text("email").notNull().unique(),
-  emailVerified: timestamp("email_verified", { withTimezone: true }),
-  image: text("image"),
-  passwordHash: text("password_hash"),
-  passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
-  preferences: jsonb("preferences")
-    .$type<UserPreferences>()
-    .notNull()
-    .default({ interfaceLanguage: "auto" }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name"),
+    email: text("email").notNull(),
+    emailVerified: timestamp("email_verified", { withTimezone: true }),
+    image: text("image"),
+    passwordHash: text("password_hash"),
+    passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
+    preferences: jsonb("preferences")
+      .$type<UserPreferences>()
+      .notNull()
+      .default({ interfaceLanguage: "auto" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("uniq_users_active_email")
+      .on(table.email)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ]
+);
 
 export type User = InferSelectModel<typeof users>;
 
@@ -57,7 +65,7 @@ export const otpTokens = pgTable(
     ipAddress: inet("ip_address"),
   },
   (table) => [
-    index("idx_otp_tokens_email").on(table.email),
+    uniqueIndex("uniq_otp_tokens_email").on(table.email),
     index("idx_otp_tokens_expires").on(table.expires),
     index("idx_otp_tokens_verified").on(table.email, table.verifiedAt),
   ]

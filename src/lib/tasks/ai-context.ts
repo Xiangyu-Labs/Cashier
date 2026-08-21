@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type {
   AIClientFactory,
   AIContext,
@@ -30,6 +31,8 @@ export function createAIContext({
 }: CreateAIContextOptions): AIContext {
   return {
     async generate(options: AIGenerateOptions): Promise<AIResponse> {
+      const correlationId = crypto.randomUUID();
+      const startedAt = Date.now();
       const client = getClient();
 
       // Convert messages to OpenAI format
@@ -99,15 +102,30 @@ export function createAIContext({
       // JSON validation and repair remains private to the processing runtime.
       if (options.requireJson) {
         logger.debug(
-          { rawContent: result.content.substring(0, 1000) },
+          {
+            correlationId,
+            model,
+            durationMs: Date.now() - startedAt,
+            contentLength: result.content.length,
+            contentHash: crypto
+              .createHash("sha256")
+              .update(result.content)
+              .digest("hex")
+              .slice(0, 12),
+          },
           "AI raw response (requireJson)"
         );
         const extracted = extractJson(result.content);
-        logger.debug({ extracted: extracted.substring(0, 1000) }, "AI extracted JSON");
 
         if (isValidJson(extracted) === false) {
           logger.warn(
-            { content: result.content.substring(0, 500) },
+            {
+              correlationId,
+              model,
+              durationMs: Date.now() - startedAt,
+              errorCode: "AI_JSON_INVALID",
+              contentLength: result.content.length,
+            },
             "AI returned invalid JSON, attempting repair"
           );
 
@@ -139,8 +157,17 @@ export function createAIContext({
           if (isValidJson(repairedExtracted) === false) {
             logger.error(
               {
-                original: result.content.substring(0, 500),
-                repaired: repairResult.content.substring(0, 500),
+                correlationId,
+                model: textModel,
+                durationMs: Date.now() - startedAt,
+                errorCode: "AI_JSON_REPAIR_FAILED",
+                originalLength: result.content.length,
+                repairedLength: repairResult.content.length,
+                repairedHash: crypto
+                  .createHash("sha256")
+                  .update(repairResult.content)
+                  .digest("hex")
+                  .slice(0, 12),
               },
               "JSON repair failed"
             );

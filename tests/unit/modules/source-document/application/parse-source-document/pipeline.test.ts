@@ -368,8 +368,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "12", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
+        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "49" }],
         order_adjustments: [],
       },
     });
@@ -380,7 +380,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     if (result.kind === "success") {
       expect(result.ledgerEntries).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ amount: "2.00", itemName: expect.any(String) }),
+          expect.objectContaining({ amount: "1.00", itemName: expect.any(String) }),
         ])
       );
     }
@@ -390,8 +390,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "15", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
+        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "49" }],
         order_adjustments: [],
       },
     });
@@ -403,7 +403,7 @@ describe("runParsePipeline — new single-pass flow", () => {
       expect(result.ledgerEntries).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            amount: "5.00",
+            amount: "1.00",
             itemName: expect.any(String),
             isAdjustment: false,
           }),
@@ -416,8 +416,8 @@ describe("runParsePipeline — new single-pass flow", () => {
     const { ai } = createMockAI({
       firstParseResult: {
         ...SIMPLE_FIRST_PARSE_RESULT,
-        receipt_totals: [{ receipt_index: 0, amount: "8", currency: "USD" }],
-        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "10" }],
+        receipt_totals: [{ receipt_index: 0, amount: "50", currency: "USD" }],
+        ledger_entries: [{ ...SIMPLE_ENTRY, amount: "51" }],
         order_adjustments: [],
       },
     });
@@ -427,7 +427,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.ledgerEntries).toHaveLength(1);
-      expect(result.ledgerEntries[0]).toMatchObject({ amount: "8.00", itemName: "Lunch" });
+      expect(result.ledgerEntries[0]).toMatchObject({ amount: "50.00", itemName: "Lunch" });
     }
   });
 

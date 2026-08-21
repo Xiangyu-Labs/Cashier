@@ -129,7 +129,7 @@ describe("sendOTP use case", () => {
     generateOTPMock.mockReturnValue("123456");
     getResendCooldownMock.mockReturnValue(60);
     otpEmailMock.mockReturnValue({ kind: "otp-email-component" });
-    resendSendMock.mockResolvedValue({ id: "mail-id" });
+    resendSendMock.mockResolvedValue({ data: { id: "mail-id" }, error: null });
   });
 
   afterEach(() => {
@@ -203,7 +203,7 @@ describe("sendOTP use case", () => {
       expect.objectContaining({
         from: "Cashier <noreply@example.com>",
         to: "user@example.com",
-        subject: "您的验证码是 123456",
+        subject: "Cashier 验证码",
         react: { kind: "otp-email-component" },
       })
     );
@@ -310,7 +310,7 @@ describe("sendOTP use case", () => {
     );
     expect(resendSendMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        subject: "您的验证码是 123456",
+        subject: "Cashier 验证码",
       })
     );
   });

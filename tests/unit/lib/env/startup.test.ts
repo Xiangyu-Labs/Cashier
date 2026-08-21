@@ -5,6 +5,7 @@ const baseEnv = {
   NODE_ENV: "test",
   DATABASE_URL: "postgresql://cashier:cashier@localhost:5432/cashier",
   API_KEY_PEPPER: "test-pepper",
+  RATE_LIMIT_PEPPER: "test-rate-limit-pepper",
   OPENAI_API_KEY: "sk-test",
   AUTH_SECRET: "auth-secret",
   AUTH_OTP_PEPPER: "otp-pepper",
@@ -121,7 +122,9 @@ describe("validateStartupEnv", () => {
     expect(Object.keys(ENV_DEFAULTS).sort()).toEqual([
       "AI_MAX_RETRIES",
       "AI_MODEL",
+      "AI_REQUEST_TIMEOUT_MS",
       "AI_RETRY_DELAY_MS",
+      "AI_REVISION_DEADLINE_MS",
       "AI_TEMPERATURE",
       "API_RATE_LIMIT_PER_MINUTE",
       "APP_URL",
@@ -154,6 +157,9 @@ describe("validateStartupEnv", () => {
       "SESSION_MAX_AGE_DAYS",
       "SOURCE_DOC_STALE_TIME_MS",
       "TZ",
+      "UPLOAD_DAILY_BYTES_LIMIT",
+      "UPLOAD_OPEN_SESSION_LIMIT",
+      "UPLOAD_PLAN_LIMIT_PER_15_MIN",
     ]);
   });
 });

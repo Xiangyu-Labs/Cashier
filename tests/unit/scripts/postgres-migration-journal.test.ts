@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0027_monetary_integrity");
+    expect(journal.entries.at(-1)?.tag).toBe("0028_auth_upload_hardening");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {

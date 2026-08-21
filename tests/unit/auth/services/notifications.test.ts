@@ -43,7 +43,7 @@ describe("sendLoginNotification", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sendMock.mockResolvedValue({ id: "mail-id" });
+    sendMock.mockResolvedValue({ data: { id: "mail-id" }, error: null });
     delete process.env.AUTH_RESEND_KEY;
     delete process.env.AUTH_EMAIL_FROM;
   });
@@ -138,5 +138,28 @@ describe("sendLoginNotification", () => {
       { error: sendError, subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) },
       "Failed to send login notification"
     );
+  });
+
+  it("treats a provider error result as a failed delivery", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    sendMock.mockResolvedValueOnce({ data: null, error: { message: "rejected" } });
+
+    await expect(
+      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
+    ).resolves.toBeUndefined();
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
+      "Failed to send login notification"
+    );
+  });
+
+  it("treats a missing provider message id as a failed delivery", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    sendMock.mockResolvedValueOnce({ data: {}, error: null });
+
+    await expect(
+      sendLoginNotification({ email: "notify@example.com", locale: "zh" })
+    ).resolves.toBeUndefined();
+    expect(loggerErrorMock).toHaveBeenCalled();
   });
 });

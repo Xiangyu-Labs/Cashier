@@ -111,51 +111,58 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
   },
 
   async verifyEmailChangeChallenge(input) {
-    return db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select id from email_change_challenges where user_id = ${input.userId} for update`
-      );
-      const challenge = await tx.query.emailChangeChallenges.findFirst({
-        where: and(
-          eq(emailChangeChallenges.userId, input.userId),
-          eq(emailChangeChallenges.newEmail, input.newEmail)
-        ),
-      });
-      if (challenge == null) return { status: "not_found" as const };
-      const check = verificationChallenges.check(challenge, input.otp, input.now);
-      if (!check.ok && check.reason === "locked") return { status: "locked" as const };
-      if (!check.ok && check.reason === "expired") return { status: "expired" as const };
-      if (!check.ok) {
-        const failure = verificationChallenges.nextFailure(challenge.attempts);
+    try {
+      return await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from email_change_challenges where user_id = ${input.userId} for update`
+        );
+        const challenge = await tx.query.emailChangeChallenges.findFirst({
+          where: and(
+            eq(emailChangeChallenges.userId, input.userId),
+            eq(emailChangeChallenges.newEmail, input.newEmail)
+          ),
+        });
+        if (challenge == null) return { status: "not_found" as const };
+        const check = verificationChallenges.check(challenge, input.otp, input.now);
+        if (!check.ok && check.reason === "locked") return { status: "locked" as const };
+        if (!check.ok && check.reason === "expired") return { status: "expired" as const };
+        if (!check.ok) {
+          const failure = verificationChallenges.nextFailure(challenge.attempts);
+          await tx
+            .update(emailChangeChallenges)
+            .set({
+              attempts: failure.attempts,
+              lockedUntil: failure.lockedUntil,
+              lastAttemptAt: input.now,
+            })
+            .where(eq(emailChangeChallenges.id, challenge.id));
+          return {
+            status: "incorrect" as const,
+            locked: failure.lockedUntil != null,
+            attemptsRemaining: failure.attemptsRemaining,
+          };
+        }
+        const duplicate = await tx.query.users.findFirst({
+          where: and(
+            eq(users.email, input.newEmail),
+            ne(users.id, input.userId),
+            isNull(users.deletedAt)
+          ),
+          columns: { id: true },
+        });
+        if (duplicate != null) return { status: "duplicate" as const };
         await tx
-          .update(emailChangeChallenges)
-          .set({
-            attempts: failure.attempts,
-            lockedUntil: failure.lockedUntil,
-            lastAttemptAt: input.now,
-          })
-          .where(eq(emailChangeChallenges.id, challenge.id));
-        return {
-          status: "incorrect" as const,
-          locked: failure.lockedUntil != null,
-          attemptsRemaining: failure.attemptsRemaining,
-        };
-      }
-      const duplicate = await tx.query.users.findFirst({
-        where: and(
-          eq(users.email, input.newEmail),
-          ne(users.id, input.userId),
-          isNull(users.deletedAt)
-        ),
-        columns: { id: true },
+          .update(users)
+          .set({ email: input.newEmail, emailVerified: input.now, updatedAt: input.now })
+          .where(and(eq(users.id, input.userId), isNull(users.deletedAt)));
+        await tx.delete(emailChangeChallenges).where(eq(emailChangeChallenges.id, challenge.id));
+        return { status: "verified" as const, email: input.newEmail };
       });
-      if (duplicate != null) return { status: "duplicate" as const };
-      await tx
-        .update(users)
-        .set({ email: input.newEmail, emailVerified: input.now, updatedAt: input.now })
-        .where(and(eq(users.id, input.userId), isNull(users.deletedAt)));
-      await tx.delete(emailChangeChallenges).where(eq(emailChangeChallenges.id, challenge.id));
-      return { status: "verified" as const, email: input.newEmail };
-    });
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "23505") {
+        return { status: "duplicate" as const };
+      }
+      throw error;
+    }
   },
 };

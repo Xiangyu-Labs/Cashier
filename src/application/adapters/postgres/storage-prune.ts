@@ -34,8 +34,14 @@ export interface PruneStorage {
 }
 
 const TEMPORARY_PREFIX = "temporary/";
-const DURABLE_KEY_MARKER = "/stored/";
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isDurableStorageKey(key: string): boolean {
+  const segments = key.split("/");
+  return (
+    segments.length === 3 && segments[0] !== "" && segments[1] === "stored" && segments[2] !== ""
+  );
+}
 
 export interface StoragePruneOptions {
   apply?: boolean;
@@ -131,10 +137,7 @@ async function forEachDurableObjectPage(
   let continuationToken: string | null = null;
   do {
     const page = await storage.listObjectsPage("", continuationToken, batchSize);
-    const durable = page.objects.filter(
-      (object) =>
-        object.key.includes(DURABLE_KEY_MARKER) && !object.key.startsWith(TEMPORARY_PREFIX)
-    );
+    const durable = page.objects.filter((object) => isDurableStorageKey(object.key));
     if (durable.length > 0) await visit(durable);
     continuationToken = page.isTruncated ? page.nextContinuationToken : null;
   } while (continuationToken != null);

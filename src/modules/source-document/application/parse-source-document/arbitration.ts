@@ -166,10 +166,7 @@ export async function arbitrateResults(
     );
   } else if (parsedChoice.data.choice !== 0) {
     const chosen = parsedChoice.data.choice === 1 ? result1 : result2;
-    logger.info(
-      { choice: parsedChoice.data.choice, reason: parsedChoice.data.reason },
-      "arbitration: chose result"
-    );
+    logger.info({ choice: parsedChoice.data.choice }, "arbitration: chose result");
     return { kind: "chosen", result: chosen, wasArbitrated: true };
   }
 

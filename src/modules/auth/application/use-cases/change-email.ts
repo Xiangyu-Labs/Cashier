@@ -39,39 +39,41 @@ export async function sendEmailChangeCode(
   }
 
   const zh = input.locale.startsWith("zh");
-  const delivery = await dependencies.emailDelivery.send({
-    from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
-    to: newEmail,
-    subject: zh ? `修改邮箱验证码：${otp}` : `Email change code: ${otp}`,
-    content: OTPEmail({
-      otp,
-      host: input.host,
-      expiresInMinutes: 5,
-      locale: input.locale,
-      copy: zh
-        ? {
-            preview: "验证新邮箱",
-            heading: "验证新邮箱",
-            intro: "输入以下验证码以完成邮箱修改。",
-            codeLabel: "验证码",
-            expiry: "验证码将在 5 分钟后失效。",
-            warning: "如果不是你发起的操作，请忽略此邮件。",
-            footer: "Cashier 账户安全",
-          }
-        : {
-            preview: "Verify your new email",
-            heading: "Verify your new email",
-            intro: "Enter this code to finish changing your email address.",
-            codeLabel: "Verification code",
-            expiry: "This code expires in 5 minutes.",
-            warning: "Ignore this email if you did not request this change.",
-            footer: "Cashier account security",
-          },
-    }),
-  });
-  if (delivery !== "sent") {
+  try {
+    const delivery = await dependencies.emailDelivery.send({
+      from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
+      to: newEmail,
+      subject: zh ? "Cashier 验证码" : "Cashier verification code",
+      content: OTPEmail({
+        otp,
+        host: input.host,
+        expiresInMinutes: 5,
+        locale: input.locale,
+        copy: zh
+          ? {
+              preview: "验证新邮箱",
+              heading: "验证新邮箱",
+              intro: "输入以下验证码以完成邮箱修改。",
+              codeLabel: "验证码",
+              expiry: "验证码将在 5 分钟后失效。",
+              warning: "如果不是你发起的操作，请忽略此邮件。",
+              footer: "Cashier 账户安全",
+            }
+          : {
+              preview: "Verify your new email",
+              heading: "Verify your new email",
+              intro: "Enter this code to finish changing your email address.",
+              codeLabel: "Verification code",
+              expiry: "This code expires in 5 minutes.",
+              warning: "Ignore this email if you did not request this change.",
+              footer: "Cashier account security",
+            },
+      }),
+    });
+    if (delivery !== "sent") throw new Error("Email provider did not accept the message");
+  } catch {
     await dependencies.accounts.discardEmailChangeChallenge({ userId, newEmail, tokenHash });
-    throw new ValidationError("Email delivery is not configured");
+    throw new ValidationError("Email delivery failed");
   }
   return { newEmail, expiresAt: expiresAt.getTime() };
 }

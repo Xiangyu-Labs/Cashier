@@ -42,7 +42,7 @@ async function getOTPEmailCopy(
   };
   const t = messages.AuthEmail;
   return {
-    subject: t.otpSubject.replace("{otp}", otp),
+    subject: locale.startsWith("zh") ? "Cashier 验证码" : "Cashier verification code",
     copy: {
       preview: t.otpPreview,
       heading: t.otpHeading.replace("{host}", host),

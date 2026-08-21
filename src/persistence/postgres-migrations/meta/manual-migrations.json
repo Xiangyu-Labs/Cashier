@@ -69,6 +69,10 @@
     {
       "file": "0027_monetary_integrity.sql",
       "sha256": "4b4a7cf23911c5a99c41342b266b85bcdf4ba45014037e6790f885a92f385633"
+    },
+    {
+      "file": "0028_auth_upload_hardening.sql",
+      "sha256": "a5e93d88e8b4d1079f09c6d64ad4e52d0c00144388d18ca39f219e34dec339fb"
     }
   ]
 }

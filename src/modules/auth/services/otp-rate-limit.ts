@@ -4,6 +4,7 @@ import { logIdentifier } from "@/lib/security/log-identifier";
 import { RateLimitUnavailableError } from "@/lib/errors";
 import { getResendCooldown } from "./otp";
 import type { RateLimitPort } from "../application/ports";
+import { createHmac } from "node:crypto";
 
 const OTP_SEND_PREFIX = "otp:send:";
 const OTP_SEND_IP_PREFIX = "otp:send:ip:";
@@ -12,6 +13,13 @@ const OTP_VERIFY_PREFIX = "otp:verify:";
 
 const IP_WINDOW_SECONDS = 60 * 60;
 const VERIFY_WINDOW_SECONDS = 60;
+
+function bucketKey(purpose: string, identifier: string): string {
+  const digest = createHmac("sha256", runtimeEnv.rateLimitPepper)
+    .update(identifier.trim().toLowerCase())
+    .digest("hex");
+  return `${purpose}:${digest}`;
+}
 
 function getSendMaxAttempts(): number {
   return runtimeEnv.authRateLimitMax;
@@ -38,7 +46,7 @@ export async function checkSendRateLimit(
   retryAfter?: number;
 }> {
   try {
-    const key = `${OTP_SEND_PREFIX}${email.toLowerCase()}`;
+    const key = bucketKey(OTP_SEND_PREFIX.slice(0, -1), email);
     const sendWindowSeconds = getSendWindowSeconds();
     const sendMaxAttempts = getSendMaxAttempts();
 
@@ -82,7 +90,7 @@ export async function checkSendRateLimitByIP(
     return { allowed: true, remainingAttempts: getIpMaxAttempts() };
   }
   try {
-    const key = `${OTP_SEND_IP_PREFIX}${ip}`;
+    const key = bucketKey(OTP_SEND_IP_PREFIX.slice(0, -1), ip);
     const ipMaxAttempts = getIpMaxAttempts();
 
     const result = await rateLimiter.increment(key, ipMaxAttempts, IP_WINDOW_SECONDS);
@@ -121,7 +129,7 @@ export async function checkResendCooldown(
   retryAfter?: number;
 }> {
   try {
-    const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
+    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
     const cooldown = getResendCooldown();
 
     const remaining = await rateLimiter.getCooldownRemaining(key, cooldown);
@@ -149,7 +157,7 @@ export async function checkResendCooldown(
 
 export async function setResendCooldown(email: string, rateLimiter: RateLimitPort): Promise<void> {
   try {
-    const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
+    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
     const cooldown = getResendCooldown();
 
     await rateLimiter.setCooldown(key, cooldown);
@@ -167,7 +175,7 @@ export async function getCanResendAt(
   rateLimiter: RateLimitPort
 ): Promise<number | null> {
   try {
-    const key = `${OTP_RESEND_PREFIX}${email.toLowerCase()}`;
+    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
     const cooldown = getResendCooldown();
 
     const remaining = await rateLimiter.getCooldownRemaining(key, cooldown);
@@ -192,7 +200,7 @@ export async function checkVerifyRateLimit(
 ): Promise<boolean> {
   if (ip === "unknown") return true;
   try {
-    const key = `${OTP_VERIFY_PREFIX}${ip}`;
+    const key = bucketKey(OTP_VERIFY_PREFIX.slice(0, -1), ip);
     const verifyMaxAttempts = getVerifyMaxAttempts();
 
     const result = await rateLimiter.increment(key, verifyMaxAttempts, VERIFY_WINDOW_SECONDS);

@@ -1,6 +1,11 @@
 import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { objectCleanupJobs, uploadSessionFiles, uploadSessions } from "@/persistence";
+import {
+  emailChangeChallenges,
+  objectCleanupJobs,
+  uploadSessionFiles,
+  uploadSessions,
+} from "@/persistence";
 import { getS3Storage } from "@/lib/storage/s3";
 import { logger } from "@/lib/logger";
 import { runBoundedExchangeRateRecalculation } from "@/application/orchestration/exchange-rate-ledger-recalculation";
@@ -28,6 +33,9 @@ export async function runBoundedMaintenance(now = new Date()): Promise<void> {
     )`);
     await tx.execute(sql`DELETE FROM otp_tokens WHERE id IN (
       SELECT id FROM otp_tokens WHERE expires < ${now} LIMIT ${LIMIT}
+    )`);
+    await tx.execute(sql`DELETE FROM ${emailChangeChallenges} WHERE id IN (
+      SELECT id FROM ${emailChangeChallenges} WHERE expires_at < ${now} LIMIT ${LIMIT}
     )`);
 
     const staleSessions = await tx

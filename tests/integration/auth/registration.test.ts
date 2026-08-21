@@ -12,7 +12,7 @@ import { hashOTP } from "@/modules/auth/services/otp";
 vi.mock("resend", () => ({
   Resend: class MockResend {
     emails = {
-      send: vi.fn().mockResolvedValue({ id: "test-email-id" }),
+      send: vi.fn().mockResolvedValue({ data: { id: "test-email-id" }, error: null }),
     };
   },
 }));

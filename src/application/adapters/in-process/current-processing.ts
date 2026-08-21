@@ -128,7 +128,7 @@ export async function executeSingleProcessingIntent(
     if (error instanceof ProcessingCancelledError || controller.signal.aborted) {
       return true;
     }
-    await postgresRevisionAdapter.preserveTerminalOutcome({
+    const preserved = await postgresRevisionAdapter.preserveTerminalOutcome({
       ledgerId: row.ledgerId,
       sourceDocumentId: claim.intent.sourceDocumentId,
       revisionId: claim.intent.revisionId,
@@ -136,6 +136,7 @@ export async function executeSingleProcessingIntent(
       failureCode: toFailureCode(error),
       lease: { intentId: claim.intent.id, claimToken: claim.claimToken },
     });
+    if (!preserved) return true;
     await adapter.complete({
       intentId: claim.intent.id,
       claimToken: claim.claimToken,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 import { eq } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestUserWithLedger } from "../../helpers/schema-setup";
@@ -603,7 +604,11 @@ describe("current-runtime target adapters", () => {
     const { ledgerId } = await createTestUserWithLedger(db);
     const storage = new DirectMemoryObjectStore();
     const adapter = new StoredFileAdapter(storage);
-    const bytes = Buffer.from("direct-image");
+    const bytes = await sharp({
+      create: { width: 1, height: 1, channels: 3, background: "white" },
+    })
+      .jpeg()
+      .toBuffer();
     const digest = createHash("sha256").update(bytes).digest("hex");
     const plan = await adapter.createDirectUploadPlan(ledgerId, [
       {

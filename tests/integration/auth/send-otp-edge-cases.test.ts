@@ -49,7 +49,7 @@ describe("sendOTPAction edge cases", () => {
     cookiesMock.mockResolvedValue({
       get: () => undefined,
     });
-    resendSendMock.mockResolvedValue({ id: "test-email-id" });
+    resendSendMock.mockResolvedValue({ data: { id: "test-email-id" }, error: null });
   });
 
   it("uses localhost when host header is missing and still creates token", async () => {
@@ -85,7 +85,7 @@ describe("sendOTPAction edge cases", () => {
 
     const firstCall = resendSendMock.mock.calls[0]?.[0];
     const renderedEmail = await render(firstCall?.react);
-    expect(firstCall?.subject).toMatch(/^Your verification code is \d{6}$/);
+    expect(firstCall?.subject).toBe("Cashier verification code");
     expect(renderedEmail).toContain("Sign in to localhost");
   });
 

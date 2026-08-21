@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   generateOTP,
@@ -66,16 +65,13 @@ describe("OTP Utility Functions", () => {
       expect(hash1).not.toBe(hash2);
     });
 
-    it("keeps the legacy hash:salt verification branch working", () => {
-      const otp = "123456";
-      const salt = "legacy-salt";
-      const legacyHash = `${crypto
-        .createHash("sha256")
-        .update(otp + salt)
-        .digest("hex")}:${salt}`;
-
-      expect(verifyOTP(otp, legacyHash)).toBe(true);
-      expect(verifyOTP("654321", legacyHash)).toBe(false);
+    it("rejects legacy unkeyed hashes", () => {
+      expect(
+        verifyOTP(
+          "123456",
+          "8d969eef6ecad3c29a3a629280e686cff8ca64f6f63f5f5a86aff3ca12020c923:legacy-salt"
+        )
+      ).toBe(false);
     });
   });
 

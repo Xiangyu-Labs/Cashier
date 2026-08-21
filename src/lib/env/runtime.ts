@@ -3,6 +3,7 @@ import { getStartupEnvValue } from "./startup";
 export interface RuntimeEnv {
   readonly databaseUrl: string;
   readonly apiKeyPepper: string;
+  readonly rateLimitPepper: string;
   readonly openaiApiKey: string;
   readonly openaiBaseUrl: string;
   readonly hasOpenaiBaseUrl: boolean;
@@ -22,6 +23,11 @@ export interface RuntimeEnv {
   readonly aiModel: string;
   readonly aiMaxRetries: number;
   readonly aiRetryDelayMs: number;
+  readonly aiRequestTimeoutMs: number;
+  readonly aiRevisionDeadlineMs: number;
+  readonly uploadPlanLimitPer15Min: number;
+  readonly uploadOpenSessionLimit: number;
+  readonly uploadDailyBytesLimit: number;
   readonly aiTemperature: number;
   readonly sourceDocStaleTimeMs: number;
   readonly currencyStaleTimeMs: number;
@@ -62,6 +68,9 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get apiKeyPepper() {
     return getStartupEnvValue("API_KEY_PEPPER");
+  },
+  get rateLimitPepper() {
+    return getStartupEnvValue("RATE_LIMIT_PEPPER");
   },
   get openaiApiKey() {
     return getStartupEnvValue("OPENAI_API_KEY");
@@ -119,6 +128,21 @@ export const runtimeEnv: RuntimeEnv = {
   },
   get aiRetryDelayMs() {
     return getStartupEnvValue("AI_RETRY_DELAY_MS");
+  },
+  get aiRequestTimeoutMs() {
+    return getStartupEnvValue("AI_REQUEST_TIMEOUT_MS");
+  },
+  get aiRevisionDeadlineMs() {
+    return getStartupEnvValue("AI_REVISION_DEADLINE_MS");
+  },
+  get uploadPlanLimitPer15Min() {
+    return getStartupEnvValue("UPLOAD_PLAN_LIMIT_PER_15_MIN");
+  },
+  get uploadOpenSessionLimit() {
+    return getStartupEnvValue("UPLOAD_OPEN_SESSION_LIMIT");
+  },
+  get uploadDailyBytesLimit() {
+    return getStartupEnvValue("UPLOAD_DAILY_BYTES_LIMIT");
   },
   get aiTemperature() {
     return getStartupEnvValue("AI_TEMPERATURE");

@@ -915,15 +915,27 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
 
 export const postgresOtpTokenAdapter: OtpTokenPort = {
   async replace(input) {
-    await db.transaction(async (tx) => {
-      await tx.delete(otpTokens).where(eq(otpTokens.email, input.email));
-      await tx.insert(otpTokens).values({
+    await db
+      .insert(otpTokens)
+      .values({
         email: input.email,
         tokenHash: input.tokenHash,
         expires: input.expiresAt,
         ...(input.ipAddress === undefined ? {} : { ipAddress: input.ipAddress }),
+      })
+      .onConflictDoUpdate({
+        target: otpTokens.email,
+        set: {
+          tokenHash: input.tokenHash,
+          expires: input.expiresAt,
+          attempts: 0,
+          lockedUntil: null,
+          lastAttemptAt: null,
+          verifiedAt: null,
+          ipAddress: input.ipAddress ?? null,
+          createdAt: new Date(),
+        },
       });
-    });
   },
   async find(email) {
     const row = await db
@@ -954,7 +966,7 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
           else ${otpTokens.lockedUntil}
         end`,
       })
-      .where(eq(otpTokens.email, input.email))
+      .where(and(eq(otpTokens.email, input.email), eq(otpTokens.tokenHash, input.tokenHash)))
       .returning({ attempts: otpTokens.attempts, lockedUntil: otpTokens.lockedUntil });
     return rows[0] ?? null;
   },
@@ -966,7 +978,10 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
         and(
           eq(otpTokens.email, input.email),
           eq(otpTokens.tokenHash, input.tokenHash),
-          isNull(otpTokens.verifiedAt)
+          isNull(otpTokens.verifiedAt),
+          sql`${otpTokens.expires} > ${input.now}`,
+          sql`${otpTokens.attempts} < ${input.maxAttempts}`,
+          or(isNull(otpTokens.lockedUntil), sql`${otpTokens.lockedUntil} <= ${input.now}`)
         )
       )
       .returning({ id: otpTokens.id });
@@ -1021,42 +1036,31 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
 export const postgresUserAccountAdapter: UserAccountPort = {
   async findOrCreate(email, name) {
     return db.transaction(async (tx) => {
-      const existing = await tx
-        .select()
-        .from(users)
-        .where(and(eq(users.email, email), isNull(users.deletedAt)))
-        .then((rows) => rows[0]);
-      if (existing != null) {
-        return {
-          user: {
-            id: existing.id,
-            email: existing.email,
-            name: existing.name,
-            image: existing.image,
-            passwordHash: existing.passwordHash,
-            passwordUpdatedAt: existing.passwordUpdatedAt,
-            interfaceLanguage: existing.preferences.interfaceLanguage,
-          },
-          isExistingUser: true,
-        };
-      }
       const created = await tx
         .insert(users)
         .values({ email, ...(name === undefined ? {} : { name }), emailVerified: new Date() })
+        .onConflictDoNothing()
         .returning()
         .then((rows) => rows[0]);
-      if (created == null) throw new ConflictError("Failed to create user account");
+      const row =
+        created ??
+        (await tx
+          .select()
+          .from(users)
+          .where(and(eq(users.email, email), isNull(users.deletedAt)))
+          .then((rows) => rows[0]));
+      if (row == null) throw new ConflictError("Failed to create user account");
       return {
         user: {
-          id: created.id,
-          email: created.email,
-          name: created.name,
-          image: created.image,
-          passwordHash: created.passwordHash,
-          passwordUpdatedAt: created.passwordUpdatedAt,
-          interfaceLanguage: created.preferences.interfaceLanguage,
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          image: row.image,
+          passwordHash: row.passwordHash,
+          passwordUpdatedAt: row.passwordUpdatedAt,
+          interfaceLanguage: row.preferences.interfaceLanguage,
         },
-        isExistingUser: false,
+        isExistingUser: created == null,
       };
     });
   },

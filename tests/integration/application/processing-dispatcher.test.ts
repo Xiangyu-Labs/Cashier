@@ -716,9 +716,9 @@ describe("executeSingleProcessingIntent — standalone function with real adapte
     const row = await db.query.processingOutbox.findFirst({
       where: eq(processingOutbox.id, intent.id),
     });
-    expect(row?.status).toBe("failed");
+    expect(row?.status).toBe("claimed");
 
-    // preserveTerminalOutcome guard prevented update — revision stays at "processing"
+    // The stale worker cannot terminally update either side; lease recovery owns the retry.
     const revision = await db.query.sourceDocumentRevisions.findFirst({
       where: eq(sourceDocumentRevisions.id, intent.revisionId),
     });

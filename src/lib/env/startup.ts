@@ -10,6 +10,11 @@ export const ENV_DEFAULTS = {
   S3_FORCE_PATH_STYLE: "false",
   AI_MAX_RETRIES: "3",
   AI_RETRY_DELAY_MS: "1000",
+  AI_REQUEST_TIMEOUT_MS: "60000",
+  AI_REVISION_DEADLINE_MS: "180000",
+  UPLOAD_PLAN_LIMIT_PER_15_MIN: "20",
+  UPLOAD_OPEN_SESSION_LIMIT: "5",
+  UPLOAD_DAILY_BYTES_LIMIT: "104857600",
   AI_TEMPERATURE: "0.3",
   SOURCE_DOC_STALE_TIME_MS: "120000",
   CURRENCY_STALE_TIME_MS: "14400000",
@@ -104,6 +109,7 @@ function booleanStringWithDefault(name: keyof typeof ENV_DEFAULTS) {
 const startupEnvFields = {
   DATABASE_URL: requiredPostgresUrl("DATABASE_URL"),
   API_KEY_PEPPER: requiredString("API_KEY_PEPPER"),
+  RATE_LIMIT_PEPPER: requiredString("RATE_LIMIT_PEPPER"),
   OPENAI_API_KEY: requiredString("OPENAI_API_KEY"),
   OPENAI_BASE_URL: urlWithDefault("OPENAI_BASE_URL"),
   AUTH_SECRET: requiredString("AUTH_SECRET"),
@@ -136,6 +142,11 @@ const startupEnvFields = {
   AI_MODEL: stringWithDefault("AI_MODEL"),
   AI_MAX_RETRIES: nonNegativeIntWithDefault("AI_MAX_RETRIES"),
   AI_RETRY_DELAY_MS: nonNegativeIntWithDefault("AI_RETRY_DELAY_MS"),
+  AI_REQUEST_TIMEOUT_MS: positiveIntWithDefault("AI_REQUEST_TIMEOUT_MS"),
+  AI_REVISION_DEADLINE_MS: positiveIntWithDefault("AI_REVISION_DEADLINE_MS"),
+  UPLOAD_PLAN_LIMIT_PER_15_MIN: positiveIntWithDefault("UPLOAD_PLAN_LIMIT_PER_15_MIN"),
+  UPLOAD_OPEN_SESSION_LIMIT: positiveIntWithDefault("UPLOAD_OPEN_SESSION_LIMIT"),
+  UPLOAD_DAILY_BYTES_LIMIT: positiveIntWithDefault("UPLOAD_DAILY_BYTES_LIMIT"),
   AI_TEMPERATURE: z.preprocess(
     blankToUndefined,
     z.coerce

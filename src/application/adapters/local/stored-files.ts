@@ -25,6 +25,7 @@ import {
   UPLOAD_SESSION_EXPIRY_MS,
 } from "@/modules/source-document/upload-policy";
 import { enqueueObjectCleanup } from "@/application/adapters/postgres/object-cleanup";
+import { validateStoredImageBytes } from "@/lib/storage/image-processing";
 import {
   postgresAuthorizedFileRepository,
   type AuthorizedFileRepository,
@@ -446,9 +447,10 @@ export class StoredFileAdapter implements DirectStoredFilePort {
         ) {
           throw new ConflictError("Uploaded object does not match the upload plan");
         }
+        await validateStoredImageBytes(actual.bytes, target.expectedContentType!);
       }
     } catch (error) {
-      if (error instanceof ConflictError) {
+      if (error instanceof ConflictError || error instanceof ValidationError) {
         await db.transaction(async (tx) => {
           await tx
             .update(uploadSessionFiles)
@@ -464,6 +466,14 @@ export class StoredFileAdapter implements DirectStoredFilePort {
             .set({ status: "cancelled" })
             .where(eq(uploadSessions.id, session.id));
         });
+        await Promise.all(
+          targets.map((target) =>
+            enqueueObjectCleanup(
+              temporaryKey(session.ledgerId, session.id, target.targetId),
+              session.id
+            )
+          )
+        );
       }
       throw error;
     }
@@ -664,6 +674,15 @@ export class StoredFileAdapter implements DirectStoredFilePort {
           `Total stored bytes ${totalBytes} exceeds revision limit of ${MAX_NORMALIZED_BYTES_PER_REVISION}`
         );
       }
+      const bytesByStoredFileId = new Map(files.map((file) => [file.id, file.byteSize]));
+      await Promise.all(
+        targets.map((target) =>
+          tx
+            .update(uploadSessionFiles)
+            .set({ expectedByteSize: bytesByStoredFileId.get(target.storedFileId!)! })
+            .where(eq(uploadSessionFiles.id, target.id))
+        )
+      );
       await tx
         .update(storedFiles)
         .set({ finalizedAt: now })

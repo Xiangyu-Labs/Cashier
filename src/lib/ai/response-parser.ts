@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { type z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -27,7 +28,12 @@ export function parseJsonResponse<T>(content: string, schema: z.ZodSchema<T>): T
   const result = schema.safeParse(parsed);
   if (!result.success) {
     logger.error(
-      { content: cleaned.substring(0, 500), errors: result.error.issues },
+      {
+        contentLength: cleaned.length,
+        contentHash: crypto.createHash("sha256").update(cleaned).digest("hex").slice(0, 12),
+        errorCode: "AI_RESPONSE_SCHEMA_INVALID",
+        issueCount: result.error.issues.length,
+      },
       "Zod validation failed for AI response"
     );
     throw result.error;

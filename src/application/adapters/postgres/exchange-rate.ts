@@ -67,10 +67,10 @@ function parseProviderRates(data: unknown): ExchangeRates {
 export function formatExchangeRateDate(date: Date | string): string {
   if (typeof date === "string") {
     const [datePart] = date.split("T");
-    return datePart ?? date;
+    return dateStringSchema.parse(datePart ?? date);
   }
 
-  return format(date, "yyyy-MM-dd");
+  return dateStringSchema.parse(format(date, "yyyy-MM-dd"));
 }
 
 function isRetryableHttpStatus(status: number): boolean {
