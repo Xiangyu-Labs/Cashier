@@ -1,34 +1,36 @@
 import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 
 export function formatCurrencyAmount(
-  amount: number,
+  amount: string | number,
   currency: string,
   locale?: string,
   options: Intl.NumberFormatOptions = {}
 ): string {
   const decimals = getCurrencyDecimals(currency);
   try {
-    return new Intl.NumberFormat(locale, {
+    const formatter = new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
       ...options,
-    }).format(amount);
+    });
+    return (formatter.format as (value: string | number) => string)(amount);
   } catch {
-    const formatted = new Intl.NumberFormat(locale, {
+    const formatter = new Intl.NumberFormat(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
       ...options,
-    }).format(amount);
+    });
+    const formatted = (formatter.format as (value: string | number) => string)(amount);
 
     return `¤${formatted}`;
   }
 }
 
 export function formatCompactCurrencyAmount(
-  amount: number,
+  amount: string | number,
   currency: string,
   locale?: string
 ): string {
@@ -39,12 +41,13 @@ export function formatCompactCurrencyAmount(
   });
 }
 
-export function formatCompactNumberAmount(amount: number, locale?: string): string {
-  return new Intl.NumberFormat(locale, {
+export function formatCompactNumberAmount(amount: string | number, locale?: string): string {
+  const formatter = new Intl.NumberFormat(locale, {
     notation: "compact",
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).format(amount);
+  });
+  return (formatter.format as (value: string | number) => string)(amount);
 }
 
 export function getCurrencySymbol(currency: string, locale?: string): string {

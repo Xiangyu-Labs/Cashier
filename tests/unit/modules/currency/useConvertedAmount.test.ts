@@ -43,7 +43,7 @@ describe("useConvertedAmount", () => {
     expect(mockConvertCurrencyAction).toHaveBeenCalledTimes(1);
     expect(mockConvertCurrencyAction).toHaveBeenCalledWith(
       ledgerId,
-      100,
+      "100",
       "CNY",
       "USD",
       "2026-02-04"

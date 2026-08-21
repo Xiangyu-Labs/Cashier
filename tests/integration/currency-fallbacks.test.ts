@@ -59,7 +59,10 @@ describe("currency fallbacks integration", () => {
 
   it("single conversion still fails for unknown currency", async () => {
     await expect(
-      convertCurrency({ amount: 100, from: "ZZZ", to: "USD", date: testDate }, ExchangeRateService)
+      convertCurrency(
+        { amount: "100", from: "ZZZ", to: "USD", date: testDate },
+        ExchangeRateService
+      )
     ).rejects.toThrow("Currency not found: ZZZ");
   });
 

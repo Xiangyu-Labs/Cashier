@@ -1,8 +1,14 @@
 import { format } from "date-fns";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { currencyRates } from "@/persistence";
-import { eq } from "drizzle-orm";
+import {
+  currencyRates,
+  exchangeRateRecalculationJobs,
+  ledgerEntries,
+  ledgers,
+  sourceDocuments,
+} from "@/persistence";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { dateStringSchema } from "@/lib/validation";
@@ -193,18 +199,49 @@ export class ExchangeRateService {
       }
       const data = parseProviderRates(payload);
 
-      // Atomic Upsert: Avoid race conditions if another instance or request writes simultaneously
-      const insertedRows = await db
-        .insert(currencyRates)
-        .values({
-          date: targetDateStr,
-          base: data.base,
-          rates: data.rates,
-        })
-        .onConflictDoNothing()
-        .returning({ date: currencyRates.date });
+      const stored = await db.transaction(async (tx) => {
+        const insertedRows = await tx
+          .insert(currencyRates)
+          .values({ date: targetDateStr, base: data.base, rates: data.rates })
+          .onConflictDoNothing()
+          .returning();
 
-      if (insertedRows.length > 0) {
+        if (insertedRows.length === 0) {
+          const persisted = await tx.query.currencyRates.findFirst({
+            where: eq(currencyRates.date, targetDateStr),
+          });
+          if (persisted == null) {
+            throw new AppError("Stored exchange rates disappeared", "EXCHANGE_RATES_UNAVAILABLE");
+          }
+          return {
+            inserted: false,
+            rates: { base: persisted.base, date: persisted.date, rates: persisted.rates },
+          };
+        }
+
+        await tx.execute(sql`
+          INSERT INTO ${exchangeRateRecalculationJobs} (rate_date, ledger_id)
+          SELECT ${targetDateStr}, ${ledgers.id}
+          FROM ${ledgers}
+          INNER JOIN ${sourceDocuments}
+            ON ${sourceDocuments.ledgerId} = ${ledgers.id}
+            AND (${sourceDocuments.entryDate} = ${targetDateStr} OR ${sourceDocuments.entryDate} IS NULL)
+            AND ${sourceDocuments.deletedAt} IS NULL
+          INNER JOIN ${ledgerEntries}
+            ON ${ledgerEntries.ledgerId} = ${ledgers.id}
+            AND ${ledgerEntries.sourceDocumentId} = ${sourceDocuments.id}
+            AND ${ledgerEntries.deletedAt} IS NULL
+            AND (
+              ${sourceDocuments.activeRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
+              OR ${sourceDocuments.pendingRevisionId} = ${ledgerEntries.sourceDocumentRevisionId}
+            )
+          WHERE ${ledgers.deletedAt} IS NULL
+          ON CONFLICT (rate_date, ledger_id) DO NOTHING
+        `);
+        return { inserted: true, rates: data };
+      });
+
+      if (stored.inserted) {
         // Fire-and-forget: the rates query must not wait for ledger
         // recalculation work triggered by the stored event.
         void this.notifyRatesStored({
@@ -214,7 +251,7 @@ export class ExchangeRateService {
         });
       }
 
-      return data;
+      return stored.rates;
     } finally {
       // Remove from pending map once finished (success or failure)
       this.pendingRequests.delete(targetDateStr);

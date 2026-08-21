@@ -245,7 +245,6 @@ describe("exchange-rate ledger recalculation orchestration", () => {
 
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerId,
-      "CNY",
       "2024-02-16",
       expect.any(Object)
     );
@@ -279,25 +278,21 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(2);
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerWithEntries,
-      "USD",
       eventDate,
       expect.any(Object)
     );
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerWithPendingEntry,
-      "CNY",
       eventDate,
       expect.any(Object)
     );
     expect(recalculateEntriesConvertedAmountForDateMock).not.toHaveBeenCalledWith(
       ledgerOnOtherDate,
       expect.anything(),
-      expect.anything(),
       expect.anything()
     );
     expect(recalculateEntriesConvertedAmountForDateMock).not.toHaveBeenCalledWith(
       deletedLedger,
-      expect.anything(),
       expect.anything(),
       expect.anything()
     );
@@ -322,13 +317,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(1);
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerWithUndatedEntry,
-      "USD",
       eventDate,
       expect.any(Object)
     );
     expect(recalculateEntriesConvertedAmountForDateMock).not.toHaveBeenCalledWith(
       ledgerOnOtherDate,
-      expect.anything(),
       expect.anything(),
       expect.anything()
     );
@@ -374,7 +367,6 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledTimes(1);
       expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
         expect.any(String),
-        "CNY",
         "2024-02-10",
         expect.any(Object)
       );
@@ -496,13 +488,11 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     ).resolves.toBeUndefined();
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       ledgerId,
-      "JPY",
       "2026-03-01",
       expect.any(Object)
     );
     expect(recalculateEntriesConvertedAmountForDateMock).toHaveBeenCalledWith(
       secondLedgerId,
-      "USD",
       "2026-03-01",
       expect.any(Object)
     );
@@ -627,7 +617,7 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       },
     ]);
 
-    await postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "CNY", "2026-06-01");
+    await postgresCurrencyAdapter.recalculateLedgerForDate(ledgerId, "2026-06-01");
 
     const entries = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.ledgerId, ledgerId),
@@ -635,10 +625,10 @@ describe("exchange-rate ledger recalculation orchestration", () => {
     const byName = new Map(entries.map((entry) => [entry.itemName, entry]));
 
     // 100 USD * (7.65 / 1.08) = 708.33 CNY
-    expect(byName.get("Dated")?.convertedAmount).toBe("708.33");
-    expect(byName.get("Dated")?.exchangeRate).toBe("7.083333");
+    expect(byName.get("Dated")?.convertedAmount).toBe("708.330");
+    expect(byName.get("Dated")?.exchangeRate).toBe("7.083333333333");
     // Undated entries use the latest stored rate (2026-06-01), not 7.0.
-    expect(byName.get("Undated")?.convertedAmount).toBe("1416.67");
-    expect(byName.get("Undated")?.exchangeRate).toBe("7.083333");
+    expect(byName.get("Undated")?.convertedAmount).toBe("1416.670");
+    expect(byName.get("Undated")?.exchangeRate).toBe("7.083333333333");
   });
 });

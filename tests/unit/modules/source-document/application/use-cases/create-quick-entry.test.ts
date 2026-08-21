@@ -31,7 +31,7 @@ import type { QuickEntryPorts } from "@/modules/source-document/application/port
 const ports = {
   categories: {},
   projections: { createManual: createManualMock },
-  rates: { convert: vi.fn() },
+  rates: { getRates: vi.fn() },
 } as unknown as QuickEntryPorts;
 
 describe("createQuickEntry", () => {
@@ -41,7 +41,11 @@ describe("createQuickEntry", () => {
     vi.clearAllMocks();
     formatDateTimeForApiMock.mockReturnValue("2026-03-20");
     getEntryCategoryNameMock.mockResolvedValue("Food");
-    (ports.rates.convert as ReturnType<typeof vi.fn>).mockResolvedValue("100.00");
+    (ports.rates.getRates as ReturnType<typeof vi.fn>).mockResolvedValue({
+      base: "EUR",
+      date: "2026-01-31",
+      rates: { CNY: 7.5, USD: 1.1 },
+    });
     createManualMock.mockResolvedValue({ sourceDocumentId: "doc-1", revisionId: "revision-1" });
     randomUuidSpy = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValueOnce("entry-1");
   });
@@ -63,12 +67,12 @@ describe("createQuickEntry", () => {
       },
       {
         categoryId: "cat-1",
-        amount: 100,
+        amount: "100",
       },
       ports
     );
 
-    expect(ports.rates.convert).not.toHaveBeenCalled();
+    expect(ports.rates.getRates).not.toHaveBeenCalled();
     expect(createManualMock).toHaveBeenCalledWith({
       ledgerId: "ledger-1",
       title: "Food",
@@ -102,7 +106,7 @@ describe("createQuickEntry", () => {
       },
       {
         categoryId: "cat-1",
-        amount: 25,
+        amount: "25",
         currency: "CNY",
         entryDate: "2026-01-31",
         itemName: "Tea",
@@ -111,7 +115,7 @@ describe("createQuickEntry", () => {
       ports
     );
 
-    expect(ports.rates.convert).toHaveBeenCalledWith("25", "CNY", "USD", "2026-01-31");
+    expect(ports.rates.getRates).toHaveBeenCalledWith("2026-01-31");
     expect(createManualMock).toHaveBeenCalledWith(
       expect.objectContaining({
         entryDate: "2026-01-31",

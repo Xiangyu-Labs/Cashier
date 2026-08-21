@@ -382,11 +382,11 @@ function ReviewPanel({
                 </div>
                 <div className="shrink-0 text-right">
                   <AmountText variant="item">
-                    {formatCurrencyAmount(Number(entry.amount), currency, locale)}
+                    {formatCurrencyAmount(entry.amount, currency, locale)}
                   </AmountText>
                   {entry.convertedAmount != null && currency !== mainCurrency && (
                     <AmountText variant="secondary">
-                      {formatCurrencyAmount(Number(entry.convertedAmount), mainCurrency, locale)}
+                      {formatCurrencyAmount(entry.convertedAmount, mainCurrency, locale)}
                     </AmountText>
                   )}
                 </div>

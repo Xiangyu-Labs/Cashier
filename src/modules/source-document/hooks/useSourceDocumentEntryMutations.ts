@@ -22,7 +22,11 @@ export function useSourceDocumentEntryMutations({
   >(ledgerId, {
     mutationFn: async ({ ids, data }) => {
       if (ledgerId == null || ledgerId === "") return;
-      return batchUpdateLedgerEntriesAction(ledgerId, ids, data);
+      const { amount, ...rest } = data;
+      return batchUpdateLedgerEntriesAction(ledgerId, ids, {
+        ...rest,
+        ...(amount == null ? {} : { amount: String(amount) }),
+      });
     },
     errorMessage: null,
     resourceGroups: ["entries"],

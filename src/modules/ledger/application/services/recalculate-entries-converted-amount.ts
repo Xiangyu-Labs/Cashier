@@ -10,9 +10,8 @@ export async function recalculateEntriesConvertedAmount(
 
 export async function recalculateEntriesConvertedAmountForDate(
   ledgerId: string,
-  mainCurrency: string,
   date: string,
   currencies: CurrencyPort
 ): Promise<void> {
-  await currencies.recalculateLedgerForDate(ledgerId, mainCurrency, date);
+  await currencies.recalculateLedgerForDate(ledgerId, date);
 }

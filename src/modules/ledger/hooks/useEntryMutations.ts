@@ -30,7 +30,16 @@ export function useEntryMutations({
     { ledgerEntryId: string; data: Partial<Omit<LedgerEntry, "amount">> & { amount?: number } }
   >(ledgerId, {
     mutationFn: async ({ ledgerEntryId, data }) => {
-      const result = await updateLedgerEntryAction(ledgerId, ledgerEntryId, data);
+      const { amount, ...rest } = data;
+      const result = await updateLedgerEntryAction(
+        ledgerId,
+        ledgerEntryId,
+        {
+          ...rest,
+          ...(amount == null ? {} : { amount: String(amount) }),
+        },
+        crypto.randomUUID()
+      );
       return result;
     },
     errorMessage: null,
@@ -38,7 +47,8 @@ export function useEntryMutations({
   });
 
   const deleteEntry = useLedgerMutation<DeleteLedgerEntryResultDto, string>(ledgerId, {
-    mutationFn: (ledgerEntryId) => deleteLedgerEntryAction(ledgerId, ledgerEntryId),
+    mutationFn: (ledgerEntryId) =>
+      deleteLedgerEntryAction(ledgerId, ledgerEntryId, crypto.randomUUID()),
     successMessage: tLedger("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     resourceGroups: ["entries"],

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
@@ -19,12 +20,13 @@ export const currencyCodeSchema = z
  * Amounts may be positive, negative, or zero so adjustment entries and
  * zero-amount rows can be converted. NaN and Infinity are rejected.
  */
-const finiteAmountSchema = z.number().refine((value) => Number.isFinite(value), {
-  message: "Amount must be finite",
-});
+const decimalAmountSchema = z
+  .string()
+  .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+  .transform(normalize);
 
 export const convertCurrencyInputSchema = z.object({
-  amount: finiteAmountSchema,
+  amount: decimalAmountSchema,
   from: currencyCodeSchema,
   to: currencyCodeSchema,
   date: optionalDateStringSchema,
@@ -42,7 +44,7 @@ export function parseConvertCurrencyInput(input: unknown): ConvertCurrencyInput 
 }
 
 export const batchConvertCurrencyItemSchema = z.object({
-  amount: finiteAmountSchema,
+  amount: decimalAmountSchema,
   currency: currencyCodeSchema,
   date: optionalDateStringSchema,
 });

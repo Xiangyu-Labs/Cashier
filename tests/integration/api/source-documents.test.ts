@@ -132,7 +132,7 @@ describe("SourceDocument Actions", () => {
     expect(savedEntries).toHaveLength(1);
     const savedEntry = firstItem(savedEntries, "Expected one saved ledger entry");
     expect(savedEntry.itemName).toBe("午餐");
-    expect(savedEntry.amount).toBe("25.50");
+    expect(savedEntry.amount).toBe("25.500");
   });
 
   it("should match category by index", async () => {

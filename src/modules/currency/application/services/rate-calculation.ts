@@ -1,4 +1,5 @@
-import { multiply, divide } from "@/lib/money/decimal";
+import { multiply, divide, round } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import { AppError } from "@/lib/errors";
 import type { ExchangeRates } from "../ports";
 
@@ -12,6 +13,7 @@ export function resolveRateRatio(
   fromCurrency: string,
   toCurrency: string
 ): string {
+  if (fromCurrency === toCurrency) return "1";
   const fullRates = { ...rates.rates, [rates.base]: 1 };
   const fromRate = fullRates[fromCurrency];
   const toRate = fullRates[toCurrency];
@@ -29,7 +31,7 @@ export function resolveRateRatio(
     throw new AppError(`Currency not found: ${missing}`, "CURRENCY_NOT_FOUND", 400);
   }
 
-  return divide(String(toRate), String(fromRate));
+  return round(divide(String(toRate), String(fromRate)), 12);
 }
 
 /**
@@ -44,7 +46,7 @@ export function convertWithRates(
 ): { convertedAmount: string; exchangeRate: string } {
   const exchangeRate = resolveRateRatio(rates, fromCurrency, toCurrency);
   return {
-    convertedAmount: multiply(amount, exchangeRate),
+    convertedAmount: roundToCurrency(multiply(amount, exchangeRate), toCurrency),
     exchangeRate,
   };
 }

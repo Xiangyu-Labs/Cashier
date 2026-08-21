@@ -20,10 +20,11 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
   const updateEntry = useLedgerMutation<UpdateEntryResult, UpdateVariables>(ledgerId, {
     mutationFn: async ({ ledgerEntryId, data }) => {
       const operationId = crypto.randomUUID();
+      const { amount, ...rest } = data;
       return updateLedgerEntryAction(
         ledgerId,
         ledgerEntryId,
-        data,
+        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) },
         operationId
       ) as Promise<UpdateEntryResult>;
     },

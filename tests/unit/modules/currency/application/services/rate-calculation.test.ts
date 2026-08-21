@@ -21,7 +21,7 @@ describe("rate calculation", () => {
   });
 
   it("treats the base currency as rate 1 when missing from the rates map", () => {
-    expect(resolveRateRatio(rates, "EUR", "USD")).toBe("1.1");
+    expect(resolveRateRatio(rates, "EUR", "USD")).toBe("1.100000000000");
     expect(Number.parseFloat(resolveRateRatio(rates, "CNY", "EUR"))).toBeCloseTo(0.1333333333, 8);
   });
 
@@ -33,7 +33,7 @@ describe("rate calculation", () => {
 
   it("converts negative amounts (adjustment entries)", () => {
     const result = convertWithRates("-10", rates, "USD", "CNY");
-    expect(Number.parseFloat(result.convertedAmount)).toBeCloseTo(-68.1818181818, 6);
+    expect(result.convertedAmount).toBe("-68.18");
     expect(Number.parseFloat(result.exchangeRate)).toBeCloseTo(6.818181818, 6);
   });
 

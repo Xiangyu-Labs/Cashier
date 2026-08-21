@@ -15,7 +15,7 @@ describe("convertCurrency", () => {
 
     const result = await convertCurrency(
       {
-        amount: 100,
+        amount: "100",
         from: "CNY",
         to: "USD",
         date: "2026-03-20",
@@ -40,7 +40,7 @@ describe("convertCurrency", () => {
 
     const result = await convertCurrency(
       {
-        amount: 100,
+        amount: "100",
         from: "USD",
         to: "CNY",
       },
@@ -55,7 +55,7 @@ describe("convertCurrency", () => {
 
     await convertCurrency(
       {
-        amount: 100,
+        amount: "100",
         from: "USD",
         to: "CNY",
       },
@@ -63,7 +63,7 @@ describe("convertCurrency", () => {
     );
     await convertCurrency(
       {
-        amount: 100,
+        amount: "100",
         from: "USD",
         to: "CNY",
         date: "",

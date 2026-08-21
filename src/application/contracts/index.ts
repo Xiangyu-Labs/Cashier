@@ -190,6 +190,7 @@ export type ApplicationErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "IDEMPOTENCY_CONFLICT"
   | "RATE_LIMITED"
   | "PROCESSING_UNAVAILABLE"
   | "STORAGE_UNAVAILABLE"
@@ -451,7 +452,7 @@ export interface CategoryPort {
 export interface CurrencyPort {
   convert(amount: string, from: string, to: string, date?: string): Promise<string>;
   recalculateLedger(ledgerId: LedgerId, mainCurrency: string): Promise<number>;
-  recalculateLedgerForDate(ledgerId: LedgerId, mainCurrency: string, date: string): Promise<number>;
+  recalculateLedgerForDate(ledgerId: LedgerId, date: string): Promise<number>;
 }
 export interface SettingsPort {
   get(ledgerId: LedgerId): Promise<LedgerSettingsContract | null>;
@@ -719,6 +720,7 @@ export interface LedgerProjectionPort {
     ledgerId: LedgerId;
     sourceDocumentId: SourceDocumentId;
     expectedActiveRevisionId: RevisionId;
+    expectedMainCurrency?: string;
     entries: readonly LedgerProjectionEntryContract[];
   }): Promise<RevisionId>;
   recalculate(input: {

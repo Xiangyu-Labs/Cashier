@@ -75,7 +75,7 @@ describe("createQuickEntryAction", () => {
   it("should create quick entry with valid data", async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
-      amount: 100.5,
+      amount: "100.5",
       currency: "CNY",
       itemName: "Test Item",
       description: "Test description",
@@ -104,14 +104,14 @@ describe("createQuickEntryAction", () => {
       where: eq(ledgerEntries.id, result.ledgerEntryId),
     });
     expect(entry).toBeDefined();
-    expect(entry?.amount).toBe("100.50");
+    expect(entry?.amount).toBe("100.500");
     expect(entry?.currency).toBe("CNY");
   });
 
   it("should use category name when itemName is not provided", async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
-      amount: 50,
+      amount: "50",
     });
 
     const db = getTestDb();
@@ -124,7 +124,7 @@ describe("createQuickEntryAction", () => {
   it("should use default currency when not provided", async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
-      amount: 100,
+      amount: "100",
     });
 
     const db = getTestDb();
@@ -142,7 +142,7 @@ describe("createQuickEntryAction", () => {
     try {
       const result = await createQuickEntryAction(ledgerId, {
         categoryId,
-        amount: 100,
+        amount: "100",
         currency: "USD",
         entryDate: TEST_RATE_DATE,
       });
@@ -152,8 +152,8 @@ describe("createQuickEntryAction", () => {
         where: eq(ledgerEntries.id, result.ledgerEntryId),
       });
       expect(entry?.currency).toBe("USD");
-      expect(entry?.convertedAmount).toBe("681.82");
-      expect(entry?.exchangeRate).toBe("6.818182");
+      expect(entry?.convertedAmount).toBe("681.820");
+      expect(entry?.exchangeRate).toBe("6.818181818182");
       expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       fetchSpy.mockRestore();
@@ -163,7 +163,7 @@ describe("createQuickEntryAction", () => {
   it("should use current date when entryDate not provided", async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
-      amount: 100,
+      amount: "100",
     });
 
     const db = getTestDb();
@@ -197,7 +197,7 @@ describe("createQuickEntryAction", () => {
     await expect(
       createQuickEntryAction(otherLedgerId, {
         categoryId,
-        amount: 100,
+        amount: "100",
       })
     ).rejects.toThrow("Ledger not found");
   });
@@ -206,7 +206,7 @@ describe("createQuickEntryAction", () => {
     await expect(
       createQuickEntryAction(ledgerId, {
         categoryId,
-        amount: -100,
+        amount: "-100",
       })
     ).rejects.toThrow();
   });
@@ -215,7 +215,7 @@ describe("createQuickEntryAction", () => {
     await expect(
       createQuickEntryAction(ledgerId, {
         categoryId,
-        amount: 0,
+        amount: "0",
       })
     ).rejects.toThrow();
   });
@@ -223,7 +223,7 @@ describe("createQuickEntryAction", () => {
   it("should create entry with null description", async () => {
     const result = await createQuickEntryAction(ledgerId, {
       categoryId,
-      amount: 100,
+      amount: "100",
       description: null,
     });
 

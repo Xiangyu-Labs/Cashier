@@ -21,8 +21,9 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import { compare, divide, round } from "@/lib/money/decimal";
+import { compare } from "@/lib/money/decimal";
 import { postgresFxRateBook } from "@/application/adapters/postgres/exchange-rate";
+import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import {
   buildEntriesForInsert,
   getEntryFallbackDate,
@@ -180,6 +181,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
     }
     const mainCurrency = ledgerSettings?.mainCurrency ?? "CNY";
     const { fallbackDate } = getEntryFallbackDate(document.entryDate);
+    const ratesByDate = new Map<string, Awaited<ReturnType<typeof postgresFxRateBook.getRates>>>();
     const entries = await buildEntriesForInsert({
       validEntries: output.ledgerEntries.filter(
         (entry) => compare(entry.amount, "0") > 0 || entry.isAdjustment === true
@@ -190,16 +192,13 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
       mainCurrency,
       fallbackDate,
       convertAmount: async ({ amount, fromCurrency, toCurrency, date }) => {
-        const convertedAmount = await postgresFxRateBook.convert(
-          amount,
-          fromCurrency,
-          toCurrency,
-          date
-        );
-        return {
-          convertedAmount: round(convertedAmount, 2),
-          exchangeRate: round(divide(convertedAmount, amount), 6),
-        };
+        const rateDate = date ?? "latest";
+        let rates = ratesByDate.get(rateDate);
+        if (rates == null) {
+          rates = await postgresFxRateBook.getRates(date);
+          ratesByDate.set(rateDate, rates);
+        }
+        return convertWithRates(amount, rates, fromCurrency, toCurrency);
       },
     });
     throwIfProcessingCancelled(signal);

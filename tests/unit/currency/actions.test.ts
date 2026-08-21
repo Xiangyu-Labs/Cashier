@@ -29,11 +29,11 @@ describe("currency actions", () => {
   it("delegates single conversion to the application use-case", async () => {
     vi.mocked(convertCurrency).mockResolvedValue({ converted: "14.67" });
 
-    const result = await convertCurrencyAction(LEDGER_ID, 100, "CNY", "USD", "2026-02-04");
+    const result = await convertCurrencyAction(LEDGER_ID, "100", "CNY", "USD", "2026-02-04");
 
     expect(convertCurrency).toHaveBeenCalledWith(
       {
-        amount: 100,
+        amount: "100",
         from: "CNY",
         to: "USD",
         date: "2026-02-04",
@@ -45,8 +45,8 @@ describe("currency actions", () => {
 
   it("delegates batch conversion to the application use-case and unwraps results", async () => {
     const items: BatchConversionItem[] = [
-      { amount: 100, currency: "CNY", date: "2026-02-04" },
-      { amount: 50, currency: "EUR", date: "2026-02-04" },
+      { amount: "100", currency: "CNY", date: "2026-02-04" },
+      { amount: "50", currency: "EUR", date: "2026-02-04" },
     ];
 
     vi.mocked(convertAmountsBatch).mockResolvedValue([
@@ -79,7 +79,7 @@ describe("currency actions", () => {
 
   it("rejects invalid batch currencies before the use case runs", async () => {
     await expect(
-      batchConvertCurrencyAction(LEDGER_ID, [{ amount: 50, currency: "" }], "EUR")
+      batchConvertCurrencyAction(LEDGER_ID, [{ amount: "50", currency: "" }], "EUR")
     ).rejects.toThrow("Missing required parameters");
     expect(convertAmountsBatch).not.toHaveBeenCalled();
   });

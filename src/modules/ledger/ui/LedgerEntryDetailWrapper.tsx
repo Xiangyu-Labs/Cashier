@@ -57,7 +57,13 @@ export function LedgerEntryDetailWrapper({
   >(ledgerId, {
     mutationFn: async (data) => {
       const operationId = crypto.randomUUID();
-      return updateLedgerEntryAction(ledgerId, id, data, operationId);
+      const { amount, ...rest } = data;
+      return updateLedgerEntryAction(
+        ledgerId,
+        id,
+        { ...rest, ...(amount == null ? {} : { amount: String(amount) }) },
+        operationId
+      );
     },
     errorMessage: null,
     resourceGroups: ["entries"],

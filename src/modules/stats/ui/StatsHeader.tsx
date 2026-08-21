@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
+import { abs, compare } from "@/lib/money/decimal";
 
 interface StatsHeaderProps {
   rangeType: DateRangeType;
@@ -13,14 +14,14 @@ interface StatsHeaderProps {
   periodOffset: number;
   setPeriodOffset: (offset: number) => void;
   label: string;
-  totalExpense: number;
-  averageDaily: number;
+  totalExpense: string;
+  averageDaily: string;
   currencySymbol?: string;
   comparison?: EnhancedStatsDto["summary"]["comparison"];
   periodLabel?: string;
   trend?: {
     percent: number;
-    amount: number;
+    amount: string;
   };
   readOnly?: boolean;
   isLoading?: boolean;
@@ -49,12 +50,13 @@ export function StatsHeader({
 
   // Same-period comparison is the primary metric; the legacy trend object is
   // only a fallback while old cached payloads drain out.
-  const delta = comparison != null ? Number(comparison.amountDelta) : (trend?.amount ?? 0);
+  const delta = comparison != null ? comparison.amountDelta : (trend?.amount ?? "0");
   const percentValue = comparison != null ? comparison.percent : (trend?.percent ?? 0);
-  const isIncrease = delta > 0;
-  const isDecrease = delta < 0;
+  const deltaComparison = compare(delta, "0");
+  const isIncrease = deltaComparison > 0;
+  const isDecrease = deltaComparison < 0;
   const absPercent = Math.abs(percentValue).toFixed(1);
-  const amountLabel = formatCurrencyAmount(Math.abs(delta), currencySymbol, locale);
+  const amountLabel = formatCurrencyAmount(abs(delta), currencySymbol, locale);
   const comparisonMode = comparison?.mode ?? "same_period";
   const comparisonValues = {
     period: periodLabel ?? "",
@@ -63,12 +65,12 @@ export function StatsHeader({
   };
   const comparisonText =
     comparisonMode === "same_period"
-      ? delta === 0
+      ? deltaComparison === 0
         ? t("samePeriodEqual", comparisonValues)
         : isIncrease
           ? t("samePeriodMore", comparisonValues)
           : t("samePeriodLess", comparisonValues)
-      : delta === 0
+      : deltaComparison === 0
         ? t("fullPeriodEqual", comparisonValues)
         : isIncrease
           ? t("fullPeriodMore", comparisonValues)

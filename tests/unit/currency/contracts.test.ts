@@ -16,9 +16,9 @@ describe("currency contracts exports", () => {
     expect(typeof result.converted).toBe("string");
   });
 
-  it("exports BatchConversionItem with number amount (UI-input boundary)", () => {
-    const item: BatchConversionItem = { amount: 100, currency: "USD" };
-    expect(typeof item.amount).toBe("number");
+  it("exports BatchConversionItem with decimal-string amount", () => {
+    const item: BatchConversionItem = { amount: "100", currency: "USD" };
+    expect(typeof item.amount).toBe("string");
     expect(item.date).toBeUndefined();
   });
 

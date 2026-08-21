@@ -13,9 +13,10 @@ import {
 // Mock the exchange rate service
 vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   const rateBook = {
-    convert: vi.fn().mockImplementation((amount: number) => {
-      // Mock: 1 USD = 7 CNY
-      return Promise.resolve(String(amount * 7));
+    getRates: vi.fn().mockResolvedValue({
+      base: "USD",
+      date: "2026-01-01",
+      rates: { CNY: 7 },
     }),
     convertBatch: vi.fn(),
   };
@@ -71,9 +72,14 @@ describe("Ledger Entry Update Action", () => {
   it("should update description correctly", async () => {
     const newDescription = "Updated description";
 
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      description: newDescription,
-    });
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        description: newDescription,
+      },
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
     expect(result.description).toBe(newDescription);
@@ -91,27 +97,37 @@ describe("Ledger Entry Update Action", () => {
 
   it("should update other fields correctly", async () => {
     const changes = {
-      amount: 200,
+      amount: "200",
       itemName: "Updated Item",
       currency: "USD",
     };
 
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, changes);
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      changes,
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
-    expect(result.amount).toBe("200.00");
+    expect(result.amount).toBe("200.000");
     expect(result.itemName).toBe(changes.itemName);
     expect(result.currency).toBe(changes.currency);
   });
 
   it("should handle partial updates", async () => {
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      itemName: "Only Name Changed",
-    });
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        itemName: "Only Name Changed",
+      },
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
     expect(result.itemName).toBe("Only Name Changed");
-    expect(result.amount).toBe("100.00"); // Original value
+    expect(result.amount).toBe("100.000"); // Original value
   });
 
   it("should recalculate convertedAmount and exchangeRate when currency changes", async () => {
@@ -126,17 +142,22 @@ describe("Ledger Entry Update Action", () => {
       .where(eq(ledgers.id, testLedgerId));
 
     // Update entry to use USD (different from main currency)
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      currency: "USD",
-      amount: 100,
-    });
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        currency: "USD",
+        amount: "100",
+      },
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
     expect(result.currency).toBe("USD");
-    expect(result.amount).toBe("100.00");
+    expect(result.amount).toBe("100.000");
     // Mock converts at 1 USD = 7 CNY
-    expect(result.convertedAmount).toBe("700.00");
-    expect(result.exchangeRate).toBe("7.000000");
+    expect(result.convertedAmount).toBe("700.000");
+    expect(result.exchangeRate).toBe("7.000000000000");
   });
 
   it("should recalculate when amount changes with different currency", async () => {
@@ -151,22 +172,32 @@ describe("Ledger Entry Update Action", () => {
       .where(eq(ledgers.id, testLedgerId));
 
     // First set currency to USD and amount
-    await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      currency: "USD",
-      amount: 100,
-    });
+    await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        currency: "USD",
+        amount: "100",
+      },
+      crypto.randomUUID()
+    );
 
     // Then update amount - should trigger recalculation
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      amount: 200,
-    });
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        amount: "200",
+      },
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
-    expect(result.amount).toBe("200.00");
+    expect(result.amount).toBe("200.000");
     expect(result.currency).toBe("USD"); // Should retain USD
     // Mock converts at 1 USD = 7 CNY, so 200 USD = 1400 CNY
-    expect(result.convertedAmount).toBe("1400.00");
-    expect(result.exchangeRate).toBe("7.000000");
+    expect(result.convertedAmount).toBe("1400.000");
+    expect(result.exchangeRate).toBe("7.000000000000");
   });
 
   it("should set convertedAmount equal to amount when currency matches main currency", async () => {
@@ -181,16 +212,21 @@ describe("Ledger Entry Update Action", () => {
       .where(eq(ledgers.id, testLedgerId));
 
     // Update entry to use CNY (same as main currency)
-    const result = await updateLedgerEntryAction(testLedgerId, testEntryId, {
-      currency: "CNY",
-      amount: 100,
-    });
+    const result = await updateLedgerEntryAction(
+      testLedgerId,
+      testEntryId,
+      {
+        currency: "CNY",
+        amount: "100",
+      },
+      crypto.randomUUID()
+    );
 
     expect(result).toBeDefined();
     expect(result.currency).toBe("CNY");
-    expect(result.amount).toBe("100.00");
+    expect(result.amount).toBe("100.000");
     // When currencies match, convertedAmount should equal amount
-    expect(result.convertedAmount).toBe("100.00");
+    expect(result.convertedAmount).toBe("100.000");
     expect(result.exchangeRate).toBe("1");
   });
 });

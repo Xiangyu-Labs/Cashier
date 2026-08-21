@@ -48,7 +48,7 @@ export function useConvertedAmount(
 
   const { data, isLoading, error } = useQuery<ConvertCurrencyResult>({
     queryKey: queryKeys.convert(
-      amount,
+      String(amount),
       normalizedFrom ?? "__missing_from__",
       normalizedTo ?? "__missing_to__",
       effectiveDate
@@ -58,7 +58,13 @@ export function useConvertedAmount(
         return { converted: String(amount) };
       }
 
-      return convertCurrencyAction(ledgerId, amount, normalizedFrom, normalizedTo, requestedDate);
+      return convertCurrencyAction(
+        ledgerId,
+        String(amount),
+        normalizedFrom,
+        normalizedTo,
+        requestedDate
+      );
     },
     enabled: canConvert,
     // Historical dates are immutable; only today's "live" conversion may

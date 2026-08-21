@@ -63,9 +63,7 @@ export function StatsContentView({
     rangeType === "week" ? t("lastWeek") : rangeType === "month" ? t("lastMonth") : t("lastYear");
   const statsTrend = stats?.summary.trend;
   const trend =
-    statsTrend == null
-      ? undefined
-      : { percent: statsTrend.percent, amount: Number(statsTrend.amount) };
+    statsTrend == null ? undefined : { percent: statsTrend.percent, amount: statsTrend.amount };
   const comparison = stats?.summary.comparison;
 
   if (isError && stats == null) {
@@ -107,8 +105,8 @@ export function StatsContentView({
         periodOffset={periodOffset}
         setPeriodOffset={onPeriodOffsetChange}
         label={label}
-        totalExpense={Number(stats?.summary.total ?? 0)}
-        averageDaily={stats?.summary.dailyAverage ?? 0}
+        totalExpense={stats?.summary.total ?? "0"}
+        averageDaily={stats?.summary.dailyAverage ?? "0"}
         currencySymbol={currencySymbol}
         periodLabel={periodLabel}
         {...(comparison !== undefined ? { comparison } : {})}
@@ -186,12 +184,12 @@ export function StatsContentView({
           id: category.id,
           name: category.name,
           icon: category.icon,
-          totalConverted: Number(category.totalConverted),
+          totalConverted: category.totalConverted,
           percent: category.percent,
           count: category.count,
           trend: {
             percent: category.trend.percent,
-            amount: Number(category.trend.amount),
+            amount: category.trend.amount,
           },
         }))}
         isLoading={isLoading}

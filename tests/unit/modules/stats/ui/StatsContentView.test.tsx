@@ -26,7 +26,7 @@ const statsFixture: EnhancedStatsDto = {
     total: "120",
     currency: "CNY",
     trend: { percent: 100, amount: "60" },
-    dailyAverage: 20,
+    dailyAverage: "20",
     comparison: {
       mode: "same_period",
       from: "2026-07-01",
@@ -40,7 +40,7 @@ const statsFixture: EnhancedStatsDto = {
   chart: [],
   heatmap: {
     days: [],
-    stats: { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 },
+    stats: { minAmount: "0", maxAmount: "0", avgAmount: "0", p80Amount: "0" },
   },
 };
 

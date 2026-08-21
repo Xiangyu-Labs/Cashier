@@ -7,6 +7,7 @@
 
 import type { CalendarHeatmapStats, HeatmapLevel } from "../types";
 import { formatCompactNumberAmount } from "@/lib/format/currency";
+import Decimal from "decimal.js";
 
 // Heatmap color configuration using CSS custom property tokens
 const HEATMAP_TOKEN_COLORS: Record<HeatmapLevel, string> = {
@@ -22,16 +23,17 @@ const HEATMAP_TOKEN_COLORS: Record<HeatmapLevel, string> = {
  * Get heatmap level (0-5) based on amount and stats
  * Uses P80 as the upper bound to avoid extreme values compressing the scale
  */
-export function getHeatmapLevel(amount: number, stats: CalendarHeatmapStats): HeatmapLevel {
-  if (amount <= 0) return 0;
+export function getHeatmapLevel(amount: string, stats: CalendarHeatmapStats): HeatmapLevel {
+  const value = new Decimal(amount);
+  if (value.lte(0)) return 0;
 
   // Use P80 as the effective max to handle outliers
-  const effectiveMax = Math.max(stats.p80Amount, stats.avgAmount * 2);
+  const effectiveMax = Decimal.max(stats.p80Amount, new Decimal(stats.avgAmount).times(2));
 
   // Guard against division by zero
-  if (effectiveMax <= 0) return 0;
+  if (effectiveMax.lte(0)) return 0;
 
-  const ratio = Math.min(amount / effectiveMax, 1);
+  const ratio = Decimal.min(value.dividedBy(effectiveMax), 1).toNumber();
 
   if (ratio < 0.1) return 1;
   if (ratio < 0.25) return 2;
@@ -61,6 +63,6 @@ export function getHeatmapLegend() {
 /**
  * Format amount for display in cell (abbreviated, localized currency symbol)
  */
-export function formatCellAmount(amount: number, _currency = "CNY", locale = "zh-CN"): string {
+export function formatCellAmount(amount: string, _currency = "CNY", locale = "zh-CN"): string {
   return formatCompactNumberAmount(amount, locale);
 }

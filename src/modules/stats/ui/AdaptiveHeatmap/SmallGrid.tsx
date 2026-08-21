@@ -115,7 +115,7 @@ export function SmallGridHeatmap({
           {weeks.map((week) => (
             <div key={week.weekIndex} className="flex flex-col gap-[2px] flex-shrink-0">
               {week.days.map(({ date, dayData }) => {
-                const amount = dayData?.totalAmount ?? 0;
+                const amount = dayData?.totalAmount ?? "0";
                 const count = dayData?.entryCount ?? 0;
                 const level = getHeatmapLevel(amount, stats);
                 const inRange = range != null && date >= range.startDate && date <= range.endDate;

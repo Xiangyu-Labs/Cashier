@@ -25,6 +25,12 @@ import {
 } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
 
+export class LedgerMainCurrencyChangedError extends ConflictError {
+  constructor() {
+    super("Ledger currency changed before the entry edit");
+  }
+}
+
 function activeDocumentWhere(ledgerId: string, sourceDocumentId: string) {
   return and(
     eq(sourceDocuments.ledgerId, ledgerId),
@@ -1484,6 +1490,13 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
 
   async replaceActive(input) {
     return db.transaction(async (tx) => {
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      if (
+        input.expectedMainCurrency !== undefined &&
+        ledger.mainCurrency !== input.expectedMainCurrency
+      ) {
+        throw new LedgerMainCurrencyChangedError();
+      }
       const document = await lockSourceDocumentForUpdate(
         tx,
         input.ledgerId,
@@ -1574,41 +1587,37 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       if (uniqueIds.size !== input.updates.length) {
         throw new ValidationError("A ledger entry may only be recalculated once per transaction");
       }
-      for (const update of input.updates) {
-        const active = await tx
-          .select({ id: ledgerEntries.id })
-          .from(ledgerEntries)
-          .innerJoin(
-            sourceDocuments,
-            and(
-              eq(sourceDocuments.ledgerId, ledgerEntries.ledgerId),
-              eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
-              eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId)
-            )
+      const changes = JSON.stringify(
+        input.updates.map((update) => ({
+          id: update.ledgerEntryId,
+          converted_amount: update.convertedAmount,
+          exchange_rate: update.exchangeRate,
+        }))
+      );
+      const updated = await tx.execute(sql`
+        WITH changes AS (
+          SELECT * FROM jsonb_to_recordset(${changes}::jsonb) AS value(
+            id uuid,
+            converted_amount numeric,
+            exchange_rate numeric
           )
-          .where(
-            and(
-              eq(ledgerEntries.ledgerId, input.ledgerId),
-              eq(ledgerEntries.id, update.ledgerEntryId),
-              isNull(ledgerEntries.deletedAt),
-              isNull(sourceDocuments.deletedAt)
-            )
-          )
-          .then((rows) => rows[0]);
-        if (active == null) throw new NotFoundError("Active ledger entry projection");
-        await tx
-          .update(ledgerEntries)
-          .set({
-            convertedAmount: update.convertedAmount,
-            exchangeRate: update.exchangeRate,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(ledgerEntries.ledgerId, input.ledgerId),
-              eq(ledgerEntries.id, update.ledgerEntryId)
-            )
-          );
+        )
+        UPDATE ledger_entries AS entry
+        SET converted_amount = changes.converted_amount,
+            exchange_rate = changes.exchange_rate,
+            updated_at = ${new Date()}
+        FROM changes, source_documents AS document
+        WHERE entry.id = changes.id
+          AND entry.ledger_id = ${input.ledgerId}
+          AND entry.deleted_at IS NULL
+          AND document.id = entry.source_document_id
+          AND document.ledger_id = entry.ledger_id
+          AND document.active_revision_id = entry.source_document_revision_id
+          AND document.deleted_at IS NULL
+        RETURNING entry.id
+      `);
+      if (updated.rows.length !== input.updates.length) {
+        throw new NotFoundError("Active ledger entry projection");
       }
       return input.updates.length;
     });

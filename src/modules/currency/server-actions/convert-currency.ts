@@ -13,7 +13,7 @@ import { serverComposition } from "@/application/server-composition-root";
 export const convertCurrencyAction = withLedgerAccess(
   async (
     _ledgerId: string,
-    amount: number,
+    amount: string,
     from: string,
     to: string,
     date?: string
@@ -39,7 +39,7 @@ export const batchConvertCurrencyAction = withLedgerAccess(
 
     const results = await convertAmountsBatch(
       parsed.items.map((item) => ({
-        amount: String(item.amount),
+        amount: item.amount,
         fromCurrency: item.currency,
         toCurrency: parsed.targetCurrency,
         ...(item.date != null ? { date: item.date } : {}),

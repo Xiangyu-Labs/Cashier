@@ -8,8 +8,8 @@ const baseProps = {
   periodOffset: 0,
   setPeriodOffset: vi.fn(),
   label: "2026年8月",
-  totalExpense: 0,
-  averageDaily: 0,
+  totalExpense: "0",
+  averageDaily: "0",
   currencySymbol: "CNY",
   periodLabel: "上月",
 };

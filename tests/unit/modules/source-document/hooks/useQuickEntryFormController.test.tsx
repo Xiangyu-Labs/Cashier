@@ -108,7 +108,7 @@ describe("useQuickEntryFormController", () => {
 
     expect(mutate).toHaveBeenCalledWith({
       categoryId: "cat-1",
-      amount: 12.34,
+      amount: "12.34",
       currency: "CNY",
       entryDate: "2026-07-20",
     });

@@ -31,6 +31,7 @@ async function assertCategoryBelongsToLedger(
 export async function createLedgerEntryWithConversion(
   input: {
     ledgerId: string;
+    ledgerEntryId?: string;
     amount: string;
     currency?: string;
     itemName: string;

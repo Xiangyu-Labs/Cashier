@@ -71,10 +71,10 @@ describe("target Settings currency workflow", () => {
     });
 
     expect(updated.settings.mainCurrency).toBe("USD");
-    expect(entry?.amount).toBe("80.00");
+    expect(entry?.amount).toBe("80.000");
     expect(entry?.currency).toBe("CNY");
-    expect(entry?.convertedAmount).toBe("10.00");
-    expect(entry?.exchangeRate).toBe("0.125000");
+    expect(entry?.convertedAmount).toBe("10.000");
+    expect(entry?.exchangeRate).toBe("0.125000000000");
   });
 
   it("recalculates both active and pending revision entries", async () => {
@@ -136,8 +136,8 @@ describe("target Settings currency workflow", () => {
     const entries = await db.query.ledgerEntries.findMany({
       where: eq(ledgerEntries.ledgerId, ledgerId),
     });
-    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.00", "5.00"]);
-    expect(entries.every((entry) => entry.exchangeRate === "0.125000")).toBe(true);
+    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["10.000", "5.000"]);
+    expect(entries.every((entry) => entry.exchangeRate === "0.125000000000")).toBe(true);
   });
 
   it("allows other setting changes when entries exist", async () => {
@@ -193,7 +193,7 @@ describe("target Settings currency workflow", () => {
 
     await expect(
       updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "ZZZ" } })
-    ).rejects.toThrow("Unsupported currency conversion");
+    ).rejects.toThrow("Currency not found: ZZZ");
 
     const [ledger, entry] = await Promise.all([
       getTestDb().query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }),
@@ -202,8 +202,8 @@ describe("target Settings currency workflow", () => {
       }),
     ]);
     expect(ledger?.mainCurrency).toBe("CNY");
-    expect(entry?.convertedAmount).toBe("80.00");
-    expect(entry?.exchangeRate).toBe("1.000000");
+    expect(entry?.convertedAmount).toBe("80.000");
+    expect(entry?.exchangeRate).toBe("1.000000000000");
   });
 
   it("rolls back the entire main-currency change when a historical rate is missing", async () => {
@@ -248,8 +248,8 @@ describe("target Settings currency workflow", () => {
       db.query.ledgerEntries.findMany({ where: eq(ledgerEntries.ledgerId, ledgerId) }),
     ]);
     expect(storedLedger?.mainCurrency).toBe("CNY");
-    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.00", "80.00"]);
-    expect(entries.every((entry) => entry.exchangeRate === "1.000000")).toBe(true);
+    expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.000", "80.000"]);
+    expect(entries.every((entry) => entry.exchangeRate === "1.000000000000")).toBe(true);
   });
 });
 

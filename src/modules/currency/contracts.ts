@@ -5,7 +5,7 @@ export interface ConvertCurrencyResult {
 }
 
 export interface BatchConversionItem {
-  amount: number; // UI-input boundary: keeps number from client
+  amount: string;
   currency: string;
   date?: string;
 }

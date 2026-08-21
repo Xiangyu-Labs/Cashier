@@ -283,7 +283,7 @@ describe("getEnhancedStatsQuery", () => {
 
     expect(result.summary.total).toBe("100");
     expect(result.heatmap.days).toHaveLength(1);
-    expect(result.heatmap.days[0]?.totalAmount).toBe(100);
+    expect(result.heatmap.days[0]?.totalAmount).toBe("100");
   });
 
   it("excludes entries when rates are missing and handles null currency", async () => {
@@ -401,7 +401,7 @@ describe("getEnhancedStatsQuery", () => {
       compareRange: { from: "2024-05-01", to: "2024-05-31" },
     });
 
-    expect(result.heatmap.stats.p80Amount).toBe(40);
+    expect(result.heatmap.stats.p80Amount).toBe("40");
   });
 
   it("aggregates multiple entries with the same date, category, and currency", async () => {
@@ -510,11 +510,11 @@ describe("getEnhancedStatsQuery", () => {
     // Strict numeric type assertion on heatmap entry count
     expect(typeof result.heatmap.days[0]!.entryCount).toBe("number");
     expect(result.heatmap.days[0]?.entryCount).toBe(5); // 3 + 2 across aggregate groups
-    expect(result.heatmap.days[0]?.totalAmount).toBe(800);
+    expect(result.heatmap.days[0]?.totalAmount).toBe("800");
     expect(result.heatmap.days[0]?.currencies).toEqual(["CNY"]);
 
-    expect(result.heatmap.stats.minAmount).toBe(800);
-    expect(result.heatmap.stats.maxAmount).toBe(800);
+    expect(result.heatmap.stats.minAmount).toBe("800");
+    expect(result.heatmap.stats.maxAmount).toBe("800");
   });
 
   it("keeps full numeric precision beyond Number.MAX_SAFE_INTEGER", async () => {

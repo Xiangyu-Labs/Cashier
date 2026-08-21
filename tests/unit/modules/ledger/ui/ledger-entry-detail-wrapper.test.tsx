@@ -31,8 +31,10 @@ vi.mock("@/modules/ledger/server-actions/get-entry", () => ({
 }));
 
 vi.mock("@/modules/ledger/server-actions/entries", () => ({
-  updateLedgerEntryAction: (...args: unknown[]) => updateLedgerEntryAction(...args),
-  deleteLedgerEntryAction: (...args: unknown[]) => deleteLedgerEntryAction(...args),
+  updateLedgerEntryAction: (...args: unknown[]) =>
+    updateLedgerEntryAction(...args, crypto.randomUUID()),
+  deleteLedgerEntryAction: (...args: unknown[]) =>
+    deleteLedgerEntryAction(...args, crypto.randomUUID()),
 }));
 
 vi.mock("@/modules/ledger/ui/LedgerEntryDetailModal", () => ({

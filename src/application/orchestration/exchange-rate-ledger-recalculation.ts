@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { AppError } from "@/lib/errors";
 import { serverComposition } from "@/application/server-composition-root";
 import {
   claimExchangeRateRecalculations,
@@ -9,9 +9,7 @@ import {
   failExchangeRateRecalculation,
   type ClaimedExchangeRateRecalculation,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
-import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { ledgers } from "@/persistence";
 import type { ExchangeRatesStoredEvent } from "@/modules/currency/application/ports";
 import { registerExchangeRatesStoredHandler } from "@/modules/currency/events";
 
@@ -76,13 +74,6 @@ export async function runBoundedExchangeRateRecalculation(now = new Date()): Pro
     return;
   }
 
-  const ledgerIds = [...new Set(claimed.map((job) => job.ledgerId))];
-  const ledgerRows = await db.query.ledgers.findMany({
-    where: inArray(ledgers.id, ledgerIds),
-    columns: { id: true, mainCurrency: true },
-  });
-  const mainCurrencyByLedger = new Map(ledgerRows.map((row) => [row.id, row.mainCurrency]));
-
   const groups = new Map<string, ClaimedExchangeRateRecalculation[]>();
   for (const job of claimed) {
     const group = groups.get(job.ledgerId) ?? [];
@@ -92,32 +83,19 @@ export async function runBoundedExchangeRateRecalculation(now = new Date()): Pro
 
   await runWithConcurrency([...groups.values()], MAX_CONCURRENT_LEDGERS, async (jobs) => {
     for (const job of jobs) {
-      await processRecalculationJob(job, mainCurrencyByLedger.get(job.ledgerId) ?? null, now);
+      await processRecalculationJob(job, now);
     }
   });
 }
 
 async function processRecalculationJob(
   job: ClaimedExchangeRateRecalculation,
-  mainCurrency: string | null | undefined,
   now: Date
 ): Promise<void> {
-  if (mainCurrency == null) {
-    // The ledger was deleted after enqueue; the cascade already removed the
-    // job, and a stale claim is simply acknowledged.
-    await completeExchangeRateRecalculation({
-      rateDate: job.rateDate,
-      ledgerId: job.ledgerId,
-      claimToken: job.claimToken,
-    });
-    return;
-  }
-
   try {
     const { recalculateEntriesConvertedAmountForDate } = await loadRecalculateService();
     await recalculateEntriesConvertedAmountForDate(
       job.ledgerId,
-      mainCurrency,
       job.rateDate,
       serverComposition.currencies
     );
@@ -128,7 +106,11 @@ async function processRecalculationJob(
     });
   } catch (error) {
     const errorCode =
-      error instanceof Error && error.name !== "" ? error.name : "RecalculationFailed";
+      error instanceof AppError
+        ? error.code
+        : error instanceof Error && error.name !== ""
+          ? error.name
+          : "RecalculationFailed";
     const outcome = await failExchangeRateRecalculation({
       rateDate: job.rateDate,
       ledgerId: job.ledgerId,

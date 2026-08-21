@@ -21,3 +21,16 @@ export function withLedgerAccess<TArgs extends unknown[], TReturn>(
     return action(ledgerId, ...args);
   };
 }
+
+export function withLedgerAccessContext<TArgs extends unknown[], TReturn>(
+  action: (
+    access: Awaited<ReturnType<typeof requireLedgerAccess>>,
+    ledgerId: string,
+    ...args: TArgs
+  ) => Promise<TReturn>
+): (ledgerId: string, ...args: TArgs) => Promise<TReturn> {
+  return async (ledgerId: string, ...args: TArgs) => {
+    const access = await requireLedgerAccess(ledgerId);
+    return action(access, ledgerId, ...args);
+  };
+}

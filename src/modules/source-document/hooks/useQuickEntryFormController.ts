@@ -18,7 +18,7 @@ interface UseQuickEntryFormControllerParams {
 
 interface CreateQuickEntryPayload {
   categoryId: string;
-  amount: number;
+  amount: string;
   currency: string;
   itemName?: string;
   entryDate: string;
@@ -82,7 +82,7 @@ export function useQuickEntryFormController({
     const nextItemName = itemName !== "" ? itemName : undefined;
     mutation.mutate({
       categoryId: selectedCategoryId,
-      amount: parsedAmount,
+      amount,
       currency,
       entryDate,
       ...(nextItemName !== undefined ? { itemName: nextItemName } : {}),

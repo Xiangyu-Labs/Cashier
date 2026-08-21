@@ -5,17 +5,18 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "@/modules/workspace/ui/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
 import { AmountText } from "@/modules/currency/ui";
+import Decimal from "decimal.js";
 
 interface CategoryStat {
   id: string | null;
   name: string;
   icon: string | null;
-  totalConverted: number; // Converted Amount
+  totalConverted: string; // Converted Amount
   percent: number; // % of total
   count: number;
   trend?: {
     percent: number;
-    amount: number;
+    amount: string;
   };
 }
 
@@ -70,7 +71,7 @@ export function StatsRanking({
   }
 
   // Sort descending by converted amount
-  const sorted = [...data].sort((a, b) => b.totalConverted - a.totalConverted);
+  const sorted = data.toSorted((a, b) => new Decimal(b.totalConverted).cmp(a.totalConverted));
 
   return (
     <div className="space-y-5 px-2">
@@ -135,12 +136,12 @@ export function StatsRanking({
                       <span
                         className={cn(
                           "flex items-center gap-0.5",
-                          cat.trend.amount > 0 ? "text-destructive" : "text-primary"
+                          new Decimal(cat.trend.amount).gt(0) ? "text-destructive" : "text-primary"
                         )}
                       >
                         <AmountText variant="secondary">
                           {formatCurrencyAmount(
-                            Math.abs(cat.trend.amount),
+                            new Decimal(cat.trend.amount).abs().toFixed(),
                             currencySymbol,
                             locale,
                             {

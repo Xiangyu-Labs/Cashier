@@ -7,14 +7,14 @@
 
 export interface CalendarDayData {
   date: string; // yyyy-MM-dd
-  totalAmount: number;
+  totalAmount: string;
   entryCount: number;
   currencies: string[];
 }
 
 export interface CalendarHeatmapStats {
-  minAmount: number;
-  maxAmount: number;
-  avgAmount: number;
-  p80Amount: number; // 80th percentile for color mapping
+  minAmount: string;
+  maxAmount: string;
+  avgAmount: string;
+  p80Amount: string; // 80th percentile for color mapping
 }

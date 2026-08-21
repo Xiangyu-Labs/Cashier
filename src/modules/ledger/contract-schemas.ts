@@ -9,6 +9,7 @@ import {
 import { MAX_BATCH_SIZE } from "@/lib/batch-ids";
 import { isValidTimeZone } from "@/lib/date-utils";
 import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
+import { compare, DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -28,6 +29,11 @@ const currencyCodeSchema = z.preprocess(
 const optionalCurrencyCodeSchema = currencyCodeSchema.optional();
 const nullableCurrencyCodeSchema = currencyCodeSchema.nullable().optional();
 const aiLanguageSchema = z.string().min(2).max(35);
+const positiveDecimalSchema = z
+  .string()
+  .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+  .transform(normalize)
+  .refine((value) => compare(value, "0") > 0, "Amount must be positive");
 const optionalQueryNumberSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z
@@ -119,7 +125,7 @@ export const entryCategoryIdSchema = uuidSchema;
 export const serviceCredentialIdSchema = uuidSchema;
 
 export const createLedgerEntryInputSchema = strictObjectSchema({
-  amount: z.number().positive(),
+  amount: positiveDecimalSchema,
   currency: optionalCurrencyCodeSchema,
   itemName: z.string().trim().min(1).max(200),
   categoryId: uuidSchema.optional(),
@@ -129,14 +135,7 @@ export const createLedgerEntryInputSchema = strictObjectSchema({
 
 export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
-  amount: z
-    .union([
-      z.number().positive(),
-      z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-        message: "Amount must be a positive number",
-      }),
-    ])
-    .optional(),
+  amount: positiveDecimalSchema.optional(),
   currency: nullableCurrencyCodeSchema,
   itemName: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),
@@ -145,7 +144,7 @@ export const updateLedgerEntryInputSchema = nonEmptyStrictObjectSchema({
 export const batchUpdateLedgerEntriesInputSchema = nonEmptyStrictObjectSchema({
   categoryId: uuidSchema.nullable().optional(),
   currency: nullableCurrencyCodeSchema,
-  amount: z.number().positive().optional(),
+  amount: positiveDecimalSchema.optional(),
   description: z.string().max(500).nullable().optional(),
   itemName: z.string().trim().min(1).max(200).optional(),
 });

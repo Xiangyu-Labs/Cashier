@@ -149,7 +149,7 @@ describe("target upper workflows", () => {
     expect(stream.items).toHaveLength(1);
     expect(stream.items[0]).toMatchObject({
       id: activeEntry!.id,
-      amount: "12.50",
+      amount: "12.500",
       currency: "CNY",
       categoryId: category!.id,
     });
@@ -189,18 +189,18 @@ describe("target upper workflows", () => {
         {
           id: ids[0],
           categoryId: category!.id,
-          amount: "12.34",
+          amount: "12.340",
           currency: "USD",
           itemName: "Meal",
           description: null,
-          convertedAmount: "98.72",
-          exchangeRate: "8.000000",
+          convertedAmount: "98.720",
+          exchangeRate: "8.000000000000",
           createdAt: transactionAt,
         },
         {
           id: ids[1],
           categoryId: null,
-          amount: "-1.11",
+          amount: "-1.110",
           currency: "USD",
           itemName: "Order discount",
           description: "bill-level discount",
@@ -211,7 +211,7 @@ describe("target upper workflows", () => {
         {
           id: ids[2],
           categoryId: null,
-          amount: "0.50",
+          amount: "0.500",
           currency: "USD",
           itemName: "Service fee",
           description: "bill-level fee",
@@ -230,23 +230,23 @@ describe("target upper workflows", () => {
         expect.objectContaining({
           id: ids[0],
           categoryId: category!.id,
-          amount: "12.34",
+          amount: "12.340",
           currency: "USD",
-          convertedAmount: "98.72",
-          exchangeRate: "8.000000",
+          convertedAmount: "98.720",
+          exchangeRate: "8.000000000000",
           sourceDocument: expect.objectContaining({ entryDate: "2026-07-14" }),
         }),
-        expect.objectContaining({ id: ids[1], itemName: "Order discount", amount: "-1.11" }),
-        expect.objectContaining({ id: ids[2], itemName: "Service fee", amount: "0.50" }),
+        expect.objectContaining({ id: ids[1], itemName: "Order discount", amount: "-1.110" }),
+        expect.objectContaining({ id: ids[2], itemName: "Service fee", amount: "0.500" }),
       ])
     );
     expect(detail).toMatchObject({
       id: ids[0],
       category: { id: category!.id, name: "Food" },
-      amount: "12.34",
+      amount: "12.340",
       currency: "USD",
-      convertedAmount: "98.72",
-      exchangeRate: "8.000000",
+      convertedAmount: "98.720",
+      exchangeRate: "8.000000000000",
       sourceDocument: { id: created.sourceDocumentId, entryDate: "2026-07-14" },
     });
     expect(detail?.createdAt).toBe(transactionAt);
@@ -278,8 +278,8 @@ describe("target upper workflows", () => {
       orderBy: (entries, { asc }) => [asc(entries.position)],
     });
     expect(afterRollback).toMatchObject({
-      convertedAmount: "98.72",
-      exchangeRate: "8.000000",
+      convertedAmount: "98.720",
+      exchangeRate: "8.000000000000",
       sourceDocumentRevisionId: created.revisionId,
     });
     expect(activeDocument?.activeRevisionId).toBe(created.revisionId);
@@ -378,10 +378,10 @@ describe("target upper workflows", () => {
       ),
     });
 
-    expect(updated).toMatchObject({ id: original!.id, amount: "18.00" });
+    expect(updated).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(document?.activeRevisionId).not.toBe(created.revisionId);
     expect(revisions).toHaveLength(2);
-    expect(active).toMatchObject({ id: original!.id, amount: "18.00" });
+    expect(active).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(archived).toHaveLength(1);
     expect(archived[0]?.deletedAt).not.toBeNull();
   });
@@ -428,8 +428,8 @@ describe("target upper workflows", () => {
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
     const detail = await getLedgerEntryDetail(original!.id, ledgerId);
     const stats = await calculateLedgerStats(ledgerId, undefined, undefined, "CNY");
-    expect(stream.items[0]).toMatchObject({ id: original!.id, amount: "18.00" });
-    expect(detail).toMatchObject({ id: original!.id, amount: "18.00" });
+    expect(stream.items[0]).toMatchObject({ id: original!.id, amount: "18.000" });
+    expect(detail).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(stats.convertedTotal).toEqual({ total: "18", currency: "CNY" });
 
     await expect(

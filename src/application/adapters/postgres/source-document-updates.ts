@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import type {
   LedgerProjectionEntryContract,
@@ -143,6 +144,7 @@ async function prepareDateReestimate(
 async function updateProjectionConversions(
   tx: QueryExecutor,
   ledgerId: string,
+  mainCurrency: string,
   entries: readonly ProjectionEntrySnapshot[],
   conversions: readonly { convertedAmount: string; exchangeRate: string }[]
 ): Promise<void> {
@@ -154,8 +156,8 @@ async function updateProjectionConversions(
       source_document_revision_id: entry.sourceDocumentRevisionId,
       amount: entry.amount,
       currency: entry.currency,
-      converted_amount: round(conversions[index]!.convertedAmount, 2),
-      exchange_rate: round(conversions[index]!.exchangeRate, 6),
+      converted_amount: roundToCurrency(conversions[index]!.convertedAmount, mainCurrency),
+      exchange_rate: round(conversions[index]!.exchangeRate, 12),
     }))
   );
   const updatedEntries = await tx.execute(sql`
@@ -189,7 +191,8 @@ async function updateProjectionConversions(
 
 function toManualProjectionEntry(
   entry: ProjectionEntrySnapshot,
-  conversion: { convertedAmount: string; exchangeRate: string }
+  conversion: { convertedAmount: string; exchangeRate: string },
+  mainCurrency: string
 ): LedgerProjectionEntryContract {
   return {
     id: entry.id,
@@ -198,8 +201,8 @@ function toManualProjectionEntry(
     currency: entry.currency,
     itemName: entry.itemName,
     description: entry.description,
-    convertedAmount: round(conversion.convertedAmount, 2),
-    exchangeRate: round(conversion.exchangeRate, 6),
+    convertedAmount: roundToCurrency(conversion.convertedAmount, mainCurrency),
+    exchangeRate: round(conversion.exchangeRate, 12),
     createdAt: entry.createdAt.toISOString(),
   };
 }
@@ -285,7 +288,10 @@ export async function saveSourceDocumentChangesAtomically(
     return {
       id: entry.id,
       categoryId: patch?.categoryId !== undefined ? patch.categoryId : entry.categoryId,
-      amount: patch?.amount !== undefined ? round(String(patch.amount), 2) : round(entry.amount, 2),
+      amount: roundToCurrency(
+        patch?.amount !== undefined ? String(patch.amount) : entry.amount,
+        normalizeCurrency(patch?.currency !== undefined ? patch.currency : entry.currency)
+      ),
       currency: patch?.currency !== undefined ? patch.currency : entry.currency,
       itemName: patch?.itemName !== undefined ? patch.itemName : entry.itemName,
       description: patch?.description !== undefined ? patch.description : entry.description,
@@ -303,8 +309,8 @@ export async function saveSourceDocumentChangesAtomically(
   );
   const projection = nextEntries.map((entry, index) => ({
     ...entry,
-    convertedAmount: round(conversions[index]!.convertedAmount, 2),
-    exchangeRate: round(conversions[index]!.exchangeRate, 6),
+    convertedAmount: roundToCurrency(conversions[index]!.convertedAmount, ledger.mainCurrency),
+    exchangeRate: round(conversions[index]!.exchangeRate, 12),
   }));
 
   const activeRevisionId = await db.transaction(async (tx) => {
@@ -380,7 +386,13 @@ async function updateNonManualDocumentWithDate(input: {
     if (projectionEntriesChanged(input.plan.initialEntries, currentEntries)) {
       throw new ConflictError("Ledger entries changed before the date update");
     }
-    await updateProjectionConversions(tx, input.ledgerId, currentEntries, input.plan.conversions);
+    await updateProjectionConversions(
+      tx,
+      input.ledgerId,
+      input.plan.mainCurrency,
+      currentEntries,
+      input.plan.conversions
+    );
 
     return tx
       .update(sourceDocuments)
@@ -458,8 +470,11 @@ export async function updateSourceDocument({
       expectedProjection: plan.initialEntries.map(toFingerprint),
       projectionConversions: plan.initialEntries.map((entry, index) => ({
         ledgerEntryId: entry.id,
-        convertedAmount: round(plan.conversions[index]!.convertedAmount, 2),
-        exchangeRate: round(plan.conversions[index]!.exchangeRate, 6),
+        convertedAmount: roundToCurrency(
+          plan.conversions[index]!.convertedAmount,
+          plan.mainCurrency
+        ),
+        exchangeRate: round(plan.conversions[index]!.exchangeRate, 12),
       })),
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.entryDate !== undefined ? { entryDate: data.entryDate } : {}),
@@ -467,7 +482,7 @@ export async function updateSourceDocument({
         const conversion = conversionByEntryId.get(entry.id);
         if (conversion == null)
           throw new ConflictError("Ledger entries changed before the date update");
-        return toManualProjectionEntry(entry, conversion);
+        return toManualProjectionEntry(entry, conversion, plan.mainCurrency);
       }),
     });
     return { sourceDocumentId, updated: true };
@@ -600,7 +615,13 @@ export async function batchUpdateSourceDocuments({
       if (projectionEntriesChanged(plan.initialEntries, projectionEntries)) {
         throw new ConflictError("Ledger entries changed before the date update");
       }
-      await updateProjectionConversions(tx, ledgerId, projectionEntries, plan.conversions);
+      await updateProjectionConversions(
+        tx,
+        ledgerId,
+        plan.mainCurrency,
+        projectionEntries,
+        plan.conversions
+      );
     }
 
     const updated = await tx

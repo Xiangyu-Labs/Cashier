@@ -51,14 +51,17 @@ function calculateDecimalGrowth(
   return { amount: delta.toFixed(), percent: delta.dividedBy(previous).times(100).toNumber() };
 }
 
-function calculateHeatmapStats(amounts: number[]): CalendarHeatmapStats {
+function calculateHeatmapStats(amounts: string[]): CalendarHeatmapStats {
   if (amounts.length === 0) {
-    return { minAmount: 0, maxAmount: 0, avgAmount: 0, p80Amount: 0 };
+    return { minAmount: "0", maxAmount: "0", avgAmount: "0", p80Amount: "0" };
   }
-  const sorted = [...amounts].sort((left, right) => left - right);
-  const min = sorted[0] ?? 0;
+  const sorted = [...amounts].toSorted((left, right) => new Decimal(left).cmp(right));
+  const min = sorted[0] ?? "0";
   const max = sorted[sorted.length - 1] ?? min;
-  const avg = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
+  const avg = amounts
+    .reduce((sum, amount) => sum.plus(amount), new Decimal(0))
+    .dividedBy(amounts.length)
+    .toFixed();
   const p80Index = Math.max(0, Math.ceil(sorted.length * 0.8) - 1);
   return {
     minAmount: min,
@@ -91,7 +94,7 @@ export function buildEnhancedStatsDto({
 }: BuildEnhancedStatsDtoInput): EnhancedStatsDto {
   const growth = calculateDecimalGrowth(current.total, previous.total);
   const dayCount = civilDayCount(queryRange.from, queryRange.to);
-  const dailyAverage = dayCount > 0 ? current.total.dividedBy(dayCount).toNumber() : 0;
+  const dailyAverage = dayCount > 0 ? current.total.dividedBy(dayCount).toFixed() : "0";
 
   const categories = [...current.categories.values()]
     .toSorted((left, right) => right.total.cmp(left.total))
@@ -125,7 +128,7 @@ export function buildEnhancedStatsDto({
   const chart = sortedDays.map(([date, day]) => ({ date, total: day.total.toNumber() }));
   const heatmapDays: CalendarDayData[] = sortedDays.map(([date, day]) => ({
     date,
-    totalAmount: day.total.toNumber(),
+    totalAmount: day.total.toFixed(),
     entryCount: day.count,
     currencies: [...day.currencies],
   }));

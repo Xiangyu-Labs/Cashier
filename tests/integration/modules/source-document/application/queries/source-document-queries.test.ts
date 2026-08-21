@@ -151,7 +151,7 @@ describe("source-document-queries", () => {
     expect(result.items[0]?.ledgerEntries?.[0]).toEqual(
       expect.objectContaining({
         itemName: "Lunch",
-        amount: "10.00",
+        amount: "10.000",
       })
     );
   });

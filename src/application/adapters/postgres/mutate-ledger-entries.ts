@@ -1,11 +1,13 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   ensureTargetLedgerProjection,
+  LedgerMainCurrencyChangedError,
   postgresLedgerProjectionAdapter,
 } from "@/application/adapters/postgres/ledger-projections";
 import { db } from "@/lib/db";
 import { AppError, NotFoundError } from "@/lib/errors";
-import { divide, round } from "@/lib/money/decimal";
+import { round } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, sourceDocuments } from "@/persistence";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { getLedgerEntryDetail } from "./ledger-reads/get-ledger-entry-detail";
@@ -14,6 +16,7 @@ import { postgresFxRateBook } from "./exchange-rate";
 import { ConflictError } from "@/lib/errors";
 import { postgresSettingsAdapter } from "./business-ports";
 import type { BatchActionResult } from "@/lib/batch-ids";
+import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
@@ -26,18 +29,13 @@ async function convertEntryAmount(input: {
   date?: string;
 }) {
   if (input.fromCurrency === input.toCurrency) {
-    return { convertedAmount: round(input.amount, 2), exchangeRate: "1" };
+    return {
+      convertedAmount: roundToCurrency(input.amount, input.toCurrency),
+      exchangeRate: "1",
+    };
   }
-  const convertedAmount = await postgresFxRateBook.convert(
-    input.amount,
-    input.fromCurrency,
-    input.toCurrency,
-    input.date
-  );
-  return {
-    convertedAmount: round(convertedAmount, 2),
-    exchangeRate: round(divide(convertedAmount, input.amount), 6),
-  };
+  const rates = await postgresFxRateBook.getRates(input.date);
+  return convertWithRates(input.amount, rates, input.fromCurrency, input.toCurrency);
 }
 
 async function getLedgerMainCurrency(ledgerId: string): Promise<string> {
@@ -54,6 +52,7 @@ function whereActiveSourceDocumentForLedger(ledgerId: string, sourceDocumentId: 
 
 export async function createLedgerEntryWithConversion(input: {
   ledgerId: string;
+  ledgerEntryId?: string;
   amount: string;
   currency?: string;
   itemName: string;
@@ -61,6 +60,26 @@ export async function createLedgerEntryWithConversion(input: {
   description?: string | null;
   sourceDocumentId: string;
 }): Promise<LedgerEntryDto> {
+  return createLedgerEntryAttempt(input, true);
+}
+
+async function createLedgerEntryAttempt(
+  input: {
+    ledgerId: string;
+    ledgerEntryId?: string;
+    amount: string;
+    currency?: string;
+    itemName: string;
+    categoryId?: string;
+    description?: string | null;
+    sourceDocumentId: string;
+  },
+  retryOnCurrencyChange: boolean
+): Promise<LedgerEntryDto> {
+  if (input.ledgerEntryId !== undefined) {
+    const existing = await getLedgerEntryDetail(input.ledgerEntryId, input.ledgerId);
+    if (existing != null) return existing;
+  }
   const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
   const entryCurrency = normalizeCurrency(input.currency);
 
@@ -96,25 +115,33 @@ export async function createLedgerEntryWithConversion(input: {
     input.sourceDocumentId,
     sourceDoc.activeRevisionId
   );
-  const ledgerEntryId = crypto.randomUUID();
-  await postgresLedgerProjectionAdapter.replaceActive({
-    ledgerId: input.ledgerId,
-    sourceDocumentId: input.sourceDocumentId,
-    expectedActiveRevisionId: sourceDoc.activeRevisionId,
-    entries: [
-      ...activeEntries.map(toProjectionEntry),
-      {
-        id: ledgerEntryId,
-        amount: round(String(input.amount), 2),
-        itemName: input.itemName,
-        currency: entryCurrency,
-        categoryId: input.categoryId ?? null,
-        description: input.description ?? null,
-        convertedAmount: conversion?.convertedAmount ?? null,
-        exchangeRate: conversion?.exchangeRate ?? null,
-      },
-    ],
-  });
+  const ledgerEntryId = input.ledgerEntryId ?? crypto.randomUUID();
+  try {
+    await postgresLedgerProjectionAdapter.replaceActive({
+      ledgerId: input.ledgerId,
+      sourceDocumentId: input.sourceDocumentId,
+      expectedActiveRevisionId: sourceDoc.activeRevisionId,
+      expectedMainCurrency: mainCurrency,
+      entries: [
+        ...activeEntries.map(toProjectionEntry),
+        {
+          id: ledgerEntryId,
+          amount: roundToCurrency(input.amount, entryCurrency),
+          itemName: input.itemName,
+          currency: entryCurrency,
+          categoryId: input.categoryId ?? null,
+          description: input.description ?? null,
+          convertedAmount: conversion?.convertedAmount ?? null,
+          exchangeRate: conversion?.exchangeRate ?? null,
+        },
+      ],
+    });
+  } catch (error) {
+    if (retryOnCurrencyChange && error instanceof LedgerMainCurrencyChangedError) {
+      return createLedgerEntryAttempt(input, false);
+    }
+    throw error;
+  }
   const created = await getLedgerEntryDetail(ledgerEntryId, input.ledgerId);
   if (created == null) throw new AppError("Failed to create ledger entry", "ENTRY_CREATE_FAILED");
   return created;
@@ -161,6 +188,21 @@ export async function updateLedgerEntryWithConversion(input: {
   itemName?: string;
   description?: string | null;
 }): Promise<LedgerEntryDto> {
+  return updateLedgerEntryAttempt(input, true);
+}
+
+async function updateLedgerEntryAttempt(
+  input: {
+    ledgerId: string;
+    ledgerEntryId: string;
+    categoryId?: string | null;
+    amount?: string;
+    currency?: string | null;
+    itemName?: string;
+    description?: string | null;
+  },
+  retryOnCurrencyChange: boolean
+): Promise<LedgerEntryDto> {
   let targetEntry = await db.query.ledgerEntries.findFirst({
     where: and(
       eq(ledgerEntries.id, input.ledgerEntryId),
@@ -211,25 +253,36 @@ export async function updateLedgerEntryWithConversion(input: {
     targetDocument.id,
     targetDocument.activeRevisionId
   );
-  await postgresLedgerProjectionAdapter.replaceActive({
-    ledgerId: input.ledgerId,
-    sourceDocumentId: targetDocument.id,
-    expectedActiveRevisionId: targetDocument.activeRevisionId,
-    entries: activeEntries.map((entry) =>
-      entry.id === input.ledgerEntryId
-        ? {
-            ...toProjectionEntry(entry),
-            categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
-            amount: input.amount !== undefined ? round(String(input.amount), 2) : entry.amount,
-            currency: input.currency !== undefined ? input.currency : entry.currency,
-            itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
-            description: input.description !== undefined ? input.description : entry.description,
-            convertedAmount,
-            exchangeRate,
-          }
-        : toProjectionEntry(entry)
-    ),
-  });
+  try {
+    await postgresLedgerProjectionAdapter.replaceActive({
+      ledgerId: input.ledgerId,
+      sourceDocumentId: targetDocument.id,
+      expectedActiveRevisionId: targetDocument.activeRevisionId,
+      expectedMainCurrency: mainCurrency,
+      entries: activeEntries.map((entry) =>
+        entry.id === input.ledgerEntryId
+          ? {
+              ...toProjectionEntry(entry),
+              categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
+              amount:
+                input.amount !== undefined
+                  ? roundToCurrency(input.amount, nextCurrency)
+                  : entry.amount,
+              currency: input.currency !== undefined ? input.currency : entry.currency,
+              itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
+              description: input.description !== undefined ? input.description : entry.description,
+              convertedAmount,
+              exchangeRate,
+            }
+          : toProjectionEntry(entry)
+      ),
+    });
+  } catch (error) {
+    if (retryOnCurrencyChange && error instanceof LedgerMainCurrencyChangedError) {
+      return updateLedgerEntryAttempt(input, false);
+    }
+    throw error;
+  }
   const updated = await getLedgerEntryDetail(input.ledgerEntryId, input.ledgerId);
   if (updated == null) throw new NotFoundError("Entry");
   return updated;
@@ -409,9 +462,15 @@ export async function batchUpdateLedgerEntries(input: {
       rows.map((row, index) => ({
         id: row.id,
         active_revision_id: row.activeRevisionId,
+        amount:
+          input.amount == null
+            ? null
+            : roundToCurrency(input.amount, normalizeCurrency(input.currency ?? row.currency)),
         converted_amount:
-          conversions == null ? null : round(conversions[index]!.convertedAmount, 2),
-        exchange_rate: conversions == null ? null : round(conversions[index]!.exchangeRate, 6),
+          conversions == null
+            ? null
+            : roundToCurrency(conversions[index]!.convertedAmount, initialMainCurrency),
+        exchange_rate: conversions == null ? null : round(conversions[index]!.exchangeRate, 12),
       }))
     );
     const result = await tx.execute(sql`
@@ -419,6 +478,7 @@ export async function batchUpdateLedgerEntries(input: {
         SELECT * FROM jsonb_to_recordset(${changesJson}::jsonb) AS value(
           id uuid,
           active_revision_id uuid,
+          amount numeric,
           converted_amount numeric,
           exchange_rate numeric
         )
@@ -427,7 +487,7 @@ export async function batchUpdateLedgerEntries(input: {
       SET
         category_id = CASE WHEN ${input.categoryId !== undefined} THEN ${input.categoryId ?? null}::uuid ELSE entry.category_id END,
         currency = CASE WHEN ${input.currency !== undefined} THEN ${input.currency == null ? null : normalizeCurrency(input.currency)}::varchar ELSE entry.currency END,
-        amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount == null ? null : round(input.amount, 2)}::numeric ELSE entry.amount END,
+        amount = CASE WHEN ${input.amount !== undefined} THEN changes.amount ELSE entry.amount END,
         description = CASE WHEN ${input.description !== undefined} THEN ${input.description ?? null}::text ELSE entry.description END,
         item_name = CASE WHEN ${input.itemName !== undefined} THEN ${input.itemName ?? null}::text ELSE entry.item_name END,
         converted_amount = CASE WHEN ${conversions != null} THEN changes.converted_amount ELSE entry.converted_amount END,

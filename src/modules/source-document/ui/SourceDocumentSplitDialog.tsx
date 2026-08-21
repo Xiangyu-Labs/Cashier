@@ -84,7 +84,7 @@ export function SourceDocumentSplitDialog({
             >
               <span className="min-w-0 truncate">{entry.itemName}</span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
-                {formatCurrencyAmount(Number(entry.amount), entry.currency ?? "CNY", locale)}
+                {formatCurrencyAmount(entry.amount, entry.currency ?? "CNY", locale)}
               </span>
             </li>
           ))}

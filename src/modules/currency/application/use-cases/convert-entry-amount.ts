@@ -1,5 +1,5 @@
-import { round } from "@/lib/money/decimal";
-import { CurrencyService } from "../services/currency";
+import { roundToCurrency } from "@/lib/money/currency-precision";
+import { convertWithRates } from "../services/rate-calculation";
 import type { FxRateBook } from "../ports";
 
 export interface ConvertEntryAmountInput {
@@ -22,20 +22,11 @@ export async function convertEntryAmount(
 
   if (fromCurrency === toCurrency) {
     return {
-      convertedAmount: round(amount, 2),
+      convertedAmount: roundToCurrency(amount, toCurrency),
       exchangeRate: "1",
     };
   }
 
-  const converted = await rates.convert(
-    amount,
-    fromCurrency,
-    toCurrency,
-    date != null && date !== "" ? date : undefined
-  );
-
-  return {
-    convertedAmount: round(converted, 2),
-    exchangeRate: CurrencyService.calculateExchangeRate(amount, converted),
-  };
+  const snapshot = await rates.getRates(date != null && date !== "" ? date : undefined);
+  return convertWithRates(amount, snapshot, fromCurrency, toCurrency);
 }

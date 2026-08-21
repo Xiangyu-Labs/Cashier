@@ -113,7 +113,7 @@ export const queryKeys = {
     ] as const,
 
   // === Currency ===
-  convert: (amount: number, from: string, to: string, date: string) =>
+  convert: (amount: string, from: string, to: string, date: string) =>
     ["convert", amount, from, to, date] as const,
   batchConvert: (cacheKey: string, targetCurrency: string) =>
     ["batchConvert", cacheKey, targetCurrency] as const,

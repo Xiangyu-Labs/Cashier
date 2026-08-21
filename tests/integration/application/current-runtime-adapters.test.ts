@@ -364,7 +364,7 @@ describe("current-runtime target adapters", () => {
     const replacementEntry = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.sourceDocumentRevisionId, replacementRevisionId),
     });
-    expect(replacementEntry?.amount).toBe("18.00");
+    expect(replacementEntry?.amount).toBe("18.000");
     expect(
       (await db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, originalEntry!.id) }))
         ?.deletedAt
@@ -426,7 +426,7 @@ describe("current-runtime target adapters", () => {
     await expect(postgresSettingsAdapter.get(ledgerId)).resolves.toMatchObject({
       mainCurrency: "CNY",
     });
-    await expect(postgresCurrencyAdapter.convert("16", "CNY", "USD")).resolves.toBe("4.000000");
+    await expect(postgresCurrencyAdapter.convert("16", "CNY", "USD")).resolves.toBe("4.00");
     await expect(
       createPostgresAuthenticationAdapter(async () => userId).requireUser()
     ).resolves.toEqual({

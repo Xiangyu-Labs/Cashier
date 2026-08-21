@@ -58,7 +58,12 @@ describe("decimal", () => {
 
   describe("divide", () => {
     it("basic division", () => {
-      expect(divide("10.00", "3.00")).toBe("3.3333333333333333333");
+      expect(divide("10.00", "3.00")).toBe("3.33333333333333333333");
+    });
+
+    it("uses private precision and emits at most 20 decimal places", () => {
+      expect(Decimal.precision).toBe(20);
+      expect(divide("1", "7")).toBe("0.14285714285714285714");
     });
   });
 
@@ -107,6 +112,11 @@ describe("decimal", () => {
 
     it("rounds to 6 decimal places (exchange rate precision)", () => {
       expect(round("1.23456789", 6)).toBe("1.234568");
+    });
+
+    it("canonicalizes negative zero", () => {
+      expect(normalize("-0.000")).toBe("0");
+      expect(round("-0.001", 2)).toBe("0");
     });
   });
 

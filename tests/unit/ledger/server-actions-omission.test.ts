@@ -25,6 +25,16 @@ vi.mock("@/modules/ledger/access", () => ({
   withLedgerAccess: <TArgs extends unknown[], TResult>(
     handler: (ledgerId: string, ...args: TArgs) => TResult
   ) => handler,
+  withLedgerAccessContext:
+    <TArgs extends unknown[], TResult>(
+      handler: (access: { userId: string }, ledgerId: string, ...args: TArgs) => TResult
+    ) =>
+    (ledgerId: string, ...args: TArgs) =>
+      handler({ userId: "00000000-0000-4000-8000-000000000001" }, ledgerId, ...args),
+}));
+
+vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
+  runIdempotentLedgerEntryMutation: vi.fn((_input, mutation) => mutation()),
 }));
 
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
@@ -115,11 +125,15 @@ describe("ledger server action omission semantics", () => {
   });
 
   it("omits absent optional create-entry fields", async () => {
-    await createLedgerEntryAction("ledger-1", {
-      amount: 12.5,
-      itemName: "Lunch",
-      sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
-    });
+    await createLedgerEntryAction(
+      "ledger-1",
+      {
+        amount: "12.5",
+        itemName: "Lunch",
+        sourceDocumentId: "123e4567-e89b-42d3-a456-426614174000",
+      },
+      crypto.randomUUID()
+    );
 
     const payload = createLedgerEntryWithConversionMock.mock.calls[0]?.[0] as Record<
       string,
@@ -135,9 +149,14 @@ describe("ledger server action omission semantics", () => {
   });
 
   it("omits absent optional update-entry fields", async () => {
-    await updateLedgerEntryAction("ledger-1", "123e4567-e89b-42d3-a456-426614174001", {
-      description: null,
-    });
+    await updateLedgerEntryAction(
+      "ledger-1",
+      "123e4567-e89b-42d3-a456-426614174001",
+      {
+        description: null,
+      },
+      crypto.randomUUID()
+    );
 
     const payload = updateLedgerEntryWithConversionMock.mock.calls[0]?.[0] as Record<
       string,
@@ -155,7 +174,7 @@ describe("ledger server action omission semantics", () => {
 
   it("omits absent optional batch-update fields", async () => {
     await batchUpdateLedgerEntriesAction("ledger-1", ["123e4567-e89b-42d3-a456-426614174002"], {
-      amount: 9.99,
+      amount: "9.99",
     });
 
     const payload = batchUpdateLedgerEntriesMock.mock.calls[0]?.[0] as Record<string, unknown>;

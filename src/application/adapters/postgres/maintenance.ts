@@ -4,6 +4,7 @@ import { objectCleanupJobs, uploadSessionFiles, uploadSessions } from "@/persist
 import { getS3Storage } from "@/lib/storage/s3";
 import { logger } from "@/lib/logger";
 import { runBoundedExchangeRateRecalculation } from "@/application/orchestration/exchange-rate-ledger-recalculation";
+import { enqueueMissingExchangeRateRecalculations } from "./exchange-rate-recalculation-jobs";
 
 const LIMIT = 1000;
 const MAINTENANCE_LOCK = 1_381_247_119;
@@ -88,6 +89,7 @@ export async function runBoundedMaintenance(now = new Date()): Promise<void> {
   });
   if (!acquired) return;
 
+  await enqueueMissingExchangeRateRecalculations(LIMIT);
   await runBoundedExchangeRateRecalculation(now);
 
   const jobs = await db

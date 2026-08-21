@@ -9,15 +9,19 @@ import {
 } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
-const { convertAmountMock } = vi.hoisted(() => ({
-  convertAmountMock: vi.fn(async () => "100.00"),
+const { getRatesMock } = vi.hoisted(() => ({
+  getRatesMock: vi.fn(async () => ({
+    base: "USD",
+    date: "2026-01-01",
+    rates: { CNY: 1 },
+  })),
 }));
 
 vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   const rateBook = {
-    convert: convertAmountMock,
+    getRates: getRatesMock,
     convertBatch: vi.fn(),
   };
   return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
@@ -88,33 +92,128 @@ describe("createLedgerEntryAction", () => {
   });
 
   it("creates entry with same currency as main currency (no conversion)", async () => {
-    const result = await createLedgerEntryAction(ledgerId, {
-      amount: 50,
-      currency: "CNY",
-      itemName: "午餐",
-      sourceDocumentId: docId,
-    });
+    const result = await createLedgerEntryAction(
+      ledgerId,
+      {
+        amount: "50",
+        currency: "CNY",
+        itemName: "午餐",
+        sourceDocumentId: docId,
+      },
+      crypto.randomUUID()
+    );
 
     expect(result.itemName).toBe("午餐");
-    expect(result.amount).toBe("50.00");
-    expect(result.convertedAmount).toBe("50.00");
+    expect(result.amount).toBe("50.000");
+    expect(result.convertedAmount).toBe("50.000");
     expect(result.exchangeRate).toBe("1");
-    expect(convertAmountMock).not.toHaveBeenCalled();
+    expect(getRatesMock).not.toHaveBeenCalled();
   });
 
   it("creates entry with foreign currency and triggers conversion", async () => {
-    convertAmountMock.mockResolvedValue("720.00");
+    getRatesMock.mockResolvedValue({ base: "USD", date: "2026-01-01", rates: { CNY: 7.2 } });
 
-    const result = await createLedgerEntryAction(ledgerId, {
-      amount: 100,
-      currency: "USD",
-      itemName: "Coffee",
-      sourceDocumentId: docId,
-    });
+    const result = await createLedgerEntryAction(
+      ledgerId,
+      {
+        amount: "100",
+        currency: "USD",
+        itemName: "Coffee",
+        sourceDocumentId: docId,
+      },
+      crypto.randomUUID()
+    );
 
     expect(result.currency).toBe("USD");
-    expect(result.convertedAmount).toBe("720.00");
-    expect(convertAmountMock).toHaveBeenCalledWith("100", "USD", "CNY", undefined);
+    expect(result.convertedAmount).toBe("720.000");
+    expect(getRatesMock).toHaveBeenCalledWith(undefined);
+  });
+
+  it.each([
+    { currency: "JPY", amount: "12.6", expected: "13.000" },
+    { currency: "KWD", amount: "12.3456", expected: "12.346" },
+  ])("rounds $currency entries to their minor unit", async ({ currency, amount, expected }) => {
+    await getTestDb()
+      .update(ledgers)
+      .set({ mainCurrency: currency })
+      .where(eq(ledgers.id, ledgerId));
+
+    const result = await createLedgerEntryAction(
+      ledgerId,
+      { amount, currency, itemName: `${currency} entry`, sourceDocumentId: docId },
+      crypto.randomUUID()
+    );
+
+    expect(result.amount).toBe(expected);
+    expect(result.convertedAmount).toBe(expected);
+    expect(result.exchangeRate).toBe("1");
+  });
+
+  it("replays a completed create with the same operation ID", async () => {
+    const operationId = crypto.randomUUID();
+    const input = {
+      amount: "12.34",
+      currency: "CNY",
+      itemName: "Idempotent entry",
+      sourceDocumentId: docId,
+    };
+
+    const first = await createLedgerEntryAction(ledgerId, input, operationId);
+    const replay = await createLedgerEntryAction(ledgerId, input, operationId);
+
+    expect(replay).toEqual(first);
+    const activeEntries = await getTestDb().query.ledgerEntries.findMany({
+      where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+    });
+    expect(activeEntries).toHaveLength(1);
+  });
+
+  it("rejects reuse of an operation ID with different content", async () => {
+    const operationId = crypto.randomUUID();
+    await createLedgerEntryAction(
+      ledgerId,
+      {
+        amount: "10",
+        currency: "CNY",
+        itemName: "First content",
+        sourceDocumentId: docId,
+      },
+      operationId
+    );
+
+    await expect(
+      createLedgerEntryAction(
+        ledgerId,
+        {
+          amount: "11",
+          currency: "CNY",
+          itemName: "Different content",
+          sourceDocumentId: docId,
+        },
+        operationId
+      )
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT", statusCode: 409 });
+  });
+
+  it("coalesces concurrent creates with the same operation ID", async () => {
+    const operationId = crypto.randomUUID();
+    const input = {
+      amount: "25",
+      currency: "CNY",
+      itemName: "Concurrent entry",
+      sourceDocumentId: docId,
+    };
+
+    const [first, replay] = await Promise.all([
+      createLedgerEntryAction(ledgerId, input, operationId),
+      createLedgerEntryAction(ledgerId, input, operationId),
+    ]);
+
+    expect(replay).toEqual(first);
+    const activeEntries = await getTestDb().query.ledgerEntries.findMany({
+      where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+    });
+    expect(activeEntries).toHaveLength(1);
   });
 
   it("rejects a source document that belongs to a different ledger", async () => {
@@ -134,12 +233,16 @@ describe("createLedgerEntryAction", () => {
     const otherDoc = await seedDoc(db, otherLedgerId);
 
     await expect(
-      createLedgerEntryAction(ledgerId, {
-        amount: 12,
-        currency: "CNY",
-        itemName: "Cross-ledger doc",
-        sourceDocumentId: otherDoc.id,
-      })
+      createLedgerEntryAction(
+        ledgerId,
+        {
+          amount: "12",
+          currency: "CNY",
+          itemName: "Cross-ledger doc",
+          sourceDocumentId: otherDoc.id,
+        },
+        crypto.randomUUID()
+      )
     ).rejects.toThrow("Source document");
   });
 
@@ -151,23 +254,31 @@ describe("createLedgerEntryAction", () => {
       .where(eq(sourceDocuments.id, docId));
 
     await expect(
-      createLedgerEntryAction(ledgerId, {
-        amount: 12,
-        currency: "CNY",
-        itemName: "Deleted doc",
-        sourceDocumentId: docId,
-      })
+      createLedgerEntryAction(
+        ledgerId,
+        {
+          amount: "12",
+          currency: "CNY",
+          itemName: "Deleted doc",
+          sourceDocumentId: docId,
+        },
+        crypto.randomUUID()
+      )
     ).rejects.toThrow("Source document");
   });
 
   it("throws 'Ledger not found' for wrong ledger", async () => {
     await expect(
-      createLedgerEntryAction(uuidv4(), {
-        amount: 50,
-        currency: "CNY",
-        itemName: "Test",
-        sourceDocumentId: docId,
-      })
+      createLedgerEntryAction(
+        uuidv4(),
+        {
+          amount: "50",
+          currency: "CNY",
+          itemName: "Test",
+          sourceDocumentId: docId,
+        },
+        crypto.randomUUID()
+      )
     ).rejects.toThrow("Ledger not found");
   });
 });
@@ -209,26 +320,36 @@ describe("updateLedgerEntryAction", () => {
   });
 
   it("updates itemName without recalculating convertedAmount", async () => {
-    const result = await updateLedgerEntryAction(ledgerId, entryId, {
-      itemName: "晚餐",
-    });
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      entryId,
+      {
+        itemName: "晚餐",
+      },
+      crypto.randomUUID()
+    );
     expect(result.itemName).toBe("晚餐");
-    expect(convertAmountMock).not.toHaveBeenCalled();
+    expect(getRatesMock).not.toHaveBeenCalled();
   });
 
   it("recalculates convertedAmount when amount changes", async () => {
-    convertAmountMock.mockResolvedValue("200.00");
+    getRatesMock.mockResolvedValue({ base: "USD", date: "2026-01-01", rates: { CNY: 2 } });
 
     const db = getTestDb();
     // Change currency to USD first
     await db.update(ledgerEntries).set({ currency: "USD" }).where(eq(ledgerEntries.id, entryId));
 
-    const result = await updateLedgerEntryAction(ledgerId, entryId, {
-      amount: 100,
-    });
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      entryId,
+      {
+        amount: "100",
+      },
+      crypto.randomUUID()
+    );
 
-    expect(convertAmountMock).toHaveBeenCalled();
-    expect(result.convertedAmount).toBe("200.00");
+    expect(getRatesMock).toHaveBeenCalled();
+    expect(result.convertedAmount).toBe("200.000");
   });
 
   it("updates categoryId without conversion", async () => {
@@ -241,11 +362,16 @@ describe("updateLedgerEntryAction", () => {
       sortOrder: 1,
     });
 
-    const result = await updateLedgerEntryAction(ledgerId, entryId, {
-      categoryId: catId,
-    });
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      entryId,
+      {
+        categoryId: catId,
+      },
+      crypto.randomUUID()
+    );
     expect(result.categoryId).toBe(catId);
-    expect(convertAmountMock).not.toHaveBeenCalled();
+    expect(getRatesMock).not.toHaveBeenCalled();
   });
 });
 
@@ -281,7 +407,7 @@ describe("deleteLedgerEntryAction", () => {
     }
     await activateTestSourceDocumentProjection(db, doc.id);
 
-    await deleteLedgerEntryAction(ledgerId, entry.id);
+    await deleteLedgerEntryAction(ledgerId, entry.id, crypto.randomUUID());
 
     const updated = await db.query.ledgerEntries.findFirst({
       where: eq(ledgerEntries.id, entry.id),

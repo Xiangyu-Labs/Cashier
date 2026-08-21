@@ -1,5 +1,8 @@
 "use server";
-import { withLedgerAccess } from "../access";
+import { withLedgerAccess, withLedgerAccessContext } from "../access";
+import { createHash } from "node:crypto";
+import { ValidationError } from "@/lib/errors";
+import { isValidUuid } from "@/lib/validation";
 import type { DeleteLedgerEntryResultDto, LedgerEntryDto } from "@/modules/ledger/contracts";
 import {
   batchUpdateLedgerEntries,
@@ -26,15 +29,49 @@ import {
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { serverComposition } from "@/application/server-composition-root";
 
-export const createLedgerEntryAction = withLedgerAccess(
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value != null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function fingerprint(value: unknown): string {
+  return createHash("sha256").update(stableJson(value)).digest("hex");
+}
+
+function deterministicEntryId(ledgerId: string, operationId: string): string {
+  const bytes = createHash("sha256").update(`${ledgerId}:${operationId}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+    16,
+    20
+  )}-${hex.slice(20)}`;
+}
+
+function requireOperationId(operationId: string): string {
+  if (!isValidUuid(operationId)) throw new ValidationError("operationId must be a UUID");
+  return operationId;
+}
+
+export const createLedgerEntryAction = withLedgerAccessContext(
   async (
+    { userId },
     ledgerId: string,
     data: CreateLedgerEntryInput,
-    _operationId?: string
+    operationId: string
   ): Promise<LedgerEntryDto> => {
+    const validatedOperationId = requireOperationId(operationId);
     const validated = parseCreateLedgerEntryInput(data);
     const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
       ledgerId,
+      ledgerEntryId: deterministicEntryId(ledgerId, validatedOperationId),
       amount: String(validated.amount),
       itemName: validated.itemName,
       sourceDocumentId: validated.sourceDocumentId,
@@ -42,20 +79,36 @@ export const createLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
     if (validated.description !== undefined) payload.description = validated.description;
-    return createLedgerEntryWithConversion(payload, {
-      mutations: serverComposition.ledgerMutations,
-      categories: serverComposition.categories,
-    });
+    return serverComposition.ledgerEntryIdempotency.run(
+      {
+        userId,
+        ledgerId,
+        operationId: validatedOperationId,
+        fingerprint: fingerprint({
+          operation: "create",
+          ledgerId,
+          entryId: null,
+          payload: validated,
+        }),
+      },
+      () =>
+        createLedgerEntryWithConversion(payload, {
+          mutations: serverComposition.ledgerMutations,
+          categories: serverComposition.categories,
+        })
+    );
   }
 );
 
-export const updateLedgerEntryAction = withLedgerAccess(
+export const updateLedgerEntryAction = withLedgerAccessContext(
   async (
+    { userId },
     ledgerId: string,
     ledgerEntryId: string,
     data: UpdateLedgerEntryInput,
-    _operationId?: string
+    operationId: string
   ): Promise<LedgerEntryDto> => {
+    const validatedOperationId = requireOperationId(operationId);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
     const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
@@ -67,21 +120,50 @@ export const updateLedgerEntryAction = withLedgerAccess(
     if (validated.currency !== undefined) payload.currency = validated.currency;
     if (validated.itemName !== undefined) payload.itemName = validated.itemName;
     if (validated.description !== undefined) payload.description = validated.description;
-    return updateLedgerEntryWithConversion(payload, {
-      mutations: serverComposition.ledgerMutations,
-      categories: serverComposition.categories,
-    });
+    return serverComposition.ledgerEntryIdempotency.run(
+      {
+        userId,
+        ledgerId,
+        operationId: validatedOperationId,
+        fingerprint: fingerprint({
+          operation: "update",
+          ledgerId,
+          entryId: validatedLedgerEntryId,
+          payload: validated,
+        }),
+      },
+      () =>
+        updateLedgerEntryWithConversion(payload, {
+          mutations: serverComposition.ledgerMutations,
+          categories: serverComposition.categories,
+        })
+    );
   }
 );
 
-export const deleteLedgerEntryAction = withLedgerAccess(
+export const deleteLedgerEntryAction = withLedgerAccessContext(
   async (
+    { userId },
     ledgerId: string,
     ledgerEntryId: string,
-    _operationId?: string
+    operationId: string
   ): Promise<DeleteLedgerEntryResultDto> => {
+    const validatedOperationId = requireOperationId(operationId);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
-    return deleteLedgerEntry(ledgerId, validatedLedgerEntryId, serverComposition.ledgerMutations);
+    return serverComposition.ledgerEntryIdempotency.run(
+      {
+        userId,
+        ledgerId,
+        operationId: validatedOperationId,
+        fingerprint: fingerprint({
+          operation: "delete",
+          ledgerId,
+          entryId: validatedLedgerEntryId,
+          payload: null,
+        }),
+      },
+      () => deleteLedgerEntry(ledgerId, validatedLedgerEntryId, serverComposition.ledgerMutations)
+    );
   }
 );
 

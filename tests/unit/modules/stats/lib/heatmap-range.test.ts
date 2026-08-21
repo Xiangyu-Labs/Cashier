@@ -15,7 +15,7 @@ describe("heatmap range", () => {
 
   it("uses the full annual query interval rather than sparse data length", () => {
     const range = resolveHeatmapRange(
-      [{ date: "2026-07-27", totalAmount: 10, entryCount: 1, currencies: ["CNY"] }],
+      [{ date: "2026-07-27", totalAmount: "10", entryCount: 1, currencies: ["CNY"] }],
       { startDate: "2026-01-01", endDate: "2026-12-31" }
     );
     expect(generateHeatmapDateKeys(range)).toHaveLength(365);

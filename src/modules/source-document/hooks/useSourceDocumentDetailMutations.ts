@@ -110,7 +110,11 @@ export function useSourceDocumentDetailMutations({
     mutationFn: async (data: AddEntryData) => {
       if (ledgerId == null || ledgerId === "") throw new Error("No ledger ID");
       const operationId = crypto.randomUUID();
-      return createLedgerEntryAction(ledgerId, { sourceDocumentId: id, ...data }, operationId);
+      return createLedgerEntryAction(
+        ledgerId,
+        { sourceDocumentId: id, ...data, amount: String(data.amount) },
+        operationId
+      );
     },
     successMessage: null,
     errorMessage: null,

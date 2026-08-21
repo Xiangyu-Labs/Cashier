@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 
-const rateBook = { convert: vi.fn() } as unknown as FxRateBook;
+const rateBook = { getRates: vi.fn() } as unknown as FxRateBook;
 
 describe("convertEntryAmount", () => {
   afterEach(() => {
@@ -10,7 +10,7 @@ describe("convertEntryAmount", () => {
   });
 
   it("returns a no-op conversion when currencies already match", async () => {
-    const convertSpy = vi.spyOn(rateBook, "convert");
+    const getRatesSpy = vi.spyOn(rateBook, "getRates");
 
     const result = await convertEntryAmount(
       {
@@ -26,11 +26,11 @@ describe("convertEntryAmount", () => {
       convertedAmount: "100.00",
       exchangeRate: "1",
     });
-    expect(convertSpy).not.toHaveBeenCalled();
+    expect(getRatesSpy).not.toHaveBeenCalled();
   });
 
   it("rejects when exchange-rate conversion fails", async () => {
-    vi.spyOn(rateBook, "convert").mockRejectedValue(new Error("upstream unavailable"));
+    vi.spyOn(rateBook, "getRates").mockRejectedValue(new Error("upstream unavailable"));
 
     await expect(
       convertEntryAmount(

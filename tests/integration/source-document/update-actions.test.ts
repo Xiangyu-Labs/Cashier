@@ -203,8 +203,8 @@ describe("Source Document Update Actions", () => {
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
       expect(updatedDocument?.entryDate).toBe(historicalDate);
-      expect(updatedEntry?.convertedAmount).toBe("10.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.100000");
+      expect(updatedEntry?.convertedAmount).toBe("10.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
 
     it("recalculates an active manual projection while creating a new revision", async () => {
@@ -244,8 +244,8 @@ describe("Source Document Update Actions", () => {
       expect(updatedDocument?.entryDate).toBe(historicalDate);
       expect(updatedDocument?.activeRevisionId).not.toBe(initialRevisionId);
       expect(updatedEntry?.sourceDocumentRevisionId).toBe(updatedDocument?.activeRevisionId);
-      expect(updatedEntry?.convertedAmount).toBe("10.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.100000");
+      expect(updatedEntry?.convertedAmount).toBe("10.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
 
     it("recalculates active and pending candidate projections together", async () => {
@@ -312,8 +312,8 @@ describe("Source Document Update Actions", () => {
       expect(currentEntries.map((entry) => entry.id).sort()).toEqual(
         [activeEntryId, pendingEntryId].sort()
       );
-      expect(currentEntries.every((entry) => entry.convertedAmount === "10.00")).toBe(true);
-      expect(currentEntries.every((entry) => entry.exchangeRate === "0.100000")).toBe(true);
+      expect(currentEntries.every((entry) => entry.convertedAmount === "10.000")).toBe(true);
+      expect(currentEntries.every((entry) => entry.exchangeRate === "0.100000000000")).toBe(true);
     });
 
     it("recalculates the active projection of a duplicate-pending document", async () => {
@@ -368,8 +368,8 @@ describe("Source Document Update Actions", () => {
       ]);
       expect(updatedDocument?.currentStatus).toBe("duplicate_pending");
       expect(updatedDocument?.entryDate).toBe(historicalDate);
-      expect(updatedEntry?.convertedAmount).toBe("10.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.100000");
+      expect(updatedEntry?.convertedAmount).toBe("10.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
 
     it("does not change the date or projection when FX conversion fails", async () => {
@@ -412,8 +412,8 @@ describe("Source Document Update Actions", () => {
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
       expect(updatedDocument?.entryDate).toBe("2024-03-14");
-      expect(updatedEntry?.convertedAmount).toBe("20.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.200000");
+      expect(updatedEntry?.convertedAmount).toBe("20.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.200000000000");
     });
 
     it("rejects a concurrent projection change before committing the date", async () => {
@@ -468,9 +468,9 @@ describe("Source Document Update Actions", () => {
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
       expect(updatedDocument?.entryDate).toBe("2024-03-14");
-      expect(updatedEntry?.amount).toBe("101.00");
-      expect(updatedEntry?.convertedAmount).toBe("20.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.200000");
+      expect(updatedEntry?.amount).toBe("101.000");
+      expect(updatedEntry?.convertedAmount).toBe("20.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.200000000000");
     });
 
     it("should not throw when document does not exist", async () => {
@@ -560,8 +560,8 @@ describe("Source Document Update Actions", () => {
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
       expect(updatedDocument?.entryDate).toBe("2024-03-15");
-      expect(updatedEntry?.convertedAmount).toBe("10.00");
-      expect(updatedEntry?.exchangeRate).toBe("0.100000");
+      expect(updatedEntry?.convertedAmount).toBe("10.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
 
     it("rejects an empty batch", async () => {

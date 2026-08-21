@@ -26,6 +26,16 @@ vi.mock("@/modules/ledger/access", () => ({
   withLedgerAccess: <TArgs extends unknown[], TResult>(
     handler: (ledgerId: string, ...args: TArgs) => TResult
   ) => handler,
+  withLedgerAccessContext:
+    <TArgs extends unknown[], TResult>(
+      handler: (access: { userId: string }, ledgerId: string, ...args: TArgs) => TResult
+    ) =>
+    (ledgerId: string, ...args: TArgs) =>
+      handler({ userId: "00000000-0000-4000-8000-000000000001" }, ledgerId, ...args),
+}));
+
+vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
+  runIdempotentLedgerEntryMutation: vi.fn((_input, mutation) => mutation()),
 }));
 
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({
@@ -105,11 +115,15 @@ describe("ledger server-action validation", () => {
 
   it("createLedgerEntryAction rejects invalid sourceDocumentId with ValidationError", async () => {
     await expect(
-      createLedgerEntryAction("ledger-1", {
-        amount: 1,
-        itemName: "x",
-        sourceDocumentId: "bad-id",
-      } as never)
+      createLedgerEntryAction(
+        "ledger-1",
+        {
+          amount: 1,
+          itemName: "x",
+          sourceDocumentId: "bad-id",
+        } as never,
+        crypto.randomUUID()
+      )
     ).rejects.toBeInstanceOf(ValidationError);
     expect(createLedgerEntryWithConversionMock).not.toHaveBeenCalled();
   });

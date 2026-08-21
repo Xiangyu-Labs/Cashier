@@ -177,8 +177,8 @@ describe("source document candidates", () => {
     });
     expect(review.active.entries[0]).toMatchObject({
       itemName: "Lunch",
-      amount: "12.50",
-      convertedAmount: "12.50",
+      amount: "12.500",
+      convertedAmount: "12.500",
     });
     expect(review.candidate).toMatchObject({
       revisionId: candidateRevisionId,
@@ -187,8 +187,8 @@ describe("source document candidates", () => {
     });
     expect(review.candidate.entries[0]).toMatchObject({
       itemName: "Dinner",
-      amount: "25.00",
-      convertedAmount: "25.00",
+      amount: "25.000",
+      convertedAmount: "25.000",
     });
   });
 

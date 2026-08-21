@@ -9,15 +9,19 @@
 
 import Decimal from "decimal.js";
 
-// Default rounding mode: half-up (common financial rounding)
-Decimal.set({ rounding: Decimal.ROUND_HALF_UP });
+const MoneyDecimal = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
+export const DECIMAL_STRING_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+function toCanonical(value: Decimal): string {
+  return value.isZero() ? "0" : value.toFixed();
+}
 
 /**
  * Safely parse a money value. Accepts strings, numbers, or Decimal instances.
  * Throws if the input is not a valid finite decimal.
  */
 export function parse(input: string | number | Decimal): Decimal {
-  return new Decimal(input);
+  return new MoneyDecimal(input);
 }
 
 /**
@@ -25,7 +29,7 @@ export function parse(input: string | number | Decimal): Decimal {
  * For example, "1.2300" -> "1.23" and "1e2" -> "100".
  */
 export function normalize(value: string): string {
-  return new Decimal(value).toFixed();
+  return toCanonical(new MoneyDecimal(value));
 }
 
 /** Maximum total digits allowed in a canonical decimal string. */
@@ -36,11 +40,10 @@ const MAX_DIGITS = 1000;
  * database precision (max 1000 digits). Rejects exponent notation.
  */
 export function isValidDecimal(value: string): boolean {
-  // Reject exponent notation (e, E, e+, e-, etc.)
-  if (/[eE]/.test(value)) return false;
+  if (!DECIMAL_STRING_PATTERN.test(value)) return false;
 
   try {
-    const d = new Decimal(value);
+    const d = new MoneyDecimal(value);
     if (!d.isFinite()) return false;
 
     // Check total digit count (excluding sign and decimal point)
@@ -56,35 +59,35 @@ export function isValidDecimal(value: string): boolean {
  * Add two decimal strings.
  */
 export function add(a: string, b: string): string {
-  return new Decimal(a).plus(b).toFixed();
+  return toCanonical(new MoneyDecimal(a).plus(b));
 }
 
 /**
  * Subtract b from a.
  */
 export function subtract(a: string, b: string): string {
-  return new Decimal(a).minus(b).toFixed();
+  return toCanonical(new MoneyDecimal(a).minus(b));
 }
 
 /**
  * Multiply two decimal strings.
  */
 export function multiply(a: string, b: string): string {
-  return new Decimal(a).times(b).toFixed();
+  return toCanonical(new MoneyDecimal(a).times(b));
 }
 
 /**
  * Divide a by b.
  */
 export function divide(a: string, b: string): string {
-  return new Decimal(a).dividedBy(b).toFixed();
+  return toCanonical(new MoneyDecimal(a).dividedBy(b).toDecimalPlaces(20));
 }
 
 /**
  * Compare two decimal strings. Returns -1 (a < b), 0 (a === b), or 1 (a > b).
  */
 export function compare(a: string, b: string): -1 | 0 | 1 {
-  const result = new Decimal(a).comparedTo(b);
+  const result = new MoneyDecimal(a).comparedTo(b);
   if (result < 0) return -1;
   if (result > 0) return 1;
   return 0;
@@ -94,14 +97,15 @@ export function compare(a: string, b: string): -1 | 0 | 1 {
  * Return the absolute value of a decimal string.
  */
 export function abs(value: string): string {
-  return new Decimal(value).abs().toFixed();
+  return toCanonical(new MoneyDecimal(value).abs());
 }
 
 /**
  * Round a decimal string to the given number of decimal places using half-up rounding.
  */
 export function round(value: string, decimals: number): string {
-  return new Decimal(value).toFixed(decimals);
+  const rounded = new MoneyDecimal(value).toDecimalPlaces(decimals);
+  return rounded.isZero() ? "0" : rounded.toFixed(decimals);
 }
 
 /**
@@ -118,36 +122,36 @@ export function round(value: string, decimals: number): string {
 export function allocate(value: string, ratios: number[], decimals = 2): string[] {
   if (ratios.length === 0) return [];
 
-  const decimalValue = new Decimal(value);
+  const decimalValue = new MoneyDecimal(value);
   const totalRatio = ratios.reduce((sum, r) => sum + r, 0);
 
   if (totalRatio === 0) {
     // Equal split when all ratios are zero (last absorbs rounding remainder)
     const perPart = decimalValue.dividedBy(ratios.length);
     const results: string[] = [];
-    let distributed = new Decimal(0);
+    let distributed = new MoneyDecimal(0);
     for (let i = 0; i < ratios.length - 1; i++) {
-      const rounded = perPart.toFixed(decimals, Decimal.ROUND_HALF_UP);
+      const rounded = perPart.toFixed(decimals, MoneyDecimal.ROUND_HALF_UP);
       results.push(rounded);
       distributed = distributed.plus(rounded);
     }
-    results.push(decimalValue.minus(distributed).toFixed(decimals, Decimal.ROUND_HALF_UP));
+    results.push(decimalValue.minus(distributed).toFixed(decimals, MoneyDecimal.ROUND_HALF_UP));
     return results;
   }
 
-  let distributed = new Decimal(0);
+  let distributed = new MoneyDecimal(0);
   const results: string[] = [];
 
   for (let i = 0; i < ratios.length - 1; i++) {
     const share = decimalValue.times(ratios[i]!).dividedBy(totalRatio);
-    const rounded = share.toFixed(decimals, Decimal.ROUND_HALF_UP);
+    const rounded = share.toFixed(decimals, MoneyDecimal.ROUND_HALF_UP);
     results.push(rounded);
     distributed = distributed.plus(rounded);
   }
 
   // Last part absorbs rounding remainder
   const remainder = decimalValue.minus(distributed);
-  results.push(remainder.toFixed(decimals, Decimal.ROUND_HALF_UP));
+  results.push(remainder.toFixed(decimals, MoneyDecimal.ROUND_HALF_UP));
 
   return results;
 }

@@ -68,7 +68,7 @@ export function LargeGridHeatmap({
           />
         ))}
         {gridDays.map(({ date, dayData }) => {
-          const amount = dayData?.totalAmount ?? 0;
+          const amount = dayData?.totalAmount ?? "0";
           const level = getHeatmapLevel(amount, stats);
           const [, , dayPart] = date.split("-");
           const dayNumber = Number.parseInt(dayPart ?? "1", 10);

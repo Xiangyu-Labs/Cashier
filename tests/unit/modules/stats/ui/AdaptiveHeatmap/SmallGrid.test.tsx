@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { SmallGridHeatmap } from "@/modules/stats/ui/AdaptiveHeatmap";
 
 const heatmapStats = {
-  minAmount: 10,
-  maxAmount: 50,
-  avgAmount: 30,
-  p80Amount: 40,
+  minAmount: "10",
+  maxAmount: "50",
+  avgAmount: "30",
+  p80Amount: "40",
 };
 
 describe("SmallGridHeatmap", () => {
@@ -15,8 +15,8 @@ describe("SmallGridHeatmap", () => {
     const { container } = render(
       <SmallGridHeatmap
         days={[
-          { date: "2026-08-05", totalAmount: 20, entryCount: 1, currencies: ["CNY"] },
-          { date: "2026-08-06", totalAmount: 0, entryCount: 0, currencies: [] },
+          { date: "2026-08-05", totalAmount: "20", entryCount: 1, currencies: ["CNY"] },
+          { date: "2026-08-06", totalAmount: "0", entryCount: 0, currencies: [] },
         ]}
         stats={heatmapStats}
         onDayClick={onDayClick}

@@ -8,11 +8,12 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { getHeatmapColor, formatCellAmount } from "../../lib/heatmap-colors";
 import type { HeatmapLevel } from "../../types";
+import { compare } from "@/lib/money/decimal";
 
 interface DayCellLargeProps {
   date: string;
   dayNumber: number;
-  amount: number;
+  amount: string;
   level: HeatmapLevel;
   onClick?: () => void;
   currency?: string;
@@ -35,7 +36,7 @@ export function DayCellLarge({
     <div className="relative min-w-0 overflow-visible">
       <button
         type="button"
-        aria-label={`${date}, ${amount > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
+        aria-label={`${date}, ${compare(amount, "0") > 0 ? `${t("expense")}: ${formatCellAmount(amount, currency, locale)}` : t("noConsumption")}`}
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -60,7 +61,7 @@ export function DayCellLarge({
         </span>
 
         {/* Amount */}
-        {amount > 0 && (
+        {compare(amount, "0") > 0 ? (
           <span
             className={cn(
               "max-w-full truncate px-0.5 text-xs font-semibold",
@@ -69,14 +70,14 @@ export function DayCellLarge({
           >
             {formatCellAmount(amount, currency, locale)}
           </span>
-        )}
+        ) : null}
       </button>
 
       {/* Tooltip */}
       {isHovered && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border whitespace-nowrap z-tooltip pointer-events-none">
           <div className="font-medium">{date}</div>
-          {amount > 0 ? (
+          {compare(amount, "0") > 0 ? (
             <div>
               {t("expense")}: {formatCellAmount(amount, currency, locale)}
             </div>

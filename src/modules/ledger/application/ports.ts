@@ -52,6 +52,7 @@ export interface LedgerReadPort {
 export interface LedgerMutationPort {
   createEntry(input: {
     ledgerId: string;
+    ledgerEntryId?: string;
     amount: string;
     currency?: string;
     itemName: string;

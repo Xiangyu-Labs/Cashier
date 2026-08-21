@@ -13,7 +13,7 @@ import type {
 import { db } from "@/lib/db";
 import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
-import { multiply, divide, round as decimalRound, isValidDecimal } from "@/lib/money/decimal";
+import { multiply, isValidDecimal } from "@/lib/money/decimal";
 import {
   currencyRates,
   entryCategories,
@@ -26,6 +26,11 @@ import {
 } from "@/persistence";
 import { createToken, computeHash } from "@/lib/security/service-credential-token";
 import { lockLedgerForUpdate } from "./transaction-locks";
+import {
+  convertWithRates,
+  resolveRateRatio,
+} from "@/modules/currency/application/services/rate-calculation";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 
 /** lastUsedAt updates are throttled to once per five minutes per credential. */
 const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
@@ -146,16 +151,15 @@ async function recalculateCurrentEntries(
           409
         );
       }
-      const fromRate = sourceCurrency === rate.base ? 1 : rate.rates[sourceCurrency];
-      const toRate = mainCurrency === rate.base ? 1 : rate.rates[mainCurrency];
-      if (fromRate == null || toRate == null || fromRate <= 0 || toRate <= 0) {
-        throw new AppError("Unsupported currency conversion", "CURRENCY_NOT_FOUND", 400);
-      }
-      const rateRatio = multiply(String(toRate), divide(String(1), String(fromRate)));
-      convertedAmount = decimalRound(multiply(entry.amount, rateRatio), 2);
-      exchangeRate = decimalRound(rateRatio, 6);
+      const rateRatio = resolveRateRatio(
+        { base: rate.base, date: rate.date, rates: rate.rates },
+        sourceCurrency,
+        mainCurrency
+      );
+      convertedAmount = roundToCurrency(multiply(entry.amount, rateRatio), mainCurrency);
+      exchangeRate = rateRatio;
     } else {
-      convertedAmount = decimalRound(entry.amount, 2);
+      convertedAmount = roundToCurrency(entry.amount, mainCurrency);
       exchangeRate = "1";
     }
     return {
@@ -447,6 +451,7 @@ export const postgresCategoryAdapter: CategoryPort = {
 
   async delete(ledgerId, categoryId) {
     return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
       const category = await tx
         .select({ id: entryCategories.id })
         .from(entryCategories)
@@ -738,7 +743,7 @@ export const postgresSettingsAdapter: SettingsPort = {
 export const postgresCurrencyAdapter: CurrencyPort = {
   async convert(amount, from, to, date) {
     if (!isValidDecimal(amount)) throw new ValidationError("Amount must be numeric");
-    if (from === to) return amount;
+    if (from === to) return roundToCurrency(amount, to);
     const [rateRow] = await db
       .select()
       .from(currencyRates)
@@ -746,13 +751,12 @@ export const postgresCurrencyAdapter: CurrencyPort = {
       .orderBy(desc(currencyRates.date))
       .limit(1);
     if (rateRow == null) throw new ConflictError("No stored currency rates are available");
-    const fromRate = from === rateRow.base ? 1 : rateRow.rates[from];
-    const toRate = to === rateRow.base ? 1 : rateRow.rates[to];
-    if (fromRate == null || toRate == null || fromRate <= 0 || toRate <= 0) {
-      throw new ValidationError("Unsupported currency conversion");
-    }
-    const rateRatio = divide(String(toRate), String(fromRate));
-    return decimalRound(multiply(amount, rateRatio), 6);
+    return convertWithRates(
+      amount,
+      { base: rateRow.base, date: rateRow.date, rates: rateRow.rates },
+      from,
+      to
+    ).convertedAmount;
   },
   async recalculateLedger(ledgerId, mainCurrency) {
     return db.transaction(async (tx) => {
@@ -761,13 +765,13 @@ export const postgresCurrencyAdapter: CurrencyPort = {
       return recalculateCurrentEntries(tx, ledgerId, mainCurrency);
     });
   },
-  async recalculateLedgerForDate(ledgerId, mainCurrency, date) {
+  async recalculateLedgerForDate(ledgerId, date) {
     const targetDate = date.split("T")[0] ?? date;
     return db.transaction(async (tx) => {
-      await lockLedgerForUpdate(tx, ledgerId);
+      const ledger = await lockLedgerForUpdate(tx, ledgerId);
       // Entries dated on the event use that date's rates; undated entries use
       // the latest stored rate, so both must be refreshed.
-      return recalculateCurrentEntries(tx, ledgerId, mainCurrency, targetDate, true);
+      return recalculateCurrentEntries(tx, ledgerId, ledger.mainCurrency, targetDate, true);
     });
   },
 };

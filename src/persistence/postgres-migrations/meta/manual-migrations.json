@@ -65,6 +65,10 @@
     {
       "file": "0026_schema_convergence.sql",
       "sha256": "a0dcd619dc4e5b77ecaf7ba3dae40c6b86fd202185bd93c6f62ec4705f1fba3e"
+    },
+    {
+      "file": "0027_monetary_integrity.sql",
+      "sha256": "4b4a7cf23911c5a99c41342b266b85bcdf4ba45014037e6790f885a92f385633"
     }
   ]
 }

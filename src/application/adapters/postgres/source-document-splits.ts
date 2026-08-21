@@ -4,6 +4,7 @@ import type { LedgerProjectionEntryContract } from "@/application/contracts";
 import { db } from "@/lib/db";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { round } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import { ledgerEntries, ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import type { SplitSourceDocumentResultDto } from "@/modules/source-document/contracts";
 import { postgresFxRateBook } from "./exchange-rate";
@@ -319,8 +320,11 @@ export async function splitSourceDocumentAtomically(
     const splitEntries = currentSelected.map((entry, index) =>
       projectionEntry(entry, {
         id: crypto.randomUUID(),
-        convertedAmount: round(conversions[index]!.convertedAmount, 2),
-        exchangeRate: round(conversions[index]!.exchangeRate, 6),
+        convertedAmount: roundToCurrency(
+          conversions[index]!.convertedAmount,
+          lockedLedger.mainCurrency
+        ),
+        exchangeRate: round(conversions[index]!.exchangeRate, 12),
       })
     );
     const splitRevisionId = await createCompletedProjectionInTransaction(tx, {

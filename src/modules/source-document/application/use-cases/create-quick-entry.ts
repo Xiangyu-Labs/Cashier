@@ -1,5 +1,6 @@
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
-import { divide, round } from "@/lib/money/decimal";
+import { roundToCurrency } from "@/lib/money/currency-precision";
+import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
 import type { FxRateBook } from "@/modules/currency/application/ports";
@@ -7,7 +8,7 @@ import type { QuickEntryPorts } from "../ports";
 
 export interface CreateQuickEntryPayload {
   categoryId: string;
-  amount: number;
+  amount: string;
   currency?: string;
   itemName?: string;
   description?: string | null;
@@ -23,12 +24,12 @@ interface QuickEntryInsertData {
   categoryId: string;
   itemName: string | null;
   description: string | null;
-  amount: number;
+  amount: string;
   entryDate: string;
 }
 
 async function resolveConversion(
-  amount: number,
+  amount: string,
   fromCurrency: string,
   toCurrency: string,
   date: string,
@@ -36,16 +37,12 @@ async function resolveConversion(
 ): Promise<ConversionResult> {
   if (fromCurrency === toCurrency) {
     return {
-      convertedAmount: round(String(amount), 2),
+      convertedAmount: roundToCurrency(amount, toCurrency),
       exchangeRate: "1",
     };
   }
 
-  const converted = await rates.convert(String(amount), fromCurrency, toCurrency, date);
-  return {
-    convertedAmount: round(converted, 2),
-    exchangeRate: round(divide(converted, String(amount)), 6),
-  };
+  return convertWithRates(amount, await rates.getRates(date), fromCurrency, toCurrency);
 }
 
 async function createQuickEntryAtomically(
@@ -66,7 +63,7 @@ async function createQuickEntryAtomically(
       {
         id: ledgerEntryId,
         categoryId: data.categoryId,
-        amount: round(String(data.amount), 2),
+        amount: roundToCurrency(data.amount, currency),
         currency,
         itemName,
         description: data.description,

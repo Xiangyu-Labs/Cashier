@@ -27,7 +27,7 @@ export interface EnhancedStatsDto {
       percent: number;
       amount: string;
     };
-    dailyAverage: number;
+    dailyAverage: string;
     comparison: {
       mode: StatsComparisonMode;
       from: string;

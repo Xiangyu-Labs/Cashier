@@ -120,12 +120,12 @@ export const ledgerEntries = pgTable(
     sourceDocumentId: uuid("source_document_id"),
     sourceDocumentRevisionId: uuid("source_document_revision_id"),
     position: integer("position").notNull().default(0),
-    amount: numeric("amount", { precision: 20, scale: 2, mode: "string" }).notNull(),
+    amount: numeric("amount", { precision: 21, scale: 3, mode: "string" }).notNull(),
     currency: varchar("currency", { length: 3 }),
     itemName: text("item_name").notNull(),
     description: text("description"),
-    convertedAmount: numeric("converted_amount", { precision: 20, scale: 2, mode: "string" }),
-    exchangeRate: numeric("exchange_rate", { precision: 30, scale: 6, mode: "string" }),
+    convertedAmount: numeric("converted_amount", { precision: 21, scale: 3, mode: "string" }),
+    exchangeRate: numeric("exchange_rate", { precision: 30, scale: 12, mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),

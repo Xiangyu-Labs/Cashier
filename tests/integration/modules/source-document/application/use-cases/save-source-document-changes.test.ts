@@ -79,7 +79,7 @@ describe("saveSourceDocumentChangesAction", () => {
       entries: [
         {
           ledgerEntryId: fixture.firstEntryId,
-          data: { itemName: "Updated first", amount: 12 },
+          data: { itemName: "Updated first", amount: "12" },
         },
         {
           ledgerEntryId: fixture.secondEntryId,
@@ -99,7 +99,7 @@ describe("saveSourceDocumentChangesAction", () => {
         expect.objectContaining({
           id: fixture.firstEntryId,
           itemName: "Updated first",
-          amount: "12.00",
+          amount: "12.000",
         }),
         expect.objectContaining({
           id: fixture.secondEntryId,

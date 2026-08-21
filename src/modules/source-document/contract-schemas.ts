@@ -24,8 +24,14 @@ import {
 } from "@/modules/source-document/api-v1-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
 import { updateLedgerEntryInputSchema } from "@/modules/ledger/contract-schemas";
+import { compare, DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
+const positiveDecimalSchema = z
+  .string()
+  .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+  .transform(normalize)
+  .refine((value) => compare(value, "0") > 0, "Amount must be positive");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
 const optionalQueryNumberSchema = z.preprocess(
@@ -408,7 +414,7 @@ export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
 
 export const createQuickEntryInputSchema = strictObjectSchema({
   categoryId: uuidSchema,
-  amount: z.number().positive(),
+  amount: positiveDecimalSchema,
   currency: z.string().length(3).optional(),
   itemName: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(500).nullable().optional(),

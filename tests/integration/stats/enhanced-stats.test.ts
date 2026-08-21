@@ -603,9 +603,9 @@ describe("Enhanced Stats Actions", () => {
       });
 
       expect(result.heatmap.days).toHaveLength(3);
-      expect(result.heatmap.stats.minAmount).toBe(50);
-      expect(result.heatmap.stats.maxAmount).toBe(200);
-      expect(result.heatmap.stats.avgAmount).toBeCloseTo(116.67, 2);
+      expect(result.heatmap.stats.minAmount).toBe("50");
+      expect(result.heatmap.stats.maxAmount).toBe("200");
+      expect(result.heatmap.stats.avgAmount).toBe("116.66666666666666667");
     });
 
     it("should handle uncategorized entries", async () => {
