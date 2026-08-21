@@ -68,4 +68,11 @@ describe("getLedgerSettingsBootstrap", () => {
 
     await expect(getBootstrap({ ledgerId: "missing" }, dependencies)).resolves.toBeNull();
   });
+
+  it("rejects a pre-authorized DTO for another ledger", async () => {
+    await expect(
+      getBootstrap({ ledgerId: "ledger-2", ledgerDto }, dependencies)
+    ).resolves.toBeNull();
+    expect(listEntryCategoriesMock).not.toHaveBeenCalled();
+  });
 });

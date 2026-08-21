@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import React from "react";
+import { CATEGORY_ICON_MAP } from "@/config/icons";
 
 const iconRecord: Record<string, LucideIcon> = {
   Utensils,
@@ -126,14 +127,12 @@ export function CategoryIcon({ iconName, className }: CategoryIconProps) {
     return <Package className={className} />;
   }
 
-  // Check if it's a specific emoji we want to fallback (optional)
-  // or checks if it is a valid Lucide icon name
-  const IconComponent = iconRecord[iconName];
+  const safeIconName = CATEGORY_ICON_MAP[iconName];
+  const IconComponent = safeIconName == null ? undefined : iconRecord[safeIconName];
 
   if (IconComponent) {
     return <IconComponent className={className} />;
   }
 
-  // Fallback to rendering as text (likely emoji)
-  return <span className={className}>{iconName}</span>;
+  return <Package className={className} />;
 }

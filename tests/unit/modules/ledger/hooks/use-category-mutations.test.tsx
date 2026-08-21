@@ -136,4 +136,20 @@ describe("useCategoryMutations", () => {
     await waitFor(() => expect(result.current.generatingCategoryIds.has(category.id)).toBe(false));
     expect(result.current.failedCategoryIds.has(category.id)).toBe(false);
   });
+
+  it("activates polling only after metadata generation succeeds", async () => {
+    const { queryClient, wrapper } = setup();
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const onMetadataGenerated = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useCategoryMutations("ledger-1", [category], {
+          onMetadataGenerated,
+        }),
+      { wrapper }
+    );
+
+    act(() => result.current.retryCategoryMetadata(category.id));
+    await waitFor(() => expect(onMetadataGenerated).toHaveBeenCalledOnce());
+  });
 });

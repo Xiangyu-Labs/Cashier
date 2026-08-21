@@ -18,6 +18,8 @@ export interface BuildChartPointsInput {
   locale?: string;
 }
 
+export const MAX_CHART_POINTS = 120;
+
 function formatUtcDate(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -68,7 +70,7 @@ export function buildChartPoints({
     const endYear = Number(endDate.slice(0, 4));
     const endMonth = Number(endDate.slice(5, 7));
     const monthCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-    if (monthCount <= 0) return [];
+    if (monthCount <= 0 || monthCount > MAX_CHART_POINTS) return [];
 
     const points: ChartPoint[] = [];
     for (let index = 0; index < monthCount; index++) {
@@ -93,6 +95,7 @@ export function buildChartPoints({
   const points: ChartPoint[] = [];
   let cursor = startDate;
   while (cursor <= endDate) {
+    if (points.length >= MAX_CHART_POINTS) return [];
     const total = totalsByDate.get(cursor) ?? 0;
     const label =
       rangeType === "week"

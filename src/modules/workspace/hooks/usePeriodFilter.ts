@@ -2,6 +2,7 @@
 import { useCallback, useMemo } from "react";
 import {
   type PeriodParams,
+  type PeriodPreset,
   periodToDateRange,
   parsePeriodFromSearchParams,
 } from "@/lib/period-utils";
@@ -48,7 +49,7 @@ interface UsePeriodFilterReturn {
   statuses: SourceDocumentStatusType[];
   handlePeriodChange: (newPeriod: PeriodParams, options?: { skipUrlUpdate?: boolean }) => void;
   handleAdvancedFiltersChange: (newFilters: LedgerAdvancedFilters) => void;
-  handleFiltersChange: (newFilters: EntryFilters) => void;
+  handleFiltersChange: (newFilters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
   applyStreamStatusPreset: (preset: StreamStatusPreset) => void;
   resetFilters: () => void;
 }
@@ -127,11 +128,12 @@ export function usePeriodFilter({
   );
 
   const handleFiltersChange = useCallback(
-    (newFilters: EntryFilters) => {
+    (newFilters: EntryFilters, requestedPeriod?: PeriodPreset) => {
       const { periodUpdate, advancedFilterUpdate } = splitLedgerFilterChange({
         currentPeriod: periodParams,
         currentFilters: filters,
         nextFilters: newFilters,
+        ...(requestedPeriod !== undefined ? { requestedPeriod } : {}),
       });
       const params = updateLedgerSearchParams(
         searchParams,

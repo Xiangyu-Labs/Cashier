@@ -15,7 +15,7 @@ import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/modules/workspace/tabs";
 import { NotFoundError, UnauthorizedError } from "@/lib/errors";
-import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { addPeriod, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import type { CategoryPort } from "@/application/contracts";
 import type { ServiceCredentialPort } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
@@ -28,6 +28,7 @@ import {
   buildStatsQueryDescriptor,
   buildStreamQueryDescriptor,
 } from "@/modules/workspace/ledger-tab-query-descriptors";
+import type { StatsUrlState } from "@/modules/workspace/ledger-url-params";
 
 interface LedgerPageBootstrapResult {
   dehydratedState: DehydratedState;
@@ -40,6 +41,7 @@ export interface GetLedgerPageBootstrapInput {
   initialTab: LedgerTab;
   periodParams: PeriodParams;
   advancedFilters?: LedgerAdvancedFilters;
+  statsState?: StatsUrlState;
   /** Optional pre-authorized ledger DTO to skip re-authorization. */
   ledgerDto?: LedgerDto;
 }
@@ -57,6 +59,7 @@ export async function getLedgerPageBootstrap(
   let ledgerDto: LedgerDto;
 
   if (input.ledgerDto != null) {
+    if (input.ledgerDto.id !== input.ledgerId) return null;
     // Use pre-authorized DTO — skip re-authorization
     ledgerDto = input.ledgerDto;
   } else {
@@ -82,7 +85,7 @@ export async function getLedgerPageBootstrap(
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);
 
   const mainCurrency = ledgerDto.settings.mainCurrency ?? "CNY";
-  const fixedTimeZone = ledgerDto.settings.timeZone ?? undefined;
+  const fixedTimeZone = ledgerDto.settings.timeZone ?? runtimeEnv.timeZone;
   const zonedToday = getDateInTimezone(fixedTimeZone);
   const initialStatsDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
   const detailsDescriptor = buildDetailsQueryDescriptor({
@@ -94,8 +97,13 @@ export async function getLedgerPageBootstrap(
   });
   const statsDescriptor = buildStatsQueryDescriptor({
     ledgerId: input.ledgerId,
-    currentDate: initialStatsDate,
+    currentDate:
+      input.statsState == null
+        ? initialStatsDate
+        : addPeriod(initialStatsDate, input.statsState.range, input.statsState.offset),
     mainCurrency,
+    ...(input.statsState != null ? { rangeType: input.statsState.range } : {}),
+    ...(input.statsState != null ? { currentPeriod: input.statsState.offset === 0 } : {}),
   });
   const streamDescriptor = buildStreamQueryDescriptor({
     ledgerId: input.ledgerId,

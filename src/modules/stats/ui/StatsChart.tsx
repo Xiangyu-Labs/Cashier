@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { type DateRangeType, formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
-import { formatCurrencyAmount } from "@/lib/format/currency";
+import { formatCompactCurrencyAmount, formatCurrencyAmount } from "@/lib/format/currency";
 import { buildChartPoints } from "@/modules/stats/lib/chart-points";
 
 interface StatsChartProps {
@@ -84,12 +84,7 @@ export function StatsChart({
   const paddingBottom = 10; // 10% bottom padding
   const formatAmount = (value: number) => formatCurrencyAmount(value, currencySymbol, locale);
   const formatAxisAmount = (value: number) =>
-    new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencySymbol,
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value);
+    formatCompactCurrencyAmount(value, currencySymbol, locale);
   const yAxisTicks = [yAxisMax, (yAxisMax * 2) / 3, yAxisMax / 3, 0];
 
   return (

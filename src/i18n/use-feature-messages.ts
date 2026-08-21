@@ -65,7 +65,7 @@ function startFeatureMessageLoad(
     `/api/i18n/${locale === "zh" ? "zh" : "en"}/${feature}?v=${FEATURE_MESSAGE_VERSION}`,
     {
       credentials: "same-origin",
-      cache: "no-store",
+      cache: "force-cache",
     }
   ).then(async (response) => {
     if (!response.ok) throw new Error("Unable to load feature messages");

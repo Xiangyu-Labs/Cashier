@@ -1,5 +1,9 @@
 "use client";
-import { buildLedgerUrl } from "./ledger-url-params";
+import {
+  buildLedgerUrl,
+  readLedgerDetailSearchParams,
+  setLedgerDetailSearchParams,
+} from "./ledger-url-params";
 
 type SearchParamsLike = Pick<URLSearchParams, "toString">;
 export type LedgerNavigationKind = "tab" | "filter" | "stats" | "drilldown" | "detail";
@@ -29,12 +33,20 @@ export function pushLedgerUrl(
   searchParams: SearchParamsLike | URLSearchParams,
   kind: LedgerNavigationKind
 ): string {
-  const url = buildLedgerUrl(pathname, searchParams);
+  const leavingDetail =
+    kind !== "detail" &&
+    readLedgerDetailSearchParams(new URLSearchParams(window.location.search)) != null;
+  const nextSearchParams =
+    kind === "detail"
+      ? searchParams
+      : setLedgerDetailSearchParams(new URLSearchParams(searchParams.toString()), null);
+  const url = buildLedgerUrl(pathname, nextSearchParams);
   const state: Record<string, unknown> & CashierHistoryMetadata = {
     ...currentCustomHistoryState(),
     cashier: { ledgerNavigation: true, kind },
   };
-  window.history.pushState(state, "", url);
+  if (leavingDetail) window.history.replaceState(state, "", url);
+  else window.history.pushState(state, "", url);
   return url;
 }
 

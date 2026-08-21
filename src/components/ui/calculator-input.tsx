@@ -60,6 +60,7 @@ export function CalculatorInput({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const originalInputValueRef = React.useRef("");
+  const committedRef = React.useRef(false);
 
   const [calcState, setCalcState] = React.useState<CalculatorState>({
     displayValue: value === 0 ? "0" : value.toFixed(2),
@@ -77,8 +78,10 @@ export function CalculatorInput({
   }, [mode]);
 
   const confirmInputValue = React.useCallback((): boolean => {
+    if (committedRef.current) return true;
     if (inlineInputMode === "minor-unit") {
       onChange(digitsToAmount(inputValue));
+      committedRef.current = true;
       setInputError(null);
       setMode("display");
       return true;
@@ -87,6 +90,7 @@ export function CalculatorInput({
     const numValue = parseFloat(inputValue);
     if (!isNaN(numValue) && inputValue.trim() !== "") {
       onChange(parseFloat(numValue.toFixed(2)));
+      committedRef.current = true;
       setInputError(null);
       setMode("display");
       return true;
@@ -113,6 +117,7 @@ export function CalculatorInput({
   }, [confirmInputValue, mode]);
 
   const handleStartInput = () => {
+    committedRef.current = false;
     const nextInputValue =
       inlineInputMode === "minor-unit"
         ? value === 0

@@ -35,5 +35,9 @@ describe("useFeatureMessages", () => {
     });
     expect(result.current.data).toEqual({ StatsTab: { month: "Month" } });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining("/api/i18n/en/stats?v="), {
+      cache: "force-cache",
+      credentials: "same-origin",
+    });
   });
 });

@@ -14,15 +14,18 @@ interface UseLedgerSettingsQueriesParams {
   ledgerId: string;
   initialLedger: Ledger;
   initialCategories: EntryCategoryWithCount[];
+  metadataPollingSession: number;
 }
 
 export function useLedgerSettingsQueries({
   ledgerId,
   initialLedger,
   initialCategories,
+  metadataPollingSession,
 }: UseLedgerSettingsQueriesParams) {
   const settingsQueryKey = useMemo(() => queryKeys.ledgerSettings(ledgerId), [ledgerId]);
   const categoryMetadataPolling = useSmartPolling<EntryCategoryWithCount[]>({
+    sessionKey: metadataPollingSession,
     isPollingActive: useCallback(
       (data) =>
         data?.some(

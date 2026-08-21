@@ -14,6 +14,7 @@ import { parsePeriodFromSearchParams } from "@/lib/period-utils";
 import {
   getScopedLedgerSearchParams,
   readLedgerFilterParams,
+  readStatsSearchParams,
 } from "@/modules/workspace/ledger-url-params";
 import {
   prefetchDetailsTabQuery,
@@ -123,7 +124,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
           readLedgerFilterParams(searchParams, "details")
         );
       } else if (tab === "stats") {
-        void prefetchStatsTabQuery(queryClient, ledgerId);
+        void prefetchStatsTabQuery(queryClient, ledgerId, readStatsSearchParams(searchParams));
       }
     },
     [ledgerId, preloadTabCode, queryClient, searchParams]

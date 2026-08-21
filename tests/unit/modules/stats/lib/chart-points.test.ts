@@ -93,4 +93,23 @@ describe("buildChartPoints", () => {
       })
     ).toEqual([]);
   });
+
+  it("refuses to build more than 120 chart points", () => {
+    expect(
+      buildChartPoints({
+        data: [],
+        rangeType: "year",
+        startDate: "2015-01-01",
+        endDate: "2025-01-31",
+      })
+    ).toEqual([]);
+    expect(
+      buildChartPoints({
+        data: [],
+        rangeType: "month",
+        startDate: "2026-01-01",
+        endDate: "2026-05-01",
+      })
+    ).toEqual([]);
+  });
 });

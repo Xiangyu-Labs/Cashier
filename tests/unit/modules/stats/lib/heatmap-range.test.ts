@@ -20,4 +20,8 @@ describe("heatmap range", () => {
     );
     expect(generateHeatmapDateKeys(range)).toHaveLength(365);
   });
+
+  it("refuses to generate more than 3660 date keys", () => {
+    expect(generateHeatmapDateKeys({ startDate: "2015-01-01", endDate: "2026-01-01" })).toEqual([]);
+  });
 });

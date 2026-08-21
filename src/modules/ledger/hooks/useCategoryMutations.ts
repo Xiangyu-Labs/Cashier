@@ -18,7 +18,15 @@ import type {
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
 
-export function useCategoryMutations(ledgerId: string, _categories: EntryCategory[]) {
+interface UseCategoryMutationsOptions {
+  onMetadataGenerated?: () => void;
+}
+
+export function useCategoryMutations(
+  ledgerId: string,
+  _categories: EntryCategory[],
+  options: UseCategoryMutationsOptions = {}
+) {
   const t = useTranslations("Settings");
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
   const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
@@ -49,6 +57,7 @@ export function useCategoryMutations(ledgerId: string, _categories: EntryCategor
     resourceGroups: ["categories"],
     onSuccess: (_data, { categoryId }) => {
       finishMetadataRequest(categoryId);
+      options.onMetadataGenerated?.();
     },
     onError: (_error, { categoryId, requestId }) => {
       if (latestMetadataRequestRef.current.get(categoryId) !== requestId) return;

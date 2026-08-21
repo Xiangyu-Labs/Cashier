@@ -5,9 +5,11 @@ import {
   formatStatusesParam,
   migrateLegacyLedgerSearchParams,
   readLedgerFilterParams,
+  readStatsSearchParams,
+  setStatsSearchParams,
   updateLedgerSearchParams,
 } from "@/modules/workspace/ledger-url-params";
-import { replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
+import { pushLedgerUrl, replaceLedgerUrl } from "@/modules/workspace/ledger-url-navigation";
 
 describe("ledger-url-params", () => {
   beforeEach(() => {
@@ -146,6 +148,52 @@ describe("ledger-url-params", () => {
 
     expect(replacedUrl).toBe("/ledger/test-id?tab=details&period=custom");
     expect(replaceState).toHaveBeenCalled();
+  });
+
+  it("replaces a detail entry when navigating so Back cannot restore the modal", () => {
+    window.history.replaceState(
+      { cashier: { ledgerNavigation: true, kind: "detail" } },
+      "",
+      "/ledger/test-id?detailType=ledger-entry&detailId=entry-1"
+    );
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const pushState = vi.spyOn(window.history, "pushState");
+
+    const url = pushLedgerUrl(
+      "/ledger/test-id",
+      new URLSearchParams("tab=stats&detailType=ledger-entry&detailId=entry-1"),
+      "tab"
+    );
+
+    expect(url).toBe("/ledger/test-id?tab=stats");
+    expect(replaceState).toHaveBeenCalled();
+    expect(pushState).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["week", -999, -521],
+    ["month", -999, -119],
+    ["year", -999, -9],
+  ] as const)("clamps %s stats offsets to the supported history", (range, offset, expected) => {
+    expect(
+      readStatsSearchParams(new URLSearchParams(`statsRange=${range}&statsOffset=${offset}`)).offset
+    ).toBe(expected);
+  });
+
+  it.each(["1", "1.5", "Infinity", "-Infinity", "NaN"])(
+    "normalizes invalid stats offset %s to zero",
+    (offset) => {
+      expect(readStatsSearchParams(new URLSearchParams(`statsOffset=${offset}`)).offset).toBe(0);
+    }
+  );
+
+  it("clamps stats offsets when serializing URL state", () => {
+    const params = setStatsSearchParams(new URLSearchParams(), {
+      range: "year",
+      offset: -100,
+      view: "trend",
+    });
+    expect(params.get("statsOffset")).toBe("-9");
   });
 
   it("keeps Stream and Details filter namespaces isolated", () => {

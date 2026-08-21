@@ -15,14 +15,6 @@ export function openLedgerDetail(item: ModalItem): void {
 }
 
 export function closeLedgerDetail(): void {
-  const state = window.history.state as {
-    cashier?: { ledgerNavigation?: boolean; kind?: string };
-  } | null;
-  if (state?.cashier?.ledgerNavigation === true && state.cashier.kind === "detail") {
-    window.history.back();
-    return;
-  }
-
   const modalState = useModalStackStore.getState();
   const previous = modalState.stack.at(-2);
   const params = setLedgerDetailSearchParams(

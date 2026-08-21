@@ -6,7 +6,9 @@ import { queryKeys } from "@/lib/query-keys";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { Ledger } from "@/modules/ledger/contracts";
 import type { LedgerAdvancedFilters } from "./initial-query-state";
-import { getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { addPeriod, getDateInTimezone, parseDateString } from "@/lib/date-utils";
+import { runtimeEnv } from "@/lib/env/runtime";
+import type { StatsUrlState } from "./ledger-url-params";
 import {
   buildDetailsQueryDescriptor,
   buildStatsQueryDescriptor,
@@ -57,16 +59,23 @@ export async function prefetchDetailsTabQuery(
   ]);
 }
 
-export async function prefetchStatsTabQuery(queryClient: QueryClient, ledgerId: string) {
+export async function prefetchStatsTabQuery(
+  queryClient: QueryClient,
+  ledgerId: string,
+  statsState: StatsUrlState = { range: "month", offset: 0, view: "heatmap" }
+) {
   const { getEnhancedStats } = await import("@/modules/stats/actions");
   const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
   const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
-  const fixedTimeZone = ledger?.settings.timeZone ?? undefined;
+  const fixedTimeZone = ledger?.settings.timeZone ?? runtimeEnv.timeZone;
   const zonedToday = getDateInTimezone(fixedTimeZone);
+  const initialDate = zonedToday != null ? parseDateString(zonedToday) : new Date();
   const descriptor = buildStatsQueryDescriptor({
     ledgerId,
-    currentDate: zonedToday != null ? parseDateString(zonedToday) : new Date(),
+    currentDate: addPeriod(initialDate, statsState.range, statsState.offset),
     mainCurrency,
+    rangeType: statsState.range,
+    currentPeriod: statsState.offset === 0,
   });
 
   await queryClient.prefetchQuery({

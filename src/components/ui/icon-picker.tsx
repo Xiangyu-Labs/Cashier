@@ -2,8 +2,12 @@
 import { useId, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { COMMON_LUCIDE_ICONS, type CommonLucideIcon } from "@/config/icons";
+import { CATEGORY_ICON_MAP, type CommonLucideIcon } from "@/config/icons";
 import { cn } from "@/lib/utils";
+
+const PICKER_ICON_NAMES = Object.values(CATEGORY_ICON_MAP).filter(
+  (iconName): iconName is CommonLucideIcon => iconName !== "Home" && iconName !== "CircleSlash"
+);
 
 export interface IconPickerProps {
   value: string | null | undefined;
@@ -33,7 +37,7 @@ export function IconPicker({
     setOpen(false);
   };
   const selectedName =
-    value != null && value in messages.iconNames
+    value != null && Object.hasOwn(messages.iconNames, value)
       ? messages.iconNames[value as CommonLucideIcon]
       : value;
 
@@ -73,7 +77,7 @@ export function IconPicker({
           aria-label={messages.list}
           className="grid grid-cols-6 gap-1"
         >
-          {COMMON_LUCIDE_ICONS.map((iconName) => {
+          {PICKER_ICON_NAMES.map((iconName) => {
             const isSelected = value === iconName;
             const localizedName = messages.iconNames[iconName];
             return (

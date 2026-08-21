@@ -162,6 +162,11 @@ export interface LedgerUrlUpdate {
 const DETAIL_TYPES = new Set<LedgerDetailType>(["source-document", "ledger-entry"]);
 const STATS_RANGES = new Set<StatsRange>(["week", "month", "year"]);
 const STATS_VIEWS = new Set<StatsView>(["heatmap", "trend"]);
+const MIN_STATS_OFFSET: Readonly<Record<StatsRange, number>> = {
+  week: -521,
+  month: -119,
+  year: -9,
+};
 
 export function readLedgerDetailSearchParams(
   searchParams: Pick<URLSearchParams, "get">
@@ -200,12 +205,17 @@ export function readStatsSearchParams(searchParams: Pick<URLSearchParams, "get">
   const rawOffset = searchParams.get("statsOffset");
   const parsedOffset = rawOffset == null ? 0 : Number(rawOffset);
 
+  const range =
+    rawRange != null && STATS_RANGES.has(rawRange as StatsRange)
+      ? (rawRange as StatsRange)
+      : "month";
+
   return {
-    range:
-      rawRange != null && STATS_RANGES.has(rawRange as StatsRange)
-        ? (rawRange as StatsRange)
-        : "month",
-    offset: Number.isInteger(parsedOffset) && parsedOffset <= 0 ? parsedOffset : 0,
+    range,
+    offset:
+      Number.isFinite(parsedOffset) && Number.isInteger(parsedOffset) && parsedOffset <= 0
+        ? Math.max(MIN_STATS_OFFSET[range], parsedOffset)
+        : 0,
     view:
       rawView != null && STATS_VIEWS.has(rawView as StatsView) ? (rawView as StatsView) : "heatmap",
   };
@@ -219,7 +229,10 @@ export function setStatsSearchParams(
   if (state.range === "month") params.delete("statsRange");
   else params.set("statsRange", state.range);
   if (state.offset === 0) params.delete("statsOffset");
-  else params.set("statsOffset", String(Math.min(0, Math.trunc(state.offset))));
+  else {
+    const offset = Number.isFinite(state.offset) ? Math.trunc(state.offset) : 0;
+    params.set("statsOffset", String(Math.max(MIN_STATS_OFFSET[state.range], Math.min(0, offset))));
+  }
   if (state.view === "heatmap") params.delete("statsView");
   else params.set("statsView", state.view);
   return params;

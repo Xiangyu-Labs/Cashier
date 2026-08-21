@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 describe("CategoryIcon", () => {
@@ -13,8 +13,18 @@ describe("CategoryIcon", () => {
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
-  it("renders text fallback for unknown icon names", () => {
-    render(<CategoryIcon iconName="🍕" />);
-    expect(screen.getByText("🍕")).toBeInTheDocument();
+  it.each(["constructor", "__proto__", "toString", "UnknownIcon"])(
+    "renders Package for unsafe or unknown name %s",
+    (iconName) => {
+      const { container } = render(<CategoryIcon iconName={iconName} />);
+      expect(container.querySelector("svg")).toBeInTheDocument();
+      expect(container).not.toHaveTextContent(iconName);
+    }
+  );
+
+  it("renders Package for legacy emoji values", () => {
+    const { container } = render(<CategoryIcon iconName="🍕" />);
+    expect(container.querySelector("svg")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent("🍕");
   });
 });

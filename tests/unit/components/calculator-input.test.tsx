@@ -99,6 +99,20 @@ describe("CalculatorInput", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
+  it("commits once when an outside mousedown is followed by blur", () => {
+    const onChange = vi.fn();
+    render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "amount" }));
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "19.75" } });
+    fireEvent.mouseDown(document.body);
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange).toHaveBeenCalledWith(19.75);
+  });
+
   it("keeps invalid inline input open and announces an error on outside click", () => {
     const onChange = vi.fn();
     render(<CalculatorInput value={12} onChange={onChange} ariaLabel="amount" />);

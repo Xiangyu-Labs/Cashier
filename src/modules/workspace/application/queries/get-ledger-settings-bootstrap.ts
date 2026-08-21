@@ -29,6 +29,7 @@ export async function getLedgerSettingsBootstrap(
   let ledgerDto: LedgerDto;
 
   if (input.ledgerDto != null) {
+    if (input.ledgerDto.id !== input.ledgerId) return null;
     ledgerDto = input.ledgerDto;
   } else {
     try {

@@ -84,6 +84,17 @@ describe("ledger-filter-state", () => {
     });
   });
 
+  it("preserves the all-time period when date fields are cleared", () => {
+    const result = splitLedgerFilterChange({
+      currentPeriod: { period: "custom", startDate: "2026-01-01", endDate: "2026-01-31" },
+      currentFilters: { startDate: "2026-01-01", endDate: "2026-01-31" },
+      nextFilters: {},
+      requestedPeriod: "all",
+    });
+
+    expect(result.periodUpdate).toEqual({ period: "all" });
+  });
+
   describe("STREAM_STATUS_PRESETS", () => {
     it("defines the attention, duplicate, and in-progress presets", () => {
       expect(STREAM_STATUS_PRESETS).toEqual([

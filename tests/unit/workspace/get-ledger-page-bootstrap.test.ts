@@ -109,6 +109,18 @@ describe("getLedgerPageBootstrap", () => {
     expect(unauthorized).toBeNull();
   });
 
+  it("rejects a pre-authorized DTO for another ledger", async () => {
+    await expect(
+      getLedgerPageBootstrap({
+        ledgerId: "ledger-2",
+        initialTab: "stream",
+        periodParams: { period: "thisMonth" },
+        ledgerDto: createPreAuthorizedLedgerDto(),
+      })
+    ).resolves.toBeNull();
+    expect(listStreamPageMock).not.toHaveBeenCalled();
+  });
+
   it("rethrows unknown errors", async () => {
     requireLedgerAccessMock.mockRejectedValueOnce(new Error("db unavailable"));
     await expect(
@@ -435,6 +447,28 @@ describe("getLedgerPageBootstrap", () => {
         expectedDescriptor.input,
         bootstrapDependencies.stats
       );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses the URL stats range and offset for bootstrap prefetch", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T12:00:00Z"));
+    try {
+      const result = await getLedgerPageBootstrap({
+        ledgerId: "ledger-1",
+        initialTab: "stats",
+        periodParams: { period: "thisMonth" },
+        statsState: { range: "year", offset: -2, view: "trend" },
+        ledgerDto: createPreAuthorizedLedgerDto(),
+      });
+      const statsQuery = result?.dehydratedState.queries.find(
+        (query) => query.queryKey[0] === "enhanced-stats"
+      );
+
+      expect(statsQuery?.queryKey).toContain("year");
+      expect(statsQuery?.queryKey).toContain("2024-01-01");
     } finally {
       vi.useRealTimers();
     }

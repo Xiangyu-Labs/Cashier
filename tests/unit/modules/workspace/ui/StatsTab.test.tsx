@@ -80,4 +80,19 @@ describe("StatsTab", () => {
     await waitFor(() => expect(getEnhancedStats).toHaveBeenCalledTimes(2));
     await screen.findByText("¥120.00");
   });
+
+  it("shows the error panel instead of rendering an oversized result", async () => {
+    vi.mocked(getEnhancedStats).mockResolvedValue({
+      ...statsFixture,
+      chart: Array.from({ length: 121 }, (_, index) => ({
+        date: `2026-01-${String((index % 28) + 1).padStart(2, "0")}`,
+        total: index,
+      })),
+    });
+
+    renderStatsTab();
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("¥120.00")).not.toBeInTheDocument();
+  });
 });

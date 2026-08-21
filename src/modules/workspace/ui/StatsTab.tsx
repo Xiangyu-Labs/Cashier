@@ -14,6 +14,8 @@ import {
 import { StatsContentView } from "@/modules/stats/ui";
 import { useLocale } from "next-intl";
 import type { Ledger } from "@/modules/ledger/contracts";
+import { MAX_CHART_POINTS } from "@/modules/stats/lib/chart-points";
+import { MAX_HEATMAP_DAYS } from "@/modules/stats/lib/heatmap-range";
 import { QUERY } from "@/lib/constants";
 import { DEFAULT_STATS_RANGE_TYPE } from "@/modules/workspace/initial-query-state";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
@@ -125,6 +127,9 @@ export function StatsTab({
     placeholderData: keepPreviousData,
   });
   const { data: stats, isError, refetch } = statsQuery;
+  const hasOversizedResult =
+    stats != null &&
+    (stats.chart.length > MAX_CHART_POINTS || stats.heatmap.days.length > MAX_HEATMAP_DAYS);
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -157,10 +162,10 @@ export function StatsTab({
       endDate={endDate}
       startDateStr={startDateStr}
       endDateStr={endDateStr}
-      stats={stats}
+      stats={hasOversizedResult ? undefined : stats}
       isLoading={statsQuery.isFetching}
       isPlaceholderData={statsQuery.isPlaceholderData}
-      isError={isError}
+      isError={isError || hasOversizedResult}
       onRetry={() => void refetch()}
       chartView={chartView}
       onChartViewChange={(view) => updateStatsUrl({ view })}

@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EntryFilterPanel, type EntryFilters } from "@/modules/ledger/ui/EntryFilterPanel";
-import type { PeriodParams } from "@/lib/period-utils";
+import type { PeriodParams, PeriodPreset } from "@/lib/period-utils";
 import { SourceDocumentActions } from "@/modules/source-document/ui";
 import { cn } from "@/lib/utils";
 import { formatDateTimeForApi } from "@/lib/date-utils";
@@ -43,7 +43,7 @@ interface LedgerEntriesToolbarProps {
   isDiscardingDuplicates?: boolean;
   isProcessing?: boolean;
   filters: EntryFilters;
-  onFiltersChange: (filters: EntryFilters) => void;
+  onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
   periodParams: PeriodParams;
   totalPrefix?: string;
   mainCurrency: string;

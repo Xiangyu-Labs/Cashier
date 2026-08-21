@@ -497,19 +497,21 @@ export function LedgerPageClient({
         >
           {activeTab === "stream" && (
             <div className="mt-0 min-w-0 max-w-full overflow-x-clip">
-              <LedgerEntriesTab
-                ledgerId={ledgerId}
-                categories={categories.length > 0 ? categories : []}
-                ledger={ledger}
-                periodParams={periodParams}
-                onFiltersChange={handleFiltersChange}
-                advancedFilters={advancedFilters}
-                collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
-                onApplyPreset={applyStreamStatusPreset}
-                onResetFilters={resetFilters}
-                onQueryStateChange={handleQueryStateChange}
-                {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
-              />
+              <DeferredFeatureMessages feature="stream" locale={locale} fallback={null}>
+                <LedgerEntriesTab
+                  ledgerId={ledgerId}
+                  categories={categories.length > 0 ? categories : []}
+                  ledger={ledger}
+                  periodParams={periodParams}
+                  onFiltersChange={handleFiltersChange}
+                  advancedFilters={advancedFilters}
+                  collapseEntriesDefault={ledger.settings.collapseEntriesDefault ?? false}
+                  onApplyPreset={applyStreamStatusPreset}
+                  onResetFilters={resetFilters}
+                  onQueryStateChange={handleQueryStateChange}
+                  {...(effectiveTimeZone != null ? { timeZone: effectiveTimeZone } : {})}
+                />
+              </DeferredFeatureMessages>
             </div>
           )}
 

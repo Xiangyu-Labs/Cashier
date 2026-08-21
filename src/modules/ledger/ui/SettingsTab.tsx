@@ -66,6 +66,7 @@ export function SettingsTab({
   const [appearanceDraft, setAppearanceDraft] = useState(appearanceServer);
   const [appearanceStatus, setAppearanceStatus] = useState<"idle" | "saving" | "error">("idle");
   const [appearanceError, setAppearanceError] = useState<string | null>(null);
+  const [metadataPollingSession, setMetadataPollingSession] = useState(0);
   const appearanceDirty =
     appearanceServer.theme !== appearanceDraft.theme ||
     appearanceServer.language !== appearanceDraft.language;
@@ -109,7 +110,7 @@ export function SettingsTab({
     settingsQueryStatus,
     settingsQueryIsFetching,
     settingsQueryHasData,
-  } = useLedgerSettings({ ledgerId, ledger, initialCategories });
+  } = useLedgerSettings({ ledgerId, ledger, initialCategories, metadataPollingSession });
 
   useEffect(() => {
     onQueryStateChange?.({
@@ -133,7 +134,9 @@ export function SettingsTab({
   const settingsLedger = reactiveLedger || ledger;
 
   const { saveCategories, generatingCategoryIds, failedCategoryIds, retryCategoryMetadata } =
-    useCategoryMutations(ledgerId, categories);
+    useCategoryMutations(ledgerId, categories, {
+      onMetadataGenerated: () => setMetadataPollingSession((session) => session + 1),
+    });
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
 

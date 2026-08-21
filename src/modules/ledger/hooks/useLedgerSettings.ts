@@ -9,12 +9,14 @@ interface UseLedgerSettingsParams {
   ledgerId: string;
   ledger: Ledger;
   initialCategories: EntryCategoryWithCount[];
+  metadataPollingSession: number;
 }
 
 export function useLedgerSettings({
   ledgerId,
   ledger: initialLedger,
   initialCategories,
+  metadataPollingSession,
 }: UseLedgerSettingsParams) {
   const t = useTranslations("Settings");
   const {
@@ -31,6 +33,7 @@ export function useLedgerSettings({
     ledgerId,
     initialLedger,
     initialCategories,
+    metadataPollingSession,
   });
 
   const updateLedgerMutation = useLedgerSettingsMutation({

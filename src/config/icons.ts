@@ -73,3 +73,12 @@ export const COMMON_LUCIDE_ICONS = [
 ] as const;
 
 export type CommonLucideIcon = (typeof COMMON_LUCIDE_ICONS)[number];
+
+export const CATEGORY_ICON_NAMES = [...COMMON_LUCIDE_ICONS, "Home", "CircleSlash"] as const;
+export type CategoryIconName = (typeof CATEGORY_ICON_NAMES)[number];
+
+const categoryIconMap = Object.create(null) as Record<string, CategoryIconName>;
+for (const iconName of CATEGORY_ICON_NAMES) categoryIconMap[iconName] = iconName;
+
+export const CATEGORY_ICON_MAP: Readonly<Record<string, CategoryIconName>> =
+  Object.freeze(categoryIconMap);

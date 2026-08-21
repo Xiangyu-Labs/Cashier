@@ -31,7 +31,7 @@ export type { EntryFilters } from "@/modules/ledger/filters";
 
 interface EntryFilterPanelProps {
   filters: EntryFilters;
-  onFiltersChange: (filters: EntryFilters) => void;
+  onFiltersChange: (filters: EntryFilters, requestedPeriod?: PeriodPreset) => void;
   periodParams?: PeriodParams;
   categories?: EntryCategory[];
   preferredCurrencies?: string[];
@@ -238,7 +238,8 @@ export function EntryFilterPanel({
 
   const handleApply = () => {
     const normalizedFilters = normalizeAmountRange(tempFilters);
-    onFiltersChange(normalizedFilters);
+    if (tempPeriod == null) onFiltersChange(normalizedFilters);
+    else onFiltersChange(normalizedFilters, tempPeriod);
     setOpen(false);
   };
 

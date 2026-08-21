@@ -6,6 +6,8 @@ export interface HeatmapQueryRange {
   endDate: string;
 }
 
+export const MAX_HEATMAP_DAYS = 3660;
+
 export function resolveHeatmapRange(
   days: readonly CalendarDayData[],
   queryRange?: HeatmapQueryRange
@@ -28,6 +30,7 @@ export function generateHeatmapDateKeys(range: HeatmapQueryRange | null): string
   if (Number.isNaN(current.getTime()) || Number.isNaN(end.getTime()) || current > end) return [];
   const result: string[] = [];
   while (current <= end) {
+    if (result.length >= MAX_HEATMAP_DAYS) return [];
     result.push(formatDate(current));
     current.setDate(current.getDate() + 1);
   }

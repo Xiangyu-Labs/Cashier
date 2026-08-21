@@ -16,6 +16,7 @@ import { pickMessages, FEATURE_MESSAGES } from "@/i18n/client-feature-messages";
 import {
   getScopedLedgerSearchParams,
   readLedgerFilterParams,
+  readStatsSearchParams,
 } from "@/modules/workspace/ledger-url-params";
 import { ActiveContent } from "./_active-content";
 import { ActiveShell } from "./_active-shell";
@@ -69,12 +70,14 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
     getScopedLedgerSearchParams(urlSearchParams, filterScope)
   );
   const advancedFilters = readLedgerFilterParams(urlSearchParams, filterScope);
+  const statsState = readStatsSearchParams(urlSearchParams);
   const pageDataPromise = getLedgerPageBootstrap(
     {
       ledgerId,
       initialTab: activeTab,
       periodParams,
       advancedFilters,
+      statsState,
       ledgerDto,
     },
     {

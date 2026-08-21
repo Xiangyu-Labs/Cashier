@@ -1,4 +1,4 @@
-import { type PeriodParams, periodToDateRange } from "@/lib/period-utils";
+import { type PeriodParams, type PeriodPreset, periodToDateRange } from "@/lib/period-utils";
 import {
   type EntryFilters,
   type StreamStatusPreset,
@@ -73,6 +73,7 @@ export function splitLedgerFilterChange(args: {
   currentPeriod: PeriodParams;
   currentFilters: EntryFilters;
   nextFilters: EntryFilters;
+  requestedPeriod?: PeriodPreset;
 }): {
   periodUpdate?: PeriodParams;
   advancedFilterUpdate: LedgerAdvancedFilters;
@@ -83,15 +84,15 @@ export function splitLedgerFilterChange(args: {
   const nextEndDate = args.nextFilters.endDate ?? null;
 
   let periodUpdate: PeriodParams | undefined;
-  if (nextStartDate !== currentStartDate || nextEndDate !== currentEndDate) {
+  if (args.requestedPeriod === "all") {
+    periodUpdate = { period: "all" };
+  } else if (nextStartDate !== currentStartDate || nextEndDate !== currentEndDate) {
     if (nextStartDate != null || nextEndDate != null) {
       periodUpdate = {
         period: "custom",
         ...(nextStartDate != null ? { startDate: nextStartDate } : {}),
         ...(nextEndDate != null ? { endDate: nextEndDate } : {}),
       };
-    } else if (args.currentPeriod.period !== "thisMonth") {
-      periodUpdate = { period: "thisMonth" };
     } else {
       periodUpdate = { period: "thisMonth" };
     }
