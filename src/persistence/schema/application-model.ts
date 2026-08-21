@@ -14,6 +14,7 @@ import {
   pgEnum,
   bigint,
   primaryKey,
+  unique,
   boolean,
   date,
 } from "drizzle-orm/pg-core";
@@ -263,6 +264,11 @@ export const duplicateReviews = pgTable(
     updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => [
+    foreignKey({
+      columns: [table.ledgerId],
+      foreignColumns: [ledgers.id],
+      name: "fk_duplicate_reviews_ledger",
+    }).onDelete("cascade"),
     uniqueIndex("uq_duplicate_reviews_document_revision").on(
       table.sourceDocumentId,
       table.revisionId
@@ -464,21 +470,26 @@ export const idempotencyRecords = pgTable(
 export const ledgerSyncState = pgTable(
   "ledger_sync_state",
   {
-    ledgerId: uuid("ledger_id")
-      .primaryKey()
-      .references(() => ledgers.id, { onDelete: "cascade" }),
-    version: bigint("version", { mode: "bigint" }).notNull().default(BigInt(0)),
+    ledgerId: uuid("ledger_id").primaryKey(),
+    version: bigint("version", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
     updatedAt: requiredTimestamp("updated_at").$defaultFn(() => new Date()),
   },
-  (table) => [check("ck_ledger_sync_state_version", sql`${table.version} >= 0`)]
+  (table) => [
+    foreignKey({
+      columns: [table.ledgerId],
+      foreignColumns: [ledgers.id],
+      name: "ledger_sync_state_ledger_id_fkey",
+    }).onDelete("cascade"),
+    check("ledger_sync_state_version_check", sql`${table.version} >= 0`),
+  ]
 );
 
 export const ledgerChangeBatches = pgTable(
   "ledger_change_batches",
   {
-    ledgerId: uuid("ledger_id")
-      .notNull()
-      .references(() => ledgers.id, { onDelete: "cascade" }),
+    ledgerId: uuid("ledger_id").notNull(),
     version: bigint("version", { mode: "bigint" }).notNull(),
     transactionId: bigint("transaction_id", { mode: "bigint" }).notNull(),
     categoriesChanged: boolean("categories_changed").notNull().default(false),
@@ -490,9 +501,17 @@ export const ledgerChangeBatches = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.ledgerId, table.version] }),
-    uniqueIndex("uq_ledger_change_batches_transaction").on(table.ledgerId, table.transactionId),
+    foreignKey({
+      columns: [table.ledgerId],
+      foreignColumns: [ledgers.id],
+      name: "ledger_change_batches_ledger_id_fkey",
+    }).onDelete("cascade"),
+    unique("ledger_change_batches_ledger_id_transaction_id_key").on(
+      table.ledgerId,
+      table.transactionId
+    ),
     index("idx_ledger_change_batches_created").on(table.createdAt),
-    check("ck_ledger_change_batches_version", sql`${table.version} > 0`),
+    check("ledger_change_batches_version_check", sql`${table.version} > 0`),
   ]
 );
 

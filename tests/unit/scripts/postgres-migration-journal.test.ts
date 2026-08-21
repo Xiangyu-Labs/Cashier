@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0025_generalize_idempotency_principal");
+    expect(journal.entries.at(-1)?.tag).toBe("0026_schema_convergence");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {
@@ -73,13 +73,17 @@ describe("Postgres migration journal", () => {
     expect(journal.entries.at(-1)?.tag).toBe(newestSqlFile.replace(/\.sql$/, ""));
   });
 
-  it("registers every hand-written migration after 0014 with a matching SHA-256", () => {
+  it("registers every hand-written migration without a same-prefix snapshot", () => {
     const manual = JSON.parse(
       readFileSync(path.join(migrationsDirectory, "meta", "manual-migrations.json"), "utf8")
     ) as { migrations: Array<{ file: string; sha256: string }> };
     const registered = new Map(manual.migrations.map((entry) => [entry.file, entry.sha256]));
     const sqlFiles = readdirSync(migrationsDirectory)
-      .filter((file) => /^\d{4}_.+\.sql$/.test(file) && file.slice(0, 4) >= "0015")
+      .filter(
+        (file) =>
+          /^\d{4}_.+\.sql$/.test(file) &&
+          !existsSync(path.join(migrationsDirectory, "meta", `${file.slice(0, 4)}_snapshot.json`))
+      )
       .sort();
 
     expect(sqlFiles.length).toBeGreaterThan(0);
@@ -94,7 +98,7 @@ describe("Postgres migration journal", () => {
     }
   });
 
-  it("refuses db:generate while the snapshot baseline is behind the journal", () => {
+  it("allows db:generate when the snapshot baseline matches the journal", () => {
     let message = "";
     try {
       execFileSync(process.execPath, ["scripts/guard-drizzle-generate.mjs"], {
@@ -104,6 +108,6 @@ describe("Postgres migration journal", () => {
     } catch (error) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toContain("[db:generate] blocked");
+    expect(message).toBe("");
   });
 });

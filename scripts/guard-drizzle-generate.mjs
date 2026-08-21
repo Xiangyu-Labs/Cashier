@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Drizzle generates migrations from the newest snapshot in meta/.
-// The journal is deliberately ahead of the snapshots: 0015..0022 are
-// hand-written SQL migrations, so `drizzle-kit generate` would emit duplicate
-// migrations for changes that already shipped. Until the snapshot is rebaselined
-// against the live schema, generation must be refused.
+// Drizzle compares the schema to the newest snapshot, so generation is only
+// safe when that snapshot has caught up with the journal. Hand-written SQL is
+// tracked separately in meta/manual-migrations.json.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 

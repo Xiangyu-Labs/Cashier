@@ -7,6 +7,7 @@ import {
   uuid,
   date,
   pgEnum,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, sql } from "drizzle-orm";
 import {
@@ -16,6 +17,12 @@ import {
   SourceDocumentType,
 } from "@/modules/source-document/types";
 import { ledgers } from "./ledger";
+
+const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
+  id: uuid("id").notNull(),
+  ledgerId: uuid("ledger_id").notNull(),
+  sourceDocumentId: uuid("source_document_id").notNull(),
+});
 
 export const sourceDocumentStatusEnum = pgEnum("source_document_status", [
   "processing",
@@ -75,6 +82,29 @@ export const sourceDocuments = pgTable(
       .where(sql`${table.deletedAt} IS NULL`),
     index("idx_source_documents_active_revision").on(table.activeRevisionId),
     index("idx_source_documents_pending_revision").on(table.pendingRevisionId),
+    index("idx_source_documents_ledger_entry_date")
+      .on(table.ledgerId, table.entryDate, table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.deletedAt} IS NULL`),
+    // PostgreSQL uses column-list SET NULL here so ledger_id remains intact.
+    // Drizzle cannot express that syntax; migrations own the delete action.
+    foreignKey({
+      columns: [table.ledgerId, table.id, table.activeRevisionId],
+      foreignColumns: [
+        sourceDocumentRevisionsReference.ledgerId,
+        sourceDocumentRevisionsReference.sourceDocumentId,
+        sourceDocumentRevisionsReference.id,
+      ],
+      name: "fk_source_documents_active_revision",
+    }),
+    foreignKey({
+      columns: [table.ledgerId, table.id, table.pendingRevisionId],
+      foreignColumns: [
+        sourceDocumentRevisionsReference.ledgerId,
+        sourceDocumentRevisionsReference.sourceDocumentId,
+        sourceDocumentRevisionsReference.id,
+      ],
+      name: "fk_source_documents_pending_revision",
+    }),
   ]
 );
 

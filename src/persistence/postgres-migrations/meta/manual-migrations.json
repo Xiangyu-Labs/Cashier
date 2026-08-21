@@ -1,7 +1,23 @@
 {
   "version": 1,
-  "comment": "SHA-256 of hand-written SQL migrations applied after the last Drizzle snapshot (0014). Migrations are immutable once shipped; update this registry only when a migration file is intentionally rewritten before any deployment ran it.",
+  "comment": "SHA-256 of hand-written SQL migrations. Migrations are immutable once shipped; update this registry only when a migration file is intentionally rewritten before any deployment ran it.",
   "migrations": [
+    {
+      "file": "0002_add_abandoned_outcome.sql",
+      "sha256": "a97cf8500bf1a675192c95e4b55ad60577a3583ca934f8aa59b04247ef41c1bc"
+    },
+    {
+      "file": "0003_processing_scheduling.sql",
+      "sha256": "7ccf717976c3f7033893bb16962435f385928495227fd72e9043c646a942c5b2"
+    },
+    {
+      "file": "0009_email_change_challenges.sql",
+      "sha256": "37f11df6735c8e83ab3855211964e85680b2e4bb465e2d54f00ee59a43b5856a"
+    },
+    {
+      "file": "0012_recover_skipped_migrations.sql",
+      "sha256": "b10d5f83e11e5f40c5425c104f0b145b2937358d112976b7745d4b50fa04438b"
+    },
     {
       "file": "0015_model_convergence.sql",
       "sha256": "226a9f638457a47429d4864154f5d851df42ea2255078a5f845d83ca8eb585f2"
@@ -45,6 +61,10 @@
     {
       "file": "0025_generalize_idempotency_principal.sql",
       "sha256": "2157d87a028f5e76c071de98b5156b8db1f74f8199f11801422c3c8aec8a3bfe"
+    },
+    {
+      "file": "0026_schema_convergence.sql",
+      "sha256": "a0dcd619dc4e5b77ecaf7ba3dae40c6b86fd202185bd93c6f62ec4705f1fba3e"
     }
   ]
 }

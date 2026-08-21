@@ -3,10 +3,13 @@ import { sql } from "drizzle-orm";
 import { getTestDb } from "../../setup";
 import { createTestSourceDocument, createTestUserWithLedger } from "../../helpers/schema-setup";
 import { entryCategories, ledgerEntries } from "@/persistence";
+import * as schema from "@/persistence";
+import { getTableConfig, type AnyPgTable } from "drizzle-orm/pg-core";
 
 interface ConstraintRow {
   conname: string;
   definition: string;
+  type: "c" | "f" | "p" | "u";
 }
 
 interface IndexRow {
@@ -26,11 +29,12 @@ interface ColumnRow {
 
 async function fetchConstraints(): Promise<ConstraintRow[]> {
   const result = await getTestDb().execute<ConstraintRow & Record<string, unknown>>(sql`
-    SELECT con.conname, pg_get_constraintdef(con.oid) AS definition
+    SELECT con.conname, con.contype AS type, pg_get_constraintdef(con.oid) AS definition
     FROM pg_constraint con
     JOIN pg_class cls ON cls.oid = con.conrelid
     JOIN pg_namespace ns ON ns.oid = cls.relnamespace
     WHERE ns.nspname = current_schema()
+      AND con.contype IN ('c', 'f', 'p', 'u')
     ORDER BY con.conname
   `);
   return result.rows;
@@ -44,6 +48,38 @@ async function fetchIndexes(): Promise<IndexRow[]> {
     ORDER BY indexname
   `);
   return result.rows;
+}
+
+function isPgTable(value: unknown): value is AnyPgTable {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    Symbol.for("drizzle:Name") in value &&
+    Symbol.for("drizzle:Columns") in value
+  );
+}
+
+function getDrizzleContractNames() {
+  const constraints = new Set<string>();
+  const indexes = new Set<string>();
+
+  const tables = Object.values(schema).filter(isPgTable) as AnyPgTable[];
+  for (const table of tables) {
+    const config = getTableConfig(table);
+    for (const foreignKey of config.foreignKeys) constraints.add(foreignKey.getName());
+    for (const check of config.checks) constraints.add(check.name);
+    for (const uniqueConstraint of config.uniqueConstraints) {
+      if (uniqueConstraint.name != null) constraints.add(uniqueConstraint.name);
+    }
+    for (const column of config.columns) {
+      if (column.isUnique && column.uniqueName != null) constraints.add(column.uniqueName);
+    }
+    for (const tableIndex of config.indexes) {
+      if (tableIndex.config.name != null) indexes.add(tableIndex.config.name);
+    }
+  }
+
+  return { constraints, indexes };
 }
 
 async function fetchTriggers(): Promise<TriggerRow[]> {
@@ -206,5 +242,33 @@ describe("PostgreSQL schema contract", () => {
         itemName: "Cross-ledger category",
       })
     ).rejects.toMatchObject({ cause: expect.objectContaining({ code: "23503" }) });
+  });
+
+  it("has no named constraint or index drift from the Drizzle model", async () => {
+    const model = getDrizzleContractNames();
+    const constraintRows = await fetchConstraints();
+    const databaseConstraints = new Set(
+      constraintRows.filter((row) => row.type !== "p").map((row) => row.conname)
+    );
+    const constraintBackedIndexes = new Set(
+      constraintRows.filter((row) => row.type === "p" || row.type === "u").map((row) => row.conname)
+    );
+    const databaseIndexes = new Set(
+      (await fetchIndexes())
+        .map((row) => row.indexname)
+        // Primary keys are modeled as columns rather than named table config.
+        .filter((name) => !name.endsWith("_pkey"))
+        // PostgreSQL exposes UNIQUE constraints as both constraints and backing indexes.
+        .filter((name) => !constraintBackedIndexes.has(name))
+    );
+
+    expect({
+      missingFromDatabase: [...model.constraints].filter((name) => !databaseConstraints.has(name)),
+      missingFromModel: [...databaseConstraints].filter((name) => !model.constraints.has(name)),
+    }).toEqual({ missingFromDatabase: [], missingFromModel: [] });
+    expect({
+      missingFromDatabase: [...model.indexes].filter((name) => !databaseIndexes.has(name)),
+      missingFromModel: [...databaseIndexes].filter((name) => !model.indexes.has(name)),
+    }).toEqual({ missingFromDatabase: [], missingFromModel: [] });
   });
 });

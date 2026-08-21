@@ -15,6 +15,18 @@ import {
 import { type InferSelectModel, sql } from "drizzle-orm";
 import { users } from "./auth";
 
+// These declarations only provide physical target columns to FK builders.
+// The complete tables remain uniquely exported from their owning modules.
+const sourceDocumentsReference = pgTable("source_documents", {
+  id: uuid("id").notNull(),
+  ledgerId: uuid("ledger_id").notNull(),
+});
+const sourceDocumentRevisionsReference = pgTable("source_document_revisions", {
+  id: uuid("id").notNull(),
+  ledgerId: uuid("ledger_id").notNull(),
+  sourceDocumentId: uuid("source_document_id").notNull(),
+});
+
 export const ledgers = pgTable(
   "ledgers",
   {
@@ -134,6 +146,7 @@ export const ledgerEntries = pgTable(
     index("idx_ledger_entries_active_category")
       .on(table.ledgerId, table.categoryId, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} IS NULL`),
+    index("idx_ledger_entries_category_all").on(table.ledgerId, table.categoryId),
     index("idx_ledger_entries_active_currency")
       .on(table.ledgerId, table.currency, table.createdAt.desc(), table.id.desc())
       .where(sql`${table.deletedAt} IS NULL`),
@@ -170,6 +183,28 @@ export const ledgerEntries = pgTable(
       foreignColumns: [entryCategories.ledgerId, entryCategories.id],
       name: "fk_ledger_entries_category_ledger",
     }),
+    foreignKey({
+      columns: [table.ledgerId, table.sourceDocumentId],
+      foreignColumns: [sourceDocumentsReference.ledgerId, sourceDocumentsReference.id],
+      name: "fk_ledger_entries_document_ledger",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.sourceDocumentRevisionId],
+      foreignColumns: [
+        sourceDocumentRevisionsReference.ledgerId,
+        sourceDocumentRevisionsReference.id,
+      ],
+      name: "fk_ledger_entries_revision_ledger",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.ledgerId, table.sourceDocumentId, table.sourceDocumentRevisionId],
+      foreignColumns: [
+        sourceDocumentRevisionsReference.ledgerId,
+        sourceDocumentRevisionsReference.sourceDocumentId,
+        sourceDocumentRevisionsReference.id,
+      ],
+      name: "fk_ledger_entries_document_revision",
+    }).onDelete("cascade"),
   ]
 );
 

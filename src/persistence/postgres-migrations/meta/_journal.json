@@ -183,6 +183,13 @@
       "when": 1787664000000,
       "tag": "0025_generalize_idempotency_principal",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1787750400000,
+      "tag": "0026_schema_convergence",
+      "breakpoints": true
     }
   ]
 }
