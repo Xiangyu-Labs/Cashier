@@ -79,9 +79,6 @@ chant.sh
 
 # local docs artifacts
 /docs/*
-!/docs/code-review/
-/docs/code-review/*
-!/docs/code-review/PROPOSAL.md
 !/docs/*.md
 !/docs/architecture/
 !/docs/operations/
