@@ -256,6 +256,26 @@ describe("sendOTP use case", () => {
     );
   });
 
+  it("releases the resend cooldown when token creation fails", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    createOTPTokenMock.mockRejectedValueOnce(new Error("database unavailable"));
+
+    await expect(
+      sendOTP({
+        email: validEmail("test@example.com"),
+        ip: "127.0.0.1",
+        host: "cashier.example",
+      })
+    ).rejects.toThrow("Failed to send verification code. Please try again.");
+
+    expect(discardOTPTokenMock).not.toHaveBeenCalled();
+    expect(releaseResendCooldownMock).toHaveBeenCalledWith(
+      "test@example.com",
+      new Date(1_234_567_830_000),
+      expect.any(Object)
+    );
+  });
+
   it("returns a virtual success without creating or sending a token for unknown users", async () => {
     process.env.AUTH_RESEND_KEY = "resend-key";
     process.env.DISABLE_REGISTRATION = "true";

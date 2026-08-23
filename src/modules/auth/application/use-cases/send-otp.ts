@@ -110,14 +110,18 @@ export async function sendOTP(
   }
 
   const otp = generateOTP();
-  const { expiresAt, tokenHash } = await createOTPToken(
-    normalizedEmail,
-    otp,
-    dependencies.tokens,
-    params.ip === "unknown" ? undefined : params.ip
-  );
+  let tokenHash: string | undefined;
+  let expiresAt: Date;
 
   try {
+    const token = await createOTPToken(
+      normalizedEmail,
+      otp,
+      dependencies.tokens,
+      params.ip === "unknown" ? undefined : params.ip
+    );
+    expiresAt = token.expiresAt;
+    tokenHash = token.tokenHash;
     const locale = params.locale ?? DEFAULT_LOCALE;
     const expiresInMinutes = Math.ceil(runtimeEnv.otpExpiresSeconds / 60);
     const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
@@ -136,12 +140,16 @@ export async function sendOTP(
       );
     }
   } catch (error) {
-    await discardOTPToken(normalizedEmail, tokenHash, dependencies.tokens).catch((discardError) => {
-      logger.error(
-        { error: discardError, subject: logIdentifier("email", normalizedEmail) },
-        "Failed to discard OTP token after email failure"
+    if (tokenHash !== undefined) {
+      await discardOTPToken(normalizedEmail, tokenHash, dependencies.tokens).catch(
+        (discardError) => {
+          logger.error(
+            { error: discardError, subject: logIdentifier("email", normalizedEmail) },
+            "Failed to discard OTP token after email failure"
+          );
+        }
       );
-    });
+    }
     await releaseResendCooldown(
       normalizedEmail,
       cooldown.acquiredAt,

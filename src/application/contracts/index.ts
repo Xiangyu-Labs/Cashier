@@ -483,6 +483,7 @@ export interface RateLimitResult {
 
 export interface RateLimiterPort {
   increment(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult>;
+  releaseIncrement(key: string, windowSeconds: number, resetTime: number): Promise<void>;
   /** Read-only count for the current fixed window; 0 when missing or expired. */
   current(key: string, windowSeconds: number): Promise<number>;
   acquireCooldown(

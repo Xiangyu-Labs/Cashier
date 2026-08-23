@@ -9,6 +9,24 @@ import type { AccountSecurityPort, RateLimitPort } from "../ports";
 
 const PASSWORD_CHANGE_PREFIX = "auth:password-change:user:";
 
+async function releasePasswordChangeReservation(
+  rateLimiter: RateLimitPort,
+  key: string,
+  windowSeconds: number,
+  resetTime: number,
+  userId: string
+) {
+  try {
+    await rateLimiter.releaseIncrement(key, windowSeconds, resetTime);
+  } catch (error) {
+    logger.error(
+      { error, subject: logIdentifier("user", userId) },
+      "Password change rate limit release failed"
+    );
+    throw new AppError("Password change unavailable", "password_rate_limited", 429);
+  }
+}
+
 export async function changePassword(
   params: {
     userId: string;
@@ -26,44 +44,63 @@ export async function changePassword(
   const key = `${PASSWORD_CHANGE_PREFIX}${params.userId}`;
   const limit = runtimeEnv.authPasswordEmailMaxAttempts;
   const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
+  let reservation: Awaited<ReturnType<RateLimitPort["increment"]>>;
   try {
-    if ((await dependencies.rateLimiter.current(key, windowSeconds)) >= limit) {
+    reservation = await dependencies.rateLimiter.increment(key, limit, windowSeconds);
+    if (!reservation.success) {
       throw new AppError("Too many password change attempts", "password_rate_limited", 429);
     }
   } catch (error) {
     if (error instanceof AppError) throw error;
     logger.error(
       { error, subject: logIdentifier("user", params.userId) },
-      "Password change rate limit check failed"
+      "Password change rate limit reservation failed"
     );
     throw new AppError("Password change unavailable", "password_rate_limited", 429);
   }
 
-  const currentPasswordHash = await dependencies.accounts.getPasswordHash(params.userId);
-  if (currentPasswordHash === undefined) throw new NotFoundError("User");
-  if (
-    currentPasswordHash == null ||
-    !(await verifyPassword(params.currentPassword, currentPasswordHash))
-  ) {
-    try {
-      const result = await dependencies.rateLimiter.increment(key, limit, windowSeconds);
-      if (!result.success || result.remaining === 0) {
-        throw new AppError("Too many password change attempts", "password_rate_limited", 429);
-      }
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      logger.error(
-        { error, subject: logIdentifier("user", params.userId) },
-        "Password change rate limit increment failed"
-      );
-      throw new AppError("Password change unavailable", "password_rate_limited", 429);
-    }
+  let currentPasswordHash: string | null | undefined;
+  let currentPasswordValid: boolean;
+  try {
+    currentPasswordHash = await dependencies.accounts.getPasswordHash(params.userId);
+    currentPasswordValid =
+      currentPasswordHash != null &&
+      (await verifyPassword(params.currentPassword, currentPasswordHash));
+  } catch (error) {
+    await releasePasswordChangeReservation(
+      dependencies.rateLimiter,
+      key,
+      windowSeconds,
+      reservation.resetTime,
+      params.userId
+    );
+    throw error;
+  }
+  if (currentPasswordHash === undefined) {
+    await releasePasswordChangeReservation(
+      dependencies.rateLimiter,
+      key,
+      windowSeconds,
+      reservation.resetTime,
+      params.userId
+    );
+    throw new NotFoundError("User");
+  }
+  if (currentPasswordHash === null || !currentPasswordValid) {
     throw new AppError(
       "Current password is incorrect",
       AUTH_ERROR_CODES.CURRENT_PASSWORD_WRONG,
       400
     );
   }
+
+  await releasePasswordChangeReservation(
+    dependencies.rateLimiter,
+    key,
+    windowSeconds,
+    reservation.resetTime,
+    params.userId
+  );
 
   const passwordHash = await hashPassword(params.newPassword);
   const passwordUpdatedAt = new Date();

@@ -150,6 +150,21 @@ describe("PostgresRateLimiter", () => {
     expect(results.filter((r) => !r.success).length).toBe(5);
   });
 
+  it("releases only an increment from the matching fixed window", async () => {
+    const reservation = await postgresRateLimiter.increment("test-release-increment", 10, 60);
+    expect(await postgresRateLimiter.current("test-release-increment", 60)).toBe(1);
+
+    await postgresRateLimiter.releaseIncrement(
+      "test-release-increment",
+      60,
+      reservation.resetTime + 60_000
+    );
+    expect(await postgresRateLimiter.current("test-release-increment", 60)).toBe(1);
+
+    await postgresRateLimiter.releaseIncrement("test-release-increment", 60, reservation.resetTime);
+    expect(await postgresRateLimiter.current("test-release-increment", 60)).toBe(0);
+  });
+
   describe("cooldown methods", () => {
     it("grants exactly one lease to concurrent callers", async () => {
       const results = await Promise.all(

@@ -42,6 +42,7 @@ export interface RateLimitPort {
     limit: number,
     windowSeconds: number
   ): Promise<{ success: boolean; remaining: number; resetTime: number }>;
+  releaseIncrement(key: string, windowSeconds: number, resetTime: number): Promise<void>;
   current(key: string, windowSeconds: number): Promise<number>;
   acquireCooldown(
     key: string,

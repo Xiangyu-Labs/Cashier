@@ -13,32 +13,57 @@ const PASSWORD_EMAIL_PREFIX = "auth:password:email:";
 const PASSWORD_IP_PREFIX = "auth:password:ip:";
 const DUMMY_PASSWORD_HASH = "$2b$12$E.Rov9WCSx5iCVVlYJTgLOGGjHYsuet/YKxmEZ03AXS8OY.ivReI2";
 
-async function enforcePasswordRateLimits(
+type PasswordRateLimitReservation = { key: string; resetTime: number };
+
+async function reservePasswordRateLimits(
   email: string,
   ip: string,
   rateLimiter: RateLimitPort
-): Promise<void> {
+): Promise<PasswordRateLimitReservation[]> {
+  const reservations: PasswordRateLimitReservation[] = [];
+  const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
   try {
-    const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
-    const [emailAttempts, ipAttempts] = await Promise.all([
-      rateLimiter.current(`${PASSWORD_EMAIL_PREFIX}${email}`, windowSeconds),
-      ip === "unknown"
-        ? Promise.resolve(0)
-        : rateLimiter.current(`${PASSWORD_IP_PREFIX}${ip}`, windowSeconds),
-    ]);
-    if (emailAttempts >= runtimeEnv.authPasswordEmailMaxAttempts) {
+    const emailKey = `${PASSWORD_EMAIL_PREFIX}${email}`;
+    const emailResult = await rateLimiter.increment(
+      emailKey,
+      runtimeEnv.authPasswordEmailMaxAttempts,
+      windowSeconds
+    );
+    if (!emailResult.success) {
       throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
     }
+    reservations.push({ key: emailKey, resetTime: emailResult.resetTime });
 
     // "unknown" means no trusted proxy header was present. There is no
     // meaningful per-attacker bucket to share, and incrementing a single
     // shared bucket would let one client block password sign-ins for every
     // user. The email bucket still applies, so brute force remains bounded.
-    if (ip !== "unknown" && ipAttempts >= runtimeEnv.authPasswordIpMaxAttempts) {
-      throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
+    if (ip !== "unknown") {
+      const ipKey = `${PASSWORD_IP_PREFIX}${ip}`;
+      const ipResult = await rateLimiter.increment(
+        ipKey,
+        runtimeEnv.authPasswordIpMaxAttempts,
+        windowSeconds
+      );
+      if (!ipResult.success) {
+        await Promise.all(
+          reservations.map((reservation) =>
+            rateLimiter.releaseIncrement(reservation.key, windowSeconds, reservation.resetTime)
+          )
+        );
+        throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
+      }
+      reservations.push({ key: ipKey, resetTime: ipResult.resetTime });
     }
+    return reservations;
   } catch (error) {
     if (error instanceof AuthSignInError) throw error;
+
+    await Promise.allSettled(
+      reservations.map((reservation) =>
+        rateLimiter.releaseIncrement(reservation.key, windowSeconds, reservation.resetTime)
+      )
+    );
 
     logger.error(
       {
@@ -46,37 +71,29 @@ async function enforcePasswordRateLimits(
         emailSubject: logIdentifier("email", email),
         ipSubject: logIdentifier("ip", ip),
       },
-      "Password rate limit check failed"
+      "Password rate limit reservation failed"
     );
     throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE);
   }
 }
 
-async function recordPasswordFailure(email: string, ip: string, rateLimiter: RateLimitPort) {
+async function releasePasswordRateLimits(
+  reservations: PasswordRateLimitReservation[],
+  email: string,
+  ip: string,
+  rateLimiter: RateLimitPort
+) {
   try {
     const windowSeconds = runtimeEnv.authPasswordRateLimitWindowSeconds;
-    const [emailResult, ipResult] = await Promise.all([
-      rateLimiter.increment(
-        `${PASSWORD_EMAIL_PREFIX}${email}`,
-        runtimeEnv.authPasswordEmailMaxAttempts,
-        windowSeconds
-      ),
-      ip === "unknown"
-        ? Promise.resolve({ success: true })
-        : rateLimiter.increment(
-            `${PASSWORD_IP_PREFIX}${ip}`,
-            runtimeEnv.authPasswordIpMaxAttempts,
-            windowSeconds
-          ),
-    ]);
-    if (!emailResult.success || !ipResult.success) {
-      throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMITED);
-    }
+    await Promise.all(
+      reservations.map((reservation) =>
+        rateLimiter.releaseIncrement(reservation.key, windowSeconds, reservation.resetTime)
+      )
+    );
   } catch (error) {
-    if (error instanceof AuthSignInError) throw error;
     logger.error(
       { error, emailSubject: logIdentifier("email", email), ipSubject: logIdentifier("ip", ip) },
-      "Password rate limit increment failed"
+      "Password rate limit release failed"
     );
     throw new AuthSignInError(AUTH_ERROR_CODES.PASSWORD_RATE_LIMIT_UNAVAILABLE);
   }
@@ -88,16 +105,24 @@ export async function authenticateWithPassword(
 ): Promise<AuthenticatedPrincipal> {
   const email = normalizeEmail(params.email);
   const ip = getClientIPFromHeaders(params.requestHeaders);
-  await enforcePasswordRateLimits(email, ip, dependencies.rateLimiter);
+  const reservations = await reservePasswordRateLimits(email, ip, dependencies.rateLimiter);
 
-  const user = email === "" ? null : await dependencies.users.findByEmail(email);
-  const valid = await verifyPassword(params.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  let user: Awaited<ReturnType<UserAccountPort["findByEmail"]>>;
+  let valid: boolean;
+  try {
+    user = email === "" ? null : await dependencies.users.findByEmail(email);
+    valid = await verifyPassword(params.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  } catch (error) {
+    await releasePasswordRateLimits(reservations, email, ip, dependencies.rateLimiter);
+    throw error;
+  }
 
   if (user == null || !valid) {
-    await recordPasswordFailure(email, ip, dependencies.rateLimiter);
     logger.warn({ subject: logIdentifier("email", email) }, "Password sign-in failed");
     throw new AuthSignInError(AUTH_ERROR_CODES.INVALID_CREDENTIALS);
   }
+
+  await releasePasswordRateLimits(reservations, email, ip, dependencies.rateLimiter);
 
   return {
     id: user.id,

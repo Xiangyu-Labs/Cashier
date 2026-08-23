@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import bcrypt from "bcryptjs";
 import type { UserAccountPort } from "@/application/contracts";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
+import { changePassword } from "@/modules/auth/application/use-cases/change-password";
 import { hashPassword, verifyPassword } from "@/modules/auth/services/password";
 import { validatePassword } from "@/modules/auth/services/password-policy";
+import type { AccountSecurityPort } from "@/modules/auth/application/ports";
 
 describe("password authentication", () => {
   const rateLimiter = {
     increment: async () => ({ success: true, remaining: 9, resetTime: Date.now() + 900_000 }),
+    releaseIncrement: async () => {},
     current: async () => 0,
     acquireCooldown: async () => ({ acquired: true, acquiredAt: new Date(), retryAfter: 0 }),
     releaseCooldown: async () => true,
@@ -79,9 +82,14 @@ describe("password authentication", () => {
     ).rejects.toMatchObject({ code: "invalid_credentials" });
   });
 
-  it("does not increment a rate-limit bucket for a successful password login", async () => {
+  it("releases the reserved rate-limit bucket for a successful password login", async () => {
     const passwordHash = await bcrypt.hash("valid-password-1", 4);
-    const increment = vi.fn();
+    const increment = vi.fn().mockResolvedValue({
+      success: true,
+      remaining: 9,
+      resetTime: Date.now() + 900_000,
+    });
+    const releaseIncrement = vi.fn();
     const users = {
       findByEmail: vi.fn().mockResolvedValue({
         id: "user-id",
@@ -102,10 +110,15 @@ describe("password authentication", () => {
         locale: "en",
         requestHeaders: new Headers(),
       },
-      { users, rateLimiter: { ...rateLimiter, increment } }
+      { users, rateLimiter: { ...rateLimiter, increment, releaseIncrement } }
     );
 
-    expect(increment).not.toHaveBeenCalled();
+    expect(increment).toHaveBeenCalledOnce();
+    expect(releaseIncrement).toHaveBeenCalledWith(
+      "auth:password:email:owner@example.com",
+      expect.any(Number),
+      expect.any(Number)
+    );
   });
 
   it("runs a dummy bcrypt comparison for unknown users", async () => {
@@ -135,7 +148,7 @@ describe("password authentication", () => {
     const compare = vi.spyOn(bcrypt, "compare");
     const unavailableRateLimiter = {
       ...rateLimiter,
-      current: vi.fn().mockRejectedValue(new Error("rate limiter down")),
+      increment: vi.fn().mockRejectedValue(new Error("rate limiter down")),
     };
 
     await expect(
@@ -158,7 +171,11 @@ describe("password authentication", () => {
 
     const limitedRateLimiter = {
       ...rateLimiter,
-      current: vi.fn().mockResolvedValue(10),
+      increment: vi.fn().mockResolvedValue({
+        success: false,
+        remaining: 0,
+        resetTime: Date.now() + 900_000,
+      }),
     };
     await expect(
       authenticateWithPassword(
@@ -199,5 +216,81 @@ describe("password authentication", () => {
 
     expect(increment).toHaveBeenCalledTimes(1);
     expect(increment.mock.calls[0]?.[0]).toBe("auth:password:email:owner@example.com");
+  });
+
+  it("atomically caps concurrent password sign-in verification", async () => {
+    const passwordHash = await bcrypt.hash("valid-password-1", 4);
+    let count = 0;
+    const increment = vi.fn(async (_key: string, limit: number, windowSeconds: number) => {
+      count += 1;
+      return {
+        success: count <= limit,
+        remaining: Math.max(0, limit - count),
+        resetTime: Date.now() + windowSeconds * 1000,
+      };
+    });
+    const findByEmail = vi.fn().mockResolvedValue({
+      id: "user-id",
+      email: "owner@example.com",
+      name: null,
+      image: null,
+      passwordHash,
+      passwordUpdatedAt: new Date(),
+      authVersion: 1,
+      registrationCompletedAt: new Date(),
+    });
+
+    await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        authenticateWithPassword(
+          {
+            email: "owner@example.com",
+            password: "wrong-password-1",
+            requestHeaders: new Headers(),
+          },
+          {
+            users: { findByEmail } as unknown as UserAccountPort,
+            rateLimiter: { ...rateLimiter, increment },
+          }
+        )
+      )
+    );
+
+    expect(findByEmail).toHaveBeenCalledTimes(increment.mock.calls[0]![1]);
+  });
+
+  it("atomically caps concurrent current-password verification", async () => {
+    const passwordHash = await bcrypt.hash("current-password-1", 4);
+    let count = 0;
+    const increment = vi.fn(async (_key: string, limit: number, windowSeconds: number) => {
+      count += 1;
+      return {
+        success: count <= limit,
+        remaining: Math.max(0, limit - count),
+        resetTime: Date.now() + windowSeconds * 1000,
+      };
+    });
+    const getPasswordHash = vi.fn().mockResolvedValue(passwordHash);
+
+    await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        changePassword(
+          {
+            userId: "user-id",
+            currentPassword: "wrong-password-1",
+            newPassword: "new-password-2",
+            confirmPassword: "new-password-2",
+          },
+          {
+            accounts: {
+              getPasswordHash,
+            } as unknown as AccountSecurityPort,
+            rateLimiter: { ...rateLimiter, increment },
+          }
+        )
+      )
+    );
+
+    expect(getPasswordHash).toHaveBeenCalledTimes(increment.mock.calls[0]![1]);
   });
 });

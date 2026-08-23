@@ -69,6 +69,21 @@ class PostgresRateLimiter implements RateLimiterPort {
     };
   }
 
+  async releaseIncrement(
+    bucketKey: string,
+    windowSeconds: number,
+    resetTime: number
+  ): Promise<void> {
+    const windowStart = new Date(resetTime - windowSeconds * 1000);
+    await db.execute(sql`
+      UPDATE rate_limit_buckets
+      SET count = GREATEST(0, count - 1)
+      WHERE bucket_key = ${bucketKey}
+        AND window_start = ${windowStart}
+        AND count > 0
+    `);
+  }
+
   /**
    * Read the counter for the current fixed window without incrementing.
    *
