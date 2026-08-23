@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -17,6 +18,7 @@ import type {
 } from "@/modules/ledger/contracts";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import type { SaveEntryCategoriesInput } from "@/modules/ledger/contracts";
+import { queryKeys } from "@/lib/query-keys";
 
 interface UseCategoryMutationsOptions {
   onMetadataGenerated?: () => void;
@@ -28,6 +30,7 @@ export function useCategoryMutations(
   options: UseCategoryMutationsOptions = {}
 ) {
   const t = useTranslations("Settings");
+  const queryClient = useQueryClient();
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
   const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
   const metadataRequestIdRef = useRef(0);
@@ -56,23 +59,23 @@ export function useCategoryMutations(
       generateEntryCategoryMetadataAction(ledgerId, categoryId),
     resourceGroups: ["categories"],
     onSuccess: (_data, { categoryId }) => {
-      finishMetadataRequest(categoryId);
       options.onMetadataGenerated?.();
     },
     onError: (_error, { categoryId, requestId }) => {
-      if (latestMetadataRequestRef.current.get(categoryId) !== requestId) return;
-      setFailedCategoryIds((ids) => new Set(ids).add(categoryId));
-      finishMetadataRequest(categoryId);
+      if (latestMetadataRequestRef.current.get(categoryId) === requestId) {
+        setFailedCategoryIds((ids) => new Set(ids).add(categoryId));
+      }
+    },
+    onSettled: (_data, _error, variables) => {
+      if (variables != null) finishMetadataRequest(variables.categoryId);
     },
   });
   const requestCategoryMetadata = useCallback(
     (categoryId: string) => {
+      if (pendingMetadataRequestsRef.current.has(categoryId)) return;
       const requestId = ++metadataRequestIdRef.current;
       latestMetadataRequestRef.current.set(categoryId, requestId);
-      pendingMetadataRequestsRef.current.set(
-        categoryId,
-        (pendingMetadataRequestsRef.current.get(categoryId) ?? 0) + 1
-      );
+      pendingMetadataRequestsRef.current.set(categoryId, 1);
       setGeneratingCategoryIds((ids) => new Set(ids).add(categoryId));
       setFailedCategoryIds((ids) => {
         const next = new Set(ids);
@@ -131,6 +134,12 @@ export function useCategoryMutations(
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),
     resourceGroups: ["categories"],
+    onSuccess: (saved, input) => {
+      queryClient.setQueryData(queryKeys.entryCategories(ledgerId), saved);
+      for (const category of input.categories) {
+        if (category.clientId != null) requestCategoryMetadata(category.clientId);
+      }
+    },
   });
 
   return {

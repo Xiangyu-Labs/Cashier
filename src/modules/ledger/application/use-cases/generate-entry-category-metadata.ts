@@ -6,6 +6,7 @@ export interface CategoryMetadataResult {
   categoryId: string;
   icon: string;
   description: string;
+  status: "updated" | "already_complete" | "stale";
   wroteIcon: boolean;
   wroteDescription: boolean;
 }
@@ -21,12 +22,27 @@ export async function generateEntryCategoryMetadata(
     generator: CategoryMetadataGeneratorPort;
   }
 ): Promise<CategoryMetadataResult> {
-  const [category, settings, existingCategories] = await Promise.all([
-    dependencies.categories.get(input.ledgerId, input.categoryId),
+  const category = await dependencies.categories.get(input.ledgerId, input.categoryId);
+  if (category == null) throw new NotFoundError("Category");
+  const categoryComplete =
+    category.icon != null &&
+    category.icon !== "" &&
+    category.description != null &&
+    category.description !== "";
+  if (categoryComplete) {
+    return {
+      categoryId: input.categoryId,
+      icon: category.icon!,
+      description: category.description!,
+      status: "already_complete",
+      wroteIcon: false,
+      wroteDescription: false,
+    };
+  }
+  const [settings, existingCategories] = await Promise.all([
     dependencies.settings.get(input.ledgerId),
     dependencies.categories.list(input.ledgerId),
   ]);
-  if (category == null) throw new NotFoundError("Category");
   if (settings == null) throw new NotFoundError("Ledger");
 
   const metadata = await dependencies.generator.generate({
@@ -38,13 +54,15 @@ export async function generateEntryCategoryMetadata(
   const written = await dependencies.categories.updateMissingMetadata(
     input.ledgerId,
     input.categoryId,
-    metadata
+    { ...metadata, expectedName: category.name }
   );
+  if (written.status === "not_found") throw new NotFoundError("Category");
 
   return {
     categoryId: input.categoryId,
     icon: metadata.icon,
     description: metadata.description,
+    status: written.status,
     wroteIcon: written.wroteIcon,
     wroteDescription: written.wroteDescription,
   };

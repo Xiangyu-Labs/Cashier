@@ -442,8 +442,12 @@ export interface CategoryPort {
   updateMissingMetadata(
     ledgerId: LedgerId,
     categoryId: string,
-    input: { icon: string; description: string }
-  ): Promise<{ wroteIcon: boolean; wroteDescription: boolean }>;
+    input: { icon: string; description: string; expectedName: string }
+  ): Promise<{
+    status: "updated" | "stale" | "not_found";
+    wroteIcon: boolean;
+    wroteDescription: boolean;
+  }>;
   delete(ledgerId: LedgerId, categoryId: string): Promise<boolean>;
   reorder(ledgerId: LedgerId, categoryIds: readonly string[]): Promise<number>;
   saveAll(

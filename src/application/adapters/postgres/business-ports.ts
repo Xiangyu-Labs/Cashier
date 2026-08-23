@@ -546,43 +546,51 @@ export const postgresCategoryAdapter: CategoryPort = {
   },
 
   async updateMissingMetadata(ledgerId, categoryId, input) {
-    // Single atomic statement: the missing-value predicates are evaluated
-    // against the row's own current columns, so a concurrent backfill that
-    // commits first wins and the loser re-checks the predicates against the
-    // updated row (READ COMMITTED EvalPlanQual) instead of overwriting it.
-    // The wrote flags come from RETURNING, never from a stale pre-read.
-    const now = new Date();
-    const result = await db.execute<{
-      wroteIcon: boolean;
-      wroteDescription: boolean;
-    }>(sql`
-      UPDATE entry_categories category
-      SET icon = CASE
-            WHEN category.icon IS NULL OR category.icon = '' THEN ${input.icon}
-            ELSE category.icon
-          END,
-          description = CASE
-            WHEN category.description IS NULL OR category.description = ''
-              THEN ${input.description}
-            ELSE category.description
-          END,
-          updated_at = ${now}
-      WHERE category.id = ${categoryId}
-        AND category.ledger_id = ${ledgerId}
-        AND category.deleted_at IS NULL
-        AND (
-          category.icon IS NULL OR category.icon = ''
-          OR category.description IS NULL OR category.description = ''
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      const category = await tx
+        .select({
+          name: entryCategories.name,
+          icon: entryCategories.icon,
+          description: entryCategories.description,
+        })
+        .from(entryCategories)
+        .where(
+          and(
+            eq(entryCategories.id, categoryId),
+            eq(entryCategories.ledgerId, ledgerId),
+            isNull(entryCategories.deletedAt)
+          )
         )
-      RETURNING
-        category.icon IS NOT DISTINCT FROM ${input.icon} AS "wroteIcon",
-        category.description IS NOT DISTINCT FROM ${input.description} AS "wroteDescription"
-    `);
-    const row = result.rows[0];
-    return {
-      wroteIcon: row?.wroteIcon ?? false,
-      wroteDescription: row?.wroteDescription ?? false,
-    };
+        .for("update")
+        .then((rows) => rows[0]);
+      if (category == null) {
+        return { status: "not_found" as const, wroteIcon: false, wroteDescription: false };
+      }
+      if (category.name !== input.expectedName) {
+        return { status: "stale" as const, wroteIcon: false, wroteDescription: false };
+      }
+      const wroteIcon = category.icon == null || category.icon === "";
+      const wroteDescription = category.description == null || category.description === "";
+      if (!wroteIcon && !wroteDescription) {
+        return { status: "updated" as const, wroteIcon: false, wroteDescription: false };
+      }
+      await tx
+        .update(entryCategories)
+        .set({
+          ...(wroteIcon ? { icon: input.icon } : {}),
+          ...(wroteDescription ? { description: input.description } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(entryCategories.id, categoryId),
+            eq(entryCategories.ledgerId, ledgerId),
+            isNull(entryCategories.deletedAt)
+          )
+        );
+      return { status: "updated" as const, wroteIcon, wroteDescription };
+    });
   },
 
   async delete(ledgerId, categoryId) {

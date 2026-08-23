@@ -48,9 +48,14 @@ describe("category metadata backfill", () => {
     const result = await postgresCategoryAdapter.updateMissingMetadata(ledgerId, category.id, {
       icon: "new-icon",
       description: "new-description",
+      expectedName: category.name,
     });
 
-    expect(result).toEqual({ wroteIcon: false, wroteDescription: true });
+    expect(result).toEqual({
+      status: "updated",
+      wroteIcon: false,
+      wroteDescription: true,
+    });
     const after = await storedCategory(category.id);
     expect(after?.icon).toBe("existing-icon");
     expect(after?.description).toBe("new-description");
@@ -62,9 +67,10 @@ describe("category metadata backfill", () => {
     const result = await postgresCategoryAdapter.updateMissingMetadata(ledgerId, category.id, {
       icon: "other-icon",
       description: "other-description",
+      expectedName: category.name,
     });
 
-    expect(result).toEqual({ wroteIcon: false, wroteDescription: false });
+    expect(result).toEqual({ status: "updated", wroteIcon: false, wroteDescription: false });
     const after = await storedCategory(category.id);
     expect(after).toMatchObject({ icon: "icon", description: "description" });
   });
@@ -76,10 +82,12 @@ describe("category metadata backfill", () => {
       postgresCategoryAdapter.updateMissingMetadata(ledgerId, category.id, {
         icon: "icon-a",
         description: "description-a",
+        expectedName: category.name,
       }),
       postgresCategoryAdapter.updateMissingMetadata(ledgerId, category.id, {
         icon: "icon-b",
         description: "description-b",
+        expectedName: category.name,
       }),
     ]);
 

@@ -12,6 +12,11 @@ export interface UseLedgerMutationOptions<TData, TVariables> {
   errorMessage?: string | null;
   onSuccess?: (data: TData, variables: TVariables) => void | Promise<void>;
   onError?: (error: Error, variables: TVariables) => void;
+  onSettled?: (
+    data: TData | undefined,
+    error: Error | null,
+    variables: TVariables | undefined
+  ) => void | Promise<void>;
 }
 
 export function useLedgerMutation<TData = unknown, TVariables = void>(
@@ -19,7 +24,15 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
   options: UseLedgerMutationOptions<TData, TVariables>
 ) {
   const queryClient = useQueryClient();
-  const { mutationFn, resourceGroups, successMessage, errorMessage, onSuccess, onError } = options;
+  const {
+    mutationFn,
+    resourceGroups,
+    successMessage,
+    errorMessage,
+    onSuccess,
+    onError,
+    onSettled,
+  } = options;
 
   return useMutation<TData, Error, TVariables>({
     mutationFn,
@@ -39,6 +52,9 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
     onError: (error, variables) => {
       if (errorMessage != null) toast.error(errorMessage);
       onError?.(error, variables);
+    },
+    onSettled: async (data, error, variables) => {
+      await onSettled?.(data, error, variables);
     },
   });
 }
