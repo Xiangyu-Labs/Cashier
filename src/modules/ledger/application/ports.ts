@@ -80,3 +80,43 @@ export interface LedgerMutationPort {
   deleteEntry(ledgerId: string, ledgerEntryId: string): Promise<DeleteLedgerEntryResultDto>;
   batchDeleteEntries(ledgerId: string, ledgerEntryIds: string[]): Promise<BatchActionResult>;
 }
+
+interface IdempotentLedgerEntryCommandIdentity {
+  userId: string;
+  ledgerId: string;
+  operationId: string;
+  fingerprint: string;
+}
+
+export interface IdempotentLedgerEntryCommandPort {
+  create(
+    input: IdempotentLedgerEntryCommandIdentity & {
+      command: {
+        ledgerEntryId: string;
+        amount: string;
+        currency?: string;
+        itemName: string;
+        categoryId?: string;
+        description?: string | null;
+        sourceDocumentId: string;
+      };
+    }
+  ): Promise<LedgerEntryDto>;
+  update(
+    input: IdempotentLedgerEntryCommandIdentity & {
+      command: {
+        ledgerEntryId: string;
+        categoryId?: string | null;
+        amount?: string;
+        currency?: string | null;
+        itemName?: string;
+        description?: string | null;
+      };
+    }
+  ): Promise<LedgerEntryDto>;
+  delete(
+    input: IdempotentLedgerEntryCommandIdentity & {
+      command: { ledgerEntryId: string };
+    }
+  ): Promise<DeleteLedgerEntryResultDto>;
+}

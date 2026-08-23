@@ -4,16 +4,11 @@ import { createHash } from "node:crypto";
 import { ValidationError } from "@/lib/errors";
 import { isValidUuid } from "@/lib/validation";
 import type { DeleteLedgerEntryResultDto, LedgerEntryDto } from "@/modules/ledger/contracts";
-import {
-  batchUpdateLedgerEntries,
-  createLedgerEntryWithConversion,
-  updateLedgerEntryWithConversion,
-} from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
+import { batchUpdateLedgerEntries } from "@/modules/ledger/application/use-cases/mutate-ledger-entries";
 import { batchDeleteLedgerEntries } from "@/modules/ledger/application/use-cases/batch-delete-ledger-entries";
 import { getBatchEntryDateImpact } from "@/modules/ledger/application/queries/get-batch-entry-date-impact";
 import { updateLedgerEntryDates } from "@/modules/ledger/application/use-cases/update-ledger-entry-dates";
 import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
-import { deleteLedgerEntry } from "@/modules/ledger/application/use-cases/delete-ledger-entry";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
@@ -69,34 +64,27 @@ export const createLedgerEntryAction = withLedgerAccessContext(
   ): Promise<LedgerEntryDto> => {
     const validatedOperationId = requireOperationId(operationId);
     const validated = parseCreateLedgerEntryInput(data);
-    const payload: Parameters<typeof createLedgerEntryWithConversion>[0] = {
-      ledgerId,
+    const command: Parameters<typeof serverComposition.ledgerEntryCommands.create>[0]["command"] = {
       ledgerEntryId: deterministicEntryId(ledgerId, validatedOperationId),
       amount: String(validated.amount),
       itemName: validated.itemName,
       sourceDocumentId: validated.sourceDocumentId,
     };
-    if (validated.currency !== undefined) payload.currency = validated.currency;
-    if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
-    if (validated.description !== undefined) payload.description = validated.description;
-    return serverComposition.ledgerEntryIdempotency.run(
-      {
-        userId,
+    if (validated.currency !== undefined) command.currency = validated.currency;
+    if (validated.categoryId !== undefined) command.categoryId = validated.categoryId;
+    if (validated.description !== undefined) command.description = validated.description;
+    return serverComposition.ledgerEntryCommands.create({
+      userId,
+      ledgerId,
+      operationId: validatedOperationId,
+      fingerprint: fingerprint({
+        operation: "create",
         ledgerId,
-        operationId: validatedOperationId,
-        fingerprint: fingerprint({
-          operation: "create",
-          ledgerId,
-          entryId: null,
-          payload: validated,
-        }),
-      },
-      () =>
-        createLedgerEntryWithConversion(payload, {
-          mutations: serverComposition.ledgerMutations,
-          categories: serverComposition.categories,
-        })
-    );
+        entryId: null,
+        payload: validated,
+      }),
+      command,
+    });
   }
 );
 
@@ -111,33 +99,26 @@ export const updateLedgerEntryAction = withLedgerAccessContext(
     const validatedOperationId = requireOperationId(operationId);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
     const validated = parseUpdateLedgerEntryInput(data);
-    const payload: Parameters<typeof updateLedgerEntryWithConversion>[0] = {
-      ledgerId,
+    const command: Parameters<typeof serverComposition.ledgerEntryCommands.update>[0]["command"] = {
       ledgerEntryId: validatedLedgerEntryId,
     };
-    if (validated.categoryId !== undefined) payload.categoryId = validated.categoryId;
-    if (validated.amount !== undefined) payload.amount = String(validated.amount);
-    if (validated.currency !== undefined) payload.currency = validated.currency;
-    if (validated.itemName !== undefined) payload.itemName = validated.itemName;
-    if (validated.description !== undefined) payload.description = validated.description;
-    return serverComposition.ledgerEntryIdempotency.run(
-      {
-        userId,
+    if (validated.categoryId !== undefined) command.categoryId = validated.categoryId;
+    if (validated.amount !== undefined) command.amount = String(validated.amount);
+    if (validated.currency !== undefined) command.currency = validated.currency;
+    if (validated.itemName !== undefined) command.itemName = validated.itemName;
+    if (validated.description !== undefined) command.description = validated.description;
+    return serverComposition.ledgerEntryCommands.update({
+      userId,
+      ledgerId,
+      operationId: validatedOperationId,
+      fingerprint: fingerprint({
+        operation: "update",
         ledgerId,
-        operationId: validatedOperationId,
-        fingerprint: fingerprint({
-          operation: "update",
-          ledgerId,
-          entryId: validatedLedgerEntryId,
-          payload: validated,
-        }),
-      },
-      () =>
-        updateLedgerEntryWithConversion(payload, {
-          mutations: serverComposition.ledgerMutations,
-          categories: serverComposition.categories,
-        })
-    );
+        entryId: validatedLedgerEntryId,
+        payload: validated,
+      }),
+      command,
+    });
   }
 );
 
@@ -150,20 +131,18 @@ export const deleteLedgerEntryAction = withLedgerAccessContext(
   ): Promise<DeleteLedgerEntryResultDto> => {
     const validatedOperationId = requireOperationId(operationId);
     const validatedLedgerEntryId = parseLedgerEntryId(ledgerEntryId);
-    return serverComposition.ledgerEntryIdempotency.run(
-      {
-        userId,
+    return serverComposition.ledgerEntryCommands.delete({
+      userId,
+      ledgerId,
+      operationId: validatedOperationId,
+      fingerprint: fingerprint({
+        operation: "delete",
         ledgerId,
-        operationId: validatedOperationId,
-        fingerprint: fingerprint({
-          operation: "delete",
-          ledgerId,
-          entryId: validatedLedgerEntryId,
-          payload: null,
-        }),
-      },
-      () => deleteLedgerEntry(ledgerId, validatedLedgerEntryId, serverComposition.ledgerMutations)
-    );
+        entryId: validatedLedgerEntryId,
+        payload: null,
+      }),
+      command: { ledgerEntryId: validatedLedgerEntryId },
+    });
   }
 );
 

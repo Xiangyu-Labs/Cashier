@@ -2,6 +2,13 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { AppError, ConflictError } from "@/lib/errors";
 import { idempotencyRecords } from "@/persistence";
+import type { PostgresTransaction } from "./transaction-locks";
+import type { IdempotentLedgerEntryCommandPort } from "@/modules/ledger/application/ports";
+import {
+  createLedgerEntryInTransaction,
+  deleteLedgerEntryInTransaction,
+  updateLedgerEntryInTransaction,
+} from "./ledger-entry-commands";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 const LEASE_MS = 30_000;
@@ -126,16 +133,79 @@ export async function runIdempotentUserMutation<TResult>(
   throw new ConflictError("The idempotent operation is still in progress");
 }
 
-export function runIdempotentLedgerEntryMutation<TResult>(
+async function runAtomicLedgerEntryCommand<TResult>(
   input: { userId: string; ledgerId: string; operationId: string; fingerprint: string },
-  mutation: () => Promise<TResult>
+  command: (tx: PostgresTransaction) => Promise<TResult>
 ): Promise<TResult> {
-  return runIdempotentUserMutation(
-    {
-      userId: input.userId,
-      key: `ledger-entry:${input.ledgerId}:${input.operationId}`,
-      fingerprint: input.fingerprint,
-    },
-    mutation
-  );
+  return db.transaction(async (tx) => {
+    const key = `ledger-entry:${input.ledgerId}:${input.operationId}`;
+    const inserted = await tx
+      .insert(idempotencyRecords)
+      .values({
+        principalType: "user",
+        principalId: input.userId,
+        key,
+        status: "pending",
+        contentFingerprint: input.fingerprint,
+        expiresAt: new Date(Date.now() + TTL_MS),
+      })
+      .onConflictDoNothing()
+      .returning({ key: idempotencyRecords.key });
+
+    if (inserted.length === 0) {
+      const existing = await tx.query.idempotencyRecords.findFirst({
+        where: and(
+          eq(idempotencyRecords.principalType, "user"),
+          eq(idempotencyRecords.principalId, input.userId),
+          eq(idempotencyRecords.key, key)
+        ),
+      });
+      if (existing?.contentFingerprint !== input.fingerprint) {
+        throw new AppError(
+          "Operation ID was already used with different content",
+          "IDEMPOTENCY_CONFLICT",
+          409
+        );
+      }
+      if (existing?.status === "completed") {
+        return (existing.result as { value: TResult }).value;
+      }
+      throw new ConflictError("The idempotent operation is still in progress");
+    }
+
+    const result = await command(tx);
+    const completed = await tx
+      .update(idempotencyRecords)
+      .set({ status: "completed", result: { value: result }, completedAt: new Date() })
+      .where(
+        and(
+          eq(idempotencyRecords.principalType, "user"),
+          eq(idempotencyRecords.principalId, input.userId),
+          eq(idempotencyRecords.key, key),
+          eq(idempotencyRecords.status, "pending"),
+          eq(idempotencyRecords.contentFingerprint, input.fingerprint)
+        )
+      )
+      .returning({ key: idempotencyRecords.key });
+    if (completed.length !== 1) throw new ConflictError("Idempotency claim was lost");
+    return result;
+  });
 }
+
+export const postgresIdempotentLedgerEntryCommandAdapter: IdempotentLedgerEntryCommandPort = {
+  create(input) {
+    return runAtomicLedgerEntryCommand(input, (tx) =>
+      createLedgerEntryInTransaction(tx, { ledgerId: input.ledgerId, ...input.command })
+    );
+  },
+  update(input) {
+    return runAtomicLedgerEntryCommand(input, (tx) =>
+      updateLedgerEntryInTransaction(tx, { ledgerId: input.ledgerId, ...input.command })
+    );
+  },
+  delete(input) {
+    return runAtomicLedgerEntryCommand(input, (tx) =>
+      deleteLedgerEntryInTransaction(tx, { ledgerId: input.ledgerId, ...input.command })
+    );
+  },
+};

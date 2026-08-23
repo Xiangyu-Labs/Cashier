@@ -59,7 +59,7 @@ import {
 } from "@/application/adapters/postgres/exchange-rate";
 import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
 import {
-  runIdempotentLedgerEntryMutation,
+  postgresIdempotentLedgerEntryCommandAdapter,
   runIdempotentUserMutation,
 } from "@/application/adapters/postgres/ledger-entry-idempotency";
 
@@ -81,7 +81,7 @@ export const serverComposition = {
     deleteEntry: deleteLedgerEntry,
     updateEntry: updateLedgerEntryWithConversion,
   },
-  ledgerEntryIdempotency: { run: runIdempotentLedgerEntryMutation },
+  ledgerEntryCommands: postgresIdempotentLedgerEntryCommandAdapter,
   userMutationIdempotency: { run: runIdempotentUserMutation },
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,

@@ -9,7 +9,7 @@ import {
 } from "@/persistence";
 import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 const { getRatesMock } = vi.hoisted(() => ({
   getRatesMock: vi.fn(async () => ({
@@ -214,6 +214,60 @@ describe("createLedgerEntryAction", () => {
       where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
     });
     expect(activeEntries).toHaveLength(1);
+  });
+
+  it("rolls back the entry and claim when idempotency completion fails", async () => {
+    const db = getTestDb();
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION cashier_test_fail_entry_idempotency_completion()
+      RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.status = 'completed' AND NEW.key LIKE 'ledger-entry:%' THEN
+          RAISE EXCEPTION 'forced idempotency completion failure';
+        END IF;
+        RETURN NEW;
+      END
+      $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER cashier_test_fail_entry_idempotency_completion
+      BEFORE UPDATE ON idempotency_records
+      FOR EACH ROW EXECUTE FUNCTION cashier_test_fail_entry_idempotency_completion()
+    `);
+    const operationId = crypto.randomUUID();
+    try {
+      await expect(
+        createLedgerEntryAction(
+          ledgerId,
+          {
+            amount: "19",
+            currency: "CNY",
+            itemName: "Must roll back",
+            sourceDocumentId: docId,
+          },
+          operationId
+        )
+      ).rejects.toThrow("Failed query");
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS cashier_test_fail_entry_idempotency_completion
+          ON idempotency_records`
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS cashier_test_fail_entry_idempotency_completion()`
+      );
+    }
+
+    const activeEntries = await db.query.ledgerEntries.findMany({
+      where: and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)),
+    });
+    expect(activeEntries).toHaveLength(0);
+    const claim = await db.execute(sql`
+      SELECT key FROM idempotency_records
+      WHERE principal_type = 'user'
+        AND key = ${`ledger-entry:${ledgerId}:${operationId}`}
+    `);
+    expect(claim.rows).toHaveLength(0);
   });
 
   it("rejects a source document that belongs to a different ledger", async () => {
