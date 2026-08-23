@@ -34,26 +34,28 @@ export async function listLedgerEntryPage({
   cursor,
   filters,
 }: ListLedgerEntryPageInput) {
-  const tenantCondition = forLedger(ledgerEntries, ledgerId).whereActive;
-  const cursorCondition = buildLedgerEntryCursorCondition(cursor, ledgerId, filters, {
-    effectiveDate: sql`documents.effective_date`,
-    documentCreatedAt: sql`documents.created_at`,
-    documentId: sql`documents.id`,
-    position: sql`ledger_entries.position`,
-    entryId: sql`ledger_entries.id`,
-  });
-  const whereConditions = [
-    tenantCondition,
-    ...buildLedgerEntryEffectiveDateConditions(filters),
-    ...buildLedgerEntryValueConditions(filters),
-    cursorCondition,
-  ].filter((condition): condition is SQL<unknown> => condition != null);
+  return db.transaction(
+    async (tx) => {
+      const tenantCondition = forLedger(ledgerEntries, ledgerId).whereActive;
+      const cursorCondition = buildLedgerEntryCursorCondition(cursor, ledgerId, filters, {
+        effectiveDate: sql`documents.effective_date`,
+        documentCreatedAt: sql`documents.created_at`,
+        documentId: sql`documents.id`,
+        position: sql`ledger_entries.position`,
+        entryId: sql`ledger_entries.id`,
+      });
+      const whereConditions = [
+        tenantCondition,
+        ...buildLedgerEntryEffectiveDateConditions(filters),
+        ...buildLedgerEntryValueConditions(filters),
+        cursorCondition,
+      ].filter((condition): condition is SQL<unknown> => condition != null);
 
-  // Phase 1: a bounded keyset page over one scan of the active projection.
-  // The CTE applies visibility (active revision + soft delete), the
-  // accounting-date range, entry filters and the cursor predicate in SQL, so
-  // no ordering scalar subquery is re-executed per row or per cursor branch.
-  const page = await db.execute<VisibleEntryRow & Record<string, unknown>>(sql`
+      // Phase 1: a bounded keyset page over one scan of the active projection.
+      // The CTE applies visibility (active revision + soft delete), the
+      // accounting-date range, entry filters and the cursor predicate in SQL, so
+      // no ordering scalar subquery is re-executed per row or per cursor branch.
+      const page = await tx.execute<VisibleEntryRow & Record<string, unknown>>(sql`
     WITH visible_entries AS (
       SELECT
         ledger_entries.id,
@@ -79,104 +81,121 @@ export async function listLedgerEntryPage({
     LIMIT ${limit + 1}
   `);
 
-  const hasMore = page.rows.length > limit;
-  const pagedRows = hasMore ? page.rows.slice(0, limit) : page.rows;
+      const hasMore = page.rows.length > limit;
+      const pagedRows = hasMore ? page.rows.slice(0, limit) : page.rows;
 
-  let nextCursor: string | null = null;
-  if (hasMore) {
-    const lastItem = pagedRows.at(-1);
-    if (lastItem == null) {
-      throw new AppError("Expected next ledger entry page cursor row", "INVARIANT_VIOLATION");
-    }
-    nextCursor = encodeLedgerEntryCursor(
-      {
-        effectiveDate: lastItem.effectiveDate,
-        documentCreatedAt: new Date(lastItem.documentCreatedAt).toISOString(),
-        documentId: lastItem.documentId,
-        position: lastItem.position,
-        entryId: lastItem.id,
-      },
-      ledgerId,
-      filters
-    );
-  }
+      let nextCursor: string | null = null;
+      if (hasMore) {
+        const lastItem = pagedRows.at(-1);
+        if (lastItem == null) {
+          throw new AppError("Expected next ledger entry page cursor row", "INVARIANT_VIOLATION");
+        }
+        nextCursor = encodeLedgerEntryCursor(
+          {
+            effectiveDate: lastItem.effectiveDate,
+            documentCreatedAt: new Date(lastItem.documentCreatedAt).toISOString(),
+            documentId: lastItem.documentId,
+            position: lastItem.position,
+            entryId: lastItem.id,
+          },
+          ledgerId,
+          filters
+        );
+      }
 
-  // Phase 2: bounded hydration of exactly the page rows, preserving the
-  // keyset order from phase 1.
-  const order = new Map(pagedRows.map((row, index) => [row.id, index]));
-  const rows =
-    pagedRows.length === 0
-      ? []
-      : await db.query.ledgerEntries
-          .findMany({
-            where: and(
-              eq(ledgerEntries.ledgerId, ledgerId),
-              isNull(ledgerEntries.deletedAt),
-              inArray(
-                ledgerEntries.id,
-                pagedRows.map((row) => row.id)
-              )
-            ),
-            with: {
-              category: true,
-              sourceDocument: {
-                columns: {
-                  id: true,
-                  ledgerId: true,
-                  title: true,
-                  currentStatus: true,
-                  type: true,
-                  entryDate: true,
-                  createdAt: true,
-                  updatedAt: true,
-                  deletedAt: true,
+      // Phase 2: bounded hydration of exactly the page rows, preserving the
+      // keyset order from phase 1.
+      const order = new Map(pagedRows.map((row, index) => [row.id, index]));
+      const rows =
+        pagedRows.length === 0
+          ? []
+          : await tx.query.ledgerEntries
+              .findMany({
+                where: and(
+                  eq(ledgerEntries.ledgerId, ledgerId),
+                  isNull(ledgerEntries.deletedAt),
+                  inArray(
+                    ledgerEntries.id,
+                    pagedRows.map((row) => row.id)
+                  ),
+                  sql`EXISTS (
+                SELECT 1 FROM source_documents active_documents
+                WHERE active_documents.ledger_id = ${ledgerEntries.ledgerId}
+                  AND active_documents.id = ${ledgerEntries.sourceDocumentId}
+                  AND active_documents.deleted_at IS NULL
+                  AND active_documents.active_revision_id = ${ledgerEntries.sourceDocumentRevisionId}
+              )`
+                ),
+                with: {
+                  category: true,
+                  sourceDocument: {
+                    columns: {
+                      id: true,
+                      ledgerId: true,
+                      title: true,
+                      currentStatus: true,
+                      type: true,
+                      entryDate: true,
+                      createdAt: true,
+                      updatedAt: true,
+                      deletedAt: true,
+                    },
+                  },
                 },
-              },
-            },
-          })
-          .then((found) =>
-            found.toSorted(
-              (left, right) =>
-                (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-                (order.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-            )
-          );
+              })
+              .then((found) =>
+                found.toSorted(
+                  (left, right) =>
+                    (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+                    (order.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+                )
+              );
 
-  const revisionIds = rows.flatMap((row) =>
-    row.sourceDocumentRevisionId == null ? [] : [row.sourceDocumentRevisionId]
-  );
-  const revisionsWithFiles = new Set(
-    revisionIds.length === 0
-      ? []
-      : (
-          await db
-            .select({ revisionId: revisionFiles.revisionId })
-            .from(revisionFiles)
-            .where(inArray(revisionFiles.revisionId, revisionIds))
-        ).map((row) => row.revisionId)
-  );
+      if (rows.length !== pagedRows.length) {
+        throw new AppError(
+          "Ledger entry page hydration did not match the snapshot page",
+          "INVARIANT_VIOLATION"
+        );
+      }
 
-  const items = rows.map((row) => {
-    const dto = mapLedgerEntryDto({
-      ...row,
-      category: row.category,
-      sourceDocument: row.sourceDocument,
-    });
+      const revisionIds = rows.flatMap((row) =>
+        row.sourceDocumentRevisionId == null ? [] : [row.sourceDocumentRevisionId]
+      );
+      const revisionsWithFiles = new Set(
+        revisionIds.length === 0
+          ? []
+          : (
+              await tx
+                .select({ revisionId: revisionFiles.revisionId })
+                .from(revisionFiles)
+                .where(inArray(revisionFiles.revisionId, revisionIds))
+            ).map((row) => row.revisionId)
+      );
 
-    if (dto.sourceDocument != null) {
-      dto.sourceDocument = {
-        ...dto.sourceDocument,
-        hasImages:
-          row.sourceDocumentRevisionId != null &&
-          revisionsWithFiles.has(row.sourceDocumentRevisionId),
+      const items = rows.map((row) => {
+        const dto = mapLedgerEntryDto({
+          ...row,
+          category: row.category,
+          sourceDocument: row.sourceDocument,
+        });
+
+        if (dto.sourceDocument != null) {
+          dto.sourceDocument = {
+            ...dto.sourceDocument,
+            hasImages:
+              row.sourceDocumentRevisionId != null &&
+              revisionsWithFiles.has(row.sourceDocumentRevisionId),
+          };
+        }
+
+        return dto;
+      });
+
+      return {
+        items,
+        nextCursor,
       };
-    }
-
-    return dto;
-  });
-
-  return {
-    items,
-    nextCursor,
-  };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" }
+  );
 }
