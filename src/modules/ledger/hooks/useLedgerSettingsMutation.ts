@@ -30,6 +30,7 @@ export function useLedgerSettingsMutation({
   errorMessage,
 }: UseLedgerSettingsMutationParams) {
   const t = useTranslations("Settings");
+  const tCommon = useTranslations("Common");
   const translateError = (code: UpdateLedgerActionErrorCode) => {
     switch (code) {
       case "rates_unavailable":
@@ -83,6 +84,7 @@ export function useLedgerSettingsMutation({
     successMessage,
     errorMessage: null,
     resourceGroups: ["settings"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onError: (error) => toast.error(error.message || errorMessage),
   });
 }

@@ -5,7 +5,6 @@ import {
   invalidateLedgerEntries,
   invalidateLedgerStats,
   invalidateSourceDocuments,
-  invalidateUncategorizedCount,
   matchExactQueryKey,
   queryKeys,
 } from "@/lib/query-keys";
@@ -41,23 +40,28 @@ export function ledgerMutationResourcePredicates(
   const addStatsAndCalendar = () => {
     predicates.push(invalidateLedgerStats(ledgerId), invalidateCalendar(ledgerId));
   };
+  const addCategories = () => {
+    predicates.push(
+      invalidateEntryCategories(ledgerId),
+      matchExactQueryKey(queryKeys.ledgerSettings(ledgerId))
+    );
+  };
 
   if (groups.has("documents")) {
     addSourceDocuments();
     addLedgerEntries();
+    addCategories();
     addStatsAndCalendar();
   }
   if (groups.has("entries")) {
     addLedgerEntries();
     addSourceDocuments();
+    addCategories();
     addStatsAndCalendar();
   }
   if (groups.has("categories")) {
-    predicates.push(
-      invalidateEntryCategories(ledgerId),
-      invalidateUncategorizedCount(ledgerId),
-      matchExactQueryKey(queryKeys.ledgerSettings(ledgerId))
-    );
+    addCategories();
+    addLedgerEntries();
     addSourceDocuments();
     addStatsAndCalendar();
   }
@@ -90,7 +94,7 @@ export async function invalidateLedgerMutationResources(
   ledgerId: string,
   resourceGroups: readonly LedgerMutationResourceGroup[]
 ): Promise<void> {
-  await Promise.allSettled(
+  await Promise.all(
     ledgerMutationResourcePredicates(ledgerId, resourceGroups).map((predicate) =>
       queryClient.invalidateQueries({ predicate, refetchType: "active" })
     )

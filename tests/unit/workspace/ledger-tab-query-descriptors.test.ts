@@ -30,6 +30,9 @@ describe("ledger tab query descriptors", () => {
       queryKeys.sourceDocumentStream("ledger-1", {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
+        minAmount: null,
+        maxAmount: null,
+        statuses: null,
         search: "coffee",
       })
     );
@@ -37,6 +40,9 @@ describe("ledger tab query descriptors", () => {
       queryKeys.sourceDocumentStreamTotal("ledger-1", {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
+        minAmount: null,
+        maxAmount: null,
+        statuses: null,
         search: "coffee",
       })
     );
@@ -62,10 +68,20 @@ describe("ledger tab query descriptors", () => {
       limit: 50,
     });
     expect(descriptor.summaryQueryKey).toEqual(
-      queryKeys.summary("ledger-1", "2026-03-01", "2026-03-31", "USD", "search:coffee")
+      queryKeys.summary("ledger-1", {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        currency: "USD",
+        filter: "search:coffee",
+      })
     );
     expect(descriptor.entriesQueryKey).toEqual(
-      queryKeys.ledgerEntries("ledger-1", "infinite", "2026-03-01", "2026-03-31", "search:coffee")
+      queryKeys.ledgerEntries("ledger-1", {
+        mode: "infinite",
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        filter: "search:coffee",
+      })
     );
   });
 

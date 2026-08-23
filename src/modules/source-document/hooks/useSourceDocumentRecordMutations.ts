@@ -36,6 +36,7 @@ export function useSourceDocumentRecordMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   // -----------------------------------------------------------------------
@@ -53,6 +54,7 @@ export function useSourceDocumentRecordMutations({
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: () => {
       onClose();
     },

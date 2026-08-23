@@ -88,12 +88,14 @@ export function openCacheDb(): Promise<IDBDatabase> {
           unique: false,
         });
       }
-      const access = db.createObjectStore(DOCUMENT_IMAGE_ACCESS_STORE, { keyPath: "key" });
-      access.createIndex("snapshotKey", "snapshotKey", { unique: false });
-      access.createIndex("userId", "userId", { unique: false });
-      access.createIndex("snapshotAccess", ["snapshotKey", "lastAccessedAt"], {
-        unique: false,
-      });
+      if (!db.objectStoreNames.contains(DOCUMENT_IMAGE_ACCESS_STORE)) {
+        const access = db.createObjectStore(DOCUMENT_IMAGE_ACCESS_STORE, { keyPath: "key" });
+        access.createIndex("snapshotKey", "snapshotKey", { unique: false });
+        access.createIndex("userId", "userId", { unique: false });
+        access.createIndex("snapshotAccess", ["snapshotKey", "lastAccessedAt"], {
+          unique: false,
+        });
+      }
     };
     request.onsuccess = () => {
       request.result.onversionchange = () => {

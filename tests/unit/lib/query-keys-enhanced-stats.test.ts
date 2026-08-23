@@ -16,13 +16,15 @@ describe("queryKeys enhanced stats and source documents", () => {
     ).toEqual([
       "enhanced-stats",
       "ledger-1",
-      "2026-03-01",
-      "2026-03-31",
-      "2026-02-01",
-      "2026-02-28",
-      "month",
-      "same_period",
-      "USD",
+      {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        compareStartDate: "2026-02-01",
+        compareEndDate: "2026-02-28",
+        rangeType: "month",
+        comparisonMode: "same_period",
+        mainCurrency: "USD",
+      },
     ]);
   });
 
@@ -46,26 +48,16 @@ describe("queryKeys enhanced stats and source documents", () => {
       "sourceDocuments",
       "ledger-1",
       "stream",
-      "2026-03-01",
-      "2026-03-31",
-      20,
-      100,
-      null,
-      null,
+      {
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
+        minAmount: "20",
+        maxAmount: "100",
+      },
     ]);
   });
 
   it("keeps stable positions when enhanced stats dimensions are omitted", () => {
-    expect(queryKeys.enhancedStats("ledger-1")).toEqual([
-      "enhanced-stats",
-      "ledger-1",
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-    ]);
+    expect(queryKeys.enhancedStats("ledger-1")).toEqual(["enhanced-stats", "ledger-1", {}]);
   });
 });

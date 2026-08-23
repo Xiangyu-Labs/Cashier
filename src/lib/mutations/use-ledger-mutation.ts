@@ -10,6 +10,7 @@ export interface UseLedgerMutationOptions<TData, TVariables> {
   resourceGroups: readonly LedgerMutationResourceGroup[];
   successMessage?: string | null;
   errorMessage?: string | null;
+  invalidationErrorMessage?: string | null;
   onSuccess?: (data: TData, variables: TVariables) => void | Promise<void>;
   onError?: (error: Error, variables: TVariables) => void;
   onSettled?: (
@@ -29,6 +30,7 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
     resourceGroups,
     successMessage,
     errorMessage,
+    invalidationErrorMessage = "Saved, but the latest data could not be refreshed. Retry.",
     onSuccess,
     onError,
     onSettled,
@@ -46,7 +48,22 @@ export function useLedgerMutation<TData = unknown, TVariables = void>(
       if (successMessage != null) toast.success(successMessage);
 
       if (ledgerId != null && ledgerId !== "") {
-        await invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups);
+        try {
+          await invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups);
+        } catch (error) {
+          console.error("[useLedgerMutation] resource invalidation failed", { ledgerId, error });
+          if (invalidationErrorMessage != null) toast.error(invalidationErrorMessage);
+          globalThis.setTimeout(() => {
+            void invalidateLedgerMutationResources(queryClient, ledgerId, resourceGroups).catch(
+              (retryError) => {
+                console.error("[useLedgerMutation] resource invalidation retry failed", {
+                  ledgerId,
+                  error: retryError,
+                });
+              }
+            );
+          }, 1_000);
+        }
       }
     },
     onError: (error, variables) => {

@@ -36,6 +36,7 @@ export function useBatchSourceDocumentActions(
       await deleteSourceDocumentAction(ledgerId, id, operationId);
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     onSuccess: () => {
@@ -50,6 +51,7 @@ export function useBatchSourceDocumentActions(
     mutationFn: ({ ids, entryDate }) =>
       batchUpdateSourceDocumentsAction(ledgerId, ids, { entryDate }),
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) => {
       toast.success(tBatch("datesUpdated", { count: result.updatedCount }));
       clearSelection();
@@ -83,6 +85,7 @@ export function useBatchSourceDocumentActions(
   const batchDelete = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
     mutationFn: (ids) => batchDeleteSourceDocumentsAction(ledgerId, ids),
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
       settleBatchResult(result, tBatch("deleted", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("deleteFailed")),
@@ -91,6 +94,7 @@ export function useBatchSourceDocumentActions(
   const batchRetry = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
     mutationFn: (ids) => batchRetrySourceDocumentsAction(ledgerId, ids),
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) =>
       settleBatchResult(result, tBatch("retried", { count: result.succeededIds.length })),
     onError: () => toast.error(tCommon("error")),
@@ -106,6 +110,7 @@ export function useBatchSourceDocumentActions(
           "keep"
         ),
       resourceGroups: ["documents"],
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
       onSuccess: (result, variables) =>
         settleBatchResult(
           result,
@@ -126,6 +131,7 @@ export function useBatchSourceDocumentActions(
           "discard"
         ),
       resourceGroups: ["documents"],
+      invalidationErrorMessage: tCommon("savedRefreshFailed"),
       onSuccess: (result, variables) =>
         settleBatchResult(
           result,

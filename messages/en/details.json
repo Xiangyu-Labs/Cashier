@@ -256,7 +256,7 @@
     "save": "Save",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Save failed",
-    "savedRefreshFailed": "Changes were saved, but the latest data could not be loaded.",
+    "savedRefreshFailed": "Saved, but the latest data could not be refreshed. Retry.",
     "deleteSuccess": "Deleted successfully",
     "deleteFailed": "Delete failed",
     "loading": "Loading…",

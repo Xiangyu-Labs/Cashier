@@ -30,17 +30,20 @@ describe("applyStreamRefreshToCache", () => {
   it.each([
     ["changed", { changed: true }],
     ["reset", { resetRequired: true }],
-  ])("invalidates stream, total, counts, and document queries after %s", (_name, change) => {
-    const client = new QueryClient();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
+  ])(
+    "invalidates stream, total, counts, documents, and ledger entries after %s",
+    (_name, change) => {
+      const client = new QueryClient();
+      const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    applyStreamRefreshToCache(client, "ledger-1", makeResult(change));
+      applyStreamRefreshToCache(client, "ledger-1", makeResult(change));
 
-    expect(invalidate).toHaveBeenCalledTimes(4);
-    for (const call of invalidate.mock.calls) {
-      expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
+      expect(invalidate).toHaveBeenCalledTimes(6);
+      for (const call of invalidate.mock.calls) {
+        expect(call[0]).toEqual(expect.objectContaining({ predicate: expect.any(Function) }));
+      }
     }
-  });
+  );
 
   it.each([
     ["categories", { categories: true, settings: false, stats: false }],

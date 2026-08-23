@@ -43,6 +43,7 @@ export function useDetailsBatchController(
     mutationFn: (data: { categoryId?: string | null; currency?: string | null }) =>
       batchUpdateLedgerEntriesAction(ledgerId, selection.selectedIds, data),
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("error"),
     onSuccess: (result) => {
       toast.success(t("batchUpdated", { count: result.affectedCount }));
@@ -55,6 +56,7 @@ export function useDetailsBatchController(
   >(ledgerId, {
     mutationFn: () => batchDeleteLedgerEntriesAction(ledgerId, selection.selectedIds),
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("deleteFailed"),
     onSuccess: (result) => {
       const unresolved = [...result.skipped, ...result.failed].map((item) => item.id);
@@ -80,6 +82,7 @@ export function useDetailsBatchController(
     mutationFn: () =>
       batchUpdateLedgerEntryDatesAction(ledgerId, selection.selectedIds, selectedDate),
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("error"),
     onSuccess: () => {
       toast.success(t("dateUpdated"));

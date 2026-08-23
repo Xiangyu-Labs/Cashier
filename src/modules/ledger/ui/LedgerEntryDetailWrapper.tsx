@@ -7,10 +7,7 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { getLedgerEntryAction } from "@/modules/ledger/actions";
-import {
-  updateLedgerEntryAction,
-  deleteLedgerEntryAction,
-} from "@/modules/ledger/actions";
+import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
@@ -67,6 +64,7 @@ export function LedgerEntryDetailWrapper({
     },
     errorMessage: null,
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const deleteMutation = useLedgerMutation<DeleteLedgerEntryResultDto, void>(ledgerId, {
@@ -77,6 +75,7 @@ export function LedgerEntryDetailWrapper({
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const handleReload = useCallback(async () => {

@@ -64,20 +64,18 @@ export function buildDetailsQueryDescriptor(input: {
     startDateStr: state.startDateStr,
     endDateStr: state.endDateStr,
     filterKey,
-    summaryQueryKey: queryKeys.summary(
-      input.ledgerId,
-      state.startDateStr,
-      state.endDateStr,
-      input.mainCurrency,
-      filterKey
-    ),
-    entriesQueryKey: queryKeys.ledgerEntries(
-      input.ledgerId,
-      "infinite",
-      state.startDateStr,
-      state.endDateStr,
-      filterKey
-    ),
+    summaryQueryKey: queryKeys.summary(input.ledgerId, {
+      startDate: state.startDateStr,
+      endDate: state.endDateStr,
+      currency: input.mainCurrency,
+      filter: filterKey,
+    }),
+    entriesQueryKey: queryKeys.ledgerEntries(input.ledgerId, {
+      mode: "infinite",
+      startDate: state.startDateStr,
+      endDate: state.endDateStr,
+      filter: filterKey,
+    }),
     summaryParams: {
       ...(state.startDateStr != null ? { startDate: state.startDateStr } : {}),
       ...(state.endDateStr != null ? { endDate: state.endDateStr } : {}),

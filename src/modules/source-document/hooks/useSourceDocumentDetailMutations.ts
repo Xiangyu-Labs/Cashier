@@ -41,7 +41,7 @@ export function useSourceDocumentDetailMutations({
   ledgerId,
   onClose,
 }: UseSourceDocumentDetailMutationsOptions) {
-  useTranslations("Common");
+  const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
 
   const { deleteDocumentMutation } = useSourceDocumentRecordMutations({
@@ -77,6 +77,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["documents", "entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) => {
       if (ledgerId == null || ledgerId === "") return;
       queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
@@ -94,6 +95,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["documents", "entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (result) => {
       if (ledgerId == null || ledgerId === "") return;
       queryClient.setQueryData(queryKeys.sourceDocument(ledgerId, id), result.sourceDocument);
@@ -116,6 +118,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const deleteEntryMutation = useLedgerMutation<
@@ -130,6 +133,7 @@ export function useSourceDocumentDetailMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   return {

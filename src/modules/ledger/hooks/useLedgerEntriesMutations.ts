@@ -1,10 +1,7 @@
 "use client";
 import type { EntryCategory } from "@/modules/ledger/contracts";
 import { useTranslations } from "next-intl";
-import {
-  updateLedgerEntryAction,
-  deleteLedgerEntryAction,
-} from "@/modules/ledger/actions";
+import { updateLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
@@ -29,6 +26,7 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
       ) as Promise<UpdateEntryResult>;
     },
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     errorMessage: tCommon("saveFailed"),
   });
 
@@ -42,6 +40,7 @@ export function useLedgerEntriesMutations(ledgerId: string, _categories: EntryCa
       ) as Promise<DeleteEntryResult>;
     },
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tCommon("deleteSuccess"),
     errorMessage: tCommon("deleteFailed"),
   });

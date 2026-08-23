@@ -66,7 +66,7 @@ export function useDetailsTabData({
     [advancedFilters, ledgerId, mainCurrency, periodParams, timeZone]
   );
 
-  const { data: summaryData } = useQuery({
+  const summaryQuery = useQuery({
     queryKey: descriptor.summaryQueryKey,
     queryFn: () =>
       getLedgerStatsAction(ledgerId, {
@@ -82,6 +82,7 @@ export function useDetailsTabData({
     staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
+  const { data: summaryData } = summaryQuery;
 
   const entriesQuery = useInfiniteQuery({
     queryKey: descriptor.entriesQueryKey,
@@ -117,6 +118,15 @@ export function useDetailsTabData({
     };
   }, [summaryData, mainCurrency]);
 
+  const queryStatus =
+    entriesQuery.status === "error" || summaryQuery.status === "error"
+      ? "error"
+      : entriesQuery.status === "pending" || summaryQuery.status === "pending"
+        ? "pending"
+        : "success";
+  const queryIsFetching = entriesQuery.isFetching || summaryQuery.isFetching;
+  const queryHasData = entriesQuery.data !== undefined || summaryQuery.data !== undefined;
+
   return {
     entries,
     summaryData,
@@ -130,8 +140,8 @@ export function useDetailsTabData({
     startDateStr: descriptor.startDateStr,
     endDateStr: descriptor.endDateStr,
     queryKey: descriptor.entriesQueryKey,
-    queryStatus: entriesQuery.status,
-    queryIsFetching: entriesQuery.isFetching,
-    queryHasData: entriesQuery.data !== undefined,
+    queryStatus,
+    queryIsFetching,
+    queryHasData,
   };
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
@@ -16,6 +17,7 @@ export function useSourceDocumentEntryMutations({
   id: _id,
   ledgerId,
 }: UseSourceDocumentEntryMutationsOptions) {
+  const tCommon = useTranslations("Common");
   const batchUpdateMutation = useLedgerMutation<
     { ledgerEntryIds: string[]; affectedCount: number } | undefined,
     { ids: string[]; data: BatchEntryUpdateData }
@@ -30,6 +32,7 @@ export function useSourceDocumentEntryMutations({
     },
     errorMessage: null,
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const batchDeleteMutation = useLedgerMutation<BatchActionResult, string[]>(ledgerId, {
@@ -40,6 +43,7 @@ export function useSourceDocumentEntryMutations({
     successMessage: null,
     errorMessage: null,
     resourceGroups: ["entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   return {

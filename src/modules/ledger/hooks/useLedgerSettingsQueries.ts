@@ -25,6 +25,7 @@ export function useLedgerSettingsQueries({
   initialCategories,
   metadataPollingSession,
 }: UseLedgerSettingsQueriesParams) {
+  type QueryStatus = "pending" | "success" | "error";
   const settingsQueryKey = useMemo(() => queryKeys.ledgerSettings(ledgerId), [ledgerId]);
   const categoryMetadataPolling = useSmartPolling<EntryCategoryWithCount[]>({
     sessionKey: metadataPollingSession,
@@ -41,15 +42,16 @@ export function useLedgerSettingsQueries({
     ),
   });
 
-  const { data: ledger = initialLedger } = useQuery<Ledger | null>({
+  const ledgerQuery = useQuery<Ledger | null>({
     queryKey: queryKeys.ledger(ledgerId),
     queryFn: () => getLedgerAction(ledgerId),
     initialData: initialLedger,
     staleTime: LEDGER.STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
+  const ledger = ledgerQuery.data ?? initialLedger;
 
-  const { data: categories = initialCategories } = useQuery<EntryCategoryWithCount[]>({
+  const categoriesQuery = useQuery<EntryCategoryWithCount[]>({
     queryKey: queryKeys.entryCategories(ledgerId),
     queryFn: () => getEntryCategoriesAction(ledgerId),
     initialData: initialCategories,
@@ -57,6 +59,7 @@ export function useLedgerSettingsQueries({
     staleTime: LEDGER.STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
+  const categories = categoriesQuery.data ?? initialCategories;
 
   const settingsQuery = useQuery<{
     uncategorizedCount: number;
@@ -68,6 +71,23 @@ export function useLedgerSettingsQueries({
     refetchOnWindowFocus: true,
   });
   const { data: settingsData, isLoading: isSettingsLoading } = settingsQuery;
+  const ledgerStatus = ledgerQuery.status as QueryStatus;
+  const categoriesStatus = categoriesQuery.status as QueryStatus;
+  const aggregateStatus = settingsQuery.status as QueryStatus;
+  const settingsQueryStatus: QueryStatus =
+    ledgerStatus === "error" || categoriesStatus === "error" || aggregateStatus === "error"
+      ? "error"
+      : ledgerStatus === "pending" ||
+          categoriesStatus === "pending" ||
+          aggregateStatus === "pending"
+        ? "pending"
+        : "success";
+  const settingsQueryIsFetching =
+    ledgerQuery.isFetching || categoriesQuery.isFetching || settingsQuery.isFetching;
+  const settingsQueryHasData =
+    ledgerQuery.data !== undefined ||
+    categoriesQuery.data !== undefined ||
+    settingsQuery.data !== undefined;
 
   return {
     ledger,
@@ -76,8 +96,8 @@ export function useLedgerSettingsQueries({
     credentials: settingsData?.credentials ?? [],
     isSettingsLoading,
     settingsQueryKey,
-    settingsQueryStatus: settingsQuery.status,
-    settingsQueryIsFetching: settingsQuery.isFetching,
-    settingsQueryHasData: settingsQuery.data !== undefined,
+    settingsQueryStatus,
+    settingsQueryIsFetching,
+    settingsQueryHasData,
   };
 }

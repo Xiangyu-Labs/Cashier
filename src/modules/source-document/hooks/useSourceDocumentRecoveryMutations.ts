@@ -34,6 +34,7 @@ export function useSourceDocumentRecoveryMutations({
   const actionLockRef = useRef(false);
   const retryOperationIdRef = useRef(crypto.randomUUID());
   const tActions = useTranslations("CandidateAction");
+  const tCommon = useTranslations("Common");
 
   // -----------------------------------------------------------------------
   // Accept candidate
@@ -45,6 +46,7 @@ export function useSourceDocumentRecoveryMutations({
       return acceptSourceDocumentCandidateAction(ledgerId, sourceDocumentId, revisionId, undefined);
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("acceptSuccess"),
     errorMessage: tActions("acceptError"),
     onSuccess: () => {
@@ -67,6 +69,7 @@ export function useSourceDocumentRecoveryMutations({
       );
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("abandonSuccess"),
     errorMessage: tActions("abandonError"),
     onSuccess: () => {
@@ -83,6 +86,7 @@ export function useSourceDocumentRecoveryMutations({
       return retrySourceDocumentAction(ledgerId, sourceDocumentId, operationId);
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("retrySuccess"),
     errorMessage: tActions("retryError"),
     onSuccess: () => {
@@ -102,6 +106,7 @@ export function useSourceDocumentRecoveryMutations({
       );
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: tActions("cancelSuccess"),
     errorMessage: tActions("cancelError"),
     onSuccess: () => {

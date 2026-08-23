@@ -30,6 +30,7 @@ export function useCategoryMutations(
   options: UseCategoryMutationsOptions = {}
 ) {
   const t = useTranslations("Settings");
+  const tCommon = useTranslations("Common");
   const queryClient = useQueryClient();
   const [generatingCategoryIds, setGeneratingCategoryIds] = useState<Set<string>>(new Set());
   const [failedCategoryIds, setFailedCategoryIds] = useState<Set<string>>(new Set());
@@ -58,6 +59,7 @@ export function useCategoryMutations(
     mutationFn: ({ categoryId }: { categoryId: string; requestId: number }) =>
       generateEntryCategoryMetadataAction(ledgerId, categoryId),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (_data, { categoryId: _categoryId }) => {
       options.onMetadataGenerated?.();
     },
@@ -95,6 +97,7 @@ export function useCategoryMutations(
     successMessage: t("categoryCreated"),
     errorMessage: t("createCategoryFailed"),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (category) => {
       requestCategoryMetadata(category.id);
     },
@@ -113,6 +116,7 @@ export function useCategoryMutations(
     successMessage: t("categoryUpdated"),
     errorMessage: t("updateCategoryFailed"),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const deleteCategory = useLedgerMutation<DeleteEntryCategoryResultDto, string>(ledgerId, {
@@ -120,6 +124,7 @@ export function useCategoryMutations(
     successMessage: t("categoryDeleted"),
     errorMessage: t("deleteCategoryFailed"),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const reorderCategories = useLedgerMutation<ReorderEntryCategoriesResultDto, string[]>(ledgerId, {
@@ -127,6 +132,7 @@ export function useCategoryMutations(
     successMessage: t("categoriesReordered"),
     errorMessage: t("reorderCategoriesFailed"),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
   });
 
   const saveCategories = useLedgerMutation<EntryCategory[], SaveEntryCategoriesInput>(ledgerId, {
@@ -134,6 +140,7 @@ export function useCategoryMutations(
     successMessage: t("categoriesSaved"),
     errorMessage: t("saveCategoriesFailed"),
     resourceGroups: ["categories"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     onSuccess: (saved, input) => {
       queryClient.setQueryData(queryKeys.entryCategories(ledgerId), saved);
       for (const category of input.categories) {

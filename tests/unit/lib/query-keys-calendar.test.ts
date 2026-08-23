@@ -35,7 +35,9 @@ describe("calendar and module invalidation helpers", () => {
   it("应该继续匹配标准ledger查询", () => {
     expect(invalidateLedger(ledgerId)({ queryKey: queryKeys.ledger(ledgerId) })).toBe(true);
     expect(
-      invalidateLedgerEntries(ledgerId)({ queryKey: queryKeys.ledgerEntries(ledgerId, "all") })
+      invalidateLedgerEntries(ledgerId)({
+        queryKey: queryKeys.ledgerEntries(ledgerId, { mode: "all" }),
+      })
     ).toBe(true);
     expect(
       invalidateSourceDocuments(ledgerId)({

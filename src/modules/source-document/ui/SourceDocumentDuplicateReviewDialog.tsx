@@ -40,6 +40,7 @@ export function SourceDocumentDuplicateReviewDialog({
   mainCurrency,
 }: SourceDocumentDuplicateReviewDialogProps) {
   const t = useTranslations("DuplicateReview");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -80,6 +81,7 @@ export function SourceDocumentDuplicateReviewDialog({
       return keepDuplicateSourceDocumentAction(ledgerId, sourceDocumentId, revisionId, operationId);
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: t("keepSuccess"),
     errorMessage: t("actionFailed"),
     onSuccess: closeResolvedReview,
@@ -100,6 +102,7 @@ export function SourceDocumentDuplicateReviewDialog({
       );
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: t("discardSuccess"),
     errorMessage: t("actionFailed"),
     onSuccess: closeResolvedReview,

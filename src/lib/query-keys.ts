@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { queryKeys } from '@/lib/query-keys';
- *   useQuery({ queryKey: queryKeys.ledgerEntries(ledgerId, 'pending'), ... })
+ *   useQuery({ queryKey: queryKeys.ledgerEntries(ledgerId, { status: 'pending' }), ... })
  */
 
 export const queryKeys = {
@@ -15,14 +15,14 @@ export const queryKeys = {
   ledgers: () => ["ledgers"] as const,
 
   // === Ledger Entries ===
-  ledgerEntries: (ledgerId: string, ...filters: (string | null | undefined)[]) =>
-    ["ledgerEntries", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
+  ledgerEntries: (ledgerId: string, params?: QueryKeyParams | null) =>
+    ["ledgerEntries", ledgerId, normalizeQueryParams(params)] as const,
   ledgerEntry: (ledgerId: string, entryId: string) =>
     ["ledger", ledgerId, "entry", entryId] as const,
 
   // === Source Documents ===
-  sourceDocuments: (ledgerId: string, ...filters: (string | number | null | undefined)[]) =>
-    ["sourceDocuments", ledgerId, ...filters.filter((v) => v !== undefined)] as const,
+  sourceDocuments: (ledgerId: string, params?: QueryKeyParams | null) =>
+    ["sourceDocuments", ledgerId, normalizeQueryParams(params)] as const,
   sourceDocumentCounts: (ledgerId: string) => ["sourceDocuments", ledgerId, "counts"] as const,
   sourceDocumentStream: (
     ledgerId: string,
@@ -34,18 +34,7 @@ export const queryKeys = {
       statuses?: string | null | undefined;
       search?: string | null | undefined;
     }
-  ) =>
-    [
-      "sourceDocuments",
-      ledgerId,
-      "stream",
-      filters?.startDate ?? null,
-      filters?.endDate ?? null,
-      filters?.minAmount ?? null,
-      filters?.maxAmount ?? null,
-      filters?.statuses ?? null,
-      filters?.search ?? null,
-    ] as const,
+  ) => ["sourceDocuments", ledgerId, "stream", normalizeQueryParams(filters)] as const,
   sourceDocumentStreamPrefix: (ledgerId: string) =>
     ["sourceDocuments", ledgerId, "stream"] as const,
   sourceDocumentStreamTotal: (
@@ -58,18 +47,7 @@ export const queryKeys = {
       statuses?: string | null | undefined;
       search?: string | null | undefined;
     }
-  ) =>
-    [
-      "sourceDocuments",
-      ledgerId,
-      "streamTotal",
-      filters?.startDate ?? null,
-      filters?.endDate ?? null,
-      filters?.minAmount ?? null,
-      filters?.maxAmount ?? null,
-      filters?.statuses ?? null,
-      filters?.search ?? null,
-    ] as const,
+  ) => ["sourceDocuments", ledgerId, "streamTotal", normalizeQueryParams(filters)] as const,
   sourceDocument: (ledgerId: string, documentId: string) =>
     ["ledger", ledgerId, "source-document", documentId, "detail"] as const,
   sourceDocumentLight: (ledgerId: string, documentId: string) =>
@@ -81,12 +59,11 @@ export const queryKeys = {
 
   // === Categories ===
   entryCategories: (ledgerId: string) => ["entryCategories", ledgerId] as const,
-  uncategorizedCount: (ledgerId: string) => ["uncategorizedCount", ledgerId] as const,
   ledgerSettings: (ledgerId: string) => ["ledgerSettings", ledgerId] as const,
 
   // === Summary & Stats ===
-  summary: (ledgerId: string, ...params: (string | null | undefined)[]) =>
-    ["summary", ledgerId, ...params.filter((v) => v !== undefined)] as const,
+  summary: (ledgerId: string, params?: QueryKeyParams | null) =>
+    ["summary", ledgerId, normalizeQueryParams(params)] as const,
   tokenStats: (ledgerId: string) => ["token-stats", ledgerId] as const,
   enhancedStats: (
     ledgerId: string,
@@ -99,27 +76,13 @@ export const queryKeys = {
       comparisonMode?: string | null | undefined;
       mainCurrency?: string | null | undefined;
     }
-  ) =>
-    [
-      "enhanced-stats",
-      ledgerId,
-      params?.startDate ?? null,
-      params?.endDate ?? null,
-      params?.compareStartDate ?? null,
-      params?.compareEndDate ?? null,
-      params?.rangeType ?? null,
-      params?.comparisonMode ?? null,
-      params?.mainCurrency ?? null,
-    ] as const,
+  ) => ["enhanced-stats", ledgerId, normalizeQueryParams(params)] as const,
 
   // === Currency ===
   convert: (ledgerId: string, amount: string, from: string, to: string, date: string) =>
     ["convert", ledgerId, amount, from, to, date] as const,
   batchConvert: (cacheKey: string, targetCurrency: string) =>
     ["batchConvert", cacheKey, targetCurrency] as const,
-
-  // === Service Credentials ===
-  serviceCredentials: (ledgerId: string) => ["serviceCredentials", ledgerId] as const,
 
   // === Calendar ===
   calendarHeatmap: (
@@ -142,6 +105,15 @@ export const queryKeys = {
     filters?: { currency?: string; categoryId?: string }
   ) => ["calendar", "day", ledgerId, date, filters] as const,
 } as const;
+
+type QueryKeyParams = Readonly<Record<string, unknown>>;
+
+function normalizeQueryParams(params?: QueryKeyParams | null): Readonly<Record<string, unknown>> {
+  if (params == null) return {};
+  return Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [key, value === undefined ? null : value])
+  );
+}
 
 // Type helper for extracting query key type
 export type QueryKeys = typeof queryKeys;
@@ -167,10 +139,6 @@ export function invalidateEntryCategories(ledgerId: string): QueryPredicate {
   return matchExactQueryKey(queryKeys.entryCategories(ledgerId));
 }
 
-export function invalidateUncategorizedCount(ledgerId: string): QueryPredicate {
-  return matchExactQueryKey(queryKeys.uncategorizedCount(ledgerId));
-}
-
 export function invalidateLedgerSettingsView(ledgerId: string): QueryPredicate {
   return matchExactQueryKey(queryKeys.ledgerSettings(ledgerId));
 }
@@ -186,14 +154,21 @@ export function invalidateLedger(ledgerId: string): QueryPredicate {
  * Helper to match all ledger entries list queries for a ledger.
  */
 export function invalidateLedgerEntries(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(queryKeys.ledgerEntries(ledgerId));
+  return createPrefixPredicate(["ledgerEntries", ledgerId]);
+}
+
+export function invalidateLedgerEntryDetails(ledgerId: string): QueryPredicate {
+  return (query) => {
+    const key = query.queryKey;
+    return Array.isArray(key) && key[0] === "ledger" && key[1] === ledgerId && key[2] === "entry";
+  };
 }
 
 /**
  * Helper to match all source document queries for a ledger.
  */
 export function invalidateSourceDocuments(ledgerId: string): QueryPredicate {
-  return createPrefixPredicate(queryKeys.sourceDocuments(ledgerId));
+  return createPrefixPredicate(["sourceDocuments", ledgerId]);
 }
 
 /**
@@ -219,9 +194,7 @@ export function invalidateLedgerSettings(ledgerId: string): QueryPredicate {
     return (
       Array.isArray(key) &&
       ((key[0] === "ledgerSettings" && key[1] === ledgerId) ||
-        (key[0] === "entryCategories" && key[1] === ledgerId) ||
-        (key[0] === "uncategorizedCount" && key[1] === ledgerId) ||
-        (key[0] === "serviceCredentials" && key[1] === ledgerId))
+        (key[0] === "entryCategories" && key[1] === ledgerId))
     );
   };
 }

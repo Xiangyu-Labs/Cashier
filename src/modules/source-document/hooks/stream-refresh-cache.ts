@@ -1,5 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import {
+  invalidateLedgerEntries,
+  invalidateLedgerEntryDetails,
   invalidateLedgerSettings,
   invalidateLedgerStats,
   invalidateSourceDocumentCounts,
@@ -21,6 +23,8 @@ export function applyStreamRefreshToCache(
     });
     void queryClient.invalidateQueries({ predicate: invalidateSourceDocumentCounts(ledgerId) });
     void queryClient.invalidateQueries({ predicate: invalidateSourceDocuments(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntries(ledgerId) });
+    void queryClient.invalidateQueries({ predicate: invalidateLedgerEntryDetails(ledgerId) });
   }
   if (result.invalidations.categories || result.invalidations.settings) {
     void queryClient.invalidateQueries({ predicate: invalidateLedgerSettings(ledgerId) });

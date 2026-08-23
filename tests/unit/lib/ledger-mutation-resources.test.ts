@@ -29,6 +29,10 @@ describe("ledger mutation resource groups", () => {
   it("targets category, settings, and credential resources by ledger", () => {
     expect(matches(["categories"], queryKeys.entryCategories("ledger-1"))).toBe(true);
     expect(matches(["categories"], queryKeys.ledgerSettings("ledger-1"))).toBe(true);
+    expect(matches(["categories"], queryKeys.ledgerEntries("ledger-1"))).toBe(true);
+    expect(matches(["categories"], queryKeys.ledgerEntry("ledger-1", "entry-1"))).toBe(true);
+    expect(matches(["entries"], queryKeys.entryCategories("ledger-1"))).toBe(true);
+    expect(matches(["entries"], queryKeys.ledgerSettings("ledger-1"))).toBe(true);
     expect(matches(["settings"], queryKeys.ledgerSettings("ledger-1"))).toBe(true);
     expect(matches(["settings"], queryKeys.ledgerEntries("ledger-1"))).toBe(true);
     expect(matches(["settings"], queryKeys.ledgerEntry("ledger-1", "entry-1"))).toBe(true);

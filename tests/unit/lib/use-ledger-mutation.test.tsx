@@ -110,7 +110,41 @@ describe("useLedgerMutation", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(toastSuccessMock).toHaveBeenCalledWith("Saved");
-    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "Saved, but the latest data could not be refreshed. Retry."
+    );
+  });
+
+  it("retries resource invalidation once after one second", async () => {
+    vi.useFakeTimers();
+    try {
+      const { queryClient, wrapper } = setup();
+      const invalidate = vi
+        .spyOn(queryClient, "invalidateQueries")
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValueOnce();
+      const { result } = renderHook(
+        () =>
+          useLedgerMutation("ledger-1", {
+            mutationFn: async () => "saved",
+            resourceGroups: ["entries"],
+            successMessage: null,
+          }),
+        { wrapper }
+      );
+
+      await act(async () => {
+        await result.current.mutateAsync();
+      });
+      expect(invalidate).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(invalidate).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reports a server write failure without invalidating resources", async () => {

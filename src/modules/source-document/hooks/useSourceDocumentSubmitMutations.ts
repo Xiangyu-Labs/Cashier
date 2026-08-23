@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import {
   createSourceDocumentAction,
@@ -64,6 +65,7 @@ export function useSourceDocumentSubmitMutations({
   messages,
   onSuccess,
 }: UseSourceDocumentSubmitMutationsOptions) {
+  const tCommon = useTranslations("Common");
   const [progress, setProgress] = useState<SourceDocumentSubmissionProgress | null>(null);
   const uploadControllerRef = useRef<AbortController | null>(null);
   const submissionIdentityRef = useRef({
@@ -138,6 +140,7 @@ export function useSourceDocumentSubmitMutations({
       return result;
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: null,
     errorMessage: null,
     onSuccess: async (data, variables) => {
@@ -187,6 +190,7 @@ export function useSourceDocumentSubmitMutations({
       return result;
     },
     resourceGroups: ["documents"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: messages.retrySuccess,
     errorMessage: null,
     onSuccess: async (data, variables) => {

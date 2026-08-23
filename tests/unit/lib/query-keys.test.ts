@@ -9,7 +9,6 @@ import {
   invalidateLedgerStats,
   invalidateSourceDocuments,
   invalidateSourceDocumentStreamTotal,
-  invalidateUncategorizedCount,
   queryKeys,
 } from "@/lib/query-keys";
 
@@ -28,35 +27,31 @@ describe("queryKeys", () => {
 
   describe("ledgerEntries keys", () => {
     it("应该生成正确的ledgerEntries query key", () => {
-      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledgerEntries", ledgerId]);
+      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledgerEntries", ledgerId, {}]);
     });
 
-    it("应该生成带过滤器的ledgerEntries query key", () => {
-      expect(queryKeys.ledgerEntries(ledgerId, "pending", "2024-01-01")).toEqual([
+    it("应该生成带结构化过滤器的ledgerEntries query key", () => {
+      expect(
+        queryKeys.ledgerEntries(ledgerId, { status: "pending", startDate: "2024-01-01" })
+      ).toEqual(["ledgerEntries", ledgerId, { status: "pending", startDate: "2024-01-01" }]);
+    });
+
+    it("应该保留结构化过滤器中的字段位置", () => {
+      expect(
+        queryKeys.ledgerEntries(ledgerId, {
+          status: "pending",
+          startDate: undefined,
+          search: "value",
+        })
+      ).toEqual([
         "ledgerEntries",
         ledgerId,
-        "pending",
-        "2024-01-01",
+        { status: "pending", startDate: null, search: "value" },
       ]);
     });
 
-    it("应该过滤掉undefined的过滤器参数", () => {
-      expect(queryKeys.ledgerEntries(ledgerId, "pending", undefined, "value")).toEqual([
-        "ledgerEntries",
-        ledgerId,
-        "pending",
-        "value",
-      ]);
-    });
-
-    it("应该保留null的过滤器参数（实际代码只过滤undefined）", () => {
-      // 注意：实际代码只过滤undefined，null会被保留
-      expect(queryKeys.ledgerEntries(ledgerId, null, "value")).toEqual([
-        "ledgerEntries",
-        ledgerId,
-        null,
-        "value",
-      ]);
+    it("应该生成没有过滤器的空参数对象", () => {
+      expect(queryKeys.ledgerEntries(ledgerId)).toEqual(["ledgerEntries", ledgerId, {}]);
     });
 
     it("应该生成正确的ledgerEntry query key", () => {
@@ -77,16 +72,20 @@ describe("queryKeys", () => {
 
   describe("sourceDocuments keys", () => {
     it("应该生成正确的sourceDocuments query key", () => {
-      expect(queryKeys.sourceDocuments(ledgerId)).toEqual(["sourceDocuments", ledgerId]);
+      expect(queryKeys.sourceDocuments(ledgerId)).toEqual(["sourceDocuments", ledgerId, {}]);
     });
 
     it("应该生成带多种过滤器的sourceDocuments query key", () => {
-      expect(queryKeys.sourceDocuments(ledgerId, "unified", 1, "2024-01-01")).toEqual([
+      expect(
+        queryKeys.sourceDocuments(ledgerId, {
+          view: "unified",
+          page: 1,
+          startDate: "2024-01-01",
+        })
+      ).toEqual([
         "sourceDocuments",
         ledgerId,
-        "unified",
-        1,
-        "2024-01-01",
+        { view: "unified", page: 1, startDate: "2024-01-01" },
       ]);
     });
 
@@ -131,12 +130,12 @@ describe("queryKeys", () => {
         "sourceDocuments",
         ledgerId,
         "stream",
-        "2026-03-01",
-        "2026-03-31",
-        20,
-        100,
-        null,
-        null,
+        {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          minAmount: "20",
+          maxAmount: "100",
+        },
       ]);
     });
 
@@ -161,12 +160,13 @@ describe("queryKeys", () => {
         "sourceDocuments",
         ledgerId,
         "streamTotal",
-        "2026-03-01",
-        "2026-03-31",
-        10,
-        100,
-        "completed,failed",
-        null,
+        {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          minAmount: "10",
+          maxAmount: "100",
+          statuses: "completed,failed",
+        },
       ]);
     });
   });
@@ -174,30 +174,26 @@ describe("queryKeys", () => {
   describe("categories keys", () => {
     it("应该生成正确的categories query keys", () => {
       expect(queryKeys.entryCategories(ledgerId)).toEqual(["entryCategories", ledgerId]);
-      expect(queryKeys.uncategorizedCount(ledgerId)).toEqual(["uncategorizedCount", ledgerId]);
       expect(queryKeys.ledgerSettings(ledgerId)).toEqual(["ledgerSettings", ledgerId]);
     });
   });
 
   describe("stats keys", () => {
     it("应该生成正确的summary query key", () => {
-      expect(queryKeys.summary(ledgerId)).toEqual(["summary", ledgerId]);
+      expect(queryKeys.summary(ledgerId)).toEqual(["summary", ledgerId, {}]);
     });
 
     it("应该生成带参数的summary query key", () => {
-      expect(queryKeys.summary(ledgerId, "2024-01-01", "2024-12-31")).toEqual([
-        "summary",
-        ledgerId,
-        "2024-01-01",
-        "2024-12-31",
-      ]);
+      expect(
+        queryKeys.summary(ledgerId, { startDate: "2024-01-01", endDate: "2024-12-31" })
+      ).toEqual(["summary", ledgerId, { startDate: "2024-01-01", endDate: "2024-12-31" }]);
     });
 
-    it("应该过滤summary中的undefined参数", () => {
-      expect(queryKeys.summary(ledgerId, "2024-01-01", undefined)).toEqual([
+    it("应该把summary中的undefined参数固定为null", () => {
+      expect(queryKeys.summary(ledgerId, { startDate: "2024-01-01", endDate: undefined })).toEqual([
         "summary",
         ledgerId,
-        "2024-01-01",
+        { startDate: "2024-01-01", endDate: null },
       ]);
     });
 
@@ -206,17 +202,7 @@ describe("queryKeys", () => {
     });
 
     it("应该生成正确的enhancedStats query key", () => {
-      expect(queryKeys.enhancedStats(ledgerId)).toEqual([
-        "enhanced-stats",
-        ledgerId,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-      ]);
+      expect(queryKeys.enhancedStats(ledgerId)).toEqual(["enhanced-stats", ledgerId, {}]);
     });
   });
 
@@ -245,12 +231,6 @@ describe("queryKeys", () => {
 
     it("应该生成正确的batchConvert query key", () => {
       expect(queryKeys.batchConvert("cache-1", "CNY")).toEqual(["batchConvert", "cache-1", "CNY"]);
-    });
-  });
-
-  describe("serviceCredentials keys", () => {
-    it("应该生成正确的serviceCredentials query key", () => {
-      expect(queryKeys.serviceCredentials(ledgerId)).toEqual(["serviceCredentials", ledgerId]);
     });
   });
 
@@ -385,9 +365,6 @@ describe("query invalidation helpers", () => {
     expect(
       invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })
     ).toBe(true);
-    expect(
-      invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
-    ).toBe(true);
     expect(invalidateLedgerSettings(ledgerId)({ queryKey: queryKeys.summary(ledgerId) })).toBe(
       false
     );
@@ -396,14 +373,6 @@ describe("query invalidation helpers", () => {
   it("targets category settings without matching credentials or sibling settings", () => {
     expect(
       invalidateEntryCategories(ledgerId)({ queryKey: queryKeys.entryCategories(ledgerId) })
-    ).toBe(true);
-    expect(
-      invalidateEntryCategories(ledgerId)({ queryKey: queryKeys.serviceCredentials(ledgerId) })
-    ).toBe(false);
-    expect(
-      invalidateUncategorizedCount(ledgerId)({
-        queryKey: queryKeys.uncategorizedCount(ledgerId),
-      })
     ).toBe(true);
     expect(
       invalidateLedgerSettingsView(ledgerId)({ queryKey: queryKeys.ledgerSettings(ledgerId) })

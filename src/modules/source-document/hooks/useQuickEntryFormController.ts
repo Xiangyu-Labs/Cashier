@@ -32,6 +32,7 @@ export function useQuickEntryFormController({
   onSuccess,
 }: UseQuickEntryFormControllerParams) {
   const t = useTranslations("QuickEntryForm");
+  const tCommon = useTranslations("Common");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [currencyDraft, setCurrencyDraft] = useState(() => ({
@@ -61,6 +62,7 @@ export function useQuickEntryFormController({
   >(ledgerId, {
     mutationFn: (data: CreateQuickEntryPayload) => createQuickEntryAction(ledgerId, data),
     resourceGroups: ["documents", "entries"],
+    invalidationErrorMessage: tCommon("savedRefreshFailed"),
     successMessage: null,
     errorMessage: t("quickEntryError"),
     onSuccess: (data, variables) => {

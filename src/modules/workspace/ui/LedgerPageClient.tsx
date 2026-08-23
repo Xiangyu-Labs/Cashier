@@ -390,6 +390,32 @@ export function LedgerPageClient({
   );
   const retryActiveTab = useCallback(() => {
     retryFeatureMessages();
+    if (activeTab === "details") {
+      void queryClient.refetchQueries(
+        {
+          predicate: (query) =>
+            (query.queryKey[0] === "ledgerEntries" || query.queryKey[0] === "summary") &&
+            query.queryKey[1] === ledgerId,
+          type: "active",
+        },
+        { throwOnError: true }
+      );
+      return;
+    }
+    if (activeTab === "settings") {
+      void queryClient.refetchQueries(
+        {
+          predicate: (query) =>
+            (query.queryKey[0] === "ledger" ||
+              query.queryKey[0] === "entryCategories" ||
+              query.queryKey[0] === "ledgerSettings") &&
+            query.queryKey[1] === ledgerId,
+          type: "active",
+        },
+        { throwOnError: true }
+      );
+      return;
+    }
     if (
       tabQueryReport?.ledgerId === ledgerId &&
       tabQueryReport.tab === activeTab &&
