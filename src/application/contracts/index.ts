@@ -459,9 +459,10 @@ export interface CurrencyPort {
 }
 export interface SettingsPort {
   get(ledgerId: LedgerId): Promise<LedgerSettingsContract | null>;
-  update(input: {
+  updateWithCurrencyRecalculation(input: {
     ledgerId: LedgerId;
     userId: string;
+    expectedUpdatedAt: string;
     settings: Partial<LedgerSettingsContract>;
   }): Promise<LedgerContract | null>;
 }

@@ -7,6 +7,7 @@ import {
   completeExchangeRateRecalculation,
   enqueueExchangeRateRecalculations,
   failExchangeRateRecalculation,
+  resetFailedExchangeRateRecalculations,
   type ClaimedExchangeRateRecalculation,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
 import { logger } from "@/lib/logger";
@@ -56,9 +57,13 @@ export function shutdownExchangeRateLedgerRecalculationOrchestration(): void {
 export async function onExchangeRatesStored(event: ExchangeRatesStoredEvent): Promise<void> {
   const rateDate = event.date;
   try {
+    const reset = await resetFailedExchangeRateRecalculations(rateDate);
+    if (reset > 0) {
+      logger.info({ rateDate, reset }, "Reset failed exchange rate recalculation jobs");
+    }
     const enqueued = await enqueueExchangeRateRecalculations(rateDate);
     logger.info({ rateDate, enqueued }, "Enqueued exchange rate recalculation jobs");
-    await runBoundedExchangeRateRecalculation();
+    await drainDueExchangeRateRecalculations();
   } catch (error) {
     logger.error({ err: error, rateDate }, "Failed to enqueue exchange rate recalculation jobs");
     throw error;
@@ -70,14 +75,14 @@ export async function onExchangeRatesStored(event: ExchangeRatesStoredEvent): Pr
  * Runs at most two ledgers concurrently; a single ledger failure only
  * schedules its own retry and never blocks the rest of the batch.
  */
-export async function runBoundedExchangeRateRecalculation(now = new Date()): Promise<void> {
+export async function runBoundedExchangeRateRecalculation(now = new Date()): Promise<number> {
   const claimed = await claimExchangeRateRecalculations({
     now,
     limit: CLAIM_LIMIT,
     leaseMs: CLAIM_LEASE_MS,
   });
   if (claimed.length === 0) {
-    return;
+    return 0;
   }
 
   const groups = new Map<string, ClaimedExchangeRateRecalculation[]>();
@@ -92,6 +97,14 @@ export async function runBoundedExchangeRateRecalculation(now = new Date()): Pro
       await processRecalculationJob(job, now);
     }
   });
+  return claimed.length;
+}
+
+/** Drain every currently due batch while preserving the worker's batch and concurrency bounds. */
+export async function drainDueExchangeRateRecalculations(now = new Date()): Promise<void> {
+  while ((await runBoundedExchangeRateRecalculation(now)) > 0) {
+    // Continue until the claim query returns no due jobs.
+  }
 }
 
 async function processRecalculationJob(

@@ -33,6 +33,7 @@ function setup() {
     () =>
       useLedgerSettingsMutation({
         ledgerId: "ledger-1",
+        expectedUpdatedAt: ledger.updatedAt,
         successMessage: "saved",
         errorMessage: "failed",
       }),
@@ -49,6 +50,7 @@ describe("useLedgerSettingsMutation", () => {
     await act(async () => result.current.mutateAsync({ collapseEntriesDefault: true }));
 
     expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+      expectedUpdatedAt: ledger.updatedAt,
       settings: { collapseEntriesDefault: true },
     });
   });
@@ -60,6 +62,7 @@ describe("useLedgerSettingsMutation", () => {
     await act(async () => result.current.mutateAsync({ currencies: ["USD", "CNY"] }));
 
     expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+      expectedUpdatedAt: ledger.updatedAt,
       settings: { currencies: ["USD", "CNY"] },
     });
   });
@@ -71,6 +74,7 @@ describe("useLedgerSettingsMutation", () => {
     await act(async () => result.current.mutateAsync({ duplicateDetectionEnabled: false }));
 
     expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+      expectedUpdatedAt: ledger.updatedAt,
       settings: { duplicateDetectionEnabled: false },
     });
   });

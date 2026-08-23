@@ -10,9 +10,10 @@ export async function updateLedger(
   data: UpdateLedgerInput,
   settings: SettingsPort
 ): Promise<LedgerDto> {
-  const updated = await settings.update({
+  const updated = await settings.updateWithCurrencyRecalculation({
     ledgerId,
     userId,
+    expectedUpdatedAt: data.expectedUpdatedAt,
     settings: omitUndefinedProperties(data.settings ?? {}),
   });
   if (updated == null) throw new NotFoundError("Ledger");

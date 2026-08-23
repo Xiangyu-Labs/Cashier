@@ -18,12 +18,14 @@ export interface UpdateLedgerData {
 
 interface UseLedgerSettingsMutationParams {
   ledgerId: string;
+  expectedUpdatedAt: string;
   successMessage: string;
   errorMessage: string;
 }
 
 export function useLedgerSettingsMutation({
   ledgerId,
+  expectedUpdatedAt,
   successMessage,
   errorMessage,
 }: UseLedgerSettingsMutationParams) {
@@ -54,7 +56,7 @@ export function useLedgerSettingsMutation({
         duplicateDetectionEnabled,
         timeZone,
       } = data;
-      const payload: { settings?: Record<string, unknown> } = {};
+      const payload: { settings: Record<string, unknown> } = { settings: {} };
 
       const settings: Record<string, unknown> = {};
       if (currencies !== undefined) settings.currencies = currencies;
@@ -69,11 +71,12 @@ export function useLedgerSettingsMutation({
       }
       if (timeZone !== undefined) settings.timeZone = timeZone;
 
-      if (Object.keys(settings).length > 0) {
-        payload.settings = settings;
-      }
+      payload.settings = settings;
 
-      const result = await updateLedgerAction(ledgerId, payload);
+      const result = await updateLedgerAction(ledgerId, {
+        expectedUpdatedAt,
+        ...payload,
+      });
       if (!result.ok) throw new Error(translateError(result.code));
       return result.ledger;
     },

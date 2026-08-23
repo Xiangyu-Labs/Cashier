@@ -38,6 +38,7 @@ export function useLedgerSettings({
 
   const updateLedgerMutation = useLedgerSettingsMutation({
     ledgerId,
+    expectedUpdatedAt: ledger?.updatedAt ?? initialLedger.updatedAt,
     successMessage: t("updateSuccess"),
     errorMessage: t("updateFailed"),
   });

@@ -22,6 +22,7 @@ import {
   completeExchangeRateRecalculation,
   enqueueExchangeRateRecalculations,
   failExchangeRateRecalculation,
+  resetFailedExchangeRateRecalculations,
 } from "@/application/adapters/postgres/exchange-rate-recalculation-jobs";
 import { runBoundedMaintenance } from "@/application/adapters/postgres/maintenance";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
@@ -233,6 +234,35 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       where: eq(exchangeRateRecalculationJobs.ledgerId, ledgerId),
     });
     expect(finalRow).toMatchObject({ status: "failed", attempts: 8 });
+  });
+
+  it("resets a failed job when a newer rate snapshot is stored", async () => {
+    const db = getTestDb();
+    const ledgerId = await seedLedgerWithEntry({ entryDate: "2024-02-17" });
+    await enqueueExchangeRateRecalculations("2024-02-17");
+    const failedAt = new Date("2024-02-17T00:00:00.000Z");
+    await db
+      .update(exchangeRateRecalculationJobs)
+      .set({
+        status: "failed",
+        attempts: 8,
+        lastError: "EXCHANGE_RATES_UNAVAILABLE",
+        updatedAt: failedAt,
+      })
+      .where(eq(exchangeRateRecalculationJobs.ledgerId, ledgerId));
+    await db.insert(currencyRates).values({
+      date: "2024-02-17",
+      base: "EUR",
+      rates: { USD: 1.08, CNY: 7.65 },
+      updatedAt: new Date("2024-02-17T00:00:01.000Z"),
+    });
+
+    await expect(resetFailedExchangeRateRecalculations("2024-02-17")).resolves.toBe(1);
+    await expect(db.query.exchangeRateRecalculationJobs.findFirst()).resolves.toMatchObject({
+      status: "pending",
+      attempts: 0,
+      lastError: null,
+    });
   });
 
   it("recovers pending jobs through bounded maintenance", async () => {

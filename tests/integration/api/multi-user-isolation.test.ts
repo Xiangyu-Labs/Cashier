@@ -79,7 +79,10 @@ describe("Multi-User Isolation", () => {
       });
 
       await expect(
-        updateLedgerAction(user2Ledger, { settings: { aiLanguage: "en" } })
+        updateLedgerAction(user2Ledger, {
+          expectedUpdatedAt: new Date().toISOString(),
+          settings: { aiLanguage: "en" },
+        })
       ).resolves.toEqual({ ok: false, code: "conflict" });
     });
   });

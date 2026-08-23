@@ -13,7 +13,7 @@ import type {
 import { db } from "@/lib/db";
 import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
-import { multiply, isValidDecimal } from "@/lib/money/decimal";
+import { isValidDecimal } from "@/lib/money/decimal";
 import {
   currencyRates,
   entryCategories,
@@ -34,12 +34,10 @@ import {
 } from "@/persistence";
 import { createToken, computeHash } from "@/lib/security/service-credential-token";
 import { lockLedgerForUpdate } from "./transaction-locks";
-import {
-  convertWithRates,
-  resolveRateRatio,
-} from "@/modules/currency/application/services/rate-calculation";
+import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { normalizeUserPreferences } from "@/modules/auth/services/user-preferences";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 
 /** lastUsedAt updates are throttled to once per five minutes per credential. */
 const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
@@ -104,7 +102,6 @@ async function recalculateCurrentEntries(
   const entries = await tx
     .select({
       id: ledgerEntries.id,
-      amount: ledgerEntries.amount,
       currency: ledgerEntries.currency,
       entryDate: sourceDocuments.entryDate,
     })
@@ -130,67 +127,119 @@ async function recalculateCurrentEntries(
     )
     .where(and(eq(ledgerEntries.ledgerId, ledgerId), isNull(ledgerEntries.deletedAt)));
   if (entries.length === 0) return 0;
-  const exactDates = [
+  const currencies = new Set(
+    entries.map((entry) => (entry.currency ?? mainCurrency).trim().toUpperCase())
+  );
+  for (const currency of currencies) {
+    if (!SUPPORTED_CURRENCIES.includes(currency as (typeof SUPPORTED_CURRENCIES)[number])) {
+      throw new AppError(`Currency not found: ${currency}`, "CURRENCY_NOT_FOUND", 400);
+    }
+  }
+
+  const requiredDates = [
     ...new Set(entries.flatMap((entry) => (entry.entryDate == null ? [] : [entry.entryDate]))),
   ];
-  const [datedRates, latestRate] = await Promise.all([
-    exactDates.length === 0
-      ? Promise.resolve([])
-      : tx.select().from(currencyRates).where(inArray(currencyRates.date, exactDates)),
-    entries.some((entry) => entry.entryDate == null)
-      ? tx
+  const datedRates =
+    requiredDates.length === 0
+      ? []
+      : await tx.select().from(currencyRates).where(inArray(currencyRates.date, requiredDates));
+  const latestRate =
+    entries.some((entry) => entry.entryDate == null) || requiredDates.length === 0
+      ? await tx
           .select()
           .from(currencyRates)
           .orderBy(desc(currencyRates.date))
           .limit(1)
           .then((rows) => rows[0] ?? null)
-      : Promise.resolve(null),
-  ]);
+      : null;
   const ratesByDate = new Map(datedRates.map((rate) => [rate.date, rate]));
-  const changes = entries.map((entry) => {
-    const sourceCurrency = entry.currency ?? "CNY";
-    let convertedAmount: string;
-    let exchangeRate: string;
-    if (sourceCurrency !== mainCurrency) {
-      const rate = entry.entryDate == null ? latestRate : ratesByDate.get(entry.entryDate);
-      if (rate == null) {
-        throw new AppError(
-          "No stored currency rates are available",
-          "EXCHANGE_RATES_UNAVAILABLE",
-          409
-        );
-      }
-      const rateRatio = resolveRateRatio(
-        { base: rate.base, date: rate.date, rates: rate.rates },
-        sourceCurrency,
-        mainCurrency
+  for (const entry of entries) {
+    const sourceCurrency = (entry.currency ?? mainCurrency).trim().toUpperCase();
+    if (sourceCurrency === mainCurrency) continue;
+    const rate = entry.entryDate == null ? latestRate : ratesByDate.get(entry.entryDate);
+    if (rate == null) {
+      throw new AppError(
+        "No stored currency rates are available",
+        "EXCHANGE_RATES_UNAVAILABLE",
+        409
       );
-      convertedAmount = roundToCurrency(multiply(entry.amount, rateRatio), mainCurrency);
-      exchangeRate = rateRatio;
-    } else {
-      convertedAmount = roundToCurrency(entry.amount, mainCurrency);
-      exchangeRate = "1";
     }
-    return {
-      id: entry.id,
-      converted_amount: convertedAmount,
-      exchange_rate: exchangeRate,
-    };
-  });
+    const fullRates = { ...rate.rates, [rate.base]: 1 };
+    if (fullRates[sourceCurrency] == null || fullRates[mainCurrency] == null) {
+      const missing = fullRates[sourceCurrency] == null ? sourceCurrency : mainCurrency;
+      throw new AppError(`Currency not found: ${missing}`, "CURRENCY_NOT_FOUND", 400);
+    }
+  }
+
+  const decimals =
+    mainCurrency === "JPY" || mainCurrency === "KRW"
+      ? 0
+      : ["BHD", "JOD", "KWD", "OMR", "TND"].includes(mainCurrency)
+        ? 3
+        : 2;
   const updated = await tx.execute(sql`
-    WITH amounts AS (
-      SELECT * FROM jsonb_to_recordset(${JSON.stringify(changes)}::jsonb) AS value(
-        id uuid,
-        converted_amount numeric,
-        exchange_rate numeric
-      )
+    WITH candidates AS (
+      SELECT
+        entry.id,
+        entry.amount::numeric AS amount,
+        COALESCE(entry.currency, ${mainCurrency}) AS source_currency,
+        rates.base AS rate_base,
+        rates.rates AS rate_values
+      FROM ledger_entries AS entry
+      INNER JOIN source_documents AS document
+        ON document.id = entry.source_document_id
+        AND document.ledger_id = ${ledgerId}
+        AND (
+          document.active_revision_id = entry.source_document_revision_id
+          OR document.pending_revision_id = entry.source_document_revision_id
+        )
+        AND document.deleted_at IS NULL
+        ${
+          entryDate != null
+            ? sql`AND (
+              ${
+                includeUndated
+                  ? sql`document.entry_date = ${entryDate} OR document.entry_date IS NULL`
+                  : sql`document.entry_date = ${entryDate}`
+              }
+            )`
+            : sql``
+        }
+      LEFT JOIN currency_rates AS rates
+        ON rates.date = COALESCE(
+          document.entry_date,
+          (SELECT MAX(latest.date) FROM currency_rates AS latest)
+        )
+      WHERE entry.ledger_id = ${ledgerId}
+        AND entry.deleted_at IS NULL
+    ), ratios AS (
+      SELECT
+        id,
+        amount,
+        CASE
+          WHEN source_currency = ${mainCurrency} THEN 1::numeric
+          ELSE (
+            CASE WHEN rate_base = ${mainCurrency} THEN 1::numeric
+              ELSE (rate_values ->> ${mainCurrency})::numeric END
+          ) / (
+            CASE WHEN rate_base = source_currency THEN 1::numeric
+              ELSE (rate_values ->> source_currency)::numeric END
+          )
+        END AS ratio
+      FROM candidates
+    ), converted AS (
+      SELECT
+        id,
+        ROUND(amount * ratio, ${decimals}) AS converted_amount,
+        ROUND(ratio, 12) AS exchange_rate
+      FROM ratios
     )
     UPDATE ledger_entries AS entry
-    SET converted_amount = amounts.converted_amount,
-        exchange_rate = amounts.exchange_rate,
+    SET converted_amount = converted.converted_amount,
+        exchange_rate = converted.exchange_rate,
         updated_at = ${new Date()}
-    FROM amounts
-    WHERE entry.id = amounts.id
+    FROM converted
+    WHERE entry.id = converted.id
       AND entry.ledger_id = ${ledgerId}
       AND entry.deleted_at IS NULL
     RETURNING entry.id
@@ -198,7 +247,7 @@ async function recalculateCurrentEntries(
   if (updated.rows.length !== entries.length) {
     throw new ConflictError("Ledger entries changed during currency recalculation");
   }
-  return entries.length;
+  return updated.rows.length;
 }
 
 export const postgresLedgerAdapter: LedgerPort = {
@@ -783,7 +832,7 @@ export const postgresSettingsAdapter: SettingsPort = {
     return ledger == null ? null : mapLedgerSettings(ledger as typeof ledgers.$inferSelect);
   },
 
-  async update(input) {
+  async updateWithCurrencyRecalculation(input) {
     return db.transaction(async (tx) => {
       // Lock the ledger row to serialise with concurrent first-entry creation.
       // This prevents a main-currency change from interleaving with activateRevision / createManual.
@@ -800,15 +849,66 @@ export const postgresSettingsAdapter: SettingsPort = {
         .for("update")
         .then((rows) => rows[0]);
       if (ledger == null) return null;
+      const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
+      if (
+        !Number.isFinite(expectedUpdatedAt.getTime()) ||
+        expectedUpdatedAt.getTime() !== ledger.updatedAt.getTime()
+      ) {
+        throw new ConflictError("Ledger settings changed since they were loaded");
+      }
       const settings = { ...mapLedgerSettings(ledger), ...input.settings };
       const previousMainCurrency = ledger.mainCurrency;
-      const nextMainCurrency = settings.mainCurrency ?? "CNY";
+      const nextMainCurrency = (settings.mainCurrency ?? ledger.mainCurrency).trim().toUpperCase();
+      const nextCurrencies = (settings.currencies ?? ledger.preferredCurrencies).map((currency) =>
+        currency.trim().toUpperCase()
+      );
+      if (
+        !SUPPORTED_CURRENCIES.includes(nextMainCurrency as (typeof SUPPORTED_CURRENCIES)[number])
+      ) {
+        throw new AppError(`Currency not found: ${nextMainCurrency}`, "CURRENCY_NOT_FOUND", 400);
+      }
+      for (const currency of nextCurrencies) {
+        if (!SUPPORTED_CURRENCIES.includes(currency as (typeof SUPPORTED_CURRENCIES)[number])) {
+          throw new AppError(`Currency not found: ${currency}`, "CURRENCY_NOT_FOUND", 400);
+        }
+      }
+      if (
+        (input.settings.mainCurrency !== undefined || input.settings.currencies !== undefined) &&
+        !nextCurrencies.includes(nextMainCurrency)
+      ) {
+        throw new ValidationError("Main currency must be included in preferred currencies");
+      }
       if (previousMainCurrency !== nextMainCurrency) {
+        const latestRate = await tx
+          .select({ base: currencyRates.base, rates: currencyRates.rates })
+          .from(currencyRates)
+          .orderBy(desc(currencyRates.date))
+          .limit(1)
+          .then((rows) => rows[0] ?? null);
+        if (latestRate == null) {
+          throw new AppError(
+            "No stored currency rates are available",
+            "EXCHANGE_RATES_UNAVAILABLE",
+            409
+          );
+        }
+        const availableRates = { ...latestRate.rates, [latestRate.base]: 1 };
+        if (availableRates[nextMainCurrency] == null) {
+          throw new AppError(`Currency not found: ${nextMainCurrency}`, "CURRENCY_NOT_FOUND", 400);
+        }
         await recalculateCurrentEntries(tx, input.ledgerId, nextMainCurrency);
       }
+      const updatedAt = new Date(Math.max(Date.now(), ledger.updatedAt.getTime() + 1));
       const updated = await tx
         .update(ledgers)
-        .set({ ...settingsColumns(settings), updatedAt: new Date() })
+        .set({
+          ...settingsColumns({
+            ...settings,
+            currencies: nextCurrencies,
+            mainCurrency: nextMainCurrency,
+          }),
+          updatedAt,
+        })
         .where(and(eq(ledgers.id, input.ledgerId), eq(ledgers.userId, input.userId)))
         .returning()
         .then((rows) => rows[0]);

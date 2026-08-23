@@ -10,37 +10,44 @@ import { normalizeSearchTerm } from "@/lib/search";
 import { periodToDateRange } from "@/lib/period-utils";
 
 describe("ledger settings, search, and time zones", () => {
+  const expectedUpdatedAt = "2026-01-01T00:00:00.000Z";
   afterEach(() => vi.useRealTimers());
 
   it("accepts automatic and valid IANA time zones and rejects invalid values", () => {
-    expect(parseUpdateLedgerInput({ settings: { timeZone: null } }).settings?.timeZone).toBeNull();
     expect(
-      parseUpdateLedgerInput({ settings: { timeZone: "America/New_York" } }).settings?.timeZone
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { timeZone: null } }).settings?.timeZone
+    ).toBeNull();
+    expect(
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { timeZone: "America/New_York" } })
+        .settings?.timeZone
     ).toBe("America/New_York");
-    expect(() => parseUpdateLedgerInput({ settings: { timeZone: "Mars/Olympus" } })).toThrow(
-      "Validation failed"
-    );
+    expect(() =>
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { timeZone: "Mars/Olympus" } })
+    ).toThrow("Validation failed");
   });
 
   it("accepts the optional default-collapse preference", () => {
     expect(
-      parseUpdateLedgerInput({ settings: { collapseEntriesDefault: true } }).settings
-        ?.collapseEntriesDefault
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { collapseEntriesDefault: true } })
+        .settings?.collapseEntriesDefault
     ).toBe(true);
-    expect(() => parseUpdateLedgerInput({ settings: {} })).toThrow("Validation failed");
+    expect(() => parseUpdateLedgerInput({ expectedUpdatedAt, settings: {} })).toThrow(
+      "Validation failed"
+    );
   });
 
   it("normalizes currencies and rejects oversized or empty updates", () => {
     expect(
-      parseUpdateLedgerInput({ settings: { mainCurrency: " usd " } }).settings?.mainCurrency
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { mainCurrency: " usd " } }).settings
+        ?.mainCurrency
     ).toBe("USD");
-    expect(() => parseUpdateLedgerInput({ settings: { timeZone: "A".repeat(51) } })).toThrow(
-      "Validation failed"
-    );
     expect(() =>
-      parseUpdateLedgerInput({ settings: { aiCustomPrompt: "x".repeat(4001) } })
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { timeZone: "A".repeat(51) } })
     ).toThrow("Validation failed");
-    expect(() => parseUpdateLedgerInput({})).toThrow("Validation failed");
+    expect(() =>
+      parseUpdateLedgerInput({ expectedUpdatedAt, settings: { aiCustomPrompt: "x".repeat(4001) } })
+    ).toThrow("Validation failed");
+    expect(() => parseUpdateLedgerInput({ expectedUpdatedAt })).toThrow("Validation failed");
     expect(() => parseUpdateEntryCategoryInput({})).toThrow("Validation failed");
     expect(() => parseUpdateLedgerEntryInput({})).toThrow("Validation failed");
     expect(() => parseBatchUpdateLedgerEntriesInput({})).toThrow("Validation failed");

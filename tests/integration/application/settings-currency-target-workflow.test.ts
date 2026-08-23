@@ -14,9 +14,18 @@ import {
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
 import { getTestDb } from "../../setup";
 
-const updateLedger = (
-  ...args: Parameters<typeof updateLedgerUseCase> extends [...infer Head, unknown] ? Head : never
-) => updateLedgerUseCase(...args, serverComposition.settings);
+type UpdateLedgerData = Omit<Parameters<typeof updateLedgerUseCase>[2], "expectedUpdatedAt">;
+
+const updateLedger = async (userId: string, ledgerId: string, data: UpdateLedgerData) => {
+  const current = await getTestDb().query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) });
+  if (current == null) throw new Error("Expected ledger fixture");
+  return updateLedgerUseCase(
+    userId,
+    ledgerId,
+    { ...data, expectedUpdatedAt: current.updatedAt.toISOString() },
+    serverComposition.settings
+  );
+};
 
 describe("target Settings currency workflow", () => {
   let ledgerId = "";
@@ -47,6 +56,10 @@ describe("target Settings currency workflow", () => {
     const db = getTestDb();
     await db.delete(ledgers).where(eq(ledgers.userId, TEST_USER_ID));
     ({ ledgerId } = await createTestUserWithLedger(db));
+    await db
+      .update(ledgers)
+      .set({ preferredCurrencies: ["CNY", "USD"] })
+      .where(eq(ledgers.id, ledgerId));
     await db.insert(currencyRates).values({
       date: "2026-07-15",
       base: "EUR",
@@ -251,6 +264,30 @@ describe("target Settings currency workflow", () => {
     expect(storedLedger?.mainCurrency).toBe("CNY");
     expect(entries.map((entry) => entry.convertedAmount).sort()).toEqual(["40.000", "80.000"]);
     expect(entries.every((entry) => entry.exchangeRate === "1.000000000000")).toBe(true);
+  });
+
+  it("accepts exactly one of two concurrent settings writes", async () => {
+    const db = getTestDb();
+    const current = await db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) });
+    if (current == null) throw new Error("Expected ledger fixture");
+    const input = {
+      expectedUpdatedAt: current.updatedAt.toISOString(),
+      settings: { mainCurrency: "USD" },
+    } as const;
+
+    const results = await Promise.allSettled([
+      updateLedgerUseCase(TEST_USER_ID, ledgerId, input, serverComposition.settings),
+      updateLedgerUseCase(TEST_USER_ID, ledgerId, input, serverComposition.settings),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")?.reason).toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(
+      (await db.query.ledgers.findFirst({ where: eq(ledgers.id, ledgerId) }))?.mainCurrency
+    ).toBe("USD");
   });
 });
 

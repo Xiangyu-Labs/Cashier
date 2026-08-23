@@ -93,6 +93,31 @@ export async function enqueueMissingExchangeRateRecalculations(limit = 1000): Pr
 }
 
 /**
+ * A newly stored snapshot supersedes a permanently failed attempt for the
+ * same date. Reset only jobs whose previous failure predates the snapshot so
+ * a retry cannot resurrect a newer failure.
+ */
+export async function resetFailedExchangeRateRecalculations(rateDate: string): Promise<number> {
+  const result = await db.execute<{ ledger_id: string }>(sql`
+    UPDATE ${exchangeRateRecalculationJobs} AS jobs
+    SET status = 'pending'::exchange_rate_recalculation_status,
+        attempts = 0,
+        next_attempt_at = now(),
+        last_error = NULL,
+        claim_token = NULL,
+        claim_expires_at = NULL,
+        updated_at = now()
+    FROM ${currencyRates} AS rates
+    WHERE jobs.rate_date = ${rateDate}
+      AND jobs.status = 'failed'::exchange_rate_recalculation_status
+      AND rates.date = ${rateDate}
+      AND rates.updated_at > jobs.updated_at
+    RETURNING jobs.ledger_id
+  `);
+  return result.rows.length;
+}
+
+/**
  * Claim up to `limit` due jobs inside a transaction using FOR UPDATE SKIP
  * LOCKED. Expired `claimed` jobs become claimable again, which lets a
  * crashed or slow worker's lease be taken over by the next run.
