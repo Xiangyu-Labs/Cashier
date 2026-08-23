@@ -124,7 +124,7 @@ describe("Ledger Delete Idempotency", () => {
     // 这个测试验证：真正不存在的账本（新创建的ID）仍然应该报错
     // 这是正确的行为 - 不存在的资源应该报错
 
-    const fakeLedgerId = "00000000-0000-0000-0000-000000000000";
+    const fakeLedgerId = "00000000-0000-4000-8000-000000000000";
 
     await expect(deleteLedgerAction(fakeLedgerId)).rejects.toThrow("Ledger");
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LedgerPort } from "@/application/contracts";
-import { ForbiddenError, NotFoundError } from "@/lib/errors";
+import { NotFoundError } from "@/lib/errors";
 import { deleteLedger } from "@/modules/ledger/application/use-cases/delete-ledger";
 
 function port(result: "deleted" | "already_deleted" | "forbidden" | "not_found") {
@@ -24,7 +24,7 @@ describe("deleteLedger", () => {
 
   it("rejects a foreign ledger", async () => {
     await expect(deleteLedger("user-1", "ledger-1", port("forbidden"))).rejects.toBeInstanceOf(
-      ForbiddenError
+      NotFoundError
     );
   });
 

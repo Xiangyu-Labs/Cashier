@@ -7,7 +7,7 @@
  * Test cases are designed from BUSINESS expectations, not implementation details.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getTestDb } from "../setup";
 import { ledgers, ledgerEntries, entryCategories, sourceDocuments } from "@/persistence";
 import {
@@ -22,6 +22,8 @@ import {
   TEST_USER_ID,
 } from "../helpers/schema-setup";
 import { eq, isNull, and } from "drizzle-orm";
+
+vi.mock("next-intl/server", () => ({ getLocale: vi.fn().mockResolvedValue("zh") }));
 
 // Import actions
 import {

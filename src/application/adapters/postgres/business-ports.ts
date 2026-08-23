@@ -19,9 +19,17 @@ import {
   entryCategories,
   ledgerEntries,
   ledgers,
+  objectCleanupJobs,
   otpTokens,
+  processingAttempts,
+  processingOutbox,
+  duplicateReviews,
+  revisionFiles,
   serviceCredentials,
   sourceDocuments,
+  sourceDocumentRevisions,
+  storedFiles,
+  uploadSessionFiles,
   users,
 } from "@/persistence";
 import { createToken, computeHash } from "@/lib/security/service-credential-token";
@@ -293,7 +301,13 @@ export const postgresLedgerAdapter: LedgerPort = {
         };
       });
     } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "23505") {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "23505" &&
+        "constraint" in error &&
+        error.constraint === "uniq_ledgers_user_id"
+      ) {
         throw new ConflictError("User already has an active ledger");
       }
       throw error;
@@ -305,11 +319,54 @@ export const postgresLedgerAdapter: LedgerPort = {
         .select()
         .from(ledgers)
         .where(eq(ledgers.id, ledgerId))
+        .for("update")
         .then((rows) => rows[0]);
       if (row == null) return "not_found" as const;
-      if (row.userId !== userId) return "forbidden" as const;
+      if (row.userId !== userId) return "not_found" as const;
       if (row.deletedAt != null) return "already_deleted" as const;
       const now = new Date();
+      await tx
+        .update(sourceDocumentRevisions)
+        .set({ outcome: "cancelled", finalizedAt: now })
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, ledgerId),
+            eq(sourceDocumentRevisions.outcome, "processing")
+          )
+        );
+      await tx
+        .update(processingOutbox)
+        .set({
+          status: "cancelled",
+          completedAt: now,
+          claimToken: null,
+          claimedAt: null,
+          claimExpiresAt: null,
+        })
+        .where(
+          and(
+            eq(processingOutbox.ledgerId, ledgerId),
+            inArray(processingOutbox.status, ["pending", "claimed"])
+          )
+        );
+      await tx
+        .update(processingAttempts)
+        .set({ status: "cancelled", completedAt: now })
+        .where(
+          and(
+            eq(processingAttempts.ledgerId, ledgerId),
+            inArray(processingAttempts.status, ["queued", "processing"])
+          )
+        );
+      await tx
+        .update(duplicateReviews)
+        .set({ status: "discarded", decision: "superseded", decidedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(duplicateReviews.ledgerId, ledgerId),
+            inArray(duplicateReviews.status, ["pending", "staged"])
+          )
+        );
       await tx
         .update(ledgerEntries)
         .set({ deletedAt: now, updatedAt: now })
@@ -322,6 +379,25 @@ export const postgresLedgerAdapter: LedgerPort = {
         .update(sourceDocuments)
         .set({ deletedAt: now, updatedAt: now })
         .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)));
+      await tx
+        .update(serviceCredentials)
+        .set({ deletedAt: now })
+        .where(
+          and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt))
+        );
+      const files = await tx
+        .select({ storageKey: storedFiles.storageKey })
+        .from(storedFiles)
+        .where(eq(storedFiles.ledgerId, ledgerId));
+      if (files.length > 0) {
+        await tx
+          .insert(objectCleanupJobs)
+          .values(files.map((file) => ({ storageKey: file.storageKey })))
+          .onConflictDoNothing();
+      }
+      await tx.delete(revisionFiles).where(eq(revisionFiles.ledgerId, ledgerId));
+      await tx.delete(uploadSessionFiles).where(eq(uploadSessionFiles.ledgerId, ledgerId));
+      await tx.delete(storedFiles).where(eq(storedFiles.ledgerId, ledgerId));
       await tx
         .update(ledgers)
         .set({ deletedAt: now, updatedAt: now })

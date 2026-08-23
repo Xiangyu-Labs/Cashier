@@ -21,6 +21,8 @@ vi.mock("@/lib/auth-actions", () => ({
       handler("user-1", ...args),
 }));
 
+vi.mock("next-intl/server", () => ({ getLocale: vi.fn().mockResolvedValue("zh") }));
+
 vi.mock("@/modules/ledger/access", () => ({
   withLedgerAccess: <TArgs extends unknown[], TResult>(
     handler: (ledgerId: string, ...args: TArgs) => TResult
@@ -206,7 +208,7 @@ describe("ledger server action omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(filters, "maxAmount")).toBe(false);
   });
 
-  it("omits locale when creating a ledger without aiLanguage", async () => {
+  it("uses the request locale when creating a ledger", async () => {
     await createLedgerAction({});
 
     const firstCall = createLedgerMock.mock.calls[0];
@@ -217,6 +219,6 @@ describe("ledger server action omission semantics", () => {
     const payload = firstCall[0] as Record<string, unknown>;
 
     expect(payload.userId).toBe("user-1");
-    expect(Object.prototype.hasOwnProperty.call(payload, "locale")).toBe(false);
+    expect(payload.locale).toBe("zh");
   });
 });

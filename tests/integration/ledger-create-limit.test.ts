@@ -8,6 +8,7 @@ import { ConflictError } from "@/lib/errors";
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
+vi.mock("next-intl/server", () => ({ getLocale: vi.fn().mockResolvedValue("zh") }));
 
 import { auth } from "@/auth";
 
