@@ -7,6 +7,7 @@ import {
   openCacheDb,
   requestResult,
   transactionDone,
+  captureImageCacheGeneration,
 } from "@/lib/client-cache";
 import { storedFileReadUrl } from "./stored-file-read";
 
@@ -72,7 +73,7 @@ async function readCachedImageKeys(
   fileIds: readonly string[]
 ): Promise<CachedImageRecord[]> {
   const db = await openCacheDb();
-  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readonly");
+  const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
   const images = tx.objectStore(DOCUMENT_IMAGE_STORE);
   const access = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
   const records = await Promise.all(
@@ -82,11 +83,18 @@ async function readCachedImageKeys(
         requestResult(images.get(key) as IDBRequest<CachedImageRecord | undefined>),
         requestResult(access.get(key) as IDBRequest<CachedImageAccessRecord | undefined>),
       ]);
-      return image == null
-        ? null
-        : { ...image, lastAccessedAt: accessRow?.lastAccessedAt ?? image.lastAccessedAt };
+      if (image == null) return null;
+      const lastAccessedAt = Date.now();
+      access.put({
+        key,
+        snapshotKey: image.snapshotKey,
+        userId: image.userId,
+        lastAccessedAt,
+      } satisfies CachedImageAccessRecord);
+      return { ...image, lastAccessedAt: Math.max(accessRow?.lastAccessedAt ?? 0, lastAccessedAt) };
     })
   );
+  await transactionDone(tx);
   return records.filter((record): record is CachedImageRecord => record != null);
 }
 
@@ -137,12 +145,15 @@ export function cacheImage(input: {
 }): Promise<CachedImageRecord | null> {
   if (input.file.byteSize > CACHED_IMAGE_BYTES_LIMIT) return Promise.resolve(null);
   const key = imageCacheKey(input.snapshotKey, input.file.id);
-  const pending = inFlightImageRequests.get(key);
+  const userId = input.snapshotKey.split(":")[0] ?? "";
+  const generation = captureImageCacheGeneration(userId);
+  const requestKey = `${key}@${generation.generation}`;
+  const pending = inFlightImageRequests.get(requestKey);
   if (pending != null) return pending;
-  const request = runCacheImage(input, key).finally(() => {
-    inFlightImageRequests.delete(key);
+  const request = runCacheImage(input, key, generation).finally(() => {
+    inFlightImageRequests.delete(requestKey);
   });
-  inFlightImageRequests.set(key, request);
+  inFlightImageRequests.set(requestKey, request);
   return request;
 }
 
@@ -153,7 +164,8 @@ async function runCacheImage(
     documentTimestamp: string;
     file: SourceDocumentStoredFileDto;
   },
-  key: string
+  key: string,
+  generation: ReturnType<typeof captureImageCacheGeneration>
 ): Promise<CachedImageRecord | null> {
   const existingDb = await openCacheDb();
   const existingTx = existingDb.transaction(DOCUMENT_IMAGE_STORE, "readonly");
@@ -163,6 +175,7 @@ async function runCacheImage(
     >
   );
   if (existing != null) {
+    if (!generation.isCurrent()) return null;
     const touched = { ...existing, lastAccessedAt: Date.now() };
     const touchTx = existingDb.transaction(DOCUMENT_IMAGE_ACCESS_STORE, "readwrite");
     touchTx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE).put({
@@ -175,7 +188,10 @@ async function runCacheImage(
     return touched;
   }
 
-  const response = await fetch(storedFileReadUrl(input.file.id), { credentials: "include" });
+  const response = await fetch(storedFileReadUrl(input.file.id), {
+    credentials: "include",
+    signal: generation.signal,
+  });
   if (!response.ok) return null;
   const blob = await response.blob();
   if (blob.size <= 0 || blob.size > CACHED_IMAGE_BYTES_LIMIT) return null;
@@ -183,9 +199,26 @@ async function runCacheImage(
   const db = await openCacheDb();
   const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
   const store = tx.objectStore(DOCUMENT_IMAGE_STORE);
-  const records = await requestResult(
-    store.index("snapshotKey").getAll(input.snapshotKey) as IDBRequest<CachedImageRecord[]>
-  );
+  const accessStore = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
+  const [rawRecords, accessRows] = await Promise.all([
+    requestResult(
+      store.index("snapshotKey").getAll(input.snapshotKey) as IDBRequest<CachedImageRecord[]>
+    ),
+    requestResult(
+      accessStore.index("snapshotKey").getAll(input.snapshotKey) as IDBRequest<
+        CachedImageAccessRecord[]
+      >
+    ),
+  ]);
+  if (!generation.isCurrent()) {
+    tx.abort();
+    return null;
+  }
+  const accessByKey = new Map(accessRows.map((row) => [row.key, row.lastAccessedAt]));
+  const records = rawRecords.map((record) => ({
+    ...record,
+    lastAccessedAt: accessByKey.get(record.key) ?? record.lastAccessedAt,
+  }));
   const evictions = selectCachedImageEvictions(records, blob.size, key);
   const evictionKeys = new Set(evictions.map((item) => item.key));
   const remaining = records.filter((record) => record.key !== key && !evictionKeys.has(record.key));
@@ -198,7 +231,6 @@ async function runCacheImage(
     return null;
   }
   for (const record of evictions) store.delete(record.key);
-  const accessStore = tx.objectStore(DOCUMENT_IMAGE_ACCESS_STORE);
   for (const record of evictions) accessStore.delete(record.key);
   const record: CachedImageRecord = {
     key,

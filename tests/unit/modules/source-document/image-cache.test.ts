@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DOCUMENT_IMAGE_ACCESS_STORE,
   DOCUMENT_IMAGE_STORE,
+  clearUserImageCacheData,
   openCacheDb,
   transactionDone,
 } from "@/lib/client-cache";
@@ -155,6 +156,25 @@ describe("cacheImage single-flight", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("does not write a response that arrives after the user cache is cleared", async () => {
+    let resolveFetch!: (response: Response) => void;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = cacheImage(cacheImageInput());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await clearUserImageCacheData("user");
+    resolveFetch(new Response(new Blob(["late"]), { status: 200 }));
+
+    await expect(pending).resolves.toBeNull();
+    await expect(readCachedImagesForFiles("user:ledger", ["file-1"])).resolves.toEqual([]);
+  });
+
   it("returns the updated record with the refreshed access time on a cache hit", async () => {
     const db = await openCacheDb();
     const tx = db.transaction(DOCUMENT_IMAGE_STORE, "readwrite");
@@ -180,6 +200,6 @@ describe("cacheImage single-flight", () => {
     expect(record?.lastAccessedAt).toBeGreaterThan(1);
     expect(fetchMock).not.toHaveBeenCalled();
     const stored = await readCachedImagesForFiles("user:ledger", ["file-1"]);
-    expect(stored[0]?.lastAccessedAt).toBe(record?.lastAccessedAt);
+    expect(stored[0]?.lastAccessedAt).toBeGreaterThanOrEqual(record?.lastAccessedAt ?? 0);
   });
 });

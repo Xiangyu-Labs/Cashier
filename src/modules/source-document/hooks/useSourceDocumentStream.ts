@@ -14,10 +14,9 @@ import {
   buildUnifiedStreamGroups,
   type UnifiedStreamGroup,
 } from "@/modules/source-document/stream-grouping";
-import { getStreamRefreshAction } from "@/modules/source-document/actions";
-import { applyStreamRefreshToCache } from "@/modules/source-document/hooks/stream-refresh-cache";
 import type { StreamRefreshResult } from "@/modules/source-document/contract-refresh";
 import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-state-refresh";
+import { drainSourceDocumentDelta } from "./source-document-delta-drain";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -213,25 +212,9 @@ export function useSourceDocumentStream(
     changed: boolean;
     result?: StreamRefreshResult;
   }> => {
-    let result: StreamRefreshResult | undefined;
-    let changed = false;
-    for (let page = 0; page < 10; page += 1) {
-      result = await getStreamRefreshAction(ledgerId, {
-        ledgerId,
-        afterVersion: afterVersionRef.current,
-      });
-      applyStreamRefreshToCache(queryClient, ledgerId, result);
-      afterVersionRef.current = result.toVersion;
-      changed ||= result.changed;
-      if (!result.hasMore || result.resetRequired) break;
-    }
-    if (result?.hasMore) {
-      applyStreamRefreshToCache(queryClient, ledgerId, {
-        ...result,
-        resetRequired: true,
-      });
-    }
-    return { changed, ...(result === undefined ? {} : { result }) };
+    const drained = await drainSourceDocumentDelta(queryClient, ledgerId, afterVersionRef.current);
+    afterVersionRef.current = drained.result.toVersion;
+    return drained;
   }, [ledgerId, queryClient]);
 
   const items = useMemo(() => deduplicate(data?.pages.flatMap((page) => page.items) ?? []), [data]);

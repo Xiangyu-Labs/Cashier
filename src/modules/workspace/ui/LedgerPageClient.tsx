@@ -177,6 +177,7 @@ function NewRecordForms({
     <>
       <div className={inputMode === "ai" ? undefined : "hidden"} aria-hidden={inputMode !== "ai"}>
         <SourceDocumentInput
+          key={ledgerId}
           ledgerId={ledgerId}
           onPendingChange={setAiPending}
           onDirtyChange={setAiDirty}
@@ -189,6 +190,7 @@ function NewRecordForms({
         aria-hidden={inputMode !== "quick"}
       >
         <QuickEntryForm
+          key={ledgerId}
           ledgerId={ledgerId}
           categories={categories}
           mainCurrency={mainCurrency}

@@ -25,6 +25,50 @@ export function transactionDone(transaction: IDBTransaction): Promise<void> {
 
 let databasePromise: Promise<IDBDatabase> | null = null;
 
+interface ImageCacheGeneration {
+  generation: number;
+  controller: AbortController;
+}
+
+const imageCacheGenerations = new Map<string, ImageCacheGeneration>();
+
+function imageCacheGeneration(userId: string): ImageCacheGeneration {
+  let state = imageCacheGenerations.get(userId);
+  if (state == null) {
+    state = { generation: 0, controller: new AbortController() };
+    imageCacheGenerations.set(userId, state);
+  }
+  return state;
+}
+
+export function captureImageCacheGeneration(userId: string): {
+  generation: number;
+  signal: AbortSignal;
+  isCurrent: () => boolean;
+} {
+  const state = imageCacheGeneration(userId);
+  const generation = state.generation;
+  return {
+    generation,
+    signal: state.controller.signal,
+    isCurrent: () =>
+      imageCacheGenerations.get(userId)?.generation === generation &&
+      !state.controller.signal.aborted,
+  };
+}
+
+function invalidateImageCacheGeneration(userId?: string): void {
+  const userIds = userId == null || userId === "" ? [...imageCacheGenerations.keys()] : [userId];
+  for (const id of userIds) {
+    const current = imageCacheGeneration(id);
+    current.controller.abort();
+    imageCacheGenerations.set(id, {
+      generation: current.generation + 1,
+      controller: new AbortController(),
+    });
+  }
+}
+
 export function openCacheDb(): Promise<IDBDatabase> {
   if (typeof indexedDB === "undefined") {
     return Promise.reject(new Error("IndexedDB is unavailable"));
@@ -104,6 +148,7 @@ export function reportClientCacheError(
 
 /** Clears cached document images for one user, or all users when omitted. */
 export async function clearUserImageCacheData(userId?: string): Promise<void> {
+  invalidateImageCacheGeneration(userId);
   if (typeof indexedDB === "undefined") return;
   const db = await openCacheDb();
   const tx = db.transaction([DOCUMENT_IMAGE_STORE, DOCUMENT_IMAGE_ACCESS_STORE], "readwrite");
