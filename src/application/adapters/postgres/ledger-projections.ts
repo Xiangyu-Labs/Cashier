@@ -446,15 +446,14 @@ export async function discardDuplicatePendingRevision(
   revisionId: string
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    let document: typeof sourceDocuments.$inferSelect;
-    try {
-      document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-    } catch (error) {
-      // The document was already discarded (soft-deleted): idempotent success.
-      if (error instanceof NotFoundError) return true;
-      throw error;
-    }
-    if (document.deletedAt != null) return true;
+    await lockLedgerForUpdate(tx, ledgerId);
+    const document = await tx
+      .select()
+      .from(sourceDocuments)
+      .where(and(eq(sourceDocuments.ledgerId, ledgerId), eq(sourceDocuments.id, sourceDocumentId)))
+      .for("update")
+      .then((rows) => rows[0]);
+    if (document == null) throw new NotFoundError("Source document");
 
     const review = await tx
       .select()
@@ -467,9 +466,15 @@ export async function discardDuplicatePendingRevision(
         )
       )
       .then((rows) => rows[0]);
-    if (review != null && review.status === "discarded" && review.revisionId === revisionId) {
+    if (
+      review != null &&
+      review.status === "discarded" &&
+      review.decision === "discard_duplicate" &&
+      review.revisionId === revisionId
+    ) {
       return true;
     }
+    if (document.deletedAt != null) throw new NotFoundError("Duplicate review");
     if (review == null || review.status !== "pending" || review.revisionId !== revisionId) {
       throw new ConflictError("Duplicate review is no longer pending");
     }

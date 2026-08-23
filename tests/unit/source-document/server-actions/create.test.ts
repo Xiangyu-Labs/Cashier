@@ -65,8 +65,8 @@ describe("createSourceDocumentAction omission semantics", () => {
         idempotency: {
           principalType: "user",
           principalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          key: `create:${clientSubmissionId}`,
-          contentFingerprint: null,
+          key: `source-document:create:ledger-1:new:${clientSubmissionId}`,
+          contentFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
         },
       })
     );

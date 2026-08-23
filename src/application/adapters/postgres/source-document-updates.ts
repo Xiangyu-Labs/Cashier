@@ -276,8 +276,9 @@ export async function saveSourceDocumentChangesAtomically(
   if (patches.size !== input.entries.length) {
     throw new ConflictError("A ledger entry may only be updated once");
   }
+  const initialEntriesById = new Map(initialEntries.map((entry) => [entry.id, entry]));
   for (const entryId of patches.keys()) {
-    if (!initialEntries.some((entry) => entry.id === entryId)) {
+    if (!initialEntriesById.has(entryId)) {
       throw new NotFoundError("Active ledger entry projection");
     }
   }
@@ -423,36 +424,19 @@ export async function updateSourceDocument({
 
   if (document.type === "manual" && document.activeRevisionId != null) {
     if (data.entryDate === undefined) {
-      const activeEntries = await db.query.ledgerEntries.findMany({
-        where: and(
-          eq(ledgerEntries.ledgerId, ledgerId),
-          eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
-          eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
-          isNull(ledgerEntries.deletedAt)
-        ),
-        orderBy: (entries, { asc: orderAscending }) => [
-          orderAscending(entries.createdAt),
-          orderAscending(entries.id),
-        ],
+      const updated = await db.transaction(async (tx) => {
+        await lockLedgerForUpdate(tx, ledgerId);
+        const locked = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
+        if (locked.activeRevisionId !== document.activeRevisionId || locked.type !== "manual") {
+          throw new ConflictError("Source document changed before the title update");
+        }
+        return tx
+          .update(sourceDocuments)
+          .set({ title: data.title!, updatedAt: new Date() })
+          .where(whereSourceDocumentNotDeletedId(ledgerId, sourceDocumentId))
+          .returning({ id: sourceDocuments.id });
       });
-      await postgresLedgerProjectionAdapter.replaceManual({
-        ledgerId,
-        sourceDocumentId,
-        expectedActiveRevisionId: document.activeRevisionId,
-        ...(data.title !== undefined ? { title: data.title } : {}),
-        entries: activeEntries.map((entry) => ({
-          id: entry.id,
-          categoryId: entry.categoryId,
-          amount: entry.amount,
-          currency: entry.currency,
-          itemName: entry.itemName,
-          description: entry.description,
-          convertedAmount: entry.convertedAmount,
-          exchangeRate: entry.exchangeRate,
-          createdAt: entry.createdAt.toISOString(),
-        })),
-      });
-      return { sourceDocumentId, updated: true };
+      return { sourceDocumentId, updated: updated.length === 1 };
     }
 
     const plan = await prepareDateReestimate(ledgerId, [sourceDocumentId], data.entryDate);

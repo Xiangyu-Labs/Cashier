@@ -57,7 +57,10 @@ import {
   fetchWithRetry as fetchExchangeRatesWithRetry,
 } from "@/application/adapters/postgres/exchange-rate";
 import { categoryMetadataGeneratorAdapter } from "@/application/adapters/ai/category-metadata-generator";
-import { runIdempotentLedgerEntryMutation } from "@/application/adapters/postgres/ledger-entry-idempotency";
+import {
+  runIdempotentLedgerEntryMutation,
+  runIdempotentUserMutation,
+} from "@/application/adapters/postgres/ledger-entry-idempotency";
 
 /** Composition root for the PostgreSQL-backed Docker runtime. */
 export const serverComposition = {
@@ -78,6 +81,7 @@ export const serverComposition = {
     updateEntry: updateLedgerEntryWithConversion,
   },
   ledgerEntryIdempotency: { run: runIdempotentLedgerEntryMutation },
+  userMutationIdempotency: { run: runIdempotentUserMutation },
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,
     calculateStats: calculateLedgerEntryStats,

@@ -35,6 +35,7 @@ vi.mock("@/modules/ledger/access", () => ({
 
 vi.mock("@/application/adapters/postgres/ledger-entry-idempotency", () => ({
   runIdempotentLedgerEntryMutation: vi.fn((_input, mutation) => mutation()),
+  runIdempotentUserMutation: vi.fn((_input, mutation) => mutation()),
 }));
 
 vi.mock("@/modules/ledger/application/use-cases/mutate-ledger-entries", () => ({

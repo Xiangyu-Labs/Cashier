@@ -21,13 +21,14 @@ import {
 import { saveSourceDocumentChanges } from "../application/use-cases/save-source-document-changes";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
+import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Update source document metadata (e.g. title, entryDate).
  */
 export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId },
+    { ledgerId, userId },
     sourceId: string,
     data: UpdateSourceDocumentInput,
     operationId?: string
@@ -37,14 +38,21 @@ export const updateSourceDocumentAction = withSourceDocumentLedgerAccess(
       ...(operationId === undefined ? {} : { operationId }),
     });
     const validated = updateSourceDocumentInputSchema.parse(data);
-    return updateSourceDocument(
-      {
-        ledgerId,
-        sourceDocumentId: identity.sourceDocumentId,
-        data: validated,
-      },
-      serverComposition.sourceDocumentUpdates
-    );
+    const mutation = () =>
+      updateSourceDocument(
+        { ledgerId, sourceDocumentId: identity.sourceDocumentId, data: validated },
+        serverComposition.sourceDocumentUpdates
+      );
+    return identity.operationId == null
+      ? mutation()
+      : serverComposition.userMutationIdempotency.run(
+          {
+            userId,
+            key: `source-document:update:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
+            fingerprint: sourceDocumentFingerprint(validated),
+          },
+          mutation
+        );
   }
 );
 
@@ -72,22 +80,31 @@ export const batchUpdateSourceDocumentsAction = withSourceDocumentLedgerAccess(
 
 export const saveSourceDocumentChangesAction = withSourceDocumentLedgerAccess(
   async (
-    { ledgerId },
+    { ledgerId, userId },
     input: SaveSourceDocumentChangesInput
   ): Promise<SaveSourceDocumentChangesResultDto> => {
     const validated = saveSourceDocumentChangesInputSchema.parse(input);
-    return saveSourceDocumentChanges(
-      ledgerId,
+    const mutation = () =>
+      saveSourceDocumentChanges(
+        ledgerId,
+        {
+          sourceDocumentId: validated.sourceDocumentId,
+          expectedRevisionId: validated.expectedRevisionId,
+          operationId: validated.operationId,
+          ...(validated.sourceDocument === undefined
+            ? {}
+            : { sourceDocument: validated.sourceDocument }),
+          entries: validated.entries,
+        },
+        serverComposition.sourceDocumentUpdates
+      );
+    return serverComposition.userMutationIdempotency.run(
       {
-        sourceDocumentId: validated.sourceDocumentId,
-        expectedRevisionId: validated.expectedRevisionId,
-        operationId: validated.operationId,
-        ...(validated.sourceDocument === undefined
-          ? {}
-          : { sourceDocument: validated.sourceDocument }),
-        entries: validated.entries,
+        userId,
+        key: `source-document:save:${ledgerId}:${validated.sourceDocumentId}:${validated.operationId}`,
+        fingerprint: sourceDocumentFingerprint(validated),
       },
-      serverComposition.sourceDocumentUpdates
+      mutation
     );
   }
 );

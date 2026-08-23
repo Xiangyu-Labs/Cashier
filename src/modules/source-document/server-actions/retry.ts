@@ -13,6 +13,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { scheduleProcessingAfter } from "./schedule-processing";
 import { processImage } from "@/lib/storage/image-processing";
+import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Direct Retry: retry an existing source document with immutable evidence.
@@ -47,8 +48,8 @@ export const retrySourceDocumentAction = withSourceDocumentLedgerAccess(
               idempotency: {
                 principalType: "user" as const,
                 principalId: userId,
-                key: `retry:${identity.sourceDocumentId}:${identity.operationId}`,
-                contentFingerprint: null,
+                key: `source-document:direct-retry:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
+                contentFingerprint: sourceDocumentFingerprint({}),
               },
             }),
       },
@@ -103,8 +104,8 @@ export const editRetrySourceDocumentAction = withSourceDocumentLedgerAccess(
               idempotency: {
                 principalType: "user" as const,
                 principalId: userId,
-                key: `retry:${identity.sourceDocumentId}:${identity.operationId}`,
-                contentFingerprint: null,
+                key: `source-document:edit-retry:${ledgerId}:${identity.sourceDocumentId}:${identity.operationId}`,
+                contentFingerprint: sourceDocumentFingerprint(validatedInput ?? {}),
               },
             }),
         ...(validatedInput == null ? {} : { input: validatedInput }),

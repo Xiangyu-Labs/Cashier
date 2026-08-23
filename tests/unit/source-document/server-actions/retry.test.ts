@@ -61,8 +61,8 @@ describe("retrySourceDocumentAction omission semantics", () => {
         idempotency: {
           principalType: "user",
           principalId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          key: `retry:${sourceDocumentId}:${operationId}`,
-          contentFingerprint: null,
+          key: `source-document:direct-retry:ledger-1:${sourceDocumentId}:${operationId}`,
+          contentFingerprint: "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         },
       })
     );

@@ -14,6 +14,7 @@ import { withSourceDocumentLedgerAccess } from "./access";
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import { scheduleProcessingAfter } from "./schedule-processing";
 import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
+import { sourceDocumentFingerprint } from "@/modules/source-document/source-document-fingerprint";
 
 /**
  * Create a new source document and trigger processing.
@@ -46,8 +47,8 @@ export const createSourceDocumentAction = withSourceDocumentLedgerAccess(
               idempotency: {
                 principalType: "user" as const,
                 principalId: userId,
-                key: `create:${submissionIdentity.operationId}`,
-                contentFingerprint: null,
+                key: `source-document:create:${ledgerId}:new:${submissionIdentity.operationId}`,
+                contentFingerprint: sourceDocumentFingerprint(payload),
               },
             }),
       },

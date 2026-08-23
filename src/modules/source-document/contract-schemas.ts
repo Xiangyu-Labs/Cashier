@@ -396,6 +396,8 @@ export const streamPageInputSchema = strictObjectSchema({
 export const updateSourceDocumentInputSchema = strictObjectSchema({
   title: optionalTitleSchema,
   entryDate: optionalDateStringSchema,
+}).refine((value) => value.title !== undefined || value.entryDate !== undefined, {
+  message: "At least one source document patch is required",
 });
 
 export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
@@ -410,6 +412,7 @@ export const saveSourceDocumentChangesInputSchema = strictObjectSchema({
         data: updateLedgerEntryInputSchema,
       })
     )
+    .max(MAX_BATCH_SIZE)
     .superRefine((entries, ctx) => {
       const ids = entries.map((entry) => entry.ledgerEntryId);
       if (new Set(ids).size !== ids.length) {
@@ -446,9 +449,10 @@ export const splitSourceDocumentInputSchema = strictObjectSchema({
 });
 
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
-  status: sourceDocumentStatusSchema.optional(),
   title: optionalTitleSchema,
   entryDate: optionalDateStringSchema,
+}).refine((value) => value.title !== undefined || value.entryDate !== undefined, {
+  message: "At least one source document patch is required",
 });
 
 export const createQuickEntryInputSchema = strictObjectSchema({

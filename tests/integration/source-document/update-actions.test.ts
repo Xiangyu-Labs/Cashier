@@ -571,7 +571,7 @@ describe("Source Document Update Actions", () => {
 
       await expect(
         batchUpdateSourceDocumentsAction(ledgerData.id, [], {
-          status: "completed",
+          title: "Ignored",
         })
       ).rejects.toThrow();
     });
