@@ -8,7 +8,7 @@ export async function updateEntryCategory(
   ledgerId: string,
   categoryId: string,
   data: UpdateEntryCategoryInput,
-  categories: CategoryPort
+  categories: Pick<CategoryPort, "update">
 ): Promise<EntryCategoryDto> {
   const updated = await categories.update(ledgerId, categoryId, omitUndefinedProperties(data));
   if (updated == null) throw new NotFoundError("Category");

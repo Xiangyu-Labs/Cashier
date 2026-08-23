@@ -5,7 +5,10 @@ import type { CategoryPort, ServiceCredentialPort } from "@/application/contract
 
 export async function getLedgerSettingsView(
   ledgerId: string,
-  dependencies: { categories: CategoryPort; credentials: ServiceCredentialPort }
+  dependencies: {
+    categories: Pick<CategoryPort, "countUncategorized">;
+    credentials: Pick<ServiceCredentialPort, "list">;
+  }
 ): Promise<LedgerSettingsViewDto> {
   const [uncategorizedCount, credentials] = await Promise.all([
     getUncategorizedEntryCount(ledgerId, dependencies.categories),

@@ -1,5 +1,4 @@
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { ValidationError } from "@/lib/errors";
 import type {
   AuthenticatedServiceCredentialContract,
   ProcessingIntentContract,

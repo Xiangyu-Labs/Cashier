@@ -7,7 +7,7 @@ const CONFLICT_MESSAGE = "User already has a ledger. Only one ledger per user is
 
 export async function createLedger(
   input: { userId: string; locale?: string },
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">
 ): Promise<LedgerDto> {
   if ((await ledgers.listIdsForUser(input.userId)).length > 0) {
     throw new ConflictError(CONFLICT_MESSAGE);

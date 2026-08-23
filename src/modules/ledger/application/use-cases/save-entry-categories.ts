@@ -4,7 +4,7 @@ import type { EntryCategoryDto, SaveEntryCategoriesInput } from "@/modules/ledge
 export async function saveEntryCategories(
   ledgerId: string,
   input: SaveEntryCategoriesInput,
-  categories: CategoryPort
+  categories: Pick<CategoryPort, "saveAll">
 ): Promise<EntryCategoryDto[]> {
   const saved = await categories.saveAll(
     ledgerId,

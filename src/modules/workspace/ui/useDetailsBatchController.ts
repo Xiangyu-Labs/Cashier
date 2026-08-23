@@ -11,7 +11,7 @@ import {
   batchUpdateLedgerEntriesAction,
   batchUpdateLedgerEntryDatesAction,
   previewBatchLedgerEntryDateAction,
-} from "@/modules/ledger/server-actions/entries";
+} from "@/modules/ledger/actions";
 
 export function useDetailsBatchController(
   ledgerId: string,

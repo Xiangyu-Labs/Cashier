@@ -8,7 +8,7 @@ export async function updateLedger(
   userId: string,
   ledgerId: string,
   data: UpdateLedgerInput,
-  settings: SettingsPort
+  settings: Pick<SettingsPort, "updateWithCurrencyRecalculation">
 ): Promise<LedgerDto> {
   const updated = await settings.updateWithCurrencyRecalculation({
     ledgerId,

@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CategoryPort, ServiceCredentialPort } from "@/application/contracts";
-import { NotFoundError } from "@/lib/errors";
 import { getLedgerSettingsBootstrap as getBootstrap } from "@/modules/workspace/application/queries/get-ledger-settings-bootstrap";
 
-const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
 const getLedgerSettingsViewMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/ledger/access", () => ({
-  requireLedgerAccess: requireLedgerAccessMock,
-}));
 vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: listEntryCategoriesMock,
 }));
@@ -18,8 +13,11 @@ vi.mock("@/modules/ledger/application/queries/get-ledger-settings-view", () => (
 }));
 
 const dependencies = {
-  categories: {} as CategoryPort,
-  credentials: {} as ServiceCredentialPort,
+  categories: {
+    listWithCount: vi.fn(),
+    countUncategorized: vi.fn(),
+  } satisfies Pick<CategoryPort, "listWithCount" | "countUncategorized">,
+  credentials: { list: vi.fn() } satisfies Pick<ServiceCredentialPort, "list">,
 };
 
 const ledgerDto = {
@@ -33,7 +31,6 @@ const ledgerDto = {
 describe("getLedgerSettingsBootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireLedgerAccessMock.mockResolvedValue({ ledger: ledgerDto });
     listEntryCategoriesMock.mockResolvedValue([]);
     getLedgerSettingsViewMock.mockResolvedValue({
       uncategorizedCount: 0,
@@ -45,7 +42,6 @@ describe("getLedgerSettingsBootstrap", () => {
     const result = await getBootstrap({ ledgerId: "ledger-1", ledgerDto }, dependencies);
 
     expect(result).not.toBeNull();
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(listEntryCategoriesMock).toHaveBeenCalledWith("ledger-1", dependencies.categories);
     expect(getLedgerSettingsViewMock).toHaveBeenCalledWith("ledger-1", {
       categories: dependencies.categories,
@@ -61,12 +57,6 @@ describe("getLedgerSettingsBootstrap", () => {
         )
       )
     ).toBe(false);
-  });
-
-  it("returns null for not-found access", async () => {
-    requireLedgerAccessMock.mockRejectedValueOnce(new NotFoundError("ledger"));
-
-    await expect(getBootstrap({ ledgerId: "missing" }, dependencies)).resolves.toBeNull();
   });
 
   it("rejects a pre-authorized DTO for another ledger", async () => {

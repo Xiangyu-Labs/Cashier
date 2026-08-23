@@ -7,14 +7,14 @@ import type { StatsReadPort } from "../ports";
 
 export function getEnhancedStatsQuery(
   input: GetEnhancedStatsInput,
-  stats: StatsReadPort
+  stats: Pick<StatsReadPort, "queryEnhanced">
 ): Promise<EnhancedStatsDto> {
   return stats.queryEnhanced(input);
 }
 
 export async function getEnhancedStats(
   input: unknown,
-  stats: StatsReadPort
+  stats: Pick<StatsReadPort, "queryEnhanced">
 ): Promise<EnhancedStatsDto> {
   const validatedInput = parseEnhancedStatsInput(input);
   return stats.queryEnhanced(validatedInput);

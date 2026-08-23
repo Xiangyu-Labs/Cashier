@@ -8,10 +8,7 @@ import {
   saveSourceDocumentChangesAction,
   splitSourceDocumentAction,
 } from "@/modules/source-document/actions";
-import {
-  createLedgerEntryAction,
-  deleteLedgerEntryAction,
-} from "@/modules/ledger/server-actions/entries";
+import { createLedgerEntryAction, deleteLedgerEntryAction } from "@/modules/ledger/actions";
 import type { SplitSourceDocumentInput } from "@/modules/source-document/contracts";
 import type { PendingChanges } from "./usePendingChanges";
 import { useSourceDocumentEntryMutations } from "./useSourceDocumentEntryMutations";

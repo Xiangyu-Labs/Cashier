@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { getLedgerPageBootstrap as getLedgerPageBootstrapUseCase } from "@/modules/workspace/application/queries/get-ledger-page-bootstrap";
 import { buildStatsQueryDescriptor } from "@/modules/workspace/ledger-tab-query-descriptors";
 import type { CategoryPort } from "@/application/contracts";
@@ -9,16 +8,42 @@ import type { SourceDocumentQueryPorts } from "@/modules/source-document/applica
 import type { ServiceCredentialPort } from "@/application/contracts";
 
 const bootstrapDependencies = {
-  categories: {} as CategoryPort,
-  ledgerReads: {} as LedgerReadPort,
-  stats: {} as StatsReadPort,
-  sourceDocuments: { documents: {}, ledgerReads: {} } as SourceDocumentQueryPorts,
-  credentials: {} as ServiceCredentialPort,
+  categories: {
+    listWithCount: vi.fn(),
+    countUncategorized: vi.fn(),
+  } satisfies Pick<CategoryPort, "listWithCount" | "countUncategorized">,
+  ledgerReads: {
+    calculateStats: vi.fn(),
+    listEntries: vi.fn(),
+    listEntriesBySourceDocumentIds: vi.fn(),
+  } satisfies Pick<
+    LedgerReadPort,
+    "calculateStats" | "listEntries" | "listEntriesBySourceDocumentIds"
+  >,
+  stats: { queryEnhanced: vi.fn() } satisfies Pick<StatsReadPort, "queryEnhanced">,
+  sourceDocuments: {
+    documents: {
+      list: vi.fn(),
+      calculateCompletedTotal: vi.fn(),
+    },
+    ledgerReads: { listEntriesBySourceDocumentIds: vi.fn() },
+    changes: { getVersion: vi.fn() },
+  } satisfies {
+    documents: Pick<SourceDocumentQueryPorts["documents"], "list" | "calculateCompletedTotal">;
+    ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
+    changes: Pick<NonNullable<SourceDocumentQueryPorts["changes"]>, "getVersion">;
+  },
+  credentials: { list: vi.fn() } satisfies Pick<ServiceCredentialPort, "list">,
 };
-const getLedgerPageBootstrap = (input: Parameters<typeof getLedgerPageBootstrapUseCase>[0]) =>
-  getLedgerPageBootstrapUseCase(input, bootstrapDependencies);
+const getLedgerPageBootstrap = (
+  input: Omit<Parameters<typeof getLedgerPageBootstrapUseCase>[0], "ledgerDto"> &
+    Partial<Pick<Parameters<typeof getLedgerPageBootstrapUseCase>[0], "ledgerDto">>
+) =>
+  getLedgerPageBootstrapUseCase(
+    { ...input, ledgerDto: input.ledgerDto ?? createPreAuthorizedLedgerDto() },
+    bootstrapDependencies
+  );
 
-const requireLedgerAccessMock = vi.hoisted(() => vi.fn());
 const listEntryCategoriesMock = vi.hoisted(() => vi.fn());
 const calculateLedgerStatsMock = vi.hoisted(() => vi.fn());
 const listLedgerEntriesMock = vi.hoisted(() => vi.fn());
@@ -26,10 +51,6 @@ const getSourceDocumentCountsQueryMock = vi.hoisted(() => vi.fn());
 const listStreamPageMock = vi.hoisted(() => vi.fn());
 const getStreamTotalMock = vi.hoisted(() => vi.fn());
 const getEnhancedStatsMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@/modules/ledger/access", () => ({
-  requireLedgerAccess: requireLedgerAccessMock,
-}));
 
 vi.mock("@/modules/ledger/application/queries/list-entry-categories", () => ({
   listEntryCategories: listEntryCategoriesMock,
@@ -54,19 +75,6 @@ vi.mock("@/modules/source-document/application/queries/get-stream-total", () => 
 vi.mock("@/modules/stats/application/queries/get-enhanced-stats", () => ({
   getEnhancedStats: getEnhancedStatsMock,
 }));
-function createAuthorizedLedger() {
-  return {
-    userId: "user-1",
-    ledger: {
-      id: "ledger-1",
-      userId: "user-1",
-      settings: { mainCurrency: "USD" },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    },
-  };
-}
-
 function createPreAuthorizedLedgerDto() {
   return {
     id: "ledger-1",
@@ -81,7 +89,6 @@ describe("getLedgerPageBootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    requireLedgerAccessMock.mockResolvedValue(createAuthorizedLedger());
     listEntryCategoriesMock.mockResolvedValue([]);
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
@@ -89,24 +96,6 @@ describe("getLedgerPageBootstrap", () => {
     listStreamPageMock.mockResolvedValue({ items: [], nextCursor: null, generation: "1" });
     getStreamTotalMock.mockResolvedValue({ total: "0" });
     getEnhancedStatsMock.mockResolvedValue({});
-  });
-
-  it("returns null on not-found and unauthorized access errors", async () => {
-    requireLedgerAccessMock.mockRejectedValueOnce(new NotFoundError("ledger"));
-    const notFound = await getLedgerPageBootstrap({
-      ledgerId: "missing",
-      initialTab: "stream",
-      periodParams: { period: "thisMonth" },
-    });
-    expect(notFound).toBeNull();
-
-    requireLedgerAccessMock.mockRejectedValueOnce(new UnauthorizedError());
-    const unauthorized = await getLedgerPageBootstrap({
-      ledgerId: "forbidden",
-      initialTab: "details",
-      periodParams: { period: "thisMonth" },
-    });
-    expect(unauthorized).toBeNull();
   });
 
   it("rejects a pre-authorized DTO for another ledger", async () => {
@@ -121,17 +110,6 @@ describe("getLedgerPageBootstrap", () => {
     expect(listStreamPageMock).not.toHaveBeenCalled();
   });
 
-  it("rethrows unknown errors", async () => {
-    requireLedgerAccessMock.mockRejectedValueOnce(new Error("db unavailable"));
-    await expect(
-      getLedgerPageBootstrap({
-        ledgerId: "ledger-1",
-        initialTab: "stream",
-        periodParams: { period: "thisMonth" },
-      })
-    ).rejects.toThrow("db unavailable");
-  });
-
   it("accepts a pre-authorized ledger DTO and skips re-authorization", async () => {
     const preAuthDto = createPreAuthorizedLedgerDto();
     const result = await getLedgerPageBootstrap({
@@ -142,8 +120,6 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    // requireLedgerAccess should NOT have been called when ledgerDto is provided
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     // The DTO should be seeded into the dehydrated state
     const ledgersQuery = result?.dehydratedState.queries.find((q) => q.queryKey[0] === "ledger");
     expect(ledgersQuery).toBeDefined();
@@ -171,7 +147,6 @@ describe("getLedgerPageBootstrap", () => {
       { startDate: "2026-03-01", endDate: "2026-03-31" },
       bootstrapDependencies.sourceDocuments.documents
     );
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(calculateLedgerStatsMock).not.toHaveBeenCalled();
     expect(listLedgerEntriesMock).not.toHaveBeenCalled();
     expect(getEnhancedStatsMock).not.toHaveBeenCalled();
@@ -312,14 +287,13 @@ describe("getLedgerPageBootstrap", () => {
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
-      "2026-03-01",
-      "2026-03-31",
-      "USD",
       {
         categoryId: "cat-1",
         currency: "USD",
         minAmount: "20",
         maxAmount: "100",
+        startDate: "2026-03-01",
+        endDate: "2026-03-31",
       },
       bootstrapDependencies.ledgerReads
     );
@@ -354,10 +328,7 @@ describe("getLedgerPageBootstrap", () => {
 
     expect(calculateLedgerStatsMock).toHaveBeenCalledWith(
       "ledger-1",
-      "2026-03-01",
-      "2026-03-31",
-      "USD",
-      { search: "coffee" },
+      { search: "coffee", startDate: "2026-03-01", endDate: "2026-03-31" },
       bootstrapDependencies.ledgerReads
     );
     expect(listLedgerEntriesMock).toHaveBeenCalledWith(
@@ -487,7 +458,6 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
   });
 
   it("does not prefetch a multi-ledger list for the single-ledger workspace", async () => {
@@ -499,7 +469,6 @@ describe("getLedgerPageBootstrap", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(requireLedgerAccessMock).not.toHaveBeenCalled();
     expect(result?.dehydratedState.queries.some((query) => query.queryKey[0] === "ledgers")).toBe(
       false
     );

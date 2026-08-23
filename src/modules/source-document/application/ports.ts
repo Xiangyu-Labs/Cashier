@@ -1,11 +1,8 @@
 import type {
-  AuthenticatedServiceCredentialContract,
   RecoverableProcessingIntentContract,
   CategoryPort,
   DirectStoredFilePort,
-  LedgerPort,
   LedgerProjectionPort,
-  SettingsPort,
   StoredFileContract,
   SourceDocumentPort,
   SourceDocumentSubmissionPort,

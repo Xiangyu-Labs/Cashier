@@ -14,7 +14,7 @@ export const UNCATEGORIZED_SENTINEL = "__uncategorized__";
 export async function listLedgerEntries(
   ledgerId: string,
   params: ListLedgerEntriesInput,
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "listEntries">
 ): Promise<LedgerEntryPageDto> {
   const paramsRecord =
     typeof params === "object" && params !== null ? (params as Record<string, unknown>) : null;
@@ -41,7 +41,7 @@ export async function listLedgerEntriesFromValidatedInput(
   ledgerId: string,
   validated: ListLedgerEntriesValidatedInput,
   options: { uncategorizedOnly?: boolean } | undefined,
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "listEntries">
 ): Promise<LedgerEntryPageDto> {
   const filters: Parameters<typeof listLedgerEntryPage>[0]["filters"] = {};
   if (validated.startDate !== undefined) filters.startDate = validated.startDate;

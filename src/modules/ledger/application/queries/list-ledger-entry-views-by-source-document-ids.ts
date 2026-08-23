@@ -2,7 +2,7 @@ import type { LedgerReadPort } from "../ports";
 
 export function listLedgerEntryViewsBySourceDocumentIds(
   input: { ledgerId: string; sourceDocumentIds: string[]; includeDuplicatePending?: boolean },
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">
 ) {
   return reads.listEntriesBySourceDocumentIds(input);
 }

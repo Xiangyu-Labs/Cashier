@@ -10,8 +10,8 @@ import {
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
   saveEntryCategoriesAction,
-} from "@/modules/ledger/server-actions/categories";
-import { generateEntryCategoryMetadataAction } from "@/modules/ledger/server-actions/category-metadata";
+} from "@/modules/ledger/actions";
+import { generateEntryCategoryMetadataAction } from "@/modules/ledger/actions";
 import type {
   DeleteEntryCategoryResultDto,
   ReorderEntryCategoriesResultDto,
@@ -58,7 +58,7 @@ export function useCategoryMutations(
     mutationFn: ({ categoryId }: { categoryId: string; requestId: number }) =>
       generateEntryCategoryMetadataAction(ledgerId, categoryId),
     resourceGroups: ["categories"],
-    onSuccess: (_data, { categoryId }) => {
+    onSuccess: (_data, { categoryId: _categoryId }) => {
       options.onMetadataGenerated?.();
     },
     onError: (_error, { categoryId, requestId }) => {

@@ -3,7 +3,7 @@ import type { LedgerDto } from "@/modules/ledger/contracts";
 
 export async function getLedger(
   input: { ledgerId: string; userId: string },
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "getOwned">
 ): Promise<LedgerDto | null> {
   const ledger = await ledgers.getOwned(input.ledgerId, input.userId);
   return ledger == null

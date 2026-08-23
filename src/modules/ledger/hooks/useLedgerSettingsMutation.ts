@@ -1,7 +1,7 @@
 "use client";
 
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
-import { updateLedgerAction } from "@/modules/ledger/server-actions/update";
+import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
 import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -73,7 +73,7 @@ export function useLedgerSettingsMutation({
 
       payload.settings = settings;
 
-      const result = await updateLedgerAction(ledgerId, {
+      const result = await updateLedgerSettingsAction(ledgerId, {
         expectedUpdatedAt,
         ...payload,
       });

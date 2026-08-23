@@ -6,7 +6,7 @@ export function calculateLedgerEntryStats(
     ledgerId: string;
     filters: LedgerEntryFilterParams;
   },
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "calculateStats">
 ) {
   return reads.calculateStats(input);
 }

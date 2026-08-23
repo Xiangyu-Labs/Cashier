@@ -1,6 +1,6 @@
 export { getLedgerAction, getLedgersAction } from "./server-actions/get";
 export { createLedgerAction } from "./server-actions/create";
-export { updateLedgerAction } from "./server-actions/update";
+export { updateLedgerSettingsAction } from "./server-actions/update";
 export { deleteLedgerAction } from "./server-actions/delete";
 export {
   getEntryCategoriesAction,
@@ -8,6 +8,7 @@ export {
   updateEntryCategoryAction,
   deleteEntryCategoryAction,
   reorderEntryCategoriesAction,
+  saveEntryCategoriesAction,
   getUncategorizedCountAction,
 } from "./server-actions/categories";
 export { generateEntryCategoryMetadataAction } from "./server-actions/category-metadata";

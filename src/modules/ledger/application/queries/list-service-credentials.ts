@@ -3,7 +3,7 @@ import type { ServiceCredentialDto } from "@/modules/ledger/contracts";
 
 export async function listServiceCredentials(
   ledgerId: string,
-  credentials: ServiceCredentialPort
+  credentials: Pick<ServiceCredentialPort, "list">
 ): Promise<ServiceCredentialDto[]> {
   return (await credentials.list(ledgerId)).map((credential) => ({
     id: credential.id,

@@ -6,11 +6,11 @@ import type {
 } from "@/modules/ledger/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { getLedgerEntryAction } from "@/modules/ledger/server-actions/get-entry";
+import { getLedgerEntryAction } from "@/modules/ledger/actions";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/modules/ledger/server-actions/entries";
+} from "@/modules/ledger/actions";
 import { openLedgerDetail } from "@/lib/navigation/ledger-detail-navigation";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";

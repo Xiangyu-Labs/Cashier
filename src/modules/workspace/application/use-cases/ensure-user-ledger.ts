@@ -15,14 +15,14 @@ export interface EnsureUserLedgerResult {
 
 export async function resolveSingleLedgerForUser(
   input: EnsureUserLedgerInput,
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">
 ): Promise<EnsureUserLedgerResult> {
   return ensureUserLedger(input, ledgers);
 }
 
 export async function ensureUserLedger(
   input: EnsureUserLedgerInput,
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">
 ): Promise<EnsureUserLedgerResult> {
   const existing = await ledgers.listIdsForUser(input.userId);
   if (existing.length > 1) {

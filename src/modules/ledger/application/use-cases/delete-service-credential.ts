@@ -4,7 +4,7 @@ import { NotFoundError } from "@/lib/errors";
 export async function deleteServiceCredential(
   ledgerId: string,
   credentialId: string,
-  credentials: ServiceCredentialPort
+  credentials: Pick<ServiceCredentialPort, "revoke">
 ): Promise<void> {
   const result = await credentials.revoke(ledgerId, credentialId);
   if (result === "not_found") {

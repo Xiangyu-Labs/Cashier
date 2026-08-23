@@ -11,7 +11,7 @@ interface CreateEntryCategoryInput {
 export async function createEntryCategory(
   ledgerId: string,
   data: CreateEntryCategoryInput,
-  categories: CategoryPort
+  categories: Pick<CategoryPort, "create">
 ): Promise<EntryCategoryDto> {
   const created = await categories.create(ledgerId, data);
   return { ...created, deletedAt: null };

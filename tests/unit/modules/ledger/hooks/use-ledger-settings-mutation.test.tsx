@@ -5,12 +5,12 @@ import { describe, expect, it, vi } from "vitest";
 import { useLedgerSettingsMutation } from "@/modules/ledger/hooks/useLedgerSettingsMutation";
 import type { Ledger } from "@/modules/ledger/contracts";
 
-const { updateLedgerAction, toastError } = vi.hoisted(() => ({
-  updateLedgerAction: vi.fn(),
+const { updateLedgerSettingsAction, toastError } = vi.hoisted(() => ({
+  updateLedgerSettingsAction: vi.fn(),
   toastError: vi.fn(),
 }));
 
-vi.mock("@/modules/ledger/server-actions/update", () => ({ updateLedgerAction }));
+vi.mock("@/modules/ledger/actions", () => ({ updateLedgerSettingsAction }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: vi.fn() } }));
 
 const ledger: Ledger = {
@@ -44,43 +44,43 @@ function setup() {
 
 describe("useLedgerSettingsMutation", () => {
   it("submits the stream collapse preference", async () => {
-    updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
+    updateLedgerSettingsAction.mockResolvedValueOnce({ ok: true, ledger });
     const { result } = setup();
 
     await act(async () => result.current.mutateAsync({ collapseEntriesDefault: true }));
 
-    expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+    expect(updateLedgerSettingsAction).toHaveBeenCalledWith("ledger-1", {
       expectedUpdatedAt: ledger.updatedAt,
       settings: { collapseEntriesDefault: true },
     });
   });
 
   it("submits preferred currencies through the currencies field", async () => {
-    updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
+    updateLedgerSettingsAction.mockResolvedValueOnce({ ok: true, ledger });
     const { result } = setup();
 
     await act(async () => result.current.mutateAsync({ currencies: ["USD", "CNY"] }));
 
-    expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+    expect(updateLedgerSettingsAction).toHaveBeenCalledWith("ledger-1", {
       expectedUpdatedAt: ledger.updatedAt,
       settings: { currencies: ["USD", "CNY"] },
     });
   });
 
   it("submits the duplicate detection preference", async () => {
-    updateLedgerAction.mockResolvedValueOnce({ ok: true, ledger });
+    updateLedgerSettingsAction.mockResolvedValueOnce({ ok: true, ledger });
     const { result } = setup();
 
     await act(async () => result.current.mutateAsync({ duplicateDetectionEnabled: false }));
 
-    expect(updateLedgerAction).toHaveBeenCalledWith("ledger-1", {
+    expect(updateLedgerSettingsAction).toHaveBeenCalledWith("ledger-1", {
       expectedUpdatedAt: ledger.updatedAt,
       settings: { duplicateDetectionEnabled: false },
     });
   });
 
   it("localizes action failures and does not invalidate queries", async () => {
-    updateLedgerAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
+    updateLedgerSettingsAction.mockResolvedValueOnce({ ok: false, code: "rates_unavailable" });
     const { result, invalidate } = setup();
 
     await act(async () => {

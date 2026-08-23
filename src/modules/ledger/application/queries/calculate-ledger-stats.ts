@@ -7,7 +7,7 @@ import type { LedgerStatsQueryInput } from "@/modules/ledger/contract-schemas";
 export async function calculateLedgerStats(
   ledgerId: string,
   query: LedgerStatsQueryInput,
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "calculateStats">
 ): Promise<LedgerSummaryDto> {
   const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
     ledgerId,

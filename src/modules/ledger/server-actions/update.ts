@@ -11,7 +11,7 @@ import { updateLedger } from "@/modules/ledger/application/use-cases/update-ledg
 import { toUpdateLedgerActionErrorCode } from "./update-error";
 import { serverComposition } from "@/application/server-composition-root";
 
-export const updateLedgerAction = withAuth(
+export const updateLedgerSettingsAction = withAuth(
   async (
     userId: string,
     id: string,
@@ -30,7 +30,10 @@ export const updateLedgerAction = withAuth(
       };
     } catch (error) {
       const code = toUpdateLedgerActionErrorCode(error);
-      if (code === "unexpected") logError("updateLedgerAction", error);
+      // This settings action intentionally returns a recovery-code result so
+      // callers can keep drafts on known conflicts. Other simple commands
+      // continue to throw their typed application errors at the boundary.
+      if (code === "unexpected") logError("updateLedgerSettingsAction", error);
       return { ok: false, code };
     }
   }

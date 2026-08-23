@@ -9,18 +9,19 @@ import { getEnhancedStats } from "@/modules/stats/application/queries/get-enhanc
 import { listStreamPage } from "@/modules/source-document/application/queries/list-stream-page";
 import { getStreamTotal } from "@/modules/source-document/application/queries/get-stream-total";
 import type { StreamPage } from "@/modules/source-document/contracts";
-import { requireLedgerAccess } from "@/modules/ledger/access";
 import type { LedgerAdvancedFilters } from "@/modules/workspace/initial-query-state";
 import type { PeriodParams } from "@/lib/period-utils";
 import type { LedgerDto } from "@/modules/ledger/contracts";
 import type { LedgerTab } from "@/lib/ledger-tabs";
-import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { addPeriod, getDateInTimezone, parseDateString } from "@/lib/date-utils";
 import type { CategoryPort } from "@/application/contracts";
 import type { ServiceCredentialPort } from "@/application/contracts";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import type { StatsReadPort } from "@/modules/stats/application/ports";
-import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
+import type {
+  LedgerChangeReadPort,
+  SourceDocumentReadPort,
+} from "@/modules/source-document/application/ports";
 import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
 import type { EntryCategoryWithCountDto } from "@/modules/ledger/contracts";
 import {
@@ -42,44 +43,29 @@ export interface GetLedgerPageBootstrapInput {
   periodParams: PeriodParams;
   advancedFilters?: LedgerAdvancedFilters;
   statsState?: StatsUrlState;
-  /** Optional pre-authorized ledger DTO to skip re-authorization. */
-  ledgerDto?: LedgerDto;
+  /** Ledger DTO returned by the authenticated page boundary. */
+  ledgerDto: LedgerDto;
 }
 
 export async function getLedgerPageBootstrap(
   input: GetLedgerPageBootstrapInput,
   dependencies: {
-    categories: CategoryPort;
-    ledgerReads: LedgerReadPort;
-    stats: StatsReadPort;
-    sourceDocuments: SourceDocumentQueryPorts;
-    credentials: ServiceCredentialPort;
+    categories: Pick<CategoryPort, "listWithCount" | "countUncategorized">;
+    ledgerReads: Pick<
+      LedgerReadPort,
+      "calculateStats" | "listEntries" | "listEntriesBySourceDocumentIds"
+    >;
+    stats: Pick<StatsReadPort, "queryEnhanced">;
+    sourceDocuments: {
+      documents: Pick<SourceDocumentReadPort, "list" | "calculateCompletedTotal">;
+      ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
+      changes?: Pick<LedgerChangeReadPort, "getVersion">;
+    };
+    credentials: Pick<ServiceCredentialPort, "list">;
   }
 ): Promise<LedgerPageBootstrapResult | null> {
-  let ledgerDto: LedgerDto;
-
-  if (input.ledgerDto != null) {
-    if (input.ledgerDto.id !== input.ledgerId) return null;
-    // Use pre-authorized DTO — skip re-authorization
-    ledgerDto = input.ledgerDto;
-  } else {
-    // Legacy path: authorize inline
-    try {
-      const { ledger } = await requireLedgerAccess(input.ledgerId);
-      ledgerDto = {
-        id: ledger.id,
-        userId: ledger.userId,
-        settings: ledger.settings,
-        createdAt: ledger.createdAt,
-        updatedAt: ledger.updatedAt,
-      };
-    } catch (error) {
-      if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
-        return null;
-      }
-      throw error;
-    }
-  }
+  if (input.ledgerDto.id !== input.ledgerId) return null;
+  const ledgerDto = input.ledgerDto;
 
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);

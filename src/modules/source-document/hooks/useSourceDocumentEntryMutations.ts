@@ -2,7 +2,7 @@
 import {
   batchDeleteLedgerEntriesAction,
   batchUpdateLedgerEntriesAction,
-} from "@/modules/ledger/server-actions/entries";
+} from "@/modules/ledger/actions";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { type BatchEntryUpdateData } from "./source-document-detail-cache";

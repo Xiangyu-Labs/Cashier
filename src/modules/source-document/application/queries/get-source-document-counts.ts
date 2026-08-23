@@ -7,7 +7,7 @@ import type { SourceDocumentReadPort } from "../ports";
  */
 export async function getSourceDocumentCountsQuery(
   ledgerId: string,
-  documents: SourceDocumentReadPort
+  documents: Pick<SourceDocumentReadPort, "counts">
 ): Promise<SourceDocumentCountsDto> {
   const result = await documents.counts(ledgerId);
 

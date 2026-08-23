@@ -4,7 +4,7 @@ import type { CategoryPort } from "@/application/contracts";
 
 export async function listEntryCategories(
   ledgerId: string,
-  categories: CategoryPort
+  categories: Pick<CategoryPort, "listWithCount">
 ): Promise<EntryCategoryWithCountDto[]> {
   return listEntryCategoriesWithCount(ledgerId, categories);
 }

@@ -3,7 +3,8 @@ import { listLedgerEntryViewsBySourceDocumentIds } from "@/modules/ledger/source
 import type { SourceDocumentListItemDto, StreamPage } from "../../contracts";
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
-import type { SourceDocumentQueryPorts } from "../ports";
+import type { LedgerChangeReadPort, SourceDocumentReadPort } from "../ports";
+import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import { filterStreamEntries } from "../../stream-filter-policy";
 import { createHash } from "node:crypto";
 
@@ -123,7 +124,11 @@ function filterFingerprint(input: ListStreamPageInput, search: string | undefine
 export async function listStreamPage(
   ledgerId: string,
   input: ListStreamPageInput,
-  ports: SourceDocumentQueryPorts
+  ports: {
+    documents: Pick<SourceDocumentReadPort, "list">;
+    ledgerReads: Pick<LedgerReadPort, "listEntriesBySourceDocumentIds">;
+    changes?: Pick<LedgerChangeReadPort, "getVersion">;
+  }
 ): Promise<StreamPage> {
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);

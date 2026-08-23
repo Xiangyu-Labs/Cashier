@@ -3,7 +3,7 @@ import type { LedgerMutationPort } from "../ports";
 export function deleteLedgerEntry(
   ledgerId: string,
   ledgerEntryId: string,
-  mutations: LedgerMutationPort
+  mutations: Pick<LedgerMutationPort, "deleteEntry">
 ) {
   return mutations.deleteEntry(ledgerId, ledgerEntryId);
 }

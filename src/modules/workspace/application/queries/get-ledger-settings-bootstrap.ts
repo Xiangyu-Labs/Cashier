@@ -3,15 +3,13 @@ import { LEDGER } from "@/lib/constants";
 import { queryKeys } from "@/lib/query-keys";
 import type { CategoryPort, ServiceCredentialPort } from "@/application/contracts";
 import type { LedgerDto, EntryCategoryWithCountDto } from "@/modules/ledger/contracts";
-import { requireLedgerAccess } from "@/modules/ledger/access";
 import { listEntryCategories } from "@/modules/ledger/application/queries/list-entry-categories";
 import { getLedgerSettingsView } from "@/modules/ledger/application/queries/get-ledger-settings-view";
-import { NotFoundError, UnauthorizedError } from "@/lib/errors";
 
 export interface GetLedgerSettingsBootstrapInput {
   ledgerId: string;
-  /** Optional pre-authorized ledger DTO to avoid a second access check. */
-  ledgerDto?: LedgerDto;
+  /** Ledger DTO returned by the authenticated page boundary. */
+  ledgerDto: LedgerDto;
 }
 
 export interface LedgerSettingsBootstrapResult {
@@ -22,30 +20,12 @@ export interface LedgerSettingsBootstrapResult {
 export async function getLedgerSettingsBootstrap(
   input: GetLedgerSettingsBootstrapInput,
   dependencies: {
-    categories: CategoryPort;
-    credentials: ServiceCredentialPort;
+    categories: Pick<CategoryPort, "listWithCount" | "countUncategorized">;
+    credentials: Pick<ServiceCredentialPort, "list">;
   }
 ): Promise<LedgerSettingsBootstrapResult | null> {
-  let ledgerDto: LedgerDto;
-
-  if (input.ledgerDto != null) {
-    if (input.ledgerDto.id !== input.ledgerId) return null;
-    ledgerDto = input.ledgerDto;
-  } else {
-    try {
-      const { ledger } = await requireLedgerAccess(input.ledgerId);
-      ledgerDto = {
-        id: ledger.id,
-        userId: ledger.userId,
-        settings: ledger.settings,
-        createdAt: ledger.createdAt,
-        updatedAt: ledger.updatedAt,
-      };
-    } catch (error) {
-      if (error instanceof NotFoundError || error instanceof UnauthorizedError) return null;
-      throw error;
-    }
-  }
+  if (input.ledgerDto.id !== input.ledgerId) return null;
+  const ledgerDto = input.ledgerDto;
 
   const queryClient = new QueryClient();
   queryClient.setQueryData(queryKeys.ledger(input.ledgerId), ledgerDto);

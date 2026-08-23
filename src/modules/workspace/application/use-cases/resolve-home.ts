@@ -10,7 +10,7 @@ export interface ResolveHomeResult {
 const resolveHomeImpl = cache(
   async (
     input: { userId: string; locale: string },
-    ledgers: LedgerPort
+    ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">
   ): Promise<ResolveHomeResult> => {
     return resolveSingleLedgerForUser(input, ledgers);
   }
@@ -18,7 +18,7 @@ const resolveHomeImpl = cache(
 
 export async function resolveHome(
   input: { userId: string; locale: string },
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "listIdsForUser" | "createDefault">
 ): Promise<ResolveHomeResult> {
   return resolveHomeImpl(input, ledgers);
 }

@@ -5,7 +5,7 @@ import type { SourceDocumentReadPort } from "../ports";
 export async function getSourceDocumentFullQuery(
   ledgerId: string,
   sourceDocumentId: string,
-  documents: SourceDocumentReadPort
+  documents: Pick<SourceDocumentReadPort, "get">
 ): Promise<SourceDocumentFullDto> {
   const document = await documents.get(ledgerId, sourceDocumentId);
 
@@ -25,7 +25,7 @@ export async function getSourceDocumentFullQuery(
 export async function getSourceDocumentFull(
   ledgerId: string,
   sourceDocumentId: string,
-  documents: SourceDocumentReadPort
+  documents: Pick<SourceDocumentReadPort, "get">
 ): Promise<SourceDocumentFullDto> {
   return getSourceDocumentFullQuery(ledgerId, sourceDocumentId, documents);
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getLedgerAction } from "@/modules/ledger/actions";
-import { updateLedgerAction } from "@/modules/ledger/actions";
+import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
 import { getTestDb } from "../../setup";
 import { currencyRates, ledgers } from "@/persistence";
 import { createTestUserWithLedger, TEST_USER_ID } from "../../helpers/schema-setup";
@@ -29,7 +29,7 @@ describe("Ledger Actions", () => {
       rates: { USD: 1, CNY: 8 },
     });
 
-    const result = await updateLedgerAction(ledgerId, {
+    const result = await updateLedgerSettingsAction(ledgerId, {
       expectedUpdatedAt: initial!.updatedAt.toISOString(),
       settings: {
         mainCurrency: "USD",
@@ -47,7 +47,7 @@ describe("Ledger Actions", () => {
 
   it("should return a stable conflict for a non-existent ledger (Update)", async () => {
     await expect(
-      updateLedgerAction("00000000-0000-4000-8000-000000000000", {
+      updateLedgerSettingsAction("00000000-0000-4000-8000-000000000000", {
         expectedUpdatedAt: new Date().toISOString(),
         settings: { mainCurrency: "USD" },
       })

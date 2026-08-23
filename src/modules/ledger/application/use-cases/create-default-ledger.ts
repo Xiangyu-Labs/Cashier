@@ -3,7 +3,7 @@ import { getDefaultLedger } from "@/config/default-ledger";
 
 export async function createDefaultLedger(
   input: { userId: string; locale?: string },
-  ledgers: LedgerPort
+  ledgers: Pick<LedgerPort, "createDefault">
 ) {
   const defaults = getDefaultLedger(input.locale ?? "zh");
   const ledger = await ledgers.createDefault({

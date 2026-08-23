@@ -17,8 +17,8 @@ export async function generateEntryCategoryMetadata(
     categoryId: string;
   },
   dependencies: {
-    categories: CategoryPort;
-    settings: SettingsPort;
+    categories: Pick<CategoryPort, "get" | "list" | "updateMissingMetadata">;
+    settings: Pick<SettingsPort, "get">;
     generator: CategoryMetadataGeneratorPort;
   }
 ): Promise<CategoryMetadataResult> {

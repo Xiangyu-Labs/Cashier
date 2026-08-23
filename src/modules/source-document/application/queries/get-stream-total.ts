@@ -15,7 +15,7 @@ export interface GetStreamTotalInput {
 export async function getStreamTotal(
   ledgerId: string,
   input: GetStreamTotalInput = {},
-  documents: SourceDocumentReadPort
+  documents: Pick<SourceDocumentReadPort, "calculateCompletedTotal">
 ): Promise<StreamTotalDto> {
   if (
     input.statuses != null &&

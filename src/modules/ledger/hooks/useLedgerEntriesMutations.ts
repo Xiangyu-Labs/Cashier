@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import {
   updateLedgerEntryAction,
   deleteLedgerEntryAction,
-} from "@/modules/ledger/server-actions/entries";
+} from "@/modules/ledger/actions";
 import type { DeleteLedgerEntryResultDto } from "@/modules/ledger/contracts";
 import type { LedgerEntryDto } from "@/modules/ledger/contracts";
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";

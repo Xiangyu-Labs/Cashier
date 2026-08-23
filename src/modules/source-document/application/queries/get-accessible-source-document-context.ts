@@ -8,7 +8,7 @@ export interface AccessibleSourceDocumentContext {
 
 export async function getAccessibleSourceDocumentContext(
   sourceDocumentId: string,
-  documents: SourceDocumentReadPort,
+  documents: Pick<SourceDocumentReadPort, "getAccessContext">,
   authorizeLedger: (ledgerId: string) => Promise<unknown>
 ): Promise<AccessibleSourceDocumentContext | null> {
   const context = await documents.getAccessContext(sourceDocumentId);

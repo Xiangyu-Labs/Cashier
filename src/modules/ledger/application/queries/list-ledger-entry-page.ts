@@ -10,7 +10,7 @@ export function listLedgerEntryPage(
     cursor?: string | null;
     filters: LedgerEntryFilterParams;
   },
-  reads: LedgerReadPort
+  reads: Pick<LedgerReadPort, "listEntries">
 ) {
   return reads.listEntries(input);
 }

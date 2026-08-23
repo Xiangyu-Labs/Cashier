@@ -3,14 +3,14 @@ import type { CategoryPort } from "@/application/contracts";
 import { NotFoundError } from "@/lib/errors";
 
 type LedgerEntryMutationDependencies =
-  | LedgerMutationPort
+  | Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">
   | {
-      mutations: LedgerMutationPort;
+      mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">;
       categories: Pick<CategoryPort, "get">;
     };
 
 function resolveDependencies(dependencies: LedgerEntryMutationDependencies): {
-  mutations: LedgerMutationPort;
+  mutations: Pick<LedgerMutationPort, "createEntry" | "updateEntry" | "batchUpdateEntries">;
   categories?: Pick<CategoryPort, "get">;
 } {
   if ("mutations" in dependencies) return dependencies;

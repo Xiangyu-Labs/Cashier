@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getTestDb } from "../../setup";
 import { TEST_USER_ID, createTestUserWithLedger } from "../../helpers/schema-setup";
 import { getLedgerAction } from "@/modules/ledger/actions";
-import { updateLedgerAction } from "@/modules/ledger/actions";
+import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
 import { getLedgerEntriesAction } from "@/modules/ledger/actions";
 import { getSourceDocumentsAction } from "@/modules/source-document/actions";
 import { getEntryCategoriesAction } from "@/modules/ledger/actions";
@@ -79,7 +79,7 @@ describe("Multi-User Isolation", () => {
       });
 
       await expect(
-        updateLedgerAction(user2Ledger, {
+        updateLedgerSettingsAction(user2Ledger, {
           expectedUpdatedAt: new Date().toISOString(),
           settings: { aiLanguage: "en" },
         })
