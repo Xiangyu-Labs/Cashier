@@ -50,7 +50,6 @@ export type EntryCategoryDto = {
   description: string | null;
   icon: string | null;
   sortOrder: number;
-  isEditable: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -69,6 +68,7 @@ export interface SaveEntryCategoryTargetDto {
 }
 
 export interface SaveEntryCategoriesInput {
+  expectedRevision: string;
   categories: SaveEntryCategoryTargetDto[];
 }
 

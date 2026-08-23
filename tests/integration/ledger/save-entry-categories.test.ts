@@ -5,6 +5,7 @@ import { saveEntryCategoriesAction } from "@/modules/ledger/server-actions/categ
 import { entryCategories, ledgerEntries, ledgers, sourceDocuments } from "@/persistence";
 import { getTestDb } from "../../setup";
 import { createLedgerData, createSourceDocumentData } from "../../helpers/factories";
+import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -49,8 +50,14 @@ describe("saveEntryCategoriesAction", () => {
       currency: "CNY",
       categoryId: removeId,
     });
+    const expectedRevision = await computeCategoryCollectionRevision(
+      await db.query.entryCategories.findMany({
+        where: eq(entryCategories.ledgerId, ledger.id),
+      })
+    );
 
     const saved = await saveEntryCategoriesAction(ledger.id, {
+      expectedRevision,
       categories: [
         {
           clientId: newId,
@@ -80,7 +87,7 @@ describe("saveEntryCategoriesAction", () => {
     expect(entry?.categoryId).toBeNull();
   });
 
-  it("rolls back every change when a non-editable category would be deleted", async () => {
+  it("allows every category to be edited and deleted", async () => {
     const db = getTestDb();
     const ledger = createLedgerData({ userId });
     const editableId = crypto.randomUUID();
@@ -93,27 +100,64 @@ describe("saveEntryCategoriesAction", () => {
         ledgerId: ledger.id,
         name: "Fixed",
         sortOrder: 1,
-        isEditable: false,
       },
     ]);
+    const expectedRevision = await computeCategoryCollectionRevision(
+      await db.query.entryCategories.findMany({
+        where: eq(entryCategories.ledgerId, ledger.id),
+      })
+    );
 
     await expect(
       saveEntryCategoriesAction(ledger.id, {
+        expectedRevision,
         categories: [
           {
             id: editableId,
-            name: "Must roll back",
+            name: "Changed",
             description: null,
             icon: null,
           },
         ],
       })
-    ).rejects.toThrow(/non-editable category cannot be deleted/i);
+    ).resolves.toHaveLength(1);
 
     const active = await db.query.entryCategories.findMany({
       where: isNull(entryCategories.deletedAt),
       orderBy: entryCategories.sortOrder,
     });
-    expect(active.map((category) => category.name)).toEqual(["Editable", "Fixed"]);
+    expect(active.map((category) => category.name)).toEqual(["Changed"]);
+  });
+
+  it("rejects a stale category collection revision without applying the draft", async () => {
+    const db = getTestDb();
+    const ledger = createLedgerData({ userId });
+    const categoryId = crypto.randomUUID();
+    await db.insert(ledgers).values(ledger);
+    await db.insert(entryCategories).values({
+      id: categoryId,
+      ledgerId: ledger.id,
+      name: "Original",
+      sortOrder: 0,
+    });
+    const expectedRevision = await computeCategoryCollectionRevision(
+      await db.query.entryCategories.findMany({
+        where: eq(entryCategories.ledgerId, ledger.id),
+      })
+    );
+    await db
+      .update(entryCategories)
+      .set({ name: "Changed elsewhere", updatedAt: new Date() })
+      .where(eq(entryCategories.id, categoryId));
+
+    await expect(
+      saveEntryCategoriesAction(ledger.id, {
+        expectedRevision,
+        categories: [{ id: categoryId, name: "Draft", description: null, icon: null }],
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      db.query.entryCategories.findFirst({ where: eq(entryCategories.id, categoryId) })
+    ).resolves.toMatchObject({ name: "Changed elsewhere" });
   });
 });

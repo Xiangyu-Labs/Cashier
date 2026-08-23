@@ -77,7 +77,6 @@ export function mapEntryCategoryDto(category: EntryCategoryRow): EntryCategoryDt
     description: category.description,
     icon: category.icon,
     sortOrder: category.sortOrder,
-    isEditable: category.isEditable,
     createdAt: toIso(category.createdAt)!,
     updatedAt: toIso(category.updatedAt)!,
     deletedAt: toIso(category.deletedAt),

@@ -211,6 +211,13 @@
       "when": 1788009600000,
       "tag": "0029_auth_session_registration_state",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1788096000000,
+      "tag": "0030_remove_category_is_editable",
+      "breakpoints": true
     }
   ]
 }

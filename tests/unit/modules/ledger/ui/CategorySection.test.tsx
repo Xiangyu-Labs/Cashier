@@ -14,7 +14,6 @@ const category: EntryCategory = {
   description: null,
   icon: null,
   sortOrder: 0,
-  isEditable: true,
   createdAt: "2026-08-07T00:00:00.000Z",
   updatedAt: "2026-08-07T00:00:00.000Z",
   deletedAt: null,
@@ -40,6 +39,7 @@ describe("CategorySection", () => {
     fireEvent.click(screen.getByRole("button", { name: "save" }));
     await waitFor(() => expect(onSaveCategories).toHaveBeenCalledOnce());
     expect(onSaveCategories).toHaveBeenCalledWith({
+      expectedRevision: expect.stringMatching(/^[0-9a-f]{64}$/),
       categories: [
         {
           id: "category-1",

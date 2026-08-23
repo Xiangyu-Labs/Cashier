@@ -448,7 +448,8 @@ export interface CategoryPort {
   reorder(ledgerId: LedgerId, categoryIds: readonly string[]): Promise<number>;
   saveAll(
     ledgerId: LedgerId,
-    categories: readonly CategoryTargetContract[]
+    categories: readonly CategoryTargetContract[],
+    expectedRevision: string
   ): Promise<readonly CategoryContract[]>;
   countUncategorized(ledgerId: LedgerId): Promise<number>;
 }
@@ -610,7 +611,6 @@ export interface CategoryContract {
   description: string | null;
   icon: string | null;
   sortOrder: number;
-  isEditable: boolean;
   createdAt: string;
   updatedAt: string;
 }

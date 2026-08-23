@@ -38,6 +38,7 @@ import { convertWithRates } from "@/modules/currency/application/services/rate-c
 import { roundToCurrency } from "@/lib/money/currency-precision";
 import { normalizeUserPreferences } from "@/modules/auth/services/user-preferences";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
 
 /** lastUsedAt updates are throttled to once per five minutes per credential. */
 const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
@@ -84,7 +85,6 @@ function mapCategory(row: typeof entryCategories.$inferSelect) {
     description: row.description,
     icon: row.icon,
     sortOrder: row.sortOrder,
-    isEditable: row.isEditable,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -462,7 +462,7 @@ export const postgresCategoryAdapter: CategoryPort = {
       .select()
       .from(entryCategories)
       .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
-      .orderBy(entryCategories.sortOrder, entryCategories.createdAt);
+      .orderBy(entryCategories.sortOrder, entryCategories.createdAt, entryCategories.id);
     return rows.map(mapCategory);
   },
 
@@ -503,7 +503,7 @@ export const postgresCategoryAdapter: CategoryPort = {
       )
       .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
       .groupBy(entryCategories.id)
-      .orderBy(entryCategories.sortOrder, entryCategories.createdAt);
+      .orderBy(entryCategories.sortOrder, entryCategories.createdAt, entryCategories.id);
     return rows.map(({ category, entryCount }) => ({
       ...mapCategory(category),
       entryCount: Number(entryCount),
@@ -511,19 +511,22 @@ export const postgresCategoryAdapter: CategoryPort = {
   },
 
   async create(ledgerId, input) {
-    const [last] = await db
-      .select({ sortOrder: entryCategories.sortOrder })
-      .from(entryCategories)
-      .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
-      .orderBy(desc(entryCategories.sortOrder))
-      .limit(1);
-    const created = await db
-      .insert(entryCategories)
-      .values({ ...input, ledgerId, sortOrder: input.sortOrder ?? (last?.sortOrder ?? -1) + 1 })
-      .returning()
-      .then((rows) => rows[0]);
-    if (created == null) throw new ConflictError("Failed to create category");
-    return mapCategory(created);
+    return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      const [last] = await tx
+        .select({ sortOrder: entryCategories.sortOrder })
+        .from(entryCategories)
+        .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
+        .orderBy(desc(entryCategories.sortOrder))
+        .limit(1);
+      const created = await tx
+        .insert(entryCategories)
+        .values({ ...input, ledgerId, sortOrder: input.sortOrder ?? (last?.sortOrder ?? -1) + 1 })
+        .returning()
+        .then((rows) => rows[0]);
+      if (created == null) throw new ConflictError("Failed to create category");
+      return mapCategory(created);
+    });
   },
 
   async update(ledgerId, categoryId, input) {
@@ -618,19 +621,20 @@ export const postgresCategoryAdapter: CategoryPort = {
 
   async reorder(ledgerId, categoryIds) {
     return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
       if (categoryIds.length === 0) return 0;
-      const owned = await tx
+      const active = await tx
         .select({ id: entryCategories.id })
         .from(entryCategories)
-        .where(
-          and(
-            eq(entryCategories.ledgerId, ledgerId),
-            inArray(entryCategories.id, [...categoryIds]),
-            isNull(entryCategories.deletedAt)
-          )
-        );
-      if (owned.length !== new Set(categoryIds).size) {
-        throw new ValidationError("Category reorder contains an inaccessible category");
+        .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
+        .orderBy(entryCategories.sortOrder, entryCategories.createdAt, entryCategories.id);
+      const activeIds = new Set(active.map((category) => category.id));
+      if (
+        categoryIds.length !== active.length ||
+        new Set(categoryIds).size !== categoryIds.length ||
+        categoryIds.some((categoryId) => !activeIds.has(categoryId))
+      ) {
+        throw new ValidationError("Category reorder must include every active category");
       }
       const ordering = JSON.stringify(
         categoryIds.map((id, sortOrder) => ({ id, sort_order: sortOrder }))
@@ -658,15 +662,19 @@ export const postgresCategoryAdapter: CategoryPort = {
     });
   },
 
-  async saveAll(ledgerId, targets) {
+  async saveAll(ledgerId, targets, expectedRevision) {
     return db.transaction(async (tx) => {
       await lockLedgerForUpdate(tx, ledgerId);
       const current = await tx
         .select()
         .from(entryCategories)
         .where(and(eq(entryCategories.ledgerId, ledgerId), isNull(entryCategories.deletedAt)))
-        .orderBy(entryCategories.sortOrder, entryCategories.createdAt)
+        .orderBy(entryCategories.sortOrder, entryCategories.createdAt, entryCategories.id)
         .for("update");
+      const actualRevision = await computeCategoryCollectionRevision(current);
+      if (actualRevision !== expectedRevision) {
+        throw new ConflictError("Category collection changed since it was loaded");
+      }
       const currentById = new Map(current.map((category) => [category.id, category]));
       const targetIds = new Set(targets.map((target) => target.id ?? target.clientId!));
 
@@ -676,22 +684,9 @@ export const postgresCategoryAdapter: CategoryPort = {
         if (target.id != null && existing == null) {
           throw new ValidationError("Category target contains an inaccessible category");
         }
-        if (
-          existing != null &&
-          !existing.isEditable &&
-          (existing.name !== target.name ||
-            existing.description !== target.description ||
-            existing.icon !== target.icon ||
-            existing.sortOrder !== target.sortOrder)
-        ) {
-          throw new ValidationError("A non-editable category cannot be changed");
-        }
       }
 
       const removed = current.filter((category) => !targetIds.has(category.id));
-      if (removed.some((category) => !category.isEditable)) {
-        throw new ValidationError("A non-editable category cannot be deleted");
-      }
 
       const now = new Date();
       const removedIds = removed.map((category) => category.id);
@@ -720,13 +715,16 @@ export const postgresCategoryAdapter: CategoryPort = {
 
       const renamedExisting = targets.filter((target) => {
         const existing = currentById.get(target.id ?? target.clientId!);
-        return existing?.isEditable === true && existing.name !== target.name;
+        return existing != null && existing.name !== target.name;
       });
       for (const target of renamedExisting) {
         const resolvedId = target.id ?? target.clientId!;
         await tx
           .update(entryCategories)
-          .set({ name: `__cashier_category_${resolvedId}`, updatedAt: now })
+          .set({
+            name: `__cashier_internal_category_rename__:${crypto.randomUUID()}:${"x".repeat(80)}`,
+            updatedAt: now,
+          })
           .where(
             and(
               eq(entryCategories.ledgerId, ledgerId),
@@ -747,10 +745,9 @@ export const postgresCategoryAdapter: CategoryPort = {
             description: target.description,
             icon: target.icon,
             sortOrder: target.sortOrder,
-            isEditable: true,
             updatedAt: now,
           });
-        } else if (existing.isEditable) {
+        } else {
           await tx
             .update(entryCategories)
             .set({
@@ -781,12 +778,12 @@ export const postgresCategoryAdapter: CategoryPort = {
             inArray(entryCategories.id, savedIds),
             isNull(entryCategories.deletedAt)
           )
-        );
-      const savedById = new Map(saved.map((category) => [category.id, category]));
-      if (savedById.size !== savedIds.length) {
+        )
+        .orderBy(entryCategories.sortOrder, entryCategories.createdAt, entryCategories.id);
+      if (saved.length !== savedIds.length) {
         throw new ConflictError("Category save changed during update");
       }
-      return savedIds.map((id) => mapCategory(savedById.get(id)!));
+      return saved.map(mapCategory);
     });
   },
 

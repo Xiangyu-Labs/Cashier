@@ -8,7 +8,8 @@ export async function saveEntryCategories(
 ): Promise<EntryCategoryDto[]> {
   const saved = await categories.saveAll(
     ledgerId,
-    input.categories.map((category, sortOrder) => ({ ...category, sortOrder }))
+    input.categories.map((category, sortOrder) => ({ ...category, sortOrder })),
+    input.expectedRevision
   );
   return saved.map((category) => ({ ...category, deletedAt: null }));
 }

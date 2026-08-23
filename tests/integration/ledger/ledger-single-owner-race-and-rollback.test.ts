@@ -65,14 +65,12 @@ describe("ledger single-owner race and rollback", () => {
           description: "First duplicate category",
           icon: "Utensils",
           sortOrder: 1,
-          isEditable: true,
         },
         {
           name: "Duplicate category",
           description: "Second duplicate category",
           icon: "Package",
           sortOrder: 2,
-          isEditable: true,
         },
       ],
     });

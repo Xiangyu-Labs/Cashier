@@ -55,7 +55,6 @@ function createCategory(overrides: Partial<EntryCategory> = {}): EntryCategory {
     description: null,
     icon: "utensils",
     sortOrder: 1,
-    isEditable: true,
     createdAt: "2026-03-23T00:00:00.000Z",
     updatedAt: "2026-03-23T00:00:00.000Z",
     deletedAt: null,

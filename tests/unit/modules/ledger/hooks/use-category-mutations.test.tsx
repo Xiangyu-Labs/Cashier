@@ -36,7 +36,6 @@ const category: EntryCategory = {
   sortOrder: 0,
   icon: null,
   description: null,
-  isEditable: true,
   createdAt: "2026-07-01T00:00:00.000Z",
   updatedAt: "2026-07-01T00:00:00.000Z",
   deletedAt: null,
@@ -114,6 +113,7 @@ describe("useCategoryMutations", () => {
     let mutation!: Promise<EntryCategory[]>;
     act(() => {
       mutation = result.current.saveCategories.mutateAsync({
+        expectedRevision: "a".repeat(64),
         categories: [{ id: category.id, name: "Dining", description: null, icon: null }],
       });
     });

@@ -83,6 +83,7 @@ export const saveEntryCategoriesAction = withLedgerAccess(
     return saveEntryCategories(
       ledgerId,
       {
+        expectedRevision: validated.expectedRevision,
         categories: validated.categories.map((category) => ({
           ...(category.id === undefined ? {} : { id: category.id }),
           ...(category.clientId === undefined ? {} : { clientId: category.clientId }),

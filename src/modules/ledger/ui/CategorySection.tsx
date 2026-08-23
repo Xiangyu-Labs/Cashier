@@ -18,6 +18,7 @@ import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { computeCategoryCollectionRevision } from "@/modules/ledger/category-collection-revision";
 
 interface CategorySectionProps {
   categories: EntryCategory[];
@@ -36,7 +37,6 @@ interface CategoryDraft {
   name: string;
   description: string;
   icon: string | null;
-  isEditable: boolean;
   entryCount?: number;
 }
 
@@ -128,7 +128,6 @@ export function CategorySection({
         name,
         description: "",
         icon: null,
-        isEditable: true,
       },
     ]);
     setNewCategoryName("");
@@ -148,7 +147,9 @@ export function CategorySection({
     if (!dirty || isSaving) return;
     setSaveError(null);
     try {
+      const expectedRevision = await computeCategoryCollectionRevision(categories);
       await onSaveCategories({
+        expectedRevision,
         categories: draftOrder.map((category) => ({
           ...(category.id === undefined ? {} : { id: category.id }),
           ...(category.clientId === undefined ? {} : { clientId: category.clientId }),
@@ -253,40 +254,36 @@ export function CategorySection({
                 >
                   <ArrowDown className="h-4 w-4" />
                 </Button>
-                {category.isEditable ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-11"
-                      disabled={isSaving}
-                      onClick={() => {
-                        const draft = {
-                          key: category.key,
-                          name: category.name,
-                          description: category.description,
-                          icon: category.icon,
-                        };
-                        setEditSession({ original: draft, draft });
-                      }}
-                      aria-label={t("editCategory", { name: category.name })}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-11 text-danger"
-                      disabled={isSaving}
-                      onClick={() => setDeleteTarget(category)}
-                      aria-label={t("deleteCategory", { name: category.name })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11"
+                  disabled={isSaving}
+                  onClick={() => {
+                    const draft = {
+                      key: category.key,
+                      name: category.name,
+                      description: category.description,
+                      icon: category.icon,
+                    };
+                    setEditSession({ original: draft, draft });
+                  }}
+                  aria-label={t("editCategory", { name: category.name })}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 text-danger"
+                  disabled={isSaving}
+                  onClick={() => setDeleteTarget(category)}
+                  aria-label={t("deleteCategory", { name: category.name })}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ) : null}
           </div>
@@ -532,7 +529,6 @@ function toCategoryDraft(category: EntryCategory): CategoryDraft {
     name: category.name,
     description: category.description ?? "",
     icon: category.icon,
-    isEditable: category.isEditable,
     ...("entryCount" in category && typeof category.entryCount === "number"
       ? { entryCount: category.entryCount }
       : {}),

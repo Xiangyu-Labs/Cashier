@@ -94,7 +94,11 @@ export const updateEntryCategoryInputSchema = nonEmptyStrictObjectSchema({
 });
 
 export const reorderEntryCategoriesInputSchema = z.array(uuidSchema).min(1).max(MAX_BATCH_SIZE);
+export const categoryCollectionRevisionSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, "Invalid category collection revision");
 export const saveEntryCategoriesInputSchema = strictObjectSchema({
+  expectedRevision: categoryCollectionRevisionSchema,
   categories: z
     .array(
       strictObjectSchema({

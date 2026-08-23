@@ -242,6 +242,20 @@ describe("reorderEntryCategoriesAction", () => {
     expect(byId[id1]).toBe(1);
     expect(byId[id2]).toBe(2);
   });
+
+  it("rejects a partial reorder set", async () => {
+    const db = getTestDb();
+    const id1 = uuidv4();
+    const id2 = uuidv4();
+    await db.insert(entryCategories).values([
+      { id: id1, ledgerId, name: "A", sortOrder: 0 },
+      { id: id2, ledgerId, name: "B", sortOrder: 1 },
+    ]);
+
+    await expect(reorderEntryCategoriesAction(ledgerId, [id1])).rejects.toThrow(
+      /every active category/i
+    );
+  });
 });
 
 describe("getEntryCategoriesAction", () => {

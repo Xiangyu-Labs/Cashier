@@ -30,7 +30,6 @@ describe("createDefaultLedger", () => {
           description: null,
           icon: null,
           sortOrder: 1,
-          isEditable: true,
         },
       ],
     }));
@@ -71,7 +70,6 @@ describe("createDefaultLedger", () => {
           description: null,
           icon: null,
           sortOrder: 1,
-          isEditable: true,
         },
       ],
     });

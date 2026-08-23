@@ -19,7 +19,6 @@ export type SourceDocumentEntryCategoryDto = {
   description: string | null;
   icon: string | null;
   sortOrder: number;
-  isEditable: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
