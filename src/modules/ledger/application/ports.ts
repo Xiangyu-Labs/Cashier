@@ -35,7 +35,6 @@ export interface LedgerReadPort {
   calculateStats(input: {
     ledgerId: string;
     filters: LedgerEntryFilterParams;
-    mainCurrency?: string;
   }): Promise<LedgerEntrySummary>;
   getBatchEntryDateImpact(input: {
     ledgerId: string;

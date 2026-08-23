@@ -29,19 +29,8 @@ const listLedgerEntries = (
 ) => listLedgerEntriesUseCase(ledgerId, input, serverComposition.ledgerReads);
 const calculateLedgerStats = (
   ledgerId: string,
-  startDate?: string,
-  endDate?: string,
-  mainCurrency?: string,
-  filters?: Parameters<typeof calculateLedgerStatsUseCase>[4]
-) =>
-  calculateLedgerStatsUseCase(
-    ledgerId,
-    startDate,
-    endDate,
-    mainCurrency,
-    filters,
-    serverComposition.ledgerReads
-  );
+  query: Parameters<typeof calculateLedgerStatsUseCase>[1] = {}
+) => calculateLedgerStatsUseCase(ledgerId, query, serverComposition.ledgerReads);
 const updateLedgerEntryWithConversion = (
   input: Parameters<typeof updateLedgerEntryWithConversionUseCase>[0]
 ) => updateLedgerEntryWithConversionUseCase(input, serverComposition.ledgerMutations);
@@ -138,7 +127,10 @@ describe("target upper workflows", () => {
 
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
     const detail = await getLedgerEntryDetail(activeEntry!.id, ledgerId);
-    const summary = await calculateLedgerStats(ledgerId, "2026-07-15", "2026-07-15", "CNY");
+    const summary = await calculateLedgerStats(ledgerId, {
+      startDate: "2026-07-15",
+      endDate: "2026-07-15",
+    });
     const enhanced = await getEnhancedStatsQuery(
       {
         ledgerId,
@@ -227,7 +219,10 @@ describe("target upper workflows", () => {
 
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
     const detail = await getLedgerEntryDetail(ids[0]!, ledgerId);
-    const stats = await calculateLedgerStats(ledgerId, "2026-07-14", "2026-07-14", "CNY");
+    const stats = await calculateLedgerStats(ledgerId, {
+      startDate: "2026-07-14",
+      endDate: "2026-07-14",
+    });
     expect(stream.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -433,7 +428,7 @@ describe("target upper workflows", () => {
     const revisionCount = (await db.select().from(sourceDocumentRevisions)).length;
     const stream = await listLedgerEntries(ledgerId, { limit: 20 });
     const detail = await getLedgerEntryDetail(original!.id, ledgerId);
-    const stats = await calculateLedgerStats(ledgerId, undefined, undefined, "CNY");
+    const stats = await calculateLedgerStats(ledgerId);
     expect(stream.items[0]).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(detail).toMatchObject({ id: original!.id, amount: "18.000" });
     expect(stats.convertedTotal).toEqual({ total: "18", currency: "CNY" });
@@ -465,9 +460,7 @@ describe("target upper workflows", () => {
     });
     await expect(listLedgerEntries(ledgerId, { limit: 20 })).resolves.toMatchObject({ items: [] });
     await expect(getLedgerEntryDetail(original!.id, ledgerId)).resolves.toBeNull();
-    await expect(
-      calculateLedgerStats(ledgerId, undefined, undefined, "CNY")
-    ).resolves.toMatchObject({
+    await expect(calculateLedgerStats(ledgerId)).resolves.toMatchObject({
       convertedTotal: { total: "0", currency: "CNY" },
     });
   });

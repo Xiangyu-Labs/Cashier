@@ -86,9 +86,7 @@ describe("ledger search", () => {
       total: "12.5",
       unconvertedCount: 0,
     });
-    const summary = await calculateLedgerStats(ledgerId, undefined, undefined, "CNY", {
-      search: "morning",
-    });
+    const summary = await calculateLedgerStats(ledgerId, { search: "morning" });
     expect(summary.convertedTotal?.total).toBe("12.5");
   });
 });

@@ -5,7 +5,6 @@ export function calculateLedgerEntryStats(
   input: {
     ledgerId: string;
     filters: LedgerEntryFilterParams;
-    mainCurrency?: string;
   },
   reads: LedgerReadPort
 ) {

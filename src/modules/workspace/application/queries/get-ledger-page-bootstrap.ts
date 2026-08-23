@@ -155,10 +155,15 @@ export async function getLedgerPageBootstrap(
             queryFn: () =>
               calculateLedgerStats(
                 input.ledgerId,
-                detailsDescriptor.summaryParams.startDate,
-                detailsDescriptor.summaryParams.endDate,
-                detailsDescriptor.summaryParams.mainCurrency,
-                detailsDescriptor.summaryParams.filters,
+                {
+                  ...detailsDescriptor.summaryParams.filters,
+                  ...(detailsDescriptor.summaryParams.startDate != null
+                    ? { startDate: detailsDescriptor.summaryParams.startDate }
+                    : {}),
+                  ...(detailsDescriptor.summaryParams.endDate != null
+                    ? { endDate: detailsDescriptor.summaryParams.endDate }
+                    : {}),
+                },
                 dependencies.ledgerReads
               ),
             staleTime: QUERY.DEFAULT_STALE_TIME_MS,

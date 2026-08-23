@@ -2,42 +2,31 @@ import { calculateLedgerEntryStats } from "@/modules/ledger/application/queries/
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
 import type { LedgerSummaryDto } from "@/modules/ledger/contracts";
 import type { LedgerReadPort } from "../ports";
+import type { LedgerStatsQueryInput } from "@/modules/ledger/contract-schemas";
 
 export async function calculateLedgerStats(
   ledgerId: string,
-  startDate: string | undefined,
-  endDate: string | undefined,
-  mainCurrency: string | undefined,
-  filters:
-    | {
-        categoryId?: string | null;
-        currency?: string | null;
-        minAmount?: string | null;
-        maxAmount?: string | null;
-        search?: string | null;
-      }
-    | undefined,
+  query: LedgerStatsQueryInput,
   reads: LedgerReadPort
 ): Promise<LedgerSummaryDto> {
   const payload: Parameters<typeof calculateLedgerEntryStats>[0] = {
     ledgerId,
     filters: {},
   };
-  if (mainCurrency !== undefined) payload.mainCurrency = mainCurrency;
-  if (startDate !== undefined) payload.filters.startDate = startDate;
-  if (endDate !== undefined) payload.filters.endDate = endDate;
+  if (query.startDate !== undefined) payload.filters.startDate = query.startDate;
+  if (query.endDate !== undefined) payload.filters.endDate = query.endDate;
   // "__uncategorized__" is only a UI/query sentinel; stats must translate it
   // to the same `categoryId = null` semantics used by entry listing.
-  const categoryIdCandidate = filters?.categoryId;
+  const categoryIdCandidate = query.categoryId;
   const isUncategorizedFilter = categoryIdCandidate === UNCATEGORIZED_SENTINEL;
   if (isUncategorizedFilter) {
     payload.filters.uncategorizedOnly = true;
   } else if (categoryIdCandidate !== undefined) {
     payload.filters.categoryId = categoryIdCandidate;
   }
-  if (filters?.currency !== undefined) payload.filters.currency = filters.currency;
-  if (filters?.minAmount !== undefined) payload.filters.minAmount = filters.minAmount;
-  if (filters?.maxAmount !== undefined) payload.filters.maxAmount = filters.maxAmount;
-  if (filters?.search !== undefined) payload.filters.search = filters.search;
+  if (query.currency !== undefined) payload.filters.currency = query.currency;
+  if (query.minAmount !== undefined) payload.filters.minAmount = query.minAmount;
+  if (query.maxAmount !== undefined) payload.filters.maxAmount = query.maxAmount;
+  if (query.search !== undefined) payload.filters.search = query.search;
   return calculateLedgerEntryStats(payload, reads);
 }

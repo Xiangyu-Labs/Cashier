@@ -2,6 +2,7 @@
 import { withAuth } from "@/lib/auth-actions";
 import { deleteLedger } from "@/modules/ledger/application/use-cases/delete-ledger";
 import { serverComposition } from "@/application/server-composition-root";
+import { parseLedgerId } from "@/modules/ledger/contract-schemas";
 
 /**
  * Soft delete a ledger and all its related data (entries, categories, source documents)
@@ -9,5 +10,5 @@ import { serverComposition } from "@/application/server-composition-root";
  */
 export const deleteLedgerAction = withAuth(
   async (userId: string, ledgerId: string): Promise<void> =>
-    deleteLedger(userId, ledgerId, serverComposition.ledgers)
+    deleteLedger(userId, parseLedgerId(ledgerId), serverComposition.ledgers)
 );

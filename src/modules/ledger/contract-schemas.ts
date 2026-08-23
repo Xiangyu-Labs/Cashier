@@ -12,6 +12,7 @@ import { MAX_SEARCH_LENGTH, normalizeSearchTerm } from "@/lib/search";
 import { compare, DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
+export const ledgerIdSchema = uuidSchema;
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
 const nonEmptyStrictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
@@ -205,9 +206,10 @@ export const listLedgerEntriesInputSchema = strictObjectSchema({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 }).superRefine(validateLedgerEntryQueryRange);
 
-export const ledgerStatsQuerySchema = strictObjectSchema(ledgerEntryQueryShape).superRefine(
-  validateLedgerEntryQueryRange
-);
+export const ledgerStatsQuerySchema = strictObjectSchema({
+  ...ledgerEntryQueryShape,
+  categoryId: z.union([uuidSchema, z.literal("__uncategorized__")]).optional(),
+}).superRefine(validateLedgerEntryQueryRange);
 
 export const parseCreateLedgerInput = (input: unknown) =>
   parseLedgerContract(createLedgerInputSchema, input);
@@ -241,6 +243,9 @@ export const parseServiceCredentialId = (input: unknown) =>
   parseLedgerContract(serviceCredentialIdSchema, input);
 export const parseListLedgerEntriesInput = (input: unknown) =>
   parseLedgerContract(listLedgerEntriesInputSchema, input);
+export const parseLedgerId = (input: unknown) => parseLedgerContract(ledgerIdSchema, input);
+export const parseLedgerStatsQuery = (input: unknown) =>
+  parseLedgerContract(ledgerStatsQuerySchema, input);
 
 export type CreateLedgerInput = z.infer<typeof createLedgerInputSchema>;
 export type UpdateLedgerInput = z.infer<typeof updateLedgerInputSchema>;

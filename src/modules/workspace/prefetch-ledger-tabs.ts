@@ -39,13 +39,15 @@ export async function prefetchDetailsTabQuery(
     queryClient.prefetchQuery({
       queryKey: descriptor.summaryQueryKey,
       queryFn: () =>
-        getLedgerStatsAction(
-          ledgerId,
-          descriptor.summaryParams.startDate,
-          descriptor.summaryParams.endDate,
-          descriptor.summaryParams.mainCurrency,
-          descriptor.summaryParams.filters
-        ),
+        getLedgerStatsAction(ledgerId, {
+          ...descriptor.summaryParams.filters,
+          ...(descriptor.summaryParams.startDate != null
+            ? { startDate: descriptor.summaryParams.startDate }
+            : {}),
+          ...(descriptor.summaryParams.endDate != null
+            ? { endDate: descriptor.summaryParams.endDate }
+            : {}),
+        }),
       staleTime: QUERY.DEFAULT_STALE_TIME_MS,
     }),
     queryClient.prefetchInfiniteQuery({

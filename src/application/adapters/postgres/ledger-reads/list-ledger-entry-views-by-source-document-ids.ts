@@ -1,4 +1,4 @@
-import { and, inArray, sql } from "drizzle-orm";
+import { and, asc, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { forLedger } from "@/lib/db/scoped-query";
 import { ledgerEntries } from "@/persistence";
@@ -34,6 +34,11 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
       buildLedgerEntryVisibilityCondition(ledgerId)
     ),
     with: { category: true },
+    orderBy: [
+      asc(ledgerEntries.sourceDocumentId),
+      asc(ledgerEntries.position),
+      asc(ledgerEntries.id),
+    ],
   });
 
   if (includeDuplicatePending) {
@@ -51,8 +56,19 @@ export async function listLedgerEntryViewsBySourceDocumentIds({
         )`
       ),
       with: { category: true },
+      orderBy: [
+        asc(ledgerEntries.sourceDocumentId),
+        asc(ledgerEntries.position),
+        asc(ledgerEntries.id),
+      ],
     });
     entries.push(...duplicateEntries);
+    entries.sort(
+      (left, right) =>
+        (left.sourceDocumentId ?? "").localeCompare(right.sourceDocumentId ?? "") ||
+        left.position - right.position ||
+        left.id.localeCompare(right.id)
+    );
   }
 
   for (const entry of entries) {

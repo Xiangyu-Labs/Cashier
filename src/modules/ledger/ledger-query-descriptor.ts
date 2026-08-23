@@ -31,13 +31,12 @@ export interface DetailsQueryDescriptor {
   summaryParams: {
     startDate?: string;
     endDate?: string;
-    mainCurrency: string;
     filters: {
-      categoryId?: string | null;
-      currency?: string | null;
-      minAmount?: string | null;
-      maxAmount?: string | null;
-      search?: string | null;
+      categoryId?: string;
+      currency?: string;
+      minAmount?: string;
+      maxAmount?: string;
+      search?: string;
     };
   };
   getEntriesInput: (pageParam?: string) => ListLedgerEntriesInput;
@@ -54,11 +53,11 @@ export function buildDetailsQueryDescriptor(input: {
   const state = getDetailsInitialQueryState(input.periodParams, filters, input.timeZone);
   const filterKey = buildDetailsFilterKey(filters);
   const detailsFilters = {
-    ...(filters.categoryId !== undefined ? { categoryId: filters.categoryId } : {}),
-    ...(filters.currency !== undefined ? { currency: filters.currency } : {}),
-    ...(filters.minAmount !== undefined ? { minAmount: filters.minAmount } : {}),
-    ...(filters.maxAmount !== undefined ? { maxAmount: filters.maxAmount } : {}),
-    ...(filters.search !== undefined ? { search: filters.search } : {}),
+    ...(filters.categoryId != null ? { categoryId: filters.categoryId } : {}),
+    ...(filters.currency != null ? { currency: filters.currency } : {}),
+    ...(filters.minAmount != null ? { minAmount: filters.minAmount } : {}),
+    ...(filters.maxAmount != null ? { maxAmount: filters.maxAmount } : {}),
+    ...(filters.search != null ? { search: filters.search } : {}),
   };
 
   return {
@@ -82,7 +81,6 @@ export function buildDetailsQueryDescriptor(input: {
     summaryParams: {
       ...(state.startDateStr != null ? { startDate: state.startDateStr } : {}),
       ...(state.endDateStr != null ? { endDate: state.endDateStr } : {}),
-      mainCurrency: input.mainCurrency,
       filters: detailsFilters,
     },
     getEntriesInput: (pageParam) => ({

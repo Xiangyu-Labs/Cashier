@@ -313,9 +313,7 @@ describe("duplicate review lifecycle", () => {
       total: "38",
       unconvertedCount: 0,
     });
-    await expect(
-      calculateLedgerEntryStats({ ledgerId, filters: {}, mainCurrency: "CNY" })
-    ).resolves.toMatchObject({
+    await expect(calculateLedgerEntryStats({ ledgerId, filters: {} })).resolves.toMatchObject({
       convertedTotal: { total: "38", currency: "CNY" },
     });
     await expect(listLedgerEntryPage({ ledgerId, limit: 20, filters: {} })).resolves.toMatchObject({

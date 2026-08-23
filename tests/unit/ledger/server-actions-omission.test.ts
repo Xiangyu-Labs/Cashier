@@ -94,14 +94,7 @@ import { calculateLedgerStats as calculateLedgerStatsUseCase } from "@/modules/l
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 
 const calculateLedgerStats = (ledgerId: string) =>
-  calculateLedgerStatsUseCase(
-    ledgerId,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {} as LedgerReadPort
-  );
+  calculateLedgerStatsUseCase(ledgerId, {}, {} as LedgerReadPort);
 
 describe("ledger server action omission semantics", () => {
   beforeEach(() => {
