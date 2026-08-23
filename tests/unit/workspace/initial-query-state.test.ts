@@ -12,8 +12,8 @@ describe("initial ledger query state helpers", () => {
       buildDetailsFilterKey({
         categoryId: "cat_1",
         currency: "USD",
-        minAmount: 10,
-        maxAmount: 50,
+        minAmount: "10",
+        maxAmount: "50",
       })
     ).toBe("cat:cat_1|cur:USD|min:10|max:50");
   });

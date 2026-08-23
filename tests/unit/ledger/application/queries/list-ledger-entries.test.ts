@@ -43,8 +43,8 @@ describe("listLedgerEntries", () => {
           endDate: "2026-03-31",
           categoryId: "11111111-1111-4111-8111-111111111111",
           currency: "USD",
-          minAmount: 10,
-          maxAmount: 50,
+          minAmount: "10",
+          maxAmount: "50",
         },
       },
       reads

@@ -238,16 +238,16 @@ describe("useSourceDocumentStream", () => {
     renderHook(
       () =>
         useSourceDocumentStream("ledger-1", {
-          minAmount: 10,
-          maxAmount: 100,
+          minAmount: "10",
+          maxAmount: "100",
         }),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(listStreamPageActionMock).toHaveBeenCalledWith("ledger-1", {
-        minAmount: 10,
-        maxAmount: 100,
+        minAmount: "10",
+        maxAmount: "100",
         cursor: undefined,
         limit: 20,
       });

@@ -19,8 +19,8 @@ describe("buildStreamTotalQuery", () => {
     expect(
       buildStreamTotalQuery(
         {
-          minAmount: 10,
-          maxAmount: 20,
+          minAmount: "10",
+          maxAmount: "20",
           statuses: ["failed", "candidate_pending", "failed"],
         },
         undefined,
@@ -28,8 +28,8 @@ describe("buildStreamTotalQuery", () => {
       )
     ).toEqual({
       input: {
-        minAmount: 10,
-        maxAmount: 20,
+        minAmount: "10",
+        maxAmount: "20",
         statuses: ["candidate_pending", "failed"],
       },
       statusesKey: "candidate_pending,failed",

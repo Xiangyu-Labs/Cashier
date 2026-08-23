@@ -6,8 +6,8 @@ import { normalizeSearchTerm } from "@/lib/search";
 export interface GetStreamTotalInput {
   startDate?: string | null;
   endDate?: string | null;
-  minAmount?: number;
-  maxAmount?: number;
+  minAmount?: string;
+  maxAmount?: string;
   statuses?: readonly SourceDocumentStatusType[];
   search?: string;
 }

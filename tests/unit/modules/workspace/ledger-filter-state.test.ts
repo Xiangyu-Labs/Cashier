@@ -11,7 +11,7 @@ describe("ledger-filter-state", () => {
   it("derives entry filters and filterKey from period + advanced filters", () => {
     const filters = buildLedgerEntryFilters(
       { period: "custom", startDate: "2026-03-01", endDate: "2026-03-31" },
-      { categoryId: "cat-1", minAmount: 20, maxAmount: 100 }
+      { categoryId: "cat-1", minAmount: "20", maxAmount: "100" }
     );
 
     expect(filters.categoryId).toBe("cat-1");

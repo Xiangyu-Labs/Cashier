@@ -41,8 +41,8 @@ export interface TargetSourceDocumentFilterInput {
   statuses?: readonly SourceDocumentStatusType[];
   startDate?: string | null;
   endDate?: string | null;
-  minAmount?: number;
-  maxAmount?: number;
+  minAmount?: string;
+  maxAmount?: string;
   search?: string;
 }
 

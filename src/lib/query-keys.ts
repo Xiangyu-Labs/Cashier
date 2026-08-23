@@ -29,8 +29,8 @@ export const queryKeys = {
     filters?: {
       startDate?: string | null | undefined;
       endDate?: string | null | undefined;
-      minAmount?: number | null | undefined;
-      maxAmount?: number | null | undefined;
+      minAmount?: string | null | undefined;
+      maxAmount?: string | null | undefined;
       statuses?: string | null | undefined;
       search?: string | null | undefined;
     }
@@ -53,8 +53,8 @@ export const queryKeys = {
     filters?: {
       startDate?: string | null | undefined;
       endDate?: string | null | undefined;
-      minAmount?: number | null | undefined;
-      maxAmount?: number | null | undefined;
+      minAmount?: string | null | undefined;
+      maxAmount?: string | null | undefined;
       statuses?: string | null | undefined;
       search?: string | null | undefined;
     }

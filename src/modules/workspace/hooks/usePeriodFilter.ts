@@ -27,8 +27,8 @@ import type { LedgerAdvancedFilters } from "../initial-query-state";
 export interface FilterParams {
   categoryId: string | null;
   currency: string | null;
-  minAmount: number | null;
-  maxAmount: number | null;
+  minAmount: string | null;
+  maxAmount: string | null;
   statuses: SourceDocumentStatusType[];
   search: string | null;
 }

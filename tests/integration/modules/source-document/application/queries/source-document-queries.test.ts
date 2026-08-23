@@ -480,8 +480,8 @@ describe("source-document-queries", () => {
       statuses: ["completed"],
       startDate: "2026-03-10",
       endDate: "2026-03-20",
-      minAmount: 10,
-      maxAmount: 100,
+      minAmount: "10",
+      maxAmount: "100",
       limit: 10,
     });
 
@@ -523,9 +523,9 @@ describe("source-document-queries", () => {
     ]);
     await activateTestSourceDocumentProjection(db, sourceDocument.id);
 
-    const stream = await listStreamPage(ledgerId, { maxAmount: 30, limit: 10 });
+    const stream = await listStreamPage(ledgerId, { maxAmount: "30", limit: 10 });
     expect(stream.items).toHaveLength(0);
-    await expect(getStreamTotal(ledgerId, { maxAmount: 30 })).resolves.toEqual({
+    await expect(getStreamTotal(ledgerId, { maxAmount: "30" })).resolves.toEqual({
       total: "0",
       unconvertedCount: 0,
     });
@@ -637,10 +637,12 @@ describe("source-document-queries", () => {
       total: "325.25",
       unconvertedCount: 0,
     });
-    await expect(getStreamTotal(ledgerId, { minAmount: 100, maxAmount: 150 })).resolves.toEqual({
-      total: "125.25",
-      unconvertedCount: 0,
-    });
+    await expect(getStreamTotal(ledgerId, { minAmount: "100", maxAmount: "150" })).resolves.toEqual(
+      {
+        total: "125.25",
+        unconvertedCount: 0,
+      }
+    );
   });
 
   it("excludes deleted rows from the stream", async () => {

@@ -31,7 +31,7 @@ export interface LedgerReadPort {
     limit?: number;
     cursor?: string | null;
     filters: LedgerEntryFilterParams;
-  }): Promise<{ items: LedgerEntryDto[]; nextCursor: string | undefined }>;
+  }): Promise<{ items: LedgerEntryDto[]; nextCursor: string | null }>;
   calculateStats(input: {
     ledgerId: string;
     filters: LedgerEntryFilterParams;

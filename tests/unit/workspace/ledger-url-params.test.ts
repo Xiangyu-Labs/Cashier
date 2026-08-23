@@ -44,7 +44,7 @@ describe("ledger-url-params", () => {
         categoryId: "__uncategorized__",
         currency: "",
         minAmount: null,
-        maxAmount: Number.NaN,
+        maxAmount: "NaN",
       }
     );
 
@@ -87,8 +87,8 @@ describe("ledger-url-params", () => {
     expect(filters).toEqual({
       categoryId: "cat_2",
       currency: "EUR",
-      minAmount: 100,
-      maxAmount: 250,
+      minAmount: "100",
+      maxAmount: "250",
       statuses: [],
       search: null,
     });
@@ -96,8 +96,8 @@ describe("ledger-url-params", () => {
 
   it("writes and overwrites numeric filter params", () => {
     const params = updateLedgerSearchParams(new URLSearchParams("minAmount=5"), {
-      minAmount: 100,
-      maxAmount: 250,
+      minAmount: "100",
+      maxAmount: "250",
     });
 
     expect(params.get("minAmount")).toBe("100");
@@ -113,8 +113,8 @@ describe("ledger-url-params", () => {
     }
 
     const params = updateLedgerSearchParams(new URLSearchParams("minAmount=1&maxAmount=2"), {
-      minAmount: Number.POSITIVE_INFINITY,
-      maxAmount: Number.NEGATIVE_INFINITY,
+      minAmount: "Infinity",
+      maxAmount: "-Infinity",
     });
     expect(params.get("minAmount")).toBeNull();
     expect(params.get("maxAmount")).toBeNull();

@@ -25,8 +25,8 @@ describe("calculateLedgerStats", () => {
     const result = await calculateLedgerStats("ledger-1", "2026-03-01", "2026-03-31", "USD", {
       categoryId: "cat-1",
       currency: "CNY",
-      minAmount: 10,
-      maxAmount: 99,
+      minAmount: "10",
+      maxAmount: "99",
     });
 
     expect(result).toEqual({ total: "ok" });
@@ -39,8 +39,8 @@ describe("calculateLedgerStats", () => {
           endDate: "2026-03-31",
           categoryId: "cat-1",
           currency: "CNY",
-          minAmount: 10,
-          maxAmount: 99,
+          minAmount: "10",
+          maxAmount: "99",
         },
       },
       reads

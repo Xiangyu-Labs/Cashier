@@ -187,8 +187,8 @@ describe("getLedgerPageBootstrap", () => {
         endDate: "2026-03-31",
       },
       advancedFilters: {
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
       },
       ledgerDto: createPreAuthorizedLedgerDto(),
     });
@@ -198,8 +198,8 @@ describe("getLedgerPageBootstrap", () => {
       {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
         cursor: undefined,
         limit: 20,
       },
@@ -207,7 +207,7 @@ describe("getLedgerPageBootstrap", () => {
     );
     expect(getStreamTotalMock).toHaveBeenCalledWith(
       "ledger-1",
-      { startDate: "2026-03-01", endDate: "2026-03-31", minAmount: 20, maxAmount: 100 },
+      { startDate: "2026-03-01", endDate: "2026-03-31", minAmount: "20", maxAmount: "100" },
       bootstrapDependencies.sourceDocuments.documents
     );
   });
@@ -304,8 +304,8 @@ describe("getLedgerPageBootstrap", () => {
       advancedFilters: {
         categoryId: "cat-1",
         currency: "USD",
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
       },
       ledgerDto: createPreAuthorizedLedgerDto(),
     });
@@ -318,8 +318,8 @@ describe("getLedgerPageBootstrap", () => {
       {
         categoryId: "cat-1",
         currency: "USD",
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
       },
       bootstrapDependencies.ledgerReads
     );
@@ -330,8 +330,8 @@ describe("getLedgerPageBootstrap", () => {
         endDate: "2026-03-31",
         categoryId: "cat-1",
         currency: "USD",
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
         cursor: undefined,
         limit: 50,
       },

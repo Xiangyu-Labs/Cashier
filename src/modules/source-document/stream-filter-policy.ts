@@ -5,8 +5,8 @@ import type { SourceDocumentListItemDto } from "./contracts";
 export interface StreamFilterPolicy {
   startDate?: string | null;
   endDate?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
+  minAmount?: string | null;
+  maxAmount?: string | null;
   statuses?: readonly string[] | string | null;
   search?: string | null;
 }

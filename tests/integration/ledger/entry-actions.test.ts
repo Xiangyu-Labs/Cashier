@@ -1038,8 +1038,8 @@ describe("getLedgerEntriesAction", () => {
     ]);
 
     const result = await getTargetLedgerEntriesAction(ledgerId, {
-      minAmount: 20,
-      maxAmount: 100,
+      minAmount: "20",
+      maxAmount: "100",
     });
     expect(result.items).toHaveLength(1);
     const midEntry = result.items[0];

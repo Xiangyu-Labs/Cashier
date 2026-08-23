@@ -38,11 +38,13 @@ const positiveDecimalSchema = z
   .refine((value) => compare(value, "0") > 0, "Amount must be positive");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
-const optionalQueryNumberSchema = z.preprocess(
+const optionalQueryDecimalSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z
-    .union([z.number(), z.string().min(1)])
-    .pipe(z.coerce.number())
+    .string()
+    .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+    .transform(normalize)
+    .refine((value) => compare(value, "0") >= 0, "Amount must be non-negative")
     .optional()
 );
 const sourceDocumentStatusSchema = z.enum(ACTIVE_SOURCE_DOCUMENT_STATUSES);
@@ -360,17 +362,46 @@ export const finalizeSourceDocumentUploadInputSchema = strictObjectSchema({
   targetIds: z.array(uuidSchema).min(1).max(MAX_FILES),
 });
 
+const validateFilterRange = (
+  value: {
+    startDate?: string | undefined;
+    endDate?: string | undefined;
+    minAmount?: string | undefined;
+    maxAmount?: string | undefined;
+  },
+  context: z.RefinementCtx
+) => {
+  if (value.startDate != null && value.endDate != null && value.startDate > value.endDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["endDate"],
+      message: "End date precedes start date",
+    });
+  }
+  if (
+    value.minAmount != null &&
+    value.maxAmount != null &&
+    compare(value.minAmount, value.maxAmount) > 0
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["maxAmount"],
+      message: "Maximum amount is less than minimum amount",
+    });
+  }
+};
+
 export const listSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
-  minAmount: optionalQueryNumberSchema,
-  maxAmount: optionalQueryNumberSchema,
+  minAmount: optionalQueryDecimalSchema,
+  maxAmount: optionalQueryDecimalSchema,
   cursor: sourceDocumentCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   includeFiles: z.boolean().optional().default(false),
   includeEntries: z.boolean().default(false),
-});
+}).superRefine(validateFilterRange);
 
 const streamPageCursorSchema = z
   .string()
@@ -379,8 +410,8 @@ const streamPageCursorSchema = z
 const streamFilterInputShape = {
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
-  minAmount: optionalQueryNumberSchema,
-  maxAmount: optionalQueryNumberSchema,
+  minAmount: optionalQueryDecimalSchema,
+  maxAmount: optionalQueryDecimalSchema,
   statuses: z
     .preprocess(
       (value) => (Array.isArray(value) ? [...new Set(value)] : value),
@@ -390,13 +421,14 @@ const streamFilterInputShape = {
   search: optionalSearchSchema,
 };
 
-export const streamTotalInputSchema = strictObjectSchema(streamFilterInputShape);
+export const streamTotalInputSchema =
+  strictObjectSchema(streamFilterInputShape).superRefine(validateFilterRange);
 
 export const streamPageInputSchema = strictObjectSchema({
   ...streamFilterInputShape,
   cursor: streamPageCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(20).default(20),
-});
+}).superRefine(validateFilterRange);
 
 export const pendingSourceDocumentsInputSchema = strictObjectSchema({
   limit: z.coerce.number().int().min(1).max(100).default(20),

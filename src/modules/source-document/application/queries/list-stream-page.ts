@@ -6,15 +6,14 @@ import { normalizeSearchTerm } from "@/lib/search";
 import type { SourceDocumentQueryPorts } from "../ports";
 import { filterStreamEntries } from "../../stream-filter-policy";
 import { createHash } from "node:crypto";
-import { normalize as normalizeDecimal } from "@/lib/money/decimal";
 
 const STREAM_PAGE_LIMIT = 20;
 
 export interface ListStreamPageInput {
   startDate?: string | null | undefined;
   endDate?: string | null | undefined;
-  minAmount?: number;
-  maxAmount?: number;
+  minAmount?: string;
+  maxAmount?: string;
   statuses?: string[];
   search?: string;
   cursor?: string | null | undefined;
@@ -109,8 +108,8 @@ function filterFingerprint(input: ListStreamPageInput, search: string | undefine
   const normalized = {
     startDate: input.startDate ?? null,
     endDate: input.endDate ?? null,
-    minAmount: input.minAmount == null ? null : normalizeDecimal(String(input.minAmount)),
-    maxAmount: input.maxAmount == null ? null : normalizeDecimal(String(input.maxAmount)),
+    minAmount: input.minAmount ?? null,
+    maxAmount: input.maxAmount ?? null,
     statuses: [...new Set(input.statuses ?? [])].sort(),
     search: search?.trim() ?? null,
   };

@@ -39,8 +39,8 @@ describe("queryKeys enhanced stats and source documents", () => {
       queryKeys.sourceDocumentStream("ledger-1", {
         startDate: "2026-03-01",
         endDate: "2026-03-31",
-        minAmount: 20,
-        maxAmount: 100,
+        minAmount: "20",
+        maxAmount: "100",
       })
     ).toEqual([
       "sourceDocuments",

@@ -6,8 +6,8 @@ import type { LedgerEntryFilterParams } from "./filters";
 export interface LedgerAdvancedFilters {
   categoryId?: string | null;
   currency?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
+  minAmount?: string | null;
+  maxAmount?: string | null;
   statuses?: SourceDocumentStatusType[];
   search?: string | null;
 }
@@ -34,7 +34,9 @@ export function normalizeLedgerQuery(query: LedgerQuery): LedgerQuery {
     ...(nonBlank(query.endDate) != null ? { endDate: nonBlank(query.endDate) } : {}),
     ...(nonBlank(query.categoryId) != null ? { categoryId: nonBlank(query.categoryId) } : {}),
     ...(query.uncategorizedOnly === true ? { uncategorizedOnly: true } : {}),
-    ...(nonBlank(query.currency) != null ? { currency: nonBlank(query.currency) } : {}),
+    ...(nonBlank(query.currency) != null
+      ? { currency: nonBlank(query.currency)!.toUpperCase() }
+      : {}),
     ...(query.minAmount != null ? { minAmount: query.minAmount } : {}),
     ...(query.maxAmount != null ? { maxAmount: query.maxAmount } : {}),
     ...(statuses != null ? { statuses } : {}),

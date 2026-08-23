@@ -1,4 +1,5 @@
 import type { SourceDocumentStatusType } from "@/modules/source-document/types";
+import { DECIMAL_STRING_PATTERN, normalize as normalizeDecimal } from "@/lib/money/decimal";
 
 export const STATUSES_URL_PARAM = "statuses";
 export type LedgerFilterScope = "stream" | "details";
@@ -76,8 +77,8 @@ export function formatStatusesParam(statuses: SourceDocumentStatusType[]): strin
 export interface LedgerFilterParams {
   categoryId: string | null;
   currency: string | null;
-  minAmount: number | null;
-  maxAmount: number | null;
+  minAmount: string | null;
+  maxAmount: string | null;
   statuses: SourceDocumentStatusType[];
   search: string | null;
 }
@@ -153,8 +154,8 @@ export interface LedgerUrlUpdate {
   endDate?: string | null;
   categoryId?: string | null;
   currency?: string | null;
-  minAmount?: number | null;
-  maxAmount?: number | null;
+  minAmount?: string | null;
+  maxAmount?: string | null;
   statuses?: SourceDocumentStatusType[] | null;
   search?: string | null;
 }
@@ -301,36 +302,37 @@ function setOrDeleteStringParam(
   params.set(key, value);
 }
 
-function setOrDeleteNumberParam(
+function setOrDeleteDecimalParam(
   params: URLSearchParams,
   key: string,
-  value: number | null | undefined
+  value: string | null | undefined
 ) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (value == null || !DECIMAL_STRING_PATTERN.test(value) || value.startsWith("-")) {
     params.delete(key);
     return;
   }
 
-  params.set(key, String(value));
+  params.set(key, normalizeDecimal(value));
 }
 
 export function readLedgerFilterParams(
   searchParams: SearchParamsLike,
   scope?: LedgerFilterScope
 ): LedgerFilterParams {
-  const readNumber = (key: "minAmount" | "maxAmount"): number | null => {
+  const readDecimal = (key: "minAmount" | "maxAmount"): string | null => {
     const raw = readScopedValue(searchParams, key, scope);
     if (raw == null || raw.trim() === "") return null;
-
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
+    const trimmed = raw.trim();
+    return DECIMAL_STRING_PATTERN.test(trimmed) && !trimmed.startsWith("-")
+      ? normalizeDecimal(trimmed)
+      : null;
   };
 
   return {
     categoryId: readScopedValue(searchParams, "categoryId", scope),
     currency: readScopedValue(searchParams, "currency", scope),
-    minAmount: readNumber("minAmount"),
-    maxAmount: readNumber("maxAmount"),
+    minAmount: readDecimal("minAmount"),
+    maxAmount: readDecimal("maxAmount"),
     statuses: parseStatusesParam(readScopedValue(searchParams, STATUSES_URL_PARAM, scope)),
     search: readScopedValue(searchParams, "search", scope),
   };
@@ -368,9 +370,9 @@ export function updateLedgerSearchParams(
     setOrDeleteStringParam(params, keyFor("categoryId"), updates.categoryId);
   if ("currency" in updates) setOrDeleteStringParam(params, keyFor("currency"), updates.currency);
   if ("minAmount" in updates)
-    setOrDeleteNumberParam(params, keyFor("minAmount"), updates.minAmount);
+    setOrDeleteDecimalParam(params, keyFor("minAmount"), updates.minAmount);
   if ("maxAmount" in updates)
-    setOrDeleteNumberParam(params, keyFor("maxAmount"), updates.maxAmount);
+    setOrDeleteDecimalParam(params, keyFor("maxAmount"), updates.maxAmount);
 
   if ("statuses" in updates) {
     const formatted = updates.statuses != null ? formatStatusesParam(updates.statuses) : null;

@@ -124,8 +124,8 @@ describe("queryKeys", () => {
         queryKeys.sourceDocumentStream(ledgerId, {
           startDate: "2026-03-01",
           endDate: "2026-03-31",
-          minAmount: 20,
-          maxAmount: 100,
+          minAmount: "20",
+          maxAmount: "100",
         })
       ).toEqual([
         "sourceDocuments",
@@ -153,8 +153,8 @@ describe("queryKeys", () => {
         queryKeys.sourceDocumentStreamTotal(ledgerId, {
           startDate: "2026-03-01",
           endDate: "2026-03-31",
-          minAmount: 10,
-          maxAmount: 100,
+          minAmount: "10",
+          maxAmount: "100",
           statuses: "completed,failed",
         })
       ).toEqual([

@@ -31,8 +31,8 @@ describe("search param validation", () => {
       endDate: "2026-03-31",
       categoryId: "11111111-1111-4111-8111-111111111111",
       currency: "USD",
-      minAmount: 10,
-      maxAmount: 50,
+      minAmount: "10",
+      maxAmount: "50",
       limit: 20,
     });
 
@@ -49,5 +49,28 @@ describe("search param validation", () => {
       categoryId: "11111111-1111-4111-8111-111111111111",
       currency: "USD",
     });
+  });
+
+  it("preserves decimal precision and normalizes currency", () => {
+    expect(
+      parseListLedgerEntriesInput({
+        currency: " usd ",
+        minAmount: "9007199254740993.00",
+        maxAmount: "9007199254740993.50",
+      })
+    ).toMatchObject({
+      currency: "USD",
+      minAmount: "9007199254740993",
+      maxAmount: "9007199254740993.5",
+    });
+  });
+
+  it("rejects reversed ranges, negative amounts, and unknown fields", () => {
+    expect(() =>
+      parseListLedgerEntriesInput({ startDate: "2026-04-01", endDate: "2026-03-01" })
+    ).toThrow();
+    expect(() => ledgerStatsQuerySchema.parse({ minAmount: "20", maxAmount: "10" })).toThrow();
+    expect(() => ledgerStatsQuerySchema.parse({ minAmount: "-1" })).toThrow();
+    expect(() => ledgerStatsQuerySchema.parse({ mainCurrency: "USD" })).toThrow();
   });
 });

@@ -10,6 +10,8 @@ import {
 } from "./ledger-entry-visibility";
 import type { LedgerEntryFilterParams } from "@/modules/ledger/filters";
 import { serializeLedgerQuery } from "@/modules/ledger/ledger-query";
+import { z } from "zod";
+import { dateStringSchema, UUID_REGEX } from "@/lib/validation";
 
 // PostgreSQL query construction remains private to the adapter.
 
@@ -109,9 +111,9 @@ export function buildLedgerEntryFilterConditions(
   return [...conditions, ...buildLedgerEntryValueConditions(filters)];
 }
 
-function queryFingerprint(filters: LedgerEntryFilterParams): string {
+function queryFingerprint(ledgerId: string, filters: LedgerEntryFilterParams): string {
   return createHash("sha256")
-    .update(serializeLedgerQuery(filters))
+    .update(`${ledgerId}\0${serializeLedgerQuery(filters)}`)
     .digest("base64url")
     .slice(0, 16);
 }
@@ -127,12 +129,24 @@ interface LedgerEntryCursor {
 
 export function encodeLedgerEntryCursor(
   value: Omit<LedgerEntryCursor, "fingerprint">,
+  ledgerId: string,
   filters: LedgerEntryFilterParams
 ): string {
-  return Buffer.from(JSON.stringify({ ...value, fingerprint: queryFingerprint(filters) })).toString(
-    "base64url"
-  );
+  return Buffer.from(
+    JSON.stringify({ ...value, fingerprint: queryFingerprint(ledgerId, filters) })
+  ).toString("base64url");
 }
+
+const ledgerEntryCursorSchema = z
+  .object({
+    effectiveDate: dateStringSchema,
+    documentCreatedAt: z.string().datetime({ offset: true }),
+    documentId: z.string().regex(UUID_REGEX),
+    position: z.number().int().nonnegative(),
+    entryId: z.string().regex(UUID_REGEX),
+    fingerprint: z.string().regex(/^[A-Za-z0-9_-]{16}$/),
+  })
+  .strict();
 
 export interface LedgerEntryCursorColumns {
   effectiveDate: SQL;
@@ -162,21 +176,19 @@ export function buildLedgerEntryCursorCondition(
   if (cursor == null || cursor === "") {
     return null;
   }
+  if (cursor.length > 1024) {
+    throw new ValidationError("Invalid ledger entry cursor");
+  }
 
   let value: LedgerEntryCursor;
   try {
-    value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as LedgerEntryCursor;
+    value = ledgerEntryCursorSchema.parse(
+      JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
+    );
   } catch {
     throw new ValidationError("Invalid ledger entry cursor");
   }
-  if (
-    value.fingerprint !== queryFingerprint(filters) ||
-    value.effectiveDate === "" ||
-    value.documentId === "" ||
-    value.entryId === "" ||
-    !Number.isInteger(value.position) ||
-    Number.isNaN(new Date(value.documentCreatedAt).getTime())
-  ) {
+  if (value.fingerprint !== queryFingerprint(ledgerId, filters)) {
     throw new ValidationError("Ledger entry cursor does not match the query");
   }
 

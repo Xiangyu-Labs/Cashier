@@ -79,13 +79,13 @@ describe("stream filter policy", () => {
       ],
     });
 
-    expect(matchesStreamDocument(item, { minAmount: 10, maxAmount: 90 })).toBe(false);
+    expect(matchesStreamDocument(item, { minAmount: "10", maxAmount: "90" })).toBe(false);
   });
 
   it("excludes empty-entry documents from amount and search windows", () => {
     const item = makeItem({ ledgerEntries: [] });
 
-    expect(matchesStreamDocument(item, { minAmount: 1 })).toBe(false);
+    expect(matchesStreamDocument(item, { minAmount: "1" })).toBe(false);
     expect(matchesStreamDocument(item, { search: "latte" })).toBe(false);
   });
 
@@ -94,7 +94,7 @@ describe("stream filter policy", () => {
       ledgerEntries: [makeEntry({ amount: "1.00", convertedAmount: null })],
     });
 
-    expect(matchesStreamDocument(item, { minAmount: 1 })).toBe(false);
+    expect(matchesStreamDocument(item, { minAmount: "1" })).toBe(false);
   });
 
   it("uses entryDate and then the UTC created-at date as the effective date", () => {

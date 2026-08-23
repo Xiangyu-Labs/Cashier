@@ -82,7 +82,7 @@ export async function listLedgerEntryPage({
   const hasMore = page.rows.length > limit;
   const pagedRows = hasMore ? page.rows.slice(0, limit) : page.rows;
 
-  let nextCursor: string | undefined;
+  let nextCursor: string | null = null;
   if (hasMore) {
     const lastItem = pagedRows.at(-1);
     if (lastItem == null) {
@@ -96,6 +96,7 @@ export async function listLedgerEntryPage({
         position: lastItem.position,
         entryId: lastItem.id,
       },
+      ledgerId,
       filters
     );
   }

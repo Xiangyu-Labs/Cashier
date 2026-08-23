@@ -26,6 +26,7 @@ import {
   type StreamStatusPreset,
   STREAM_STATUS_PRESET_VALUES,
 } from "@/modules/ledger/filters";
+import { compare, DECIMAL_STRING_PATTERN } from "@/lib/money/decimal";
 
 export type { EntryFilters } from "@/modules/ledger/filters";
 
@@ -74,7 +75,13 @@ function getServerMobileFilterSnapshot() {
 function normalizeAmountRange(filters: EntryFilters): EntryFilters {
   const { minAmount, maxAmount } = filters;
 
-  if (minAmount == null || maxAmount == null || minAmount <= maxAmount) {
+  if (
+    minAmount == null ||
+    maxAmount == null ||
+    !DECIMAL_STRING_PATTERN.test(minAmount) ||
+    !DECIMAL_STRING_PATTERN.test(maxAmount) ||
+    compare(minAmount, maxAmount) <= 0
+  ) {
     return filters;
   }
 
@@ -438,7 +445,7 @@ export function EntryFilterPanel({
             onChange={(e) =>
               setTempFilters((prev) => ({
                 ...prev,
-                minAmount: e.target.value !== "" ? Number(e.target.value) : null,
+                minAmount: e.target.value !== "" ? e.target.value : null,
               }))
             }
             className="min-w-0 flex-1 h-9 text-base sm:text-sm"
@@ -452,7 +459,7 @@ export function EntryFilterPanel({
             onChange={(e) =>
               setTempFilters((prev) => ({
                 ...prev,
-                maxAmount: e.target.value !== "" ? Number(e.target.value) : null,
+                maxAmount: e.target.value !== "" ? e.target.value : null,
               }))
             }
             className="min-w-0 flex-1 h-9 text-base sm:text-sm"

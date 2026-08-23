@@ -27,8 +27,8 @@ export interface ListSourceDocumentsParams {
   cursor?: string | null;
   startDate?: string | null;
   endDate?: string | null;
-  minAmount?: number | undefined;
-  maxAmount?: number | undefined;
+  minAmount?: string | undefined;
+  maxAmount?: string | undefined;
   includeLedgerEntries?: boolean;
   includeFiles?: boolean;
 }

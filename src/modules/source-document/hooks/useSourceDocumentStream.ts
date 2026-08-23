@@ -26,8 +26,8 @@ export interface UseSourceDocumentStreamOptions {
     start?: string;
     end?: string;
   };
-  minAmount?: number;
-  maxAmount?: number;
+  minAmount?: string;
+  maxAmount?: string;
   /** Canonical selected statuses. Empty/undefined means all statuses. */
   statuses?: SourceDocumentStatusType[];
   search?: string;
@@ -66,8 +66,8 @@ function deduplicate(docs: SourceDocumentListItemDto[]): SourceDocumentListItemD
 function encodeFilterSignature(params: {
   startDate: string | null;
   endDate: string | null;
-  minAmount: number | null;
-  maxAmount: number | null;
+  minAmount: string | null;
+  maxAmount: string | null;
   statusesKey: string | null;
   search: string | null;
 }): string {
@@ -75,8 +75,8 @@ function encodeFilterSignature(params: {
   const parts = [
     params.startDate ?? "",
     params.endDate ?? "",
-    params.minAmount?.toString() ?? "",
-    params.maxAmount?.toString() ?? "",
+    params.minAmount ?? "",
+    params.maxAmount ?? "",
     params.search != null ? encodeURIComponent(params.search) : "",
     ...statusParts,
   ];

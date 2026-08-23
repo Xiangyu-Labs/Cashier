@@ -175,7 +175,7 @@ describe("getLedgerStatsAction", () => {
     await seedEntry(db, ledgerId, { amount: "200.00", currency: "CNY", convertedAmount: "200.00" });
 
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, undefined, {
-      minAmount: 100,
+      minAmount: "100",
     });
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(1);
@@ -188,7 +188,7 @@ describe("getLedgerStatsAction", () => {
     await seedEntry(db, ledgerId, { amount: "200.00", currency: "CNY", convertedAmount: "200.00" });
 
     const result = await getLedgerStatsAction(ledgerId, undefined, undefined, undefined, {
-      maxAmount: 100,
+      maxAmount: "100",
     });
     const cny = result.totals.find((t) => t.currency === "CNY");
     expect(cny!.count).toBe(1);

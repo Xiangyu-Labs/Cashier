@@ -34,11 +34,13 @@ const positiveDecimalSchema = z
   .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
   .transform(normalize)
   .refine((value) => compare(value, "0") > 0, "Amount must be positive");
-const optionalQueryNumberSchema = z.preprocess(
+const optionalQueryDecimalSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : value),
   z
-    .union([z.number(), z.string().min(1)])
-    .pipe(z.coerce.number())
+    .string()
+    .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+    .transform(normalize)
+    .refine((value) => compare(value, "0") >= 0, "Amount must be non-negative")
     .optional()
 );
 const optionalSearchSchema = z.preprocess(
@@ -158,25 +160,54 @@ export const createServiceCredentialInputSchema = strictObjectSchema({
   name: z.string().trim().min(1).max(100),
 });
 
-export const listLedgerEntriesInputSchema = strictObjectSchema({
+const ledgerEntryQueryShape = {
   startDate: optionalDateStringSchema,
   endDate: optionalDateStringSchema,
   categoryId: uuidSchema.optional(),
   currency: optionalCurrencyCodeSchema,
-  minAmount: optionalQueryNumberSchema,
-  maxAmount: optionalQueryNumberSchema,
+  minAmount: optionalQueryDecimalSchema,
+  maxAmount: optionalQueryDecimalSchema,
   search: optionalSearchSchema,
+};
+
+function validateLedgerEntryQueryRange(
+  value: {
+    startDate?: string | undefined;
+    endDate?: string | undefined;
+    minAmount?: string | undefined;
+    maxAmount?: string | undefined;
+  },
+  context: z.RefinementCtx
+) {
+  if (value.startDate != null && value.endDate != null && value.startDate > value.endDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["endDate"],
+      message: "End date precedes start date",
+    });
+  }
+  if (
+    value.minAmount != null &&
+    value.maxAmount != null &&
+    compare(value.minAmount, value.maxAmount) > 0
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["maxAmount"],
+      message: "Maximum amount is less than minimum amount",
+    });
+  }
+}
+
+export const listLedgerEntriesInputSchema = strictObjectSchema({
+  ...ledgerEntryQueryShape,
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-});
+}).superRefine(validateLedgerEntryQueryRange);
 
-export const ledgerStatsQuerySchema = strictObjectSchema({
-  startDate: optionalDateStringSchema,
-  endDate: optionalDateStringSchema,
-  categoryId: uuidSchema.optional(),
-  currency: optionalCurrencyCodeSchema,
-  search: optionalSearchSchema,
-});
+export const ledgerStatsQuerySchema = strictObjectSchema(ledgerEntryQueryShape).superRefine(
+  validateLedgerEntryQueryRange
+);
 
 export const parseCreateLedgerInput = (input: unknown) =>
   parseLedgerContract(createLedgerInputSchema, input);

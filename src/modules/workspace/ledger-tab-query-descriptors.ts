@@ -32,8 +32,8 @@ export function buildStreamQueryDescriptor(input: {
   ledgerId: string;
   startDate?: string | null | undefined;
   endDate?: string | null | undefined;
-  minAmount?: number | null | undefined;
-  maxAmount?: number | null | undefined;
+  minAmount?: string | null | undefined;
+  maxAmount?: string | null | undefined;
   statuses?: readonly SourceDocumentStatusType[] | null | undefined;
   search?: string | null | undefined;
 }): StreamQueryDescriptor {

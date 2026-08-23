@@ -35,8 +35,8 @@ export interface DetailsQueryDescriptor {
     filters: {
       categoryId?: string | null;
       currency?: string | null;
-      minAmount?: number | null;
-      maxAmount?: number | null;
+      minAmount?: string | null;
+      maxAmount?: string | null;
       search?: string | null;
     };
   };
