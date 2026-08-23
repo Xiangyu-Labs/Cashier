@@ -3,24 +3,8 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "clear": "Clear",
-    "weekDays": [
-      "Su",
-      "Mo",
-      "Tu",
-      "We",
-      "Th",
-      "Fr",
-      "Sa"
-    ],
-    "weekDaysMon": [
-      "Mo",
-      "Tu",
-      "We",
-      "Th",
-      "Fr",
-      "Sa",
-      "Su"
-    ],
+    "weekDays": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    "weekDaysMon": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     "currency": "Currency",
     "allCurrencies": "All Currencies",
     "category": "Category",

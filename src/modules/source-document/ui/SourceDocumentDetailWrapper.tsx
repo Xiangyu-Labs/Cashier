@@ -1,7 +1,6 @@
 "use client";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { SourceDocumentDetailModal } from "./SourceDocumentDetailModal";
 import { SourceDocumentDuplicateReviewDialog } from "./SourceDocumentDuplicateReviewDialog";
 import {
@@ -10,8 +9,6 @@ import {
   useSourceDocumentRecoveryMutations,
 } from "@/modules/source-document/hooks";
 import type { EntryCategory } from "@/modules/ledger/contracts";
-import type { Ledger } from "@/modules/ledger/contracts";
-import { queryKeys } from "@/lib/query-keys";
 
 interface SourceDocumentDetailWrapperProps {
   id: string;
@@ -21,6 +18,8 @@ interface SourceDocumentDetailWrapperProps {
   onBack?: () => void;
   onExitComplete?: () => void;
   categories: EntryCategory[];
+  mainCurrency: string;
+  preferredCurrencies: string[];
   ledgerEntries?: LedgerEntry[];
 }
 
@@ -32,11 +31,10 @@ export function SourceDocumentDetailWrapper({
   onBack,
   onExitComplete,
   categories,
+  mainCurrency,
+  preferredCurrencies,
   ledgerEntries: initialLedgerEntries,
 }: SourceDocumentDetailWrapperProps) {
-  const queryClient = useQueryClient();
-  const ledger = queryClient.getQueryData<Ledger>(queryKeys.ledger(ledgerId));
-  const mainCurrency = ledger?.settings.mainCurrency ?? "CNY";
   const {
     sourceDocument,
     currentLedgerEntries,
@@ -125,6 +123,8 @@ export function SourceDocumentDetailWrapper({
       onReload={handleReload}
       ledgerEntries={currentLedgerEntries}
       categories={categories}
+      mainCurrency={mainCurrency}
+      preferredCurrencies={preferredCurrencies}
       open={open}
       onClose={onClose}
       {...(onBack !== undefined ? { onBack } : {})}

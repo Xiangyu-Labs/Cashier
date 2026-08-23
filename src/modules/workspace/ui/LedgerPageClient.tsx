@@ -681,7 +681,11 @@ export function LedgerPageClient({
           }}
         />
 
-        <ModalStackRenderer categories={categories} />
+        <ModalStackRenderer
+          categories={categories}
+          mainCurrency={mainCurrency}
+          preferredCurrencies={preferredCurrencies}
+        />
       </div>
     </>
   );

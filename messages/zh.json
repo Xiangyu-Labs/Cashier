@@ -369,6 +369,8 @@
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试",
+    "loadError": "无法加载原始凭证。",
+    "reload": "重新加载",
     "unsavedTitle": "放弃更改？",
     "unsavedDescription": "重试草稿将会丢失。",
     "continueEditing": "继续编辑",

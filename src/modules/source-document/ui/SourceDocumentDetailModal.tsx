@@ -40,8 +40,8 @@ interface SourceDocumentDetailModalProps {
   onReload?: () => Promise<void>;
   ledgerEntries: LedgerEntry[];
   categories: EntryCategory[];
-  preferredCurrencies?: string[];
-  mainCurrency?: string;
+  preferredCurrencies: string[];
+  mainCurrency: string;
   open: boolean;
   onClose: () => void;
   onBack?: () => void;
@@ -87,8 +87,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
   onReload,
   ledgerEntries,
   categories,
-  preferredCurrencies = [],
-  mainCurrency: _mainCurrency = "CNY",
+  preferredCurrencies,
+  mainCurrency,
   open,
   onClose,
   onBack,
@@ -387,6 +387,14 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
     return true;
   }, [handleSaveAll]);
 
+  const handleDiscardAndContinue = useCallback(async () => {
+    discardAllChanges();
+    const action = continueActionRef.current;
+    continueActionRef.current = null;
+    setShowSaveAndContinueConfirm(false);
+    await action?.();
+  }, [discardAllChanges]);
+
   const performBatchCategory = async (categoryId: string | null) => {
     if (selectedIds.length === 0 || busy) return;
     setIsSaving(true);
@@ -429,6 +437,8 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
       toast.success(t("batchDeleteSuccess", { count: selectedIds.length - failed.length }));
       if (failed.length > 0) toast.error(t("batchDeletePartial", { count: failed.length }));
       setShowBatchDeleteConfirm(false);
+    } catch {
+      toast.error(t("batchDeleteError"));
     } finally {
       setIsSaving(false);
     }
@@ -709,7 +719,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                   ledgerEntries={ledgerEntries}
                   categories={categories}
                   preferredCurrencies={preferredCurrencies}
-                  mainCurrency={_mainCurrency}
+                  mainCurrency={mainCurrency}
                   pendingChanges={pendingChanges}
                   selectedEntryIds={selectedIds}
                   isSelectionMode={isSelectionMode}
@@ -800,7 +810,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                         variant="default"
                         size="sm"
                         className="h-9 px-3 gap-1.5"
-                        onClick={onAcceptCandidate}
+                        onClick={() => requestAction(onAcceptCandidate)}
                         disabled={interactionDisabled}
                       >
                         <CheckCheck className={cn("h-3.5 w-3.5", isAccepting && "animate-spin")} />
@@ -812,7 +822,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                             variant="outline"
                             size="sm"
                             className="h-9 px-3 gap-1.5 text-muted-foreground"
-                            onClick={onAbandonCandidate}
+                            onClick={() => requestAction(onAbandonCandidate)}
                             disabled={interactionDisabled}
                           >
                             <XCircle className="h-3.5 w-3.5" />
@@ -829,7 +839,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       variant="outline"
                       size="sm"
                       className="h-9 gap-1.5 px-3 text-muted-foreground"
-                      onClick={onAbandonCandidate}
+                      onClick={() => requestAction(onAbandonCandidate)}
                       disabled={interactionDisabled}
                     >
                       <XCircle className="h-3.5 w-3.5" />
@@ -843,7 +853,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                       variant="outline"
                       size="sm"
                       className="h-9 gap-1.5 px-3 text-muted-foreground"
-                      onClick={onCancelProcessing}
+                      onClick={() => requestAction(onCancelProcessing)}
                       disabled={interactionDisabled}
                     >
                       <XCircle className="h-3.5 w-3.5" />
@@ -857,7 +867,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
                     variant="outline"
                     size="sm"
                     className="h-9 px-3 gap-1.5 text-muted-foreground"
-                    onClick={() => setShowRetryDialog(true)}
+                    onClick={() => requestAction(() => setShowRetryDialog(true))}
                     disabled={interactionDisabled}
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -942,6 +952,9 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           description={t("saveBeforeActionDescription")}
           onConfirm={handleSaveAndContinue}
           confirmLabel={t("saveAndContinue")}
+          cancelLabel={tCommon("continueEditing")}
+          onDiscard={handleDiscardAndContinue}
+          discardLabel={t("discardChanges")}
         />
 
         <ConfirmDialog
@@ -989,7 +1002,7 @@ export const SourceDocumentDetailModal = memo(function SourceDocumentDetailModal
           open
           categories={categories}
           preferredCurrencies={preferredCurrencies}
-          mainCurrency={_mainCurrency}
+          mainCurrency={mainCurrency}
           isSubmitting={isSaving}
           onOpenChange={setShowAddEntryDialog}
           onSubmit={handleAddEntrySubmit}

@@ -31,7 +31,7 @@ describe("ModalStackRenderer", () => {
   beforeEach(() => useModalStackStore.setState({ stack: [], canGoBack: false }));
 
   it("keeps the stack item mounted until its exit animation completes", async () => {
-    render(<ModalStackRenderer categories={[]} />);
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     act(() => {
       useModalStackStore.getState().push({
         type: "ledger-entry",
@@ -49,7 +49,7 @@ describe("ModalStackRenderer", () => {
   });
 
   it("can reopen the same item after its exit completes", async () => {
-    render(<ModalStackRenderer categories={[]} />);
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     const item = { type: "ledger-entry" as const, id: "entry-1", ledgerId: "ledger-1" };
 
     act(() => useModalStackStore.getState().push(item));
@@ -61,7 +61,7 @@ describe("ModalStackRenderer", () => {
   });
 
   it("returns to the previous detail only after the top exit completes", async () => {
-    render(<ModalStackRenderer categories={[]} />);
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     act(() => {
       useModalStackStore
         .getState()
@@ -82,7 +82,7 @@ describe("ModalStackRenderer", () => {
   });
 
   it("keeps lower wrappers mounted while only opening the top wrapper", async () => {
-    render(<ModalStackRenderer categories={[]} />);
+    render(<ModalStackRenderer categories={[]} mainCurrency="CNY" preferredCurrencies={[]} />);
     act(() => {
       useModalStackStore
         .getState()

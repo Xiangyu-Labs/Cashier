@@ -131,14 +131,16 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
   // Entry/date fields are editable only while in edit mode (and never during a mutation).
   const fieldsDisabled = readOnly || !isEditMode;
 
-  const { displayEntries, subtotalsByCurrency, totalInMainCurrency } = useMemo(
+  const { displayEntries, subtotalsByCurrency, totalInMainCurrency, unconvertedCount } = useMemo(
     () =>
       buildSourceDocumentDetailViewModel({
         ledgerEntries,
         pendingChanges,
         mainCurrency,
+        entryDate: displayEntryDate,
+        originalEntryDate: sourceDocument.entryDate ?? "",
       }),
-    [ledgerEntries, mainCurrency, pendingChanges]
+    [displayEntryDate, ledgerEntries, mainCurrency, pendingChanges, sourceDocument.entryDate]
   );
 
   const uniqueCurrencies = Object.keys(subtotalsByCurrency);
@@ -214,12 +216,17 @@ export const SourceDocumentViewDetails = memo(function SourceDocumentViewDetails
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm py-1">
+        <div className="flex flex-wrap items-center gap-2 py-1 text-sm">
           <Wallet className="h-3.5 w-3.5 text-primary/60" />
           <span className="text-xs font-medium text-muted-foreground/60">{t("totalAmount")}:</span>
           <AmountText variant="summary">
             {formatCurrencyAmount(totalInMainCurrency, mainCurrency, locale)}
           </AmountText>
+          {unconvertedCount > 0 ? (
+            <span className="text-xs text-warning" role="status">
+              {tCommon("incompleteAccountingProjection")}
+            </span>
+          ) : null}
           {uniqueCurrencies.length > 1 && (
             <div className="flex items-center gap-1.5 ml-1">
               <span className="text-muted-foreground/30">·</span>

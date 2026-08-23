@@ -22,19 +22,25 @@ interface BuildSourceDocumentDetailViewModelInput {
   ledgerEntries: LedgerEntry[];
   pendingChanges: SourceDocumentDetailPendingChanges;
   mainCurrency: string;
+  entryDate: string;
+  originalEntryDate: string;
 }
 
 export function buildSourceDocumentDetailViewModel({
   ledgerEntries,
   pendingChanges,
   mainCurrency,
+  entryDate,
+  originalEntryDate,
 }: BuildSourceDocumentDetailViewModelInput) {
   const displayEntries = ledgerEntries.map((entry) => {
     const change = pendingChanges.entries[entry.id] ?? {};
     const currency = change.currency ?? entry.currency ?? mainCurrency;
     const amount = parseAmount(change.amount ?? entry.amount);
+    const conversionIdentityChanged =
+      currency !== (entry.currency ?? mainCurrency) || entryDate !== originalEntryDate;
     const exchangeRate =
-      entry.exchangeRate != null && entry.exchangeRate !== ""
+      !conversionIdentityChanged && entry.exchangeRate != null && entry.exchangeRate !== ""
         ? Number.parseFloat(entry.exchangeRate)
         : null;
 
@@ -46,7 +52,8 @@ export function buildSourceDocumentDetailViewModel({
           : entry.convertedAmount != null &&
               entry.convertedAmount !== "" &&
               change.amount === undefined &&
-              change.currency === undefined
+              change.currency === undefined &&
+              entryDate === originalEntryDate
             ? parseAmount(entry.convertedAmount)
             : null;
 
@@ -67,10 +74,12 @@ export function buildSourceDocumentDetailViewModel({
   const totalInMainCurrency = displayEntries.reduce((total, entry) => {
     return total + (entry.convertedAmount ?? 0);
   }, 0);
+  const unconvertedCount = displayEntries.filter((entry) => entry.convertedAmount == null).length;
 
   return {
     displayEntries,
     subtotalsByCurrency,
     totalInMainCurrency,
+    unconvertedCount,
   };
 }

@@ -369,6 +369,8 @@
   },
   "SourceDocumentEditRetryDialog": {
     "title": "Edit and Retry",
+    "loadError": "The source document could not be loaded.",
+    "reload": "Reload",
     "unsavedTitle": "Discard changes?",
     "unsavedDescription": "Your retry draft will be lost.",
     "continueEditing": "Continue editing",

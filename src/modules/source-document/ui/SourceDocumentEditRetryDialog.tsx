@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getSourceDocumentFullAction } from "@/modules/source-document/actions";
 import { queryKeys } from "@/lib/query-keys";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import {
   buildSourceDocumentRetrySeed,
   type RetrySeedSourceDocument,
@@ -51,7 +53,13 @@ export function SourceDocumentEditRetryDialog({
   const needsFetch =
     (!hasStoredFiles && sourceDocument.hasImages === true) || (!hasStoredFiles && !hasText);
 
-  const { data: fullData, isLoading } = useQuery({
+  const {
+    data: fullData,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.sourceDocumentFull(ledgerId, sourceDocument.id),
     queryFn: async () => {
       const result = await getSourceDocumentFullAction(ledgerId, sourceDocument.id);
@@ -63,12 +71,14 @@ export function SourceDocumentEditRetryDialog({
     },
     enabled: open && needsFetch,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
   });
 
   const initialData = useMemo(
     () => buildSourceDocumentRetrySeed(sourceDocument, fullData ?? undefined),
     [sourceDocument, fullData]
   );
+  const seedReady = !needsFetch || fullData != null;
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
@@ -95,10 +105,26 @@ export function SourceDocumentEditRetryDialog({
         </DialogHeader>
         <div
           className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
-          aria-busy={isLoading || isInitializing}
+          aria-busy={isLoading || isFetching || isInitializing}
         >
           {isLoading ? (
             <EditRetryDialogSkeleton />
+          ) : error != null || !seedReady ? (
+            <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+              <p className="text-sm text-destructive" role="alert">
+                {t("loadError")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCw className={isFetching ? "size-4 animate-spin" : "size-4"} />
+                {t("reload")}
+              </Button>
+            </div>
           ) : (
             <div className="relative">
               <SourceDocumentInput

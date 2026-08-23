@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { QuickEntryForm } from "@/modules/source-document/ui/QuickEntryForm";
 import type { EntryCategory } from "@/modules/ledger/contracts";
@@ -175,5 +176,21 @@ describe("QuickEntryForm", () => {
 
     unmount();
     expect(onPendingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("submits exactly once when Enter is pressed in a field", async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
+    useQuickEntryFormControllerMock.mockReturnValue({
+      ...useQuickEntryFormControllerMock(),
+      selectedCategoryId: "cat-1",
+      amount: "12.34",
+      handleSubmit,
+    });
+
+    render(<QuickEntryForm ledgerId="ledger-1" categories={[createCategory()]} />);
+    await user.type(screen.getByRole("textbox", { name: "名称（可选）" }), "Lunch{enter}");
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
   });
 });

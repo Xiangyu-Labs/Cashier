@@ -39,24 +39,8 @@
     "today": "今天",
     "yesterday": "昨天",
     "clear": "清除",
-    "weekDays": [
-      "日",
-      "一",
-      "二",
-      "三",
-      "四",
-      "五",
-      "六"
-    ],
-    "weekDaysMon": [
-      "一",
-      "二",
-      "三",
-      "四",
-      "五",
-      "六",
-      "日"
-    ],
+    "weekDays": ["日", "一", "二", "三", "四", "五", "六"],
+    "weekDaysMon": ["一", "二", "三", "四", "五", "六", "日"],
     "currency": "货币",
     "allCurrencies": "全部货币",
     "category": "分类",
@@ -683,6 +667,8 @@
   },
   "SourceDocumentEditRetryDialog": {
     "title": "编辑重试",
+    "loadError": "无法加载原始凭证。",
+    "reload": "重新加载",
     "unsavedTitle": "放弃更改？",
     "unsavedDescription": "重试草稿将会丢失。",
     "continueEditing": "继续编辑",

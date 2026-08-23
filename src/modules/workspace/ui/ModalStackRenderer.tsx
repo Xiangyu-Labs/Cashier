@@ -8,9 +8,15 @@ import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
 
 interface ModalStackRendererProps {
   categories: EntryCategory[];
+  mainCurrency: string;
+  preferredCurrencies: string[];
 }
 
-export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
+export function ModalStackRenderer({
+  categories,
+  mainCurrency,
+  preferredCurrencies,
+}: ModalStackRendererProps) {
   const stack = useModalStackStore((state) => state.stack);
   const item = stack.at(-1);
   const itemKey = item == null ? null : `${item.type}:${item.ledgerId}:${item.id}`;
@@ -65,6 +71,8 @@ export function ModalStackRenderer({ categories }: ModalStackRendererProps) {
       ...(isTop && closingKey === key ? { onExitComplete } : {}),
       ...(isTop && stack.length > 1 ? { onBack: requestBack } : {}),
       categories,
+      mainCurrency,
+      preferredCurrencies,
     };
 
     return stackItem.type === "source-document" ? (

@@ -132,6 +132,8 @@ function renderModal(onSaveAll = vi.fn(async () => undefined)) {
       sourceDocument={sourceDocument}
       ledgerEntries={[entry]}
       categories={[]}
+      mainCurrency="CNY"
+      preferredCurrencies={[]}
       open
       onClose={vi.fn()}
       onSaveAll={onSaveAll}

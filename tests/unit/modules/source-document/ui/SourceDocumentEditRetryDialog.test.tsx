@@ -1,49 +1,55 @@
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const queryState = vi.hoisted(() => ({
-  data: undefined as { text: string | null; files: [] } | undefined,
-  isLoading: true,
-}));
-const inputSpy = vi.hoisted(() => vi.fn());
-
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => queryState,
+const { getSourceDocumentFullActionMock } = vi.hoisted(() => ({
+  getSourceDocumentFullActionMock: vi.fn(),
 }));
 
+vi.mock("@/modules/source-document/actions", () => ({
+  getSourceDocumentFullAction: getSourceDocumentFullActionMock,
+}));
 vi.mock("@/modules/source-document/ui/SourceDocumentInput", () => ({
-  SourceDocumentInput: (props: { initialData: { text?: string } }) => {
-    inputSpy(props);
-    return <div data-testid="retry-input">{props.initialData.text}</div>;
-  },
+  SourceDocumentInput: () => <div data-testid="retry-input" />,
 }));
 
 import { SourceDocumentEditRetryDialog } from "@/modules/source-document/ui/SourceDocumentEditRetryDialog";
 
+function renderDialog() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SourceDocumentEditRetryDialog
+        ledgerId="ledger-1"
+        sourceDocument={{
+          id: "00000000-0000-4000-8000-000000000001",
+          text: null,
+          files: [],
+          hasImages: true,
+        }}
+        open
+        onOpenChange={vi.fn()}
+      />
+    </QueryClientProvider>
+  );
+}
+
 describe("SourceDocumentEditRetryDialog", () => {
   beforeEach(() => {
-    queryState.data = undefined;
-    queryState.isLoading = true;
-    inputSpy.mockClear();
+    vi.clearAllMocks();
+    getSourceDocumentFullActionMock.mockRejectedValue(new Error("unavailable"));
   });
 
-  it("waits for fetched retry data before mounting the input", () => {
-    const props = {
-      ledgerId: "ledger-1",
-      sourceDocument: { id: "doc-1", text: null, files: [], hasImages: true },
-      open: true,
-      onOpenChange: vi.fn(),
-    };
-    const { rerender } = render(<SourceDocumentEditRetryDialog {...props} />);
+  it("renders the load error and reloads without mounting an incomplete input", async () => {
+    renderDialog();
 
-    expect(inputSpy).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent("无法加载原始凭证");
     expect(screen.queryByTestId("retry-input")).not.toBeInTheDocument();
 
-    queryState.data = { text: "Fetched receipt text", files: [] };
-    queryState.isLoading = false;
-    rerender(<SourceDocumentEditRetryDialog {...props} />);
-
-    expect(screen.getByTestId("retry-input")).toHaveTextContent("Fetched receipt text");
-    expect(inputSpy).toHaveBeenCalledTimes(1);
+    getSourceDocumentFullActionMock.mockResolvedValue({ text: "receipt", files: [] });
+    fireEvent.click(screen.getByRole("button", { name: "重新加载" }));
+    await waitFor(() => expect(screen.getByTestId("retry-input")).toBeInTheDocument());
   });
 });

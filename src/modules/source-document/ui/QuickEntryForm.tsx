@@ -94,7 +94,13 @@ export function QuickEntryForm({
   }, [isDirty, onDirtyChange]);
 
   return (
-    <div className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSubmit();
+      }}
+    >
       {/* Item Name (optional) */}
       <Input
         aria-label={t("itemName")}
@@ -209,8 +215,7 @@ export function QuickEntryForm({
 
       {/* Submit */}
       <Button
-        type="button"
-        onClick={handleSubmit}
+        type="submit"
         disabled={selectedCategoryId === null || !hasValidAmount || isPending}
         aria-describedby={
           [
@@ -241,6 +246,6 @@ export function QuickEntryForm({
           {t("categoryRequired")}
         </p>
       ) : null}
-    </div>
+    </form>
   );
 }
