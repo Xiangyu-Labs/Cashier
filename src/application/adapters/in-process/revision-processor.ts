@@ -239,6 +239,7 @@ export class CurrentRevisionProcessor implements RevisionProcessorPort {
           : { aiCustomPrompt: ledgerSettings.aiCustomPrompt }),
         sourceDocumentId: request.sourceDocumentId,
         currentCreatedAt: document.createdAt.toISOString(),
+        currentEntryDate: document.entryDate,
         currentTitle: output.title ?? null,
         currentEntries: entryInputs,
         currentStoredFileIds: files.map((file) => file.id),

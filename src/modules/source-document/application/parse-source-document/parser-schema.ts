@@ -3,6 +3,7 @@ import Decimal from "decimal.js";
 import { isValidDecimal, compare } from "@/lib/money/decimal";
 import { getAiOutputCopy } from "@/config/ai-output-locales";
 import { normalizeTitle } from "@/modules/source-document/title-policy";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 
 // ===== Decimal string validation =====
 
@@ -10,23 +11,36 @@ import { normalizeTitle } from "@/modules/source-document/title-policy";
  * Zod type for canonical decimal strings.
  * Rejects raw JSON numbers — the AI must output quoted strings.
  */
-const decimalStringSchema = z.string().refine((v) => isValidDecimal(v), {
-  message: 'Must be a valid decimal number string (e.g. "45.00")',
-});
+const decimalStringSchema = z
+  .string()
+  .refine((v) => isValidDecimal(v), {
+    message: 'Must be a valid decimal number string (e.g. "45.00")',
+  })
+  .refine((value) => /^-?(?:0|[1-9]\d{0,17})(?:\.\d{1,3})?$/.test(value), {
+    message: "Amount exceeds numeric(21,3)",
+  });
+const supportedCurrencySchema = z
+  .string()
+  .transform((value) => value.trim().toUpperCase())
+  .refine(
+    (value): value is (typeof SUPPORTED_CURRENCIES)[number] =>
+      (SUPPORTED_CURRENCIES as readonly string[]).includes(value),
+    "Unsupported currency"
+  );
 
 // ===== Raw Zod schema (AI response shape) =====
 
 const receiptTotalSchema = z.object({
   receipt_index: z.number().int().min(0),
   amount: decimalStringSchema,
-  currency: z.string(),
+  currency: supportedCurrencySchema,
 });
 
 const ledgerEntrySchema = z.object({
   receipt_index: z.number().int().min(0),
   item_name: z.string(),
   amount: decimalStringSchema,
-  currency: z.string(),
+  currency: supportedCurrencySchema,
   category_index: z.number().int().min(0),
   notes: z.string().nullish(),
 });
@@ -35,19 +49,66 @@ const orderAdjustmentSchema = z.object({
   receipt_index: z.number().int().min(0),
   item_name: z.string(),
   amount: decimalStringSchema,
-  currency: z.string(),
+  currency: supportedCurrencySchema,
 });
 
-export const parserOutputSchema = z.object({
-  outcome: z.enum(["success", "invalid", "anomaly"]).default("success"),
-  anomaly_reason: z.string().nullish(),
-  title: z.string().nullish(),
-  receipt_count: z.number().int().min(0).default(1),
-  receipt_totals: z.array(receiptTotalSchema).default([]),
-  ledger_entries: z.array(ledgerEntrySchema).default([]),
-  order_adjustments: z.array(orderAdjustmentSchema).default([]),
-  reasoning: z.string(),
-});
+export const parserOutputSchema = z
+  .object({
+    outcome: z.enum(["success", "invalid", "anomaly"]).default("success"),
+    anomaly_reason: z.string().nullish(),
+    title: z.string().nullish(),
+    receipt_count: z.number().int().min(0).default(1),
+    receipt_totals: z.array(receiptTotalSchema).default([]),
+    ledger_entries: z.array(ledgerEntrySchema).default([]),
+    order_adjustments: z.array(orderAdjustmentSchema).default([]),
+    reasoning: z.string(),
+  })
+  .superRefine((output, ctx) => {
+    if (output.outcome !== "success") return;
+    if (output.receipt_count < 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["receipt_count"],
+        message: "Successful output requires a receipt",
+      });
+      return;
+    }
+    const expected = new Set(Array.from({ length: output.receipt_count }, (_, index) => index));
+    const totalsByIndex = new Map<number, number>();
+    output.receipt_totals.forEach((total, index) => {
+      totalsByIndex.set(total.receipt_index, (totalsByIndex.get(total.receipt_index) ?? 0) + 1);
+      if (!expected.has(total.receipt_index)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["receipt_totals", index, "receipt_index"],
+          message: "Receipt index is outside receipt_count",
+        });
+      }
+    });
+    for (const receiptIndex of expected) {
+      if (totalsByIndex.get(receiptIndex) !== 1) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["receipt_totals"],
+          message: `Receipt ${receiptIndex} must have exactly one total`,
+        });
+      }
+    }
+    for (const [field, values] of [
+      ["ledger_entries", output.ledger_entries],
+      ["order_adjustments", output.order_adjustments],
+    ] as const) {
+      values.forEach((value, index) => {
+        if (!expected.has(value.receipt_index)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [field, index, "receipt_index"],
+            message: "Receipt index is outside receipt_count",
+          });
+        }
+      });
+    }
+  });
 
 // ===== Normalized output type =====
 

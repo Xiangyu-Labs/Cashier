@@ -27,10 +27,14 @@ import { updateLedgerEntryInputSchema } from "@/modules/ledger/contract-schemas"
 import { compare, DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
 
 const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID");
+const databaseDecimalSchema = z
+  .string()
+  .regex(/^-?(?:0|[1-9]\d{0,17})(?:\.\d{1,3})?$/, "Amount exceeds numeric(21,3)")
+  .transform(normalize);
 const positiveDecimalSchema = z
   .string()
   .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
-  .transform(normalize)
+  .pipe(databaseDecimalSchema)
   .refine((value) => compare(value, "0") > 0, "Amount must be positive");
 const strictObjectSchema = <TShape extends z.ZodRawShape>(shape: TShape) =>
   z.preprocess(omitUndefinedObjectFields, z.object(shape).strict());
@@ -46,9 +50,36 @@ const optionalSearchSchema = z.preprocess(
   (value) => (typeof value === "string" ? normalizeSearchTerm(value) : value),
   z.string().max(MAX_SEARCH_LENGTH).optional()
 );
-const sourceDocumentCursorSchema = z
+const sourceDocumentCursorSchema = z.string().superRefine((cursor, ctx) => {
+  const [effectiveDate, createdAt, id, ...extra] = cursor.split("|");
+  if (
+    extra.length > 0 ||
+    dateStringSchema.safeParse(effectiveDate).success === false ||
+    typeof createdAt !== "string" ||
+    Number.isNaN(Date.parse(createdAt)) ||
+    uuidSchema.safeParse(id).success === false
+  ) {
+    ctx.addIssue({ code: "custom", message: "Invalid source document cursor" });
+  }
+});
+const codePointLimitedText = (max: number) =>
+  z.string().refine((value) => [...value].length <= max, `Must contain at most ${max} characters`);
+const optionalTitleSchema = codePointLimitedText(200)
+  .transform((value) => value.trim())
+  .refine((value) => value.length > 0, "Title must not be empty")
+  .optional();
+const timezoneSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}\|.+\|.+$/, "Invalid source document cursor");
+  .max(50)
+  .refine((timezone) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Invalid IANA timezone")
+  .optional();
 
 // Build MIME pattern from the shared policy list
 const SUPPORTED_MIME_PATTERN = SUPPORTED_MIME_TYPES.map((t) =>
@@ -137,6 +168,8 @@ const sourceDocumentPayloadSchema = strictObjectSchema({
   text: z
     .string()
     .max(MAX_TEXT_CHARACTERS, `Text too long (max ${MAX_TEXT_CHARACTERS} characters)`)
+    .transform((value) => value.trim())
+    .refine((value) => value.length > 0, "Text must not be empty")
     .optional(),
   storedFileIds: z
     .array(uuidSchema)
@@ -145,7 +178,7 @@ const sourceDocumentPayloadSchema = strictObjectSchema({
   images: imagesSchema.optional(),
   originalImages: imagesSchema.optional(),
   entryDate: optionalDateStringSchema,
-  timezone: z.string().max(50).optional(),
+  timezone: timezoneSchema,
 });
 
 export const createSourceDocumentInputSchema = sourceDocumentPayloadSchema.superRefine(
@@ -277,6 +310,12 @@ const preparedApiV1ImageSchema = strictObjectSchema({
       message: `Image exceeds ${API_V1_MAX_DECODED_IMAGE_BYTES / 1024 / 1024}MB`,
     });
   }
+  if (
+    byteLength > 0 &&
+    createHash("sha256").update(image.bytes).digest("hex") !== image.contentHash.toLowerCase()
+  ) {
+    ctx.addIssue({ code: "custom", path: ["contentHash"], message: "Content hash mismatch" });
+  }
 });
 
 export const preparedApiV1SourceDocumentInputSchema = strictObjectSchema({
@@ -330,7 +369,7 @@ export const listSourceDocumentsInputSchema = strictObjectSchema({
   cursor: sourceDocumentCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   includeFiles: z.boolean().optional().default(false),
-  includeEntries: z.coerce.boolean().default(false),
+  includeEntries: z.boolean().default(false),
 });
 
 const streamPageCursorSchema = z
@@ -355,7 +394,7 @@ export const streamPageInputSchema = strictObjectSchema({
 });
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({
-  title: z.string().max(200).optional(),
+  title: optionalTitleSchema,
   entryDate: optionalDateStringSchema,
 });
 
@@ -408,7 +447,7 @@ export const splitSourceDocumentInputSchema = strictObjectSchema({
 
 export const batchUpdateSourceDocumentsInputSchema = strictObjectSchema({
   status: sourceDocumentStatusSchema.optional(),
-  title: z.string().max(200).optional(),
+  title: optionalTitleSchema,
   entryDate: optionalDateStringSchema,
 });
 

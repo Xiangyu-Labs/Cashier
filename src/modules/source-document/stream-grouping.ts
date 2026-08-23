@@ -1,4 +1,5 @@
 import type { SourceDocumentListItemDto, SourceDocumentLedgerEntryDto } from "./contracts";
+import { add } from "@/lib/money/decimal";
 
 /**
  * Stream grouping — pure presentation model that groups consecutive server-ordered
@@ -26,7 +27,9 @@ export interface UnifiedStreamGroup {
   /** Provenance of the first item's effective date (groups are homogeneous). */
   dateProvenance: DateProvenance;
   /** Sum of active ledger-entry amounts across accounting-valid items in this group. */
-  total: number;
+  total: string;
+  unconvertedCount: number;
+  currencyTotals: Record<string, string>;
   items: UnifiedStreamItem[];
 }
 
@@ -40,20 +43,26 @@ const DATE_UNKNOWN = "date_unknown";
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-function parseNumeric(amount: string | null | undefined): number {
-  if (amount == null || amount === "") return 0;
-  const parsed = Number(amount);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function computeEntryTotal(entries: SourceDocumentLedgerEntryDto[]): number {
-  return entries.reduce((sum, e) => {
-    const amt =
-      e.convertedAmount != null && e.convertedAmount !== ""
-        ? parseNumeric(e.convertedAmount)
-        : parseNumeric(e.amount);
-    return sum + amt;
-  }, 0);
+function addEntries(
+  group: UnifiedStreamGroup,
+  entries: SourceDocumentLedgerEntryDto[],
+  mainCurrency?: string
+): void {
+  for (const entry of entries) {
+    if (entry.convertedAmount != null && entry.convertedAmount !== "") {
+      group.total = add(group.total, entry.convertedAmount);
+      continue;
+    }
+    const currency = (entry.currency ?? mainCurrency)?.trim().toUpperCase();
+    if (mainCurrency != null && currency === mainCurrency.trim().toUpperCase()) {
+      group.total = add(group.total, entry.amount);
+      continue;
+    }
+    group.unconvertedCount += 1;
+    if (currency != null && currency !== "") {
+      group.currencyTotals[currency] = add(group.currencyTotals[currency] ?? "0", entry.amount);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +96,8 @@ export function getEffectiveDate(sourceDocument: {
  * Groups consecutive items by effective date without re-sorting.
  */
 export function buildUnifiedStreamGroups(
-  items: readonly SourceDocumentListItemDto[]
+  items: readonly SourceDocumentListItemDto[],
+  mainCurrency?: string
 ): UnifiedStreamGroup[] {
   // 1. Map to presentation items preserving server order
   const mapped: UnifiedStreamItem[] = items.map((item) => {
@@ -110,7 +120,9 @@ export function buildUnifiedStreamGroups(
       groups.push({
         date: item.effectiveDate,
         dateProvenance: item.dateProvenance,
-        total: 0,
+        total: "0",
+        unconvertedCount: 0,
+        currencyTotals: {},
         items: [item],
       });
     }
@@ -119,15 +131,14 @@ export function buildUnifiedStreamGroups(
   // 3. Compute totals for all active accounting projections. A pending
   // duplicate is valid until the user chooses to delete it.
   for (const group of groups) {
-    group.total = group.items.reduce((sum, item) => {
+    for (const item of group.items) {
       if (
         item.sourceDocument.status === "completed" ||
         item.sourceDocument.status === "duplicate_pending"
       ) {
-        return sum + computeEntryTotal(item.ledgerEntries);
+        addEntries(group, item.ledgerEntries, mainCurrency);
       }
-      return sum;
-    }, 0);
+    }
   }
 
   return groups;

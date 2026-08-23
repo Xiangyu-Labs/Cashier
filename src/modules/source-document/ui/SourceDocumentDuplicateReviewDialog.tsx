@@ -22,6 +22,7 @@ import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
 import { SourceDocumentImageModal } from "./SourceDocumentImageModal";
 import { normalizeDuplicateReason } from "@/modules/source-document/duplicate-reason";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { add } from "@/lib/money/decimal";
 
 interface SourceDocumentDuplicateReviewDialogProps {
   ledgerId: string;
@@ -114,11 +115,7 @@ export function SourceDocumentDuplicateReviewDialog({
           candidateSourceDocumentIds: data.matched == null ? [] : [data.matched.id],
           aiLanguage: locale,
         });
-  const duplicateTotal =
-    data?.duplicate.entries.reduce((sum, entry) => {
-      const amount = Number(entry.convertedAmount ?? entry.amount);
-      return sum + (Number.isFinite(amount) ? amount : 0);
-    }, 0) ?? 0;
+  const duplicateSummary = summarizeReviewEntries(data?.duplicate.entries ?? [], mainCurrency);
   const duplicateDate = data?.duplicate.entryDate ?? data?.duplicate.createdAt.slice(0, 10) ?? "";
   return (
     <>
@@ -230,7 +227,7 @@ export function SourceDocumentDuplicateReviewDialog({
         title={t("discardConfirmTitle")}
         description={t("discardConfirmDescription", {
           date: duplicateDate,
-          amount: formatCurrencyAmount(duplicateTotal, mainCurrency, locale),
+          amount: formatCurrencyAmount(duplicateSummary.total, mainCurrency, locale),
           count: data?.duplicate.entries.length ?? 0,
         })}
         confirmLabel={t("discard")}
@@ -279,6 +276,27 @@ interface ReviewSide {
   files: SourceDocumentDuplicateReviewDetailDto["duplicate"]["files"];
 }
 
+function summarizeReviewEntries(
+  entries: ReviewSide["entries"],
+  mainCurrency: string
+): { total: string; unconvertedCount: number; currencyTotals: Record<string, string> } {
+  let total = "0";
+  let unconvertedCount = 0;
+  const currencyTotals: Record<string, string> = {};
+  for (const entry of entries) {
+    const currency = (entry.currency ?? mainCurrency).trim().toUpperCase();
+    if (entry.convertedAmount != null && entry.convertedAmount !== "") {
+      total = add(total, entry.convertedAmount);
+    } else if (currency === mainCurrency.trim().toUpperCase()) {
+      total = add(total, entry.amount);
+    } else {
+      unconvertedCount += 1;
+      currencyTotals[currency] = add(currencyTotals[currency] ?? "0", entry.amount);
+    }
+  }
+  return { total, unconvertedCount, currencyTotals };
+}
+
 function ReviewPanel({
   side,
   label,
@@ -299,10 +317,7 @@ function ReviewPanel({
     open: false,
     index: 0,
   });
-  const total = side.entries.reduce((sum, entry) => {
-    const amount = Number(entry.convertedAmount ?? entry.amount);
-    return sum + (Number.isFinite(amount) ? amount : 0);
-  }, 0);
+  const summary = summarizeReviewEntries(side.entries, mainCurrency);
 
   return (
     <section
@@ -335,9 +350,21 @@ function ReviewPanel({
             {t("date", { date: side.entryDate ?? side.createdAt.slice(0, 10) })}
           </p>
         </div>
-        <AmountText variant="summary">
-          {formatCurrencyAmount(total, mainCurrency, locale)}
-        </AmountText>
+        <div className="shrink-0 text-right">
+          <AmountText variant="summary">
+            {formatCurrencyAmount(summary.total, mainCurrency, locale)}
+          </AmountText>
+          {Object.entries(summary.currencyTotals).map(([currency, total]) => (
+            <AmountText key={currency} variant="secondary">
+              {formatCurrencyAmount(total, currency, locale)}
+            </AmountText>
+          ))}
+          {summary.unconvertedCount > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              {t("unconverted", { count: summary.unconvertedCount })}
+            </p>
+          )}
+        </div>
       </header>
 
       {side.files.length > 0 && (

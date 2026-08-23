@@ -89,6 +89,8 @@ export function createAIContext({
       const responseFormat = undefined;
 
       // Call OpenAI (signal is passed internally for cancellation)
+      const requestSignal =
+        options.signal == null ? signal : AbortSignal.any([signal, options.signal]);
       const result = await client.generateContent(
         options.prompt,
         messages,
@@ -96,7 +98,7 @@ export function createAIContext({
         maxTokens,
         temperature,
         responseFormat,
-        signal
+        requestSignal
       );
 
       // JSON validation and repair remains private to the processing runtime.
@@ -149,7 +151,7 @@ export function createAIContext({
             8192,
             1,
             undefined,
-            signal
+            requestSignal
           );
 
           const repairedExtracted = extractJson(repairResult.content);

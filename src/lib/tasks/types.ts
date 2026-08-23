@@ -32,6 +32,7 @@ export interface AIGenerateOptions {
   maxTokens?: number; // Max output tokens, defaults to 8192
   temperature?: number; // Creativity (0-2), defaults to 1
   requireJson?: boolean; // Require valid JSON response, defaults to false
+  signal?: AbortSignal; // Optional stage-local cancellation in addition to the processing signal
 }
 
 /**

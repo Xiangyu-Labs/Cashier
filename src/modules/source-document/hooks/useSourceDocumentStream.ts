@@ -22,6 +22,7 @@ import { isRefreshableRevisionState, useRevisionStateRefresh } from "./revision-
 const STREAM_PAGE_LIMIT = 20;
 
 export interface UseSourceDocumentStreamOptions {
+  mainCurrency?: string;
   dateRange?: {
     start?: string;
     end?: string;
@@ -96,6 +97,7 @@ export function useSourceDocumentStream(
     search,
     enableRefresh = true,
     queryDescriptor,
+    mainCurrency,
   } = options;
 
   const startDate = dateRange?.start ?? null;
@@ -242,8 +244,8 @@ export function useSourceDocumentStream(
 
   // Build unified stream groups (preserving server order)
   const streamGroups: UnifiedStreamGroup[] = useMemo(() => {
-    return buildUnifiedStreamGroups(items);
-  }, [items]);
+    return buildUnifiedStreamGroups(items, mainCurrency);
+  }, [items, mainCurrency]);
 
   return {
     streamGroups,

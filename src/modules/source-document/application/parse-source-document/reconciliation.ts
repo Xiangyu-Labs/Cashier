@@ -1,9 +1,10 @@
 import Decimal from "decimal.js";
 import { add, subtract, compare, round } from "@/lib/money/decimal";
 import { getAiOutputCopy } from "@/config/ai-output-locales";
+import { getCurrencyDecimals } from "@/lib/money/currency-precision";
 import type { NormalizedParseOutput, NormalizedReceiptTotal } from "./parser-schema";
 
-const MAX_ABSOLUTE_DIFFERENCE = new Decimal("1.00");
+const MAX_ABSOLUTE_DIFFERENCE = new Decimal("1");
 const MAX_RELATIVE_DIFFERENCE = new Decimal("0.02");
 
 function determineTargetTotal(
@@ -26,10 +27,13 @@ function determineTargetTotal(
     };
   }
 
+  const minorUnit = new Decimal(1).dividedBy(
+    new Decimal(10).pow(getCurrencyDecimals(first.currency))
+  );
   const hasConflict = matching.some(
     (candidate) =>
       candidate.currency !== first.currency ||
-      compare(new Decimal(candidate.amount).minus(first.amount).abs().toFixed(), "0.01") > 0
+      new Decimal(candidate.amount).minus(first.amount).abs().gt(minorUnit)
   );
   if (hasConflict) {
     return {
@@ -91,10 +95,12 @@ export function reconcileParseOutput({
       (sum, adjustment) => add(sum, adjustment.amount),
       "0"
     );
-    const currentTotal = round(add(entriesTotal, adjustmentsTotal), 2);
-    const delta = round(subtract(target.total.amount, currentTotal), 2);
+    const decimals = getCurrencyDecimals(target.total.currency);
+    const minorUnit = new Decimal(1).dividedBy(new Decimal(10).pow(decimals));
+    const currentTotal = round(add(entriesTotal, adjustmentsTotal), decimals);
+    const delta = round(subtract(target.total.amount, currentTotal), decimals);
 
-    if (compare(new Decimal(delta).abs().toFixed(), "0.01") <= 0) {
+    if (new Decimal(delta).abs().lt(minorUnit)) {
       continue;
     }
 

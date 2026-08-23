@@ -39,7 +39,9 @@ function groupsOf(ids: string[]): UnifiedStreamGroup[] {
     {
       date: "2026-07-15",
       dateProvenance: "transaction",
-      total: 0,
+      total: "0",
+      unconvertedCount: 0,
+      currencyTotals: {},
       items: ids.map((id) => ({
         sourceDocument: card(id),
         ledgerEntries: [],

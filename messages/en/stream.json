@@ -45,8 +45,24 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "clear": "Clear",
-    "weekDays": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
-    "weekDaysMon": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    "weekDays": [
+      "Su",
+      "Mo",
+      "Tu",
+      "We",
+      "Th",
+      "Fr",
+      "Sa"
+    ],
+    "weekDaysMon": [
+      "Mo",
+      "Tu",
+      "We",
+      "Th",
+      "Fr",
+      "Sa",
+      "Su"
+    ],
     "currency": "Currency",
     "allCurrencies": "All Currencies",
     "category": "Category",
@@ -86,6 +102,7 @@
     "candidate": "New parsing result",
     "entryCount": "{count} entries",
     "noEntries": "No entries",
+    "unconverted": "{count} unconverted",
     "keepOriginal": "Keep original result",
     "acceptCandidate": "Accept new result"
   },
@@ -714,6 +731,7 @@
     "untitled": "Untitled",
     "date": "Date: {date}",
     "noEntries": "No entries",
+    "unconverted": "{count} unconverted",
     "keep": "Keep this bill",
     "discard": "Delete duplicate",
     "discardConfirmTitle": "Delete this entire bill?",

@@ -7,6 +7,7 @@
  */
 
 import {
+  ProcessingCancelledError,
   ProcessingFailure,
   type AiContextContract,
   type AiMessageContentPart as AIMessageContentPart,
@@ -107,11 +108,17 @@ export type ArbitrationResult =
 
 async function generateForArbitration(
   ai: AiContextContract,
-  options: Parameters<AiContextContract["generate"]>[0]
+  options: Parameters<AiContextContract["generate"]>[0],
+  signal?: AbortSignal
 ) {
   try {
-    return await ai.generate(options);
+    return await ai.generate({
+      ...options,
+      requireJson: true,
+      ...(signal == null ? {} : { signal }),
+    });
   } catch (error) {
+    if (signal?.aborted) throw new ProcessingCancelledError();
     if (error instanceof ProcessingFailure) throw error;
     throw new ProcessingFailure("ai_provider_unavailable", "Arbitration AI request failed", {
       cause: error,
@@ -129,7 +136,8 @@ export async function arbitrateResults(
     result1: NormalizedParseOutput;
     result2: NormalizedParseOutput;
   },
-  ai: AiContextContract
+  ai: AiContextContract,
+  signal?: AbortSignal
 ): Promise<ArbitrationResult> {
   const hasImages = (input.evidence?.images.length ?? 0) > 0;
   const model = hasImages ? "vision" : "text";
@@ -137,11 +145,15 @@ export async function arbitrateResults(
 
   // Step 1: choose which result is better
   const choicePrompt = buildArbitrationPrompt(input, result1, result2);
-  const choiceResponse = await generateForArbitration(ai, {
-    model,
-    prompt: choicePrompt,
-    messages: [{ role: "user", content: messageContent }],
-  });
+  const choiceResponse = await generateForArbitration(
+    ai,
+    {
+      model,
+      prompt: choicePrompt,
+      messages: [{ role: "user", content: messageContent }],
+    },
+    signal
+  );
 
   let choiceRaw: unknown;
   try {
@@ -172,11 +184,15 @@ export async function arbitrateResults(
 
   // Step 2: fallback — ask AI to produce corrected result
   const correctionPrompt = buildArbitrationResultPrompt(input, result1, result2);
-  const correctedResponse = await generateForArbitration(ai, {
-    model,
-    prompt: correctionPrompt,
-    messages: [{ role: "user", content: messageContent }],
-  });
+  const correctedResponse = await generateForArbitration(
+    ai,
+    {
+      model,
+      prompt: correctionPrompt,
+      messages: [{ role: "user", content: messageContent }],
+    },
+    signal
+  );
 
   let raw: unknown;
   try {

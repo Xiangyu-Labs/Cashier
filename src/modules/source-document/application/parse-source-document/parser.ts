@@ -11,6 +11,7 @@
 import { logger } from "@/lib/logger";
 import { buildAiOutputLocaleInstruction } from "@/config/ai-output-locales";
 import {
+  ProcessingCancelledError,
   ProcessingFailure,
   type AiContextContract,
   type AiMessageContentPart as AIMessageContentPart,
@@ -108,7 +109,7 @@ Return a single JSON object:
 ### Important: Amount Formatting
 - All amount fields must be **quoted decimal strings** (e.g. "45.00", "-5.00", "0.10").
 - Never output unquoted JSON numbers for amounts — the system will reject them.
-- Always include exactly 2 decimal places.
+- Use the currency's ISO minor-unit precision: 0 decimals for zero-decimal currencies such as JPY, 3 decimals for currencies such as KWD, and 2 decimals for most currencies.
 - Use standard minus sign - for negative values.
 
 ### Rules
@@ -157,7 +158,8 @@ Return a single JSON object:
 
 export async function executeParser(
   input: ParserInput,
-  ai: AiContextContract
+  ai: AiContextContract,
+  signal?: AbortSignal
 ): Promise<NormalizedParseOutput> {
   const aiLanguage = input.aiLanguage ?? "zh-CN";
   const images = input.evidence?.images;
@@ -174,8 +176,11 @@ export async function executeParser(
       model,
       prompt,
       messages: [{ role: "user", content: buildMessageContent(images) }],
+      requireJson: true,
+      ...(signal == null ? {} : { signal }),
     });
   } catch (error) {
+    if (signal?.aborted) throw new ProcessingCancelledError();
     if (error instanceof ProcessingFailure) throw error;
     throw new ProcessingFailure("ai_provider_unavailable", "Parser AI request failed", {
       cause: error,

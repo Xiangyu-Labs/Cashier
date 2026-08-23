@@ -130,6 +130,7 @@ export function LedgerEntriesTab({
     queryIsFetching,
     queryHasData,
   } = useSourceDocumentStream(ledgerId, {
+    mainCurrency,
     dateRange: {
       ...(filters.startDate !== undefined ? { start: filters.startDate } : {}),
       ...(filters.endDate !== undefined ? { end: filters.endDate } : {}),

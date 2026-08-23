@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import {
   apiV1IdempotencyKeySchema,
   createSourceDocumentInputSchemaV1,
@@ -105,7 +106,9 @@ describe("API v1 source-document contract", () => {
         {
           bytes: Buffer.from([1]),
           mimeType: "image/jpeg",
-          contentHash: "a".repeat(64),
+          contentHash: createHash("sha256")
+            .update(Buffer.from([1]))
+            .digest("hex"),
         },
       ],
     };

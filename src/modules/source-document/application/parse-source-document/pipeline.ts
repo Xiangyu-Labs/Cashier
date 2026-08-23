@@ -122,7 +122,7 @@ async function executeParsePipeline(
     throwIfProcessingCancelled(ctx.signal);
 
     const parserInput = buildParserInput(input);
-    const first = await executeParser(parserInput, ctx.ai);
+    const first = await executeParser(parserInput, ctx.ai, ctx.signal);
 
     throwIfProcessingCancelled(ctx.signal);
 
@@ -142,7 +142,7 @@ async function executeParsePipeline(
     // Complex document: run a second pass
     throwIfProcessingCancelled(ctx.signal);
 
-    const second = await executeParser(parserInput, ctx.ai);
+    const second = await executeParser(parserInput, ctx.ai, ctx.signal);
     throwIfProcessingCancelled(ctx.signal);
 
     // Both passes agree: use first result
@@ -164,7 +164,8 @@ async function executeParsePipeline(
     logger.info({ docId: ctx.docId }, "parser: dual-run disagrees, arbitrating");
     const arbitration = await arbitrateResults(
       { input: parserInput, result1: first, result2: second },
-      ctx.ai
+      ctx.ai,
+      ctx.signal
     );
 
     throwIfProcessingCancelled(ctx.signal);
@@ -177,9 +178,12 @@ async function executeParsePipeline(
       };
     }
 
+    const arbitrationDecision = resolveOutcome(arbitration.result);
+    if (arbitrationDecision.kind !== "continue") return arbitrationDecision;
+
     return persistAndResolveSuccess({
       aiLanguage: input.aiLanguage,
-      result: arbitration.result,
+      result: arbitrationDecision.result,
       wasArbitrated: true,
     });
   } catch (error) {
@@ -195,11 +199,14 @@ export async function runParsePipeline(
   ctx: StageContext
 ): Promise<ParsePipelineResult> {
   let timeout: NodeJS.Timeout | undefined;
+  const deadlineController = new AbortController();
+  const deadlineSignal = AbortSignal.any([ctx.signal, deadlineController.signal]);
   const deadline = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
+      deadlineController.abort();
       reject(
         new ProcessingFailure(
-          "ai_provider_unavailable",
+          "processing_timeout",
           `Source document parsing exceeded ${runtimeEnv.aiRevisionDeadlineMs}ms deadline`
         )
       );
@@ -208,7 +215,10 @@ export async function runParsePipeline(
   });
 
   try {
-    return await Promise.race([executeParsePipeline(input, ctx), deadline]);
+    return await Promise.race([
+      executeParsePipeline(input, { ...ctx, signal: deadlineSignal }),
+      deadline,
+    ]);
   } finally {
     if (timeout != null) clearTimeout(timeout);
   }

@@ -145,7 +145,7 @@ describe("buildUnifiedStreamGroups", () => {
     });
 
     const groups = buildUnifiedStreamGroups([completed]);
-    expect(groups[0]!.total).toBe(15);
+    expect(groups[0]!.total).toBe("15");
   });
 
   it("excludes non-completed items from group totals", () => {
@@ -159,14 +159,14 @@ describe("buildUnifiedStreamGroups", () => {
     const groups = buildUnifiedStreamGroups([pending, completed]);
     expect(groups).toHaveLength(1);
     // total should come from completed only
-    expect(groups[0]!.total).toBe(10);
+    expect(groups[0]!.total).toBe("10");
   });
 
   it("does not invent a total for empty/pending groups", () => {
     const att = makeItem("q1", { status: "processing", entryDate: "2026-07-01" });
 
     const groups = buildUnifiedStreamGroups([att]);
-    expect(groups[0]!.total).toBe(0);
+    expect(groups[0]!.total).toBe("0");
   });
 
   it("preserves server order within same date group without re-sorting", () => {

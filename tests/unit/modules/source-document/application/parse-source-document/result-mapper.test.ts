@@ -25,7 +25,7 @@ describe("convertToParsedEntries", () => {
     expect(result).toEqual([
       {
         itemName: "Lunch",
-        amount: "10",
+        amount: "10.00",
         currency: "USD",
         categoryIndex: 1,
         entryDate: null,
@@ -177,7 +177,7 @@ describe("convertToParsedEntries", () => {
 
     // Orphaned adjustment is dropped — no separate row
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Item", amount: "10", isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Item", amount: "10.00", isAdjustment: false });
   });
 
   it("returns entries unchanged when there are no adjustments", () => {
@@ -196,7 +196,7 @@ describe("convertToParsedEntries", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ itemName: "Tea", amount: "5", isAdjustment: false });
+    expect(result[0]).toMatchObject({ itemName: "Tea", amount: "5.00", isAdjustment: false });
   });
 
   it("aggregates multiple adjustments before distributing", () => {

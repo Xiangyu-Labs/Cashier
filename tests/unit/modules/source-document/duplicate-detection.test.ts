@@ -36,6 +36,7 @@ function buildInput(overrides: Partial<DuplicateDetectionInput> = {}): Duplicate
     mainCurrency: "CNY",
     sourceDocumentId: "current-1",
     currentCreatedAt: "2026-08-05T09:00:00.000Z",
+    currentEntryDate: "2026-08-05",
     currentTitle: "Coffee Shop",
     currentEntries: [
       {

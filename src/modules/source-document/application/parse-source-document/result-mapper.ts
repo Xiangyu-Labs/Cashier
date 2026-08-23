@@ -6,6 +6,7 @@ import {
   type ParseSourceDocumentOutput,
 } from "./contracts";
 import type { NormalizedLedgerEntry, NormalizedOrderAdjustment } from "./parser-schema";
+import { getCurrencyDecimals, roundToCurrency } from "@/lib/money/currency-precision";
 
 /**
  * Distribute order adjustments proportionally into ledger entries by receipt_index.
@@ -49,15 +50,22 @@ function distributeAdjustments(
       const i = matchingIndices[k]!;
       const entry = result[i]!;
       const share = netAmount.times(entry.amount).dividedBy(totalAmount);
-      const roundedShare = share.toFixed(2);
-      entry.amount = new Decimal(entry.amount).plus(roundedShare).toFixed(2);
+      const decimals = getCurrencyDecimals(entry.currency);
+      const roundedShare = share.toFixed(decimals, Decimal.ROUND_HALF_UP);
+      entry.amount = new Decimal(entry.amount)
+        .plus(roundedShare)
+        .toFixed(decimals, Decimal.ROUND_HALF_UP);
       distributed = distributed.plus(roundedShare);
     }
 
     // Last entry absorbs rounding remainder to preserve exact total
     const lastIdx = matchingIndices[matchingIndices.length - 1]!;
-    const remainder = netAmount.minus(distributed).toFixed(2);
-    result[lastIdx]!.amount = new Decimal(result[lastIdx]!.amount).plus(remainder).toFixed(2);
+    const lastEntry = result[lastIdx]!;
+    const decimals = getCurrencyDecimals(lastEntry.currency);
+    const remainder = netAmount.minus(distributed).toFixed(decimals, Decimal.ROUND_HALF_UP);
+    lastEntry.amount = new Decimal(lastEntry.amount)
+      .plus(remainder)
+      .toFixed(decimals, Decimal.ROUND_HALF_UP);
   }
 
   return result;
@@ -74,7 +82,7 @@ export function convertToParsedEntries({
 
   return entries.map((entry) => ({
     itemName: entry.item_name,
-    amount: entry.amount,
+    amount: roundToCurrency(entry.amount, entry.currency),
     currency: entry.currency,
     categoryIndex: entry.category_index,
     entryDate: null,

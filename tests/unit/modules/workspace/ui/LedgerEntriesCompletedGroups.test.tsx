@@ -17,7 +17,9 @@ describe("LedgerEntriesUnifiedGroups", () => {
     const group: UnifiedStreamGroup = {
       date: "2026-07-15",
       dateProvenance: "transaction",
-      total: 12,
+      total: "12",
+      unconvertedCount: 0,
+      currencyTotals: {},
       items: [
         {
           sourceDocument: {
@@ -55,7 +57,9 @@ describe("LedgerEntriesUnifiedGroups", () => {
     const group = {
       date: "2026-07-15",
       dateProvenance: "transaction" as const,
-      total: 0,
+      total: "0",
+      unconvertedCount: 0,
+      currencyTotals: {},
       items: [
         {
           sourceDocument: { id: "document-1", status: "completed" },
@@ -100,7 +104,9 @@ describe("LedgerEntriesUnifiedGroups", () => {
       {
         date: "2026-07-15",
         dateProvenance: "transaction" as const,
-        total: 0,
+        total: "0",
+        unconvertedCount: 0,
+        currencyTotals: {},
         items: [firstItem, secondItem],
       },
     ] as unknown as UnifiedStreamGroup[];

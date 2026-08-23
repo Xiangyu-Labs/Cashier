@@ -11,6 +11,7 @@ export interface AiContextContract {
     maxTokens?: number;
     temperature?: number;
     requireJson?: boolean;
+    signal?: AbortSignal;
   }): Promise<{
     content: string;
     usage?: { promptTokens: number; completionTokens: number };
@@ -35,7 +36,8 @@ export type ProcessingFailureCode =
   | "ai_provider_unavailable"
   | "ai_schema_invalid"
   | "exchange_rate_failure"
-  | "processing_unavailable";
+  | "processing_unavailable"
+  | "processing_timeout";
 
 export class ProcessingFailure extends Error {
   constructor(

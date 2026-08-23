@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { add as decimalAdd } from "@/lib/money/decimal";
+import { add as decimalAdd, normalize as normalizeDecimal } from "@/lib/money/decimal";
 import type { AiContextContract, AiMessageContentPart } from "./parse-source-document/contracts";
 import { normalizeDuplicateReason } from "../duplicate-reason";
 
@@ -54,6 +54,7 @@ export interface DuplicateDetectionInput {
   aiCustomPrompt?: string;
   sourceDocumentId: string;
   currentCreatedAt: string;
+  currentEntryDate: string | null;
   currentTitle: string | null;
   currentEntries: DuplicateCandidateEntry[];
   currentStoredFileIds: readonly string[];
@@ -97,9 +98,14 @@ function buildSignature(
   mainCurrency: string
 ): string[] {
   const values = new Set(
-    entries.map(
-      (entry) => `${entry.categoryId ?? "uncategorized"}|${entry.currency ?? mainCurrency}`
-    )
+    entries.map((entry) => {
+      const usesConversion = entry.convertedAmount != null && entry.convertedAmount !== "";
+      const currency = (usesConversion ? mainCurrency : (entry.currency ?? mainCurrency))
+        .trim()
+        .toUpperCase();
+      const amount = usesConversion ? entry.convertedAmount! : entry.amount;
+      return `${currency}|${normalizeDecimal(amount)}`;
+    })
   );
   return [...values].sort();
 }
@@ -110,6 +116,7 @@ function sameSignature(left: readonly string[], right: readonly string[]): boole
 
 function summarizeEntries(entries: readonly DuplicateCandidateEntry[]): {
   itemNames: string[];
+  items: Array<{ itemName: string; amount: string; currency: string | null }>;
   total: string;
   entryCount: number;
 } {
@@ -122,6 +129,11 @@ function summarizeEntries(entries: readonly DuplicateCandidateEntry[]): {
   }
   return {
     itemNames: entries.map((entry) => entry.itemName),
+    items: entries.map((entry) => ({
+      itemName: entry.itemName,
+      amount: entry.amount,
+      currency: entry.currency,
+    })),
     total,
     entryCount: entries.length,
   };
@@ -231,9 +243,14 @@ function parseVerdict(content: string): DuplicateVerdict {
       : typeof value.matchedSourceDocumentId === "string"
         ? value.matchedSourceDocumentId
         : null;
-  const confidence =
-    value.confidence == null || value.confidence === "" ? null : Number(value.confidence);
-  if (confidence != null && (Number.isNaN(confidence) || confidence < 0 || confidence > 1)) {
+  const confidence = value.confidence == null ? null : value.confidence;
+  if (
+    confidence != null &&
+    (typeof confidence !== "number" ||
+      !Number.isFinite(confidence) ||
+      confidence < 0 ||
+      confidence > 1)
+  ) {
     throw new Error("Duplicate verdict confidence out of range");
   }
   const reason =
@@ -241,9 +258,17 @@ function parseVerdict(content: string): DuplicateVerdict {
   return { duplicate: value.duplicate, matchedSourceDocumentId: matched, confidence, reason };
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, signal?: AbortSignal): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  signal?: AbortSignal,
+  onTimeout?: () => void
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Duplicate detection timed out")), timeoutMs);
+    const timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error("Duplicate detection timed out"));
+    }, timeoutMs);
     const onAbort = () => {
       clearTimeout(timer);
       reject(new Error("Duplicate detection aborted"));
@@ -268,6 +293,9 @@ async function shortlistCandidates(
   input: DuplicateDetectionInput,
   candidates: readonly DuplicateCandidateContract[]
 ): Promise<DuplicateCandidateContract[]> {
+  const controller = new AbortController();
+  const signal =
+    input.signal == null ? controller.signal : AbortSignal.any([input.signal, controller.signal]);
   try {
     const response = await withTimeout(
       input.ai.generate({
@@ -284,9 +312,11 @@ async function shortlistCandidates(
         maxTokens: 400,
         temperature: 0,
         requireJson: true,
+        signal,
       }),
       TEXT_SHORTLIST_TIMEOUT_MS,
-      input.signal
+      input.signal,
+      () => controller.abort()
     );
     const parsed = JSON.parse(response.content) as unknown;
     const ids = Array.isArray(parsed)
@@ -299,13 +329,17 @@ async function shortlistCandidates(
       if (candidate != null && !selected.includes(candidate)) selected.push(candidate);
       if (selected.length >= MAX_CANDIDATES_IN_FINAL) break;
     }
-    if (selected.length > 0) return selected;
+    if (selected.length > 0) {
+      controller.abort();
+      return selected;
+    }
   } catch (error) {
     logger.warn(
       { error, sourceDocumentId: input.sourceDocumentId },
       "Duplicate shortlist AI failed; using deterministic fallback"
     );
   }
+  controller.abort();
   return deterministicShortlist(input, candidates);
 }
 
@@ -323,7 +357,7 @@ function visualPromptParts(
 
     parts.push({
       type: "text",
-      text: `CURRENT document id=${input.sourceDocumentId}\nCURRENT parsed JSON=${JSON.stringify(currentSummary)}`,
+      text: `CURRENT document id=${input.sourceDocumentId}\nCURRENT title=${input.currentTitle ?? "n/a"}\nCURRENT entryDate=${input.currentEntryDate ?? input.currentCreatedAt.slice(0, 10)}\nCURRENT parsed JSON=${JSON.stringify(currentSummary)}`,
     });
     const currentImages = (imageSets[0] ?? []).slice(0, MAX_IMAGES_PER_DOCUMENT);
     for (const [index, image] of currentImages.entries()) {
@@ -335,7 +369,7 @@ function visualPromptParts(
       const summary = summarizeEntries(candidate.entries);
       parts.push({
         type: "text",
-        text: `CANDIDATE_${index + 1} document id=${candidate.sourceDocumentId}\nCANDIDATE_${index + 1} parsed JSON=${JSON.stringify(summary)}`,
+        text: `CANDIDATE_${index + 1} document id=${candidate.sourceDocumentId}\nCANDIDATE_${index + 1} title=${candidate.title ?? "n/a"}\nCANDIDATE_${index + 1} entryDate=${candidate.entryDate ?? candidate.createdAt.slice(0, 10)}\nCANDIDATE_${index + 1} parsed JSON=${JSON.stringify(summary)}`,
       });
       const images = (imageSets[index + 1] ?? []).slice(0, MAX_IMAGES_PER_DOCUMENT);
       for (const [imageIndex, image] of images.entries()) {
@@ -393,10 +427,12 @@ async function finalVisualComparison(
           maxTokens: 300,
           temperature: 0,
           requireJson: true,
+          signal: stageController.signal,
         });
       })(),
       VISUAL_TIMEOUT_MS,
-      input.signal
+      input.signal,
+      () => stageController.abort()
     );
     return parseVerdict(response.content);
   } finally {

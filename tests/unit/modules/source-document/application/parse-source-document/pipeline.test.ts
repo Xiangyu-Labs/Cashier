@@ -360,7 +360,7 @@ describe("runParsePipeline — new single-pass flow", () => {
     expect(result.kind).toBe("success");
     if (result.kind === "success") {
       expect(result.ledgerEntries).toHaveLength(1);
-      expect(result.ledgerEntries[0]?.amount).toBe("10");
+      expect(result.ledgerEntries[0]?.amount).toBe("10.00");
     }
   });
 

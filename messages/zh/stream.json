@@ -45,8 +45,24 @@
     "today": "今天",
     "yesterday": "昨天",
     "clear": "清除",
-    "weekDays": ["日", "一", "二", "三", "四", "五", "六"],
-    "weekDaysMon": ["一", "二", "三", "四", "五", "六", "日"],
+    "weekDays": [
+      "日",
+      "一",
+      "二",
+      "三",
+      "四",
+      "五",
+      "六"
+    ],
+    "weekDaysMon": [
+      "一",
+      "二",
+      "三",
+      "四",
+      "五",
+      "六",
+      "日"
+    ],
     "currency": "货币",
     "allCurrencies": "全部货币",
     "category": "分类",
@@ -86,6 +102,7 @@
     "candidate": "新的解析结果",
     "entryCount": "共 {count} 条",
     "noEntries": "暂无条目",
+    "unconverted": "{count} 条未换算",
     "keepOriginal": "保留原结果",
     "acceptCandidate": "接受新结果"
   },
@@ -714,6 +731,7 @@
     "untitled": "未命名",
     "date": "日期：{date}",
     "noEntries": "暂无明细",
+    "unconverted": "{count} 条未换算",
     "keep": "仍然保留",
     "discard": "删除重复",
     "discardConfirmTitle": "删除整张账单？",
