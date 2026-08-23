@@ -75,6 +75,7 @@ describe("createQuickEntry", () => {
     expect(ports.rates.getRates).not.toHaveBeenCalled();
     expect(createManualMock).toHaveBeenCalledWith({
       ledgerId: "ledger-1",
+      expectedMainCurrency: "USD",
       title: "Food",
       entryDate: "2026-03-20",
       entries: [

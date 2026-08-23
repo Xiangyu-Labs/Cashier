@@ -7,6 +7,7 @@ import type {
 import { ValidationError } from "@/lib/errors";
 import { MAX_ORIGINAL_BYTES_PER_FILE } from "@/lib/storage/upload-policy";
 import { decodeBase64Image } from "@/modules/source-document/base64-image";
+import { logger } from "@/lib/logger";
 
 /**
  * Interface for the stored-files operations needed by prepareInlineImages.
@@ -27,6 +28,7 @@ export interface InlineImageUploader {
     body: Uint8Array;
   }): Promise<StoredFileContract>;
   finalizeUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
+  abandonUploadSession(ledgerId: string, uploadSessionId: string): Promise<void>;
 }
 
 export type ImageProcessor = (
@@ -77,7 +79,7 @@ export async function prepareInlineImages(
   processImage: ImageProcessor,
   ledgerId: string,
   maxDecodedBytes?: number
-): Promise<string[]> {
+): Promise<{ storedFileIds: string[]; uploadSessionId: string }> {
   // Phase 1: decode and process all images (fail-fast if any is bad)
   const processedImages = await Promise.all(
     images.map(async (img) => {
@@ -103,27 +105,43 @@ export async function prepareInlineImages(
       originalFilename: null,
     }))
   );
-
-  // Phase 3: upload each target in parallel
-  await Promise.all(
-    plan.targets.map(async (target, index) => {
-      const processed = processedImages[index]!;
-      await storedFiles.uploadTarget({
-        ledgerId,
-        uploadSessionId: plan.id,
-        targetId: target.id,
-        contentType: processed.mimeType,
-        body: new Uint8Array(processed.buffer),
-      });
-    })
-  );
-
-  // Phase 4: finalize the upload session and return stored-file IDs
-  const finalized = await storedFiles.finalizeUpload({
-    uploadSessionId: plan.id,
-    finalizationToken: plan.finalizationToken,
-    targetIds: plan.targets.map((t) => t.id),
-  });
-
-  return finalized.map((f) => f.id);
+  const abandon = async () => {
+    try {
+      await storedFiles.abandonUploadSession(ledgerId, plan.id);
+    } catch {
+      logger.error(
+        { ledgerId, uploadSessionId: plan.id },
+        "Failed to abandon source-document upload session"
+      );
+    }
+  };
+  try {
+    if (plan.targets.length !== processedImages.length) {
+      throw new ValidationError("Upload plan target count does not match the request");
+    }
+    await Promise.all(
+      plan.targets.map(async (target, index) => {
+        const processed = processedImages[index]!;
+        await storedFiles.uploadTarget({
+          ledgerId,
+          uploadSessionId: plan.id,
+          targetId: target.id,
+          contentType: processed.mimeType,
+          body: new Uint8Array(processed.buffer),
+        });
+      })
+    );
+    const finalized = await storedFiles.finalizeUpload({
+      uploadSessionId: plan.id,
+      finalizationToken: plan.finalizationToken,
+      targetIds: plan.targets.map((t) => t.id),
+    });
+    if (finalized.length !== processedImages.length) {
+      throw new ValidationError("Finalized file count does not match the request");
+    }
+    return { storedFileIds: finalized.map((file) => file.id), uploadSessionId: plan.id };
+  } catch (error) {
+    await abandon();
+    throw error;
+  }
 }

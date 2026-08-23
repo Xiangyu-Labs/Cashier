@@ -77,6 +77,7 @@ describe("local contract release", () => {
     });
 
     await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Target-only entry",
       entries: [projectionEntry],
@@ -91,6 +92,7 @@ describe("local contract release", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       submittedText: "target revision text",
       entries: [projectionEntry],

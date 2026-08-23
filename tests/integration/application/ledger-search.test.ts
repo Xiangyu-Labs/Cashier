@@ -30,6 +30,7 @@ describe("ledger search", () => {
   it("normalizes search and keeps Stream and Details contracts independent", async () => {
     const { ledgerId } = await createTestUserWithLedger(getTestDb());
     await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Coffee Receipt",
       entryDate: "2026-07-15",
@@ -46,6 +47,7 @@ describe("ledger search", () => {
       ],
     });
     await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Literal % Store",
       entryDate: "2026-07-16",

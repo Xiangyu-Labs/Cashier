@@ -44,6 +44,7 @@ const candidateEntry = {
 async function setupDocumentWithCandidate(db: ReturnType<typeof getTestDb>, ledgerId: string) {
   // Step 1: Create a document with an active revision and entries
   const created = await postgresLedgerProjectionAdapter.createManual({
+    expectedMainCurrency: "CNY",
     ledgerId,
     title: "Original",
     entryDate: "2026-07-15",
@@ -93,6 +94,7 @@ async function setupDocumentWithFailedRetry(
 ) {
   // Step 1: Create a document with an active revision and entries
   const created = await postgresLedgerProjectionAdapter.createManual({
+    expectedMainCurrency: "CNY",
     ledgerId,
     title: "Original",
     entryDate: "2026-07-15",
@@ -959,6 +961,7 @@ describe("retry active result summary", () => {
 
     // Create a manual document with multiple entries
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Multi-entry",
       entryDate: "2026-07-15",

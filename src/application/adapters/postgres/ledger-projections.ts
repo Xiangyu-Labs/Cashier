@@ -18,12 +18,10 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
-import {
-  assertProcessingLeaseHeld,
-  lockLedgerForUpdate,
-  lockSourceDocumentForUpdate,
-} from "./transaction-locks";
+import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
+import { completeProcessingLeaseInTransaction } from "./processing-terminal";
+import { softDeleteSourceDocumentInTransaction } from "./source-document-delete";
 
 export class LedgerMainCurrencyChangedError extends ConflictError {
   constructor() {
@@ -176,12 +174,8 @@ export async function storeCandidateRevision(
   }
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    // Lock the source document to serialize concurrent operations.
+    await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-
-    if (!(await assertProcessingLeaseHeld(tx, lease))) return false;
-
-    // Re-verify pointer ownership inside the lock.
     if (document.pendingRevisionId !== revisionId) return false;
 
     const revision = await tx
@@ -194,10 +188,12 @@ export async function storeCandidateRevision(
           eq(sourceDocumentRevisions.id, revisionId)
         )
       )
+      .for("update")
       .then((rows) => rows[0]);
     if (revision == null || revision.outcome !== "processing") {
       return false;
     }
+    if (!(await completeProcessingLeaseInTransaction(tx, lease, "completed"))) return false;
 
     const now = new Date();
     assertEntryValues(entries);
@@ -263,8 +259,8 @@ export async function storeDuplicatePendingRevision(
   lease?: ProcessingLeaseContract
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
+    await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-    if (!(await assertProcessingLeaseHeld(tx, lease))) return false;
     if (document.pendingRevisionId !== revisionId || document.activeRevisionId != null) {
       return false;
     }
@@ -278,8 +274,10 @@ export async function storeDuplicatePendingRevision(
           eq(sourceDocumentRevisions.id, revisionId)
         )
       )
+      .for("update")
       .then((rows) => rows[0]);
     if (revision == null || revision.outcome !== "processing") return false;
+    if (!(await completeProcessingLeaseInTransaction(tx, lease, "completed"))) return false;
 
     const now = new Date();
     assertEntryValues(entries);
@@ -356,6 +354,7 @@ export async function activateDuplicatePendingRevision(
   revisionId: string
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
+    await lockLedgerForUpdate(tx, ledgerId);
     let document: typeof sourceDocuments.$inferSelect;
     try {
       document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
@@ -523,7 +522,7 @@ export async function acceptCandidateRevision(
   candidateRevisionId: string
 ): Promise<"completed" | "duplicate_pending"> {
   return db.transaction(async (tx) => {
-    // Lock the source document to serialise concurrent operations.
+    await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Idempotent: candidate is already active
@@ -658,7 +657,7 @@ export async function abandonCandidateRevision(
   candidateRevisionId: string
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    // Lock the source document to serialise concurrent operations.
+    await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
 
     // Idempotent: candidate revision is already abandoned (pendingRevisionId cleared)
@@ -770,6 +769,7 @@ export async function cancelPendingRevision(
   revisionId: string
 ): Promise<CancelPendingRevisionResult> {
   return db.transaction(async (tx) => {
+    await lockLedgerForUpdate(tx, ledgerId);
     const document = await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
     const revision = await tx
       .select({ outcome: sourceDocumentRevisions.outcome })
@@ -1313,7 +1313,6 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
-      if (!(await assertProcessingLeaseHeld(tx, input.lease))) return false;
       if (document.pendingRevisionId !== input.revisionId) return false;
       const revision = await tx
         .select()
@@ -1325,8 +1324,12 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
             eq(sourceDocumentRevisions.id, input.revisionId)
           )
         )
+        .for("update")
         .then((rows) => rows[0]);
       if (revision == null || revision.outcome !== "processing") {
+        return false;
+      }
+      if (!(await completeProcessingLeaseInTransaction(tx, input.lease, "completed"))) {
         return false;
       }
 
@@ -1360,7 +1363,10 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
       // Lock the ledger row to serialise with concurrent main-currency changes.
       // This is the first-active-projection path; the lock prevents a settings
       // main-currency change from interleaving with entry creation.
-      await lockLedgerForUpdate(tx, input.ledgerId);
+      const ledger = await lockLedgerForUpdate(tx, input.ledgerId);
+      if (ledger.mainCurrency !== input.expectedMainCurrency) {
+        throw new ConflictError("Ledger currency changed before quick entry commit");
+      }
 
       const sourceDocumentId = input.sourceDocumentId ?? crypto.randomUUID();
       const revisionId = await createCompletedProjectionInTransaction(tx, {
@@ -1624,52 +1630,8 @@ export const postgresLedgerProjectionAdapter: LedgerProjectionPort = {
   },
 
   async softDelete(ledgerId, sourceDocumentId) {
-    return db.transaction(async (tx) => {
-      // Lock the source document to serialise with other concurrent operations.
-      // Return false (not throw) when the document does not exist.
-      try {
-        await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-      } catch (error) {
-        if (error instanceof NotFoundError) return false;
-        throw error;
-      }
-
-      const now = new Date();
-      // Supersede the document's own pending AND staged reviews. Reviews that
-      // point at this document as the *matched* bill keep their snapshots:
-      // they belong to other documents and must remain readable.
-      await tx
-        .update(duplicateReviews)
-        .set({
-          status: "discarded",
-          decision: "superseded",
-          decidedAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, ledgerId),
-            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            inArray(duplicateReviews.status, ["pending", "staged"])
-          )
-        );
-      const deleted = await tx
-        .update(sourceDocuments)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-        .returning({ id: sourceDocuments.id });
-      if (deleted.length === 0) return false;
-      await tx
-        .update(ledgerEntries)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(ledgerEntries.ledgerId, ledgerId),
-            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
-            isNull(ledgerEntries.deletedAt)
-          )
-        );
-      return true;
-    });
+    return db.transaction((tx) =>
+      softDeleteSourceDocumentInTransaction(tx, ledgerId, sourceDocumentId)
+    );
   },
 };

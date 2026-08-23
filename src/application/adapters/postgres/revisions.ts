@@ -11,15 +11,16 @@ import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { MAX_FILES, MAX_NORMALIZED_BYTES_PER_REVISION } from "@/lib/storage/upload-policy";
 import {
   duplicateReviews,
-  ledgerEntries,
   ledgers,
   revisionFiles,
   sourceDocumentRevisions,
   sourceDocuments,
   storedFiles,
 } from "@/persistence";
-import { assertProcessingLeaseHeld, lockSourceDocumentForUpdate } from "./transaction-locks";
+import { lockLedgerForUpdate, lockSourceDocumentForUpdate } from "./transaction-locks";
 import type { PostgresTransaction } from "./transaction-locks";
+import { completeProcessingLeaseInTransaction } from "./processing-terminal";
+import { softDeleteSourceDocumentInTransaction } from "./source-document-delete";
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -359,6 +360,7 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
 
   async preserveTerminalOutcome(input) {
     return db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, input.ledgerId);
       let document;
       try {
         document = await lockSourceDocumentForUpdate(tx, input.ledgerId, input.sourceDocumentId);
@@ -366,8 +368,27 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
         if (error instanceof NotFoundError) return false;
         throw error;
       }
-      if (!(await assertProcessingLeaseHeld(tx, input.lease))) return false;
       if (document.pendingRevisionId !== input.revisionId) return false;
+      const revision = await tx
+        .select({ outcome: sourceDocumentRevisions.outcome })
+        .from(sourceDocumentRevisions)
+        .where(
+          and(
+            eq(sourceDocumentRevisions.ledgerId, input.ledgerId),
+            eq(sourceDocumentRevisions.sourceDocumentId, input.sourceDocumentId),
+            eq(sourceDocumentRevisions.id, input.revisionId)
+          )
+        )
+        .for("update")
+        .then((rows) => rows[0]);
+      if (revision?.outcome !== "processing") return false;
+      if (
+        !(await completeProcessingLeaseInTransaction(tx, input.lease, input.outcome, {
+          code: input.failureCode ?? null,
+        }))
+      ) {
+        return false;
+      }
       const updated = await tx
         .update(sourceDocumentRevisions)
         .set({
@@ -391,51 +412,8 @@ export const postgresRevisionAdapter: SourceDocumentPort = {
   },
 
   async softDelete(ledgerId, sourceDocumentId) {
-    return db.transaction(async (tx) => {
-      // Lock the source document to serialise with concurrent operations.
-      // Return false (not throw) when the document does not exist.
-      try {
-        await lockSourceDocumentForUpdate(tx, ledgerId, sourceDocumentId);
-      } catch (error) {
-        if (error instanceof NotFoundError) return false;
-        throw error;
-      }
-
-      const now = new Date();
-      // Supersede the document's own pending AND staged reviews. Reviews that
-      // point at this document as the *matched* bill keep their snapshots.
-      await tx
-        .update(duplicateReviews)
-        .set({
-          status: "discarded",
-          decision: "superseded",
-          decidedAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(duplicateReviews.ledgerId, ledgerId),
-            eq(duplicateReviews.sourceDocumentId, sourceDocumentId),
-            inArray(duplicateReviews.status, ["pending", "staged"])
-          )
-        );
-      const deleted = await tx
-        .update(sourceDocuments)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(activeDocumentWhere(ledgerId, sourceDocumentId))
-        .returning({ id: sourceDocuments.id });
-      if (deleted.length === 0) return false;
-      await tx
-        .update(ledgerEntries)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(
-          and(
-            eq(ledgerEntries.ledgerId, ledgerId),
-            eq(ledgerEntries.sourceDocumentId, sourceDocumentId),
-            isNull(ledgerEntries.deletedAt)
-          )
-        );
-      return true;
-    });
+    return db.transaction((tx) =>
+      softDeleteSourceDocumentInTransaction(tx, ledgerId, sourceDocumentId)
+    );
   },
 };

@@ -92,6 +92,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-store");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Coffee Shop",
       entryDate: "2026-08-05",
@@ -154,6 +155,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-keep");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -200,6 +202,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-migration");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -270,6 +273,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-discard");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -338,6 +342,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-edit-conflict");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -377,6 +382,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-delete");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -411,6 +417,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-stats");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Coffee Shop",
       entryDate: "2026-08-05",
@@ -457,6 +464,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-supersede");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Coffee Shop",
       entryDate: "2026-08-05",
@@ -538,6 +546,7 @@ describe("duplicate review lifecycle", () => {
       randomUUID()
     );
     const original = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Original",
       entryDate: "2026-08-05",
@@ -545,6 +554,7 @@ describe("duplicate review lifecycle", () => {
       entries: [entry],
     });
     const otherOriginal = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId: otherLedgerId,
       title: "Other original",
       entryDate: "2026-08-05",
@@ -634,6 +644,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-candidates");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "AI Bill",
       entryDate: "2026-08-05",
@@ -647,6 +658,7 @@ describe("duplicate review lifecycle", () => {
     const { sourceDocumentId } = await createDuplicatePendingDocument(db, ledgerId);
 
     const otherDay = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Other Day",
       entryDate: "2026-08-04",
@@ -673,6 +685,7 @@ describe("duplicate review lifecycle", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db, "duplicate-review-payload");
     const matched = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Coffee Shop",
       entryDate: "2026-08-05",

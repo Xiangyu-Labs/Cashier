@@ -47,6 +47,7 @@ async function resolveConversion(
 
 async function createQuickEntryAtomically(
   ledgerId: string,
+  expectedMainCurrency: string,
   categoryName: string,
   currency: string,
   conversion: ConversionResult,
@@ -57,6 +58,7 @@ async function createQuickEntryAtomically(
   const itemName = data.itemName ?? categoryName;
   const created = await ports.projections.createManual({
     ledgerId,
+    expectedMainCurrency,
     title: categoryName,
     entryDate: data.entryDate,
     entries: [
@@ -98,6 +100,7 @@ export async function createQuickEntry<
 
   const result = await createQuickEntryAtomically(
     ledgerId,
+    mainCurrency,
     categoryName,
     entryCurrency,
     conversion,

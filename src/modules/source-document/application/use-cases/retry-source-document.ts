@@ -42,6 +42,7 @@ export async function retrySourceDocument(
   { ledgerId, sourceDocumentId, input, idempotency }: RetrySourceDocumentInput,
   dependencies: RetrySourceDocumentDependencies
 ): Promise<RetrySourceDocumentResponseDto> {
+  let createdUploadSessionId: string | null = null;
   if ((input?.originalImages?.length ?? 0) > 0) {
     throw new ValidationError("Images must be finalized before source-document retry");
   }
@@ -53,9 +54,9 @@ export async function retrySourceDocument(
     throw new ValidationError("Images must be finalized before source-document retry");
   }
   const prepareSubmission = async () => {
-    const inlineFileIds =
+    const preparedImages =
       inlineImages.length === 0
-        ? []
+        ? null
         : await prepareInlineImages(
             inlineImages,
             dependencies.storedFiles!,
@@ -63,6 +64,8 @@ export async function retrySourceDocument(
             ledgerId,
             3 * 1024 * 1024
           );
+    createdUploadSessionId = preparedImages?.uploadSessionId ?? null;
+    const inlineFileIds = preparedImages?.storedFileIds ?? [];
     const storedFileIds =
       input?.storedFileIds == null && inlineFileIds.length === 0
         ? undefined
@@ -79,13 +82,25 @@ export async function retrySourceDocument(
     };
   };
 
-  const pending =
-    idempotency != null && dependencies.submissions.createIdempotentPendingWithIntent != null
-      ? await dependencies.submissions.createIdempotentPendingWithIntent(
-          idempotency,
-          prepareSubmission
-        )
-      : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  let pending;
+  try {
+    pending =
+      idempotency != null && dependencies.submissions.createIdempotentPendingWithIntent != null
+        ? await dependencies.submissions.createIdempotentPendingWithIntent(
+            idempotency,
+            prepareSubmission
+          )
+        : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  } catch (error) {
+    if (createdUploadSessionId != null) {
+      try {
+        await dependencies.storedFiles?.abandonUploadSession(ledgerId, createdUploadSessionId);
+      } catch {
+        // Preserve the submission error; upload cleanup is best-effort.
+      }
+    }
+    throw error;
+  }
   if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
 
   return {

@@ -154,6 +154,7 @@ export interface SourceDocumentLifecyclePort {
 }
 
 export interface ProcessingRecoveryPort {
+  reconcileResidualIntents(ledgerId: string, limit: number): Promise<number>;
   exhaustStaleIntents(ledgerId: string, maxAttempts: number, limit: number): Promise<number>;
   selectRecoverable(
     ledgerId: string,

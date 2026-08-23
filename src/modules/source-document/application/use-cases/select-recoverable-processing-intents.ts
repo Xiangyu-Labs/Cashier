@@ -25,6 +25,7 @@ export async function selectRecoverableProcessingIntents(
   config: ProcessingRecoveryConfig,
   adapter: ProcessingRecoveryPort
 ): Promise<readonly RecoverableProcessingIntentContract[]> {
+  await adapter.reconcileResidualIntents(ledgerId, config.maxBatch);
   // Step 1: Exhaust intents whose scheduleAttemptCount already reached
   // maxAttempts on a previous request and are still non-terminal.
   // These would not be selected by selectRecoverable because the filter

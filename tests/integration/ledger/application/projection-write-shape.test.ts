@@ -92,6 +92,7 @@ describe("projection write shape", () => {
 
     for (const count of [1, 50, 500]) {
       const created = await postgresLedgerProjectionAdapter.createManual({
+        expectedMainCurrency: "CNY",
         ledgerId,
         title: `Doc ${count}`,
         entries: Array.from({ length: count }, (_, index) =>
@@ -120,6 +121,7 @@ describe("projection write shape", () => {
   it("copies revision files in one statement and preserves the historical revision", async () => {
     const db = getTestDb();
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "With file",
       entries: [entry("A"), entry("B")],
@@ -213,6 +215,7 @@ describe("projection write shape", () => {
     const db = getTestDb();
     const pinnedCreatedAt = new Date("2026-01-02T03:04:05.000Z");
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Manual",
       entryDate: "2026-05-01",

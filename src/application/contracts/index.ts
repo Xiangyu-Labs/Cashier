@@ -678,6 +678,7 @@ export interface DirectStoredFilePort extends StoredFilePort {
     files: readonly UploadFileRequestContract[]
   ): Promise<UploadPlanContract>;
   finalizeDirectUpload(input: UploadFinalizationContract): Promise<readonly StoredFileContract[]>;
+  abandonUploadSession(ledgerId: LedgerId, uploadSessionId: string): Promise<void>;
 }
 
 export interface LedgerProjectionEntryContract {
@@ -710,6 +711,7 @@ export interface LedgerProjectionPort {
   }): Promise<boolean>;
   createManual(input: {
     ledgerId: LedgerId;
+    expectedMainCurrency: string;
     sourceDocumentId?: SourceDocumentId;
     submittedText?: string | null;
     title?: string | null;

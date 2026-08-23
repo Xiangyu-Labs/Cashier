@@ -1,5 +1,5 @@
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { ValidationError } from "@/lib/errors";
+import { ForbiddenError, ValidationError } from "@/lib/errors";
 import type { ProcessingIntentContract } from "@/application/contracts";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
 import { resolveLedgerForServiceCredential } from "@/modules/ledger/credential-access";
@@ -38,13 +38,18 @@ export async function createSourceDocumentFromCredential(
   scheduleProcessing: (intent: ProcessingIntentContract) => void,
   ports: SourceDocumentCredentialPorts
 ): Promise<CreateSourceDocumentResponseDto> {
-  const ledger =
-    input.ledgerId == null
-      ? await resolveLedgerForServiceCredential(input.credentialId, ports.ledgers)
-      : {
-          id: input.ledgerId,
-          settings: (await ports.settings.get(input.ledgerId)) ?? {},
-        };
+  const authenticatedLedger = await resolveLedgerForServiceCredential(
+    input.credentialId,
+    ports.ledgers
+  );
+  if (
+    authenticatedLedger != null &&
+    input.ledgerId != null &&
+    authenticatedLedger.id !== input.ledgerId
+  ) {
+    throw new ForbiddenError("Service credential does not belong to the requested ledger");
+  }
+  const ledger = authenticatedLedger;
   if (ledger == null) throw new ValidationError("Service credential or ledger not found");
 
   const payload = input.payload;

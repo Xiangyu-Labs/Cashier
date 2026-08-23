@@ -244,6 +244,7 @@ describe("target source-document submissions", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const active = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entries: [entry],
     });

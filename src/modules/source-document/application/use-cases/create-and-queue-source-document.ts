@@ -60,6 +60,7 @@ export async function createAndQueueSourceDocument(
   input: CreateAndQueueSourceDocumentInput,
   dependencies: CreateAndQueueSourceDocumentDependencies
 ): Promise<CreateSourceDocumentResponseDto> {
+  let createdUploadSessionId: string | null = null;
   const hasPreparedImages = input.preparedImages != null && input.preparedImages.length > 0;
 
   const validated = parseSourceDocumentPayloadInput(
@@ -78,6 +79,10 @@ export async function createAndQueueSourceDocument(
     ? input.preparedImages!
     : (validated.images ?? []);
   const originalImagesToProcess = validated.originalImages ?? [];
+  validateAggregateFileCount(
+    (validated.storedFileIds?.length ?? 0) + imagesToProcess.length,
+    originalImagesToProcess.length
+  );
 
   if (originalImagesToProcess.length > 0) {
     throw new ValidationError("Images must be finalized before source-document submission");
@@ -102,7 +107,7 @@ export async function createAndQueueSourceDocument(
   }
 
   const prepareSubmission = async () => {
-    const processedImageIds =
+    const preparedImages =
       imagesToProcess.length > 0
         ? await prepareInlineImages(
             imagesToProcess,
@@ -111,7 +116,9 @@ export async function createAndQueueSourceDocument(
             input.ledgerId,
             input.maxDecodedImageBytes
           )
-        : [];
+        : null;
+    createdUploadSessionId = preparedImages?.uploadSessionId ?? null;
+    const processedImageIds = preparedImages?.storedFileIds ?? [];
 
     const totalFileCount = (validated.storedFileIds?.length ?? 0) + processedImageIds.length;
     validateAggregateFileCount(totalFileCount, 0);
@@ -127,13 +134,26 @@ export async function createAndQueueSourceDocument(
     };
   };
 
-  const pending =
-    input.idempotency != null && dependencies.submissions.createIdempotentPendingWithIntent != null
-      ? await dependencies.submissions.createIdempotentPendingWithIntent(
-          input.idempotency,
-          prepareSubmission
-        )
-      : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  let pending;
+  try {
+    pending =
+      input.idempotency != null &&
+      dependencies.submissions.createIdempotentPendingWithIntent != null
+        ? await dependencies.submissions.createIdempotentPendingWithIntent(
+            input.idempotency,
+            prepareSubmission
+          )
+        : await dependencies.submissions.createPendingWithIntent(await prepareSubmission());
+  } catch (error) {
+    if (createdUploadSessionId != null) {
+      try {
+        await dependencies.storedFiles.abandonUploadSession(input.ledgerId, createdUploadSessionId);
+      } catch {
+        // prepareInlineImages already records cleanup diagnostics; preserve the submission error.
+      }
+    }
+    throw error;
+  }
   if (pending.idempotencyReplay !== true) dependencies.scheduleProcessing(pending.intent);
   return toSourceDocumentSubmissionContract(pending.document, pending.revision);
 }

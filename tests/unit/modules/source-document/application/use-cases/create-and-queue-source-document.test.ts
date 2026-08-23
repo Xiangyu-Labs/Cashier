@@ -21,12 +21,14 @@ describe("createAndQueueSourceDocument", () => {
   const createUploadPlan = vi.fn();
   const uploadTarget = vi.fn();
   const finalizeUpload = vi.fn();
+  const abandonUploadSession = vi.fn();
   const processImage = vi.fn();
 
   const mockStoredFiles: InlineImageUploader = {
     createUploadPlan,
     uploadTarget,
     finalizeUpload,
+    abandonUploadSession,
   };
 
   beforeEach(() => {

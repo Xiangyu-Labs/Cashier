@@ -209,7 +209,14 @@ export const postgresLedgerAdapter: LedgerPort = {
     try {
       const updated = await db
         .update(serviceCredentials)
-        .set({ lastUsedAt: new Date() })
+        .set({
+          lastUsedAt: sql`CASE
+            WHEN ${serviceCredentials.lastUsedAt} IS NULL
+              OR ${serviceCredentials.lastUsedAt} < now() - interval '5 minutes'
+            THEN now()
+            ELSE ${serviceCredentials.lastUsedAt}
+          END`,
+        })
         .where(and(eq(serviceCredentials.id, credentialId), isNull(serviceCredentials.deletedAt)))
         .returning({ id: serviceCredentials.id });
       return updated.length === 1 ? match.ledgerId : null;

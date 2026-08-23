@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type {
   ProcessingClaimContract,
   ProcessingCompletionContract,
@@ -13,6 +13,7 @@ import {
   sourceDocumentRevisions,
   sourceDocuments,
 } from "@/persistence";
+import { lockLedgerForUpdate } from "./transaction-locks";
 
 const DEFAULT_LEASE_MS = 5 * 60 * 1000;
 
@@ -216,6 +217,101 @@ export class PostgresProcessingIntentAdapter implements ProcessingPort {
         );
       return true;
     });
+  }
+
+  async reconcileResidualIntents(ledgerId: string, limit: number): Promise<number> {
+    const candidates = await db
+      .select({ id: processingOutbox.id })
+      .from(processingOutbox)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocuments.id, processingOutbox.sourceDocumentId)
+        )
+      )
+      .innerJoin(
+        sourceDocumentRevisions,
+        and(
+          eq(sourceDocumentRevisions.ledgerId, processingOutbox.ledgerId),
+          eq(sourceDocumentRevisions.id, processingOutbox.revisionId)
+        )
+      )
+      .where(
+        and(
+          eq(processingOutbox.ledgerId, ledgerId),
+          inArray(processingOutbox.status, ["pending", "claimed"]),
+          sql`(${sourceDocuments.deletedAt} IS NOT NULL OR ${sourceDocuments.pendingRevisionId} IS DISTINCT FROM ${processingOutbox.revisionId} OR ${sourceDocumentRevisions.outcome} <> 'processing')`
+        )
+      )
+      .limit(limit);
+    let reconciled = 0;
+    for (const candidate of candidates) {
+      const changed = await db.transaction(async (tx) => {
+        await lockLedgerForUpdate(tx, ledgerId);
+        const row = await tx
+          .select({
+            revisionId: processingOutbox.revisionId,
+            attemptNumber: processingOutbox.attemptNumber,
+            documentDeletedAt: sourceDocuments.deletedAt,
+            pendingRevisionId: sourceDocuments.pendingRevisionId,
+            revisionOutcome: sourceDocumentRevisions.outcome,
+          })
+          .from(sourceDocuments)
+          .innerJoin(
+            sourceDocumentRevisions,
+            and(
+              eq(sourceDocumentRevisions.ledgerId, sourceDocuments.ledgerId),
+              eq(sourceDocumentRevisions.sourceDocumentId, sourceDocuments.id)
+            )
+          )
+          .innerJoin(processingOutbox, eq(processingOutbox.revisionId, sourceDocumentRevisions.id))
+          .where(and(eq(processingOutbox.id, candidate.id), eq(sourceDocuments.ledgerId, ledgerId)))
+          .for("update")
+          .then((rows) => rows[0]);
+        if (row == null) return false;
+        const stale = row.documentDeletedAt != null || row.pendingRevisionId !== row.revisionId;
+        const outboxStatus =
+          stale || ["cancelled", "abandoned"].includes(row.revisionOutcome)
+            ? "cancelled"
+            : row.revisionOutcome === "failed"
+              ? "failed"
+              : "completed";
+        const attemptStatus =
+          stale || row.revisionOutcome === "cancelled" || row.revisionOutcome === "abandoned"
+            ? "cancelled"
+            : row.revisionOutcome === "failed"
+              ? "failed"
+              : row.revisionOutcome === "anomaly"
+                ? "anomaly"
+                : "completed";
+        const now = this.now();
+        const updated = await tx
+          .update(processingOutbox)
+          .set({ status: outboxStatus, completedAt: now, claimToken: null, claimExpiresAt: null })
+          .where(
+            and(
+              eq(processingOutbox.id, candidate.id),
+              inArray(processingOutbox.status, ["pending", "claimed"])
+            )
+          )
+          .returning({ id: processingOutbox.id });
+        if (updated.length === 0) return false;
+        await tx
+          .update(processingAttempts)
+          .set({ status: attemptStatus, completedAt: now })
+          .where(
+            and(
+              eq(processingAttempts.revisionId, row.revisionId),
+              eq(processingAttempts.attemptNumber, row.attemptNumber),
+              inArray(processingAttempts.status, ["queued", "processing"])
+            )
+          );
+        return true;
+      });
+      if (changed) reconciled += 1;
+    }
+    return reconciled;
   }
 
   /**

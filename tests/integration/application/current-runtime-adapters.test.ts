@@ -267,6 +267,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const active = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entries: [projectionEntry],
     });
@@ -327,7 +328,7 @@ describe("current-runtime target adapters", () => {
       where: eq(sourceDocuments.id, active.sourceDocumentId),
     });
     expect(deleted).toMatchObject({
-      currentStatus: "processing",
+      currentStatus: "cancelled",
       deletedAt: expect.any(Date),
       activeRevisionId: active.revisionId,
       pendingRevisionId: pending.revision.id,
@@ -346,6 +347,7 @@ describe("current-runtime target adapters", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Manual",
       entryDate: "2026-07-15",

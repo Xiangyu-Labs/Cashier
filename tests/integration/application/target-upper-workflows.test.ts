@@ -71,6 +71,7 @@ describe("target upper workflows", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const completed = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entryDate: "2026-07-15",
       entries: [entry],
@@ -115,6 +116,7 @@ describe("target upper workflows", () => {
       .values({ ledgerId, name: "Food" })
       .returning();
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entryDate: "2026-07-15",
       entries: [{ ...entry, categoryId: category!.id }],
@@ -182,6 +184,7 @@ describe("target upper workflows", () => {
     const transactionAt = "2026-07-14T12:30:00.000Z";
     const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()] as const;
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Receipt with adjustments",
       entryDate: "2026-07-14",
@@ -301,6 +304,7 @@ describe("target upper workflows", () => {
       .returning();
     await expect(
       postgresLedgerProjectionAdapter.createManual({
+        expectedMainCurrency: "CNY",
         ledgerId,
         entries: [{ ...entry, categoryId: otherCategory!.id }],
       })
@@ -310,6 +314,7 @@ describe("target upper workflows", () => {
     expect(await db.select().from(ledgerEntries)).toHaveLength(0);
 
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entries: [entry],
     });
@@ -346,6 +351,7 @@ describe("target upper workflows", () => {
     const db = getTestDb();
     const { ledgerId } = await createTestUserWithLedger(db);
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entryDate: "2026-07-15",
       entries: [entry],

@@ -223,6 +223,40 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     }
   }
 
+  async abandonUploadSession(ledgerId: LedgerId, uploadSessionId: string): Promise<void> {
+    const targets = await db.transaction(async (tx) => {
+      const cancelled = await tx
+        .update(uploadSessions)
+        .set({ status: "cancelled" })
+        .where(
+          and(
+            eq(uploadSessions.id, uploadSessionId),
+            eq(uploadSessions.ledgerId, ledgerId),
+            inArray(uploadSessions.status, ["open", "finalizing", "finalized"])
+          )
+        )
+        .returning({ id: uploadSessions.id });
+      if (cancelled.length === 0) return [];
+      return tx
+        .select({ targetId: uploadSessionFiles.targetId })
+        .from(uploadSessionFiles)
+        .where(
+          and(
+            eq(uploadSessionFiles.ledgerId, ledgerId),
+            eq(uploadSessionFiles.uploadSessionId, uploadSessionId)
+          )
+        );
+    });
+    await Promise.all(
+      targets.map((target) =>
+        enqueueObjectCleanup(
+          temporaryKey(ledgerId, uploadSessionId, target.targetId),
+          uploadSessionId
+        )
+      )
+    );
+  }
+
   async uploadTargetForUser(input: {
     userId: string;
     uploadSessionId: string;

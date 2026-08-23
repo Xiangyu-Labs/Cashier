@@ -57,6 +57,7 @@ async function createCompletedAiDocument(
   entryDate = "2026-08-05"
 ) {
   const manual = await postgresLedgerProjectionAdapter.createManual({
+    expectedMainCurrency: "CNY",
     ledgerId,
     title,
     entryDate,

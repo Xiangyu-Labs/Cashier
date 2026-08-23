@@ -24,6 +24,7 @@ describe("target Settings currency workflow", () => {
 
   async function createEntry() {
     const result = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       entryDate: "2026-07-15",
       entries: [
@@ -263,6 +264,7 @@ describe("settings concurrency invariants", () => {
       const results = await Promise.allSettled([
         updateLedger(TEST_USER_ID, ledgerId, { settings: { mainCurrency: "USD" } }),
         postgresLedgerProjectionAdapter.createManual({
+          expectedMainCurrency: "CNY",
           ledgerId,
           entryDate: "2026-07-15",
           entries: [

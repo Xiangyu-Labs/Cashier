@@ -1,15 +1,10 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { db } from "@/persistence/db";
-import {
-  entryCategories,
-  ledgerEntries,
-  ledgers,
-  sourceDocumentRevisions,
-  sourceDocuments,
-} from "@/persistence";
+import { ledgers, sourceDocumentRevisions, sourceDocuments } from "@/persistence";
 import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
 import { AppError } from "@/lib/errors";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 import type {
   CredentialSourceDocumentReadPort,
   CredentialSourceDocumentStatusResult,
@@ -27,6 +22,30 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
         document: sourceDocuments,
         revision: sourceDocumentRevisions,
         mainCurrency: ledgers.mainCurrency,
+        entries: sql<
+          Array<{
+            name: string;
+            description: string | null;
+            amount: string;
+            currency: string | null;
+            convertedAmount: string | null;
+            category: string | null;
+          }>
+        >`COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'name', entry.item_name,
+            'description', entry.description,
+            'amount', entry.amount,
+            'currency', entry.currency,
+            'convertedAmount', entry.converted_amount,
+            'category', category.name
+          ) ORDER BY entry.position, entry.created_at, entry.id)
+          FROM ledger_entries entry
+          LEFT JOIN entry_categories category ON category.id = entry.category_id
+          WHERE entry.source_document_revision_id = ${selectedRevisionId}
+            AND entry.ledger_id = ${ledgerId}
+            AND entry.deleted_at IS NULL
+        ), '[]'::jsonb)`,
       })
       .from(sourceDocuments)
       .innerJoin(
@@ -55,31 +74,13 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
     // decision is pending, even though the internal accounting projection is
     // already active and included in all ledger statistics.
     const status =
-      document.currentStatus === "duplicate_pending"
+      document.currentStatus === "duplicate_pending" ||
+      document.currentStatus === "candidate_pending"
         ? "processing"
         : (revision.outcome as CredentialSourceDocumentStatusResult["status"]);
     let result: CredentialSourceDocumentStatusResult["result"] = null;
     if (status === "completed" && document.activeRevisionId != null) {
-      const rows = await db
-        .select({
-          name: ledgerEntries.itemName,
-          description: ledgerEntries.description,
-          amount: ledgerEntries.amount,
-          currency: ledgerEntries.currency,
-          convertedAmount: ledgerEntries.convertedAmount,
-          category: entryCategories.name,
-        })
-        .from(ledgerEntries)
-        .leftJoin(entryCategories, eq(entryCategories.id, ledgerEntries.categoryId))
-        .where(
-          and(
-            eq(ledgerEntries.sourceDocumentRevisionId, revision.id),
-            eq(ledgerEntries.ledgerId, ledgerId),
-            isNull(ledgerEntries.deletedAt)
-          )
-        )
-        .orderBy(asc(ledgerEntries.position));
-      const total = rows.reduce((sum, entry) => {
+      const total = row.entries.reduce((sum, entry) => {
         if (entry.convertedAmount == null) {
           // Accounting totals may only be derived from converted amounts.
           // Falling back to raw amounts would silently mix currencies.
@@ -93,9 +94,9 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
       }, new Decimal(0));
       result = {
         title: document.title,
-        total: total.toFixed(2),
+        total: roundToCurrency(total.toFixed(), row.mainCurrency),
         totalCurrency: row.mainCurrency,
-        entries: rows.map(({ name, description, amount, currency, category }) => ({
+        entries: row.entries.map(({ name, description, amount, currency, category }) => ({
           name,
           description,
           amount,

@@ -171,6 +171,7 @@ describe("bounded target read models", () => {
     const storageKey = "private/ledger-receipt.jpg";
     const createdAt = "2026-07-15T08:00:00.000Z";
     const created = await postgresLedgerProjectionAdapter.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Large receipt",
       submittedText: sensitiveText,

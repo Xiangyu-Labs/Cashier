@@ -188,6 +188,7 @@ describe("PostgresProcessingIntentAdapter", () => {
       .set({ duplicateDetectionEnabled: false })
       .where(eq(ledgers.id, ledgerId));
     await serverComposition.ledgerProjections.createManual({
+      expectedMainCurrency: "CNY",
       ledgerId,
       title: "Existing bill",
       entryDate: "2026-07-15",
