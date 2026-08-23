@@ -25,6 +25,7 @@ interface BookkeepingSettingsProps {
   deviceTimeZone: string | null;
   onUpdateSettings: (data: Partial<Settings>) => void | Promise<unknown>;
   onSaveCategories: (input: SaveEntryCategoriesInput) => Promise<EntryCategory[]>;
+  onReloadCategories?: () => Promise<EntryCategory[]>;
   generatingCategoryIds: Set<string>;
   failedCategoryIds: Set<string>;
   onRetryMetadata: (id: string) => void;
@@ -38,6 +39,7 @@ export function BookkeepingSettings({
   deviceTimeZone,
   onUpdateSettings,
   onSaveCategories,
+  onReloadCategories,
   generatingCategoryIds,
   failedCategoryIds,
   onRetryMetadata,
@@ -50,16 +52,16 @@ export function BookkeepingSettings({
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [serverChanged, setServerChanged] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<BookkeepingField>>(new Set());
   const dirty = !bookkeepingSettingsEqual(server, draft);
 
   if (!bookkeepingSettingsEqual(server, incoming)) {
+    const touchedServerFieldsChanged = bookkeepingFields.some(
+      (field) => touchedFields.has(field) && !bookkeepingFieldEqual(field, server, incoming)
+    );
     setServer(incoming);
-    if (dirty) {
-      setServerChanged(true);
-    } else {
-      setDraft(incoming);
-      setServerChanged(false);
-    }
+    setDraft((current) => rebaseBookkeepingDraft(current, incoming, touchedFields));
+    setServerChanged((current) => current || touchedServerFieldsChanged);
   }
 
   useEffect(() => {
@@ -70,23 +72,38 @@ export function BookkeepingSettings({
 
   const updateDraft = (patch: Partial<Settings>) => {
     setDraft((current) => normalizeBookkeepingSettings({ ...current, ...patch }));
+    setTouchedFields((current) => {
+      const next = new Set(current);
+      for (const field of bookkeepingFields) {
+        if (field in patch) next.add(field);
+      }
+      return next;
+    });
     setError(null);
   };
 
   const handleSave = async () => {
+    if (serverChanged) return;
     if (!draft.currencies.includes(draft.mainCurrency)) {
       setStatus("error");
       setError(t("mainCurrencyMustBeEnabled"));
       return;
     }
 
-    const patch = buildBookkeepingPatch(server, draft);
-    if (Object.keys(patch).length === 0) return;
+    const patch = buildBookkeepingPatch(server, draft, touchedFields);
+    if (Object.keys(patch).length === 0) {
+      setTouchedFields(new Set());
+      return;
+    }
     setStatus("saving");
     setError(null);
     try {
-      await onUpdateSettings(patch);
-      setServer(draft);
+      const result = await onUpdateSettings(patch);
+      const savedSettings = extractSettings(result, patch);
+      const nextServer = normalizeBookkeepingSettings({ ...draft, ...savedSettings });
+      setServer(nextServer);
+      setDraft(nextServer);
+      setTouchedFields(new Set());
       setStatus("idle");
       setServerChanged(false);
     } catch {
@@ -97,6 +114,7 @@ export function BookkeepingSettings({
 
   const handleCancel = () => {
     setDraft(server);
+    setTouchedFields(new Set());
     setStatus("idle");
     setError(null);
     setServerChanged(false);
@@ -157,6 +175,7 @@ export function BookkeepingSettings({
         pending={status === "saving"}
         error={error}
         serverChanged={serverChanged}
+        saveDisabled={serverChanged}
         onSave={() => void handleSave()}
         onCancel={handleCancel}
       />
@@ -164,6 +183,7 @@ export function BookkeepingSettings({
         categories={categories}
         uncategorizedCount={uncategorizedCount}
         onSaveCategories={onSaveCategories}
+        {...(onReloadCategories == null ? {} : { onReloadCategories })}
         generatingCategoryIds={generatingCategoryIds}
         failedCategoryIds={failedCategoryIds}
         onRetryMetadata={onRetryMetadata}
@@ -181,6 +201,14 @@ interface BookkeepingDraft {
   collapseEntriesDefault: boolean;
   timeZone: string | null;
 }
+
+type BookkeepingField = keyof BookkeepingDraft;
+const bookkeepingFields: readonly BookkeepingField[] = [
+  "mainCurrency",
+  "currencies",
+  "collapseEntriesDefault",
+  "timeZone",
+];
 
 function normalizeBookkeepingSettings(settings: Partial<Settings>): BookkeepingDraft {
   return {
@@ -203,19 +231,63 @@ function bookkeepingSettingsEqual(left: BookkeepingDraft, right: BookkeepingDraf
 
 function buildBookkeepingPatch(
   server: BookkeepingDraft,
-  draft: BookkeepingDraft
+  draft: BookkeepingDraft,
+  touchedFields: ReadonlySet<BookkeepingField>
 ): Partial<Settings> {
   const patch: Partial<Settings> = {};
-  if (server.mainCurrency !== draft.mainCurrency) patch.mainCurrency = draft.mainCurrency;
-  if (server.collapseEntriesDefault !== draft.collapseEntriesDefault) {
+  if (touchedFields.has("mainCurrency") && server.mainCurrency !== draft.mainCurrency) {
+    patch.mainCurrency = draft.mainCurrency;
+  }
+  if (
+    touchedFields.has("collapseEntriesDefault") &&
+    server.collapseEntriesDefault !== draft.collapseEntriesDefault
+  ) {
     patch.collapseEntriesDefault = draft.collapseEntriesDefault;
   }
-  if (server.timeZone !== draft.timeZone) patch.timeZone = draft.timeZone;
+  if (touchedFields.has("timeZone") && server.timeZone !== draft.timeZone) {
+    patch.timeZone = draft.timeZone;
+  }
   if (
-    server.currencies.length !== draft.currencies.length ||
-    server.currencies.some((currency, index) => currency !== draft.currencies[index])
+    touchedFields.has("currencies") &&
+    (server.currencies.length !== draft.currencies.length ||
+      server.currencies.some((currency, index) => currency !== draft.currencies[index]))
   ) {
     patch.currencies = draft.currencies;
   }
   return patch;
+}
+
+function bookkeepingFieldEqual(
+  field: BookkeepingField,
+  left: BookkeepingDraft,
+  right: BookkeepingDraft
+): boolean {
+  if (field !== "currencies") return left[field] === right[field];
+  return (
+    left.currencies.length === right.currencies.length &&
+    left.currencies.every((currency, index) => currency === right.currencies[index])
+  );
+}
+
+function rebaseBookkeepingDraft(
+  draft: BookkeepingDraft,
+  incoming: BookkeepingDraft,
+  touchedFields: ReadonlySet<BookkeepingField>
+): BookkeepingDraft {
+  return {
+    mainCurrency: touchedFields.has("mainCurrency") ? draft.mainCurrency : incoming.mainCurrency,
+    currencies: touchedFields.has("currencies") ? draft.currencies : incoming.currencies,
+    collapseEntriesDefault: touchedFields.has("collapseEntriesDefault")
+      ? draft.collapseEntriesDefault
+      : incoming.collapseEntriesDefault,
+    timeZone: touchedFields.has("timeZone") ? draft.timeZone : incoming.timeZone,
+  };
+}
+
+function extractSettings(result: unknown, fallback: Partial<Settings>): Partial<Settings> {
+  if (typeof result === "object" && result != null && "settings" in result) {
+    const settings = (result as { settings?: unknown }).settings;
+    if (typeof settings === "object" && settings != null) return settings as Partial<Settings>;
+  }
+  return fallback;
 }

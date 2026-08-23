@@ -8,6 +8,7 @@ interface SettingsSectionActionsProps {
   pending: boolean;
   error: string | null;
   serverChanged?: boolean;
+  saveDisabled?: boolean;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -17,6 +18,7 @@ export function SettingsSectionActions({
   pending,
   error,
   serverChanged = false,
+  saveDisabled = false,
   onSave,
   onCancel,
 }: SettingsSectionActionsProps) {
@@ -34,7 +36,7 @@ export function SettingsSectionActions({
         <Button type="button" variant="outline" onClick={onCancel} disabled={!dirty || pending}>
           {t("cancel")}
         </Button>
-        <Button type="button" onClick={onSave} disabled={!dirty || pending}>
+        <Button type="button" onClick={onSave} disabled={!dirty || pending || saveDisabled}>
           {pending ? t("saving") : t("save")}
         </Button>
       </div>

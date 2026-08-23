@@ -24,6 +24,7 @@ interface CategorySectionProps {
   categories: EntryCategory[];
   uncategorizedCount?: number;
   onSaveCategories: (input: SaveEntryCategoriesInput) => Promise<EntryCategory[]>;
+  onReloadCategories?: () => Promise<EntryCategory[]>;
   generatingCategoryIds?: Set<string>;
   failedCategoryIds?: Set<string>;
   onRetryMetadata?: (id: string) => void;
@@ -56,6 +57,7 @@ export function CategorySection({
   categories,
   uncategorizedCount = 0,
   onSaveCategories,
+  onReloadCategories,
   generatingCategoryIds = new Set(),
   failedCategoryIds = new Set(),
   onRetryMetadata,
@@ -72,26 +74,31 @@ export function CategorySection({
   const [discardManagementOpen, setDiscardManagementOpen] = useState(false);
   const [discardEditOpen, setDiscardEditOpen] = useState(false);
   const [serverChanged, setServerChanged] = useState(false);
+  const [revisionConflict, setRevisionConflict] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const incomingDraft = useMemo(() => categories.map(toCategoryDraft), [categories]);
   const dirty = managing && !categoryDraftsEqual(serverDraft, draftOrder);
+  const editDirty = editSession != null && !editDraftEqual(editSession.original, editSession.draft);
+  const hasCategoryDraft = dirty || newCategoryName.trim() !== "" || editDirty;
 
   useEffect(() => {
     if (!managing || categoryDraftsEqual(serverDraft, incomingDraft)) return;
     setServerDraft(incomingDraft);
-    if (dirty) {
+    if (hasCategoryDraft) {
       setServerChanged(true);
+      setRevisionConflict(true);
     } else {
       setDraftOrder(incomingDraft);
       setServerChanged(false);
+      setRevisionConflict(false);
     }
-  }, [dirty, incomingDraft, managing, serverDraft]);
+  }, [hasCategoryDraft, incomingDraft, managing, serverDraft]);
 
   useEffect(() => {
     const key = "settings:categories";
-    useUnsavedChangesStore.getState().setDirty(key, dirty);
+    useUnsavedChangesStore.getState().setDirty(key, hasCategoryDraft);
     return () => useUnsavedChangesStore.getState().setDirty(key, false);
-  }, [dirty]);
+  }, [hasCategoryDraft]);
 
   const displayedCategories = managing ? draftOrder : incomingDraft;
 
@@ -100,6 +107,7 @@ export function CategorySection({
     setDraftOrder(incomingDraft);
     setManaging(true);
     setServerChanged(false);
+    setRevisionConflict(false);
     setSaveError(null);
   };
 
@@ -144,11 +152,11 @@ export function CategorySection({
   };
 
   const handleSave = async () => {
-    if (!dirty || isSaving) return;
+    if (!dirty || isSaving || revisionConflict || serverChanged) return;
     setSaveError(null);
     try {
       const expectedRevision = await computeCategoryCollectionRevision(categories);
-      await onSaveCategories({
+      const saved = await onSaveCategories({
         expectedRevision,
         categories: draftOrder.map((category) => ({
           ...(category.id === undefined ? {} : { id: category.id }),
@@ -158,8 +166,40 @@ export function CategorySection({
           icon: category.icon,
         })),
       });
+      const savedDraft = saved.map(toCategoryDraft);
+      setServerDraft(savedDraft);
+      setDraftOrder(savedDraft);
       setManaging(false);
       setServerChanged(false);
+      setRevisionConflict(false);
+    } catch (error) {
+      const errorCode =
+        typeof error === "object" && error != null && "code" in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      if (errorCode === "CONFLICT") {
+        setRevisionConflict(true);
+        setServerChanged(true);
+        setSaveError(t("updateConflict"));
+      } else {
+        setSaveError(t("saveCategoriesFailed"));
+      }
+    }
+  };
+
+  const handleReload = async () => {
+    if (onReloadCategories == null) return;
+    try {
+      const latest = await onReloadCategories();
+      const latestDraft = latest.map(toCategoryDraft);
+      setServerDraft(latestDraft);
+      setDraftOrder(latestDraft);
+      setNewCategoryName("");
+      setEditSession(null);
+      setManaging(false);
+      setServerChanged(false);
+      setRevisionConflict(false);
+      setSaveError(null);
     } catch {
       setSaveError(t("saveCategoriesFailed"));
     }
@@ -319,6 +359,11 @@ export function CategorySection({
             {saveError == null && serverChanged ? (
               <p className="text-warning">{t("serverChangedWhileEditing")}</p>
             ) : null}
+            {revisionConflict && onReloadCategories != null ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => void handleReload()}>
+                {common("reloadServerData")}
+              </Button>
+            ) : null}
           </div>
           <div className="flex justify-end gap-2">
             <Button
@@ -326,13 +371,17 @@ export function CategorySection({
               variant="outline"
               disabled={isSaving}
               onClick={() => {
-                if (dirty) setDiscardManagementOpen(true);
+                if (hasCategoryDraft) setDiscardManagementOpen(true);
                 else setManaging(false);
               }}
             >
               {common("cancel")}
             </Button>
-            <Button type="button" disabled={!dirty || isSaving} onClick={() => void handleSave()}>
+            <Button
+              type="button"
+              disabled={!dirty || isSaving || revisionConflict || serverChanged}
+              onClick={() => void handleSave()}
+            >
               {isSaving ? t("saving") : common("save")}
             </Button>
           </div>
@@ -503,8 +552,11 @@ export function CategorySection({
         confirmLabel={common("discard")}
         onConfirm={() => {
           setDraftOrder(serverDraft);
+          setNewCategoryName("");
+          setEditSession(null);
           setManaging(false);
           setServerChanged(false);
+          setRevisionConflict(false);
           setSaveError(null);
         }}
       />

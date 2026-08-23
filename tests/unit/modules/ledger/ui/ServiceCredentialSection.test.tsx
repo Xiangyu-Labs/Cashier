@@ -7,7 +7,11 @@ const intl = vi.hoisted(() => ({ locale: "en" }));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, unknown>) =>
-    values?.date == null ? key : `${key}:${String(values.date)}`,
+    values?.date != null
+      ? `${key}:${String(values.date)}`
+      : values?.name != null
+        ? `${key}:${String(values.name)}`
+        : key,
   useLocale: () => intl.locale,
 }));
 
@@ -55,6 +59,11 @@ describe("ServiceCredentialSection", () => {
       deletedAt: null,
     });
     await waitFor(() => expect(screen.getByText("createSuccessTitle")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "close" })).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.getByText("createSuccessTitle")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "saved" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("awaits deletion and prevents the confirmation from closing early", async () => {
@@ -84,7 +93,8 @@ describe("ServiceCredentialSection", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "deleteTitle" }));
+    fireEvent.click(screen.getByRole("button", { name: "deleteButton:Automation" }));
+    expect(screen.getByText("deleteDesc:Automation")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "delete" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "delete" })).toBeDisabled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();

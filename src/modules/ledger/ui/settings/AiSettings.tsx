@@ -31,16 +31,16 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [serverChanged, setServerChanged] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<AiField>>(new Set());
   const dirty = !aiSettingsEqual(server, draft);
 
   if (!aiSettingsEqual(server, incoming)) {
+    const touchedServerFieldsChanged = aiFields.some(
+      (field) => touchedFields.has(field) && server[field] !== incoming[field]
+    );
     setServer(incoming);
-    if (dirty) {
-      setServerChanged(true);
-    } else {
-      setDraft(incoming);
-      setServerChanged(false);
-    }
+    setDraft((current) => rebaseAiDraft(current, incoming, touchedFields));
+    setServerChanged((current) => current || touchedServerFieldsChanged);
   }
 
   useEffect(() => {
@@ -51,17 +51,32 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
 
   const updateDraft = (patch: Partial<Settings>) => {
     setDraft((current) => normalizeAiSettings({ ...current, ...patch }));
+    setTouchedFields((current) => {
+      const next = new Set(current);
+      for (const field of aiFields) {
+        if (field in patch) next.add(field);
+      }
+      return next;
+    });
     setError(null);
   };
 
   const handleSave = async () => {
-    const patch = buildAiPatch(server, draft);
-    if (Object.keys(patch).length === 0) return;
+    if (serverChanged) return;
+    const patch = buildAiPatch(server, draft, touchedFields);
+    if (Object.keys(patch).length === 0) {
+      setTouchedFields(new Set());
+      return;
+    }
     setStatus("saving");
     setError(null);
     try {
-      await onUpdateSettings(patch);
-      setServer(draft);
+      const result = await onUpdateSettings(patch);
+      const savedSettings = extractSettings(result, patch);
+      const nextServer = normalizeAiSettings({ ...draft, ...savedSettings });
+      setServer(nextServer);
+      setDraft(nextServer);
+      setTouchedFields(new Set());
       setStatus("idle");
       setServerChanged(false);
     } catch {
@@ -72,6 +87,7 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
 
   const handleCancel = () => {
     setDraft(server);
+    setTouchedFields(new Set());
     setStatus("idle");
     setError(null);
     setServerChanged(false);
@@ -121,6 +137,7 @@ export function AiSettings({ settings, onUpdateSettings }: AiSettingsProps) {
         pending={status === "saving"}
         error={error}
         serverChanged={serverChanged}
+        saveDisabled={serverChanged}
         onSave={() => void handleSave()}
         onCancel={handleCancel}
       />
@@ -135,6 +152,9 @@ interface AiDraft {
   duplicateDetectionEnabled: boolean;
   aiCustomPrompt: string;
 }
+
+type AiField = keyof AiDraft;
+const aiFields: readonly AiField[] = ["aiLanguage", "duplicateDetectionEnabled", "aiCustomPrompt"];
 
 function normalizeAiSettings(settings: Partial<Settings>): AiDraft {
   return {
@@ -152,14 +172,47 @@ function aiSettingsEqual(left: AiDraft, right: AiDraft): boolean {
   );
 }
 
-function buildAiPatch(server: AiDraft, draft: AiDraft): Partial<Settings> {
+function buildAiPatch(
+  server: AiDraft,
+  draft: AiDraft,
+  touchedFields: ReadonlySet<AiField>
+): Partial<Settings> {
   const patch: Partial<Settings> = {};
-  if (server.aiLanguage !== draft.aiLanguage) patch.aiLanguage = draft.aiLanguage;
-  if (server.duplicateDetectionEnabled !== draft.duplicateDetectionEnabled) {
+  if (touchedFields.has("aiLanguage") && server.aiLanguage !== draft.aiLanguage) {
+    patch.aiLanguage = draft.aiLanguage;
+  }
+  if (
+    touchedFields.has("duplicateDetectionEnabled") &&
+    server.duplicateDetectionEnabled !== draft.duplicateDetectionEnabled
+  ) {
     patch.duplicateDetectionEnabled = draft.duplicateDetectionEnabled;
   }
-  if (server.aiCustomPrompt !== draft.aiCustomPrompt) {
+  if (touchedFields.has("aiCustomPrompt") && server.aiCustomPrompt !== draft.aiCustomPrompt) {
     patch.aiCustomPrompt = draft.aiCustomPrompt;
   }
   return patch;
+}
+
+function rebaseAiDraft(
+  draft: AiDraft,
+  incoming: AiDraft,
+  touchedFields: ReadonlySet<AiField>
+): AiDraft {
+  return {
+    aiLanguage: touchedFields.has("aiLanguage") ? draft.aiLanguage : incoming.aiLanguage,
+    duplicateDetectionEnabled: touchedFields.has("duplicateDetectionEnabled")
+      ? draft.duplicateDetectionEnabled
+      : incoming.duplicateDetectionEnabled,
+    aiCustomPrompt: touchedFields.has("aiCustomPrompt")
+      ? draft.aiCustomPrompt
+      : incoming.aiCustomPrompt,
+  };
+}
+
+function extractSettings(result: unknown, fallback: Partial<Settings>): Partial<Settings> {
+  if (typeof result === "object" && result != null && "settings" in result) {
+    const settings = (result as { settings?: unknown }).settings;
+    if (typeof settings === "object" && settings != null) return settings as Partial<Settings>;
+  }
+  return fallback;
 }

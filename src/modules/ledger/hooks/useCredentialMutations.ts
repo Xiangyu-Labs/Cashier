@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 export function useCredentialMutations(ledgerId: string) {
   const t = useTranslations("Settings");
+  const tCredentials = useTranslations("ServiceCredentials");
   const tCommon = useTranslations("Common");
   const createCredential = useLedgerMutation<CreatedServiceCredential, string>(ledgerId, {
     mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
@@ -17,7 +18,7 @@ export function useCredentialMutations(ledgerId: string) {
     errorMessage: null,
     onError: (error) => {
       const code = (error as Error & { code?: unknown }).code;
-      toast.error(code === "CONFLICT" ? t("maxActive") : t("createFailed"));
+      toast.error(code === "CONFLICT" ? tCredentials("maxActive") : t("createFailed"));
     },
     resourceGroups: ["credentials"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),

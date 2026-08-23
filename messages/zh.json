@@ -337,7 +337,8 @@
     "unsavedChangesDescription": "离开前请保存或放弃这些更改",
     "saveAndContinue": "保存并继续",
     "discardAndContinue": "放弃并离开",
-    "continueEditing": "继续编辑"
+    "continueEditing": "继续编辑",
+    "reloadServerData": "重新加载最新数据"
   },
   "SourceDocumentInput": {
     "placeholder": "输入消费记录，例如：午饭 35 元… (支持粘贴图片)",
@@ -750,7 +751,8 @@
     "copyCredential": "复制密钥",
     "saved": "我已保存",
     "deleteTitle": "删除服务密钥",
-    "deleteDesc": "确定要删除这个密钥吗？删除后使用此密钥的外部应用将无法访问。此操作无法撤销。",
+    "deleteDesc": "确定要删除凭证“{name}”吗？删除后使用此凭证的外部应用将无法访问。此操作无法撤销。",
+    "deleteButton": "删除{name}",
     "createFailed": "创建密钥失败",
     "maxActive": "每个账本最多可有 20 个有效服务凭据。",
     "deleteFailed": "删除密钥失败",

@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SettingsTab } from "./SettingsTab";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useSettingsLeaveGuard } from "@/modules/ledger/hooks/useSettingsLeaveGuard";
 
 interface SettingsPageClientProps {
   ledger: Ledger;
@@ -29,11 +31,20 @@ export function SettingsPageClient({
 }: SettingsPageClientProps) {
   const router = useRouter();
   const t = useTranslations("Settings");
+  const tCommon = useTranslations("Common");
+  const { leaveConfirmOpen, attemptLeave, confirmLeave, cancelLeave } = useSettingsLeaveGuard({
+    managePopState: true,
+  });
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-4 sm:px-6 sm:py-8">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => attemptLeave(() => router.back())}
+          aria-label={tCommon("back")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl sm:text-2xl font-semibold truncate">{t("title")}</h1>
@@ -47,6 +58,16 @@ export function SettingsPageClient({
         {...(hasPassword !== undefined ? { hasPassword } : {})}
         {...(passwordUpdatedAt !== undefined ? { passwordUpdatedAt } : {})}
         {...(interfaceLanguage !== undefined ? { interfaceLanguage } : {})}
+      />
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onOpenChange={(open) => (open ? undefined : cancelLeave())}
+        title={tCommon("unsavedChangesTitle")}
+        description={tCommon("unsavedChangesDescription")}
+        cancelLabel={tCommon("continueEditing")}
+        confirmLabel={tCommon("discardAndContinue")}
+        variant="destructive"
+        onConfirm={confirmLeave}
       />
     </div>
   );

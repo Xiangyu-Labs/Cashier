@@ -36,7 +36,7 @@ export function ServiceCredentialSection({
   const locale = useLocale();
   const [newCredName, setNewCredName] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [credentialToDelete, setCredentialToDelete] = useState<string | null>(null);
+  const [credentialToDelete, setCredentialToDelete] = useState<ServiceCredential | null>(null);
   const [createdCredential, setCreatedCredential] = useState<CreatedServiceCredentialDto | null>(
     null
   );
@@ -131,8 +131,8 @@ export function ServiceCredentialSection({
                 variant="ghost"
                 size="icon"
                 disabled={isCreating || isDeleting}
-                onClick={() => setCredentialToDelete(credential.id)}
-                aria-label={t("deleteTitle")}
+                onClick={() => setCredentialToDelete(credential)}
+                aria-label={t("deleteButton", { name: credential.name })}
                 className="shrink-0 text-muted hover:text-danger"
               >
                 <Trash2 size={16} />
@@ -180,11 +180,13 @@ export function ServiceCredentialSection({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={createdCredential != null}
-        onOpenChange={(open) => !open && closeCreatedCredentialDialog()}
-      >
-        <DialogContent variant="modal">
+      <Dialog open={createdCredential != null}>
+        <DialogContent
+          variant="modal"
+          hideCloseButton
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{t("createSuccessTitle")}</DialogTitle>
             <DialogDescription>{t("createSuccessDesc")}</DialogDescription>
@@ -225,14 +227,14 @@ export function ServiceCredentialSection({
         open={credentialToDelete != null}
         onOpenChange={(open) => !open && setCredentialToDelete(null)}
         title={t("deleteTitle")}
-        description={t("deleteDesc")}
+        description={t("deleteDesc", { name: credentialToDelete?.name ?? "" })}
         confirmLabel={tCommon("delete")}
         variant="destructive"
         onConfirm={async () => {
           if (credentialToDelete == null || isDeleting) return;
           setIsDeleting(true);
           try {
-            await onDeleteCredential(credentialToDelete);
+            await onDeleteCredential(credentialToDelete.id);
             setCredentialToDelete(null);
           } finally {
             setIsDeleting(false);

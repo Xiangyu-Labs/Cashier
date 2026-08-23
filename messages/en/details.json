@@ -284,7 +284,8 @@
     "unsavedChangesDescription": "Save or discard your changes before leaving.",
     "saveAndContinue": "Save and continue",
     "discardAndContinue": "Discard and leave",
-    "continueEditing": "Continue editing"
+    "continueEditing": "Continue editing",
+    "reloadServerData": "Reload latest data"
   },
   "LedgerEntryDetail": {
     "category": "Transaction Category",

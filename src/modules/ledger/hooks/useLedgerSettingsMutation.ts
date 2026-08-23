@@ -1,6 +1,8 @@
 "use client";
 
 import { useLedgerMutation } from "@/lib/mutations/use-ledger-mutation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { updateLedgerSettingsAction } from "@/modules/ledger/actions";
 import type { Ledger, UpdateLedgerActionErrorCode } from "@/modules/ledger/contracts";
 import { toast } from "sonner";
@@ -31,6 +33,7 @@ export function useLedgerSettingsMutation({
 }: UseLedgerSettingsMutationParams) {
   const t = useTranslations("Settings");
   const tCommon = useTranslations("Common");
+  const queryClient = useQueryClient();
   const translateError = (code: UpdateLedgerActionErrorCode) => {
     switch (code) {
       case "rates_unavailable":
@@ -85,6 +88,9 @@ export function useLedgerSettingsMutation({
     errorMessage: null,
     resourceGroups: ["settings"],
     invalidationErrorMessage: tCommon("savedRefreshFailed"),
+    onSuccess: (savedLedger) => {
+      queryClient.setQueryData(queryKeys.ledger(ledgerId), savedLedger);
+    },
     onError: (error) => toast.error(error.message || errorMessage),
   });
 }

@@ -126,7 +126,8 @@
     "unsavedChangesDescription": "离开前请保存或放弃这些更改",
     "saveAndContinue": "保存并继续",
     "discardAndContinue": "放弃并离开",
-    "continueEditing": "继续编辑"
+    "continueEditing": "继续编辑",
+    "reloadServerData": "重新加载最新数据"
   },
   "Error": {
     "title": "应用错误",

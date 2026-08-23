@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -24,7 +24,7 @@ import {
   prefetchStatsTabQuery,
 } from "@/modules/workspace/prefetch-ledger-tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { useSettingsLeaveGuard } from "@/modules/ledger/hooks/useSettingsLeaveGuard";
 
 interface ActiveShellProps {
   ledgerId: string;
@@ -58,11 +58,7 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   const t = useTranslations("Common");
   const queryClient = useQueryClient();
   const { onInputIntent, onOpenInput } = useShellController();
-  const hasSettingsDraft = useUnsavedChangesStore((state) =>
-    [...state.dirtyKeys].some((key) => key.startsWith("settings:"))
-  );
-  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const continueNavigationRef = useRef<(() => void) | null>(null);
+  const { leaveConfirmOpen, attemptLeave, confirmLeave, cancelLeave } = useSettingsLeaveGuard();
 
   // Derive the active tab from the URL — keeps the shell and the inner
   // content in sync without duplicating state.
@@ -72,31 +68,12 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
   });
   useTabScrollRestoration(ledgerId, activeTab);
 
-  const requestSettingsLeave = useCallback((continueNavigation: () => void) => {
-    continueNavigationRef.current = continueNavigation;
-    setLeaveConfirmOpen(true);
-  }, []);
-
-  useEffect(() => {
-    const key = "settings-navigation";
-    if (activeTab !== "settings" || !hasSettingsDraft) {
-      useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
-      return;
-    }
-    useUnsavedChangesStore.getState().registerLeaveGuard(key, {
-      requestLeave: requestSettingsLeave,
-    });
-    return () => useUnsavedChangesStore.getState().registerLeaveGuard(key, null);
-  }, [activeTab, hasSettingsDraft, requestSettingsLeave]);
-
   const guardedTabChange = useCallback(
     (tab: LedgerTab) => {
       if (tab === activeTab) return;
-      const guard = useUnsavedChangesStore.getState().getLeaveGuard("settings-navigation");
-      if (guard == null) handleTabChange(tab);
-      else guard.requestLeave(() => handleTabChange(tab));
+      attemptLeave(() => handleTabChange(tab));
     },
-    [activeTab, handleTabChange]
+    [activeTab, attemptLeave, handleTabChange]
   );
 
   const preloadTabCode = useCallback(
@@ -154,18 +131,13 @@ function ActiveShellInner({ ledgerId, children }: ActiveShellProps) {
       </SwipeTabSurface>
       <ConfirmDialog
         open={leaveConfirmOpen}
-        onOpenChange={setLeaveConfirmOpen}
+        onOpenChange={(open) => (open ? undefined : cancelLeave())}
         title={t("unsavedChangesTitle")}
         description={t("unsavedChangesDescription")}
         cancelLabel={t("continueEditing")}
         confirmLabel={t("discardAndContinue")}
         variant="destructive"
-        onConfirm={() => {
-          const continueNavigation = continueNavigationRef.current;
-          continueNavigationRef.current = null;
-          setLeaveConfirmOpen(false);
-          continueNavigation?.();
-        }}
+        onConfirm={confirmLeave}
       />
     </AppShell>
   );

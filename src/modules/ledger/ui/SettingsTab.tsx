@@ -22,12 +22,15 @@ import { useTheme } from "next-themes";
 import { UI_LANGUAGES } from "@/config/languages";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { updateUserPreferencesAction } from "@/modules/auth/server-actions/user-preferences";
 import type { InterfaceLanguage } from "@/modules/auth/contracts";
 import { clearUserImageCacheDataSafely } from "@/lib/client-cache";
 import type { TabQueryStateReport } from "@/components/tab-query-state";
 import { SettingsSectionActions } from "./settings/SettingsSectionActions";
 import { useUnsavedChangesStore } from "@/lib/store/unsaved-changes";
+import { queryKeys } from "@/lib/query-keys";
+import { getEntryCategoriesAction } from "@/modules/ledger/actions";
 
 interface SettingsTabProps {
   ledger: Ledger;
@@ -40,6 +43,9 @@ interface SettingsTabProps {
   interfaceLanguage?: InterfaceLanguage;
   onQueryStateChange?: (report: TabQueryStateReport) => void;
 }
+
+type AppearanceField = "theme" | "language";
+const appearanceFields: readonly AppearanceField[] = ["theme", "language"];
 
 export function SettingsTab({
   ledger,
@@ -57,6 +63,7 @@ export function SettingsTab({
   const t = useTranslations("Settings");
   const { theme, setTheme } = useTheme();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [displayEmail, setDisplayEmail] = useState(userEmail ?? "");
   const [deviceTimeZone, setDeviceTimeZone] = useState<string | null>(null);
   const [appearanceServer, setAppearanceServer] = useState({
@@ -64,8 +71,10 @@ export function SettingsTab({
     language: interfaceLanguage,
   });
   const [appearanceDraft, setAppearanceDraft] = useState(appearanceServer);
+  const [appearanceTouched, setAppearanceTouched] = useState<Set<AppearanceField>>(new Set());
   const [appearanceStatus, setAppearanceStatus] = useState<"idle" | "saving" | "error">("idle");
   const [appearanceError, setAppearanceError] = useState<string | null>(null);
+  const [appearanceServerChanged, setAppearanceServerChanged] = useState(false);
   const [metadataPollingSession, setMetadataPollingSession] = useState(0);
   const appearanceDirty =
     appearanceServer.theme !== appearanceDraft.theme ||
@@ -76,9 +85,18 @@ export function SettingsTab({
     nextAppearanceServer.theme !== appearanceServer.theme ||
     nextAppearanceServer.language !== appearanceServer.language
   ) {
-    const nextServer = nextAppearanceServer;
-    setAppearanceServer(nextServer);
-    if (!appearanceDirty) setAppearanceDraft(nextServer);
+    const touchedServerFieldsChanged = appearanceFields.some(
+      (field) =>
+        appearanceTouched.has(field) && appearanceServer[field] !== nextAppearanceServer[field]
+    );
+    setAppearanceServer(nextAppearanceServer);
+    setAppearanceDraft((current) => ({
+      theme: appearanceTouched.has("theme") ? current.theme : nextAppearanceServer.theme,
+      language: appearanceTouched.has("language")
+        ? current.language
+        : nextAppearanceServer.language,
+    }));
+    setAppearanceServerChanged((current) => current || touchedServerFieldsChanged);
   }
 
   useEffect(() => {
@@ -139,6 +157,11 @@ export function SettingsTab({
     });
 
   const { createCredential, deleteCredential } = useCredentialMutations(ledgerId);
+  const reloadCategories = async () => {
+    const latest = await getEntryCategoriesAction(ledgerId);
+    queryClient.setQueryData(queryKeys.entryCategories(ledgerId), latest);
+    return latest;
+  };
 
   // Theme key mapping for translations
   const themeLabel = (themeName: "system" | "light" | "dark") => {
@@ -190,7 +213,7 @@ export function SettingsTab({
   };
 
   const handleSaveAppearance = async () => {
-    if (!appearanceDirty || appearanceStatus === "saving") return;
+    if (!appearanceDirty || appearanceStatus === "saving" || appearanceServerChanged) return;
     setAppearanceStatus("saving");
     setAppearanceError(null);
     try {
@@ -212,6 +235,8 @@ export function SettingsTab({
       };
       setAppearanceServer(savedAppearance);
       setAppearanceDraft(savedAppearance);
+      setAppearanceTouched(new Set());
+      setAppearanceServerChanged(false);
       setAppearanceStatus("idle");
 
       if (savedLanguage !== appearanceServer.language) {
@@ -235,6 +260,8 @@ export function SettingsTab({
 
   const handleCancelAppearance = () => {
     setAppearanceDraft(appearanceServer);
+    setAppearanceTouched(new Set());
+    setAppearanceServerChanged(false);
     setAppearanceStatus("idle");
     setAppearanceError(null);
   };
@@ -247,6 +274,7 @@ export function SettingsTab({
             value={appearanceDraft.theme}
             onValueChange={(nextTheme) => {
               setAppearanceDraft((current) => ({ ...current, theme: nextTheme }));
+              setAppearanceTouched((current) => new Set(current).add("theme"));
               setAppearanceError(null);
             }}
             disabled={appearanceStatus === "saving"}
@@ -271,6 +299,7 @@ export function SettingsTab({
                 ...current,
                 language: value as InterfaceLanguage,
               }));
+              setAppearanceTouched((current) => new Set(current).add("language"));
               setAppearanceError(null);
             }}
             disabled={appearanceStatus === "saving"}
@@ -291,6 +320,8 @@ export function SettingsTab({
           dirty={appearanceDirty}
           pending={appearanceStatus === "saving"}
           error={appearanceError}
+          serverChanged={appearanceServerChanged}
+          saveDisabled={appearanceServerChanged}
           onSave={() => void handleSaveAppearance()}
           onCancel={handleCancelAppearance}
         />
@@ -303,6 +334,7 @@ export function SettingsTab({
         deviceTimeZone={deviceTimeZone}
         onUpdateSettings={(data) => updateLedgerMutation.mutateAsync(data)}
         onSaveCategories={(input) => saveCategories.mutateAsync(input)}
+        onReloadCategories={reloadCategories}
         generatingCategoryIds={generatingCategoryIds}
         failedCategoryIds={failedCategoryIds}
         onRetryMetadata={retryCategoryMetadata}
