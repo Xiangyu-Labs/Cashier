@@ -1,4 +1,5 @@
 import type {
+  AuthenticatedServiceCredentialContract,
   RecoverableProcessingIntentContract,
   CategoryPort,
   DirectStoredFilePort,
@@ -116,8 +117,6 @@ export interface SourceDocumentQueryPorts {
 }
 
 export interface SourceDocumentCredentialPorts {
-  ledgers: LedgerPort;
-  settings: SettingsPort;
   submissions: SourceDocumentSubmissionPort;
   storedFiles: DirectStoredFilePort & {
     uploadTarget(input: {

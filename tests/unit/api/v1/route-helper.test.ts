@@ -92,27 +92,6 @@ describe("api/v1 route helper", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
-  it("does not authenticate when the invalid-bearer bucket is already exhausted", async () => {
-    rateLimiterMock.current.mockResolvedValue(30);
-    const handler = vi.fn();
-    const response = await handleApiV1Route(
-      new NextRequest("http://localhost/api/v1/source-documents", {
-        method: "POST",
-        headers: { Authorization: "Bearer sk_invalid" },
-      }),
-      { logContext: "api/v1/source-documents", handler }
-    );
-
-    expect(response.status).toBe(429);
-    expect(Number(response.headers.get("Retry-After"))).toBeGreaterThanOrEqual(1);
-    expect(Number(response.headers.get("Retry-After"))).toBeLessThanOrEqual(60);
-    expect(response.headers.get("X-RateLimit-Limit")).toBe("30");
-    expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
-    expect(response.headers.get("X-RateLimit-Reset")).toMatch(/^\d+$/);
-    expect(serviceCredentialsMock.authenticate).not.toHaveBeenCalled();
-    expect(handler).not.toHaveBeenCalled();
-  });
-
   it("rejects over the pre-auth IP limit without parsing the business request", async () => {
     rateLimiterMock.increment.mockImplementation(async (key: string, limit: number) =>
       key.startsWith("rl_api_v1_preauth:")

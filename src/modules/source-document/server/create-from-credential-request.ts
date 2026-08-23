@@ -1,4 +1,5 @@
 import type { ProcessingIntentContract } from "@/application/contracts";
+import type { AuthenticatedServiceCredentialContract } from "@/application/contracts";
 import { serverComposition } from "@/application/server-composition-root";
 import { ValidationError } from "@/lib/errors";
 import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
@@ -17,8 +18,7 @@ import { scheduleProcessingRecoveryAfter } from "../server-actions/schedule-proc
  * of assembling adapters or touching persistence directly.
  */
 export async function createSourceDocumentFromCredentialRequest(input: {
-  credentialId: string;
-  ledgerId: string;
+  credential: AuthenticatedServiceCredentialContract;
   idempotencyKey?: string;
   requestId?: string;
   payload: unknown;
@@ -34,8 +34,7 @@ export async function createSourceDocumentFromCredentialRequest(input: {
 
   const result = await createSourceDocumentFromCredential(
     {
-      credentialId: input.credentialId,
-      ledgerId: input.ledgerId,
+      credential: input.credential,
       ...(input.idempotencyKey == null ? {} : { idempotencyKey: input.idempotencyKey }),
       payload: {
         images: parsed.data.images,
@@ -44,8 +43,6 @@ export async function createSourceDocumentFromCredentialRequest(input: {
     },
     scheduleProcessing,
     {
-      ledgers: serverComposition.ledgers,
-      settings: serverComposition.settings,
       submissions: serverComposition.sourceDocumentSubmissions,
       storedFiles: serverComposition.storedFiles,
     }
@@ -53,7 +50,7 @@ export async function createSourceDocumentFromCredentialRequest(input: {
 
   // Also recover older pending intents for the ledger and run bounded
   // maintenance. The claim CAS makes duplicate scheduling harmless.
-  scheduleProcessingRecoveryAfter(input.ledgerId, input.requestId);
+  scheduleProcessingRecoveryAfter(input.credential.ledgerId, input.requestId);
   scheduleRequestMaintenance();
 
   return result;

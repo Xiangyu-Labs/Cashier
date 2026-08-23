@@ -18,7 +18,7 @@ import {
 } from "@/modules/ledger/actions";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { ValidationError } from "@/lib/errors";
-import { authenticateToken } from "@/lib/security/service-credential-token";
+import { computeHash } from "@/lib/security/service-credential-token";
 import { postgresServiceCredentialAdapter } from "@/application/adapters/postgres";
 import sharp from "sharp";
 
@@ -133,7 +133,7 @@ describe("Service Credentials & Ledger Entry Ingestion", () => {
     });
     expect(stored?.tokenHash).toBeDefined();
     expect(stored).not.toHaveProperty("key");
-    expect(authenticateToken(createRes.token, stored?.tokenHash ?? "")).toBe(true);
+    expect(computeHash(createRes.token)).toBe(stored?.tokenHash);
 
     // List Credentials
     const listRes = await getServiceCredentialsAction(testLedgerId);

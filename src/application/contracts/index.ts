@@ -411,7 +411,6 @@ export interface SourceDocumentSubmissionPort {
 }
 
 export interface LedgerPort {
-  getLedgerIdForCredential(credentialId: string): Promise<LedgerId | null>;
   isOwnedByUser(ledgerId: LedgerId, userId: string): Promise<boolean>;
   getOwned(ledgerId: LedgerId, userId: string): Promise<LedgerContract | null>;
   listIdsForUser(userId: string): Promise<readonly LedgerId[]>;
@@ -478,7 +477,10 @@ export interface ServiceCredentialPort {
   authenticate(key: string): Promise<AuthenticatedServiceCredentialContract | null>;
   list(ledgerId: LedgerId): Promise<readonly ServiceCredentialContract[]>;
   create(ledgerId: LedgerId, name: string): Promise<CreatedServiceCredentialContract>;
-  revoke(ledgerId: LedgerId, credentialId: string): Promise<boolean>;
+  revoke(
+    ledgerId: LedgerId,
+    credentialId: string
+  ): Promise<"revoked" | "already_revoked" | "not_found">;
 }
 export interface RateLimitResult {
   success: boolean;

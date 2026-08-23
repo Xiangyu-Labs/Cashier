@@ -1,8 +1,10 @@
 import type { CreateSourceDocumentResponseDto } from "@/modules/source-document/contracts";
-import { ForbiddenError, ValidationError } from "@/lib/errors";
-import type { ProcessingIntentContract } from "@/application/contracts";
+import { ValidationError } from "@/lib/errors";
+import type {
+  AuthenticatedServiceCredentialContract,
+  ProcessingIntentContract,
+} from "@/application/contracts";
 import { processImage as processImageFn } from "@/lib/storage/image-processing";
-import { resolveLedgerForServiceCredential } from "@/modules/ledger/credential-access";
 import { createAndQueueSourceDocument } from "./create-and-queue-source-document";
 import { createHash } from "crypto";
 import { API_V1_MAX_DECODED_IMAGE_BYTES } from "@/modules/source-document/api-v1-policy";
@@ -30,27 +32,14 @@ function contentFingerprint(payload: PreparedApiV1SourceDocumentInput): string {
 
 export async function createSourceDocumentFromCredential(
   input: {
-    credentialId: string;
-    ledgerId?: string;
+    credential: AuthenticatedServiceCredentialContract;
     idempotencyKey?: string;
     payload: PreparedApiV1SourceDocumentInput;
   },
   scheduleProcessing: (intent: ProcessingIntentContract) => void,
   ports: SourceDocumentCredentialPorts
 ): Promise<CreateSourceDocumentResponseDto> {
-  const authenticatedLedger = await resolveLedgerForServiceCredential(
-    input.credentialId,
-    ports.ledgers
-  );
-  if (
-    authenticatedLedger != null &&
-    input.ledgerId != null &&
-    authenticatedLedger.id !== input.ledgerId
-  ) {
-    throw new ForbiddenError("Service credential does not belong to the requested ledger");
-  }
-  const ledger = authenticatedLedger;
-  if (ledger == null) throw new ValidationError("Service credential or ledger not found");
+  const ledger = { id: input.credential.ledgerId };
 
   const payload = input.payload;
   const images = payload.images ?? [];
@@ -66,7 +55,7 @@ export async function createSourceDocumentFromCredential(
         : {
             idempotency: {
               principalType: "credential",
-              principalId: input.credentialId,
+              principalId: input.credential.id,
               key: input.idempotencyKey,
               contentFingerprint: contentFingerprint(payload),
             },

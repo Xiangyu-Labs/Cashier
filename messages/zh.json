@@ -752,6 +752,8 @@
     "deleteTitle": "删除服务密钥",
     "deleteDesc": "确定要删除这个密钥吗？删除后使用此密钥的外部应用将无法访问。此操作无法撤销。",
     "createFailed": "创建密钥失败",
+    "maxActive": "每个账本最多可有 20 个有效服务凭据。",
+    "deleteFailed": "删除密钥失败",
     "copied": "密钥已复制到剪贴板"
   },
   "DateRangeFilter": {

@@ -6,13 +6,18 @@ import {
   deleteServiceCredentialAction,
 } from "@/modules/ledger/server-actions/credentials";
 import type { CreatedServiceCredential } from "@/modules/ledger/contracts";
+import { toast } from "sonner";
 
 export function useCredentialMutations(ledgerId: string) {
   const t = useTranslations("Settings");
   const createCredential = useLedgerMutation<CreatedServiceCredential, string>(ledgerId, {
     mutationFn: (name) => createServiceCredentialAction(ledgerId, { name }),
     successMessage: t("credentialCreated"),
-    errorMessage: t("createFailed"),
+    errorMessage: null,
+    onError: (error) => {
+      const code = (error as Error & { code?: unknown }).code;
+      toast.error(code === "CONFLICT" ? t("maxActive") : t("createFailed"));
+    },
     resourceGroups: ["credentials"],
   });
 

@@ -422,9 +422,6 @@ describe("current-runtime target adapters", () => {
     });
 
     await expect(postgresLedgerAdapter.isOwnedByUser(ledgerId, userId)).resolves.toBe(true);
-    await expect(postgresLedgerAdapter.getLedgerIdForCredential(credentialId)).resolves.toBe(
-      ledgerId
-    );
     await expect(postgresCategoryAdapter.list(ledgerId)).resolves.toHaveLength(1);
     await expect(postgresSettingsAdapter.get(ledgerId)).resolves.toMatchObject({
       mainCurrency: "CNY",

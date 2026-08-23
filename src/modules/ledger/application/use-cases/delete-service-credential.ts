@@ -6,7 +6,8 @@ export async function deleteServiceCredential(
   credentialId: string,
   credentials: ServiceCredentialPort
 ): Promise<void> {
-  if (!(await credentials.revoke(ledgerId, credentialId))) {
+  const result = await credentials.revoke(ledgerId, credentialId);
+  if (result === "not_found") {
     throw new NotFoundError("Credential");
   }
 }

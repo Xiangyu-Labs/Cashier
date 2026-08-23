@@ -752,6 +752,8 @@
     "deleteTitle": "Delete Service Credential",
     "deleteDesc": "Are you sure you want to delete this credential? External apps using this credential will no longer be able to access it. This action cannot be undone.",
     "createFailed": "Failed to create credential",
+    "maxActive": "A ledger can have at most 20 active service credentials.",
+    "deleteFailed": "Failed to delete credential",
     "copied": "Credential copied to clipboard"
   },
   "DateRangeFilter": {

@@ -11,10 +11,6 @@ import { runtimeEnv } from "@/lib/env/runtime";
 import { getClientIPFromHeaders } from "@/lib/utils/ip";
 import { logger } from "@/lib/logger";
 
-// Number of token shards for invalid-bearer rate limiting to bound attacker-created bucket cardinality.
-// The shard is derived from a hash of the bearer token modulo TOKEN_SHARD_COUNT.
-const TOKEN_SHARD_COUNT = 256;
-
 interface ApiV1Context {
   credential: AuthenticatedServiceCredentialContract;
   request: NextRequest;
@@ -24,8 +20,6 @@ interface ApiV1Context {
 // Pre-auth per-IP ceiling, applied before any credential parsing so a trusted
 // client IP cannot be used to drive unbounded database authentication work.
 const PRE_AUTH_IP_LIMIT_PER_MINUTE = 120;
-// Invalid-bearer attempts per client IP + token shard, fixed 60-second window.
-const INVALID_BEARER_LIMIT_PER_MINUTE = 30;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 /**
@@ -73,20 +67,6 @@ function preAuthBucketKey(clientIp: string): string {
 }
 
 /**
- * Derive an invalid-bearer rate-limit bucket key from client IP and a shard of the token.
- * Uses HMAC-SHA-256 of client IP and a bounded shard derived from the bearer to prevent
- * attacker-created bucket enumeration while avoiding raw IP/token storage.
- */
-function invalidBearerBucketKey(clientIp: string, bearerToken: string): string {
-  const tokenShard =
-    (crypto.createHash("sha256").update(bearerToken).digest()[0] ?? 0) % TOKEN_SHARD_COUNT;
-  const hmac = crypto.createHmac("sha256", `rl-invalid:${runtimeEnv.apiKeyPepper}`);
-  hmac.update(clientIp);
-  hmac.update(`:${tokenShard}`);
-  return `rl_invalid_bearer:${hmac.digest("hex")}`;
-}
-
-/**
  * Derive the credential-wide rate-limit bucket key from the credential ID
  * only. The quota is shared across POST and GET and across all client IPs, so
  * the IP must not be part of the key.
@@ -95,16 +75,6 @@ function validCredentialBucketKey(credentialId: string): string {
   const hmac = crypto.createHmac("sha256", `rl-valid:${runtimeEnv.apiKeyPepper}`);
   hmac.update(credentialId);
   return `rl_valid_cred:${hmac.digest("hex")}`;
-}
-
-/**
- * Unix-millisecond reset boundary for the current fixed window. The Postgres
- * limiter aligns window starts the same way, so a pre-check that observes a
- * live bucket can report the exact reset time without an extra read.
- */
-function currentWindowResetMs(windowSeconds: number): number {
-  const windowStart = Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds;
-  return (windowStart + windowSeconds) * 1000;
 }
 
 function applyRateLimitHeaders(
@@ -155,53 +125,16 @@ export async function handleApiV1Route(
       throw new UnauthorizedError("Missing or invalid Authorization header");
     }
 
-    // 3. When a trusted IP is available, short-circuit authentication once the
-    //    invalid-bearer bucket for this IP + token shard is already exhausted.
-    if (clientIp !== "unknown") {
-      const invalidBucketKey = invalidBearerBucketKey(clientIp, token);
-      const invalidCurrent = await serverComposition.rateLimiter.current(
-        invalidBucketKey,
-        RATE_LIMIT_WINDOW_SECONDS
-      );
-      if (invalidCurrent >= INVALID_BEARER_LIMIT_PER_MINUTE) {
-        throw new RateLimitError("Rate limit exceeded", undefined, {
-          limit: INVALID_BEARER_LIMIT_PER_MINUTE,
-          remaining: 0,
-          resetTime: currentWindowResetMs(RATE_LIMIT_WINDOW_SECONDS),
-        });
-      }
-    }
-
-    // 4. Authenticate the credential.
+    // 3. Authenticate the credential.
     const authStart = performance.now();
     const credential = await serverComposition.serviceCredentials.authenticate(token);
     stages.credentialAuthMs = Math.round(performance.now() - authStart);
 
     if (credential == null) {
-      // 5. Only increment the invalid-bearer bucket when authentication fails
-      //    and a trusted client IP is available. With "unknown" the bucket key
-      //    would group every client into 256 token shards and let one client
-      //    exhaust another client's invalid-attempt budget, so it is skipped
-      //    exactly like the pre-auth IP ceiling.
-      if (clientIp !== "unknown") {
-        const invalidBucketKey = invalidBearerBucketKey(clientIp, token);
-        const invalidRateResult = await serverComposition.rateLimiter.increment(
-          invalidBucketKey,
-          INVALID_BEARER_LIMIT_PER_MINUTE,
-          RATE_LIMIT_WINDOW_SECONDS
-        );
-        if (!invalidRateResult.success) {
-          throw new RateLimitError("Rate limit exceeded", undefined, {
-            limit: INVALID_BEARER_LIMIT_PER_MINUTE,
-            remaining: invalidRateResult.remaining,
-            resetTime: invalidRateResult.resetTime,
-          });
-        }
-      }
       throw new UnauthorizedError("Invalid Service Credential");
     }
 
-    // 6. Credential-wide quota shared by POST and GET regardless of client IP.
+    // 4. Credential-wide quota shared by POST and GET regardless of client IP.
     const validBucketKey = validCredentialBucketKey(credential.id);
     const apiRateLimit = runtimeEnv.apiRateLimitPerMinute;
     const rateLimitStart = performance.now();

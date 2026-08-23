@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import {
   createToken,
-  authenticateToken,
   prefixSuffix,
   computeHash,
   DOMAIN_PREFIX,
@@ -92,36 +91,6 @@ describe("createToken", () => {
   });
 });
 
-describe("authenticateToken", () => {
-  it("returns true for a valid token and its stored hash", () => {
-    const { token, hash } = createToken();
-    expect(authenticateToken(token, hash)).toBe(true);
-  });
-
-  it("returns false for an incorrect token", () => {
-    const { hash } = createToken();
-    expect(
-      authenticateToken(
-        "sk_live_wrong_token_123456789012345678901234567890123456789012345678",
-        hash
-      )
-    ).toBe(false);
-  });
-
-  it("returns false for a tampered hash", () => {
-    const { token } = createToken();
-    const tamperedHash = "a".repeat(64);
-    expect(authenticateToken(token, tamperedHash)).toBe(false);
-  });
-
-  it("uses constant-time comparison (not vulnerable to length extension)", () => {
-    // Test with different length hashes
-    const { token } = createToken();
-    expect(authenticateToken(token, "short")).toBe(false);
-    expect(authenticateToken(token, "a".repeat(128))).toBe(false);
-  });
-});
-
 describe("prefixSuffix", () => {
   it("returns the correct prefix and suffix for masked display", () => {
     const token = "sk_live_abcdef1234567890abcdef1234567890abcdef12";
@@ -142,25 +111,6 @@ describe("prefixSuffix", () => {
     const middle = token.slice(DISPLAY_PREFIX_LENGTH, -DISPLAY_SUFFIX_LENGTH);
     expect(result.prefix).not.toContain(middle);
     expect(result.suffix).not.toContain(middle);
-  });
-});
-
-describe("cannot authenticate by prefix/suffix alone", () => {
-  it("rejects a token made from just prefix and suffix", () => {
-    const { hash, prefix, suffix } = createToken();
-    const fabricatedToken =
-      prefix + "X".repeat(48 - DISPLAY_PREFIX_LENGTH - DISPLAY_SUFFIX_LENGTH) + suffix;
-    expect(authenticateToken(fabricatedToken, hash)).toBe(false);
-  });
-
-  it("rejects prefix alone as a token", () => {
-    const { hash, prefix } = createToken();
-    expect(authenticateToken(prefix, hash)).toBe(false);
-  });
-
-  it("rejects suffix alone as a token", () => {
-    const { hash, suffix } = createToken();
-    expect(authenticateToken(suffix, hash)).toBe(false);
   });
 });
 

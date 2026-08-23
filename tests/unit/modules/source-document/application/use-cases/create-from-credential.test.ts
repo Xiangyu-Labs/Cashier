@@ -1,28 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createAndQueueSourceDocumentMock, resolveLedgerForServiceCredentialMock } = vi.hoisted(
-  () => ({
-    createAndQueueSourceDocumentMock: vi.fn(),
-    resolveLedgerForServiceCredentialMock: vi.fn(),
-  })
-);
-
-vi.mock("@/modules/ledger/credential-access", () => ({
-  resolveLedgerForServiceCredential: resolveLedgerForServiceCredentialMock,
+const { createAndQueueSourceDocumentMock } = vi.hoisted(() => ({
+  createAndQueueSourceDocumentMock: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source-document", () => ({
   createAndQueueSourceDocument: createAndQueueSourceDocumentMock,
 }));
 
-import { ValidationError } from "@/lib/errors";
 import { createSourceDocumentFromCredential } from "@/modules/source-document/application/use-cases/create-from-credential";
 import type { SourceDocumentCredentialPorts } from "@/modules/source-document/application/ports";
 import type { PreparedApiV1SourceDocumentInput } from "@/modules/source-document/api-v1-policy";
 
 const ports = {
-  ledgers: {},
-  settings: {},
   submissions: {},
   storedFiles: {},
 } as unknown as SourceDocumentCredentialPorts;
@@ -43,39 +33,13 @@ describe("createSourceDocumentFromCredential", () => {
     });
   });
 
-  it("throws when credential cannot resolve a ledger", async () => {
-    resolveLedgerForServiceCredentialMock.mockResolvedValueOnce(null);
-
-    await expect(
-      createSourceDocumentFromCredential(
-        {
-          credentialId: "cred-1",
-          payload: {
-            images: [preparedImage],
-          },
-        },
-        scheduleProcessing,
-        ports
-      )
-    ).rejects.toThrow(ValidationError);
-    expect(scheduleProcessing).not.toHaveBeenCalled();
-  });
-
-  it("forwards resolved ledger and omits undefined payload fields", async () => {
-    resolveLedgerForServiceCredentialMock.mockResolvedValueOnce({
-      id: "ledger-1",
-      userId: "user-1",
-      metadata: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: null,
-    });
+  it("forwards the authenticated principal ledger and omits undefined payload fields", async () => {
     const payload: PreparedApiV1SourceDocumentInput = {
       images: [preparedImage],
     };
 
     await createSourceDocumentFromCredential(
-      { credentialId: "cred-1", payload },
+      { credential: { id: "cred-1", ledgerId: "ledger-1" }, payload },
       scheduleProcessing,
       ports
     );
@@ -91,12 +55,11 @@ describe("createSourceDocumentFromCredential", () => {
   });
 
   it("threads scheduleProcessing through to createAndQueueSourceDocument", async () => {
-    resolveLedgerForServiceCredentialMock.mockResolvedValueOnce({
-      id: "ledger-1",
-    });
-
     await createSourceDocumentFromCredential(
-      { credentialId: "cred-1", payload: { images: [preparedImage] } },
+      {
+        credential: { id: "cred-1", ledgerId: "ledger-1" },
+        payload: { images: [preparedImage] },
+      },
       scheduleProcessing,
       ports
     );

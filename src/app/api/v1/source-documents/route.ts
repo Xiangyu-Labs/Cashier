@@ -107,8 +107,7 @@ export async function POST(request: NextRequest) {
         let createResult: Awaited<ReturnType<typeof createSourceDocumentFromCredentialRequest>>;
         try {
           createResult = await createSourceDocumentFromCredentialRequest({
-            credentialId: credential.id,
-            ledgerId: credential.ledgerId,
+            credential,
             ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
             requestId,
             payload: parsed.data,

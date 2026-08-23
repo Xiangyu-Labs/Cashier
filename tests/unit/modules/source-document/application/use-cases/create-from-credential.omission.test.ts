@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { resolveLedgerForServiceCredentialMock, createAndQueueSourceDocumentMock } = vi.hoisted(
-  () => ({
-    resolveLedgerForServiceCredentialMock: vi.fn(),
-    createAndQueueSourceDocumentMock: vi.fn(),
-  })
-);
-
-vi.mock("@/modules/ledger/credential-access", () => ({
-  resolveLedgerForServiceCredential: resolveLedgerForServiceCredentialMock,
+const { createAndQueueSourceDocumentMock } = vi.hoisted(() => ({
+  createAndQueueSourceDocumentMock: vi.fn(),
 }));
 
 vi.mock("@/modules/source-document/application/use-cases/create-and-queue-source-document", () => ({
@@ -19,8 +12,6 @@ import { createSourceDocumentFromCredential } from "@/modules/source-document/ap
 import type { SourceDocumentCredentialPorts } from "@/modules/source-document/application/ports";
 
 const ports = {
-  ledgers: {},
-  settings: {},
   submissions: {},
   storedFiles: {},
 } as unknown as SourceDocumentCredentialPorts;
@@ -35,7 +26,6 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    resolveLedgerForServiceCredentialMock.mockResolvedValue({ id: "ledger-1" });
     createAndQueueSourceDocumentMock.mockResolvedValue({
       sourceDocumentId: "doc-1",
       status: "processing",
@@ -45,7 +35,7 @@ describe("createSourceDocumentFromCredential omission semantics", () => {
   it("omits absent optional payload fields when forwarding to create-and-queue", async () => {
     await createSourceDocumentFromCredential(
       {
-        credentialId: "cred-1",
+        credential: { id: "cred-1", ledgerId: "ledger-1" },
         payload: { images: [preparedImage] },
       },
       scheduleProcessing,

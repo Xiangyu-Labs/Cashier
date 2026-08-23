@@ -11,7 +11,13 @@ import type {
   UserPreferencesPort,
 } from "@/application/contracts";
 import { db } from "@/lib/db";
-import { AppError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import {
+  AppError,
+  ConflictError,
+  RateLimitUnavailableError,
+  UnauthorizedError,
+  ValidationError,
+} from "@/lib/errors";
 import { logError } from "@/lib/error-handlers";
 import { isValidDecimal } from "@/lib/money/decimal";
 import {
@@ -251,38 +257,6 @@ async function recalculateCurrentEntries(
 }
 
 export const postgresLedgerAdapter: LedgerPort = {
-  async getLedgerIdForCredential(credentialId) {
-    const row = await db
-      .select({ ledgerId: serviceCredentials.ledgerId })
-      .from(serviceCredentials)
-      .innerJoin(
-        ledgers,
-        and(eq(ledgers.id, serviceCredentials.ledgerId), isNull(ledgers.deletedAt))
-      )
-      .where(and(eq(serviceCredentials.id, credentialId), isNull(serviceCredentials.deletedAt)))
-      .limit(1);
-    const match = row[0];
-    if (match == null) return null;
-    try {
-      const updated = await db
-        .update(serviceCredentials)
-        .set({
-          lastUsedAt: sql`CASE
-            WHEN ${serviceCredentials.lastUsedAt} IS NULL
-              OR ${serviceCredentials.lastUsedAt} < now() - interval '5 minutes'
-            THEN now()
-            ELSE ${serviceCredentials.lastUsedAt}
-          END`,
-        })
-        .where(and(eq(serviceCredentials.id, credentialId), isNull(serviceCredentials.deletedAt)))
-        .returning({ id: serviceCredentials.id });
-      return updated.length === 1 ? match.ledgerId : null;
-    } catch (error) {
-      logError("modules/ledger:resolve-service-credential:update-last-used", error);
-      return match.ledgerId;
-    }
-  },
-
   async isOwnedByUser(ledgerId, userId) {
     const row = await db
       .select({ id: ledgers.id })
@@ -1025,6 +999,7 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
           if (!updated) return null;
         } catch (error) {
           logError("modules/ledger:authenticate-service-credential:update-last-used", error);
+          throw new RateLimitUnavailableError();
         }
       } else {
         // Fresh path: skip the lastUsedAt write, but keep the revocation fence
@@ -1054,7 +1029,8 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
       .select()
       .from(serviceCredentials)
       .where(and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt)))
-      .orderBy(desc(serviceCredentials.createdAt));
+      .orderBy(desc(serviceCredentials.createdAt))
+      .limit(20);
     return rows.map((row) => ({
       id: row.id,
       tokenPrefix: row.tokenPrefix ?? "",
@@ -1068,11 +1044,23 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
 
   async create(ledgerId, name) {
     const { token, hash, prefix, suffix } = createToken();
-    const row = await db
-      .insert(serviceCredentials)
-      .values({ ledgerId, name, tokenHash: hash, tokenPrefix: prefix, tokenSuffix: suffix })
-      .returning()
-      .then((rows) => rows[0]);
+    const row = await db.transaction(async (tx) => {
+      await lockLedgerForUpdate(tx, ledgerId);
+      const active = await tx
+        .select({ id: serviceCredentials.id })
+        .from(serviceCredentials)
+        .where(
+          and(eq(serviceCredentials.ledgerId, ledgerId), isNull(serviceCredentials.deletedAt))
+        );
+      if (active.length >= 20) {
+        throw new ConflictError("A ledger can have at most 20 active service credentials.");
+      }
+      return tx
+        .insert(serviceCredentials)
+        .values({ ledgerId, name, tokenHash: hash, tokenPrefix: prefix, tokenSuffix: suffix })
+        .returning()
+        .then((rows) => rows[0]);
+    });
     if (row == null) throw new ConflictError("Failed to create service credential");
     return {
       id: row.id,
@@ -1098,7 +1086,16 @@ export const postgresServiceCredentialAdapter: ServiceCredentialPort = {
         )
       )
       .returning({ id: serviceCredentials.id });
-    return result.length === 1;
+    if (result.length === 1) return "revoked";
+
+    const existing = await db
+      .select({ id: serviceCredentials.id })
+      .from(serviceCredentials)
+      .where(
+        and(eq(serviceCredentials.ledgerId, ledgerId), eq(serviceCredentials.id, credentialId))
+      )
+      .limit(1);
+    return existing.length === 1 ? "already_revoked" : "not_found";
   },
 };
 

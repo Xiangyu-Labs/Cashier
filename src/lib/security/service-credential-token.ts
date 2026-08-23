@@ -39,15 +39,6 @@ export function createToken(): {
 }
 
 /**
- * Verify a raw token against a previously stored hash using constant-time comparison.
- */
-export function authenticateToken(token: string, storedHash: string): boolean {
-  const computed = computeHash(token);
-  if (computed.length !== storedHash.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(storedHash));
-}
-
-/**
  * Derive display prefix (first N chars) and suffix (last N chars) from a full token.
  */
 export function prefixSuffix(token: string): { prefix: string; suffix: string } {
