@@ -84,7 +84,7 @@ describe("contract schema omission semantics", () => {
     expect(Object.prototype.hasOwnProperty.call(statsParsed, "categoryId")).toBe(false);
   });
 
-  it("coerces ledger minAmount and maxAmount query values into numbers", () => {
+  it("preserves ledger minAmount and maxAmount query values as decimal strings", () => {
     const parsed = listLedgerEntriesInputSchema.parse({
       minAmount: "20",
       maxAmount: "100",
@@ -92,8 +92,8 @@ describe("contract schema omission semantics", () => {
     });
 
     expect(parsed.limit).toBe(5);
-    expect(parsed.minAmount).toBe(20);
-    expect(parsed.maxAmount).toBe(100);
+    expect(parsed.minAmount).toBe("20");
+    expect(parsed.maxAmount).toBe("100");
   });
 
   it("rejects combined storedFileIds + images + originalImages exceeding MAX_FILES", () => {

@@ -254,11 +254,13 @@ describe("SourceDocumentDuplicateReviewDialog discard flow", () => {
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("已删除重复账单"));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(toastErrorMock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("已保存，但无法刷新最新数据，请重试。")
+    );
 
     expect(invalidate).toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
-    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledTimes(1);
     expect(onCaughtError).not.toHaveBeenCalled();
     expect(screen.queryByTestId("error-boundary")).not.toBeInTheDocument();
   });

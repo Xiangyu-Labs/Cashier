@@ -120,7 +120,7 @@ describe("source document mutation toast ownership", () => {
     });
   });
 
-  it("keeps refresh failures out of mutation error feedback", async () => {
+  it("reports refresh failures separately from mutation error feedback", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
     });
@@ -138,7 +138,8 @@ describe("source document mutation toast ownership", () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
     expect(toastWarningMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalledWith("deleteSuccess");
-    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith("savedRefreshFailed");
+    expect(toastErrorMock).toHaveBeenCalledTimes(1);
   });
 
   it("runs candidate success feedback before refresh settles and remains pending", async () => {

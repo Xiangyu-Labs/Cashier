@@ -344,7 +344,7 @@ describe("getLedgerPageBootstrap", () => {
     );
   });
 
-  it("prefetches stats tab enhanced stats and falls back to CNY main currency", async () => {
+  it("prefetches stats tab enhanced stats with the ledger main currency", async () => {
     const result = await getLedgerPageBootstrap({
       ledgerId: "ledger-1",
       initialTab: "stats",
@@ -362,13 +362,11 @@ describe("getLedgerPageBootstrap", () => {
     expect(statsQuery?.queryKey).toEqual([
       "enhanced-stats",
       "ledger-1",
-      expect.any(String),
-      expect.any(String),
-      expect.any(String),
-      expect.any(String),
-      "month",
-      "same_period",
-      "USD",
+      expect.objectContaining({
+        rangeType: "month",
+        comparisonMode: "same_period",
+        mainCurrency: "USD",
+      }),
     ]);
     expect(getEnhancedStatsMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -405,15 +403,20 @@ describe("getLedgerPageBootstrap", () => {
         mainCurrency: "USD",
       });
       expect(statsQuery?.queryKey).toEqual(expectedDescriptor.queryKey);
-      expect(statsQuery?.queryKey).toHaveLength(9);
+      expect(statsQuery?.queryKey).toHaveLength(3);
       expect(statsQuery?.queryKey[0]).toBe("enhanced-stats");
       expect(statsQuery?.queryKey[1]).toBe("ledger-1");
-      // All seven query dimensions are populated, including endDate and the
-      // complete comparison window that the SSR prefetch previously omitted.
-      for (const dimension of statsQuery?.queryKey.slice(2) ?? []) {
-        expect(dimension).toEqual(expect.any(String));
-        expect(String(dimension)).not.toBe("");
-      }
+      expect(statsQuery?.queryKey[2]).toEqual(
+        expect.objectContaining({
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+          compareStartDate: expect.any(String),
+          compareEndDate: expect.any(String),
+          rangeType: expect.any(String),
+          comparisonMode: expect.any(String),
+          mainCurrency: expect.any(String),
+        })
+      );
       expect(getEnhancedStatsMock).toHaveBeenCalledWith(
         expectedDescriptor.input,
         bootstrapDependencies.stats
@@ -438,8 +441,10 @@ describe("getLedgerPageBootstrap", () => {
         (query) => query.queryKey[0] === "enhanced-stats"
       );
 
-      expect(statsQuery?.queryKey).toContain("year");
-      expect(statsQuery?.queryKey).toContain("2024-01-01");
+      expect(statsQuery?.queryKey[2]).toMatchObject({
+        rangeType: "year",
+        startDate: "2024-01-01",
+      });
     } finally {
       vi.useRealTimers();
     }

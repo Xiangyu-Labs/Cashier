@@ -15,8 +15,12 @@ vi.mock("@/modules/ledger/access", () => ({
 }));
 
 vi.mock("@/modules/ledger/application/queries/get-ledger-entry-detail", () => ({
-  getLedgerEntryDetail: vi.fn().mockResolvedValue({ id: "entry-1", title: "Test" }),
+  getLedgerEntryDetail: vi
+    .fn()
+    .mockResolvedValue({ id: "00000000-0000-4000-8000-000000000001", title: "Test" }),
 }));
+
+const ENTRY_ID = "00000000-0000-4000-8000-000000000001";
 
 describe("getLedgerEntryAction", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -30,7 +34,7 @@ describe("getLedgerEntryAction", () => {
 
   it("returns entry for authorized ledger", async () => {
     const { getLedgerEntryAction } = await import("@/modules/ledger/server-actions/get-entry");
-    const result = await getLedgerEntryAction("valid-ledger", "entry-1");
-    expect(result).toEqual({ id: "entry-1", title: "Test" });
+    const result = await getLedgerEntryAction("valid-ledger", ENTRY_ID);
+    expect(result).toEqual({ id: ENTRY_ID, title: "Test" });
   });
 });

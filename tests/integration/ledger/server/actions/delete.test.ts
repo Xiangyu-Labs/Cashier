@@ -68,7 +68,7 @@ describe("deleteLedgerAction", () => {
     await expect(deleteLedgerAction(crypto.randomUUID())).rejects.toThrow("Ledger");
   });
 
-  it("should throw ForbiddenError if user does not own the ledger", async () => {
+  it("should throw NotFoundError if user does not own the ledger", async () => {
     const db = getTestDb();
 
     // Arrange: Create ledger owned by different user
@@ -85,7 +85,7 @@ describe("deleteLedgerAction", () => {
       userId: ownerId,
     });
 
-    // Act & Assert - withAuth uses TEST_USER_ID from session, which doesn't own the ledger
-    await expect(deleteLedgerAction(ledgerId)).rejects.toThrow("Access denied");
+    // Ownership is intentionally indistinguishable from absence at the action boundary.
+    await expect(deleteLedgerAction(ledgerId)).rejects.toThrow("Ledger");
   });
 });
