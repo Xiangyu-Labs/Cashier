@@ -9,7 +9,6 @@ import { usePathname } from "@/i18n/routing";
 import { AUTH_ERROR_CODES } from "@/modules/auth/errors";
 import { sendOTPAction } from "@/modules/auth/actions";
 import type { SendOTPActionResult } from "@/modules/auth/server-actions/send-otp";
-import { OTP_LENGTH } from "@/modules/auth/constants";
 import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 
 type LoginStep = "email" | "otp";
@@ -50,7 +49,10 @@ function readOtpContext(): StoredOtpContext | null {
       typeof stored.email === "string" &&
       stored.email !== "" &&
       typeof stored.expiresAt === "number" &&
-      typeof stored.canResendAt === "number"
+      Number.isFinite(stored.expiresAt) &&
+      stored.expiresAt > Math.floor(Date.now() / 1000) &&
+      typeof stored.canResendAt === "number" &&
+      Number.isFinite(stored.canResendAt)
     ) {
       return {
         email: stored.email,
@@ -131,14 +133,12 @@ export function useLoginFlow(
   const rawStep = searchParams.get("authStep");
   const step: LoginStep = mode === "otp" && rawStep === "otp" ? "otp" : "email";
   const email = useLoginDraftStore((state) => state.email);
-  const password = useLoginDraftStore((state) => state.password);
   const otp = useLoginDraftStore((state) => state.otp);
   const resendPending = useLoginDraftStore((state) => state.resendPending);
   const otpExpired = useLoginDraftStore((state) => state.otpExpired);
   const expiresAt = useLoginDraftStore((state) => state.expiresAt);
   const canResendAt = useLoginDraftStore((state) => state.canResendAt);
   const setEmail = useLoginDraftStore((state) => state.setEmail);
-  const setPassword = useLoginDraftStore((state) => state.setPassword);
   const setOtp = useLoginDraftStore((state) => state.setOtp);
   const setResendPending = useLoginDraftStore((state) => state.setResendPending);
   const setOtpExpiry = useLoginDraftStore((state) => state.setOtpExpiry);
@@ -147,6 +147,12 @@ export function useLoginFlow(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contextHydrated, setContextHydrated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordMode, setPasswordMode] = useState(mode);
+  if (passwordMode !== mode) {
+    setPasswordMode(mode);
+    setPassword("");
+  }
 
   const writeFlowUrl = useCallback(
     (nextMode: LoginMode, nextStep: LoginStep, replace = false) => {
@@ -195,6 +201,7 @@ export function useLoginFlow(
     if (isLoading || resendPending) return;
     setError(null);
     clearOtpContext();
+    setPassword("");
     setOtp("");
     writeFlowUrl(nextMode, "email");
   };
@@ -202,12 +209,14 @@ export function useLoginFlow(
   const finishSignIn = (result: SignInResponse | undefined) => {
     if (result?.ok) {
       clearOtpContext();
+      setPassword("");
       resetDraft();
       router.push(callbackUrl);
       router.refresh();
       return true;
     }
     if (result?.code === AUTH_ERROR_CODES.OTP_EXPIRED) setOtpExpired(true);
+    setPassword("");
     setError(getSignInErrorMessage(result, t));
     setIsLoading(false);
     return false;
@@ -222,7 +231,6 @@ export function useLoginFlow(
     if (submittedEmail === "" || submittedPassword === "") return;
 
     setEmail(submittedEmail);
-    setPassword(submittedPassword);
     setIsLoading(true);
     setError(null);
     try {
@@ -230,34 +238,41 @@ export function useLoginFlow(
         await signIn("password", {
           email: submittedEmail,
           password: submittedPassword,
+          locale,
           redirect: false,
           callbackUrl,
         })
       );
     } catch {
+      setPassword("");
       setError(t("unexpectedError"));
       setIsLoading(false);
     }
   };
 
-  const handleSendOTP = async (event: React.FormEvent) => {
+  const handleSendOTP = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (email === "") return;
+    const submittedEmail = new FormData(event.currentTarget).get("email");
+    if (typeof submittedEmail !== "string" || submittedEmail === "") return;
+    setEmail(submittedEmail);
     setIsLoading(true);
     setError(null);
     try {
-      const result = await sendOTPAction(email, locale);
+      const result = await sendOTPAction(submittedEmail, locale);
       if (!result.ok) {
         setError(getSendOTPErrorMessage(result, t, "sendCodeFailed"));
         return;
       }
-      setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
+      setOtpExpiry(result.expiresAt, result.canResendAt);
       setOtp("");
-      if (result.expiresAt != null && result.canResendAt != null) {
-        storeOtpContext({ email, expiresAt: result.expiresAt, canResendAt: result.canResendAt });
-      }
+      storeOtpContext({
+        email: submittedEmail,
+        expiresAt: result.expiresAt,
+        canResendAt: result.canResendAt,
+      });
       writeFlowUrl("otp", "otp");
     } catch {
+      setPassword("");
       setError(t("unexpectedError"));
     } finally {
       setIsLoading(false);
@@ -269,7 +284,7 @@ export function useLoginFlow(
       setError(t("verifyExpired"));
       return;
     }
-    if (otp.length !== OTP_LENGTH) {
+    if (!/^\d{6}$/.test(otp)) {
       setError(t("invalidCode"));
       return;
     }
@@ -278,6 +293,7 @@ export function useLoginFlow(
     try {
       finishSignIn(await signIn("otp", { email, otp, locale, redirect: false, callbackUrl }));
     } catch {
+      setPassword("");
       setError(t("unexpectedError"));
       setIsLoading(false);
     }
@@ -293,12 +309,10 @@ export function useLoginFlow(
         setError(getSendOTPErrorMessage(result, t, "resendFailed"));
         return;
       }
-      setOtpExpiry(result.expiresAt ?? null, result.canResendAt ?? null);
+      setOtpExpiry(result.expiresAt, result.canResendAt);
       setOtp("");
       setError(null);
-      if (result.expiresAt != null && result.canResendAt != null) {
-        storeOtpContext({ email, expiresAt: result.expiresAt, canResendAt: result.canResendAt });
-      }
+      storeOtpContext({ email, expiresAt: result.expiresAt, canResendAt: result.canResendAt });
     } catch {
       setError(t("resendFailed"));
     } finally {
@@ -321,6 +335,7 @@ export function useLoginFlow(
     try {
       finishSignIn(await signIn("dev", { locale, redirect: false, callbackUrl }));
     } catch {
+      setPassword("");
       setError(t("devSignInFailed"));
       setIsLoading(false);
     }

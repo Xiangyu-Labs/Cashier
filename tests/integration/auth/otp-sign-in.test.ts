@@ -94,6 +94,8 @@ describe("authenticateWithOTP", () => {
     await completeInteractiveSignIn(principal, {
       ledgers: serverComposition.ledgers,
       otpTokens: serverComposition.otpTokens,
+      users: serverComposition.userAccounts,
+      emailDelivery: serverComposition.email,
     });
 
     const token = await db.query.otpTokens.findFirst({
@@ -126,6 +128,23 @@ describe("authenticateWithOTP", () => {
       where: eq(otpTokens.email, TEST_EMAIL),
     });
     expect(token?.attempts).toBe(1);
+  });
+
+  it("charges the IP verification bucket before looking up a token", async () => {
+    process.env.TRUSTED_PROXY = "loopback";
+    const increment = vi.spyOn(serverComposition.rateLimiter, "increment");
+
+    await expect(
+      authenticateWithOTP({
+        email: "missing-token@example.com",
+        otp: "123456",
+        locale: "en",
+        requestHeaders: REQUEST_HEADERS,
+      })
+    ).rejects.toMatchObject({ code: AUTH_ERROR_CODES.OTP_INVALID });
+
+    expect(increment).toHaveBeenCalledTimes(1);
+    increment.mockRestore();
   });
 
   it("returns otp_expired for an expired OTP", async () => {

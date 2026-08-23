@@ -9,11 +9,10 @@ import { DEFAULT_LOCALE } from "@/i18n/locales";
 import type { SendOTPEmail } from "@/modules/auth/contract-schemas";
 import { createOTPToken, discardOTPToken } from "@/modules/auth/repositories/otp-repository";
 import {
-  checkResendCooldown,
+  acquireResendCooldown,
   checkSendRateLimit,
   checkSendRateLimitByIP,
-  getCanResendAt,
-  setResendCooldown,
+  releaseResendCooldown,
 } from "@/modules/auth/services/otp-rate-limit";
 import { generateOTP, getResendCooldown } from "@/modules/auth/services/otp";
 import { isRegistrationAllowed } from "./registration-policy";
@@ -71,121 +70,99 @@ export async function sendOTP(
 ): Promise<{
   expiresIn: number;
   expiresAt: number;
-  canResendAt: number | null;
+  canResendAt: number;
 }> {
-  try {
-    const normalizedEmail = normalizeEmail(params.email);
+  const normalizedEmail = normalizeEmail(params.email);
 
-    if (runtimeEnv.authResendKey == null) {
-      throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
-    }
+  if (runtimeEnv.authResendKey == null) {
+    throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
+  }
 
-    const ipRateLimit = await checkSendRateLimitByIP(params.ip, dependencies.rateLimiter);
-    if (!ipRateLimit.allowed) {
-      logger.warn({ subject: logIdentifier("ip", params.ip) }, "OTP send IP rate limit exceeded");
-      throw new RateLimitError(
-        "Too many requests from this IP. Please try again later.",
-        ipRateLimit.retryAfter
-      );
-    }
-
-    const emailRateLimit = await checkSendRateLimit(normalizedEmail, dependencies.rateLimiter);
-    if (!emailRateLimit.allowed) {
-      logger.warn(
-        { subject: logIdentifier("email", normalizedEmail) },
-        "OTP send rate limit exceeded"
-      );
-      throw new RateLimitError(
-        "Too many requests. Please try again later.",
-        emailRateLimit.retryAfter
-      );
-    }
-
-    const cooldownCheck = await checkResendCooldown(normalizedEmail, dependencies.rateLimiter);
-    if (!cooldownCheck.allowed) {
-      logger.warn(
-        { subject: logIdentifier("email", normalizedEmail), retryAfter: cooldownCheck.retryAfter },
-        "OTP resend cooldown active"
-      );
-      throw new RateLimitError(
-        "Please wait before requesting another code",
-        cooldownCheck.retryAfter
-      );
-    }
-
-    if (!(await isRegistrationAllowed(normalizedEmail, dependencies.users))) {
-      const now = Date.now();
-      const expiresAt = new Date(now + runtimeEnv.otpExpiresSeconds * 1000);
-      return {
-        expiresIn: runtimeEnv.otpExpiresSeconds,
-        expiresAt: Math.floor(expiresAt.getTime() / 1000),
-        canResendAt: Math.floor(now / 1000) + getResendCooldown(),
-      };
-    }
-
-    const otp = generateOTP();
-    const { expiresAt, tokenHash } = await createOTPToken(
-      normalizedEmail,
-      otp,
-      dependencies.tokens,
-      params.ip === "unknown" ? undefined : params.ip
+  const ipRateLimit = await checkSendRateLimitByIP(params.ip, dependencies.rateLimiter);
+  if (!ipRateLimit.allowed) {
+    throw new RateLimitError(
+      "Too many requests from this IP. Please try again later.",
+      ipRateLimit.retryAfter
     );
+  }
 
-    try {
-      const locale = params.locale ?? DEFAULT_LOCALE;
-      const expiresInMinutes = Math.ceil(runtimeEnv.otpExpiresSeconds / 60);
-      const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
-      const delivery = await dependencies.emailDelivery.send({
-        from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
-        to: normalizedEmail,
-        subject,
-        content: OTPEmail({ otp, host: params.host, expiresInMinutes, locale, copy }),
-      });
-      if (delivery === "not_configured") {
-        throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
-      } else {
-        logger.info(
-          { subject: logIdentifier("email", normalizedEmail) },
-          "OTP email sent successfully"
-        );
-      }
-    } catch (error) {
-      await discardOTPToken(normalizedEmail, tokenHash, dependencies.tokens).catch(
-        (discardError) => {
-          logger.error(
-            {
-              error: discardError,
-              subject: logIdentifier("email", normalizedEmail),
-            },
-            "Failed to discard OTP token after email failure"
-          );
-        }
-      );
-      logger.error(
-        { error, subject: logIdentifier("email", normalizedEmail) },
-        "Failed to send OTP email"
-      );
-      if (error instanceof AppError && error.code === "EMAIL_NOT_CONFIGURED") {
-        throw error;
-      }
-      throw new AppError(
-        "Failed to send verification code. Please try again.",
-        "EMAIL_SEND_FAILED"
-      );
-    }
+  const emailRateLimit = await checkSendRateLimit(normalizedEmail, dependencies.rateLimiter);
+  if (!emailRateLimit.allowed) {
+    throw new RateLimitError(
+      "Too many requests. Please try again later.",
+      emailRateLimit.retryAfter
+    );
+  }
 
-    await setResendCooldown(normalizedEmail, dependencies.rateLimiter);
+  const cooldown = await acquireResendCooldown(normalizedEmail, dependencies.rateLimiter);
+  if (!cooldown.acquired) {
+    throw new RateLimitError("Please wait before requesting another code", cooldown.retryAfter);
+  }
+  const canResendAt = Math.floor(cooldown.acquiredAt.getTime() / 1000) + getResendCooldown();
 
-    const canResendAt = await getCanResendAt(normalizedEmail, dependencies.rateLimiter);
-    const expiresIn = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
-
+  if (!(await isRegistrationAllowed(normalizedEmail, dependencies.users))) {
+    const expiresAt = new Date(cooldown.acquiredAt.getTime() + runtimeEnv.otpExpiresSeconds * 1000);
     return {
-      expiresIn,
+      expiresIn: runtimeEnv.otpExpiresSeconds,
       expiresAt: Math.floor(expiresAt.getTime() / 1000),
       canResendAt,
     };
-  } catch (error) {
-    logger.error({ error }, "Send OTP use case error");
-    throw error;
   }
+
+  const otp = generateOTP();
+  const { expiresAt, tokenHash } = await createOTPToken(
+    normalizedEmail,
+    otp,
+    dependencies.tokens,
+    params.ip === "unknown" ? undefined : params.ip
+  );
+
+  try {
+    const locale = params.locale ?? DEFAULT_LOCALE;
+    const expiresInMinutes = Math.ceil(runtimeEnv.otpExpiresSeconds / 60);
+    const { subject, copy } = await getOTPEmailCopy(locale, params.host, otp, expiresInMinutes);
+    const delivery = await dependencies.emailDelivery.send({
+      from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
+      to: normalizedEmail,
+      subject,
+      content: OTPEmail({ otp, host: params.host, expiresInMinutes, locale, copy }),
+    });
+    if (delivery === "not_configured") {
+      throw new AppError("Email login is not configured", "EMAIL_NOT_CONFIGURED", 503);
+    } else {
+      logger.info(
+        { subject: logIdentifier("email", normalizedEmail) },
+        "OTP email sent successfully"
+      );
+    }
+  } catch (error) {
+    await discardOTPToken(normalizedEmail, tokenHash, dependencies.tokens).catch((discardError) => {
+      logger.error(
+        { error: discardError, subject: logIdentifier("email", normalizedEmail) },
+        "Failed to discard OTP token after email failure"
+      );
+    });
+    await releaseResendCooldown(
+      normalizedEmail,
+      cooldown.acquiredAt,
+      dependencies.rateLimiter
+    ).catch((releaseError) => {
+      logger.error(
+        { error: releaseError, subject: logIdentifier("email", normalizedEmail) },
+        "Failed to release OTP resend cooldown after email failure"
+      );
+    });
+    logger.error(
+      { error, subject: logIdentifier("email", normalizedEmail) },
+      "Failed to send OTP email"
+    );
+    if (error instanceof AppError && error.code === "EMAIL_NOT_CONFIGURED") {
+      throw error;
+    }
+    throw new AppError("Failed to send verification code. Please try again.", "EMAIL_SEND_FAILED");
+  }
+
+  const expiresIn = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+
+  return { expiresIn, expiresAt: Math.floor(expiresAt.getTime() / 1000), canResendAt };
 }

@@ -5,6 +5,7 @@ import { useLoginFlow } from "../hooks/use-login-flow";
 import { EmailStep } from "./email-step";
 import { OtpStep } from "./otp-step";
 import { PasswordStep } from "./password-step";
+import { useSearchParams } from "next/navigation";
 
 export function AuthLoginPage({
   emailAuthEnabled = false,
@@ -14,11 +15,19 @@ export function AuthLoginPage({
   devAuthAvailable?: boolean;
 }) {
   const t = useTranslations("Auth");
+  const searchParams = useSearchParams();
   const flow = useLoginFlow(t, {
     initialMode: emailAuthEnabled ? "otp" : "password",
     isDevAuthAvailable: devAuthAvailable,
   });
   const passwordMode = flow.mode === "password";
+  const notice = searchParams.get("notice");
+  const noticeMessage =
+    notice === "reauth_required"
+      ? t("reauthRequiredNotice")
+      : notice === "credentials_changed"
+        ? t("credentialsChangedNotice")
+        : null;
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
@@ -32,6 +41,11 @@ export function AuthLoginPage({
         </div>
 
         <div className="rounded-lg border border-border bg-surface p-6 shadow-none">
+          {noticeMessage != null ? (
+            <p role="status" className="mb-5 rounded-md bg-surface2 p-3 text-sm text-text">
+              {noticeMessage}
+            </p>
+          ) : null}
           {emailAuthEnabled ? (
             <div className="mb-5 grid grid-cols-2 gap-1 rounded-md bg-surface2 p-1" role="tablist">
               <button

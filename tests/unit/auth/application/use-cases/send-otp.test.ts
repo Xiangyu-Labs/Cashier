@@ -3,11 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   createOTPTokenMock,
   discardOTPTokenMock,
-  checkResendCooldownMock,
+  acquireResendCooldownMock,
   checkSendRateLimitMock,
   checkSendRateLimitByIPMock,
-  getCanResendAtMock,
-  setResendCooldownMock,
+  releaseResendCooldownMock,
   generateOTPMock,
   getResendCooldownMock,
   otpEmailMock,
@@ -18,11 +17,10 @@ const {
 } = vi.hoisted(() => ({
   createOTPTokenMock: vi.fn(),
   discardOTPTokenMock: vi.fn(),
-  checkResendCooldownMock: vi.fn(),
+  acquireResendCooldownMock: vi.fn(),
   checkSendRateLimitMock: vi.fn(),
   checkSendRateLimitByIPMock: vi.fn(),
-  getCanResendAtMock: vi.fn(),
-  setResendCooldownMock: vi.fn(),
+  releaseResendCooldownMock: vi.fn(),
   generateOTPMock: vi.fn(),
   getResendCooldownMock: vi.fn(),
   otpEmailMock: vi.fn(),
@@ -38,11 +36,10 @@ vi.mock("@/modules/auth/repositories/otp-repository", () => ({
 }));
 
 vi.mock("@/modules/auth/services/otp-rate-limit", () => ({
-  checkResendCooldown: checkResendCooldownMock,
+  acquireResendCooldown: acquireResendCooldownMock,
   checkSendRateLimit: checkSendRateLimitMock,
   checkSendRateLimitByIP: checkSendRateLimitByIPMock,
-  getCanResendAt: getCanResendAtMock,
-  setResendCooldown: setResendCooldownMock,
+  releaseResendCooldown: releaseResendCooldownMock,
 }));
 
 vi.mock("@/modules/auth/services/otp", () => ({
@@ -115,7 +112,11 @@ describe("sendOTP use case", () => {
       tokenHash: "token-hash-1",
     });
     discardOTPTokenMock.mockResolvedValue(true);
-    checkResendCooldownMock.mockResolvedValue({ allowed: true });
+    acquireResendCooldownMock.mockResolvedValue({
+      acquired: true,
+      acquiredAt: new Date(1_234_567_830_000),
+      retryAfter: 0,
+    });
     checkSendRateLimitMock.mockResolvedValue({
       allowed: true,
       remainingAttempts: 9,
@@ -124,8 +125,7 @@ describe("sendOTP use case", () => {
       allowed: true,
       remainingAttempts: 9,
     });
-    getCanResendAtMock.mockResolvedValue(1_234_567_890);
-    setResendCooldownMock.mockResolvedValue(undefined);
+    releaseResendCooldownMock.mockResolvedValue(true);
     generateOTPMock.mockReturnValue("123456");
     getResendCooldownMock.mockReturnValue(60);
     otpEmailMock.mockReturnValue({ kind: "otp-email-component" });
@@ -207,7 +207,7 @@ describe("sendOTP use case", () => {
         react: { kind: "otp-email-component" },
       })
     );
-    expect(setResendCooldownMock).toHaveBeenCalledWith(
+    expect(acquireResendCooldownMock).toHaveBeenCalledWith(
       "user@example.com",
       expect.objectContaining({ increment: expect.any(Function) })
     );
@@ -248,15 +248,12 @@ describe("sendOTP use case", () => {
       expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
       "Failed to send OTP email"
     );
-    expect(loggerErrorMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({
-          message: "Failed to send verification code. Please try again.",
-        }),
-      }),
-      "Send OTP use case error"
-    );
     expect(discardOTPTokenMock).toHaveBeenCalledWith("test@example.com", "token-hash-1", tokens);
+    expect(releaseResendCooldownMock).toHaveBeenCalledWith(
+      "test@example.com",
+      new Date(1_234_567_830_000),
+      expect.any(Object)
+    );
   });
 
   it("returns a virtual success without creating or sending a token for unknown users", async () => {

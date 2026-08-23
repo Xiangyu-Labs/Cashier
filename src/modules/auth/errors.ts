@@ -15,6 +15,7 @@ export const AUTH_ERROR_CODES = {
   PASSWORD_REQUIREMENTS_NOT_MET: "password_requirements_not_met",
   PASSWORD_MISMATCH: "password_mismatch",
   CURRENT_PASSWORD_WRONG: "current_password_wrong",
+  REAUTHENTICATION_REQUIRED: "REAUTHENTICATION_REQUIRED",
 } as const;
 
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];

@@ -484,6 +484,11 @@ export interface RateLimiterPort {
   increment(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult>;
   /** Read-only count for the current fixed window; 0 when missing or expired. */
   current(key: string, windowSeconds: number): Promise<number>;
+  acquireCooldown(
+    key: string,
+    seconds: number
+  ): Promise<{ acquired: boolean; acquiredAt: Date; retryAfter: number }>;
+  releaseCooldown(key: string, acquiredAt: Date): Promise<boolean>;
 }
 
 export interface IdempotencyPort {
@@ -547,6 +552,8 @@ export interface UserAccountContract {
   image: string | null;
   passwordHash: string | null;
   passwordUpdatedAt: Date | null;
+  authVersion: number;
+  registrationCompletedAt: Date | null;
   interfaceLanguage: "auto" | "zh" | "en";
 }
 
@@ -560,6 +567,7 @@ export interface UserAccountPort {
   }>;
   findByEmail(email: string): Promise<UserAccountContract | null>;
   findById(id: string): Promise<UserAccountContract | null>;
+  completeRegistration(userId: string, completedAt: Date): Promise<boolean>;
 }
 
 export type UserInterfaceLanguage = "auto" | "zh" | "en";

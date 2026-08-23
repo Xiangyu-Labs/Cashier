@@ -28,7 +28,13 @@ export function ResendCountdown({ canResendAt, onResend, disabled = false }: Res
   const isDisabled = disabled || isLoading || remaining > 0;
 
   return (
-    <Button variant="ghost" disabled={isDisabled} onClick={handleResend} className="text-sm">
+    <Button
+      type="button"
+      variant="ghost"
+      disabled={isDisabled}
+      onClick={handleResend}
+      className="text-sm"
+    >
       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
       {remaining > 0 ? t("resendIn", { seconds: remaining }) : t("resend")}
     </Button>

@@ -31,6 +31,7 @@ import {
   resolveRateRatio,
 } from "@/modules/currency/application/services/rate-calculation";
 import { roundToCurrency } from "@/lib/money/currency-precision";
+import { normalizeUserPreferences } from "@/modules/auth/services/user-preferences";
 
 /** lastUsedAt updates are throttled to once per five minutes per credential. */
 const SERVICE_CREDENTIAL_LAST_USED_STALE_MS = 5 * 60 * 1000;
@@ -966,7 +967,14 @@ export const postgresOtpTokenAdapter: OtpTokenPort = {
           else ${otpTokens.lockedUntil}
         end`,
       })
-      .where(and(eq(otpTokens.email, input.email), eq(otpTokens.tokenHash, input.tokenHash)))
+      .where(
+        and(
+          eq(otpTokens.email, input.email),
+          eq(otpTokens.tokenHash, input.tokenHash),
+          isNull(otpTokens.verifiedAt),
+          sql`${otpTokens.attempts} < ${input.maxAttempts}`
+        )
+      )
       .returning({ attempts: otpTokens.attempts, lockedUntil: otpTokens.lockedUntil });
     return rows[0] ?? null;
   },
@@ -1058,7 +1066,9 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           image: row.image,
           passwordHash: row.passwordHash,
           passwordUpdatedAt: row.passwordUpdatedAt,
-          interfaceLanguage: row.preferences.interfaceLanguage,
+          authVersion: row.authVersion,
+          registrationCompletedAt: row.registrationCompletedAt,
+          interfaceLanguage: normalizeUserPreferences(row.preferences).interfaceLanguage,
         },
         isExistingUser: created == null,
       };
@@ -1074,6 +1084,8 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         image: true,
         passwordHash: true,
         passwordUpdatedAt: true,
+        authVersion: true,
+        registrationCompletedAt: true,
         preferences: true,
       },
     });
@@ -1086,7 +1098,9 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           image: row.image,
           passwordHash: row.passwordHash,
           passwordUpdatedAt: row.passwordUpdatedAt,
-          interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
+          authVersion: row.authVersion,
+          registrationCompletedAt: row.registrationCompletedAt,
+          interfaceLanguage: normalizeUserPreferences(row.preferences).interfaceLanguage,
         };
   },
   async findById(id) {
@@ -1099,6 +1113,8 @@ export const postgresUserAccountAdapter: UserAccountPort = {
         image: true,
         passwordHash: true,
         passwordUpdatedAt: true,
+        authVersion: true,
+        registrationCompletedAt: true,
         preferences: true,
       },
     });
@@ -1111,8 +1127,20 @@ export const postgresUserAccountAdapter: UserAccountPort = {
           image: row.image,
           passwordHash: row.passwordHash,
           passwordUpdatedAt: row.passwordUpdatedAt,
-          interfaceLanguage: row.preferences?.interfaceLanguage ?? "auto",
+          authVersion: row.authVersion,
+          registrationCompletedAt: row.registrationCompletedAt,
+          interfaceLanguage: normalizeUserPreferences(row.preferences).interfaceLanguage,
         };
+  },
+  async completeRegistration(userId, completedAt) {
+    const updated = await db
+      .update(users)
+      .set({ registrationCompletedAt: completedAt, updatedAt: completedAt })
+      .where(
+        and(eq(users.id, userId), isNull(users.deletedAt), isNull(users.registrationCompletedAt))
+      )
+      .returning({ id: users.id });
+    return updated.length === 1;
   },
 };
 
@@ -1122,7 +1150,7 @@ export const postgresUserPreferencesAdapter: UserPreferencesPort = {
       where: and(eq(users.id, userId), isNull(users.deletedAt)),
       columns: { preferences: true },
     });
-    return row?.preferences ?? null;
+    return row == null ? null : normalizeUserPreferences(row.preferences);
   },
 
   async update(input) {
@@ -1132,6 +1160,6 @@ export const postgresUserPreferencesAdapter: UserPreferencesPort = {
       .where(and(eq(users.id, input.userId), isNull(users.deletedAt)))
       .returning({ preferences: users.preferences })
       .then((rows) => rows[0]);
-    return updated?.preferences ?? null;
+    return updated == null ? null : normalizeUserPreferences(updated.preferences);
   },
 };

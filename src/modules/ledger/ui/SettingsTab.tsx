@@ -160,6 +160,35 @@ export function SettingsTab({
     await signOut({ callbackUrl: "/login" });
   };
 
+  const clearUserCache = () =>
+    clearUserImageCacheDataSafely(
+      ledger.userId,
+      { userId: ledger.userId, ledgerId },
+      "Failed to clear image cache before credential sign-out"
+    );
+
+  const handleRequireReauthentication = async () => {
+    await clearUserCache();
+    const query = searchParams.toString();
+    const currentPath = query === "" ? pathname : `${pathname}?${query}`;
+    const callbackUrl = `/login?notice=reauth_required&callbackUrl=${encodeURIComponent(currentPath)}`;
+    try {
+      await signOut({ callbackUrl });
+    } catch {
+      window.location.assign(callbackUrl);
+    }
+  };
+
+  const handleCredentialsChanged = async () => {
+    await clearUserCache();
+    const callbackUrl = "/login?notice=credentials_changed";
+    try {
+      await signOut({ callbackUrl });
+    } catch {
+      window.location.assign(callbackUrl);
+    }
+  };
+
   const handleSaveAppearance = async () => {
     if (!appearanceDirty || appearanceStatus === "saving") return;
     setAppearanceStatus("saving");
@@ -296,6 +325,8 @@ export function SettingsTab({
         onDeleteCredential={(id) => deleteCredential.mutateAsync(id)}
         onCredentialDialogClose={createCredential.reset}
         onSignOut={handleSignOut}
+        onRequireReauthentication={handleRequireReauthentication}
+        onCredentialsChanged={handleCredentialsChanged}
       />
     </div>
   );

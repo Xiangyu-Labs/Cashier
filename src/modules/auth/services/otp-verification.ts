@@ -2,7 +2,7 @@
 import type { OtpTokenContract, OtpTokenPort } from "@/application/contracts";
 import { logger } from "@/lib/logger";
 import { logIdentifier } from "@/lib/security/log-identifier";
-import { getMaxAttempts } from "./otp";
+import { getLockoutExpiration, getMaxAttempts } from "./otp";
 import { verificationChallenges } from "./verification-challenge";
 
 export interface VerificationResult {
@@ -37,12 +37,11 @@ export async function verifyOTPWithPolicy(
   if (!check.ok && check.reason === "expired") return { success: false, reason: "expired" };
   if (!check.ok) {
     const maxAttempts = getMaxAttempts();
-    const nextFailure = verificationChallenges.nextFailure(record.attempts);
     const failure = await tokens.recordFailure({
       email: email.toLowerCase(),
       tokenHash: record.tokenHash,
       maxAttempts,
-      lockedUntil: nextFailure.lockedUntil ?? new Date(0),
+      lockedUntil: getLockoutExpiration(),
     });
     if (failure == null) return { success: false, reason: "not_found" };
     if (failure.attempts >= maxAttempts) {

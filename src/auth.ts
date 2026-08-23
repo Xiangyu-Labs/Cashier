@@ -5,8 +5,6 @@ import { authConfig } from "./auth.config";
 import { authenticateWithOTP } from "@/modules/auth/application/use-cases/authenticate-with-otp";
 import { authenticateWithPassword } from "@/modules/auth/application/use-cases/authenticate-with-password";
 import { authenticateDevUser } from "@/modules/auth/application/use-cases/authenticate-dev-user";
-import { handleAuthUserSignedIn } from "@/modules/auth/application/use-cases/handle-auth-user-signed-in";
-import { isAuthSignInAllowed } from "@/modules/auth/application/use-cases/is-auth-sign-in-allowed";
 import { getSessionUser } from "@/modules/auth/application/queries/get-session-user";
 import { isDevAuthBypassEnabled } from "@/modules/auth/dev-auth";
 import { TIME_SECONDS } from "@/lib/constants";
@@ -15,6 +13,7 @@ import { serverComposition } from "@/application/server-composition-root";
 import { completeInteractiveSignIn } from "@/application/use-cases/complete-interactive-sign-in";
 import { AuthSignInError } from "@/modules/auth/errors";
 import type { AuthenticatedPrincipal } from "@/modules/auth/contracts";
+import { UnauthorizedError } from "@/lib/errors";
 
 class AuthCredentialsSigninError extends CredentialsSignin {
   constructor(code: string) {
@@ -27,6 +26,8 @@ async function completeSignIn(principal: AuthenticatedPrincipal) {
   return completeInteractiveSignIn(principal, {
     ledgers: serverComposition.ledgers,
     otpTokens: serverComposition.otpTokens,
+    users: serverComposition.userAccounts,
+    emailDelivery: serverComposition.email,
   });
 }
 
@@ -93,6 +94,7 @@ const providers: NextAuthConfig["providers"] = [
     credentials: {
       email: { type: "email" },
       password: { type: "password" },
+      locale: { type: "text" },
     },
     async authorize(credentials, request) {
       if (typeof credentials?.email !== "string" || typeof credentials.password !== "string") {
@@ -105,6 +107,7 @@ const providers: NextAuthConfig["providers"] = [
           {
             email,
             password,
+            locale: typeof credentials.locale === "string" ? credentials.locale : "zh",
             requestHeaders: request.headers,
           },
           {
@@ -148,36 +151,38 @@ export const authOptions = {
     updateAge: TIME_SECONDS.DAY,
   },
   pages: authConfig.pages,
-  events: {
-    async signIn({ user, isNewUser }) {
-      await handleAuthUserSignedIn(
-        {
-          ...(user.email != null ? { email: user.email } : {}),
-          ...(typeof user.locale === "string" ? { locale: user.locale } : {}),
-          ...(isNewUser != null ? { isNewUser } : {}),
-        },
-        { emailDelivery: serverComposition.email }
-      );
-    },
-  },
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user }) {
-      return isAuthSignInAllowed(
-        user.email != null ? { email: user.email } : {},
-        serverComposition.userAccounts
-      );
-    },
     async jwt({ token, user }) {
       if (user != null && user.id != null && user.id !== "") {
         token.id = user.id;
         token.sub = user.id;
+        token.authVersion = user.authVersion;
+        token.authenticatedAt = Math.floor(Date.now() / 1000);
       }
       return token;
     },
     async session({ session, token }) {
       if (token.sub != null && token.sub !== "" && session.user != null) {
         const dbUser = await getSessionUser(token.sub, serverComposition.userAccounts);
+        const tokenAuthVersion =
+          typeof token.authVersion === "number" && Number.isInteger(token.authVersion)
+            ? token.authVersion
+            : 1;
+        if (tokenAuthVersion !== dbUser.authVersion) {
+          throw new UnauthorizedError("Session has been revoked");
+        }
+        const authenticatedAt =
+          typeof token.authenticatedAt === "number" && Number.isFinite(token.authenticatedAt)
+            ? token.authenticatedAt
+            : token.iat;
+        if (authenticatedAt == null || !Number.isFinite(authenticatedAt)) {
+          throw new UnauthorizedError("Session authentication time is missing");
+        }
+        const authenticatedAtDate = new Date(authenticatedAt * 1000);
+        if (!Number.isFinite(authenticatedAtDate.getTime())) {
+          throw new UnauthorizedError("Session authentication time is invalid");
+        }
 
         return {
           ...session,
@@ -190,6 +195,7 @@ export const authOptions = {
             hasPassword: dbUser.passwordHash != null,
             passwordUpdatedAt: dbUser.passwordUpdatedAt?.toISOString() ?? null,
             interfaceLanguage: dbUser.interfaceLanguage,
+            authenticatedAt: authenticatedAtDate.toISOString(),
           },
         };
       }
@@ -210,10 +216,19 @@ declare module "next-auth" {
       hasPassword: boolean;
       passwordUpdatedAt: string | null;
       interfaceLanguage: "auto" | "zh" | "en";
+      authenticatedAt: string;
     };
   }
 
   interface User {
     locale?: string | null;
+    authVersion: number;
+  }
+}
+
+declare module "@auth/core/jwt" {
+  interface JWT {
+    authVersion?: number;
+    authenticatedAt?: number;
   }
 }

@@ -90,6 +90,47 @@ class PostgresRateLimiter implements RateLimiterPort {
     return row == null ? 0 : Number(row.curr_count);
   }
 
+  async acquireCooldown(bucketKey: string, seconds: number) {
+    const result = await db.execute<{ window_start: Date }>(sql`
+      INSERT INTO rate_limit_buckets (bucket_key, count, window_start, created_at)
+      VALUES (${bucketKey}, 1, date_trunc('milliseconds', NOW()), NOW())
+      ON CONFLICT (bucket_key) DO UPDATE SET
+        count = 1,
+        window_start = date_trunc('milliseconds', NOW())
+      WHERE rate_limit_buckets.window_start <= NOW() - ${seconds} * INTERVAL '1 second'
+      RETURNING window_start
+    `);
+    const acquiredAt = result.rows?.[0]?.window_start;
+    if (acquiredAt != null) {
+      return { acquired: true, acquiredAt: new Date(acquiredAt), retryAfter: 0 };
+    }
+
+    const existing = await db.execute<{ window_start: Date; retry_after: number }>(sql`
+      SELECT window_start,
+        GREATEST(0, CEIL(EXTRACT(EPOCH FROM (
+          window_start + ${seconds} * INTERVAL '1 second' - NOW()
+        ))))::integer AS retry_after
+      FROM rate_limit_buckets
+      WHERE bucket_key = ${bucketKey}
+    `);
+    const row = existing.rows?.[0];
+    return {
+      acquired: false,
+      acquiredAt: row?.window_start == null ? new Date() : new Date(row.window_start),
+      retryAfter: row?.retry_after == null ? seconds : Number(row.retry_after),
+    };
+  }
+
+  async releaseCooldown(bucketKey: string, acquiredAt: Date): Promise<boolean> {
+    const result = await db.execute(sql`
+      DELETE FROM rate_limit_buckets
+      WHERE bucket_key = ${bucketKey}
+        AND window_start = ${acquiredAt}
+      RETURNING bucket_key
+    `);
+    return (result.rows?.length ?? 0) === 1;
+  }
+
   /**
    * Activate a cooldown for a bucket key.
    *

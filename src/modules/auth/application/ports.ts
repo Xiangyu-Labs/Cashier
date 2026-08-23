@@ -18,7 +18,7 @@ export interface AccountSecurityPort {
     expiresAt: Date;
     now: Date;
     minimumIntervalMs: number;
-  }): Promise<"created" | "unauthorized" | "same_email" | "duplicate" | "rate_limited">;
+  }): Promise<"created" | "unauthorized" | "same_email" | "duplicate" | "rate_limited" | "locked">;
   discardEmailChangeChallenge(input: {
     userId: string;
     newEmail: string;
@@ -42,6 +42,12 @@ export interface RateLimitPort {
     limit: number,
     windowSeconds: number
   ): Promise<{ success: boolean; remaining: number; resetTime: number }>;
+  current(key: string, windowSeconds: number): Promise<number>;
+  acquireCooldown(
+    key: string,
+    seconds: number
+  ): Promise<{ acquired: boolean; acquiredAt: Date; retryAfter: number }>;
+  releaseCooldown(key: string, acquiredAt: Date): Promise<boolean>;
   setCooldown(key: string, cooldownSeconds: number): Promise<void>;
   getCooldownRemaining(key: string, cooldownSeconds: number): Promise<number>;
 }

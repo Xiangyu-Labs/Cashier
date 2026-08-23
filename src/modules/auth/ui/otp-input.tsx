@@ -22,8 +22,17 @@ export function OTPInput({
 }: OTPInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [digits, setDigits] = useState<string[]>(() =>
+    Array.from({ length }, (_, index) => value[index] ?? "")
+  );
+  const [lastExternalValue, setLastExternalValue] = useState(value);
 
-  const digits = value.padEnd(length, " ").slice(0, length).split("");
+  if (value !== lastExternalValue) {
+    setLastExternalValue(value);
+    if (digits.filter(Boolean).join("") !== value) {
+      setDigits(Array.from({ length }, (_, index) => value[index] ?? ""));
+    }
+  }
 
   useEffect(() => {
     if (value === "" && !disabled) inputRefs.current[0]?.focus();
@@ -38,8 +47,8 @@ export function OTPInput({
 
     const newDigits = [...digits];
     newDigits[index] = sanitized.slice(0, 1);
-    const newValue = newDigits.join("").trim();
-    onChange(newValue);
+    setDigits(newDigits);
+    onChange(newDigits.filter(Boolean).join(""));
 
     // Auto-focus next input
     if (sanitized !== "" && index < length - 1) {
@@ -51,19 +60,21 @@ export function OTPInput({
     if (disabled) return;
 
     if (e.key === "Backspace") {
-      if (digits[index] === " " || digits[index] === "") {
+      if (digits[index] === "") {
         // If current input is empty, focus previous and delete its value
         if (index > 0) {
           const newDigits = [...digits];
-          newDigits[index - 1] = " ";
-          onChange(newDigits.join("").trim());
+          newDigits[index - 1] = "";
+          setDigits(newDigits);
+          onChange(newDigits.filter(Boolean).join(""));
           inputRefs.current[index - 1]?.focus();
         }
       } else {
         // Delete current digit
         const newDigits = [...digits];
-        newDigits[index] = " ";
-        onChange(newDigits.join("").trim());
+        newDigits[index] = "";
+        setDigits(newDigits);
+        onChange(newDigits.filter(Boolean).join(""));
       }
       e.preventDefault();
     } else if (e.key === "ArrowLeft" && index > 0) {
@@ -83,6 +94,7 @@ export function OTPInput({
     const sanitized = pastedData.replace(/\D/g, "").slice(0, length);
 
     if (sanitized !== "") {
+      setDigits(Array.from({ length }, (_, index) => sanitized[index] ?? ""));
       onChange(sanitized);
       // Focus the last filled input or the next empty one
       const nextIndex = Math.min(sanitized.length, length - 1);
@@ -116,7 +128,7 @@ export function OTPInput({
           autoFocus={index === 0}
           pattern="\d*"
           maxLength={1}
-          value={digit === " " ? "" : digit}
+          value={digit}
           onChange={(e) => handleChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}
@@ -127,7 +139,7 @@ export function OTPInput({
             "h-12 min-w-0 w-full px-0 text-center text-xl font-bold sm:h-14 sm:text-2xl",
             "transition-[color,background-color,border-color,opacity] duration-[var(--motion-state)]",
             focusedIndex === index && "ring-2 ring-ring ring-offset-2",
-            digit !== " " && "border-primary"
+            digit !== "" && "border-primary"
           )}
           aria-label={getDigitLabel(index + 1, length)}
         />

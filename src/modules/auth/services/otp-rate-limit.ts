@@ -121,31 +121,17 @@ export async function checkSendRateLimitByIP(
   }
 }
 
-export async function checkResendCooldown(
+export async function acquireResendCooldown(
   email: string,
   rateLimiter: RateLimitPort
 ): Promise<{
-  allowed: boolean;
-  retryAfter?: number;
+  acquired: boolean;
+  acquiredAt: Date;
+  retryAfter: number;
 }> {
   try {
     const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
-    const cooldown = getResendCooldown();
-
-    const remaining = await rateLimiter.getCooldownRemaining(key, cooldown);
-
-    if (remaining <= 0) {
-      return { allowed: true };
-    }
-
-    logger.info(
-      { subject: logIdentifier("email", email), remaining },
-      "OTP resend cooldown active"
-    );
-    return {
-      allowed: false,
-      retryAfter: remaining,
-    };
+    return await rateLimiter.acquireCooldown(key, getResendCooldown());
   } catch (error) {
     logger.error(
       { error, subject: logIdentifier("email", email) },
@@ -155,36 +141,48 @@ export async function checkResendCooldown(
   }
 }
 
-export async function setResendCooldown(email: string, rateLimiter: RateLimitPort): Promise<void> {
-  try {
-    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
-    const cooldown = getResendCooldown();
+export async function releaseResendCooldown(
+  email: string,
+  acquiredAt: Date,
+  rateLimiter: RateLimitPort
+): Promise<boolean> {
+  const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
+  return rateLimiter.releaseCooldown(key, acquiredAt);
+}
 
-    await rateLimiter.setCooldown(key, cooldown);
+/** @deprecated The send flow uses acquireResendCooldown atomically. */
+export async function checkResendCooldown(email: string, rateLimiter: RateLimitPort) {
+  try {
+    const remaining = await rateLimiter.getCooldownRemaining(
+      bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
+      getResendCooldown()
+    );
+    return remaining <= 0 ? { allowed: true } : { allowed: false, retryAfter: remaining };
   } catch (error) {
     logger.error(
       { error, subject: logIdentifier("email", email) },
-      "Failed to set OTP resend cooldown"
+      "OTP resend cooldown check failed"
     );
     throw new RateLimitUnavailableError();
   }
 }
 
-export async function getCanResendAt(
-  email: string,
-  rateLimiter: RateLimitPort
-): Promise<number | null> {
+/** @deprecated The send flow acquires its cooldown before creating a token. */
+export async function setResendCooldown(email: string, rateLimiter: RateLimitPort): Promise<void> {
+  await rateLimiter.setCooldown(
+    bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
+    getResendCooldown()
+  );
+}
+
+/** @deprecated Successful sends derive this value from the acquired lease. */
+export async function getCanResendAt(email: string, rateLimiter: RateLimitPort) {
   try {
-    const key = bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email);
-    const cooldown = getResendCooldown();
-
-    const remaining = await rateLimiter.getCooldownRemaining(key, cooldown);
-
-    if (remaining <= 0) {
-      return null;
-    }
-
-    return Math.floor(Date.now() / 1000) + remaining;
+    const remaining = await rateLimiter.getCooldownRemaining(
+      bucketKey(OTP_RESEND_PREFIX.slice(0, -1), email),
+      getResendCooldown()
+    );
+    return remaining <= 0 ? null : Math.floor(Date.now() / 1000) + remaining;
   } catch (error) {
     logger.error(
       { error, subject: logIdentifier("email", email) },

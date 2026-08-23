@@ -19,6 +19,8 @@
     "passwordLoginDesc": "Use the email and password configured for this account.",
     "emailCode": "Email code",
     "invalidCredentials": "The email or password is incorrect.",
+    "reauthRequiredNotice": "Sign in again to continue this action.",
+    "credentialsChangedNotice": "Your sign-in credentials changed. Sign in again.",
     "signingIn": "Signing in...",
     "showPassword": "Show password",
     "hidePassword": "Hide password",

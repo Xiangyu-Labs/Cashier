@@ -8,6 +8,7 @@ const {
   getSessionUserMock,
   handleAuthUserSignedInMock,
   isAuthSignInAllowedMock,
+  authenticateWithPasswordMock,
 } = vi.hoisted(() => ({
   nextAuthMock: vi.fn(),
   authenticateWithOTPMock: vi.fn(),
@@ -15,6 +16,7 @@ const {
   getSessionUserMock: vi.fn(),
   handleAuthUserSignedInMock: vi.fn(),
   isAuthSignInAllowedMock: vi.fn().mockResolvedValue(true),
+  authenticateWithPasswordMock: vi.fn(),
 }));
 
 vi.mock("next-auth", () => ({
@@ -42,7 +44,7 @@ vi.mock("@/application/use-cases/complete-interactive-sign-in", () => ({
 }));
 
 vi.mock("@/modules/auth/application/use-cases/authenticate-with-password", () => ({
-  authenticateWithPassword: vi.fn(),
+  authenticateWithPassword: authenticateWithPasswordMock,
 }));
 
 vi.mock("@/modules/auth/application/use-cases/handle-auth-user-signed-in", () => ({
@@ -86,6 +88,9 @@ describe("auth.ts adapter wiring", () => {
       image: "db-image",
       passwordHash: "hashed-password",
       passwordUpdatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      authVersion: 1,
+      registrationCompletedAt: new Date("2026-06-01T00:00:00.000Z"),
+      interfaceLanguage: "auto",
     });
   });
 
@@ -120,6 +125,37 @@ describe("auth.ts adapter wiring", () => {
     expect(result).toMatchObject({ email: "user@example.com" });
   });
 
+  it("passes locale through password authorization", async () => {
+    authenticateWithPasswordMock.mockResolvedValueOnce({
+      id: "db-user",
+      email: "user@example.com",
+      name: null,
+      image: null,
+      authVersion: 1,
+      registrationCompletedAt: new Date(),
+    });
+    const { authOptions } = await loadAuthOptions();
+    const passwordProvider = authOptions?.providers?.find?.(
+      (provider: { id?: string }) => provider.id === "password"
+    );
+    const request = { headers: new Headers() };
+
+    await passwordProvider?.authorize?.(
+      { email: "user@example.com", password: "secret", locale: "en" },
+      request
+    );
+
+    expect(authenticateWithPasswordMock).toHaveBeenCalledWith(
+      {
+        email: "user@example.com",
+        password: "secret",
+        locale: "en",
+        requestHeaders: request.headers,
+      },
+      expect.any(Object)
+    );
+  });
+
   it("does not register a duplicate createUser ledger hook", async () => {
     const { authModule, authOptions } = await loadAuthOptions();
     const createUserEvent = authOptions?.events?.createUser as
@@ -129,43 +165,16 @@ describe("auth.ts adapter wiring", () => {
     expect(createUserEvent).toBeUndefined();
   });
 
-  it("delegates signIn events to the auth user-signed-in use case", async () => {
+  it("does not register a duplicate signIn event", async () => {
     const { authOptions } = await loadAuthOptions();
-    const signInEvent = authOptions?.events?.signIn as
-      | ((params: {
-          user: { id?: string | null; email?: string | null; locale?: string | null };
-          isNewUser?: boolean;
-        }) => Promise<void>)
-      | undefined;
-
-    await signInEvent?.({
-      user: { id: "user-signin", email: "user@example.com", locale: "en" },
-      isNewUser: false,
-    });
-
-    expect(handleAuthUserSignedInMock).toHaveBeenCalledWith(
-      {
-        email: "user@example.com",
-        locale: "en",
-        isNewUser: false,
-      },
-      { emailDelivery: expect.any(Object) }
-    );
+    expect(authOptions?.events?.signIn).toBeUndefined();
+    expect(handleAuthUserSignedInMock).not.toHaveBeenCalled();
   });
 
-  it("delegates signIn callbacks to the auth sign-in guard use case", async () => {
+  it("does not register a duplicate signIn callback", async () => {
     const { authOptions } = await loadAuthOptions();
-    const signInCallback = authOptions?.callbacks?.signIn as
-      ((params: { user: { email?: string | null } }) => Promise<boolean>) | undefined;
-
-    isAuthSignInAllowedMock.mockResolvedValueOnce(false);
-    const result = await signInCallback?.({ user: { email: "blocked@example.com" } });
-
-    expect(isAuthSignInAllowedMock).toHaveBeenCalledWith(
-      { email: "blocked@example.com" },
-      expect.any(Object)
-    );
-    expect(result).toBe(false);
+    expect(authOptions?.callbacks?.signIn).toBeUndefined();
+    expect(isAuthSignInAllowedMock).not.toHaveBeenCalled();
   });
 
   it("hydrates session data through the auth session query", async () => {
@@ -180,7 +189,7 @@ describe("auth.ts adapter wiring", () => {
               image?: string | null;
             };
           };
-          token: { sub?: string | null };
+          token: { sub?: string | null; authVersion?: number; authenticatedAt?: number };
         }) => Promise<{
           user?: {
             id?: string;
@@ -193,7 +202,7 @@ describe("auth.ts adapter wiring", () => {
 
     const result = await sessionCallback?.({
       session: { user: { id: "session-user", email: "old@example.com", name: "Old", image: null } },
-      token: { sub: "db-user" },
+      token: { sub: "db-user", authVersion: 1, authenticatedAt: 1_800_000_000 },
     });
 
     expect(getSessionUserMock).toHaveBeenCalledWith("db-user", expect.any(Object));
@@ -205,8 +214,66 @@ describe("auth.ts adapter wiring", () => {
         image: "db-image",
         hasPassword: true,
         passwordUpdatedAt: "2026-07-01T00:00:00.000Z",
+        interfaceLanguage: "auto",
+        authenticatedAt: "2027-01-15T08:00:00.000Z",
       },
     });
+  });
+
+  it("keeps authenticatedAt fixed across ordinary JWT refreshes", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const jwtCallback = authOptions?.callbacks?.jwt;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-23T12:00:00.000Z"));
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const issued = await jwtCallback?.({
+      token: { iat: 1_800_000_000 },
+      user: { id: "db-user", authVersion: 3 },
+    });
+    vi.setSystemTime(new Date("2026-08-23T12:05:00.000Z"));
+    const refreshed = await jwtCallback?.({ token: issued, user: undefined });
+
+    expect(issued).toMatchObject({
+      sub: "db-user",
+      authVersion: 3,
+      authenticatedAt: issuedAt,
+    });
+    expect(refreshed?.authenticatedAt).toBe(issued?.authenticatedAt);
+    vi.useRealTimers();
+  });
+
+  it("rejects a session whose token auth version is stale", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const sessionCallback = authOptions?.callbacks?.session;
+    getSessionUserMock.mockResolvedValueOnce({
+      id: "db-user",
+      email: "db@example.com",
+      name: null,
+      image: null,
+      passwordHash: null,
+      passwordUpdatedAt: null,
+      authVersion: 2,
+      registrationCompletedAt: new Date(),
+      interfaceLanguage: "auto",
+    });
+
+    await expect(
+      sessionCallback?.({
+        session: { user: { id: "db-user" } },
+        token: { sub: "db-user", authVersion: 1, authenticatedAt: 1_800_000_000 },
+      })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("accepts legacy version-one tokens and falls back to iat", async () => {
+    const { authOptions } = await loadAuthOptions();
+    const sessionCallback = authOptions?.callbacks?.session;
+    const result = await sessionCallback?.({
+      session: { user: { id: "db-user" } },
+      token: { sub: "db-user", iat: 1_800_000_000 },
+    });
+
+    expect(result?.user?.authenticatedAt).toBe("2027-01-15T08:00:00.000Z");
   });
 
   it("rethrows missing-user session errors from the auth session query", async () => {

@@ -16,6 +16,7 @@ describe("EmailStep", () => {
     );
 
     expect(screen.getByLabelText("邮箱")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "发送验证码" })).toBeDisabled();
+    expect(screen.getByLabelText("邮箱")).toHaveAttribute("name", "email");
+    expect(screen.getByRole("button", { name: "发送验证码" })).toBeEnabled();
   });
 });

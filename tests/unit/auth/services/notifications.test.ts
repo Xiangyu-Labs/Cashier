@@ -49,6 +49,7 @@ describe("sendLoginNotification", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     if (originalResendKey == null) {
       delete process.env.AUTH_RESEND_KEY;
     } else {
@@ -161,5 +162,22 @@ describe("sendLoginNotification", () => {
       sendLoginNotification({ email: "notify@example.com", locale: "zh" })
     ).resolves.toBeUndefined();
     expect(loggerErrorMock).toHaveBeenCalled();
+  });
+
+  it("stops waiting after five seconds and logs the timeout once", async () => {
+    process.env.AUTH_RESEND_KEY = "resend-key";
+    vi.useFakeTimers();
+    sendMock.mockReturnValueOnce(new Promise(() => {}));
+
+    const notification = sendLoginNotification({ email: "slow@example.com", locale: "en" });
+    await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(5_000);
+    await expect(notification).resolves.toBeUndefined();
+
+    expect(loggerErrorMock).toHaveBeenCalledTimes(1);
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: expect.stringMatching(/^email:[a-f0-9]{16}$/) }),
+      "Failed to send login notification"
+    );
   });
 });

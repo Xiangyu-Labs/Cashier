@@ -8,6 +8,7 @@ import {
   jsonb,
   uuid,
   inet,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql, type InferSelectModel } from "drizzle-orm";
 
@@ -21,6 +22,8 @@ export const users = pgTable(
     image: text("image"),
     passwordHash: text("password_hash"),
     passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
+    authVersion: integer("auth_version").notNull().default(1),
+    registrationCompletedAt: timestamp("registration_completed_at", { withTimezone: true }),
     preferences: jsonb("preferences")
       .$type<UserPreferences>()
       .notNull()
@@ -34,6 +37,7 @@ export const users = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
+    check("ck_users_auth_version_positive", sql`${table.authVersion} > 0`),
     uniqueIndex("uniq_users_active_email")
       .on(table.email)
       .where(sql`${table.deletedAt} IS NULL`),

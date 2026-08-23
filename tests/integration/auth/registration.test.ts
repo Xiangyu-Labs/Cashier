@@ -79,6 +79,7 @@ describe("Registration Policy", () => {
       email: "existing@example.com",
       name: "Existing User",
       emailVerified: new Date(),
+      registrationCompletedAt: new Date(),
     });
 
     await createTestOTP("existing@example.com", "123456");

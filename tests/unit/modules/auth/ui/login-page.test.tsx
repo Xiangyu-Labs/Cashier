@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const searchState = vi.hoisted(() => ({ query: "" }));
+
 const mockUseLoginFlow = vi.hoisted(() =>
   vi.fn((_t, options?: { initialMode?: "password" | "otp"; isDevAuthAvailable?: boolean }) => ({
     callbackUrl: "/",
@@ -30,6 +32,10 @@ const mockUseLoginFlow = vi.hoisted(() =>
 
 vi.mock("@/modules/auth/hooks/use-login-flow", () => ({
   useLoginFlow: mockUseLoginFlow,
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(searchState.query),
 }));
 
 describe("AuthLoginPage", () => {
@@ -95,5 +101,17 @@ describe("AuthLoginPage", () => {
 
     expect(screen.getByRole("heading", { name: "Cashier" })).toBeInTheDocument();
     expect(screen.getByText("一个安静的个人账本")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["reauth_required", "请重新登录以继续此操作。"],
+    ["credentials_changed", "登录凭据已更新，请重新登录。"],
+  ])("renders the %s login notice as status", async (notice, message) => {
+    searchState.query = `notice=${notice}&callbackUrl=%2Fsettings`;
+    const { AuthLoginPage } = await import("@/modules/auth/ui/login-page");
+    render(<AuthLoginPage />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(message);
+    searchState.query = "";
   });
 });

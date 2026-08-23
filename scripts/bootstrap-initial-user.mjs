@@ -44,8 +44,8 @@ async function main() {
     const passwordHash = await bcrypt.hash(password, 12);
     await client.query(
       `INSERT INTO "users"
-        ("id", "email", "email_verified", "password_hash", "password_updated_at", "created_at", "updated_at")
-       VALUES ($1, $2, $3, $4, $3, $3, $3)`,
+        ("id", "email", "email_verified", "password_hash", "password_updated_at", "registration_completed_at", "created_at", "updated_at")
+       VALUES ($1, $2, $3, $4, $3, $3, $3, $3)`,
       [crypto.randomUUID(), email, now, passwordHash]
     );
     await client.query("COMMIT");

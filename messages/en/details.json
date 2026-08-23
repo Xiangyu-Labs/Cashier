@@ -511,6 +511,8 @@
       "passwordTooShort": "Password must be 8–128 characters.",
       "passwordRequirementsNotMet": "Password must contain at least one letter and one number and be no more than 72 UTF-8 bytes.",
       "currentPasswordWrong": "Current password is incorrect.",
+      "passwordRateLimited": "Too many incorrect attempts. Try again later.",
+      "reauthRequired": "Sign in again to continue this action.",
       "passwordConflict": "The password changed elsewhere. Reopen this dialog and try again.",
       "currentPassword": "Current password",
       "newPassword": "New password",
@@ -533,6 +535,8 @@
       "emailChanged": "Email address updated",
       "emailChangeError": "Could not update the email address",
       "emailChangeErrors": {
+        "invalid_email": "Enter a valid email address.",
+        "reauth_required": "Sign in again to continue this action.",
         "invalid_code": "The verification code is incorrect.",
         "expired_code": "The verification code has expired. Request a new one.",
         "email_in_use": "That email address is already in use.",

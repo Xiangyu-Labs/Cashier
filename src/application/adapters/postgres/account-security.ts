@@ -19,6 +19,7 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
       .set({
         passwordHash: input.passwordHash,
         passwordUpdatedAt: input.passwordUpdatedAt,
+        authVersion: sql`${users.authVersion} + 1`,
         updatedAt: input.passwordUpdatedAt,
       })
       .where(and(eq(users.id, input.userId), isNull(users.deletedAt), isNull(users.passwordHash)))
@@ -32,6 +33,7 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
       .set({
         passwordHash: input.passwordHash,
         passwordUpdatedAt: input.passwordUpdatedAt,
+        authVersion: sql`${users.authVersion} + 1`,
         updatedAt: input.passwordUpdatedAt,
       })
       .where(
@@ -62,11 +64,14 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
       });
       const existing = await tx.query.emailChangeChallenges.findFirst({
         where: eq(emailChangeChallenges.userId, input.userId),
-        columns: { createdAt: true },
+        columns: { createdAt: true, lockedUntil: true },
       });
       if (current == null) return "unauthorized" as const;
       if (current.email === input.newEmail) return "same_email" as const;
       if (duplicate != null) return "duplicate" as const;
+      if (existing?.lockedUntil != null && existing.lockedUntil > input.now) {
+        return "locked" as const;
+      }
       if (
         existing != null &&
         input.now.getTime() - existing.createdAt.getTime() < input.minimumIntervalMs
@@ -153,7 +158,12 @@ export const postgresAccountSecurityAdapter: AccountSecurityPort = {
         if (duplicate != null) return { status: "duplicate" as const };
         await tx
           .update(users)
-          .set({ email: input.newEmail, emailVerified: input.now, updatedAt: input.now })
+          .set({
+            email: input.newEmail,
+            emailVerified: input.now,
+            updatedAt: input.now,
+            authVersion: sql`${users.authVersion} + 1`,
+          })
           .where(and(eq(users.id, input.userId), isNull(users.deletedAt)));
         await tx.delete(emailChangeChallenges).where(eq(emailChangeChallenges.id, challenge.id));
         return { status: "verified" as const, email: input.newEmail };

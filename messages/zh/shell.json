@@ -19,6 +19,8 @@
     "passwordLoginDesc": "使用此账号已设置的邮箱和密码登录。",
     "emailCode": "邮箱验证码",
     "invalidCredentials": "邮箱或密码不正确。",
+    "reauthRequiredNotice": "请重新登录以继续此操作。",
+    "credentialsChangedNotice": "登录凭据已更新，请重新登录。",
     "signingIn": "登录中...",
     "showPassword": "显示密码",
     "hidePassword": "隐藏密码",

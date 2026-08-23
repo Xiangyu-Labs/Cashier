@@ -19,7 +19,10 @@ export const changePasswordAction = withAuth(
           newPassword: parsed.newPassword,
           confirmPassword: parsed.confirmPassword,
         },
-        serverComposition.accountSecurity
+        {
+          accounts: serverComposition.accountSecurity,
+          rateLimiter: serverComposition.rateLimiter,
+        }
       );
       return { ok: true, passwordUpdatedAt: passwordUpdatedAt.toISOString() };
     } catch (error) {

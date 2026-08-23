@@ -19,7 +19,7 @@ export async function isRegistrationAllowed(
   }
 
   const normalizedEmail = email.toLowerCase();
-  return (await users.findByEmail(normalizedEmail)) != null;
+  return (await users.findByEmail(normalizedEmail))?.registrationCompletedAt != null;
 }
 
 export async function assertRegistrationAllowed(

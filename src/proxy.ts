@@ -13,7 +13,8 @@ export default auth((req) => {
   // API routes must be classified before dotted static-looking paths.
   if (pathname.startsWith("/api/")) {
     const isPublicApi =
-      pathname.startsWith("/api/auth") ||
+      pathname === "/api/auth" ||
+      pathname.startsWith("/api/auth/") ||
       pathname.startsWith("/api/v1/") ||
       pathname.startsWith("/api/i18n/");
 

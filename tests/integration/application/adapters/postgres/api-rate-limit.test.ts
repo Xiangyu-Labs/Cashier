@@ -151,6 +151,36 @@ describe("PostgresRateLimiter", () => {
   });
 
   describe("cooldown methods", () => {
+    it("grants exactly one lease to concurrent callers", async () => {
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => postgresRateLimiter.acquireCooldown("cd-concurrent", 60))
+      );
+
+      expect(results.filter((result) => result.acquired)).toHaveLength(1);
+      expect(results.filter((result) => !result.acquired)).toHaveLength(7);
+    });
+
+    it("releases only the matching lease timestamp", async () => {
+      const lease = await postgresRateLimiter.acquireCooldown("cd-release-cas", 60);
+      expect(lease.acquired).toBe(true);
+
+      await expect(
+        postgresRateLimiter.releaseCooldown(
+          "cd-release-cas",
+          new Date(lease.acquiredAt.getTime() + 1)
+        )
+      ).resolves.toBe(false);
+      await expect(
+        postgresRateLimiter.acquireCooldown("cd-release-cas", 60)
+      ).resolves.toMatchObject({ acquired: false });
+      await expect(
+        postgresRateLimiter.releaseCooldown("cd-release-cas", lease.acquiredAt)
+      ).resolves.toBe(true);
+      await expect(
+        postgresRateLimiter.acquireCooldown("cd-release-cas", 60)
+      ).resolves.toMatchObject({ acquired: true });
+    });
+
     it("setCooldown activates a cooldown", async () => {
       const key = "cd-test-activate";
 

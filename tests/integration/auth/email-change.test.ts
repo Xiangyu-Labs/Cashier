@@ -8,7 +8,11 @@ const userId = "00000000-0000-0000-0000-000000000000";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn().mockResolvedValue({
-    user: { id: "00000000-0000-0000-0000-000000000000", email: "test@example.com" },
+    user: {
+      id: "00000000-0000-0000-0000-000000000000",
+      email: "test@example.com",
+      authenticatedAt: new Date().toISOString(),
+    },
     expires: new Date(Date.now() + 60_000).toISOString(),
   }),
 }));
@@ -60,6 +64,7 @@ describe("email change challenges", () => {
     });
     const updated = await db.query.users.findFirst({ where: eq(users.id, userId) });
     expect(updated?.email).toBe("new@example.com");
+    expect(updated?.authVersion).toBe(2);
     expect(
       await db.query.emailChangeChallenges.findFirst({
         where: eq(emailChangeChallenges.userId, userId),
@@ -91,6 +96,32 @@ describe("email change challenges", () => {
       ok: false,
       code: "expired_code",
     });
+  });
+
+  it("does not reset a locked challenge when requesting another code", async () => {
+    const db = getTestDb();
+    await db.insert(emailChangeChallenges).values({
+      userId,
+      newEmail: "new@example.com",
+      tokenHash: hashOTP("123456"),
+      expiresAt: new Date(Date.now() + 60_000),
+      attempts: 5,
+      lockedUntil: new Date(Date.now() + 60_000),
+    });
+    const before = await db.query.emailChangeChallenges.findFirst({
+      where: eq(emailChangeChallenges.userId, userId),
+    });
+
+    await expect(sendEmailChangeCodeAction("new@example.com", "en-US")).resolves.toEqual({
+      ok: false,
+      code: "locked",
+    });
+    const after = await db.query.emailChangeChallenges.findFirst({
+      where: eq(emailChangeChallenges.userId, userId),
+    });
+    expect(after?.attempts).toBe(5);
+    expect(after?.tokenHash).toBe(before?.tokenHash);
+    expect(after?.lockedUntil).toEqual(before?.lockedUntil);
   });
 
   it("checks target-email uniqueness again during verification", async () => {

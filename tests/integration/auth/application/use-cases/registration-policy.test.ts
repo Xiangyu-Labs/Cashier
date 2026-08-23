@@ -54,6 +54,7 @@ describe("registration policy use-case", () => {
       email: "existing@example.com",
       name: "Existing",
       emailVerified: new Date(),
+      registrationCompletedAt: new Date(),
     });
 
     await expect(isRegistrationAllowed("EXISTING@EXAMPLE.COM")).resolves.toBe(true);

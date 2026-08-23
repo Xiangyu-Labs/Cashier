@@ -5,7 +5,6 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { OTPInput } from "./otp-input";
 import { ResendCountdown } from "./resend-countdown";
 import { ExpiryTimer } from "./expiry-timer";
-import { OTP_LENGTH } from "@/modules/auth/constants";
 
 interface OtpStepProps {
   otp: string;
@@ -59,12 +58,14 @@ export function OtpStep({
         <ExpiryTimer expiresAt={expiresAt} onExpired={onExpired} className="text-center" />
       </div>
       {error != null && (
-        <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
+        <div role="alert" className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          {error}
+        </div>
       )}
       <Button
         type="submit"
         className="w-full h-11"
-        disabled={isLoading || resendPending || otpExpired || otp.length !== OTP_LENGTH}
+        disabled={isLoading || resendPending || otpExpired || !/^\d{6}$/.test(otp)}
       >
         {isLoading ? (
           <>

@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { UnauthorizedError } from "@/lib/errors";
+import { AppError } from "@/lib/errors";
+import { RECENT_AUTH_MAX_AGE_SECONDS } from "@/lib/auth-constants";
 
 /**
  * Wraps a server action to automatically handle authentication.
@@ -37,4 +39,23 @@ export async function requireAuth(): Promise<string> {
   }
 
   return session.user.id;
+}
+
+export async function requireRecentAuth(): Promise<string> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const authenticatedAt = session?.user?.authenticatedAt;
+  const authenticatedAtMs =
+    typeof authenticatedAt === "string" ? Date.parse(authenticatedAt) : Number.NaN;
+  const now = Date.now();
+  if (
+    userId == null ||
+    userId === "" ||
+    !Number.isFinite(authenticatedAtMs) ||
+    authenticatedAtMs > now ||
+    now - authenticatedAtMs > RECENT_AUTH_MAX_AGE_SECONDS * 1000
+  ) {
+    throw new AppError("Recent authentication required", "REAUTHENTICATION_REQUIRED", 401);
+  }
+  return userId;
 }

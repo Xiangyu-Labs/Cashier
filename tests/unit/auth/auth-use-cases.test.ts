@@ -74,7 +74,9 @@ describe("auth lifecycle use cases", () => {
 
   it("enforces the registration policy for auth sign-in when disabled", async () => {
     process.env.DISABLE_REGISTRATION = "true";
-    findFirstMock.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "existing-user" });
+    findFirstMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "existing-user", registrationCompletedAt: new Date() });
 
     await expect(isAuthSignInAllowed({ email: "new-user@example.com" }, users)).resolves.toBe(
       false

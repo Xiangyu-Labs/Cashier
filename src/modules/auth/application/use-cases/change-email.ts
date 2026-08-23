@@ -1,11 +1,19 @@
 import type { EmailDeliveryPort } from "@/application/contracts";
 import OTPEmail from "@/emails/otp-email";
-import { ConflictError, RateLimitError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import {
+  AppError,
+  ConflictError,
+  RateLimitError,
+  UnauthorizedError,
+  ValidationError,
+} from "@/lib/errors";
 import { runtimeEnv } from "@/lib/env/runtime";
 import { DEFAULT_AUTH_EMAIL_FROM } from "@/lib/utils/email";
 import type { SupportedLocale } from "@/i18n/locales";
 import { generateOTP, getOTPExpiration, hashOTP, isValidOTPFormat } from "../../services/otp";
 import type { AccountSecurityPort } from "../ports";
+import { logger } from "@/lib/logger";
+import { logIdentifier } from "@/lib/security/log-identifier";
 
 export async function sendEmailChangeCode(
   input: {
@@ -32,8 +40,12 @@ export async function sendEmailChangeCode(
     minimumIntervalMs: 60_000,
   });
   if (challenge === "unauthorized") throw new UnauthorizedError();
-  if (challenge === "same_email") throw new ValidationError("New email must be different");
+  if (challenge === "same_email") {
+    throw new AppError("New email must be different", "EMAIL_CHANGE_SAME_EMAIL", 400);
+  }
   if (challenge === "duplicate") throw new ConflictError("Email is already in use");
+  if (challenge === "locked")
+    throw new AppError("Verification is locked", "EMAIL_CHANGE_LOCKED", 429);
   if (challenge === "rate_limited") {
     throw new RateLimitError("Please wait before requesting another code", 60);
   }
@@ -72,8 +84,15 @@ export async function sendEmailChangeCode(
     });
     if (delivery !== "sent") throw new Error("Email provider did not accept the message");
   } catch {
-    await dependencies.accounts.discardEmailChangeChallenge({ userId, newEmail, tokenHash });
-    throw new ValidationError("Email delivery failed");
+    try {
+      await dependencies.accounts.discardEmailChangeChallenge({ userId, newEmail, tokenHash });
+    } catch (cleanupError) {
+      logger.error(
+        { error: cleanupError, subject: logIdentifier("user", userId) },
+        "Failed to discard email change challenge after delivery failure"
+      );
+    }
+    throw new AppError("Email delivery failed", "EMAIL_CHANGE_DELIVERY_FAILED", 502);
   }
   return { newEmail, expiresAt: expiresAt.getTime() };
 }
@@ -84,7 +103,9 @@ export async function verifyEmailChangeCode(
   otp: string,
   accounts: AccountSecurityPort
 ) {
-  if (!isValidOTPFormat(otp)) throw new ValidationError("Invalid verification code");
+  if (!isValidOTPFormat(otp)) {
+    throw new AppError("Invalid verification code", "EMAIL_CHANGE_INVALID_CODE", 400);
+  }
   const outcome = await accounts.verifyEmailChangeChallenge({
     userId,
     newEmail,
@@ -92,13 +113,21 @@ export async function verifyEmailChangeCode(
     now: new Date(),
   });
   if (outcome.status === "verified") return { email: outcome.email };
-  if (outcome.status === "not_found") throw new ValidationError("Verification challenge not found");
-  if (outcome.status === "locked") throw new RateLimitError("Verification is locked");
-  if (outcome.status === "expired") throw new ValidationError("Verification code expired");
+  if (outcome.status === "not_found") {
+    throw new AppError("Verification challenge not found", "EMAIL_CHANGE_INVALID_CODE", 400);
+  }
+  if (outcome.status === "locked") {
+    throw new AppError("Verification is locked", "EMAIL_CHANGE_LOCKED", 429);
+  }
+  if (outcome.status === "expired") {
+    throw new AppError("Verification code expired", "EMAIL_CHANGE_EXPIRED_CODE", 400);
+  }
   if (outcome.status === "duplicate") throw new ConflictError("Email is already in use");
   if (outcome.status !== "incorrect") throw new ValidationError("Verification failed");
-  if (outcome.locked) throw new RateLimitError("Too many incorrect attempts");
-  throw new ValidationError("Incorrect verification code", {
+  if (outcome.locked) {
+    throw new AppError("Too many incorrect attempts", "EMAIL_CHANGE_LOCKED", 429);
+  }
+  throw new AppError("Incorrect verification code", "EMAIL_CHANGE_INVALID_CODE", 400, {
     attemptsRemaining: outcome.attemptsRemaining,
   });
 }

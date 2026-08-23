@@ -13,6 +13,9 @@ export interface AuthenticatedPrincipal {
   email: string | null;
   name: string | null;
   image: string | null;
+  authVersion: number;
+  registrationCompletedAt: Date | null;
+  isNewUser?: boolean;
   locale?: string | null;
   /**
    * OTP-only: the verified token is claimed but not yet consumed. The
@@ -33,6 +36,8 @@ export type PasswordMutationActionErrorCode =
   | "password_requirements_not_met"
   | "password_mismatch"
   | "current_password_wrong"
+  | "password_rate_limited"
+  | "reauth_required"
   | "validation_failed"
   | "conflict"
   | "unexpected";

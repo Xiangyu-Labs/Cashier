@@ -23,9 +23,13 @@ import {
 export function EmailChangeForm({
   currentEmail,
   onChanged,
+  onRequireReauthentication,
+  onCredentialsChanged,
 }: {
   currentEmail: string;
   onChanged?: (email: string) => void;
+  onRequireReauthentication?: () => void | Promise<void>;
+  onCredentialsChanged?: () => void | Promise<void>;
 }) {
   const t = useTranslations("Settings.Account");
   const locale = useLocale();
@@ -39,6 +43,10 @@ export function EmailChangeForm({
 
   const errorMessage = (code: EmailChangeErrorCode) => {
     switch (code) {
+      case "invalid_email":
+        return t("emailChangeErrors.invalid_email");
+      case "reauth_required":
+        return t("emailChangeErrors.reauth_required");
       case "invalid_code":
         return t("emailChangeErrors.invalid_code");
       case "expired_code":
@@ -74,6 +82,10 @@ export function EmailChangeForm({
     try {
       const result = await sendEmailChangeCodeAction(email, locale);
       if (!result.ok) {
+        if (result.code === "reauth_required") {
+          await onRequireReauthentication?.();
+          return;
+        }
         const message = errorMessage(result.code);
         setError(message);
         toast.error(message);
@@ -104,6 +116,7 @@ export function EmailChangeForm({
       toast.success(t("emailChanged"));
       onChanged?.(result.email);
       close();
+      await onCredentialsChanged?.();
     } catch {
       setError(t("emailChangeError"));
       toast.error(t("emailChangeError"));

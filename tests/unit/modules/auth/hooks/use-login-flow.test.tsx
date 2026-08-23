@@ -33,7 +33,17 @@ import { useLoginFlow } from "@/modules/auth/hooks/use-login-flow";
 import { useLoginDraftStore } from "@/modules/auth/login-draft-store";
 
 const t = (key: string) => key;
-const submitEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
+function createEmailSubmitEvent(email: string): React.FormEvent<HTMLFormElement> {
+  const form = document.createElement("form");
+  const emailInput = document.createElement("input");
+  emailInput.name = "email";
+  emailInput.value = email;
+  form.append(emailInput);
+  return {
+    preventDefault: vi.fn(),
+    currentTarget: form,
+  } as unknown as React.FormEvent<HTMLFormElement>;
+}
 
 function createPasswordSubmitEvent(
   email: string,
@@ -69,7 +79,7 @@ describe("useLoginFlow OTP sending", () => {
     const { result } = renderHook(() => useLoginFlow(t));
 
     act(() => result.current.setEmail("user@example.com"));
-    await act(() => result.current.handleSendOTP(submitEvent));
+    await act(() => result.current.handleSendOTP(createEmailSubmitEvent("user@example.com")));
 
     expect(result.current.step).toBe("email");
     expect(result.current.error).toBe("rateLimitedDesc");
@@ -86,7 +96,7 @@ describe("useLoginFlow OTP sending", () => {
     const { result } = renderHook(() => useLoginFlow(t));
 
     act(() => result.current.setEmail("user@example.com"));
-    await act(() => result.current.handleSendOTP(submitEvent));
+    await act(() => result.current.handleSendOTP(createEmailSubmitEvent("user@example.com")));
 
     expect(window.location.search).toBe("?authMode=otp&authStep=otp");
     expect(result.current.expiresAt).toBe(1_800_000_000);
@@ -109,7 +119,7 @@ describe("useLoginFlow OTP sending", () => {
       const { result } = renderHook(() => useLoginFlow(t));
 
       act(() => result.current.setEmail("user@example.com"));
-      await act(() => result.current.handleSendOTP(submitEvent));
+      await act(() => result.current.handleSendOTP(createEmailSubmitEvent("user@example.com")));
 
       expect(window.location.search).toBe("?authMode=otp&authStep=otp");
       expect(result.current.error).toBeNull();
@@ -137,10 +147,11 @@ describe("useLoginFlow OTP sending", () => {
     expect(signInMock).toHaveBeenCalledWith("password", {
       email: "autofill@example.com",
       password: "autofilled-password",
+      locale: "en",
       redirect: false,
       callbackUrl: "/",
     });
     expect(result.current.email).toBe("autofill@example.com");
-    expect(result.current.password).toBe("autofilled-password");
+    expect(result.current.password).toBe("");
   });
 });

@@ -10,7 +10,7 @@ interface EmailStepProps {
   isLoading: boolean;
   error: string | null;
   onEmailChange: (email: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 
 export function EmailStep({
@@ -32,6 +32,7 @@ export function EmailStep({
           </label>
           <Input
             id="email"
+            name="email"
             type="email"
             placeholder={t("emailPlaceholder")}
             value={email}
@@ -44,9 +45,11 @@ export function EmailStep({
           />
         </div>
         {error != null && (
-          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
+          <div role="alert" className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
         )}
-        <Button type="submit" className="w-full h-11" disabled={isLoading || email === ""}>
+        <Button type="submit" className="w-full h-11" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

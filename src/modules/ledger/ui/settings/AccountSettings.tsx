@@ -22,6 +22,8 @@ interface AccountSettingsProps {
   onDeleteCredential: (id: string) => Promise<void>;
   onCredentialDialogClose: () => void;
   onSignOut: () => void | Promise<void>;
+  onRequireReauthentication: () => void | Promise<void>;
+  onCredentialsChanged: () => void | Promise<void>;
 }
 
 export function AccountSettings({
@@ -35,6 +37,8 @@ export function AccountSettings({
   onDeleteCredential,
   onCredentialDialogClose,
   onSignOut,
+  onRequireReauthentication,
+  onCredentialsChanged,
 }: AccountSettingsProps) {
   const t = useTranslations("Settings");
   const ta = useTranslations("Settings.Account");
@@ -44,10 +48,20 @@ export function AccountSettings({
   return (
     <SettingsSection title={t("account")}>
       <SettingsField title={ta("emailSection")} description={ta("emailSectionDesc")}>
-        <EmailChangeForm currentEmail={displayEmail} onChanged={onEmailChanged} />
+        <EmailChangeForm
+          currentEmail={displayEmail}
+          onChanged={onEmailChanged}
+          onRequireReauthentication={onRequireReauthentication}
+          onCredentialsChanged={onCredentialsChanged}
+        />
       </SettingsField>
       <SettingsField title={ta("passwordSection")} description={ta("passwordSectionDesc")}>
-        <PasswordForm hasPassword={hasPassword} passwordUpdatedAt={passwordUpdatedAt} />
+        <PasswordForm
+          hasPassword={hasPassword}
+          passwordUpdatedAt={passwordUpdatedAt}
+          onRequireReauthentication={onRequireReauthentication}
+          onCredentialsChanged={onCredentialsChanged}
+        />
       </SettingsField>
       <ServiceCredentialSection
         credentials={credentials}

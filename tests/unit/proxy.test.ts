@@ -115,6 +115,14 @@ describe("Proxy Logic", () => {
   });
 
   describe("Protected API Routes", () => {
+    it.each(["/api/auth-admin", "/api/authentication"])(
+      "does not treat %s as an Auth.js endpoint",
+      async (path) => {
+        const res = await invokeProxy(createRequest(path));
+        expect(res.status).toBe(401);
+      }
+    );
+
     it("should return 401 for unauthenticated access to /api/protected", async () => {
       const req = createRequest("/api/protected");
       const res = await invokeProxy(req);

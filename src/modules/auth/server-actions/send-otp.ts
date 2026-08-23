@@ -12,7 +12,7 @@ export type SendOTPActionResult =
       ok: true;
       expiresIn: number;
       expiresAt: number;
-      canResendAt: number | null;
+      canResendAt: number;
     }
   | {
       ok: false;

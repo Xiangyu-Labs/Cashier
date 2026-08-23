@@ -32,6 +32,8 @@ describe("getSessionUser", () => {
       image: "https://example.com/avatar.png",
       passwordHash: null,
       passwordUpdatedAt: null,
+      authVersion: 1,
+      registrationCompletedAt: null,
       interfaceLanguage: "auto",
     });
   });

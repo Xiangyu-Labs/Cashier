@@ -59,9 +59,13 @@ function PasswordField(props: {
 export function PasswordForm({
   hasPassword,
   passwordUpdatedAt,
+  onRequireReauthentication,
+  onCredentialsChanged,
 }: {
   hasPassword: boolean;
   passwordUpdatedAt: string | null;
+  onRequireReauthentication?: () => void | Promise<void>;
+  onCredentialsChanged?: () => void | Promise<void>;
 }) {
   const t = useTranslations("Settings.Account");
   const locale = useLocale();
@@ -86,6 +90,10 @@ export function PasswordForm({
         return t("passwordsDoNotMatch");
       case "current_password_wrong":
         return t("currentPasswordWrong");
+      case "password_rate_limited":
+        return t("passwordRateLimited");
+      case "reauth_required":
+        return t("reauthRequired");
       case "conflict":
         return t("passwordConflict");
       case "validation_failed":
@@ -110,6 +118,10 @@ export function PasswordForm({
         ? await changePasswordAction(input)
         : await setPasswordAction(input);
       if (!result.ok) {
+        if (result.code === "reauth_required") {
+          await onRequireReauthentication?.();
+          return;
+        }
         setError(messageForErrorCode(result.code));
         return;
       }
@@ -118,6 +130,7 @@ export function PasswordForm({
       toast.success(t("passwordSaved"));
       setOpen(false);
       reset();
+      await onCredentialsChanged?.();
     } catch {
       setError(t("passwordError"));
     } finally {

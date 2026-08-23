@@ -34,6 +34,6 @@ describe("authenticateDevUser", () => {
   it("returns the principal through the target user port", async () => {
     const result = await authenticateDevUser({ locale: "en-US" }, { users });
     expect(findOrCreate).toHaveBeenCalledWith("dev@cashier.local", "Local Developer");
-    expect(result).toEqual({ ...user, locale: "en-US" });
+    expect(result).toEqual({ ...user, locale: "en-US", isNewUser: false });
   });
 });

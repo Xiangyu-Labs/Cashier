@@ -58,7 +58,7 @@ export async function sendLoginNotification(
 
     const { subject, copy } = await getLoginNotificationCopy(locale);
 
-    const delivery = await emailDelivery.send({
+    const send = emailDelivery.send({
       from: runtimeEnv.authEmailFrom ?? DEFAULT_AUTH_EMAIL_FROM,
       to: params.email,
       subject,
@@ -68,6 +68,15 @@ export async function sendLoginNotification(
         loginTime,
         copy,
       }),
+    });
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const delivery = await Promise.race([
+      send,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Login notification timed out")), 5000);
+      }),
+    ]).finally(() => {
+      if (timeout != null) clearTimeout(timeout);
     });
 
     if (delivery === "not_configured") {

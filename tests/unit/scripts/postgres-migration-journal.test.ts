@@ -31,7 +31,7 @@ describe("Postgres migration journal", () => {
     });
 
     expect(observedInversions).toEqual(allowedLegacyInversions);
-    expect(journal.entries.at(-1)?.tag).toBe("0028_auth_upload_hardening");
+    expect(journal.entries.at(-1)?.tag).toBe("0029_auth_session_registration_state");
   });
 
   it("recovers every schema change skipped by the legacy inversions", () => {
@@ -46,6 +46,16 @@ describe("Postgres migration journal", () => {
     expect(sql).toContain('DROP CONSTRAINT IF EXISTS "ck_source_document_revisions_outcome"');
     expect(sql).toContain("'cancelled'");
     expect(sql).toContain("'abandoned'");
+  });
+
+  it("backfills registration completion in the auth session migration", () => {
+    const sql = readFileSync(
+      path.join(migrationsDirectory, "0029_auth_session_registration_state.sql"),
+      "utf8"
+    );
+    expect(sql).toContain('"auth_version" integer DEFAULT 1 NOT NULL');
+    expect(sql).toContain('SET "registration_completed_at" = "created_at"');
+    expect(sql).toContain("ck_users_auth_version_positive");
   });
 
   it("keeps the journal in sync with the actual migration files", () => {

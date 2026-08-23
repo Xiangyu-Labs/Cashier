@@ -82,6 +82,24 @@ export async function authenticateWithOTP(
   const normalizedEmail = validateCredentials(params.email, params.otp);
   const locale = params.locale ?? "zh";
 
+  const ip = getClientIPFromHeaders(params.requestHeaders);
+  let isAllowed: boolean;
+  try {
+    isAllowed = await checkVerifyRateLimit(ip, dependencies.rateLimiter);
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      throw new OTPRateLimitUnavailableSignInError();
+    }
+    throw error;
+  }
+  if (!isAllowed) {
+    logger.warn(
+      { ipSubject: logIdentifier("ip", ip), emailSubject: logIdentifier("email", normalizedEmail) },
+      "OTP verify rate limit exceeded during sign-in"
+    );
+    throw new OTPRateLimitedSignInError();
+  }
+
   const record = await findOTPRecord(normalizedEmail, dependencies.otpTokens);
   if (record == null) {
     logger.warn(
@@ -97,27 +115,6 @@ export async function authenticateWithOTP(
       "OTP account locked"
     );
     throw new OTPLockedSignInError();
-  }
-
-  const ip = getClientIPFromHeaders(params.requestHeaders);
-  let isAllowed: boolean;
-  try {
-    isAllowed = await checkVerifyRateLimit(ip, dependencies.rateLimiter);
-  } catch (error) {
-    if (error instanceof RateLimitUnavailableError) {
-      throw new OTPRateLimitUnavailableSignInError();
-    }
-    throw error;
-  }
-  if (!isAllowed) {
-    logger.warn(
-      {
-        ipSubject: logIdentifier("ip", ip),
-        emailSubject: logIdentifier("email", normalizedEmail),
-      },
-      "OTP verify rate limit exceeded during sign-in"
-    );
-    throw new OTPRateLimitedSignInError();
   }
 
   const result = await verifyOTPWithPolicy(
@@ -151,13 +148,16 @@ export async function authenticateWithOTP(
   const claim = { email: normalizedEmail, tokenHash: record.tokenHash };
   try {
     await assertRegistrationAllowed(normalizedEmail, dependencies.userAccounts);
-    const { user } = await dependencies.userAccounts.findOrCreate(normalizedEmail);
+    const { user, isExistingUser } = await dependencies.userAccounts.findOrCreate(normalizedEmail);
 
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       image: user.image,
+      authVersion: user.authVersion,
+      registrationCompletedAt: user.registrationCompletedAt,
+      isNewUser: !isExistingUser,
       locale,
       pendingOtpClaim: claim,
     };

@@ -8,6 +8,9 @@ export async function authenticateDevUser(
 ): Promise<AuthenticatedPrincipal | null> {
   if (!isDevAuthBypassEnabled()) return null;
   const locale = params.locale ?? "zh-CN";
-  const { user } = await dependencies.users.findOrCreate(DEV_AUTH_EMAIL, DEV_AUTH_NAME);
-  return { ...user, locale };
+  const { user, isExistingUser } = await dependencies.users.findOrCreate(
+    DEV_AUTH_EMAIL,
+    DEV_AUTH_NAME
+  );
+  return { ...user, locale, isNewUser: !isExistingUser };
 }

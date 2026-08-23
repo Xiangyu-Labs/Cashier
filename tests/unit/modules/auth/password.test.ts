@@ -8,6 +8,9 @@ import { validatePassword } from "@/modules/auth/services/password-policy";
 describe("password authentication", () => {
   const rateLimiter = {
     increment: async () => ({ success: true, remaining: 9, resetTime: Date.now() + 900_000 }),
+    current: async () => 0,
+    acquireCooldown: async () => ({ acquired: true, acquiredAt: new Date(), retryAfter: 0 }),
+    releaseCooldown: async () => true,
     setCooldown: async () => {},
     getCooldownRemaining: async () => 0,
   };
@@ -37,6 +40,8 @@ describe("password authentication", () => {
       image: null,
       passwordHash,
       passwordUpdatedAt: new Date(),
+      authVersion: 1,
+      registrationCompletedAt: new Date(),
     };
     const users = {
       findByEmail: async (email: string) => (email === account.email ? account : null),
@@ -74,6 +79,35 @@ describe("password authentication", () => {
     ).rejects.toMatchObject({ code: "invalid_credentials" });
   });
 
+  it("does not increment a rate-limit bucket for a successful password login", async () => {
+    const passwordHash = await bcrypt.hash("valid-password-1", 4);
+    const increment = vi.fn();
+    const users = {
+      findByEmail: vi.fn().mockResolvedValue({
+        id: "user-id",
+        email: "owner@example.com",
+        name: null,
+        image: null,
+        passwordHash,
+        passwordUpdatedAt: new Date(),
+        authVersion: 2,
+        registrationCompletedAt: new Date(),
+      }),
+    } as unknown as UserAccountPort;
+
+    await authenticateWithPassword(
+      {
+        email: "owner@example.com",
+        password: "valid-password-1",
+        locale: "en",
+        requestHeaders: new Headers(),
+      },
+      { users, rateLimiter: { ...rateLimiter, increment } }
+    );
+
+    expect(increment).not.toHaveBeenCalled();
+  });
+
   it("runs a dummy bcrypt comparison for unknown users", async () => {
     const compare = vi.spyOn(bcrypt, "compare");
     const findByEmail = vi.fn().mockResolvedValue(null);
@@ -101,7 +135,7 @@ describe("password authentication", () => {
     const compare = vi.spyOn(bcrypt, "compare");
     const unavailableRateLimiter = {
       ...rateLimiter,
-      increment: vi.fn().mockRejectedValue(new Error("rate limiter down")),
+      current: vi.fn().mockRejectedValue(new Error("rate limiter down")),
     };
 
     await expect(
@@ -124,11 +158,7 @@ describe("password authentication", () => {
 
     const limitedRateLimiter = {
       ...rateLimiter,
-      increment: vi.fn().mockResolvedValue({
-        success: false,
-        remaining: 0,
-        resetTime: Date.now() + 900_000,
-      }),
+      current: vi.fn().mockResolvedValue(10),
     };
     await expect(
       authenticateWithPassword(

@@ -4,6 +4,7 @@ import type {
   UserPreferencesPort,
   UserInterfaceLanguage,
 } from "@/application/contracts";
+import { normalizeUserPreferences } from "@/modules/auth/services/user-preferences";
 
 const INTERFACE_LANGUAGES = new Set<UserInterfaceLanguage>(["auto", "zh", "en"]);
 
@@ -20,7 +21,7 @@ export async function getUserPreferences(
 ): Promise<UserPreferencesContract> {
   const result = await preferences.get(userId);
   if (result == null) throw new UnauthorizedError();
-  return result;
+  return normalizeUserPreferences(result);
 }
 
 export async function updateUserPreferences(

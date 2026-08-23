@@ -73,7 +73,7 @@ export function useCountdown({ targetTime, onExpired }: UseCountdownOptions): Us
   const isExpired = remaining === 0;
 
   // Use ref to track previous expired state and onExpired callback
-  const prevExpiredRef = useRef(isExpired);
+  const lastNotifiedTargetRef = useRef<number | null>(null);
   const onExpiredRef = useRef(onExpired);
 
   // Keep callback ref up to date
@@ -83,13 +83,11 @@ export function useCountdown({ targetTime, onExpired }: UseCountdownOptions): Us
 
   // Use effect only for side effects (calling onExpired), not for state updates
   useEffect(() => {
-    if (isExpired && !prevExpiredRef.current) {
-      prevExpiredRef.current = true;
+    if (targetTime != null && isExpired && lastNotifiedTargetRef.current !== targetTime) {
+      lastNotifiedTargetRef.current = targetTime;
       onExpiredRef.current?.();
-    } else if (!isExpired && prevExpiredRef.current) {
-      prevExpiredRef.current = false;
     }
-  }, [isExpired]);
+  }, [isExpired, targetTime]);
 
   return {
     remaining,
