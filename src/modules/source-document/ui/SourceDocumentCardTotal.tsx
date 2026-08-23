@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText, amountTextClassName } from "@/modules/currency/ui";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
 import { buildSourceDocumentCardTotals } from "./source-document-card.utils";
 
 interface SourceDocumentCardTotalProps {

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 import Decimal from "decimal.js";
 
 interface CategoryStat {

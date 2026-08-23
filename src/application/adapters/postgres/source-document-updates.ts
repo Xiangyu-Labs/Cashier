@@ -128,7 +128,6 @@ async function prepareDateReestimate(
     initialEntries.map((entry) => ({
       amount: entry.amount,
       from: normalizeCurrency(entry.currency),
-      to: ledger.mainCurrency,
       date: entryDate,
     })),
     ledger.mainCurrency
@@ -303,7 +302,6 @@ export async function saveSourceDocumentChangesAtomically(
     nextEntries.map((entry) => ({
       amount: entry.amount,
       from: normalizeCurrency(entry.currency),
-      to: ledger.mainCurrency,
       ...(nextEntryDate == null || nextEntryDate === "" ? {} : { date: nextEntryDate }),
     })),
     ledger.mainCurrency

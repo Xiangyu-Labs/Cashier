@@ -13,25 +13,32 @@ describe("useAmountDisplay", () => {
     mockUseConvertedAmount.mockReset();
     mockUseConvertedAmount.mockReturnValue({
       status: "success",
-      converted: 42,
+      converted: "42",
     });
   });
 
   it("uses converted value for different currencies and forwards date", () => {
     const result = useAmountDisplay({
       ledgerId,
-      amount: 100,
+      amount: "100",
       currency: "CNY",
       mainCurrency: "USD",
       date: "2026-03-20",
     });
 
-    expect(mockUseConvertedAmount).toHaveBeenCalledWith(ledgerId, 100, "CNY", "USD", "2026-03-20", {
-      enabled: true,
-    });
+    expect(mockUseConvertedAmount).toHaveBeenCalledWith(
+      ledgerId,
+      "100",
+      "CNY",
+      "USD",
+      "2026-03-20",
+      {
+        enabled: true,
+      }
+    );
     expect(result).toEqual({
-      converted: 42,
-      displayAmount: 42,
+      converted: "42",
+      displayAmount: "42",
       isDifferentCurrency: true,
       status: "success",
       isLoading: false,
@@ -44,7 +51,7 @@ describe("useAmountDisplay", () => {
   it("uses the persisted converted amount and skips the live query", () => {
     const result = useAmountDisplay({
       ledgerId,
-      amount: 100,
+      amount: "100",
       currency: "CNY",
       mainCurrency: "USD",
       date: "2026-03-20",
@@ -52,8 +59,8 @@ describe("useAmountDisplay", () => {
     });
 
     expect(result).toEqual({
-      converted: 13.33,
-      displayAmount: 13.33,
+      converted: "13.33",
+      displayAmount: "13.33",
       isDifferentCurrency: true,
       status: "success",
       isLoading: false,
@@ -61,9 +68,35 @@ describe("useAmountDisplay", () => {
       originalCurrency: "CNY",
       mainCurrency: "USD",
     });
-    expect(mockUseConvertedAmount).toHaveBeenCalledWith(ledgerId, 100, "CNY", "USD", "2026-03-20", {
-      enabled: false,
+    expect(mockUseConvertedAmount).toHaveBeenCalledWith(
+      ledgerId,
+      "100",
+      "CNY",
+      "USD",
+      "2026-03-20",
+      {
+        enabled: false,
+      }
+    );
+  });
+
+  it("ignores an invalid persisted value and uses live conversion", () => {
+    useAmountDisplay({
+      ledgerId,
+      amount: "9007199254740993.12",
+      currency: "CNY",
+      mainCurrency: "USD",
+      persistedConvertedAmount: "12oops",
     });
+
+    expect(mockUseConvertedAmount).toHaveBeenCalledWith(
+      ledgerId,
+      "9007199254740993.12",
+      "CNY",
+      "USD",
+      undefined,
+      { enabled: true }
+    );
   });
 
   it("shows the original amount while conversion is loading", () => {
@@ -71,14 +104,14 @@ describe("useAmountDisplay", () => {
 
     const result = useAmountDisplay({
       ledgerId,
-      amount: 100,
+      amount: "100",
       currency: "CNY",
       mainCurrency: "USD",
     });
 
     expect(result).toEqual({
       converted: null,
-      displayAmount: 100,
+      displayAmount: "100",
       isDifferentCurrency: true,
       status: "loading",
       isLoading: true,
@@ -97,14 +130,14 @@ describe("useAmountDisplay", () => {
 
     const result = useAmountDisplay({
       ledgerId,
-      amount: 100,
+      amount: "100",
       currency: "CNY",
       mainCurrency: "USD",
     });
 
     expect(result).toMatchObject({
       converted: null,
-      displayAmount: 100,
+      displayAmount: "100",
       isDifferentCurrency: true,
       status: "error",
       isLoading: false,
@@ -116,12 +149,12 @@ describe("useAmountDisplay", () => {
   it("keeps original amount when currencies are equal", () => {
     const result = useAmountDisplay({
       ledgerId,
-      amount: 88,
+      amount: "88",
       currency: "USD",
       mainCurrency: "USD",
     });
 
-    expect(result.displayAmount).toBe(88);
+    expect(result.displayAmount).toBe("88");
     expect(result.isDifferentCurrency).toBe(false);
     expect(result.originalCurrency).toBe("USD");
   });
@@ -129,25 +162,38 @@ describe("useAmountDisplay", () => {
   it("does not treat unknown or null currency as different", () => {
     const unknown = useAmountDisplay({
       ledgerId,
-      amount: 50,
+      amount: "50",
       currency: "unknown",
       mainCurrency: "USD",
     });
     const missing = useAmountDisplay({
       ledgerId,
-      amount: 50,
+      amount: "50",
       currency: null,
       mainCurrency: "USD",
     });
 
     expect(unknown.isDifferentCurrency).toBe(false);
-    expect(unknown.displayAmount).toBe(50);
+    expect(unknown.displayAmount).toBe("50");
     expect(unknown.status).toBe("idle");
     expect(unknown.originalCurrency).toBe("unknown");
 
     expect(missing.isDifferentCurrency).toBe(false);
-    expect(missing.displayAmount).toBe(50);
+    expect(missing.displayAmount).toBe("50");
     expect(missing.status).toBe("idle");
     expect(missing.originalCurrency).toBe("?");
+  });
+
+  it("does not convert when the target currency is unsupported", () => {
+    const result = useAmountDisplay({
+      ledgerId,
+      amount: "50",
+      currency: "USD",
+      mainCurrency: "unknown",
+    });
+
+    expect(result.isDifferentCurrency).toBe(false);
+    expect(result.originalCurrency).toBe("USD");
+    expect(result.displayAmount).toBe("50");
   });
 });

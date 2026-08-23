@@ -9,7 +9,6 @@ import type {
   SourceDocumentPort,
   SourceDocumentSubmissionPort,
 } from "@/application/contracts";
-import type { FxRateBook } from "@/modules/currency/application/ports";
 import type { LedgerReadPort } from "@/modules/ledger/application/ports";
 import type {
   BatchUpdateSourceDocumentsInput,
@@ -132,9 +131,14 @@ export interface SourceDocumentCredentialPorts {
 }
 
 export interface QuickEntryPorts {
-  categories: CategoryPort;
-  projections: LedgerProjectionPort;
-  rates: FxRateBook;
+  categories: Pick<CategoryPort, "get">;
+  projections: Pick<LedgerProjectionPort, "createManual">;
+  convertAmount(input: {
+    amount: string;
+    fromCurrency: string;
+    toCurrency: string;
+    date?: string;
+  }): Promise<{ convertedAmount: string; exchangeRate: string }>;
 }
 
 export type SourceDocumentRevisionPort = SourceDocumentPort;

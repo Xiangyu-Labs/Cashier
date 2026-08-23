@@ -14,7 +14,7 @@ import { CheckCheck, RefreshCw, Trash2, ArrowLeft, X, Save, XCircle, Pencil } fr
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { AnomalyCode, ProcessingFailureCode } from "@/application/contracts";
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 import { toStableAnomalyCode, toStableFailureCode } from "@/application/contracts";
 import { toast } from "sonner";
 import { SourceDocumentViewDetails } from "./SourceDocumentViewDetails";

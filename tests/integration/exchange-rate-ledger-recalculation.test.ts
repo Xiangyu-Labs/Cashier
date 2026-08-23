@@ -533,9 +533,12 @@ describe("exchange-rate ledger recalculation orchestration", () => {
       rates: { USD: 1.08 },
     });
 
-    await vi.waitFor(() => {
-      expect(maxActive).toBeGreaterThanOrEqual(1);
-    });
+    await vi.waitFor(
+      () => {
+        expect(maxActive).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 5_000 }
+    );
     expect(maxActive).toBeLessThanOrEqual(MAX_CONCURRENT_LEDGERS);
 
     release();

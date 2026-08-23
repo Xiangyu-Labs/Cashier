@@ -21,7 +21,7 @@ describe("rate calculation", () => {
   });
 
   it("treats the base currency as rate 1 when missing from the rates map", () => {
-    expect(resolveRateRatio(rates, "EUR", "USD")).toBe("1.100000000000");
+    expect(resolveRateRatio(rates, "EUR", "USD")).toBe("1.1");
     expect(Number.parseFloat(resolveRateRatio(rates, "CNY", "EUR"))).toBeCloseTo(0.1333333333, 8);
   });
 
@@ -40,5 +40,23 @@ describe("rate calculation", () => {
   it("throws CURRENCY_NOT_FOUND for unsupported currencies", () => {
     expect(() => resolveRateRatio(rates, "ZZZ", "CNY")).toThrow("Currency not found: ZZZ");
     expect(() => resolveRateRatio(rates, "USD", "ZZZ")).toThrow("Currency not found: ZZZ");
+  });
+
+  it("uses the full ratio for amount calculation and rounds only the reported rate", () => {
+    const result = convertWithRates(
+      "1000000000000",
+      { base: "EUR", date: "2026-02-04", rates: { USD: 3, CNY: 1 } },
+      "USD",
+      "CNY"
+    );
+
+    expect(result.convertedAmount).toBe("333333333333.33");
+    expect(result.exchangeRate).toBe("0.333333333333");
+  });
+
+  it("validates currencies before returning a same-currency ratio", () => {
+    expect(resolveRateRatio(rates, "USD", "USD")).toBe("1");
+    expect(() => resolveRateRatio(rates, "", "")).toThrow("Currency not found");
+    expect(() => resolveRateRatio(rates, "ZZZ", "ZZZ")).toThrow("Currency not found: ZZZ");
   });
 });

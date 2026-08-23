@@ -14,6 +14,7 @@ import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { dateStringSchema } from "@/lib/validation";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
+import { roundToCurrency } from "@/lib/money/currency-precision";
 
 // Current exchange-rate cache and provider adapter.
 
@@ -34,24 +35,30 @@ export type ExchangeRatesStoredHandler = (event: ExchangeRatesStoredEvent) => vo
 
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
-const providerCurrencyCodeSchema = z
-  .string()
-  .trim()
-  .toUpperCase()
-  .refine((code) => supportedCurrencySet.has(code), "Unsupported currency code");
+function assertSupportedCurrency(currency: string): void {
+  if (!supportedCurrencySet.has(currency)) {
+    throw new AppError(`Currency not found: ${currency}`, "CURRENCY_NOT_FOUND", 400);
+  }
+}
+
+const providerCurrencyCodeSchema = z.string().regex(/^[A-Z]{3}$/, "Invalid currency code");
+const providerBaseCurrencySchema = providerCurrencyCodeSchema.refine(
+  (code) => supportedCurrencySet.has(code),
+  "Unsupported base currency"
+);
 
 const providerRatesSchema = z.object({
-  base: providerCurrencyCodeSchema,
+  base: providerBaseCurrencySchema,
   date: dateStringSchema,
   rates: z.record(providerCurrencyCodeSchema, z.number().finite().positive()),
 });
 
 /**
  * Validate a Frankfurter-style provider payload before anything is written.
- * Rejects malformed dates, unsupported currency codes, and non-finite or
- * non-positive rates without touching the database.
+ * Rejects malformed dates, unsupported bases, invalid rate codes, and
+ * non-finite or non-positive rates without touching the database.
  */
-function parseProviderRates(data: unknown): ExchangeRates {
+function parseProviderRates(data: unknown, targetDate: string): ExchangeRates {
   const result = providerRatesSchema.safeParse(data);
   if (!result.success) {
     throw new AppError(
@@ -60,7 +67,13 @@ function parseProviderRates(data: unknown): ExchangeRates {
       502
     );
   }
-  return result.data;
+  return {
+    base: result.data.base,
+    date: targetDate,
+    rates: Object.fromEntries(
+      Object.entries(result.data.rates).filter(([currency]) => supportedCurrencySet.has(currency))
+    ),
+  };
 }
 
 // helpers
@@ -197,7 +210,7 @@ export class ExchangeRateService {
           502
         );
       }
-      const data = parseProviderRates(payload);
+      const data = parseProviderRates(payload, targetDateStr);
 
       const stored = await db.transaction(async (tx) => {
         const insertedRows = await tx
@@ -267,7 +280,9 @@ export class ExchangeRateService {
     toCurrency: string,
     date?: Date | string
   ): Promise<string> {
-    if (fromCurrency === toCurrency) return amount;
+    assertSupportedCurrency(fromCurrency);
+    assertSupportedCurrency(toCurrency);
+    if (fromCurrency === toCurrency) return roundToCurrency(amount, toCurrency);
 
     const ratesData = await this.getRates(date);
     return convertWithRates(amount, ratesData, fromCurrency, toCurrency).convertedAmount;
@@ -290,10 +305,12 @@ export class ExchangeRateService {
    * For N items with M unique dates, this performs M DB queries instead of N.
    */
   static async convertBatch(
-    items: Array<{ amount: string; from: string; to: string; date?: Date | string }>,
+    items: Array<{ amount: string; from: string; date?: Date | string }>,
     targetCurrency: string
   ): Promise<Array<{ convertedAmount: string; exchangeRate: string }>> {
     if (items.length === 0) return [];
+    assertSupportedCurrency(targetCurrency);
+    for (const item of items) assertSupportedCurrency(item.from);
 
     // 1. Same-currency items never touch the database or provider.
     const crossCurrencyItems = items.filter((item) => item.from !== targetCurrency);
@@ -314,7 +331,7 @@ export class ExchangeRateService {
     // 4. Map results synchronously using the pre-loaded snapshots.
     return items.map((item) => {
       if (item.from === targetCurrency) {
-        return { convertedAmount: item.amount, exchangeRate: "1" };
+        return { convertedAmount: roundToCurrency(item.amount, targetCurrency), exchangeRate: "1" };
       }
 
       const dateKey = formatExchangeRateDate(item.date ?? new Date());

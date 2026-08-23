@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 
 interface EntriesToolbarShellProps {
   children: ReactNode;

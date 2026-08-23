@@ -1,38 +1,12 @@
 "use client";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { useAmountDisplay } from "@/modules/currency/client";
-import { cn } from "@/lib/utils";
-
-export type AmountVariant = "hero" | "summary" | "group" | "item" | "secondary";
-
-const amountVariantClasses: Record<AmountVariant, string> = {
-  hero: "text-3xl font-semibold text-text sm:text-4xl",
-  summary: "text-base font-semibold text-text",
-  group: "text-xs font-medium text-muted-foreground",
-  item: "text-base font-semibold text-text",
-  secondary: "text-[10px] font-normal text-muted-foreground opacity-70",
-};
-
-export function amountTextClassName(variant: AmountVariant, className?: string) {
-  return cn("font-mono tabular-nums", amountVariantClasses[variant], className);
-}
-
-export function AmountText({
-  children,
-  variant,
-  className,
-}: {
-  children: React.ReactNode;
-  variant: AmountVariant;
-  className?: string;
-}) {
-  return <span className={amountTextClassName(variant, className)}>{children}</span>;
-}
+import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
+import { AmountText, type AmountVariant } from "./amount-text";
 
 interface AmountDisplayProps {
   ledgerId: string;
-  amount: number;
+  amount: string;
   currency: string | null | undefined;
   mainCurrency: string;
   date?: string | null;
@@ -54,6 +28,7 @@ export function AmountDisplay({
   showOriginal = true,
 }: AmountDisplayProps) {
   const locale = useLocale();
+  const t = useTranslations("Currency");
   const { displayAmount, isDifferentCurrency, originalCurrency, status } = useAmountDisplay({
     ledgerId,
     amount,
@@ -63,35 +38,30 @@ export function AmountDisplay({
     ...(persistedConvertedAmount != null ? { persistedConvertedAmount } : {}),
   });
 
-  // While loading or after a failed conversion the original amount is shown in
-  // its own currency; the main-currency symbol must never label it.
-  if (status === "loading" || status === "error") {
-    return (
-      <div
-        className={`flex flex-col items-end ${className}`}
-        {...(status === "loading" ? { "aria-busy": true } : {})}
-      >
-        <AmountText variant={variant}>
-          {formatCurrencyAmount(amount, originalCurrency, locale)}
-        </AmountText>
-      </div>
-    );
-  }
+  const showConverted = isDifferentCurrency && status === "success";
+  const displayCurrency = showConverted ? mainCurrency : originalCurrency;
+  const currencyDisplay = isDifferentCurrency && !showConverted ? "code" : "narrowSymbol";
 
   return (
-    <div className={`flex flex-col items-end ${className}`}>
+    <div
+      className={`flex flex-col items-end ${className}`}
+      aria-live="polite"
+      aria-atomic="true"
+      {...(status === "loading" ? { "aria-busy": true } : {})}
+    >
       <AmountText variant={variant}>
-        {formatCurrencyAmount(
-          displayAmount,
-          isDifferentCurrency ? mainCurrency : originalCurrency,
-          locale
-        )}
+        {formatCurrencyAmount(displayAmount, displayCurrency, locale, { currencyDisplay })}
       </AmountText>
-      {isDifferentCurrency && showOriginal && (
+      {showConverted && showOriginal ? (
         <AmountText variant="secondary">
-          ≈ {formatCurrencyAmount(amount, originalCurrency, locale)}
+          ≈ {formatCurrencyAmount(amount, originalCurrency, locale, { currencyDisplay: "code" })}
         </AmountText>
-      )}
+      ) : null}
+      {status === "error" ? (
+        <span className="text-xs font-normal text-muted-foreground">
+          {t("conversionUnavailable")}
+        </span>
+      ) : null}
     </div>
   );
 }

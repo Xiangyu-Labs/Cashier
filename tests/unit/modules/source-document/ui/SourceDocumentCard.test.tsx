@@ -16,8 +16,11 @@ vi.mock("@/modules/source-document/hooks/useSourceDocumentRecoveryMutations", ()
   }),
 }));
 
-vi.mock("@/modules/currency/ui", () => ({
+vi.mock("@/modules/currency/ui/AmountDisplay", () => ({
   AmountDisplay: () => <span>CNY 12.00</span>,
+}));
+
+vi.mock("@/modules/currency/ui/amount-text", () => ({
   AmountText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 

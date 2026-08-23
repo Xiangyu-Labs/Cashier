@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ValidationError } from "@/lib/errors";
 import { optionalDateStringSchema } from "@/lib/validation";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
-import { DECIMAL_STRING_PATTERN, normalize } from "@/lib/money/decimal";
+import { isValidDecimal, normalize } from "@/lib/money/decimal";
 
 const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
@@ -22,7 +22,7 @@ export const currencyCodeSchema = z
  */
 const decimalAmountSchema = z
   .string()
-  .regex(DECIMAL_STRING_PATTERN, "Amount must be a plain decimal string")
+  .refine(isValidDecimal, "Amount must be a valid decimal string")
   .transform(normalize);
 
 export const convertCurrencyInputSchema = z.object({

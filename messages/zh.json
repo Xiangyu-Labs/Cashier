@@ -946,6 +946,9 @@
     "loginSafe": "如果这是您本人操作，无需采取任何行动。",
     "loginWarn": "如果不是您本人登录，请立即保护您的账户安全。"
   },
+  "Currency": {
+    "conversionUnavailable": "暂时无法换算"
+  },
   "DuplicateReview": {
     "title": "疑似重复账单",
     "confidence": "置信度 {percent}%",

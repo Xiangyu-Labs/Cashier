@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { SUPPORTED_CURRENCIES } from "@/config/currencies";
 import { useLocale } from "next-intl";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
-import { AmountText, amountTextClassName } from "@/modules/currency/ui";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
 
 interface EntryHeaderProps {
   itemName: string;
@@ -17,7 +17,7 @@ interface EntryHeaderProps {
   category?: EntryCategory;
   preferredCurrencies: string[];
   mainCurrency: string;
-  convertedAmount: number | null;
+  convertedAmount: string | null;
   isDifferentCurrency: boolean;
   onFieldChange: (
     field: "itemName" | "amount" | "currency",

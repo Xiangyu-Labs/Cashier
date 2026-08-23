@@ -4,8 +4,7 @@ import { EntryCardShell } from "@/components/entry-card-shell";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cn } from "@/lib/utils";
-import { parseAmount } from "@/lib/formatters";
-import { AmountDisplay } from "@/modules/currency/ui";
+import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
@@ -118,7 +117,7 @@ export const LedgerEntryCard = memo(function LedgerEntryCard({
 
               <AmountDisplay
                 ledgerId={ledgerEntry.ledgerId}
-                amount={parseAmount(ledgerEntry.amount)}
+                amount={ledgerEntry.amount}
                 currency={ledgerEntry.currency}
                 mainCurrency={mainCurrency}
                 date={ledgerEntry.sourceDocument?.entryDate ?? ledgerEntry.createdAt}

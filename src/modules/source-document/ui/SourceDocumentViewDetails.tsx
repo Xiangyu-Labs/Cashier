@@ -10,7 +10,7 @@ import { DateFilter } from "@/components/ui/date-filter";
 import { Wallet, FileText, ImagePlay, Maximize2, CheckSquare, X, Plus } from "lucide-react";
 import { formatDateTimeForApi } from "@/lib/date-utils";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 import { Card } from "@/components/ui/card";
 import { SelectableCardSurface } from "@/components/selectable-card-surface";
 import { cn } from "@/lib/utils";

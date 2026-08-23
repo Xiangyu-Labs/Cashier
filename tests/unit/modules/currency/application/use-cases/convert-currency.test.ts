@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertCurrency } from "@/modules/currency/application/use-cases/convert-currency";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 
-const rateBook = { convert: vi.fn() } as unknown as FxRateBook;
+const rateBook: Pick<FxRateBook, "convert"> = { convert: vi.fn() };
 
 describe("convertCurrency", () => {
   afterEach(() => {

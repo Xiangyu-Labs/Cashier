@@ -16,7 +16,7 @@ export interface ConvertEntryAmountResult {
 
 export async function convertEntryAmount(
   input: ConvertEntryAmountInput,
-  rates: FxRateBook
+  rates: Pick<FxRateBook, "getRates">
 ): Promise<ConvertEntryAmountResult> {
   const { amount, fromCurrency, toCurrency, date } = input;
 

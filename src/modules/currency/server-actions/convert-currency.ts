@@ -17,8 +17,8 @@ export const convertCurrencyAction = withLedgerAccess(
     from: string,
     to: string,
     date?: string
-  ): Promise<ConvertCurrencyResult> =>
-    convertCurrency(
+  ): Promise<ConvertCurrencyResult> => {
+    const result = await convertCurrency(
       parseConvertCurrencyInput({
         amount,
         from,
@@ -26,7 +26,9 @@ export const convertCurrencyAction = withLedgerAccess(
         ...(date != null ? { date } : {}),
       }),
       serverComposition.exchangeRates
-    )
+    );
+    return { converted: result.converted };
+  }
 );
 
 export const batchConvertCurrencyAction = withLedgerAccess(

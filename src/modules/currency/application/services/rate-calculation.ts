@@ -13,7 +13,6 @@ export function resolveRateRatio(
   fromCurrency: string,
   toCurrency: string
 ): string {
-  if (fromCurrency === toCurrency) return "1";
   const fullRates = { ...rates.rates, [rates.base]: 1 };
   const fromRate = fullRates[fromCurrency];
   const toRate = fullRates[toCurrency];
@@ -31,7 +30,8 @@ export function resolveRateRatio(
     throw new AppError(`Currency not found: ${missing}`, "CURRENCY_NOT_FOUND", 400);
   }
 
-  return round(divide(String(toRate), String(fromRate)), 12);
+  if (fromCurrency === toCurrency) return "1";
+  return divide(String(toRate), String(fromRate));
 }
 
 /**
@@ -44,9 +44,9 @@ export function convertWithRates(
   fromCurrency: string,
   toCurrency: string
 ): { convertedAmount: string; exchangeRate: string } {
-  const exchangeRate = resolveRateRatio(rates, fromCurrency, toCurrency);
+  const rawRatio = resolveRateRatio(rates, fromCurrency, toCurrency);
   return {
-    convertedAmount: roundToCurrency(multiply(amount, exchangeRate), toCurrency),
-    exchangeRate,
+    convertedAmount: roundToCurrency(multiply(amount, rawRatio), toCurrency),
+    exchangeRate: round(rawRatio, 12),
   };
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useConvertedAmount } from "./useConvertedAmount";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { isValidDecimal } from "@/lib/money/decimal";
 
 interface UseAmountDisplayOptions {
   ledgerId: string;
-  amount: number;
+  amount: string;
   currency: string | null | undefined;
   mainCurrency: string;
   date?: string | null;
@@ -17,11 +19,13 @@ interface UseAmountDisplayOptions {
 
 export type UseAmountDisplayStatus = "idle" | "loading" | "success" | "error";
 
+const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
+
 interface UseAmountDisplayReturn {
   /** The converted amount, or null while loading/errored */
-  converted: number | null;
+  converted: string | null;
   /** The amount to display (converted if different currency) */
-  displayAmount: number;
+  displayAmount: string;
   /** Whether the currency is different from main currency */
   isDifferentCurrency: boolean;
   status: UseAmountDisplayStatus;
@@ -46,11 +50,12 @@ export function useAmountDisplay({
   date,
   persistedConvertedAmount,
 }: UseAmountDisplayOptions): UseAmountDisplayReturn {
-  const isDifferentCurrency = Boolean(
-    currency != null && currency !== "" && currency !== mainCurrency && currency !== "unknown"
-  );
+  const validOriginalCurrency = currency != null && supportedCurrencySet.has(currency);
+  const validMainCurrency = supportedCurrencySet.has(mainCurrency);
+  const isDifferentCurrency =
+    validOriginalCurrency && validMainCurrency && currency !== mainCurrency;
   const hasPersistedConvertedAmount =
-    persistedConvertedAmount != null && persistedConvertedAmount !== "";
+    persistedConvertedAmount != null && isValidDecimal(persistedConvertedAmount);
   const usePersisted = isDifferentCurrency && hasPersistedConvertedAmount;
 
   const conversion = useConvertedAmount(ledgerId, amount, currency, mainCurrency, date, {
@@ -59,7 +64,7 @@ export function useAmountDisplay({
   const originalCurrency = currency ?? "?";
 
   if (usePersisted) {
-    const converted = Number.parseFloat(persistedConvertedAmount!);
+    const converted = persistedConvertedAmount!;
     return {
       converted,
       displayAmount: converted,

@@ -17,7 +17,10 @@ const CLAIM_LIMIT = 25;
 const CLAIM_LEASE_MS = 300_000;
 export const MAX_CONCURRENT_LEDGERS = 2;
 
-let orchestrationInitialized = false;
+const orchestrationDisposerSymbol = Symbol.for("cashier.exchange-rate-ledger-recalculation");
+type OrchestrationGlobal = typeof globalThis & {
+  [orchestrationDisposerSymbol]?: () => void;
+};
 let recalculateServicePromise: Promise<
   typeof import("@/modules/ledger/application/services/recalculate-entries-converted-amount")
 > | null = null;
@@ -29,16 +32,19 @@ function loadRecalculateService() {
 }
 
 export function initializeExchangeRateLedgerRecalculationOrchestration(): void {
-  if (orchestrationInitialized) {
-    return;
-  }
+  const orchestrationGlobal = globalThis as OrchestrationGlobal;
+  orchestrationGlobal[orchestrationDisposerSymbol]?.();
 
-  registerExchangeRatesStoredHandler(
+  orchestrationGlobal[orchestrationDisposerSymbol] = registerExchangeRatesStoredHandler(
     (event) => onExchangeRatesStored(event),
     serverComposition.exchangeRates
   );
+}
 
-  orchestrationInitialized = true;
+export function shutdownExchangeRateLedgerRecalculationOrchestration(): void {
+  const orchestrationGlobal = globalThis as OrchestrationGlobal;
+  orchestrationGlobal[orchestrationDisposerSymbol]?.();
+  delete orchestrationGlobal[orchestrationDisposerSymbol];
 }
 
 /**

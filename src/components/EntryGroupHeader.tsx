@@ -21,4 +21,4 @@ export function EntryGroupHeader({ title, totalLabel, subtitle }: EntryGroupHead
     </div>
   );
 }
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";

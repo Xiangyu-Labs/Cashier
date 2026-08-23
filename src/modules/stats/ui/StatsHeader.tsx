@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { type DateRangeType } from "@/lib/date-utils";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrencyAmount } from "@/lib/format/currency";
-import { AmountText } from "@/modules/currency/ui";
+import { AmountText } from "@/modules/currency/ui/amount-text";
 import type { EnhancedStatsDto } from "@/modules/stats/contracts";
 import { abs, compare } from "@/lib/money/decimal";
 

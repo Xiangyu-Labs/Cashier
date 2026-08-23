@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertAmountsBatch } from "@/modules/currency/application/use-cases/convert-amounts-batch";
-import type { FxRateBook } from "@/modules/currency/application/ports";
+import type { ExchangeRates } from "@/modules/currency/application/ports";
 
-const rateBook = { getRates: vi.fn() } as unknown as FxRateBook;
+const rateBook: { getRates: (date?: Date | string) => Promise<ExchangeRates> } = {
+  getRates: vi.fn(),
+};
 
 describe("convertAmountsBatch", () => {
   afterEach(() => {
@@ -123,9 +125,43 @@ describe("convertAmountsBatch", () => {
 
     expect(getRatesSpy).not.toHaveBeenCalled();
     expect(results).toEqual([
-      { convertedAmount: "10", exchangeRate: "1" },
-      { convertedAmount: "20", exchangeRate: "1" },
+      { convertedAmount: "10.00", exchangeRate: "1" },
+      { convertedAmount: "20.00", exchangeRate: "1" },
     ]);
+  });
+
+  it("limits unique-date lookups to eight and stops taking work after failure", async () => {
+    const deferred = Array.from({ length: 8 }, () => Promise.withResolvers<ExchangeRates>());
+    let active = 0;
+    let peak = 0;
+    const getRates = vi.fn(async () => {
+      const index = active++;
+      peak = Math.max(peak, active);
+      try {
+        return await deferred[index]!.promise;
+      } finally {
+        active--;
+      }
+    });
+    const conversion = convertAmountsBatch(
+      Array.from({ length: 500 }, (_, index) => ({
+        amount: "1",
+        fromCurrency: "USD",
+        date: new Date(2024, 0, index + 1).toISOString().slice(0, 10),
+      })),
+      "CNY",
+      { getRates }
+    );
+
+    await vi.waitFor(() => expect(getRates).toHaveBeenCalledTimes(8));
+    deferred[0]!.reject(new Error("first failure"));
+    for (const pending of deferred.slice(1)) {
+      pending.resolve({ base: "EUR", date: "2024-01-01", rates: { USD: 1, CNY: 7 } });
+    }
+
+    await expect(conversion).rejects.toThrow("first failure");
+    expect(peak).toBe(8);
+    expect(getRates).toHaveBeenCalledTimes(8);
   });
 
   it("keeps the real exchange rate for zero-amount cross-currency items", async () => {

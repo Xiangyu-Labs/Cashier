@@ -1,9 +1,7 @@
 import { formatDateTimeForApi, getDateInTimezone } from "@/lib/date-utils";
 import { roundToCurrency } from "@/lib/money/currency-precision";
-import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
 import { getEntryCategoryName } from "@/modules/ledger/source-document-queries";
 import type { QuickEntryResponseDto } from "@/modules/source-document/contracts";
-import type { FxRateBook } from "@/modules/currency/application/ports";
 import type { QuickEntryPorts } from "../ports";
 
 export interface CreateQuickEntryPayload {
@@ -26,23 +24,6 @@ interface QuickEntryInsertData {
   description: string | null;
   amount: string;
   entryDate: string;
-}
-
-async function resolveConversion(
-  amount: string,
-  fromCurrency: string,
-  toCurrency: string,
-  date: string,
-  rates: FxRateBook
-): Promise<ConversionResult> {
-  if (fromCurrency === toCurrency) {
-    return {
-      convertedAmount: roundToCurrency(amount, toCurrency),
-      exchangeRate: "1",
-    };
-  }
-
-  return convertWithRates(amount, await rates.getRates(date), fromCurrency, toCurrency);
 }
 
 async function createQuickEntryAtomically(
@@ -95,7 +76,12 @@ export async function createQuickEntry<
 
   const [categoryName, conversion] = await Promise.all([
     getEntryCategoryName(ledgerId, payload.categoryId, ports.categories),
-    resolveConversion(payload.amount, entryCurrency, mainCurrency, entryDate, ports.rates),
+    ports.convertAmount({
+      amount: payload.amount,
+      fromCurrency: entryCurrency,
+      toCurrency: mainCurrency,
+      date: entryDate,
+    }),
   ]);
 
   const result = await createQuickEntryAtomically(

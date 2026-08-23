@@ -3,8 +3,7 @@ import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { parseAmount } from "@/lib/formatters";
-import { AmountDisplay } from "@/modules/currency/ui";
+import { AmountDisplay } from "@/modules/currency/ui/AmountDisplay";
 
 /**
  * Variant styles for different source document states.
@@ -88,7 +87,7 @@ export const LedgerEntryItem = memo(function LedgerEntryItem({
       {/* Right: Amount */}
       <AmountDisplay
         ledgerId={ledgerEntry.ledgerId}
-        amount={parseAmount(ledgerEntry.amount)}
+        amount={ledgerEntry.amount}
         currency={ledgerEntry.currency}
         mainCurrency={mainCurrency}
         date={sourceDocumentEntryDate ?? ledgerEntry.createdAt}

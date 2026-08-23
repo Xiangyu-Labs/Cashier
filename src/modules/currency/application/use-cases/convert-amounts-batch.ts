@@ -1,6 +1,11 @@
 import { AppError } from "@/lib/errors";
 import type { ExchangeRates, FxRateBook } from "../ports";
 import { convertWithRates } from "../services/rate-calculation";
+import { roundToCurrency } from "@/lib/money/currency-precision";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+
+export const MAX_CONCURRENT_RATE_LOOKUPS = 8;
+const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
 
 export interface CurrencyBatchConversionItem {
   amount: string;
@@ -21,18 +26,33 @@ function getDateKey(date?: string): string {
 
 async function loadRatesByDate(
   items: CurrencyBatchConversionItem[],
-  rateBook: FxRateBook
+  rateBook: Pick<FxRateBook, "getRates">
 ): Promise<Map<string, ExchangeRates>> {
   const uniqueDateKeys = [...new Set(items.map((item) => getDateKey(item.date)))];
-  const ratesEntries = await Promise.all(
-    uniqueDateKeys.map(async (dateKey) => {
-      const dateArg = dateKey === "today" ? undefined : dateKey;
-      const rates = await rateBook.getRates(dateArg);
-      return [dateKey, rates] as const;
-    })
-  );
+  const ratesByDate = new Map<string, ExchangeRates>();
+  let nextIndex = 0;
+  let firstError: unknown;
 
-  return new Map(ratesEntries);
+  async function worker(): Promise<void> {
+    while (firstError == null) {
+      const index = nextIndex++;
+      const dateKey = uniqueDateKeys[index];
+      if (dateKey == null) return;
+      const dateArg = dateKey === "today" ? undefined : dateKey;
+      try {
+        ratesByDate.set(dateKey, await rateBook.getRates(dateArg));
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_CONCURRENT_RATE_LOOKUPS, uniqueDateKeys.length) }, worker)
+  );
+  if (firstError != null) throw firstError;
+
+  return ratesByDate;
 }
 
 function resolveBatchItemConversion(
@@ -41,8 +61,11 @@ function resolveBatchItemConversion(
   ratesData: ExchangeRates
 ): CurrencyBatchConversionResult {
   if (item.fromCurrency === targetCurrency) {
+    if (!supportedCurrencySet.has(targetCurrency)) {
+      throw new AppError(`Currency not found: ${targetCurrency}`, "CURRENCY_NOT_FOUND", 400);
+    }
     return {
-      convertedAmount: item.amount,
+      convertedAmount: roundToCurrency(item.amount, targetCurrency),
       exchangeRate: "1",
     };
   }
@@ -53,7 +76,7 @@ function resolveBatchItemConversion(
 export async function convertAmountsBatch(
   items: CurrencyBatchConversionItem[],
   defaultTargetCurrency: string,
-  rateBook: FxRateBook
+  rateBook: Pick<FxRateBook, "getRates">
 ): Promise<CurrencyBatchConversionResult[]> {
   if (items.length === 0) {
     return [];
@@ -69,8 +92,11 @@ export async function convertAmountsBatch(
   return items.map((item) => {
     const targetCurrency = item.toCurrency ?? defaultTargetCurrency;
     if (item.fromCurrency === targetCurrency) {
+      if (!supportedCurrencySet.has(targetCurrency)) {
+        throw new AppError(`Currency not found: ${targetCurrency}`, "CURRENCY_NOT_FOUND", 400);
+      }
       return {
-        convertedAmount: item.amount,
+        convertedAmount: roundToCurrency(item.amount, targetCurrency),
         exchangeRate: "1",
       };
     }

@@ -58,6 +58,28 @@ describe("currency contract schemas", () => {
     ).toThrow("Missing required parameters");
   });
 
+  it("accepts 1000 digits and rejects 1001 digits for single and batch input", () => {
+    const accepted = `1${"0".repeat(999)}`;
+    const rejected = `1${"0".repeat(1000)}`;
+
+    expect(parseConvertCurrencyInput({ amount: accepted, from: "USD", to: "CNY" }).amount).toBe(
+      accepted
+    );
+    expect(() => parseConvertCurrencyInput({ amount: rejected, from: "USD", to: "CNY" })).toThrow();
+    expect(
+      parseBatchConvertCurrencyInput({
+        items: [{ amount: accepted, currency: "USD" }],
+        targetCurrency: "CNY",
+      }).items[0]?.amount
+    ).toBe(accepted);
+    expect(() =>
+      parseBatchConvertCurrencyInput({
+        items: [{ amount: rejected, currency: "USD" }],
+        targetCurrency: "CNY",
+      })
+    ).toThrow();
+  });
+
   it("rejects malformed batch input and over-sized batches", () => {
     expect(() => parseBatchConvertCurrencyInput({ items: [], targetCurrency: "CNY" })).toThrow(
       "Missing required parameters"

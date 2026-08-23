@@ -1,12 +1,17 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { convertCurrencyAction } from "../actions";
 import type { ConvertCurrencyResult } from "../contracts";
+import { SUPPORTED_CURRENCIES } from "@/config/currencies";
+import { formatDateTimeForApi } from "@/lib/date-utils";
+import { isValidDecimal } from "@/lib/money/decimal";
 
 export type UseConvertedAmountReturn =
-  | { status: "idle"; converted: number }
+  | { status: "idle"; converted: string }
   | { status: "loading"; converted: null }
-  | { status: "success"; converted: number }
+  | { status: "success"; converted: string }
   | { status: "error"; converted: null; error: Error };
 
 export interface UseConvertedAmountOptions {
@@ -14,57 +19,64 @@ export interface UseConvertedAmountOptions {
   enabled?: boolean;
 }
 
-function getLocalDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+const supportedCurrencySet = new Set<string>(SUPPORTED_CURRENCIES);
+const CIVIL_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-function normalizeDate(date?: string | null): string | undefined {
-  if (date == null || date === "") return undefined;
-  const [datePart] = date.split("T");
-  return datePart != null && datePart !== "" ? datePart : undefined;
+function resolveEffectiveDate(date?: string | null): string | null {
+  if (date == null || date === "") return formatDateTimeForApi(new Date());
+  if (CIVIL_DATE_PATTERN.test(date)) {
+    const parsed = new Date(`${date}T00:00:00`);
+    return !Number.isNaN(parsed.getTime()) && formatDateTimeForApi(parsed) === date ? date : null;
+  }
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime()) ? null : formatDateTimeForApi(parsed);
 }
 
 export function useConvertedAmount(
   ledgerId: string,
-  amount: number,
+  amount: string,
   from: string | null | undefined,
   to: string | null | undefined,
   date?: string | null,
   options: UseConvertedAmountOptions = {}
 ): UseConvertedAmountReturn {
-  const normalizedFrom = from == null || from === "" || from === "unknown" ? null : from;
-  const normalizedTo = to == null || to === "" || to === "unknown" ? null : to;
-  const requestedDate = normalizeDate(date);
-  const localToday = getLocalDateString();
-  const effectiveDate = requestedDate ?? localToday;
+  const normalizedFrom = from != null && supportedCurrencySet.has(from) ? from : null;
+  const normalizedTo = to != null && supportedCurrencySet.has(to) ? to : null;
+  const effectiveDate = resolveEffectiveDate(date);
+  const localToday = formatDateTimeForApi(new Date());
 
   const isSameCurrency = normalizedFrom != null && normalizedFrom === normalizedTo;
-  const isMissingInfo = amount === 0 || normalizedFrom == null || normalizedTo == null;
+  const isMissingInfo =
+    !isValidDecimal(amount) ||
+    normalizedFrom == null ||
+    normalizedTo == null ||
+    effectiveDate == null;
   const canConvert = options.enabled !== false && !isSameCurrency && !isMissingInfo;
 
   const { data, isLoading, error } = useQuery<ConvertCurrencyResult>({
     queryKey: queryKeys.convert(
-      String(amount),
+      ledgerId,
+      amount,
       normalizedFrom ?? "__missing_from__",
       normalizedTo ?? "__missing_to__",
-      effectiveDate
+      effectiveDate ?? "__invalid_date__"
     ),
     queryFn: async () => {
       if (normalizedFrom == null || normalizedTo == null) {
-        return { converted: String(amount) };
+        return { converted: amount };
       }
 
-      return convertCurrencyAction(
+      const result = await convertCurrencyAction(
         ledgerId,
-        String(amount),
+        amount,
         normalizedFrom,
         normalizedTo,
-        requestedDate
+        effectiveDate ?? ""
       );
+      if (typeof result.converted !== "string" || !isValidDecimal(result.converted)) {
+        throw new Error("Invalid currency conversion result");
+      }
+      return result;
     },
     enabled: canConvert,
     // Historical dates are immutable; only today's "live" conversion may
@@ -89,6 +101,6 @@ export function useConvertedAmount(
 
   return {
     status: "success",
-    converted: data?.converted != null ? Number.parseFloat(data.converted) : amount,
+    converted: data?.converted ?? amount,
   };
 }

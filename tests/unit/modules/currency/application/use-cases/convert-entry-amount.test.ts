@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 import type { FxRateBook } from "@/modules/currency/application/ports";
 
-const rateBook = { getRates: vi.fn() } as unknown as FxRateBook;
+const rateBook: Pick<FxRateBook, "getRates"> = { getRates: vi.fn() };
 
 describe("convertEntryAmount", () => {
   afterEach(() => {
@@ -43,5 +43,15 @@ describe("convertEntryAmount", () => {
         rateBook
       )
     ).rejects.toThrow("upstream unavailable");
+  });
+
+  it.each([
+    ["USD", "1.235", "1.24"],
+    ["JPY", "1.5", "2"],
+    ["KWD", "1.2345", "1.235"],
+  ])("rounds same-currency %s amounts to its minor unit", async (currency, amount, expected) => {
+    await expect(
+      convertEntryAmount({ amount, fromCurrency: currency, toCurrency: currency }, rateBook)
+    ).resolves.toEqual({ convertedAmount: expected, exchangeRate: "1" });
   });
 });

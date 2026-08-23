@@ -7,7 +7,7 @@ import { type ReactNode, useCallback, useMemo, memo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { formatDateTimeForApi, parseDateString } from "@/lib/date-utils";
 import { parseISO } from "date-fns";
-import { useAmountDisplay } from "@/modules/currency/client";
+import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
 import { EntryHeader } from "./LedgerEntryViewDetails/components/EntryHeader";
@@ -87,7 +87,8 @@ export const LedgerEntryViewDetails = memo(function LedgerEntryViewDetails({
     pendingChanges.amount !== undefined || pendingChanges.currency !== undefined;
   const { converted, isDifferentCurrency, status } = useAmountDisplay({
     ledgerId: ledgerEntry.ledgerId,
-    amount: displayData.amount,
+    amount:
+      pendingChanges.amount !== undefined ? String(pendingChanges.amount) : ledgerEntry.amount,
     currency: displayData.currency,
     mainCurrency,
     date: entryDate != null && entryDate !== "" ? entryDate : ledgerEntry.createdAt,

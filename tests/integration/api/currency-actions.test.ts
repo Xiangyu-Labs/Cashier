@@ -43,7 +43,7 @@ describe("Currency Actions", () => {
   describe("convertCurrencyAction", () => {
     it("converts same currency (no-op)", async () => {
       const result = await convertCurrencyAction(TEST_LEDGER_ID, "100", "CNY", "CNY");
-      expect(result.converted).toBe("100");
+      expect(result.converted).toBe("100.00");
     });
 
     it("converts CNY to USD", async () => {
@@ -115,7 +115,7 @@ describe("Currency Actions", () => {
       ];
 
       const result = await batchConvertCurrencyAction(TEST_LEDGER_ID, items, "CNY");
-      expect(result.results).toEqual(["100", "200"]);
+      expect(result.results).toEqual(["100.00", "200.00"]);
     });
 
     it("rejects items without a supported currency", async () => {

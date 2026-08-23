@@ -16,7 +16,7 @@ export interface FxRateBook {
     date?: Date | string
   ): Promise<string>;
   convertBatch(
-    items: Array<{ amount: string; from: string; to: string; date?: Date | string }>,
+    items: Array<{ amount: string; from: string; date?: Date | string }>,
     targetCurrency: string
   ): Promise<Array<{ convertedAmount: string; exchangeRate: string }>>;
   registerRatesStoredHandler(handler: ExchangeRatesStoredHandler): () => void;

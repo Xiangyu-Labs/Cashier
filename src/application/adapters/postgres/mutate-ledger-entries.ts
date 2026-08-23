@@ -16,26 +16,10 @@ import { postgresFxRateBook } from "./exchange-rate";
 import { ConflictError } from "@/lib/errors";
 import { postgresSettingsAdapter } from "./business-ports";
 import type { BatchActionResult } from "@/lib/batch-ids";
-import { convertWithRates } from "@/modules/currency/application/services/rate-calculation";
+import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 
 function normalizeCurrency(value: string | null | undefined): string {
   return value != null && value !== "" ? value : "CNY";
-}
-
-async function convertEntryAmount(input: {
-  amount: string;
-  fromCurrency: string;
-  toCurrency: string;
-  date?: string;
-}) {
-  if (input.fromCurrency === input.toCurrency) {
-    return {
-      convertedAmount: roundToCurrency(input.amount, input.toCurrency),
-      exchangeRate: "1",
-    };
-  }
-  const rates = await postgresFxRateBook.getRates(input.date);
-  return convertWithRates(input.amount, rates, input.fromCurrency, input.toCurrency);
 }
 
 async function getLedgerMainCurrency(ledgerId: string): Promise<string> {
@@ -95,12 +79,15 @@ async function createLedgerEntryAttempt(
   const entryDate =
     sourceDoc.entryDate != null && sourceDoc.entryDate !== "" ? sourceDoc.entryDate : undefined;
 
-  const conversion = await convertEntryAmount({
-    amount: input.amount,
-    fromCurrency: entryCurrency,
-    toCurrency: mainCurrency,
-    ...(entryDate !== undefined ? { date: entryDate } : {}),
-  });
+  const conversion = await convertEntryAmount(
+    {
+      amount: input.amount,
+      fromCurrency: entryCurrency,
+      toCurrency: mainCurrency,
+      ...(entryDate !== undefined ? { date: entryDate } : {}),
+    },
+    postgresFxRateBook
+  );
 
   if (sourceDoc.activeRevisionId == null) {
     await ensureTargetLedgerProjection(input.ledgerId, input.sourceDocumentId);
@@ -237,14 +224,17 @@ async function updateLedgerEntryAttempt(
   let convertedAmount = targetEntry.convertedAmount;
   let exchangeRate = targetEntry.exchangeRate;
   if (input.amount !== undefined || input.currency !== undefined) {
-    const conversion = await convertEntryAmount({
-      amount: nextAmount,
-      fromCurrency: nextCurrency,
-      toCurrency: mainCurrency,
-      ...(targetDocument.entryDate != null && targetDocument.entryDate !== ""
-        ? { date: targetDocument.entryDate }
-        : {}),
-    });
+    const conversion = await convertEntryAmount(
+      {
+        amount: nextAmount,
+        fromCurrency: nextCurrency,
+        toCurrency: mainCurrency,
+        ...(targetDocument.entryDate != null && targetDocument.entryDate !== ""
+          ? { date: targetDocument.entryDate }
+          : {}),
+      },
+      postgresFxRateBook
+    );
     convertedAmount = conversion?.convertedAmount ?? null;
     exchangeRate = conversion?.exchangeRate ?? null;
   }
@@ -366,7 +356,6 @@ export async function batchUpdateLedgerEntries(input: {
           initialRows.map((row) => ({
             amount: input.amount ?? row.amount,
             from: normalizeCurrency(input.currency ?? row.currency),
-            to: initialMainCurrency,
             ...(row.entryDate != null && row.entryDate !== "" ? { date: row.entryDate } : {}),
           })),
           initialMainCurrency

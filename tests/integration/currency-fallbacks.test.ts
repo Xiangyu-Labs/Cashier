@@ -75,7 +75,7 @@ describe("currency fallbacks integration", () => {
       ExchangeRateService
     );
 
-    expect(result).toEqual([{ convertedAmount: "100", exchangeRate: "1" }]);
+    expect(result).toEqual([{ convertedAmount: "100.00", exchangeRate: "1" }]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

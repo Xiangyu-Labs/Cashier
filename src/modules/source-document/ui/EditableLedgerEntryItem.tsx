@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { LedgerEntry } from "@/modules/ledger/contracts";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useAmountDisplay } from "@/modules/currency/client";
+import { useAmountDisplay } from "@/modules/currency/hooks/useAmountDisplay";
 import { parseAmount } from "@/lib/formatters";
 import { EditableCategorySelect } from "@/components/editable-category-select";
 import { EditableField } from "@/components/ui/editable-field";
@@ -16,7 +16,7 @@ import { ChevronDown, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { EntryEditData } from "@/modules/source-document/types";
 import { formatCurrencyAmount, getCurrencySymbol } from "@/lib/format/currency";
-import { AmountText, amountTextClassName } from "@/modules/currency/ui";
+import { AmountText, amountTextClassName } from "@/modules/currency/ui/amount-text";
 
 const itemVariants = cva(
   "flex items-center rounded-lg px-3 py-2 transition-[color,background-color,border-color,opacity] duration-[var(--motion-feedback)]",
@@ -93,7 +93,8 @@ export const EditableLedgerEntryItem = memo(function EditableLedgerEntryItem({
 
   const { converted, isDifferentCurrency, status } = useAmountDisplay({
     ledgerId: ledgerEntry.ledgerId,
-    amount: parseAmount(displayData.amount),
+    amount:
+      pendingChanges?.amount !== undefined ? String(pendingChanges.amount) : ledgerEntry.amount,
     currency: displayData.currency,
     mainCurrency,
     date: sourceDocumentEntryDate ?? ledgerEntry.createdAt,

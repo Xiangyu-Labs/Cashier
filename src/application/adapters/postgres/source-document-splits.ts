@@ -224,7 +224,6 @@ export async function splitSourceDocumentAtomically(
     movedEntries.map((entry) => ({
       amount: entry.amount,
       from: normalizeCurrency(entry.currency),
-      to: ledger.mainCurrency,
       date: input.entryDate,
     })),
     ledger.mainCurrency
