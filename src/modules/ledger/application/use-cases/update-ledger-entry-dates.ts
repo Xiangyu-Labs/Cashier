@@ -1,9 +1,8 @@
-import type { BatchEntryDateImpact, LedgerReadPort } from "../ports";
+import type { BatchEntryDateImpact } from "../ports";
 
 /**
- * Computes the ledger-entry date change impact. Cross-module application
- * (updating the linked source documents) is orchestrated by the server
- * action so ledger application code never calls another domain's use case.
+ * Updates the linked source documents and returns the impact committed by the
+ * same adapter transaction.
  */
 export async function updateLedgerEntryDates(
   input: {
@@ -12,11 +11,14 @@ export async function updateLedgerEntryDates(
     entryDate: string;
   },
   dependencies: {
-    reads: Pick<LedgerReadPort, "getBatchEntryDateImpact">;
+    updates: {
+      updateDates(input: {
+        ledgerId: string;
+        ledgerEntryIds: string[];
+        entryDate: string;
+      }): Promise<BatchEntryDateImpact>;
+    };
   }
 ): Promise<BatchEntryDateImpact> {
-  return dependencies.reads.getBatchEntryDateImpact({
-    ledgerId: input.ledgerId,
-    ledgerEntryIds: input.ledgerEntryIds,
-  });
+  return dependencies.updates.updateDates(input);
 }

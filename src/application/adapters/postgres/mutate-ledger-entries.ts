@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   ensureTargetLedgerProjection,
   LedgerMainCurrencyChangedError,
   postgresLedgerProjectionAdapter,
+  replaceActiveProjectionInTransaction,
 } from "@/application/adapters/postgres/ledger-projections";
 import { db } from "@/lib/db";
 import { AppError, NotFoundError } from "@/lib/errors";
@@ -18,8 +19,8 @@ import { postgresSettingsAdapter } from "./business-ports";
 import type { BatchActionResult } from "@/lib/batch-ids";
 import { convertEntryAmount } from "@/modules/currency/application/use-cases/convert-entry-amount";
 
-function normalizeCurrency(value: string | null | undefined): string {
-  return value != null && value !== "" ? value : "CNY";
+function normalizeCurrency(value: string | null | undefined, fallback = "CNY"): string {
+  return value != null && value !== "" ? value : fallback;
 }
 
 async function getLedgerMainCurrency(ledgerId: string): Promise<string> {
@@ -162,7 +163,7 @@ async function listActiveProjectionEntries(
       eq(ledgerEntries.sourceDocumentRevisionId, activeRevisionId),
       isNull(ledgerEntries.deletedAt)
     ),
-    orderBy: (entries, { asc }) => [asc(entries.createdAt), asc(entries.id)],
+    orderBy: (entries, { asc }) => [asc(entries.position), asc(entries.id)],
   });
 }
 
@@ -220,7 +221,8 @@ async function updateLedgerEntryAttempt(
   }
   const mainCurrency = await getLedgerMainCurrency(input.ledgerId);
   const nextAmount = input.amount ?? targetEntry.amount;
-  const nextCurrency = normalizeCurrency(input.currency ?? targetEntry.currency);
+  const persistedCurrency = input.currency !== undefined ? input.currency : targetEntry.currency;
+  const nextCurrency = normalizeCurrency(persistedCurrency, mainCurrency);
   let convertedAmount = targetEntry.convertedAmount;
   let exchangeRate = targetEntry.exchangeRate;
   if (input.amount !== undefined || input.currency !== undefined) {
@@ -255,8 +257,8 @@ async function updateLedgerEntryAttempt(
               ...toProjectionEntry(entry),
               categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
               amount:
-                input.amount !== undefined
-                  ? roundToCurrency(input.amount, nextCurrency)
+                input.amount !== undefined || input.currency !== undefined
+                  ? roundToCurrency(nextAmount, nextCurrency)
                   : entry.amount,
               currency: input.currency !== undefined ? input.currency : entry.currency,
               itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
@@ -355,7 +357,10 @@ export async function batchUpdateLedgerEntries(input: {
       ? await postgresFxRateBook.convertBatch(
           initialRows.map((row) => ({
             amount: input.amount ?? row.amount,
-            from: normalizeCurrency(input.currency ?? row.currency),
+            from: normalizeCurrency(
+              input.currency !== undefined ? input.currency : row.currency,
+              initialMainCurrency
+            ),
             ...(row.entryDate != null && row.entryDate !== "" ? { date: row.entryDate } : {}),
           })),
           initialMainCurrency
@@ -395,6 +400,7 @@ export async function batchUpdateLedgerEntries(input: {
                 isNull(sourceDocuments.deletedAt)
               )
             )
+            .orderBy(sourceDocuments.id)
             .for("update");
     if (lockedDocuments.length !== documentIds.length) {
       throw new ConflictError("Selected source documents changed before the batch edit");
@@ -446,51 +452,69 @@ export async function batchUpdateLedgerEntries(input: {
       throw new ConflictError("Selected ledger entries changed before the batch edit");
     }
 
-    const now = new Date();
-    const changesJson = JSON.stringify(
-      rows.map((row, index) => ({
-        id: row.id,
-        active_revision_id: row.activeRevisionId,
-        amount:
-          input.amount == null
-            ? null
-            : roundToCurrency(input.amount, normalizeCurrency(input.currency ?? row.currency)),
-        converted_amount:
-          conversions == null
-            ? null
-            : roundToCurrency(conversions[index]!.convertedAmount, initialMainCurrency),
-        exchange_rate: conversions == null ? null : round(conversions[index]!.exchangeRate, 12),
-      }))
+    const conversionById = new Map(
+      rows.map((row, index) => [row.id, conversions?.[index] ?? null] as const)
     );
-    const result = await tx.execute(sql`
-      WITH changes AS (
-        SELECT * FROM jsonb_to_recordset(${changesJson}::jsonb) AS value(
-          id uuid,
-          active_revision_id uuid,
-          amount numeric,
-          converted_amount numeric,
-          exchange_rate numeric
+    const selectedIds = new Set(rows.map((row) => row.id));
+    const allEntries = await tx
+      .select()
+      .from(ledgerEntries)
+      .innerJoin(
+        sourceDocuments,
+        and(
+          eq(sourceDocuments.id, ledgerEntries.sourceDocumentId),
+          eq(sourceDocuments.ledgerId, input.ledgerId),
+          eq(sourceDocuments.activeRevisionId, ledgerEntries.sourceDocumentRevisionId),
+          isNull(sourceDocuments.deletedAt)
         )
       )
-      UPDATE ledger_entries AS entry
-      SET
-        category_id = CASE WHEN ${input.categoryId !== undefined} THEN ${input.categoryId ?? null}::uuid ELSE entry.category_id END,
-        currency = CASE WHEN ${input.currency !== undefined} THEN ${input.currency == null ? null : normalizeCurrency(input.currency)}::varchar ELSE entry.currency END,
-        amount = CASE WHEN ${input.amount !== undefined} THEN changes.amount ELSE entry.amount END,
-        description = CASE WHEN ${input.description !== undefined} THEN ${input.description ?? null}::text ELSE entry.description END,
-        item_name = CASE WHEN ${input.itemName !== undefined} THEN ${input.itemName ?? null}::text ELSE entry.item_name END,
-        converted_amount = CASE WHEN ${conversions != null} THEN changes.converted_amount ELSE entry.converted_amount END,
-        exchange_rate = CASE WHEN ${conversions != null} THEN changes.exchange_rate ELSE entry.exchange_rate END,
-        updated_at = ${now}
-      FROM changes
-      WHERE entry.id = changes.id
-        AND entry.ledger_id = ${input.ledgerId}
-        AND entry.source_document_revision_id = changes.active_revision_id
-        AND entry.deleted_at IS NULL
-      RETURNING entry.id
-    `);
-    if (result.rows.length !== rows.length) {
-      throw new ConflictError("Ledger entry changed during the batch edit");
+      .where(
+        and(
+          eq(ledgerEntries.ledgerId, input.ledgerId),
+          inArray(ledgerEntries.sourceDocumentId, documentIds),
+          isNull(ledgerEntries.deletedAt)
+        )
+      )
+      .orderBy(ledgerEntries.sourceDocumentId, ledgerEntries.position, ledgerEntries.id);
+
+    for (const documentId of documentIds) {
+      const documentRows = allEntries.filter(
+        (row) => row.ledger_entries.sourceDocumentId === documentId
+      );
+      const activeRevisionId = documentRows[0]?.source_documents.activeRevisionId;
+      if (activeRevisionId == null) {
+        throw new ConflictError("Selected source document projection changed");
+      }
+      await replaceActiveProjectionInTransaction(tx, {
+        ledgerId: input.ledgerId,
+        sourceDocumentId: documentId,
+        expectedActiveRevisionId: activeRevisionId,
+        revisionId: crypto.randomUUID(),
+        entries: documentRows.map(({ ledger_entries: entry }) => {
+          if (!selectedIds.has(entry.id)) return toProjectionEntry(entry);
+          const persistedCurrency = input.currency !== undefined ? input.currency : entry.currency;
+          const effectiveCurrency = normalizeCurrency(persistedCurrency, initialMainCurrency);
+          const nextAmount = input.amount ?? entry.amount;
+          const conversion = conversionById.get(entry.id);
+          return {
+            ...toProjectionEntry(entry),
+            categoryId: input.categoryId !== undefined ? input.categoryId : entry.categoryId,
+            currency: input.currency !== undefined ? input.currency : entry.currency,
+            amount:
+              input.amount !== undefined || input.currency !== undefined
+                ? roundToCurrency(nextAmount, effectiveCurrency)
+                : entry.amount,
+            description: input.description !== undefined ? input.description : entry.description,
+            itemName: input.itemName !== undefined ? input.itemName : entry.itemName,
+            convertedAmount:
+              conversion == null
+                ? entry.convertedAmount
+                : roundToCurrency(conversion.convertedAmount, initialMainCurrency),
+            exchangeRate:
+              conversion == null ? entry.exchangeRate : round(conversion.exchangeRate, 12),
+          };
+        }),
+      });
     }
     return rows.length;
   });

@@ -24,6 +24,7 @@ import {
   listTargetSourceDocuments,
   updateSourceDocument,
   batchUpdateSourceDocuments,
+  updateLedgerEntryDatesAtomically,
   saveSourceDocumentChangesAtomically,
   splitSourceDocumentAtomically,
   acceptCandidateRevision,
@@ -82,6 +83,7 @@ export const serverComposition = {
     updateEntry: updateLedgerEntryWithConversion,
   },
   ledgerEntryCommands: postgresIdempotentLedgerEntryCommandAdapter,
+  ledgerEntryDates: { updateDates: updateLedgerEntryDatesAtomically },
   userMutationIdempotency: { run: runIdempotentUserMutation },
   ledgerReads: {
     hasActiveEntries: hasActiveLedgerEntries,

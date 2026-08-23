@@ -11,18 +11,19 @@ import { sourceDocuments } from "@/persistence/schema/source-document";
 import { v4 as uuidv4 } from "uuid";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-const { getRatesMock } = vi.hoisted(() => ({
+const { getRatesMock, convertBatchMock } = vi.hoisted(() => ({
   getRatesMock: vi.fn(async () => ({
     base: "USD",
     date: "2026-01-01",
-    rates: { CNY: 1 },
+    rates: { CNY: 1 } as Record<string, number>,
   })),
+  convertBatchMock: vi.fn(),
 }));
 
 vi.mock("@/application/adapters/postgres/exchange-rate", () => {
   const rateBook = {
     getRates: getRatesMock,
-    convertBatch: vi.fn(),
+    convertBatch: convertBatchMock,
   };
   return { ExchangeRateService: rateBook, postgresFxRateBook: rateBook, fetchWithRetry: vi.fn() };
 });
@@ -32,6 +33,8 @@ import {
   deleteLedgerEntryAction,
   batchUpdateLedgerEntriesAction,
   batchDeleteLedgerEntriesAction,
+  batchUpdateLedgerEntryDatesAction,
+  previewBatchLedgerEntryDateAction,
   getLedgerEntriesAction,
 } from "@/modules/ledger/actions";
 import { UNCATEGORIZED_SENTINEL } from "@/modules/ledger/application/queries/list-ledger-entries";
@@ -406,6 +409,36 @@ describe("updateLedgerEntryAction", () => {
     expect(result.convertedAmount).toBe("200.000");
   });
 
+  it("re-rounds the amount when only currency changes", async () => {
+    getRatesMock.mockResolvedValue({
+      base: "USD",
+      date: "2026-01-01",
+      rates: { CNY: 1, JPY: 100 },
+    });
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      entryId,
+      { currency: "JPY" },
+      crypto.randomUUID()
+    );
+
+    expect(result.currency).toBe("JPY");
+    expect(result.amount).toBe("50.000");
+  });
+
+  it("preserves null currency while using the ledger currency for calculations", async () => {
+    const result = await updateLedgerEntryAction(
+      ledgerId,
+      entryId,
+      { amount: "12.3456", currency: null },
+      crypto.randomUUID()
+    );
+
+    expect(result.currency).toBeNull();
+    expect(result.amount).toBe("12.350");
+    expect(result.convertedAmount).toBe("12.350");
+  });
+
   it("updates categoryId without conversion", async () => {
     const db = getTestDb();
     const catId = uuidv4();
@@ -515,7 +548,22 @@ describe("batchUpdateLedgerEntriesAction", () => {
     }
     await activateTestSourceDocumentProjection(db, doc.id);
 
+    const before = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
     await batchUpdateLedgerEntriesAction(ledgerId, ids, { categoryId: catId });
+    const after = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+
+    expect(after?.activeRevisionId).not.toBe(before?.activeRevisionId);
+    const archived = await db.query.ledgerEntries.findMany({
+      where: and(
+        eq(ledgerEntries.sourceDocumentRevisionId, before!.activeRevisionId!),
+        isNull(ledgerEntries.deletedAt)
+      ),
+    });
+    expect(archived).toHaveLength(0);
 
     for (const id of ids) {
       const entry = await db.query.ledgerEntries.findFirst({
@@ -567,6 +615,55 @@ describe("batchUpdateLedgerEntriesAction", () => {
       });
       expect(entry?.categoryId).toBeNull();
     }
+  });
+
+  it("commits the date change and returns the locked impact", async () => {
+    const db = getTestDb();
+    convertBatchMock.mockResolvedValue([
+      { convertedAmount: "10", exchangeRate: "1" },
+      { convertedAmount: "20", exchangeRate: "1" },
+    ]);
+    const doc = await seedDoc(db, ledgerId, "2026-01-01");
+    const ids = (
+      await db
+        .insert(ledgerEntries)
+        .values([
+          {
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: doc.id,
+            itemName: "First",
+            amount: "10",
+            currency: "CNY",
+          },
+          {
+            id: uuidv4(),
+            ledgerId,
+            sourceDocumentId: doc.id,
+            itemName: "Second",
+            amount: "20",
+            currency: "CNY",
+          },
+        ])
+        .returning({ id: ledgerEntries.id })
+    ).map((entry) => entry.id);
+    const activeRevisionId = await activateTestSourceDocumentProjection(db, doc.id);
+    const preview = await previewBatchLedgerEntryDateAction(ledgerId, [ids[0]!]);
+
+    const committed = await batchUpdateLedgerEntryDatesAction(ledgerId, [ids[0]!], "2026-01-02");
+
+    expect(committed).toEqual(preview);
+    expect(committed).toMatchObject({
+      selectedEntryCount: 1,
+      sourceDocumentCount: 1,
+      affectedEntryCount: 2,
+      sourceDocumentIds: [doc.id],
+    });
+    const updatedDocument = await db.query.sourceDocuments.findFirst({
+      where: eq(sourceDocuments.id, doc.id),
+    });
+    expect(updatedDocument?.entryDate).toBe("2026-01-02");
+    expect(updatedDocument?.activeRevisionId).not.toBe(activeRevisionId);
   });
 });
 

@@ -48,7 +48,7 @@ export async function deleteLedgerEntry(
       eq(ledgerEntries.sourceDocumentRevisionId, document.activeRevisionId),
       isNull(ledgerEntries.deletedAt)
     ),
-    orderBy: (rows, { asc }) => [asc(rows.createdAt), asc(rows.id)],
+    orderBy: (rows, { asc }) => [asc(rows.position), asc(rows.id)],
   });
   await postgresLedgerProjectionAdapter.replaceActive({
     ledgerId,

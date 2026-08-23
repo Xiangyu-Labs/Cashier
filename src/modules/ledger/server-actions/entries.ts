@@ -8,7 +8,6 @@ import { batchUpdateLedgerEntries } from "@/modules/ledger/application/use-cases
 import { batchDeleteLedgerEntries } from "@/modules/ledger/application/use-cases/batch-delete-ledger-entries";
 import { getBatchEntryDateImpact } from "@/modules/ledger/application/queries/get-batch-entry-date-impact";
 import { updateLedgerEntryDates } from "@/modules/ledger/application/use-cases/update-ledger-entry-dates";
-import { batchUpdateSourceDocuments } from "@/modules/source-document/application/use-cases/update-source-document";
 import { listLedgerEntries } from "@/modules/ledger/application/queries/list-ledger-entries";
 import {
   parseBatchUpdateLedgerEntriesInput,
@@ -207,19 +206,9 @@ export const batchUpdateLedgerEntryDatesAction = withLedgerAccess(
         entryDate: validated.entryDate,
       },
       {
-        reads: serverComposition.ledgerReads,
+        updates: serverComposition.ledgerEntryDates,
       }
     );
-    if (impact.sourceDocumentIds.length > 0) {
-      await batchUpdateSourceDocuments(
-        {
-          ledgerId,
-          sourceDocumentIds: impact.sourceDocumentIds,
-          data: { entryDate: validated.entryDate },
-        },
-        serverComposition.sourceDocumentUpdates
-      );
-    }
     return impact;
   }
 );

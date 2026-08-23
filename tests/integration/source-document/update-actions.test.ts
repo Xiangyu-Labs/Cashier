@@ -248,7 +248,7 @@ describe("Source Document Update Actions", () => {
       expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
     });
 
-    it("recalculates active and pending candidate projections together", async () => {
+    it("rejects date updates while a candidate projection is pending", async () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({ userId: testUserId, mainCurrency: "USD" });
       await db.insert(ledgers).values(ledgerData);
@@ -299,9 +299,11 @@ describe("Source Document Update Actions", () => {
         .where(eq(sourceDocuments.id, document.id));
       await seedHistoricalRate();
 
-      await updateSourceDocumentAction(ledgerData.id, document.id, {
-        entryDate: historicalDate,
-      });
+      await expect(
+        updateSourceDocumentAction(ledgerData.id, document.id, {
+          entryDate: historicalDate,
+        })
+      ).rejects.toThrow("processing work");
 
       const updatedEntries = await db
         .select()
@@ -312,11 +314,11 @@ describe("Source Document Update Actions", () => {
       expect(currentEntries.map((entry) => entry.id).sort()).toEqual(
         [activeEntryId, pendingEntryId].sort()
       );
-      expect(currentEntries.every((entry) => entry.convertedAmount === "10.000")).toBe(true);
-      expect(currentEntries.every((entry) => entry.exchangeRate === "0.100000000000")).toBe(true);
+      expect(currentEntries.every((entry) => entry.convertedAmount === "20.000")).toBe(true);
+      expect(currentEntries.every((entry) => entry.exchangeRate === "0.200000000000")).toBe(true);
     });
 
-    it("recalculates the active projection of a duplicate-pending document", async () => {
+    it("rejects date updates while duplicate review is pending", async () => {
       const db = getTestDb();
       const ledgerData = createLedgerData({ userId: testUserId, mainCurrency: "USD" });
       await db.insert(ledgers).values(ledgerData);
@@ -358,18 +360,20 @@ describe("Source Document Update Actions", () => {
         .where(eq(sourceDocuments.id, document.id));
       await seedHistoricalRate();
 
-      await updateSourceDocumentAction(ledgerData.id, document.id, {
-        entryDate: historicalDate,
-      });
+      await expect(
+        updateSourceDocumentAction(ledgerData.id, document.id, {
+          entryDate: historicalDate,
+        })
+      ).rejects.toThrow("pending duplicate review");
 
       const [updatedDocument, updatedEntry] = await Promise.all([
         db.query.sourceDocuments.findFirst({ where: eq(sourceDocuments.id, document.id) }),
         db.query.ledgerEntries.findFirst({ where: eq(ledgerEntries.id, entryId) }),
       ]);
       expect(updatedDocument?.currentStatus).toBe("duplicate_pending");
-      expect(updatedDocument?.entryDate).toBe(historicalDate);
-      expect(updatedEntry?.convertedAmount).toBe("10.000");
-      expect(updatedEntry?.exchangeRate).toBe("0.100000000000");
+      expect(updatedDocument?.entryDate).toBe("2024-03-14");
+      expect(updatedEntry?.convertedAmount).toBe("20.000");
+      expect(updatedEntry?.exchangeRate).toBe("0.200000000000");
     });
 
     it("does not change the date or projection when FX conversion fails", async () => {
