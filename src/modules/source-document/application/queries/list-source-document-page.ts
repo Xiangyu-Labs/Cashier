@@ -9,6 +9,17 @@ import type {
   SourceDocumentListItemDto,
   SourceDocumentPageDto,
 } from "../../contracts";
+import { ValidationError } from "@/lib/errors";
+
+const ACTIVE_STATUSES = new Set<SourceDocumentListItemDto["status"]>([
+  "processing",
+  "completed",
+  "anomaly",
+  "failed",
+  "cancelled",
+  "candidate_pending",
+  "duplicate_pending",
+]);
 
 export interface ListSourceDocumentsParams {
   status?: string | null;
@@ -61,19 +72,16 @@ export async function querySourceDocumentPage(
     includeFiles,
   } = params;
 
-  const statuses = status
-    ?.split(",")
-    .filter((value): value is Exclude<SourceDocumentListItemDto["status"], "deleted"> =>
-      [
-        "processing",
-        "completed",
-        "anomaly",
-        "failed",
-        "cancelled",
-        "candidate_pending",
-        "duplicate_pending",
-      ].includes(value)
-    );
+  const statusTokens = status?.split(",");
+  if (
+    statusTokens?.some(
+      (value) => !ACTIVE_STATUSES.has(value as SourceDocumentListItemDto["status"])
+    )
+  ) {
+    throw new ValidationError("Unknown source document status");
+  }
+  const statuses = statusTokens as
+    Exclude<SourceDocumentListItemDto["status"], "deleted">[] | undefined;
   const page = await ports.documents.list({
     ledgerId,
     ...(statuses != null && statuses.length > 0 ? { statuses } : {}),

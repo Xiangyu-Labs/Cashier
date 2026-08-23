@@ -54,6 +54,15 @@ export interface SourceDocumentReadPort {
     unconvertedCount: number;
   }>;
   counts(ledgerId: string): Promise<SourceDocumentCountsDto>;
+  pendingSummary(ledgerId: string): Promise<{
+    processingCount: number;
+    candidatePendingCount: number;
+    duplicatePendingCount: number;
+    anomalyCount: number;
+    failedCount: number;
+    cancelledCount: number;
+    total: number;
+  }>;
   listPendingDuplicateReviews(
     ledgerId: string,
     sourceDocumentIds: readonly string[]
@@ -104,6 +113,7 @@ export interface SourceDocumentUpdatePort {
 export interface SourceDocumentQueryPorts {
   documents: SourceDocumentReadPort;
   ledgerReads: LedgerReadPort;
+  changes?: LedgerChangeReadPort;
 }
 
 export interface SourceDocumentCredentialPorts {
@@ -218,6 +228,7 @@ export interface LedgerChangeReadPort {
   listBatches(input: {
     ledgerId: string;
     afterVersion: bigint;
+    throughVersion: bigint;
     limit: number;
   }): Promise<LedgerChangeBatchContract[]>;
   listChangedSourceDocumentIds(input: {

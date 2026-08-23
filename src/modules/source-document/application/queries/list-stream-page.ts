@@ -5,6 +5,8 @@ import type { SourceDocumentStatusType } from "@/modules/source-document/types";
 import { normalizeSearchTerm } from "@/lib/search";
 import type { SourceDocumentQueryPorts } from "../ports";
 import { filterStreamEntries } from "../../stream-filter-policy";
+import { createHash } from "node:crypto";
+import { normalize as normalizeDecimal } from "@/lib/money/decimal";
 
 const STREAM_PAGE_LIMIT = 20;
 
@@ -29,15 +31,25 @@ export interface ListStreamPageInput {
  */
 interface DecodedStreamCursor {
   ledgerId: string;
+  generation: string;
+  filterHash: string;
   innerCursor: string;
 }
 
 function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCursor | null {
   if (cursor == null || cursor === "") return null;
   const parts = cursor.split("|");
-  if (parts.length !== 5) return null;
-  const [version, decodedLedgerId, effectiveDate, createdAt, id] = parts;
-  if (version !== "v2" || !decodedLedgerId || !effectiveDate || !createdAt || !id) {
+  if (parts.length !== 7) return null;
+  const [version, decodedLedgerId, generation, filterHash, effectiveDate, createdAt, id] = parts;
+  if (
+    version !== "v3" ||
+    !decodedLedgerId ||
+    !/^\d+$/.test(generation ?? "") ||
+    !/^[a-f0-9]{16}$/.test(filterHash ?? "") ||
+    !effectiveDate ||
+    !createdAt ||
+    !id
+  ) {
     return null;
   }
   // Validate effectiveDate format (YYYY-MM-DD)
@@ -47,6 +59,8 @@ function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCur
   if (Number.isNaN(createdAtMs)) return null;
   return {
     ledgerId: decodedLedgerId,
+    generation: generation!,
+    filterHash: filterHash!,
     innerCursor: `${effectiveDate}|${createdAt}|${id}`,
   };
 }
@@ -54,9 +68,14 @@ function decodeStreamCursor(cursor: string | null | undefined): DecodedStreamCur
 /**
  * Encode a versioned stream cursor from its components.
  */
-function encodeStreamCursor(ledgerId: string, readModelCursor: string | null): string | null {
+function encodeStreamCursor(
+  ledgerId: string,
+  generation: string,
+  filterHash: string,
+  readModelCursor: string | null
+): string | null {
   if (readModelCursor == null) return null;
-  return `v2|${ledgerId}|${readModelCursor}`;
+  return `v3|${ledgerId}|${generation}|${filterHash}|${readModelCursor}`;
 }
 
 /**
@@ -66,7 +85,12 @@ function encodeStreamCursor(ledgerId: string, readModelCursor: string | null): s
  * Throws ValidationError for malformed, incompatible, or stale cursors so the
  * caller can signal the client to restart from page one.
  */
-function validateCursor(cursor: string | null | undefined, ledgerId: string): string | null {
+function validateCursor(
+  cursor: string | null | undefined,
+  ledgerId: string,
+  generation: string,
+  filterHash: string
+): string | null {
   if (cursor == null || cursor === "") return null;
   const decoded = decodeStreamCursor(cursor);
   if (decoded == null) {
@@ -75,7 +99,22 @@ function validateCursor(cursor: string | null | undefined, ledgerId: string): st
   if (decoded.ledgerId !== ledgerId) {
     throw new ValidationError("Cross-ledger cursor, restart required");
   }
+  if (decoded.generation !== generation || decoded.filterHash !== filterHash) {
+    throw new ValidationError("Stale stream cursor, restart required");
+  }
   return decoded.innerCursor;
+}
+
+function filterFingerprint(input: ListStreamPageInput, search: string | undefined): string {
+  const normalized = {
+    startDate: input.startDate ?? null,
+    endDate: input.endDate ?? null,
+    minAmount: input.minAmount == null ? null : normalizeDecimal(String(input.minAmount)),
+    maxAmount: input.maxAmount == null ? null : normalizeDecimal(String(input.maxAmount)),
+    statuses: [...new Set(input.statuses ?? [])].sort(),
+    search: search?.trim() ?? null,
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex").slice(0, 16);
 }
 
 // ---------------------------------------------------------------------------
@@ -90,16 +129,19 @@ export async function listStreamPage(
   // Enforce page size cap (defense in depth beyond the action schema)
   const limit = Math.min(input.limit, STREAM_PAGE_LIMIT);
   const search = normalizeSearchTerm(input.search);
+  const filterHash = filterFingerprint(input, search);
+  const beforeVersion = (await ports.changes?.getVersion(ledgerId)) ?? BigInt(0);
+  const generation = beforeVersion.toString();
 
   // Validate cursor against ledger identity and filter compatibility.
   // Throws ValidationError for malformed/incompatible cursors so the client
   // can discard stale pages and restart from page one.
   let innerCursor: string | null;
   try {
-    innerCursor = validateCursor(input.cursor, ledgerId);
+    innerCursor = validateCursor(input.cursor, ledgerId, generation, filterHash);
   } catch (error) {
     if (error instanceof ValidationError) {
-      return { items: [], nextCursor: null, generation: 1, restartRequired: true };
+      return { items: [], nextCursor: null, generation, restartRequired: true };
     }
     throw error;
   }
@@ -136,10 +178,19 @@ export async function listStreamPage(
       ...(search != null ? { search } : {}),
     }),
   }));
+  const afterVersion = (await ports.changes?.getVersion(ledgerId)) ?? beforeVersion;
+  if (afterVersion !== beforeVersion) {
+    return {
+      items: [],
+      nextCursor: null,
+      generation: afterVersion.toString(),
+      restartRequired: true,
+    };
+  }
 
   return {
     items: items as SourceDocumentListItemDto[],
-    nextCursor: encodeStreamCursor(ledgerId, page.nextCursor),
-    generation: 1,
+    nextCursor: encodeStreamCursor(ledgerId, generation, filterHash, page.nextCursor),
+    generation,
   };
 }

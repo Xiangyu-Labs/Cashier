@@ -491,7 +491,7 @@ describe("API v1 source-documents route", () => {
     );
   });
 
-  it("rejects a request body above the wire limit with 400", async () => {
+  it("rejects a request body above the wire limit with 413", async () => {
     const { API_V1_MAX_REQUEST_BYTES } = await import("@/modules/source-document/api-v1-policy");
     const image = await validJpegBase64();
     const request = new NextRequest("http://localhost/api/v1/source-documents", {
@@ -504,7 +504,10 @@ describe("API v1 source-documents route", () => {
     });
 
     const response = await POST(request);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "PAYLOAD_TOO_LARGE" },
+    });
     expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
   });
 

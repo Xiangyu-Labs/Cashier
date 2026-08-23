@@ -744,6 +744,14 @@ async function loadFileData(
   const revisionsWithFiles = await db
     .selectDistinct({ revisionId: revisionFiles.revisionId })
     .from(revisionFiles)
+    .innerJoin(
+      storedFiles,
+      and(
+        eq(storedFiles.id, revisionFiles.storedFileId),
+        eq(storedFiles.ledgerId, revisionFiles.ledgerId),
+        isNull(storedFiles.deletedAt)
+      )
+    )
     .where(inArray(revisionFiles.revisionId, [...selected.keys()]));
   const revisionIds = new Set(revisionsWithFiles.map((row) => row.revisionId));
   const hasImages = new Map<string, boolean>();
@@ -1096,6 +1104,31 @@ export async function countSourceDocumentsByStatus(ledgerId: string): Promise<{
   return {
     processingCount: Number(result.processingCount ?? 0),
     attentionCount: Number(result.attentionCount ?? 0),
+  };
+}
+
+export async function summarizePendingSourceDocuments(ledgerId: string) {
+  const result = await db
+    .select({
+      processingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'processing')`,
+      candidatePendingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'candidate_pending')`,
+      duplicatePendingCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'duplicate_pending')`,
+      anomalyCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'anomaly')`,
+      failedCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'failed')`,
+      cancelledCount: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} = 'cancelled')`,
+      total: sql<number>`COUNT(*) FILTER (WHERE ${sourceDocuments.currentStatus} IN ('processing', 'candidate_pending', 'duplicate_pending', 'anomaly', 'failed', 'cancelled'))`,
+    })
+    .from(sourceDocuments)
+    .where(and(eq(sourceDocuments.ledgerId, ledgerId), isNull(sourceDocuments.deletedAt)))
+    .then((rows) => rows[0]);
+  return {
+    processingCount: Number(result?.processingCount ?? 0),
+    candidatePendingCount: Number(result?.candidatePendingCount ?? 0),
+    duplicatePendingCount: Number(result?.duplicatePendingCount ?? 0),
+    anomalyCount: Number(result?.anomalyCount ?? 0),
+    failedCount: Number(result?.failedCount ?? 0),
+    cancelledCount: Number(result?.cancelledCount ?? 0),
+    total: Number(result?.total ?? 0),
   };
 }
 

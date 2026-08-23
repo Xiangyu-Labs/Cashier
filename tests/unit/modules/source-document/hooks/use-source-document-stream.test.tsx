@@ -68,13 +68,13 @@ describe("useSourceDocumentStream", () => {
               makeItem("doc-2", { entryDate: "2026-07-10" }),
             ],
             nextCursor: "next-page-cursor",
-            generation: 1,
+            generation: "1",
           });
         }
         return Promise.resolve({
           items: [makeItem("doc-3", { entryDate: "2026-07-05" })],
           nextCursor: null,
-          generation: 1,
+          generation: "1",
         });
       }
     );
@@ -87,7 +87,7 @@ describe("useSourceDocumentStream", () => {
     listStreamPageActionMock.mockResolvedValue({
       items,
       nextCursor: null,
-      generation: 1,
+      generation: "1",
     });
 
     renderHook(() => useSourceDocumentStream("ledger-1"), {
@@ -159,7 +159,7 @@ describe("useSourceDocumentStream", () => {
           makeItem("doc-2", { entryDate: "2026-07-10" }),
         ],
         nextCursor: "cursor-2",
-        generation: 1,
+        generation: "1",
       })
       .mockResolvedValueOnce({
         items: [
@@ -167,7 +167,7 @@ describe("useSourceDocumentStream", () => {
           makeItem("doc-3", { entryDate: "2026-07-01" }),
         ],
         nextCursor: null,
-        generation: 1,
+        generation: "1",
       });
 
     const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
@@ -198,7 +198,7 @@ describe("useSourceDocumentStream", () => {
     listStreamPageActionMock.mockResolvedValue({
       items: [makeItem("doc-1")],
       nextCursor: null,
-      generation: 1,
+      generation: "1",
     });
 
     const { result } = renderHook(() => useSourceDocumentStream("ledger-1"), {
@@ -280,12 +280,12 @@ describe("useSourceDocumentStream", () => {
           makeItem("doc-2", { entryDate: "2026-07-10" }),
         ],
         nextCursor: "cursor-2",
-        generation: 1,
+        generation: "1",
       })
       .mockResolvedValueOnce({
         items: [],
         nextCursor: null,
-        generation: 2,
+        generation: "2",
         restartRequired: true,
       });
     const queryClient = new QueryClient({
@@ -340,7 +340,7 @@ describe("useSourceDocumentStream", () => {
         }),
       ],
       nextCursor: null,
-      generation: 1,
+      generation: "1",
     });
 
     const { result } = renderHook(() => useSourceDocumentStream("ledger-1", { search: "latte" }), {

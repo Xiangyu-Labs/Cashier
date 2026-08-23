@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   ledgerChangeBatches,
@@ -49,7 +49,8 @@ export const postgresLedgerChangeReadAdapter: LedgerChangeReadPort = {
       .where(
         and(
           eq(ledgerChangeBatches.ledgerId, input.ledgerId),
-          gt(ledgerChangeBatches.version, input.afterVersion)
+          gt(ledgerChangeBatches.version, input.afterVersion),
+          lte(ledgerChangeBatches.version, input.throughVersion)
         )
       )
       .orderBy(asc(ledgerChangeBatches.version))

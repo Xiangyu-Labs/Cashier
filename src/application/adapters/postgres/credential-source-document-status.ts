@@ -35,9 +35,9 @@ export const postgresCredentialSourceDocumentReadAdapter: CredentialSourceDocume
           SELECT jsonb_agg(jsonb_build_object(
             'name', entry.item_name,
             'description', entry.description,
-            'amount', entry.amount,
+            'amount', entry.amount::text,
             'currency', entry.currency,
-            'convertedAmount', entry.converted_amount,
+            'convertedAmount', entry.converted_amount::text,
             'category', category.name
           ) ORDER BY entry.position, entry.created_at, entry.id)
           FROM ledger_entries entry

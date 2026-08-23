@@ -11,7 +11,18 @@ vi.mock("@/modules/source-document/application/queries/list-source-document-page
 import { getPendingSourceDocumentsQuery } from "@/modules/source-document/application/queries/get-pending-source-documents";
 import type { SourceDocumentQueryPorts } from "@/modules/source-document/application/ports";
 
-const queryPorts = {} as SourceDocumentQueryPorts;
+const pendingStats = {
+  processingCount: 1,
+  candidatePendingCount: 0,
+  duplicatePendingCount: 1,
+  anomalyCount: 1,
+  failedCount: 1,
+  cancelledCount: 1,
+  total: 5,
+};
+const queryPorts = {
+  documents: { pendingSummary: vi.fn().mockResolvedValue(pendingStats) },
+} as unknown as SourceDocumentQueryPorts;
 
 describe("getPendingSourceDocumentsQuery", () => {
   beforeEach(() => {
@@ -49,13 +60,14 @@ describe("getPendingSourceDocumentsQuery", () => {
   });
 
   it("groups processing, duplicate, anomaly, failed, and cancelled documents", async () => {
-    const result = await getPendingSourceDocumentsQuery("ledger-1", queryPorts);
+    const result = await getPendingSourceDocumentsQuery("ledger-1", queryPorts, { limit: 20 });
 
     expect(querySourceDocumentPageMock).toHaveBeenCalledWith(
       "ledger-1",
       {
-        status: "processing,duplicate_pending,anomaly,failed,cancelled",
+        status: "processing,candidate_pending,duplicate_pending,anomaly,failed,cancelled",
         includeLedgerEntries: true,
+        limit: 20,
       },
       queryPorts
     );

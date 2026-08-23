@@ -6,7 +6,6 @@ import { getLedgerDelta } from "@/modules/source-document/application/queries/ge
 import { scheduleProcessingRecoveryAfter } from "./schedule-processing-recovery";
 import type { LedgerDeltaRequest, LedgerDeltaResult } from "../contract-refresh";
 import { ValidationError } from "@/lib/errors";
-import { scheduleRequestMaintenance } from "@/application/transport/request-maintenance";
 import { serverComposition } from "@/application/server-composition-root";
 
 const ledgerDeltaRequestSchema = z.object({
@@ -22,7 +21,6 @@ export const getStreamRefreshAction = withLedgerAccess(
     }
     if (parsed.data.ledgerId !== ledgerId) throw new ValidationError("Ledger ID mismatch");
     scheduleProcessingRecoveryAfter(ledgerId);
-    scheduleRequestMaintenance();
     return getLedgerDelta(parsed.data, {
       documents: serverComposition.sourceDocumentReads,
       ledgerReads: serverComposition.ledgerReads,

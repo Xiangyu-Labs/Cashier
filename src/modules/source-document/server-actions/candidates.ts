@@ -9,13 +9,22 @@ import type {
   CancelProcessingResponseDto,
   SourceDocumentCandidateReviewDto,
 } from "@/modules/source-document/contracts";
-import { parseRevisionMutationIdentity } from "@/modules/source-document/contract-schemas";
+import {
+  parseRevisionMutationIdentity,
+  sourceDocumentIdSchema,
+} from "@/modules/source-document/contract-schemas";
+import { ValidationError } from "@/lib/errors";
 import { withSourceDocumentLedgerAccess } from "./access";
 import { serverComposition } from "@/application/server-composition-root";
 
 export const getSourceDocumentCandidateReviewAction = withSourceDocumentLedgerAccess(
-  async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> =>
-    serverComposition.sourceDocumentReads.candidateReview(ledgerId, sourceDocumentId)
+  async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentCandidateReviewDto> => {
+    const parsed = sourceDocumentIdSchema.safeParse(sourceDocumentId);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+    return serverComposition.sourceDocumentReads.candidateReview(ledgerId, parsed.data);
+  }
 );
 
 /**

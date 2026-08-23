@@ -87,6 +87,7 @@ export async function ActiveTab({ searchParams }: ActiveTabProps) {
       sourceDocuments: {
         documents: serverComposition.sourceDocumentReads,
         ledgerReads: serverComposition.ledgerReads,
+        changes: serverComposition.ledgerChanges,
       },
       credentials: serverComposition.serviceCredentials,
     }

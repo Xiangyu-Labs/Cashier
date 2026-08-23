@@ -12,13 +12,22 @@ import type { ResolveDuplicateReviewResult } from "@/modules/source-document/app
 import type { BatchActionResult } from "@/lib/batch-ids";
 import {
   parseRevisionMutationIdentity,
+  sourceDocumentIdSchema,
   sourceDocumentIdsSchema,
 } from "@/modules/source-document/contract-schemas";
 import { ValidationError } from "@/lib/errors";
 
 export const getSourceDocumentDuplicateReviewAction = withSourceDocumentLedgerAccess(
-  async ({ ledgerId }, sourceDocumentId: string): Promise<SourceDocumentDuplicateReviewDetailDto> =>
-    serverComposition.sourceDocumentReads.duplicateReview(ledgerId, sourceDocumentId)
+  async (
+    { ledgerId },
+    sourceDocumentId: string
+  ): Promise<SourceDocumentDuplicateReviewDetailDto> => {
+    const parsed = sourceDocumentIdSchema.safeParse(sourceDocumentId);
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
+    return serverComposition.sourceDocumentReads.duplicateReview(ledgerId, parsed.data);
+  }
 );
 
 /**

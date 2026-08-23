@@ -381,7 +381,12 @@ const streamFilterInputShape = {
   endDate: optionalDateStringSchema,
   minAmount: optionalQueryNumberSchema,
   maxAmount: optionalQueryNumberSchema,
-  statuses: z.array(sourceDocumentStatusSchema).optional(),
+  statuses: z
+    .preprocess(
+      (value) => (Array.isArray(value) ? [...new Set(value)] : value),
+      z.array(sourceDocumentStatusSchema).max(7)
+    )
+    .optional(),
   search: optionalSearchSchema,
 };
 
@@ -391,6 +396,11 @@ export const streamPageInputSchema = strictObjectSchema({
   ...streamFilterInputShape,
   cursor: streamPageCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(20).default(20),
+});
+
+export const pendingSourceDocumentsInputSchema = strictObjectSchema({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: sourceDocumentCursorSchema.optional(),
 });
 
 export const updateSourceDocumentInputSchema = strictObjectSchema({

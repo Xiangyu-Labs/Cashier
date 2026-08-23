@@ -86,7 +86,7 @@ describe("getLedgerPageBootstrap", () => {
     calculateLedgerStatsMock.mockResolvedValue({});
     listLedgerEntriesMock.mockResolvedValue({ items: [], nextCursor: null });
     getSourceDocumentCountsQueryMock.mockResolvedValue({ processingCount: 0, attentionCount: 0 });
-    listStreamPageMock.mockResolvedValue({ items: [], nextCursor: null, generation: 1 });
+    listStreamPageMock.mockResolvedValue({ items: [], nextCursor: null, generation: "1" });
     getStreamTotalMock.mockResolvedValue({ total: "0" });
     getEnhancedStatsMock.mockResolvedValue({});
   });
@@ -525,7 +525,7 @@ describe("getLedgerPageBootstrap", () => {
     );
     expect(streamQuery).toBeDefined();
     expect(streamQuery?.state.data).toEqual({
-      pages: [{ items: [], nextCursor: null, generation: 1 }],
+      pages: [{ items: [], nextCursor: null, generation: "1" }],
       pageParams: [undefined],
     });
   });

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 120;
 import { createSourceDocumentFromCredentialRequest } from "@/modules/source-document/server/create-from-credential-request";
-import { ValidationError } from "@/lib/errors";
+import { AppError, ValidationError } from "@/lib/errors";
 import {
   ApiV1HandlerFailure,
   handleApiV1Route,
@@ -19,11 +19,11 @@ import { API_V1_MAX_REQUEST_BYTES } from "@/modules/source-document/api-v1-polic
  * from the stream so failure metrics can report how far the request got
  * before rejection.
  */
-class RequestBodyTooLargeError extends ValidationError {
+class RequestBodyTooLargeError extends AppError {
   readonly bytesRead: number;
 
   constructor(bytesRead: number) {
-    super(`JSON request body exceeds ${API_V1_MAX_REQUEST_BYTES} bytes`);
+    super("Request body exceeds the maximum allowed size", "PAYLOAD_TOO_LARGE", 413);
     this.bytesRead = bytesRead;
   }
 }

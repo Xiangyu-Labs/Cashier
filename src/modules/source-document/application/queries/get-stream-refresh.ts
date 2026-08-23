@@ -3,6 +3,8 @@ import type { LedgerDeltaRequest, LedgerDeltaResult } from "../../contract-refre
 import { LEDGER_DELTA_PROTOCOL_VERSION, MAX_DELTA_VERSIONS } from "../../contract-refresh";
 import type { LedgerDeltaPorts } from "../ports";
 
+const MAX_BIGINT_VERSION = BigInt("9223372036854775807");
+
 function parseVersion(value: string): bigint | null {
   if (!/^\d+$/.test(value)) return null;
   try {
@@ -31,7 +33,12 @@ export async function getLedgerDelta(
     invalidations: { categories: true, settings: true, stats: true },
   });
 
-  if (afterVersion == null || afterVersion < BigInt(0) || afterVersion > currentVersion) {
+  if (
+    afterVersion == null ||
+    afterVersion < BigInt(0) ||
+    afterVersion > MAX_BIGINT_VERSION ||
+    afterVersion > currentVersion
+  ) {
     return reset();
   }
   if (afterVersion === currentVersion) {
@@ -50,6 +57,7 @@ export async function getLedgerDelta(
   const batches = await ports.changes.listBatches({
     ledgerId: request.ledgerId,
     afterVersion,
+    throughVersion: currentVersion,
     limit: MAX_DELTA_VERSIONS,
   });
   if (

@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth-actions";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getErrorStatusCode, toSanitizedErrorResponse } from "@/lib/error-handlers";
+import { UUID_REGEX } from "@/lib/validation";
 
 const CACHE_CONTROL = "private, no-store";
 
@@ -15,6 +16,9 @@ export async function GET(
   try {
     const userId = await requireAuth();
     const { fileId } = await params;
+    if (!UUID_REGEX.test(fileId)) {
+      throw new AppError("Invalid stored file ID", "VALIDATION_ERROR", 400);
+    }
     const read = await serverComposition.storedFiles.readAuthorizedStreamForUser(userId, fileId);
     if (read == null) throw new AppError("Stored file not found", "FILE_NOT_FOUND", 404);
     return new NextResponse(read.body, {

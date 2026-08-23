@@ -142,7 +142,7 @@ export function useSourceDocumentStream(
   );
 
   // Track the generation from the first page for cross-page consistency
-  const generationRef = useRef<number | null>(null);
+  const generationRef = useRef<string | null>(null);
   const observedRestartFingerprintRef = useRef<string | null>(null);
   const afterVersionRef = useRef("0");
 

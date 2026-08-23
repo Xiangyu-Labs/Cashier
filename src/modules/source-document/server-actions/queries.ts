@@ -19,6 +19,7 @@ import {
 } from "@/modules/source-document/contracts";
 import {
   sourceDocumentIdSchema,
+  pendingSourceDocumentsInputSchema,
   streamPageInputSchema,
   streamTotalInputSchema,
   type ListSourceDocumentsInput,
@@ -29,6 +30,7 @@ import { serverComposition } from "@/application/server-composition-root";
 const queryPorts = {
   documents: serverComposition.sourceDocumentReads,
   ledgerReads: serverComposition.ledgerReads,
+  changes: serverComposition.ledgerChanges,
 };
 
 export const getSourceDocumentsAction = withLedgerAccess(
@@ -44,10 +46,17 @@ export const getSourceDocumentsAction = withLedgerAccess(
  * Used for the pending source documents modal that should always show ALL pending items.
  */
 export const getPendingSourceDocumentsAction = withLedgerAccess(
-  async (ledgerId: string): Promise<PendingSourceDocumentsResponseDto> => {
+  async (ledgerId: string, input?: unknown): Promise<PendingSourceDocumentsResponseDto> => {
+    const parsed = pendingSourceDocumentsInputSchema.safeParse(input ?? {});
+    if (!parsed.success) {
+      throw new ValidationError("Validation failed", { issues: parsed.error.issues });
+    }
     // Schedule processing recovery alongside data reads
     scheduleProcessingRecoveryAfter(ledgerId);
-    return getPendingSourceDocuments(ledgerId, queryPorts);
+    return getPendingSourceDocuments(ledgerId, queryPorts, {
+      limit: parsed.data.limit,
+      ...(parsed.data.cursor != null ? { cursor: parsed.data.cursor } : {}),
+    });
   }
 );
 

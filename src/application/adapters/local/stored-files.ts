@@ -809,6 +809,14 @@ export class StoredFileAdapter implements DirectStoredFilePort {
     }
     const row = await this.authorizedFiles.findForUser(userId, fileId);
     if (row == null) return null;
+    if (row.storageProvider !== "s3") {
+      throw new AppError(
+        `Unsupported stored file provider: ${row.storageProvider}`,
+        "UNSUPPORTED_STORAGE_PROVIDER",
+        500,
+        { provider: row.storageProvider, fileId: row.id }
+      );
+    }
     return { file: mapStoredFile(row), body: await this.storage.stream(row.storageKey) };
   }
 }

@@ -72,6 +72,7 @@ export interface CreatedRecordResult {
 export interface PendingSourceDocumentsResponseDto {
   groups: {
     processing: SourceDocumentGroupDto[];
+    candidate_pending: SourceDocumentGroupDto[];
     duplicate_pending: SourceDocumentGroupDto[];
     anomaly: SourceDocumentGroupDto[];
     failed: SourceDocumentGroupDto[];
@@ -79,12 +80,15 @@ export interface PendingSourceDocumentsResponseDto {
   };
   stats: {
     processingCount: number;
+    candidatePendingCount: number;
     duplicatePendingCount: number;
     anomalyCount: number;
     failedCount: number;
     cancelledCount: number;
     total: number;
   };
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface UpdateSourceDocumentResultDto {
